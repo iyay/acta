@@ -358,6 +358,7 @@ User explicitly wants a *different* pane to review → that message needs: liter
 Not clean after round 1 or 2 → the fix round goes out **in this same turn, automatically**. A findings list handed to the user with no dispatch behind it is an incomplete turn. Steps:
 
 1. **BLOCKERs → ONE fix ticket via `pm:plan`.** Append a `## Fix round <n>` section to the same plan file with ONE task that lists every BLOCKER: `file:line`, wrong vs expected, the mutation that proves each fix, one `verify:` line per BLOCKER. The whole task lands as one commit. NOTEs go to memory, one line each, never a ticket. Mirror the task to the tracker like any other ticket. No inline findings list in the prompt — an inline list is what makes a weak harness freestyle.
+   A defect in code already on the parent branch, that the diff did not bring in, stays out of the fix ticket: record it with `pm:bug` ("Where findings go" in `pm:review`).
    Exception: 1–2 findings, clear one-liners, no new context → inline `/goal`, still naming the implementer-subagent rule. 3+ or reasoning needed → the fix task in the plan.
 2. **Reuse the same agent** — slug lookup first, prompt where it lives, no move. Fix round on the same plan in the same worktree → `/goal` only, **no `/new`**. Write the fix brief as if it remembers nothing (omp compacts); reuse is an optimisation.
 3. Fix brief = same format, TICKETS = the new ticket ids, REPLY-BACK over `<fixed-from>..<new-head>`.

@@ -41,16 +41,16 @@
 
 **verify:** when no voice file exists, the session text never tells the agent to ask the three questions, or to write in English, without first saying that a chat language or style already named in the user's CLAUDE.md or AGENTS.md wins and is only offered for saving. List every line of `firstRun` checked.
 
-- [ ] **Step 1: Write the failing test.** In `TestSessionStartFirstRun`, add `"already names a chat language or style"` and `"or the language CLAUDE.md names"` to the `want` list:
+- [x] **Step 1: Write the failing test.** In `TestSessionStartFirstRun`, add `"already names a chat language or style"` and `"or the language CLAUDE.md names"` to the `want` list:
 
 ```go
 for _, want := range []string{"Voice: not set up yet.", "pmb voice set --language", "Style (ADHD reader):",
 	"already names a chat language or style", "or the language CLAUDE.md names"} {
 ```
 
-- [ ] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/hook/ -run TestSessionStartFirstRun` — expected FAIL: `first run missing "already names a chat language or style"`.
+- [x] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/hook/ -run TestSessionStartFirstRun` — expected FAIL: `first run missing "already names a chat language or style"`.
 
-- [ ] **Step 3: Replace `firstRun` with:**
+- [x] **Step 3: Replace `firstRun` with:**
 
 ```go
 const firstRun = `
@@ -64,9 +64,9 @@ Until then, write in English (or the language CLAUDE.md names), adhd style.
 `
 ```
 
-- [ ] **Step 4: Run the gate** (Global Constraints). Expected: all PASS, including `cmd/pmb` hook tests that look for `Voice: not set up yet.`.
+- [x] **Step 4: Run the gate** (Global Constraints). Expected: all PASS, including `cmd/pmb` hook tests that look for `Voice: not set up yet.`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/hook/hook.go internal/hook/hook_test.go
@@ -83,13 +83,13 @@ git commit -m "fix(hook): first-run voice text offers the language CLAUDE.md alr
 
 **verify:** no `git worktree add` command in `build` creates the branch without the recorded parent as its start point, and the text says where `$PARENT` comes from. List every `git worktree add` in the file.
 
-- [ ] **Step 1: Write the failing test.** In `skill_build_test.go` `Must`, replace
+- [x] **Step 1: Write the failing test.** In `skill_build_test.go` `Must`, replace
 `` `git worktree add "../$REPO-$SLUG" -b "$SLUG"`, `` with
 `` `git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above", ``.
 
-- [ ] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/plugincheck/ -run TestSkillBuild` — expected FAIL naming the missing `"$PARENT"` strings.
+- [x] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/plugincheck/ -run TestSkillBuild` — expected FAIL naming the missing `"$PARENT"` strings.
 
-- [ ] **Step 3: Edit Step 1b.** Change the line `Create it:` to:
+- [x] **Step 3: Edit Step 1b.** Change the line `Create it:` to:
 
 ```markdown
 Create it. `$PARENT` is the parent branch recorded above, so the branch starts from it and not from whatever is checked out:
@@ -101,9 +101,9 @@ and the command line to:
 git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"
 ```
 
-- [ ] **Step 4: Run the gate.** Expected: all PASS.
+- [x] **Step 4: Run the gate.** Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/build/SKILL.md internal/plugincheck/skill_build_test.go
@@ -120,19 +120,19 @@ git commit -m "fix(plugin): build fallback worktree branches from the recorded p
 
 **verify:** no routing step in `dispatch` puts a defect in code already on the parent branch into a fix ticket; the text sends it to `pm:bug`. List every place in the file that routes BLOCKERs.
 
-- [ ] **Step 1: Write the failing test.** Add `"pm:bug"` and `"already on the parent branch"` to `Must` in `skill_dispatch_test.go`.
+- [x] **Step 1: Write the failing test.** Add `"pm:bug"` and `"already on the parent branch"` to `Must` in `skill_dispatch_test.go`.
 
-- [ ] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/plugincheck/ -run TestSkillDispatch` — expected FAIL: missing `"pm:bug"`.
+- [x] **Step 2: Run it, watch it fail:** `go test -count=1 ./internal/plugincheck/ -run TestSkillDispatch` — expected FAIL: missing `"pm:bug"`.
 
-- [ ] **Step 3: Edit.** In "After a review", right after the step 1 paragraph (the one starting `1. **BLOCKERs → ONE fix ticket via `pm:plan`.**`) and before the `Exception:` line, add this line, indented three spaces like the `Exception:` line:
+- [x] **Step 3: Edit.** In "After a review", right after the step 1 paragraph (the one starting `1. **BLOCKERs → ONE fix ticket via `pm:plan`.**`) and before the `Exception:` line, add this line, indented three spaces like the `Exception:` line:
 
 ```markdown
    A defect in code already on the parent branch, that the diff did not bring in, stays out of the fix ticket: record it with `pm:bug` ("Where findings go" in `pm:review`).
 ```
 
-- [ ] **Step 4: Run the gate.** Expected: all PASS.
+- [x] **Step 4: Run the gate.** Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/dispatch/SKILL.md internal/plugincheck/skill_dispatch_test.go
