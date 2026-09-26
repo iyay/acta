@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"pm-board/internal/board"
+	"github.com/iyay/acta/internal/board"
 )
 
 func TestAssignIDsGivesMissingOnly(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/voice"
+	"github.com/iyay/acta/internal/voice"
 )
 
 var update = flag.Bool("update", false, "rewrite plugin/hooks/default-rules.md")

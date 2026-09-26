@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 // closedSpec writes one finished spec file under dir and gives its path back.

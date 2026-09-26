@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
-	"pm-board/internal/gitc"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/gitc"
 )
 
 var (

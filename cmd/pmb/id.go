@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"pm-board/internal/write"
+	"github.com/iyay/acta/internal/write"
 )
 
 // cmdID gives short number and hash IDs to items that lack them, or repairs

@@ -39,10 +39,10 @@ All tasks run in order (each touches files the next one builds on): wave 1 task 
 
 **verify:** No file imports `pm-board/` any more; `go build ./...`, `go vet ./...` and the full suite pass; `go list -m` prints `github.com/iyay/acta`. List the count of files changed and the grep that proves none remain.
 
-- [ ] **Step 1: Failing check:** add `TestModulePath` in `internal/plugincheck` that reads `go.mod` and requires `module github.com/iyay/acta`; run it, see it fail.
-- [ ] **Step 2: Rename:** `go mod edit -module github.com/iyay/acta`, then rewrite imports (`gofmt -r` cannot do import paths; use `sed` over the `.go` files for the exact string `"pm-board/` → `"github.com/iyay/acta/`).
-- [ ] **Step 3: Gate** (green), `grep -rn '"pm-board/' --include=*.go .` prints nothing.
-- [ ] **Step 4: Commit** (`refactor: module path github.com/iyay/acta`), tick `#task-1 --all`.
+- [x] **Step 1: Failing check:** add `TestModulePath` in `internal/plugincheck` that reads `go.mod` and requires `module github.com/iyay/acta`; run it, see it fail.
+- [x] **Step 2: Rename:** `go mod edit -module github.com/iyay/acta`, then rewrite imports (`gofmt -r` cannot do import paths; use `sed` over the `.go` files for the exact string `"pm-board/` → `"github.com/iyay/acta/`).
+- [x] **Step 3: Gate** (green), `grep -rn '"pm-board/' --include=*.go .` prints nothing.
+- [x] **Step 4: Commit** (`refactor: module path github.com/iyay/acta`), tick `#task-1 --all`.
 
 ---
 

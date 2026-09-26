@@ -13,9 +13,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
-	"pm-board/internal/write"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/write"
 )
 
 func fixture(t *testing.T) (config.Config, *board.Board) {

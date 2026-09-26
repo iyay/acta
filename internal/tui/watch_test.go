@@ -10,8 +10,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 func TestWatchDirs(t *testing.T) {

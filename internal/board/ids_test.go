@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 // boardWith writes files under a temp .pm root and loads the board.

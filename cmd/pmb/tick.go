@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	"pm-board/internal/board"
-	"pm-board/internal/hook"
-	"pm-board/internal/write"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/write"
 )
 
 const tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all | --start]"

@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fsnotify/fsnotify"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 // Debounce is how long file events are gathered before one reload.
