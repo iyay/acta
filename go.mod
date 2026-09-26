@@ -1,4 +1,4 @@
-module pm-board
+module github.com/iyay/acta
 
 go 1.27.1
 

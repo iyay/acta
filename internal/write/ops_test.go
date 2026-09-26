@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 func repoWith(t *testing.T, files map[string]string) config.Config {

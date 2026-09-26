@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 // Kind is what an item is.

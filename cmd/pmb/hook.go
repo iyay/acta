@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"pm-board/internal/config"
-	"pm-board/internal/hook"
-	"pm-board/internal/voice"
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/voice"
 )
 
 const hookUsage = "usage: pmb hook session-start [--known <file>] | pmb hook prompt"

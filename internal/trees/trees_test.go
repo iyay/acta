@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 func run(t *testing.T, dir string, args ...string) {

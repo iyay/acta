@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
-	"pm-board/internal/board"
+	"github.com/iyay/acta/internal/board"
 )
 
 // tabBox is where one tab name sits in the top border of a pane, in screen

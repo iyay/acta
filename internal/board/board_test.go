@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 func loadFixture(t *testing.T) *Board {

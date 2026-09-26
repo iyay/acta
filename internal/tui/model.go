@@ -10,10 +10,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
-	"pm-board/internal/editor"
-	"pm-board/internal/write"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/editor"
+	"github.com/iyay/acta/internal/write"
 )
 
 // pane is which of the three boxes has the focus.

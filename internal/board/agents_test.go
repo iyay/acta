@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 func writeFile(t *testing.T, path, body string) {

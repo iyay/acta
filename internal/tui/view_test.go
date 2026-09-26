@@ -10,8 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 // withColors pins a color profile while the test draws, because lipgloss

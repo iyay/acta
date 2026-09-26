@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"pm-board/internal/hook"
+	"github.com/iyay/acta/internal/hook"
 )
 
 func TestSkillFoldersMatchHookIndex(t *testing.T) {

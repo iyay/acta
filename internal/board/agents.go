@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 // agentRec is one record of who last ticked a task, in the file a tick writes.

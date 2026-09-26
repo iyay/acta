@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"pm-board/internal/gitc"
+	"github.com/iyay/acta/internal/gitc"
 )
 
 // fillCommitTimes records when each finished file was last committed, so pane

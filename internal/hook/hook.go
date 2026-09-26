@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"pm-board/internal/voice"
+	"github.com/iyay/acta/internal/voice"
 )
 
 // Skill is one pm skill and when to use it.

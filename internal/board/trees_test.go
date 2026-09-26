@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"pm-board/internal/config"
+	"github.com/iyay/acta/internal/config"
 )
 
 func tree(t *testing.T, files map[string]string) config.Config {

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pm-board/internal/board"
-	"pm-board/internal/config"
-	"pm-board/internal/gitc"
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/gitc"
 )
 
 // Others gives every other worktree of cfg's repo, read with the same root

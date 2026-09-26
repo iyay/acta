@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"pm-board/internal/voice"
+	"github.com/iyay/acta/internal/voice"
 )
 
 const voiceUsage = "usage: pmb voice show [--json] | pmb voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L]"
