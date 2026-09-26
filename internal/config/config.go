@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -116,13 +117,28 @@ func Load(cwd, flagRoot string) (Config, error) {
 			cfg.Branches = append([]string(nil), (*fc.Branches)...)
 		}
 	}
-	// Links: donate stays empty when unset; feedback falls back to the issue
-	// tracker when the file leaves it out.
-	cfg.Links = fc.Links
+	// Links: anything but a real http(s) url never reaches the opener, so a
+	// cloned .pm.yaml cannot turn a click into a local program.
+	cfg.Links = Links{Donate: httpLink(fc.Links.Donate), Feedback: httpLink(fc.Links.Feedback)}
 	if cfg.Links.Feedback == "" {
 		cfg.Links.Feedback = "https://github.com/iyay/acta/issues"
 	}
 	return cfg, nil
+}
+
+// httpLink keeps a footer url only when it is a real http(s) address with a
+// host behind it. Anything else comes back empty, so a bad value can never
+// reach the browser opener.
+func httpLink(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https":
+		return raw
+	}
+	return ""
 }
 
 // findRepo asks git for the top folder. Outside git the start folder is used.

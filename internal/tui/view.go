@@ -448,22 +448,19 @@ func (m Model) detailLines(w int) []string {
 
 // statusPiece is one word group of the right side of the bottom line: the
 // words on screen and the link they open, empty when the words open nothing.
-// nInfo says how many leading pieces are info words (project, mode, date),
-// so the view and the mouse split info from links at the same place.
 type statusPiece struct {
-	text  string
-	url   string
-	nInfo int
-	x     int
-	w     int
+	text string
+	url  string
+	x    int
+	w    int
 }
 
 // statusPieces lays out the right side of the bottom line: the project, the
 // watch mode and the date with time, then a divider, then the links and the
 // version. A narrow line drops the project first, then the mode, but the date
 // and time stay always, so the clock never leaves the screen. The view draws
-// these pieces and the mouse reads their boxes, so a click and the drawn
-// words cannot drift apart.
+// these pieces and the mouse reads its boxes off the drawn line, so a click
+// and the drawn words cannot drift apart.
 func (m Model) statusPieces() []statusPiece {
 	info := []string{filepath.Base(m.cfg.RepoRoot), m.mode(), m.now.Format("2006-01-02 15:04")}
 	var links []statusPiece
@@ -474,32 +471,7 @@ func (m Model) statusPieces() []statusPiece {
 		links = append(links, statusPiece{text: "Feedback", url: m.cfg.Links.Feedback})
 	}
 	tail := append(links, statusPiece{text: m.version})
-	out := joinStatus(info, tail, m.width)
-	// Walk the same gaps the text draws, so each click box starts where its
-	// words start on screen.
-	right := statusText(out)
-	x := m.width - lipgloss.Width(right)
-	nInfo := 0
-	for _, p := range out {
-		if p.url != "" {
-			break
-		}
-		nInfo++
-	}
-	for i := range out {
-		if i > 0 {
-			if i == nInfo {
-				x += lipgloss.Width(" | ")
-			} else if i < nInfo {
-				x += lipgloss.Width(" · ")
-			} else {
-				x += 2
-			}
-		}
-		out[i].x, out[i].w, out[i].nInfo = x, lipgloss.Width(out[i].text), nInfo
-		x += out[i].w
-	}
-	return out
+	return joinStatus(info, tail, m.width)
 }
 
 // joinStatus picks how many info words fit: it drops the project first, then
@@ -572,7 +544,6 @@ func (m Model) statusLine() string {
 	}
 	pieces := m.statusPieces()
 	right := statusText(pieces)
-	m.statusBoxes = boxesOf(pieces)
 	// The date and the links are what the line always tells, so the left
 	// gives way first when the window is narrow.
 	room := m.width - lipgloss.Width(right) - lipgloss.Width(left)
@@ -596,16 +567,87 @@ func (m Model) statusLine() string {
 	return left + gap + faint.Render(right)
 }
 
-// boxesOf keeps the link boxes of the drawn pieces, so a click and the drawn
-// words come from the same numbers.
-func boxesOf(pieces []statusPiece) []statusPiece {
-	out := make([]statusPiece, 0, len(pieces))
-	for _, p := range pieces {
-		if p.url != "" {
-			out = append(out, p)
+// statusLineBoxes gives the click boxes of the bottom line by reading the
+// line the view draws: each OSC 8 wrapper carries its url next to its words,
+// so a click lands on the drawn words even when the right side is cut to
+// fit a narrow window.
+func (m Model) statusLineBoxes() []statusPiece {
+	raw := m.statusLine()
+	flat := stripCodes(raw)
+	var out []statusPiece
+	base := 0
+	for _, seg := range linkSegments(raw) {
+		i := strings.Index(flat[base:], seg.text)
+		if i < 0 {
+			continue
 		}
+		x := lipgloss.Width(flat[:base+i])
+		out = append(out, statusPiece{text: seg.text, url: seg.url, x: x, w: lipgloss.Width(seg.text)})
+		base += i + len(seg.text)
 	}
 	return out
+}
+
+// linkSegment is one hyperlink the bottom line draws: the words on screen
+// next to the url they open.
+type linkSegment struct {
+	text string
+	url  string
+}
+
+// linkSegments reads the hyperlinks out of a drawn line. Each opener holds
+// the url, the words run until the closer, so even a cut word keeps the
+// cells still on screen.
+func linkSegments(raw string) []linkSegment {
+	var out []linkSegment
+	for {
+		open := strings.Index(raw, "\x1b]8;;")
+		if open < 0 {
+			return out
+		}
+		raw = raw[open+len("\x1b]8;;"):]
+		end := strings.Index(raw, "\x1b\\")
+		if end < 0 {
+			return out
+		}
+		url := raw[:end]
+		raw = raw[end+len("\x1b\\"):]
+		end = strings.Index(raw, "\x1b]8;;\x1b\\")
+		if end < 0 {
+			return out
+		}
+		if url != "" {
+			out = append(out, linkSegment{text: raw[:end], url: url})
+		}
+		raw = raw[end+len("\x1b]8;;\x1b\\"):]
+	}
+}
+
+// stripCodes drops the color and hyperlink codes from a drawn line, leaving
+// the words a person sees. The mouse counts cells on what is left.
+func stripCodes(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if strings.HasPrefix(s[i:], "\x1b]8;;") {
+			end := strings.Index(s[i:], "\x1b\\")
+			if end < 0 {
+				break
+			}
+			i += end + len("\x1b\\")
+			continue
+		}
+		if strings.HasPrefix(s[i:], "\x1b[") {
+			end := strings.IndexAny(s[i:], "ABCDEFGHJKSTfmnsu")
+			if end < 0 {
+				break
+			}
+			i += end + 1
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
 }
 
 // mode says whether the board follows the files as they change.

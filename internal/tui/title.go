@@ -74,14 +74,10 @@ func defaultOpen(url string) error {
 	return exec.Command("xdg-open", url).Run()
 }
 
-// linkAt gives the url under a bottom-line cell, walking the same boxes the
-// view drew, so a click opens only the link it lands on.
+// linkAt gives the url under a bottom-line cell, reading the boxes off the
+// line the view drew, so a click opens only the link it lands on.
 func (m Model) linkAt(x int) (string, bool) {
-	boxes := m.statusBoxes
-	if boxes == nil {
-		boxes = boxesOf(m.statusPieces())
-	}
-	for _, b := range boxes {
+	for _, b := range m.statusLineBoxes() {
 		if x >= b.x && x < b.x+b.w && b.url != "" {
 			return b.url, true
 		}
