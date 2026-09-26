@@ -38,25 +38,28 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 		done, total    int
 	}
 	cases := map[string]want{
-		"specs/2026-09-20-alpha":                {KindStory, "in-progress", "derived", 1, 2},
-		"plans/2026-09-21-alpha#task-1":         {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-21-alpha#task-2":         {KindTask, "doing", "derived", 1, 2},
-		"specs/2026-09-22-beta":                 {KindStory, "draft", "derived", 0, 0},
-		"plans/2026-09-23-lonely":               {KindStory, "approved", "derived", 0, 1},
-		"plans/2026-09-23-lonely#task-1":        {KindTask, "todo", "derived", 0, 0},
-		"bugs/2026-09-24-crash":                 {KindBug, "fixed", "derived", 1, 1},
-		"plans/2026-09-25-crash-fix#task-F1":    {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-26-dash-tasks":           {KindStory, "done", "derived", 2, 2},
-		"plans/2026-09-26-dash-tasks#task-F-1":  {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-26-dash-tasks#task-F-2":  {KindTask, "done", "derived", 2, 2},
-		"bugs/2026-09-26-open":                  {KindBug, "open", "derived", 0, 0},
-		"plans/2026-09-27-orphan":               {KindStory, "done", "derived", 1, 1},
-		"specs/2026-09-19-dropped":              {KindStory, "dropped", "frontmatter", 0, 0},
-		"specs/2026-09-18-weird":                {KindStory, "bogus", "frontmatter", 0, 0},
-		"specs/2026-09-17-broken":               {KindStory, "draft", "derived", 0, 0},
-		"specs/2026-09-16-finished":             {KindStory, "done", "derived", 1, 1},
-		"specs/2026-09-15-really-bug":           {KindBug, "open", "derived", 0, 0},
-		"docs/superpowers/specs/2026-01-01-old": {KindStory, "approved", "derived", 0, 1},
+		"specs/2026-09-20-alpha":                 {KindStory, "in-progress", "derived", 1, 2},
+		"plans/2026-09-21-alpha#task-1":          {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-21-alpha#task-2":          {KindTask, "doing", "derived", 1, 2},
+		"specs/2026-09-22-beta":                  {KindStory, "draft", "derived", 0, 0},
+		"plans/2026-09-23-lonely":                {KindStory, "approved", "derived", 0, 1},
+		"plans/2026-09-23-lonely#task-1":         {KindTask, "todo", "derived", 0, 0},
+		"bugs/2026-09-24-crash":                  {KindBug, "fixed", "derived", 1, 1},
+		"plans/2026-09-25-crash-fix#task-F1":     {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-28-dotted-tasks":          {KindStory, "done", "derived", 2, 2},
+		"plans/2026-09-28-dotted-tasks#task-2.1": {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-28-dotted-tasks#task-2.2": {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks":            {KindStory, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks#task-F-1":   {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks#task-F-2":   {KindTask, "done", "derived", 2, 2},
+		"bugs/2026-09-26-open":                   {KindBug, "open", "derived", 0, 0},
+		"plans/2026-09-27-orphan":                {KindStory, "done", "derived", 1, 1},
+		"specs/2026-09-19-dropped":               {KindStory, "dropped", "frontmatter", 0, 0},
+		"specs/2026-09-18-weird":                 {KindStory, "bogus", "frontmatter", 0, 0},
+		"specs/2026-09-17-broken":                {KindStory, "draft", "derived", 0, 0},
+		"specs/2026-09-16-finished":              {KindStory, "done", "derived", 1, 1},
+		"specs/2026-09-15-really-bug":            {KindBug, "open", "derived", 0, 0},
+		"docs/superpowers/specs/2026-01-01-old":  {KindStory, "approved", "derived", 0, 1},
 	}
 	for id, w := range cases {
 		it := b.Get(id)
@@ -68,8 +71,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 			t.Errorf("%s = kind %s status %s (%s) %d/%d, want %+v", id, it.Kind, it.Status, it.StatusSource, it.Done, it.Total, w)
 		}
 	}
-	if len(b.Items) != 22 {
-		t.Errorf("got %d items, want 22: %v", len(b.Items), ids(b.Items))
+	if len(b.Items) != 25 {
+		t.Errorf("got %d items, want 25: %v", len(b.Items), ids(b.Items))
 	}
 }
 
@@ -113,6 +116,25 @@ func TestLoadDashTasks(t *testing.T) {
 		t.Errorf("F-2 = title %q line %d", t2.Title, t2.Line)
 	}
 	parent := b.Get("plans/2026-09-26-dash-tasks")
+	if parent.Done != 2 || parent.Total != 2 {
+		t.Errorf("parent progress = %d/%d, want 2/2", parent.Done, parent.Total)
+	}
+}
+
+func TestLoadDottedTasks(t *testing.T) {
+	b := loadFixture(t)
+	t1 := b.Get("plans/2026-09-28-dotted-tasks#task-2.1")
+	t2 := b.Get("plans/2026-09-28-dotted-tasks#task-2.2")
+	if t1 == nil || t2 == nil {
+		t.Fatalf("dotted tasks missing: 2.1=%v 2.2=%v", t1 != nil, t2 != nil)
+	}
+	if t1.Title != "First dotted step" || t1.Line != 3 {
+		t.Errorf("2.1 = title %q line %d", t1.Title, t1.Line)
+	}
+	if t2.Title != "Second dotted step" || t2.Line != 8 {
+		t.Errorf("2.2 = title %q line %d", t2.Title, t2.Line)
+	}
+	parent := b.Get("plans/2026-09-28-dotted-tasks")
 	if parent.Done != 2 || parent.Total != 2 {
 		t.Errorf("parent progress = %d/%d, want 2/2", parent.Done, parent.Total)
 	}
@@ -164,8 +186,8 @@ func TestLists(t *testing.T) {
 	check("active bugs", ids(b.List(KindBug, false)), []string{"bugs/2026-09-26-open", "specs/2026-09-15-really-bug"})
 	check("active tasks", ids(b.List(KindTask, false)), []string{"plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha#task-2"})
 	check("untyped", ids(b.Untyped(false)), []string{"docs/superpowers/specs/2026-01-01-old"})
-	if got := len(b.List(KindStory, true)); got != 9 {
-		t.Errorf("all non-legacy stories = %d, want 9", got)
+	if got := len(b.List(KindStory, true)); got != 10 {
+		t.Errorf("all non-legacy stories = %d, want 10", got)
 	}
 	for _, it := range b.List(KindTask, true) {
 		if it.Legacy {

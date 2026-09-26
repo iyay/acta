@@ -25,22 +25,22 @@ func SetField(src []byte, key, value string) ([]byte, error) {
 		}
 		return []byte("---\n" + block + "---\n" + text), nil
 	}
-	open := "---" + nl
-	rest := text[len("---"):] // keep the newline: "\n---\n" finds an empty block
-	inner := nl + "---" + nl
-	end := strings.Index(rest, inner)
-	body := ""
-	if end < 0 {
-		// The closing fence is the last line, with or without its newline.
-		if strings.HasSuffix(rest, nl+"---") {
-			end = len(rest) - len(nl+"---")
-		} else {
-			return nil, errors.New("frontmatter has no closing ---")
+	// The closing fence is the first line after the opening one that is
+	// "---" once a trailing \r is dropped, whatever mix of \n and \r\n
+	// the file uses. A "---" line in the body is just body text.
+	lines := strings.SplitAfter(text, "\n")
+	close := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSuffix(strings.TrimSuffix(lines[i], "\n"), "\r") == "---" {
+			close = i
+			break
 		}
-	} else {
-		body = rest[end+len(inner):]
 	}
-	front := rest[1 : end+1]
+	if close < 0 {
+		return nil, errors.New("frontmatter has no closing ---")
+	}
+	front := strings.TrimSuffix(strings.TrimSuffix(strings.Join(lines[1:close], ""), "\n"), "\r")
+	body := strings.Join(lines[close+1:], "")
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
@@ -56,7 +56,7 @@ func SetField(src []byte, key, value string) ([]byte, error) {
 	if nl == "\r\n" {
 		block = strings.ReplaceAll(block, "\n", "\r\n")
 	}
-	return []byte(open + block + "---" + nl + body), nil
+	return []byte("---" + nl + block + "---" + nl + body), nil
 }
 
 func encode(doc *yaml.Node, key, value string) (string, error) {

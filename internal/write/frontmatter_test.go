@@ -100,6 +100,69 @@ func TestSetFieldLineEndings(t *testing.T) {
 	}
 }
 
+func TestSetFieldMixedLineEndings(t *testing.T) {
+	repro := "---\r\nref: TICK-7\r\nstatus: draft\n---\r\n# Win spec\r\n\r\nGoal text.\r\n\r\n---\r\n\r\n## Tasks\r\n"
+	got, err := SetField([]byte(repro), "status", "approved")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(got)
+	for _, keep := range []string{"# Win spec\r\n", "Goal text.\r\n", "---\r\n\r\n## Tasks\r\n"} {
+		if !strings.Contains(s, keep) {
+			t.Errorf("body lost %q in %q", keep, s)
+		}
+	}
+	norm := strings.ReplaceAll(s, "\r\n", "\n")
+	if want := "---\nref: TICK-7\nstatus: approved\n---\n# Win spec\n\nGoal text.\n\n---\n\n## Tasks\n"; norm != want {
+		t.Errorf("got\n%q\nwant\n%q", norm, want)
+	}
+}
+
+func TestSetFieldClosingFenceLineEndings(t *testing.T) {
+	cases := []struct{ name, in, wantBody string }{
+		{"LF open CRLF close", "---\nref: TICK-7\nstatus: draft\r\n---\r\n# Win spec\n", "# Win spec\n"},
+		{"CRLF file body fence", "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n\r\n---\r\n\r\ntail\r\n", "# Win spec\r\n\r\n---\r\n\r\ntail\r\n"},
+		{"LF file body fence", "---\nref: TICK-7\nstatus: draft\n---\n# Win spec\n\n---\n\ntail\n", "# Win spec\n\n---\n\ntail\n"},
+		{"closing fence last line LF", "---\nref: TICK-7\nstatus: draft\n---", ""},
+		{"closing fence last line CRLF", "---\r\nref: TICK-7\r\nstatus: draft\r\n---", ""},
+		{"closing fence last line LF newline", "---\nref: TICK-7\nstatus: draft\n---\n", ""},
+		{"closing fence last line CRLF newline", "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := SetField([]byte(c.in), "status", "approved")
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := string(got)
+			norm := strings.ReplaceAll(s, "\r\n", "\n")
+			head, body, ok := strings.Cut(norm, "\n---\n")
+			if !ok {
+				t.Fatalf("no closing fence in %q", s)
+			}
+			if head != "---\nref: TICK-7\nstatus: approved" {
+				t.Fatalf("frontmatter changed: %q (full %q)", head, s)
+			}
+			if want := strings.ReplaceAll(c.wantBody, "\r\n", "\n"); body != want {
+				t.Fatalf("body = %q, want %q (full %q)", body, want, s)
+			}
+		})
+	}
+}
+
+func TestSetFieldMissingFenceWritesNothing(t *testing.T) {
+	for name, in := range map[string]string{
+		"LF file no fence":   "---\nref: TICK-7\nstatus: draft\n# Win spec\n",
+		"CRLF file no fence": "---\r\nref: TICK-7\r\nstatus: draft\r\n# Win spec\r\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := SetField([]byte(in), "status", "approved"); err == nil {
+				t.Fatal("want an error for a missing closing fence")
+			}
+		})
+	}
+}
+
 func TestSetFieldErrors(t *testing.T) {
 	for name, in := range map[string]string{
 		"unclosed block": "---\nstatus: open\n# T\n",
