@@ -129,7 +129,7 @@ func parseWorktrees(out string) []Worktree {
 
 // UnmergedBranches lists local branches not merged into HEAD.
 func UnmergedBranches(repo string) ([]string, error) {
-	out, err := run(repo, "for-each-ref", "--no-merged", "HEAD", "--format=%(refname:short)", "refs/heads")
+	out, err := run(repo, "for-each-ref", "--no-merged", "HEAD", "--format=%(refname:lstrip=2)", "refs/heads")
 	if err != nil {
 		return nil, err
 	}

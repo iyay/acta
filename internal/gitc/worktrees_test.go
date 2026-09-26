@@ -74,3 +74,24 @@ func TestUnmergedBranchesAndBranchFiles(t *testing.T) {
 		t.Fatal("unknown branch should be an error")
 	}
 }
+
+func TestUnmergedBranchesWithSameNameTag(t *testing.T) {
+	repo := setupRepo(t)
+	git(t, repo, "checkout", "-q", "-b", "feat/x")
+	writeFile(t, filepath.Join(repo, "b.md"), "changed on feat/x\n")
+	git(t, repo, "commit", "-q", "-am", "feat/x work")
+	git(t, repo, "tag", "feat/x")
+	git(t, repo, "checkout", "-q", "-b", "dup")
+	writeFile(t, filepath.Join(repo, "a.md"), "changed on dup\n")
+	git(t, repo, "commit", "-q", "-am", "dup work")
+	git(t, repo, "tag", "dup")
+	git(t, repo, "checkout", "-q", "main")
+
+	got, err := UnmergedBranches(repo)
+	if err != nil || !reflect.DeepEqual(got, []string{"dup", "feat/x"}) {
+		t.Fatalf("got %v %v, want [dup feat/x]", got, err)
+	}
+	if _, err := BranchFiles(repo, "dup", "."); err != nil {
+		t.Fatalf("BranchFiles on a branch that shares its name with a tag: %v", err)
+	}
+}
