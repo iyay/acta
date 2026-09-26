@@ -144,3 +144,39 @@ func TestIsDirty(t *testing.T) {
 		t.Fatal("missing file reads as dirty")
 	}
 }
+
+func TestCommitPaths(t *testing.T) {
+	dir := setupRepo(t)
+	writeFile(t, filepath.Join(dir, "a.md"), "a changed\n")
+	writeFile(t, filepath.Join(dir, "b.md"), "b changed\n")
+	writeFile(t, filepath.Join(dir, "c.md"), "c new\n")
+	res := CommitPaths(dir, []string{"a.md", "b.md"}, "two files")
+	if !res.Committed {
+		t.Fatalf("not committed: %s", res.Reason)
+	}
+	if names := git(t, dir, "show", "--name-only", "--format=", "HEAD"); names != "a.md\nb.md" {
+		t.Fatalf("commit holds %q", names)
+	}
+	if out := git(t, dir, "status", "--porcelain"); out != "?? c.md" {
+		t.Fatalf("third file not left out: %q", out)
+	}
+}
+
+func TestAddedAt(t *testing.T) {
+	dir := setupRepo(t)
+	first, err := AddedAt(dir, "a.md")
+	if err != nil || first == 0 {
+		t.Fatalf("first = %d, %v", first, err)
+	}
+	writeFile(t, filepath.Join(dir, "a.md"), "a again\n")
+	git(t, dir, "add", "a.md")
+	git(t, dir, "commit", "-q", "-m", "second")
+	again, err := AddedAt(dir, "a.md")
+	if err != nil || again != first {
+		t.Fatalf("after second commit = %d, want first %d, err %v", again, first, err)
+	}
+	zero, err := AddedAt(dir, "untracked.md")
+	if err != nil || zero != 0 {
+		t.Fatalf("untracked = %d, %v", zero, err)
+	}
+}

@@ -45,6 +45,40 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 	return Result{Committed: true}
 }
 
+// CommitPaths commits only the listed paths in one commit. A dirty file
+// outside the list stays out, so one run of a tool is one commit.
+func CommitPaths(repo string, paths []string, msg string) Result {
+	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
+		return Result{Reason: "not a git repo"}
+	}
+	if reason := busy(repo); reason != "" {
+		return Result{Reason: reason}
+	}
+	args := append([]string{"add", "--"}, paths...)
+	if _, err := run(repo, args...); err != nil {
+		return Result{Reason: err.Error()}
+	}
+	args = append([]string{"commit", "-m", msg, "--"}, paths...)
+	if _, err := run(repo, args...); err != nil {
+		return Result{Reason: "commit failed: " + err.Error()}
+	}
+	return Result{Committed: true}
+}
+
+// AddedAt is the unix time of the first commit that added path, or 0 when
+// the path was never committed.
+func AddedAt(repo, path string) (int64, error) {
+	out, err := run(repo, "log", "--diff-filter=A", "--format=%ct", "--reverse", "--", path)
+	if err != nil {
+		return 0, err
+	}
+	first, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
+	if first == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(first, 10, 64)
+}
+
 // busy says why the repo cannot take a commit now, or "" when it can.
 func busy(repo string) string {
 	states := []struct{ file, what string }{
