@@ -148,6 +148,15 @@ herdr agent read <slug> --source visible --lines 6     # status bar must show: �
 
 `/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
+**The brief's tick rule carries the name.** The recipient is an omp pane and its harness sets no agent variable, so every tick command in the brief names it:
+
+```bash
+pmb tick plans/<stem>#task-N --step <n> --agent omp
+pmb tick plans/<stem>#task-N --all --agent omp   # right after the ticket's commit
+```
+
+`pmb tick` writes that name into the worktree's git-ignored `.agents.json`, which is what the board reads to show who works on what. Without the flag the name is missing and the row stays blank.
+
 Step 4, fix round: `/goal` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:
 ```bash
 herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (pm:build, pm:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""

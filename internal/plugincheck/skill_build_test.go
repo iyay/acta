@@ -40,6 +40,18 @@ func TestBuildTickRuleEverywhere(t *testing.T) {
 	}
 }
 
+// TestBuildAgentFlag reads the implementer prompt on its own. The board shows
+// who works on a task, and the omp harness sets no agent variable.
+func TestBuildAgentFlag(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "build", "implementer-prompt.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "--agent omp") {
+		t.Error("implementer-prompt.md missing \"--agent omp\"")
+	}
+}
+
 // TestBuildSkillTickCommands reads SKILL.md on its own. CheckSkill looks at
 // the whole build folder, so a revert of SKILL.md alone could stay green.
 func TestBuildSkillTickCommands(t *testing.T) {

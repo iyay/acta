@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTickCommand(t *testing.T) {
@@ -106,6 +108,96 @@ func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
 	if it.Progress.Done != 1 || it.Progress.Total != 1 {
 		t.Fatalf("show progress = %+v, tick printed 1/1", it.Progress)
 	}
+}
+
+// The board shows which agent works on a task, so a successful tick records
+// the name in the worktree it ran in.
+func TestTickRecordsTheAgent(t *testing.T) {
+	cases := []struct {
+		name    string
+		args    []string
+		env     string
+		want    string // "" means no record at all
+		wantErr bool
+	}{
+		{"flag wins", []string{"--agent", "omp"}, "claude-code_2-1-283_agent", "omp", false},
+		{"claude code env", nil, "claude-code_2-1-283_agent", "claude", false},
+		{"nothing set", nil, "", "", false},
+		{"failed tick records nothing", []string{"--agent", "omp"}, "", "", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := fixtureRepo(t)
+			t.Setenv("AI_AGENT", c.env)
+			args := append([]string{"tick"}, c.args...)
+			if c.wantErr {
+				args = append(args, "plans/nope#task-1", "--step", "1")
+			} else {
+				args = append(args, "plans/2026-09-21-alpha#task-1", "--step", "1")
+			}
+			if _, errOut, code := pmb(t, dir, "", args...); c.wantErr && code == 0 {
+				t.Fatalf("exit 0, want a failure: %q", errOut)
+			}
+			rec := agentsFile(t, dir)
+			recs := readRecords(t, rec)
+			if c.want == "" {
+				if len(recs) != 0 {
+					t.Fatalf("%s holds %v, want no record", rec, recs)
+				}
+				return
+			}
+			got, ok := recs["plans/2026-09-21-alpha#task-1"]
+			if !ok || got.Agent != c.want {
+				t.Fatalf("record = %+v (present %t), want agent %q", got, ok, c.want)
+			}
+			if _, err := time.Parse(time.RFC3339, got.At); err != nil {
+				t.Errorf("at %q is not RFC3339: %v", got.At, err)
+			}
+			if out := git(t, dir, "status", "--porcelain"); strings.Contains(out, ".agents.json") {
+				t.Errorf("git status lists the record file: %q", out)
+			}
+			if n := commitCount(t, dir); n != "1" {
+				t.Errorf("tick committed: %s commits, want 1", n)
+			}
+		})
+	}
+}
+
+// agentsFile is where a tick records the agent in the default root folder.
+func agentsFile(t *testing.T, dir string) string {
+	t.Helper()
+	return filepath.Join(dir, ".pm", ".agents.json")
+}
+
+func readRecords(t *testing.T, path string) map[string]struct {
+	Agent string `json:"agent"`
+	At    string `json:"at"`
+} {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recs map[string]struct {
+		Agent string `json:"agent"`
+		At    string `json:"at"`
+	}
+	if err := json.Unmarshal(b, &recs); err != nil {
+		t.Fatalf("%s: %v (%s)", path, err, b)
+	}
+	return recs
+}
+
+func git(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v %s", args, err, out)
+	}
+	return string(out)
 }
 
 func commitCount(t *testing.T, dir string) string {

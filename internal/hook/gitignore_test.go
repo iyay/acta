@@ -1,0 +1,99 @@
+package hook
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestEnsureGitignoreAddsTheLineOnce(t *testing.T) {
+	root := gitRoot(t)
+	for range 3 {
+		if err := EnsureGitignore(root, ".agents.json"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := readFile(t, filepath.Join(root, ".gitignore"))
+	if got != ".agents.json\n" {
+		t.Fatalf("gitignore = %q, want %q", got, ".agents.json\n")
+	}
+}
+
+func TestEnsureGitignoreKeepsExistingLines(t *testing.T) {
+	root := gitRoot(t)
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("*.tmp\n# notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(root, ".gitignore"))
+	for _, want := range []string{"*.tmp", "# notes", ".agents.json"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("gitignore %q lost %q", got, want)
+		}
+	}
+	if n := strings.Count(got, ".agents.json"); n != 1 {
+		t.Errorf("gitignore holds the line %d times: %q", n, got)
+	}
+}
+
+func TestEnsureGitignoreWithoutARootFolderWritesNothing(t *testing.T) {
+	root := filepath.Join(gitRoot(t), "gone")
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".gitignore")); !os.IsNotExist(err) {
+		t.Errorf("a missing root folder must stay missing: %v", err)
+	}
+}
+
+func TestEnsureGitignoreOutsideGitWritesNothing(t *testing.T) {
+	// A folder with no .git anywhere above it, so nothing gets written.
+	root := filepath.Join(t.TempDir(), "planning")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if inGit, _ := gitTop(root); inGit {
+		t.Skipf("%s sits inside a git repo", root)
+	}
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".gitignore")); !os.IsNotExist(err) {
+		t.Errorf("outside git nothing may be written: %v", err)
+	}
+}
+
+// gitRoot makes a git repo with a planning root folder in it.
+func gitRoot(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "-C", dir, "init", "-q", "-b", "main").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v %s", err, out)
+	}
+	root := filepath.Join(dir, ".pm")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func gitTop(dir string) (bool, string) {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	return err == nil, strings.TrimSpace(string(out))
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
