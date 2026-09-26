@@ -39,7 +39,7 @@ func worktreeModel(t *testing.T) Model {
 }
 
 func TestWorktreeItemsAreLabelled(t *testing.T) {
-	m := press(worktreeModel(t), "3")
+	m := press(worktreeModel(t), "]", "]", "]") // the Bugs tab
 	v := m.View()
 	if !strings.Contains(v, "Worktree bug") || !strings.Contains(v, "· feat") || !strings.Contains(v, "Main bug") {
 		t.Fatalf("list does not label the worktree item:\n%s", v)
@@ -50,7 +50,7 @@ func TestWorktreeItemsAreLabelled(t *testing.T) {
 }
 
 func TestWorktreeItemsAreReadOnly(t *testing.T) {
-	m := press(worktreeModel(t), "3") // the worktree bug is newest, so it is selected
+	m := press(worktreeModel(t), "]", "]", "]") // the worktree bug is newest, so it is selected
 	for _, k := range []string{"s", "t"} {
 		m = press(m, k)
 		if m.popup != nil || !strings.Contains(m.status, "worktree feat") {
@@ -74,7 +74,7 @@ func TestBranchItemsAreNotOpened(t *testing.T) {
 	}
 	m := New(main, b, true)
 	m.render = func(md string, _ int) string { return md }
-	m = press(sized(m, 120, 40), "3")
+	m = press(sized(m, 120, 40), "]", "]", "]")
 	if v := m.View(); !strings.Contains(v, "branch feat-x (not checked out)") || !strings.Contains(v, "· feat-x") {
 		t.Fatalf("branch item not labelled:\n%s", v)
 	}
