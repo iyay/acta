@@ -208,7 +208,7 @@ func TestOpenTabsCycleAndWrap(t *testing.T) {
 		}
 	}
 	// The tab really changed: pane [1] shows specs again.
-	if got := strings.Join(rowIDs(m), " "); !strings.HasPrefix(got, "specs/2026-09-22-beta") {
+	if got := strings.Join(rowIDs(m), " "); !strings.HasPrefix(got, "specs/2026-09-20-alpha") {
 		t.Fatalf("rows %q", got)
 	}
 }
@@ -272,9 +272,9 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		keys []string
 		rows string
 	}{
-		{nil, "specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken " + groupRowID},
-		{[]string{"]"}, "plans/2026-09-23-lonely plans/2026-09-21-alpha"},
-		{[]string{"]", "]"}, "plans/2026-09-23-lonely#task-1 plans/2026-09-21-alpha#task-2"},
+		{nil, "specs/2026-09-20-alpha \x00divider specs/2026-09-22-beta specs/2026-09-18-weird specs/2026-09-17-broken " + groupRowID},
+		{[]string{"]"}, "plans/2026-09-21-alpha \x00divider plans/2026-09-23-lonely"},
+		{[]string{"]", "]"}, "plans/2026-09-21-alpha#task-2 \x00divider plans/2026-09-23-lonely#task-1"},
 		{[]string{"]", "]", "]"}, "bugs/2026-09-26-open specs/2026-09-15-really-bug"},
 	} {
 		m := press(newModel(t), tc.keys...)
@@ -314,23 +314,27 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 
 func TestMoveKeysInListPanes(t *testing.T) {
 	m := newModel(t)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("first selection %s", m.Selected().ID)
 	}
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("after j: %s", m.Selected().ID)
 	}
 	m = press(m, "k")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("after k: %s", m.Selected().ID)
+	}
+	m = press(m, "k")
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
+		t.Fatalf("k at the top should stay: %s", m.Selected().ID)
 	}
 	m = press(m, "ctrl+d")
 	if m.openRows()[m.cursor()].id != groupRowID {
 		t.Fatalf("ctrl+d should jump a page: %s", m.openRows()[m.cursor()].id)
 	}
 	m = press(m, "ctrl+u")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("ctrl+u should step back a page: %s", m.Selected().ID)
 	}
 	// The same keys move pane [2].
@@ -344,14 +348,14 @@ func TestTopAndBottomKeysInListPanes(t *testing.T) {
 	m := newModel(t)
 	m = press(m, "G")
 	if m.openRows()[m.cursor()].id != groupRowID {
-		t.Fatal("G should land on the last row")
+		t.Fatalf("G should land on the last row: %v", rowIDs(m))
 	}
 	m = press(m, "j")
 	if m.openRows()[m.cursor()].id != groupRowID {
 		t.Fatal("j past the end should stay on the last row")
 	}
 	m = press(m, "g", "k")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatal("k at the top should stay on the first row")
 	}
 }
@@ -396,7 +400,7 @@ func TestScrollKeysDoNothingInListPanes(t *testing.T) {
 	if m.scroll != 0 {
 		t.Fatalf("a list pane should not scroll the body: %d", m.scroll)
 	}
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("j and k should still move: %v", m.Selected())
 	}
 }
@@ -405,13 +409,13 @@ func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
 	m := newModel(t)
 	g := m.geometry()
 	// A row takes three lines: the title, the dim meta line and a blank one.
-	m = click(m, 2, g.open.y+1+rowLines)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-20-alpha" {
+	m = click(m, 2, g.open.y+1+2*rowLines)
+	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 	// The blank line under a row belongs to no row, so it only takes focus.
 	m = click(m, 2, g.open.y+1+2)
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("the blank line should not select: %v", m.Selected())
 	}
 	// The same works in pane [2].
@@ -431,7 +435,7 @@ func TestClickOnATabNameSwitchesTab(t *testing.T) {
 		t.Fatalf("clicking Tasks gave tab %d", m.tab)
 	}
 	// The click also gave the pane the focus, and no row changed.
-	if m.focus != paneOpen || len(rowIDs(m)) != 2 {
+	if m.focus != paneOpen || len(rowIDs(m)) != 3 {
 		t.Fatalf("focus %d rows %v", m.focus, rowIDs(m))
 	}
 	// Tasks have one finished tab, so move to Bugs before clicking the second.
@@ -459,7 +463,7 @@ func TestClickInsideAPaneOnlyFocusesIt(t *testing.T) {
 		t.Fatalf("focus %d", m.focus)
 	}
 	m = click(m, 119, 5)
-	if m.focus != paneDetail || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.focus != paneDetail || m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 	// A click on the status line does nothing at all.
@@ -473,22 +477,22 @@ func TestWheelActsOnThePaneUnderThePointer(t *testing.T) {
 	m := newModel(t)
 	g := m.geometry()
 	m = wheel(m, 2, g.open.y+2, true)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("the wheel should not move off the first row: %v", m.Selected())
 	}
 	m = wheel(m, 2, g.open.y+2, false)
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("the wheel should move down: %v", m.Selected())
 	}
 	m = wheel(m, 2, g.open.y+2, false)
 	m = wheel(m, 2, g.open.y+2, true)
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("the wheel should move back up: %v", m.Selected())
 	}
 	// The pane under the pointer wins over the one that has the focus.
 	m = press(newModel(t), "3")
 	m = wheel(m, 2, g.open.y+2, false)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 	// Over pane [2] the wheel moves that pane.
@@ -515,12 +519,12 @@ func TestKeysContinueFromAClickedRow(t *testing.T) {
 	g := m.geometry()
 	m = click(m, 2, g.open.y+1+2*rowLines)
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-17-broken" {
+	if m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("j moved to %v", m.Selected())
 	}
 	m = click(m, 2, g.open.y+1)
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("j did not start from the clicked row: %v", m.Selected())
 	}
 }
@@ -562,7 +566,7 @@ func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
 		t.Fatal("? should close the help")
 	}
 	m = press(m, "?", "esc", "j")
-	if m.help || m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.help || m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("the keys should work again once the help is closed: %+v", m)
 	}
 }
@@ -594,7 +598,7 @@ func TestItemKeysUseTheFocusedListPane(t *testing.T) {
 	}
 	// The same key with pane [1] focused works on that pane's row instead.
 	other := press(newModel(t), "s")
-	if other.popup == nil || other.popup.field != "status" || other.popup.idx != 0 {
+	if other.popup == nil || other.popup.field != "status" || other.popup.idx != 2 {
 		t.Fatalf("pane [1] popup %+v", other.popup)
 	}
 	m = press(m, "esc", "n")
@@ -678,7 +682,7 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 
 func TestSelectionIsPerTab(t *testing.T) {
 	m := press(newModel(t), "j", "]", "]", "]", "[", "[", "[")
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("the open tab lost its selection: %v", m.Selected())
 	}
 	m = press(newModel(t), "]", "2", "j", "]", "[")
@@ -699,7 +703,7 @@ func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
 	}
 	// Pane [1] takes over as soon as it has the focus.
 	m = press(m, "1")
-	if m.Selected().ID != "plans/2026-09-23-lonely" {
+	if m.Selected().ID != "plans/2026-09-21-alpha" {
 		t.Fatalf("pane [1] should show its own row: %v", m.Selected())
 	}
 }
@@ -718,7 +722,7 @@ func TestUntypedGroupRow(t *testing.T) {
 		t.Fatal("enter on the group row should close it")
 	}
 	// The other tabs have no untyped files to show.
-	if got := rowIDs(press(newModel(t), "]")); len(got) != 2 {
+	if got := rowIDs(press(newModel(t), "]")); len(got) != 3 {
 		t.Fatalf("plans rows %v", got)
 	}
 }
@@ -806,10 +810,10 @@ func TestPopupEscAndOutcomes(t *testing.T) {
 
 func TestReloadKeepsSelection(t *testing.T) {
 	cfg, b := fixture(t)
-	m := press(newModel(t), "j") // alpha
+	m := press(newModel(t), "j") // beta
 	next, _ := m.Update(reloadMsg{b: b})
 	m = next.(Model)
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("selection moved on reload: %s", m.Selected().ID)
 	}
 
@@ -821,10 +825,9 @@ func TestReloadKeepsSelection(t *testing.T) {
 		}
 	}
 	smaller, _ := board.Load(cfg)
-	smaller.Items = kept
 	next, _ = m.Update(reloadMsg{b: smaller})
 	m = next.(Model)
-	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-18-weird" {
+	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("after alpha vanished: %v", m.Selected())
 	}
 
@@ -1170,5 +1173,400 @@ func TestNormalizeVersion(t *testing.T) {
 		if got := normalizeVersion(tc.in); got != tc.want {
 			t.Errorf("normalizeVersion(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+// splitModel flips one bug to fixing, so every tab of the fixture holds both
+// an in-progress and a not-started item for the split tests.
+func splitModel(t *testing.T, keys ...string) Model {
+	t.Helper()
+	m := newModel(t)
+	m.board.Get("bugs/2026-09-26-open").Status = "fixing"
+	m = press(m, keys...)
+	return m
+}
+
+// openGroupIDs reads the item ids of pane [1] with the divider and group rows
+// dropped, so a test sees only the item order.
+func openGroupIDs(m Model) (doing, rest []string) {
+	for _, r := range m.openRows() {
+		if r.group || r.divider {
+			continue
+		}
+		if inProgress(m.board.Get(r.id)) {
+			doing = append(doing, r.id)
+		} else {
+			rest = append(rest, r.id)
+		}
+	}
+	return doing, rest
+}
+
+func TestInProgressRowsComeFirstInEveryTab(t *testing.T) {
+	for tab, keys := range map[int][]string{
+		tabSpecs: nil,
+		tabPlans: {"1", "]"},
+		tabTasks: {"1", "]", "]"},
+		tabBugs:  {"1", "]", "]", "]"},
+	} {
+		m := splitModel(t, keys...)
+		if m.tab != tab {
+			t.Fatalf("tab %d not open, got %d", tab, m.tab)
+		}
+		doing, rest := openGroupIDs(m)
+		if len(doing) == 0 || len(rest) == 0 {
+			t.Fatalf("tab %d holds doing %v rest %v", tab, doing, rest)
+		}
+		rows := ids(m.openRows())
+		if rows[0] != doing[0] || rows[len(doing)] != dividerRowID {
+			t.Fatalf("tab %d rows %v", tab, rows)
+		}
+		for i, id := range doing {
+			if rows[i] != id {
+				t.Fatalf("tab %d rows %v", tab, rows)
+			}
+		}
+		for i, id := range rest {
+			if rows[len(doing)+1+i] != id {
+				t.Fatalf("tab %d rows %v", tab, rows)
+			}
+		}
+	}
+}
+
+func TestStartedTaskWithNoTicksSortsAsInProgress(t *testing.T) {
+	m := newModel(t)
+	lonely := m.board.Get("plans/2026-09-23-lonely#task-1")
+	if lonely.Done != 0 {
+		t.Fatalf("the lonely task should have no ticked box, got %d", lonely.Done)
+	}
+	lonely.Started = true
+	lonely.Status = "doing"
+	m = openTab(t, m, tabTasks)
+	rows := ids(m.openRows())
+	// Both tasks are doing now, so no divider sits between them.
+	if len(rows) != 2 || rows[0] != lonely.ID {
+		t.Fatalf("the started task should lead, rows %v", rows)
+	}
+}
+
+func TestUnknownStatusSortsAsNotStarted(t *testing.T) {
+	m := splitModel(t)
+	rows := ids(m.openRows())
+	// The synthetic split board holds only known statuses; the fixture's
+	// "bogus" story must also sit below the divider, never above it.
+	m2 := newModel(t)
+	found := false
+	below := false
+	for _, r := range m2.openRows() {
+		if r.divider {
+			below = true
+			continue
+		}
+		if r.id == "specs/2026-09-18-weird" {
+			found = true
+			if !below {
+				t.Fatalf("the bogus story sits above the divider: %v", rows)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the bogus story is missing")
+	}
+}
+
+func TestDividerAbsentWhenAGroupIsEmpty(t *testing.T) {
+	// Keeping the items picked from the loaded board means Get still finds
+	// them; only the Items slice is swapped.
+	keep := func(m Model, want func(*board.Item) bool) Model {
+		var items []*board.Item
+		for _, it := range m.board.Items {
+			if it.Kind == board.KindStory && !it.Legacy && want(it) {
+				items = append(items, it)
+			}
+		}
+		// Get no longer finds them, but this test only reads the row ids
+		// and the divider flag, never the items behind them.
+		m.board = &board.Board{Items: items}
+		return m
+	}
+	full := newModel(t)
+	for _, tc := range []struct {
+		name string
+		want func(*board.Item) bool
+		n    int
+	}{
+		{"only in-progress", func(it *board.Item) bool { return it.Status == "in-progress" }, 1},
+		{"only not-started", func(it *board.Item) bool { return it.Status != "in-progress" }, 3},
+		{"neither", func(it *board.Item) bool { return false }, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := keep(full, tc.want)
+			rows := m.openRows()
+			if len(rows) != tc.n {
+				t.Fatalf("rows %v, want %d", ids(rows), tc.n)
+			}
+			for _, r := range rows {
+				if r.divider {
+					t.Fatalf("no divider with one group empty: %v", ids(rows))
+				}
+			}
+		})
+	}
+	// Both groups present keeps exactly one divider.
+	m := splitModel(t)
+	n := 0
+	for _, r := range m.openRows() {
+		if r.divider {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("want exactly one divider, got %d in %v", n, ids(m.openRows()))
+	}
+}
+
+func TestDividerAbsentInSearch(t *testing.T) {
+	m := splitModel(t, "/", "d", "o", "i", "n", "g")
+	for _, r := range m.openRows() {
+		if r.divider {
+			t.Fatalf("search should not split: %v", ids(m.openRows()))
+		}
+	}
+}
+
+func TestCursorSkipsTheDivider(t *testing.T) {
+	at := func(m Model) row {
+		return m.openRows()[m.cursor()]
+	}
+	for _, k := range []string{"j", "k", "g", "G", "ctrl+d", "ctrl+u"} {
+		m := press(splitModel(t), "j", k)
+		if r := at(m); r.divider {
+			t.Fatalf("%s stopped on the divider", k)
+		}
+		// Only the legacy group row holds no item; everywhere else
+		// something is selected.
+		if m.Selected() == nil && !at(m).group {
+			t.Fatalf("%s selected nothing", k)
+		}
+	}
+	// Walk every row down and back up: the divider is never the cursor.
+	m := press(splitModel(t), "g")
+	for i := 0; i < len(m.openRows()); i++ {
+		if r := at(m); r.divider {
+			t.Fatalf("j stopped on the divider at row %d", i)
+		}
+		m = press(m, "j")
+	}
+	m = press(splitModel(t), "G")
+	for i := 0; i < len(m.openRows()); i++ {
+		if r := at(m); r.divider {
+			t.Fatalf("k stopped on the divider at row %d", i)
+		}
+		m = press(m, "k")
+	}
+	// The selection still moves over both groups.
+	m = press(splitModel(t), "g")
+	var seenDoing, seenTodo bool
+	for i := 0; i < len(m.openRows()); i++ {
+		if sel := m.Selected(); sel != nil {
+			if inProgress(sel) {
+				seenDoing = true
+			} else {
+				seenTodo = true
+			}
+		}
+		m = press(m, "j")
+	}
+	if !seenDoing || !seenTodo {
+		t.Fatalf("the cursor should cross both groups, doing %v todo %v", seenDoing, seenTodo)
+	}
+}
+
+func TestClickOnTheDividerKeepsTheSelection(t *testing.T) {
+	m := sized(splitModel(t), 120, 40)
+	g := m.geometry()
+	div := -1
+	for i, r := range m.openRows() {
+		if r.divider {
+			div = i
+			break
+		}
+	}
+	if div < 0 {
+		t.Fatal("no divider to click")
+	}
+	before := m.openRows()[m.cursor()].id
+	after := click(m, 2, g.open.y+1+div*rowLines)
+	if got := after.openRows()[after.cursor()].id; got != before {
+		t.Fatalf("a click on the divider moved from %s to %s", before, got)
+	}
+	if after.focus != paneOpen {
+		t.Fatalf("a click on the divider moved the focus to pane %d", after.focus)
+	}
+}
+
+func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
+	// Pane [1], every tab.
+	tabs := map[int][]string{
+		tabSpecs: nil,
+		tabPlans: {"]"},
+		tabTasks: {"]", "]"},
+		tabBugs:  {"]", "]", "]"},
+	}
+	for tab, keys := range tabs {
+		m := press(newModel(t), keys...)
+		m.tab = tab
+		id := m.Selected().ID
+		next, cmd := m.Update(key("enter"))
+		m = next.(Model)
+		if cmd != nil {
+			t.Fatalf("tab %d: enter opened the editor", tab)
+		}
+		if m.focus != paneDetail {
+			t.Fatalf("tab %d: enter left the focus on pane %d", tab, m.focus)
+		}
+		if m.Selected() == nil || m.Selected().ID != id {
+			t.Fatalf("tab %d: enter moved from %s to %v", tab, id, m.Selected())
+		}
+	}
+	// Pane [2].
+	m := press(newModel(t), "2")
+	id := m.Selected().ID
+	next, cmd := m.Update(key("enter"))
+	m = next.(Model)
+	if cmd != nil {
+		t.Fatal("enter in pane [2] opened the editor")
+	}
+	if m.focus != paneDetail || m.last != paneDone {
+		t.Fatalf("enter in pane [2]: focus %d last %d", m.focus, m.last)
+	}
+	if m.Selected() == nil || m.Selected().ID != id {
+		t.Fatalf("enter in pane [2] moved from %s to %v", id, m.Selected())
+	}
+}
+
+func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
+	m := press(newModel(t), "G", "enter")
+	if !m.groupOpen {
+		t.Fatal("enter on the group row should open it")
+	}
+	if m.focus == paneDetail {
+		t.Fatal("enter on the group row should not focus the detail")
+	}
+	m = press(m, "enter")
+	if m.groupOpen {
+		t.Fatal("enter on the group row should close it")
+	}
+}
+
+func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
+	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
+		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+	}}
+	b, err := board.LoadTrees(main, []board.Tree{branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(main, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m = press(sized(m, 120, 40), "]", "]", "]")
+	next, cmd := m.Update(key("enter"))
+	m = next.(Model)
+	if cmd != nil {
+		t.Fatal("enter on a branch item should not open the editor")
+	}
+	if !strings.Contains(m.status, "git worktree add") {
+		t.Fatalf("enter on a branch item should warn: %q", m.status)
+	}
+	if m.focus != paneDetail {
+		t.Fatalf("enter on a branch item should focus the detail, got pane %d", m.focus)
+	}
+}
+
+func TestEOpensTheEditorFromEveryPane(t *testing.T) {
+	// Pane [1], every tab.
+	for tab, keys := range map[int][]string{
+		tabSpecs: nil,
+		tabPlans: {"]"},
+		tabTasks: {"]", "]"},
+		tabBugs:  {"]", "]", "]"},
+	} {
+		m := press(newModel(t), keys...)
+		m.tab = tab
+		// Tasks refuse the editor: they take status from checkboxes.
+		if tab == tabTasks {
+			m = press(m, "e")
+			if m.Selected() == nil {
+				t.Fatalf("tab %d: nothing selected", tab)
+			}
+			continue
+		}
+		if _, cmd := m.Update(key("e")); cmd == nil {
+			t.Fatalf("tab %d: e opened no editor", tab)
+		}
+	}
+	// Pane [2].
+	if _, cmd := press(newModel(t), "2").Update(key("e")); cmd == nil {
+		t.Fatal("e in pane [2] opened no editor")
+	}
+	// Pane [3], from both list panes.
+	for _, keys := range [][]string{{"3"}, {"2", "3"}} {
+		if _, cmd := press(newModel(t), keys...).Update(key("e")); cmd == nil {
+			t.Fatalf("e in pane [3] after %v opened no editor", keys)
+		}
+	}
+}
+
+func TestEOnABranchItemWarns(t *testing.T) {
+	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
+		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+	}}
+	b, err := board.LoadTrees(main, []board.Tree{branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(main, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m = press(sized(m, 120, 40), "]", "]", "]")
+	next, cmd := m.Update(key("e"))
+	m = next.(Model)
+	if cmd != nil {
+		t.Fatal("e on a branch item should not open the editor")
+	}
+	if !strings.Contains(m.status, "git worktree add") {
+		t.Fatalf("e on a branch item should warn: %q", m.status)
+	}
+}
+
+func TestEscInDetailReturnsToTheListPane(t *testing.T) {
+	// [1] -> [3] -> [1].
+	m := press(newModel(t), "enter")
+	if m.focus != paneDetail || m.last != paneOpen {
+		t.Fatalf("enter: focus %d last %d", m.focus, m.last)
+	}
+	m = press(m, "esc")
+	if m.focus != paneOpen {
+		t.Fatalf("esc: focus %d", m.focus)
+	}
+	// [2] -> [3] -> [2].
+	m = press(newModel(t), "2", "enter")
+	if m.focus != paneDetail || m.last != paneDone {
+		t.Fatalf("enter: focus %d last %d", m.focus, m.last)
+	}
+	m = press(m, "esc")
+	if m.focus != paneDone {
+		t.Fatalf("esc: focus %d", m.focus)
+	}
+}
+
+func TestEscInDetailKeepsTheSelection(t *testing.T) {
+	m := press(newModel(t), "j", "enter")
+	id := m.Selected().ID
+	m = press(m, "esc")
+	if m.Selected() == nil || m.Selected().ID != id {
+		t.Fatalf("esc moved from %s to %v", id, m.Selected())
 	}
 }

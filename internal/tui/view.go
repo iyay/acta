@@ -11,6 +11,30 @@ import (
 	"pm-board/internal/board"
 )
 
+// tabBox is where one tab name sits in the top border of a pane, in screen
+// cells, the way the mouse counts them.
+type tabBox struct{ x, w int }
+
+// box is where one pane sits on the screen and what it holds. first and rows
+// belong to the two list panes; pane [3] scrolls by lines and counts its own.
+type box struct {
+	x, y, w, h  int // the border rectangle
+	inner       int
+	first, rows int      // first row on screen, and how many rows fit inside
+	tabs        []tabBox // where each tab name sits in the top border
+}
+
+// geom is the whole screen measured in cells from its top left corner. The
+// view and the mouse both read it, so a click lands where it looks.
+type geom struct {
+	wide   bool // false below 60 columns, where only the focused pane shows
+	leftW  int  // width of the left column
+	open   box
+	done   box
+	detail box
+	full   box // the focused pane stretched over the whole screen when not wide
+}
+
 // One small palette, readable on a dark and on a light terminal. The accent
 // marks the pane with the focus and the tab that is on; the dim brush paints
 // what is secondary. The plain text color is left to the terminal.
@@ -29,9 +53,12 @@ const helpLines = `1 2 3 tab       move between the panes
 ] [             next / previous tab
 j k g G         move a list, scroll the detail
 ctrl+d ctrl+u   page down and up
-enter t s n     edit, set, new bug
+enter           focus the detail on the row
+e               open the row in the editor
+t s n           set a value, new bug
+esc             back to the list, close this help
 / r q           search, reload, quit
-? esc           close this help`
+?               close this help`
 
 // View draws the whole screen: the panes, the status line, and any popup on
 // top of them.
@@ -57,6 +84,106 @@ func (m Model) View() string {
 		body = m.cover(body, pop, h)
 	}
 	return body + "\n" + fit(m.statusLine(), m.width)
+}
+
+// geometry measures the screen. The left column is 30% of the width, held
+// between 28 and 48 columns, and below 60 columns only the focused pane is on
+// screen because two columns of a small terminal fit nothing.
+func (m Model) geometry() geom {
+	// The last line belongs to the status line, so the panes share the rest.
+	bodyH := max(3, m.height-1)
+	top, bottom := split(bodyH)
+	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48)}
+	rest := max(0, m.width-g.leftW)
+	g.open = m.box(paneOpen, 0, 0, g.leftW, top)
+	g.done = m.box(paneDone, 0, top, g.leftW, bottom)
+	// A pane of zero width is not on screen, which is how a narrow terminal
+	// leaves two of the three out.
+	g.detail = m.box(paneDetail, g.leftW, 0, rest, bodyH)
+	if g.wide {
+		return g
+	}
+	g.full = m.box(m.focus, 0, 0, m.width, bodyH)
+	// Only the focused pane is on screen now, so the other two are zero boxes
+	// and neither the view nor the mouse finds them.
+	g.open, g.done, g.detail = box{}, box{}, box{}
+	return g
+}
+
+// split divides the height between the two left panes: about two thirds for
+// the open one, and never fewer than five rows each.
+func split(h int) (int, int) {
+	top := max(5, h*2/3)
+	return top, max(5, h-top)
+}
+
+// box measures one pane at the given rectangle and works out which of its
+// rows the screen shows, so the view and the mouse count the same ones.
+func (m Model) box(p pane, x, y, w, h int) box {
+	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(p, x, m.tabsOf(p))}
+	if p == paneDetail {
+		return b
+	}
+	b.rows = b.inner / rowLines
+	rows, sel, idx := m.slotOf(p)
+	b.first = max(0, cursorOf(rows, *sel, *idx)+1-b.rows)
+	return b
+}
+
+// tabsOf gives the tab names a pane shows in its title.
+func (m Model) tabsOf(p pane) []string {
+	switch p {
+	case paneDone:
+		return m.doneTabNames()
+	case paneDetail:
+		return nil
+	}
+	return tabNames[:]
+}
+
+// rowAt gives the row under a screen line, or -1 for the border, the title and
+// the blank line between rows.
+func (b box) rowAt(y int) int {
+	off := y - b.y - 1
+	if off < 0 || b.rows == 0 {
+		return -1
+	}
+	i := off / rowLines
+	if i >= b.rows || off%rowLines > 1 {
+		return -1
+	}
+	return b.first + i
+}
+
+// hit says what sits under a mouse cell: the pane, the row of it and the tab
+// in its title. A cell on none of them answers the focused pane with no row
+// and no tab, which leaves the screen where it was.
+func (m Model) hit(x, y int) (pane, int, int) {
+	g := m.geometry()
+	boxes := []struct {
+		p pane
+		b box
+	}{{paneOpen, g.open}, {paneDone, g.done}, {paneDetail, g.detail}}
+	if !g.wide {
+		boxes = []struct {
+			p pane
+			b box
+		}{{m.focus, g.full}}
+	}
+	for _, e := range boxes {
+		if x < e.b.x || x >= e.b.x+e.b.w || y < e.b.y || y >= e.b.y+e.b.h {
+			continue
+		}
+		if y == e.b.y {
+			for i, t := range e.b.tabs {
+				if x >= t.x && x < t.x+t.w {
+					return e.p, -1, i
+				}
+			}
+		}
+		return e.p, e.b.rowAt(y), -1
+	}
+	return m.focus, -1, -1
 }
 
 // paneView draws one pane: its border with the title inside the top line, the
@@ -204,13 +331,20 @@ func (m Model) listView(p pane, w int, b box) []string {
 		if n >= len(rows) {
 			break
 		}
+		if rows[n].divider {
+			out = append(out, faint.Render(truncate("─ ─ ─", w)), "", "")
+			continue
+		}
 		title, meta := m.rowText(rows[n])
 		title, meta = truncate(title, w), truncate(meta, w)
 		switch {
 		case n == cur:
 			title, meta = selected.Render(title), selected.Render(meta)
-		case p == paneOpen:
+		case p == paneOpen && inProgress(m.board.Get(rows[n].id)):
+			// In-progress rows wear the accent; not-started rows stay plain.
 			title, meta = accent.Render(title), faint.Render(meta)
+		case p == paneOpen:
+			meta = faint.Render(meta)
 		default:
 			meta = faint.Render(meta)
 		}

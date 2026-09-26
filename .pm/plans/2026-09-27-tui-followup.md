@@ -87,8 +87,27 @@ hash: bmx1
 
 **Interfaces:** Consumes `Item.Started` (Task 1) and the `title.go` split (Task 3). `row` gains `divider bool`.
 
-- [ ] **Step 1: Failing tests** in `model_test.go` and `view_test.go` for each verify clause (rewrite only the existing tests that pinned `enter` opening the editor).
-- [ ] **Step 2: Run to see them fail.**
-- [ ] **Step 3: Implement** in `model.go` (`openRows` ordering and divider row, cursor/click skip, key changes, remembered list pane) and `view.go` (colors, divider line, help text). Keep `model.go` under 800 lines.
-- [ ] **Step 4: Run to see them pass.**
-- [ ] **Step 5: Gate, commit** (`feat(tui): in-progress first, enter focuses detail, e edits`), tick `#task-4 --all`.
+- [x] **Step 1: Failing tests** in `model_test.go` and `view_test.go` for each verify clause (rewrite only the existing tests that pinned `enter` opening the editor).
+- [x] **Step 2: Run to see them fail.**
+- [x] **Step 3: Implement** in `model.go` (`openRows` ordering and divider row, cursor/click skip, key changes, remembered list pane) and `view.go` (colors, divider line, help text). Keep `model.go` under 800 lines.
+- [x] **Step 4: Run to see them pass.**
+- [x] **Step 5: Gate, commit** (`feat(tui): in-progress first, enter focuses detail, e edits`), tick `#task-4 --all`.
+
+## Fix round 1
+
+### Task F1: Links are http(s) only, and link clicks match the drawn words at every width
+
+**Files:** `internal/config/config.go`, `internal/config/config_test.go`, `internal/tui/title.go`, `internal/tui/view.go`, `internal/tui/view_test.go`, `internal/tui/model_test.go`
+
+**verify:** No value from `.pm.yaml` ever reaches the opener unless it starts with `http://` or `https://` (a `file:` URL, a `javascript:` URL, a value starting with `-`, or anything else is dropped at config load and the link is hidden, or for feedback the default is used); and at every width from 30 to 200, with and without `links.donate`, a click on every drawn cell of `Donate` and `Feedback` opens that link and a click on any other cell of the bottom line opens nothing. List every value and width checked.
+
+Review round 1 BLOCKERs:
+
+1. Security, `internal/tui/title.go:70-75` + `internal/config/config.go:119-123`: `links.donate`/`links.feedback` from a cloned repo's `.pm.yaml` go straight to `exec.Command("open"|"xdg-open", url)` with no scheme check. `donate: "file:///<repo>/tools/Donate.app"` or `donate: "-aTerminal"` makes a click on Donate launch a local program. Expected: accept only `http://` and `https://` at config load (case-insensitive scheme, parsed with `net/url`, host not empty); drop anything else (Donate hidden, Feedback falls back to the default URL). Tests with `file:`, `javascript:`, `-aTerminal`, `http://` with no host, and a good https URL.
+2. `internal/tui/view.go:484` and `:580`: when the right side is wider than the window, `fit(right, m.width)` draws it from column 0 but the boxes start at `m.width - lipgloss.Width(right)` (negative), so boxes sit 1-10 columns left of the words (width 36 with Donate: Donate drawn at 19-24, box at 15-20). Expected: compute the boxes from the same fitted pieces that are drawn, after cutting. Test: for every width 30..200, with and without Donate, read each word's cells from the rendered line and click each one; click every other cell and expect no open.
+
+- [ ] **Step 1: Write the failing tests** for both.
+- [ ] **Step 2: Run them to see them fail.**
+- [ ] **Step 3: Fix.** Also drop the dead `m.statusBoxes` assignment in the value-receiver method if the fix makes it unused.
+- [ ] **Step 4: Gate:** `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
+- [ ] **Step 5: Commit** (`fix(tui): links are http(s) only and clicks match drawn words at every width`), tick `#task-F1 --all`.
