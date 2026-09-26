@@ -55,3 +55,25 @@ func TestHookCommands(t *testing.T) {
 		}
 	}
 }
+
+// A session must leave the record file git-ignored, or it shows up in every
+// git status. The line is added once and never committed.
+func TestHookSessionStartIgnoresTheAgentFile(t *testing.T) {
+	dir := fixtureRepo(t)
+	ignore := filepath.Join(dir, ".pm", ".gitignore")
+	for range 2 {
+		if _, _, code := pmb(t, dir, "", "hook", "session-start"); code != 0 {
+			t.Fatalf("session-start exit %d", code)
+		}
+	}
+	b, err := os.ReadFile(ignore)
+	if err != nil {
+		t.Fatalf("%s: %v", ignore, err)
+	}
+	if n := strings.Count(string(b), ".agents.json"); n != 1 {
+		t.Fatalf("gitignore holds the line %d times: %q", n, b)
+	}
+	if n := commitCount(t, dir); n != "1" {
+		t.Errorf("session-start committed: %s commits, want 1", n)
+	}
+}

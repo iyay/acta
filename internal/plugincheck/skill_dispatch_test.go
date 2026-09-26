@@ -74,3 +74,16 @@ func TestDispatchNewThenGoal(t *testing.T) {
 		t.Error("dispatch/herdr-delivery.md lost the fix-round command with <fixed-from>..<new-head>")
 	}
 }
+
+// TestDispatchAgentFlag reads herdr-delivery.md on its own. The recipient is
+// an omp pane and the harness sets no agent variable, so the brief has to
+// name it.
+func TestDispatchAgentFlag(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "--agent omp") {
+		t.Error("herdr-delivery.md missing \"--agent omp\"")
+	}
+}

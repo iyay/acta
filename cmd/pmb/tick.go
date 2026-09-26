@@ -5,8 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"time"
 
 	"pm-board/internal/board"
+	"pm-board/internal/hook"
 	"pm-board/internal/write"
 )
 
@@ -24,6 +27,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	}
 	step := fs.Int("step", 0, "tick this checkbox, counting from 1")
 	all := fs.Bool("all", false, "tick every checkbox of the task")
+	agent := fs.String("agent", "", "name the agent running this tick (default: the AI_AGENT variable)")
 	pos, err := parseMixed(fs, args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -36,7 +40,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, tickUsage)
 		return exitBadInput
 	}
-	_, b, code := loadBoard(*root, stderr)
+	cfg, b, code := loadBoard(*root, stderr)
 	if code != exitOK {
 		return code
 	}
@@ -65,5 +69,14 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		return exitOther
 	}
 	fmt.Fprintf(stdout, "%s %d/%d\n", it.ID, done, total)
+	// The board shows who works on what, so a successful tick says who it was.
+	// The record is a side effect: the tick itself worked, so a failure here
+	// only gets printed.
+	_ = hook.EnsureGitignore(cfg.Root, ".agents.json")
+	if name := write.AgentName(*agent, os.Getenv); name != "" {
+		if err := write.RecordAgent(cfg.Root, it.ID, name, time.Now()); err != nil {
+			fmt.Fprintf(stderr, "agent record: %v\n", err)
+		}
+	}
 	return exitOK
 }

@@ -40,6 +40,9 @@ func cmdHook(args []string, stdout, stderr io.Writer) int {
 		repo, _ := os.Getwd()
 		if cfg, err := config.Load(repo, ""); err == nil {
 			repo = cfg.RepoRoot
+			// Keep the agent record file out of git. A failure here is not
+			// worth a word to the user, so it is dropped.
+			_ = hook.EnsureGitignore(cfg.Root, ".agents.json")
 		}
 		in.Conflicts = hook.Conflicts(hook.EnabledPlugins(hook.ClaudeDir(), repo), hook.LoadKnown(*known))
 		fmt.Fprint(stdout, hook.SessionStart(in))
