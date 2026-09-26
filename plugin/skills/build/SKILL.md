@@ -135,7 +135,7 @@ Every implementer hand-off, built from [implementer-prompt.md](implementer-promp
 - run the repo's formatter and type checks before the commit; formatting goes in the task commit, never in a commit of its own;
 - comments in plain English a ten-year-old can read, saying why; no marker tags;
 - report in the user's chat language (see the session rules); write everything in the repo in the repo language;
-- right after each step, run `pmb tick <task-id> --step <n>` from the worktree so the board shows live progress; never commit the plan file.
+- right after each step, run `pmb tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `pmb tick plans/2026-09-26-tick-fixes#task-3 --step 2`); never commit the plan file.
 
 The standing rules for every worker are in `references/house-rules.md` (two folders up from this skill); point the implementer at its absolute path.
 
@@ -189,7 +189,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 **Context:** worktree path, branch, plan path, task number, verify line.
 
 **No constraints:** the worker refactors everything and commits the plan file.
-**Constraints:** stage by path, `pmb tick` after each step, never commit the plan file.
+**Constraints:** stage by path, `pmb tick plans/<stem>#task-N --step <n>` after each step, never commit the plan file.
 
 **Vague output:** "done" - you learn nothing.
 **Specific:** the short status contract from the template: status, commits, test summary, concerns.
