@@ -394,11 +394,3 @@ func outcomeText(label string, o write.Outcome, err error) string {
 }
 
 func clamp(v, lo, hi int) int { return max(lo, min(v, hi)) }
-
-// View is replaced in Task 9.
-func (m Model) View() string { return "" }
-
-// newRenderer is replaced in Task 9.
-func newRenderer(dark bool) func(string, int) string {
-	return func(md string, _ int) string { return md }
-}
