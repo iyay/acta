@@ -1,11 +1,15 @@
 package write
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -67,10 +71,10 @@ func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
 	return []byte(strings.Join(lines, "\n")), done, len(boxes), nil
 }
 
-// Tick ticks a box in the plan file at path. A lock file keeps two
+// Tick ticks a box in the plan file at path. An OS lock keeps two
 // implementers in one worktree from overwriting each other's ticks.
 func Tick(path string, headingLine, step int) (int, int, error) {
-	unlock, err := lock(path + ".lock")
+	unlock, err := lock(path)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -90,25 +94,41 @@ func Tick(path string, headingLine, step int) (int, int, error) {
 	return done, total, os.Rename(tmp, path)
 }
 
-// lock takes a lock file, waiting up to five seconds. A lock older than a
-// minute is treated as left behind by a crash and taken over.
-func lock(path string) (func(), error) {
+// lock takes an OS lock (flock) on a file in the temp folder, named from
+// the plan's real path. The kernel drops the lock when the process ends,
+// even in a crash, so no lock is ever left behind to take over, and two
+// processes can never both hold it. Keeping the file out of the repo means
+// no stray file shows up in git status.
+func lock(plan string) (func(), error) {
+	real, err := filepath.Abs(plan)
+	if err != nil {
+		return nil, err
+	}
+	if r, err := filepath.EvalSymlinks(real); err == nil {
+		real = r
+	}
+	sum := sha256.Sum256([]byte(real))
+	path := filepath.Join(os.TempDir(), "pmb-"+hex.EncodeToString(sum[:8])+".lock")
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 		if err == nil {
-			f.Close()
-			return func() { os.Remove(path) }, nil
+			return func() {
+				syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+				f.Close()
+			}, nil
 		}
-		if !errors.Is(err, os.ErrExist) {
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			f.Close()
 			return nil, err
 		}
-		if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) > time.Minute {
-			os.Remove(path)
-			continue
-		}
 		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("plan is locked by %s", path)
+			f.Close()
+			return nil, fmt.Errorf("plan %s is locked by another pmb tick", plan)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

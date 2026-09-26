@@ -55,7 +55,7 @@
 - Consumes: `flags`, `parseMixed` in `cmd/pmb/main.go` (unchanged); `pmb(t, dir, stdin, args...) (stdout, stderr string, code int)` test helper.
 - Produces: `tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all]"`.
 
-- [ ] **Step 1: Write the failing test** in `cmd/pmb/tick_test.go`:
+- [x] **Step 1: Write the failing test** in `cmd/pmb/tick_test.go`:
 
 ```go
 func TestTickHelp(t *testing.T) {
@@ -77,12 +77,12 @@ func TestTickHelp(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run it, watch it fail**
+- [x] **Step 2: Run it, watch it fail**
 
 Run: `go test -count=1 -run 'TestTickHelp|TestTickCommand' ./cmd/pmb/`
 Expected: `TestTickHelp` FAILS with `exit 1, want 0` and "does not name the id format"; `TestTickCommand` passes.
 
-- [ ] **Step 3: Write the minimal code** in `cmd/pmb/tick.go`:
+- [x] **Step 3: Write the minimal code** in `cmd/pmb/tick.go`:
 
 ```go
 const tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all]"
@@ -105,12 +105,12 @@ In `cmdTick`, right after `fs, root := flags("tick", stderr)` and the two flag l
 
 Add `"flag"` to the imports.
 
-- [ ] **Step 4: Run tests, watch them pass**
+- [x] **Step 4: Run tests, watch them pass**
 
 Run: `go test -count=1 ./cmd/pmb/`
 Expected: PASS (including `TestTickCommand` bad-input cases still exiting 1).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -135,7 +135,7 @@ git commit -m "fix(pmb): tick --help exits 0 and names the plans/<stem>#task-N i
 - Consumes: `CheckSkill(t, SkillRule{...})` in `internal/plugincheck` (reads every `.md` in the skill folder).
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test.** In `internal/plugincheck/skill_build_test.go`, add to `Must`:
+- [x] **Step 1: Write the failing test.** In `internal/plugincheck/skill_build_test.go`, add to `Must`:
 
 ```go
 			"pmb tick plans/<stem>#task-N --step <n>", "pmb tick [TASK_ID] --step <n>",
@@ -149,12 +149,12 @@ and add to `MustNot`:
 
 In `internal/plugincheck/plugin_test.go`, `TestHouseRules`: add `"pmb tick plans/<stem>#task-N --step <n>"` to the `want` list and `"pmb tick <task-id>"` to the `bad` list.
 
-- [ ] **Step 2: Run it, watch it fail**
+- [x] **Step 2: Run it, watch it fail**
 
 Run: `go test -count=1 -run 'TestSkillBuild|TestHouseRules' ./internal/plugincheck/`
 Expected: `TestHouseRules` FAILS with `house-rules.md missing "pmb tick plans/<stem>#task-N --step <n>"` and `house-rules.md still has "pmb tick <task-id>"`; `TestSkillBuild` FAILS with `missing required text: pmb tick plans/<stem>#task-N --step <n>`, `missing required text: pmb tick [TASK_ID] --step <n>` and `has forbidden text: pmb tick <task-id>`.
 
-- [ ] **Step 3: Change the text.**
+- [x] **Step 3: Change the text.**
 
 In `plugin/skills/build/SKILL.md`, replace the hand-off list line
 
@@ -210,12 +210,12 @@ PROGRESS: right after each step of a ticket, run pmb tick plans/<stem>#task-N --
 
 Keep the rest of that line as it is.
 
-- [ ] **Step 4: Run tests, watch them pass**
+- [x] **Step 4: Run tests, watch them pass**
 
 Run: `go test -count=1 ./internal/plugincheck/`
 Expected: PASS (line cap 680 still holds).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -237,7 +237,7 @@ git commit -m "fix(plugin): build hand-off names the full pmb tick command and t
 - Consumes: nothing new.
 - Produces: `func lock(plan string) (func(), error)` takes the plan path (not a lock path). `Tick(path string, headingLine, step int) (int, int, error)` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests** in `internal/write/tick_test.go`. Add `"os/exec"`, `"sync/atomic"` and `"time"` to the imports. Replace the `p + ".lock"` check at the end of `TestTickFileConcurrent` with a check that the plan folder holds only the plan:
+- [x] **Step 1: Write the failing tests** in `internal/write/tick_test.go`. Add `"os/exec"`, `"sync/atomic"` and `"time"` to the imports. Replace the `p + ".lock"` check at the end of `TestTickFileConcurrent` with a check that the plan folder holds only the plan:
 
 ```go
 	if ents, _ := os.ReadDir(filepath.Dir(p)); len(ents) != 1 {
@@ -346,12 +346,12 @@ func TestLockTimeout(t *testing.T) {
 
 Add `"io"` to the imports too.
 
-- [ ] **Step 2: Run them, watch them fail**
+- [x] **Step 2: Run them, watch them fail**
 
 Run: `go test -count=1 -run 'TestTickFileConcurrent|TestTickAfterHolderDies|TestLockOneHolder|TestLockTimeout' ./internal/write/`
 Expected: FAIL. `TestTickAfterHolderDies` fails with `a dead holder blocked the tick: plan is locked by ...` (the old lock file stays behind with a fresh time). `TestLockOneHolder` fails because the old `lock` treats its argument as the lock file itself: `plan.md` already exists and is fresh, so the goroutines time out with `plan is locked by ...`.
 
-- [ ] **Step 3: Write the minimal code** in `internal/write/tick.go`. In `Tick`, change `lock(path + ".lock")` to `lock(path)`. Replace `lock` with:
+- [x] **Step 3: Write the minimal code** in `internal/write/tick.go`. In `Tick`, change `lock(path + ".lock")` to `lock(path)`. Replace `lock` with:
 
 ```go
 // lock takes an OS lock (flock) on a file in the temp folder, named from
@@ -397,12 +397,12 @@ func lock(plan string) (func(), error) {
 
 Add `"crypto/sha256"`, `"encoding/hex"`, `"path/filepath"` and `"syscall"` to the imports. Update the `Tick` doc comment: "An OS lock keeps two implementers in one worktree from overwriting each other's ticks."
 
-- [ ] **Step 4: Run tests, watch them pass**
+- [x] **Step 4: Run tests, watch them pass**
 
 Run: `go test -count=1 -race ./internal/write/ && go test -count=1 ./...`
 Expected: PASS, no race reports.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...

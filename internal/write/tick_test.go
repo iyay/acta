@@ -2,11 +2,15 @@ package write
 
 import (
 	"errors"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const plan = "# P\n\n### Task 1: One\n- [x] a\n- [ ] b\n```text\n- [ ] in a fence\n```\n- [ ] c\n\n### Task 2: Two\n- [ ] d\n"
@@ -135,7 +139,102 @@ func TestTickFileConcurrent(t *testing.T) {
 	if strings.Count(string(b), "- [x]") != 3 {
 		t.Fatalf("a tick was lost:\n%s", b)
 	}
-	if _, err := os.Stat(p + ".lock"); !os.IsNotExist(err) {
-		t.Fatal("lock file left behind")
+	if ents, _ := os.ReadDir(filepath.Dir(p)); len(ents) != 1 {
+		t.Fatalf("tick left files next to the plan: %v", ents)
+	}
+}
+
+// TestHelperHoldLock is not a real test. TestTickAfterHolderDies runs it
+// in a child process to take the lock and then get killed.
+func TestHelperHoldLock(t *testing.T) {
+	p := os.Getenv("PMB_HOLD_LOCK")
+	if p == "" {
+		t.Skip("helper for TestTickAfterHolderDies")
+	}
+	if _, err := lock(p); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout.WriteString("held\n")
+	select {}
+}
+
+func TestTickAfterHolderDies(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "plan.md")
+	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^TestHelperHoldLock$")
+	cmd.Env = append(os.Environ(), "PMB_HOLD_LOCK="+p)
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 5)
+	if _, err := io.ReadFull(out, buf); err != nil || string(buf) != "held\n" {
+		t.Fatalf("helper did not take the lock: %q %v", buf, err)
+	}
+	cmd.Process.Kill()
+	cmd.Wait()
+
+	start := time.Now()
+	if _, _, err := Tick(p, 3, 2); err != nil {
+		t.Fatalf("a dead holder blocked the tick: %v", err)
+	}
+	if d := time.Since(start); d > time.Second {
+		t.Fatalf("tick waited %v after the holder died", d)
+	}
+}
+
+func TestLockOneHolder(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "plan.md")
+	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A lock file left by the old version, old enough to look stale.
+	// It must not let anyone skip the lock.
+	old := time.Now().Add(-2 * time.Minute)
+	os.WriteFile(p+".lock", nil, 0o644)
+	os.Chtimes(p+".lock", old, old)
+
+	var holders, most atomic.Int32
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			unlock, err := lock(p)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			n := holders.Add(1)
+			for {
+				m := most.Load()
+				if n <= m || most.CompareAndSwap(m, n) {
+					break
+				}
+			}
+			holders.Add(-1)
+			unlock()
+		}()
+	}
+	wg.Wait()
+	if most.Load() != 1 {
+		t.Fatalf("%d holders at once, want 1", most.Load())
+	}
+}
+
+func TestLockTimeout(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "plan.md")
+	unlock, err := lock(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	if _, err := lock(p); err == nil || !strings.Contains(err.Error(), "locked") {
+		t.Fatalf("second lock: err = %v, want a locked error", err)
 	}
 }
