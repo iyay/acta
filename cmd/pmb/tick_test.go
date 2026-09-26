@@ -170,8 +170,9 @@ func agentsFile(t *testing.T, dir string) string {
 }
 
 func readRecords(t *testing.T, path string) map[string]struct {
-	Agent string `json:"agent"`
-	At    string `json:"at"`
+	Agent   string `json:"agent"`
+	At      string `json:"at"`
+	Started bool   `json:"started,omitempty"`
 } {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -182,8 +183,9 @@ func readRecords(t *testing.T, path string) map[string]struct {
 		t.Fatal(err)
 	}
 	var recs map[string]struct {
-		Agent string `json:"agent"`
-		At    string `json:"at"`
+		Agent   string `json:"agent"`
+		At      string `json:"at"`
+		Started bool   `json:"started,omitempty"`
 	}
 	if err := json.Unmarshal(b, &recs); err != nil {
 		t.Fatalf("%s: %v (%s)", path, err, b)
@@ -207,4 +209,41 @@ func commitCount(t *testing.T, dir string) string {
 		t.Fatal(err)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// --start marks the task started without touching a box, and it refuses to
+// mix with the flags that tick boxes, writing nothing when refused.
+func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
+	dir := fixtureRepo(t)
+	plan := filepath.Join(dir, ".pm/plans/2026-09-21-alpha.md")
+	id := "plans/2026-09-21-alpha#task-1"
+	before, _ := os.ReadFile(plan)
+	if _, errOut, code := pmb(t, dir, "", "tick", id, "--start", "--agent", "omp"); code != 0 {
+		t.Fatalf("--start: exit %d err %q, want 0", code, errOut)
+	}
+	after, _ := os.ReadFile(plan)
+	if string(after) != string(before) {
+		t.Fatal("--start must tick no box")
+	}
+	recs := readRecords(t, agentsFile(t, dir))
+	if !recs[id].Started || recs[id].Agent != "omp" {
+		t.Fatalf("record = %+v, want started true by omp", recs[id])
+	}
+	record, _ := os.ReadFile(agentsFile(t, dir))
+	for _, args := range [][]string{
+		{"tick", id, "--start", "--all"},
+		{"tick", id, "--start", "--step", "1"},
+	} {
+		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+			t.Errorf("%v: exit %d, want 1", args, code)
+		}
+		same, _ := os.ReadFile(agentsFile(t, dir))
+		if string(same) != string(record) {
+			t.Errorf("%v wrote a record, want none", args)
+		}
+		box, _ := os.ReadFile(plan)
+		if string(box) != string(before) {
+			t.Errorf("%v ticked a box", args)
+		}
+	}
 }

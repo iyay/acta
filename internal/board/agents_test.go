@@ -219,3 +219,57 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
 		t.Fatalf("a plan read from git has agent %q, want none", p.Agent)
 	}
 }
+
+// A task someone started but has not ticked yet reads as doing, so its plan
+// and spec show progress; a done task never shows an agent again.
+func TestStartedTaskShowsDoingBeforeAnyBox(t *testing.T) {
+	plan := `# Plan A
+
+**Spec:** .pm/specs/2026-09-20-a.md
+
+### Task 1: One
+- [ ] a
+`
+	main := tree(t, map[string]string{
+		".pm/specs/2026-09-20-a.md": specA,
+		".pm/plans/2026-09-21-a.md": plan,
+		".pm/.agents.json": `{
+  "plans/2026-09-21-a#task-1": {"agent": "", "at": "2026-09-26T09:00:00+07:00", "started": true}
+}`,
+	})
+	b, err := Load(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if it := b.Get("plans/2026-09-21-a#task-1"); it == nil || it.Status != "doing" {
+		t.Fatalf("started task status = %+v, want doing", it)
+	}
+	if it := b.Get("plans/2026-09-21-a"); it == nil || it.Status != "in-progress" {
+		t.Fatalf("plan status = %+v, want in-progress", it)
+	}
+	if it := b.Get("specs/2026-09-20-a"); it == nil || it.Status != "in-progress" {
+		t.Fatalf("spec status = %+v, want in-progress", it)
+	}
+}
+
+// A done task with an old started record stays done and shows no agent.
+func TestDoneTaskWithStartedRecordShowsNoAgent(t *testing.T) {
+	main := tree(t, map[string]string{
+		".pm/specs/2026-09-20-a.md": specA,
+		".pm/plans/2026-09-21-a.md": planAhead,
+		".pm/.agents.json": `{
+  "plans/2026-09-21-a#task-1": {"agent": "omp", "at": "2026-09-26T09:00:00+07:00", "started": true}
+}`,
+	})
+	b, err := Load(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := b.Get("plans/2026-09-21-a#task-1")
+	if it == nil || it.Status != "done" {
+		t.Fatalf("done task status = %+v, want done", it)
+	}
+	if it.Agent != "" {
+		t.Fatalf("done task agent = %q, want none", it.Agent)
+	}
+}
