@@ -66,34 +66,15 @@ const pageLines = 10
 // groupRowID marks the folded row that holds the legacy items.
 const groupRowID = "\x00untyped"
 
+// dividerRowID marks the dim line between the in-progress rows and the
+// not-started ones. It is never a real item, so the cursor skips it.
+const dividerRowID = "\x00divider"
+
 type row struct {
-	id    string
-	group bool
-	depth int
-}
-
-// tabBox is where one tab name sits in the top border of a pane, in screen
-// cells, the way the mouse counts them.
-type tabBox struct{ x, w int }
-
-// box is where one pane sits on the screen and what it holds. first and rows
-// belong to the two list panes; pane [3] scrolls by lines and counts its own.
-type box struct {
-	x, y, w, h  int // the border rectangle
-	inner       int
-	first, rows int      // first row on screen, and how many rows fit inside
-	tabs        []tabBox // where each tab name sits in the top border
-}
-
-// geom is the whole screen measured in cells from its top left corner. The
-// view and the mouse both read it, so a click lands where it looks.
-type geom struct {
-	wide   bool // false below 60 columns, where only the focused pane shows
-	leftW  int  // width of the left column
-	open   box
-	done   box
-	detail box
-	full   box // the focused pane stretched over the whole screen when not wide
+	id      string
+	group   bool
+	divider bool
+	depth   int
 }
 
 type popup struct {
@@ -216,14 +197,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// openRows gives pane [1] the items of its tab that are not finished. The
-// files outside .pm/ have no tab of their own, so the Specs tab ends with a
-// single row that opens them.
+// inProgress says the item's work has begun: one of the going statuses, or
+// a task someone ran tick --start on before ticking a box.
+func inProgress(it *board.Item) bool {
+	if it == nil {
+		return false
+	}
+	if it.Started {
+		return true
+	}
+	switch it.Status {
+	case "doing", "in-progress", "fixing":
+		return true
+	}
+	return false
+}
+
+// openRows gives pane [1] the items of its tab that are not finished, the
+// in-progress ones first, then one dim divider, then the not-started ones.
+// The files outside .pm/ have no tab of their own, so the Specs tab ends with
+// a single row that opens them.
 func (m Model) openRows() []row {
 	if m.query != "" {
 		return toRows(m.board.Search(m.query), 0)
 	}
-	rows := toRows(m.board.List(tabKinds[m.tab], false), 0)
+	var going, rest []*board.Item
+	for _, it := range m.board.List(tabKinds[m.tab], false) {
+		if inProgress(it) {
+			going = append(going, it)
+		} else {
+			rest = append(rest, it)
+		}
+	}
+	rows := toRows(going, 0)
+	if len(going) > 0 && len(rest) > 0 {
+		rows = append(rows, row{id: dividerRowID, divider: true})
+	}
+	rows = append(rows, toRows(rest, 0)...)
 	if m.tab == tabSpecs {
 		if legacy := m.board.Untyped(false); len(legacy) > 0 {
 			rows = append(rows, row{id: groupRowID, group: true})
@@ -304,24 +314,39 @@ func (m Model) listOf() []row {
 func (m Model) Selected() *board.Item {
 	rows, sel, idx := m.slot()
 	i := cursorOf(rows, *sel, *idx)
-	if i < 0 || rows[i].group {
+	if i < 0 || rows[i].group || rows[i].divider {
 		return nil
 	}
 	return m.board.Get(rows[i].id)
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old
-// row number.
+// row number. The divider is never a landing spot, so a stale cursor on it
+// slides to the next item row, else the one above.
 func cursorOf(rows []row, sel string, idx int) int {
 	if len(rows) == 0 {
 		return -1
 	}
 	for i, r := range rows {
-		if r.id == sel {
+		if r.id == sel && !r.divider {
 			return i
 		}
 	}
-	return clamp(idx, 0, len(rows)-1)
+	i := clamp(idx, 0, len(rows)-1)
+	if !rows[i].divider {
+		return i
+	}
+	for j := i + 1; j < len(rows); j++ {
+		if !rows[j].divider {
+			return j
+		}
+	}
+	for j := i - 1; j >= 0; j-- {
+		if !rows[j].divider {
+			return j
+		}
+	}
+	return -1
 }
 
 func (m Model) cursor() int {
@@ -336,6 +361,22 @@ func (m *Model) moveTo(i int) {
 		return
 	}
 	i = clamp(i, 0, len(rows)-1)
+	// Steps land past the divider: walking down slides below it, walking up
+	// slides above it, so j k g G never stop on the dim line.
+	if rows[i].divider {
+		if i >= m.cursor() {
+			for i < len(rows)-1 && rows[i].divider {
+				i++
+			}
+		} else {
+			for i > 0 && rows[i].divider {
+				i--
+			}
+		}
+	}
+	if rows[i].divider {
+		return
+	}
 	if rows[i].id != *sel {
 		// Another item in pane [3] starts at its own top.
 		m.scroll = 0
@@ -447,6 +488,11 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "/":
 		m.searching = true
 	case "esc":
+		if m.focus == paneDetail {
+			// Back to the list pane the detail came from, on the same item.
+			m.focusPane(m.last)
+			return m, nil
+		}
 		m.query = ""
 		m.moveTo(0)
 	case "?":
@@ -458,6 +504,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		s := ""
 		m.slug = &s
+	case "e":
+		return m.edit()
 	case "enter":
 		return m.enter()
 	}
@@ -501,6 +549,12 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	case tabIdx >= 0:
 		m.clickTab(p, tabIdx)
 	case rowIdx >= 0:
+		// A click on the divider only takes the focus; the dim line holds
+		// no item, so the selection stays where it was.
+		rows, _, _ := m.slotOf(p)
+		if rowIdx < len(rows) && rows[rowIdx].divider {
+			return m, nil
+		}
 		m.moveTo(rowIdx)
 	}
 	return m, nil
@@ -514,106 +568,6 @@ func (m *Model) clickTab(p pane, idx int) {
 	case paneOpen:
 		m.tab = clamp(idx, 0, len(tabNames)-1)
 	}
-}
-
-// geometry measures the screen. The left column is 30% of the width, held
-// between 28 and 48 columns, and below 60 columns only the focused pane is on
-// screen because two columns of a small terminal fit nothing.
-func (m Model) geometry() geom {
-	// The last line belongs to the status line, so the panes share the rest.
-	bodyH := max(3, m.height-1)
-	top, bottom := split(bodyH)
-	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48)}
-	rest := max(0, m.width-g.leftW)
-	g.open = m.box(paneOpen, 0, 0, g.leftW, top)
-	g.done = m.box(paneDone, 0, top, g.leftW, bottom)
-	// A pane of zero width is not on screen, which is how a narrow terminal
-	// leaves two of the three out.
-	g.detail = m.box(paneDetail, g.leftW, 0, rest, bodyH)
-	if g.wide {
-		return g
-	}
-	g.full = m.box(m.focus, 0, 0, m.width, bodyH)
-	// Only the focused pane is on screen now, so the other two are zero boxes
-	// and neither the view nor the mouse finds them.
-	g.open, g.done, g.detail = box{}, box{}, box{}
-	return g
-}
-
-// split divides the height between the two left panes: about two thirds for
-// the open one, and never fewer than five rows each.
-func split(h int) (int, int) {
-	top := max(5, h*2/3)
-	return top, max(5, h-top)
-}
-
-// box measures one pane at the given rectangle and works out which of its
-// rows the screen shows, so the view and the mouse count the same ones.
-func (m Model) box(p pane, x, y, w, h int) box {
-	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(p, x, m.tabsOf(p))}
-	if p == paneDetail {
-		return b
-	}
-	b.rows = b.inner / rowLines
-	rows, sel, idx := m.slotOf(p)
-	b.first = max(0, cursorOf(rows, *sel, *idx)+1-b.rows)
-	return b
-}
-
-// tabsOf gives the tab names a pane shows in its title.
-func (m Model) tabsOf(p pane) []string {
-	switch p {
-	case paneDone:
-		return m.doneTabNames()
-	case paneDetail:
-		return nil
-	}
-	return tabNames[:]
-}
-
-// rowAt gives the row under a screen line, or -1 for the border, the title and
-// the blank line between rows.
-func (b box) rowAt(y int) int {
-	off := y - b.y - 1
-	if off < 0 || b.rows == 0 {
-		return -1
-	}
-	i := off / rowLines
-	if i >= b.rows || off%rowLines > 1 {
-		return -1
-	}
-	return b.first + i
-}
-
-// hit says what sits under a mouse cell: the pane, the row of it and the tab
-// in its title. A cell on none of them answers the focused pane with no row
-// and no tab, which leaves the screen where it was.
-func (m Model) hit(x, y int) (pane, int, int) {
-	g := m.geometry()
-	boxes := []struct {
-		p pane
-		b box
-	}{{paneOpen, g.open}, {paneDone, g.done}, {paneDetail, g.detail}}
-	if !g.wide {
-		boxes = []struct {
-			p pane
-			b box
-		}{{m.focus, g.full}}
-	}
-	for _, e := range boxes {
-		if x < e.b.x || x >= e.b.x+e.b.w || y < e.b.y || y >= e.b.y+e.b.h {
-			continue
-		}
-		if y == e.b.y {
-			for i, t := range e.b.tabs {
-				if x >= t.x && x < t.x+t.w {
-					return e.p, -1, i
-				}
-			}
-		}
-		return e.p, e.b.rowAt(y), -1
-	}
-	return m.focus, -1, -1
 }
 
 func (m *Model) openPopup(key string) {
@@ -722,6 +676,9 @@ func (m Model) searchKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// enter moves the focus to the detail pane with the row's item, so it can
+// be read and scrolled there. The legacy group row still folds open and shut,
+// and an item missing from disk still warns how to check its branch out.
 func (m Model) enter() (tea.Model, tea.Cmd) {
 	rows := m.listOf()
 	i := m.cursor()
@@ -732,7 +689,29 @@ func (m Model) enter() (tea.Model, tea.Cmd) {
 		m.groupOpen = !m.groupOpen
 		return m, nil
 	}
+	if rows[i].divider {
+		return m, nil
+	}
 	it := m.board.Get(rows[i].id)
+	if it == nil {
+		return m, nil
+	}
+	if !it.OnDisk {
+		m.status = "branch " + it.Worktree + " is not checked out; open it with: git worktree add ../<repo>-" + it.Worktree + " " + it.Worktree
+		m.focusPane(paneDetail)
+		return m, nil
+	}
+	m.focusPane(paneDetail)
+	return m, nil
+}
+
+// edit opens the selected item in the editor from any pane, the way enter did
+// before. Items missing from disk still warn how to check their branch out.
+func (m Model) edit() (tea.Model, tea.Cmd) {
+	it := m.Selected()
+	if it == nil {
+		return m, nil
+	}
 	if !it.OnDisk {
 		m.status = "branch " + it.Worktree + " is not checked out; open it with: git worktree add ../<repo>-" + it.Worktree + " " + it.Worktree
 		return m, nil

@@ -8,10 +8,20 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"pm-board/internal/board"
 	"pm-board/internal/config"
 )
+
+// withColors pins a color profile while the test draws, because lipgloss
+// drops every color code without a terminal. The rest of the package reads
+// the plain text back, so the profile is restored right after.
+func withColors(f func()) {
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	defer lipgloss.SetColorProfile(termenv.Ascii)
+	f()
+}
 
 func sized(m Model, w, h int) Model {
 	next, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
@@ -69,7 +79,7 @@ func lineFor(t *testing.T, v, want string) ([]string, int) {
 }
 
 func TestViewShowsTheThreePanes(t *testing.T) {
-	m := sized(press(clocked(newModel(t), 20, 46), "j"), 200, 40)
+	m := sized(clocked(newModel(t), 20, 46), 200, 40)
 	v := m.View()
 	for _, want := range []string{
 		"[1]─Specs", "─ Plans", "─ Tasks", "─ Bugs",
@@ -134,7 +144,7 @@ func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
 }
 
 func TestViewRowsTakeTwoLinesAndABlank(t *testing.T) {
-	m := sized(press(newModel(t), "j"), 200, 40)
+	m := sized(newModel(t), 200, 40)
 	v := m.View()
 	g := m.geometry()
 	col := column(v, g.open.x, g.open.w)
@@ -148,6 +158,9 @@ func TestViewRowsTakeTwoLinesAndABlank(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("no row holds the alpha story:\n%s", strings.Join(col, "\n"))
 	}
+	if i != 1 {
+		t.Fatalf("the in-progress row should sit at the top, found at line %d:\n%s", i, strings.Join(col, "\n"))
+	}
 	if got := body(col[i]); !strings.HasPrefix(got, "specs/2026-09-20-alpha  Alpha story") {
 		t.Errorf("a row should start with the short ID, got %q", got)
 	}
@@ -157,26 +170,29 @@ func TestViewRowsTakeTwoLinesAndABlank(t *testing.T) {
 	if got := body(col[i+2]); got != "" {
 		t.Errorf("a row should end with a blank line, got %q", got)
 	}
-	// The row above shows its status without progress, because it has no tasks.
-	if got := body(col[i-2]); got != "  draft" {
-		t.Errorf("the meta line of the row above is %q", got)
+	// The divider takes a full row below, then the not-started beta row.
+	if got := body(col[i+3]); got != "─ ─ ─" {
+		t.Errorf("the divider line is %q", got)
+	}
+	if got := body(col[i+6]); !strings.HasPrefix(got, "specs/2026-09-22-beta") {
+		t.Errorf("the not-started row should sit below the divider, got %q", got)
 	}
 }
 
 func TestViewRowsClampLongTitles(t *testing.T) {
-	m := sized(press(newModel(t), "j"), 60, 20)
+	m := sized(newModel(t), 60, 20)
 	v := m.View()
 	if !strings.Contains(v, "specs/2026-09-22-beta  Be…") {
 		t.Error("a row too long for the pane should be clamped with …")
 	}
-	lines, i := lineFor(t, v, "…")
+	lines, i := lineFor(t, v, "specs/2026-09-22-beta  Be…")
 	if got := body(lines[i]); !strings.HasPrefix(got, "specs/2026-09-22-beta") {
 		t.Errorf("the clamp should keep the short ID first, got %q", got)
 	}
 }
 
 func TestViewMetaLineShowsTheAgentWhenThereIsOne(t *testing.T) {
-	m := press(newModel(t), "j")
+	m := newModel(t)
 	for _, it := range m.board.Items {
 		if it.ID == "specs/2026-09-20-alpha" {
 			it.Agent = "omp"
@@ -218,7 +234,7 @@ func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 }
 
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
-	m := sized(press(newModel(t), "]"), 120, 40)
+	m := sized(press(newModel(t), "]", "j"), 120, 40)
 	g := m.geometry()
 	detail := strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
 	if strings.Contains(detail, "SPEC") {
@@ -227,8 +243,8 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 	if strings.Contains(detail, "WORKTREE") || strings.Contains(detail, "AGENT") {
 		t.Error("a line with no value should be left out")
 	}
-	// The plan next to it does link a spec, so its line has to be there.
-	m = sized(press(m, "j"), 120, 40)
+	// The plan above it does link a spec, so its line has to be there.
+	m = sized(press(m, "k"), 120, 40)
 	g = m.geometry()
 	detail = strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
 	if !strings.Contains(detail, "SPEC") {
@@ -237,7 +253,7 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 }
 
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
-	m := sized(press(newModel(t), "]", "]", "j"), 120, 40)
+	m := sized(press(newModel(t), "]", "]"), 120, 40)
 	v := plain(m.View())
 	if !strings.Contains(v, "plans/2026-09-21-alpha#task-2") {
 		t.Error("the task row is missing")
@@ -249,10 +265,9 @@ func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 		t.Error("the detail of a task should not hold another section")
 	}
 }
-
 func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
-	// The third row of the Specs tab is the story with a status nobody knows.
-	m := sized(press(newModel(t), "j", "j"), 120, 60)
+	// With in-progress rows first, three j steps reach the weird story.
+	m := sized(press(newModel(t), "j", "j", "j"), 120, 60)
 	if !strings.Contains(plain(m.View()), "! ") {
 		t.Error("the problems of the selected item are missing")
 	}
@@ -440,4 +455,108 @@ func TestViewEmptyRepo(t *testing.T) {
 func lastLine(v string) string {
 	lines := strings.Split(v, "\n")
 	return lines[len(lines)-1]
+}
+
+func TestViewInProgressRowsWearTheAccent(t *testing.T) {
+	withColors(func() {
+		testViewInProgressRowsWearTheAccent(t)
+	})
+}
+
+func testViewInProgressRowsWearTheAccent(t *testing.T) {
+	// Step twice, so neither the in-progress row nor the not-started one
+	// shows the selected brush: both must show their own brush instead.
+	m := sized(press(splitModel(t), "j", "j"), 200, 40)
+	v := m.View()
+	g := m.geometry()
+	above, below, seen := true, false, false
+	for _, ln := range strings.Split(v, "\n") {
+		// Cut the open pane out of the raw line, so the check sees the
+		// color codes of that pane only and not its neighbours.
+		r := []rune(ln)
+		if g.open.x >= len(r) {
+			continue
+		}
+		cell := string(r[g.open.x:min(len(r), g.open.x+g.open.w)])
+		// The walls of the pane with the focus wear the accent too, so
+		// the check starts behind the left wall and sees only the row.
+		if i := strings.Index(cell, "│"); i >= 0 {
+			cell = cell[i+len("│"):]
+		}
+		p := plain(cell)
+		if strings.Contains(p, "─ ─ ─") {
+			above = false
+			continue
+		}
+		if !strings.Contains(p, "specs/2026-09-2") {
+			continue
+		}
+		if strings.Contains(p, "specs/2026-09-20-alpha") {
+			seen = true
+			if !above {
+				t.Errorf("the in-progress row sits below the divider:\n%s", v)
+			}
+			if !strings.Contains(cell, "\x1b[38;5;39m") {
+				t.Errorf("the in-progress row wears no accent color: %q", cell)
+			}
+		}
+		if strings.Contains(p, "specs/2026-09-22-beta") {
+			below = true
+			if above {
+				t.Errorf("the not-started row sits above the divider:\n%s", v)
+			}
+			if strings.Contains(cell, "\x1b[38;5;39m") {
+				t.Errorf("the not-started row wears the accent color: %q", cell)
+			}
+		}
+	}
+	if !seen || !below {
+		t.Errorf("both rows should show:\n%s", v)
+	}
+}
+
+func TestViewDividerIsDim(t *testing.T) {
+	withColors(func() {
+		testViewDividerIsDim(t)
+	})
+}
+
+func testViewDividerIsDim(t *testing.T) {
+	m := sized(splitModel(t), 200, 40)
+	found := false
+	for _, ln := range strings.Split(m.View(), "\n") {
+		if !strings.Contains(plain(ln), "─ ─ ─") {
+			continue
+		}
+		found = true
+		if !strings.Contains(ln, "\x1b[2m") {
+			t.Errorf("the divider wears no dim brush: %q", ln)
+		}
+	}
+	if !found {
+		t.Error("no divider drawn")
+	}
+}
+
+func TestViewHasNoSectionLabels(t *testing.T) {
+	m := sized(splitModel(t), 200, 40)
+	for _, ln := range strings.Split(plain(m.View()), "\n") {
+		low := strings.ToLower(body(ln))
+		if strings.HasPrefix(low, "in progress") || strings.HasPrefix(low, "not started") {
+			t.Errorf("a section label leaked into the list: %q", ln)
+		}
+	}
+}
+
+func TestViewHelpListsTheNewKeys(t *testing.T) {
+	m := sized(press(newModel(t), "?"), 120, 40)
+	v := plain(m.View())
+	for _, want := range []string{"enter", "focus the detail", "e", "open the row", "esc", "back to the list"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("the help shows no %q:\n%s", want, v)
+		}
+	}
+	if strings.Contains(v, "enter t s n     edit, set, new bug") {
+		t.Error("the old enter line is still there")
+	}
 }
