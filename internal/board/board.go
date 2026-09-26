@@ -51,6 +51,7 @@ type Item struct {
 	RawID        string // id as the frontmatter holds it, "" when the file has none
 	RawHash      string // hash as the frontmatter holds it, "" when the file has none
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
+	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
 
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
@@ -175,6 +176,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		b.linkPlan(p)
 	}
 	b.derive()
+	b.fillAgents(main, others)
 	b.sortItems()
 	return b, nil
 }
