@@ -77,10 +77,10 @@ Directory selection, in priority order. Explicit user preference always beats ob
 1. Check your instructions for a declared worktree directory preference. If the user has already specified one, use it without asking.
 2. Otherwise use `../<repo>-<slug>`, next to the repo, never inside it (`$REPO` is the repo folder name, `$SLUG` the branch name).
 
-Create it:
+Create it. `$PARENT` is the parent branch recorded above, so the branch starts from it and not from whatever is checked out:
 
 ```bash
-git worktree add "../$REPO-$SLUG" -b "$SLUG"
+git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"
 cd "../$REPO-$SLUG"
 ```
 
