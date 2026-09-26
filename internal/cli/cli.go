@@ -99,8 +99,10 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdTick(args[1:], stdout, stderr)
 	case "id":
 		return cmdID(args[1:], stdout, stderr)
+	case "migrate-root":
+		return cmdMigrateRoot(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick or bug new\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root or bug new\n", args[0])
 		return exitBadInput
 	}
 }
@@ -108,7 +110,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 func flags(name string, stderr io.Writer) (*flag.FlagSet, *string) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	root := fs.String("root", "", "planning root folder (default .pm, or PM_ROOT, or root in .pm.yaml)")
+	root := fs.String("root", "", "planning root folder (default .acta; also ACTA_ROOT, PM_ROOT, or root in .acta.yaml or .pm.yaml)")
 	return fs, root
 }
 

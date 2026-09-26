@@ -447,7 +447,7 @@ func TestViewEmptyRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := sized(New(config.Default(t.TempDir()), b, true), 100, 30)
-	if !strings.Contains(m.View(), "no .pm/ yet") {
+	if !strings.Contains(m.View(), "no .acta/ yet") {
 		t.Error("empty repo message missing")
 	}
 }

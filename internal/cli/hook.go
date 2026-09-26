@@ -54,10 +54,6 @@ func cmdHook(args []string, stdout, stderr io.Writer) int {
 }
 
 func loadVoice() hook.Input {
-	path, err := voice.Path()
-	if err != nil {
-		return hook.Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: err}
-	}
-	v, exists, err := voice.Load(path)
+	v, exists, err := voice.Resolve()
 	return hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
 }

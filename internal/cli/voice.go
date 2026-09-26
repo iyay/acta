@@ -30,7 +30,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
-		v, exists, err := voice.Load(path)
+		v, exists, err := voice.Resolve()
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
@@ -63,7 +63,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
-		v, _, err := voice.Load(path)
+		v, _, err := voice.Resolve()
 		if err != nil {
 			// Never overwrite a file the user may still want to repair by hand.
 			fmt.Fprintf(stderr, "%v\nfix or delete %s first\n", err, path)
@@ -84,7 +84,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		if *tone != "" {
 			v.Tone = *tone
 		}
-		if err := voice.Save(path, v); err != nil {
+		if err := voice.SaveResolved(v); err != nil {
 			fmt.Fprintln(stderr, err)
 			if errors.Is(err, voice.ErrBad) {
 				return exitBadInput

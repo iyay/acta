@@ -48,7 +48,8 @@ type fileConfig struct {
 	Links      Links     `yaml:"links"`
 }
 
-// Default is what a repo gets with no .pm.yaml, no flag and no env var.
+// Default is the starting config. Load overwrites the Root here: it picks
+// .acta/ for a new repo and .pm/ when the repo still has the old folder.
 func Default(repoRoot string) Config {
 	return Config{
 		RepoRoot:   repoRoot,
@@ -61,31 +62,64 @@ func Default(repoRoot string) Config {
 }
 
 // Load finds the repo from cwd, then picks the root folder in this order:
-// flagRoot, the PM_ROOT env var, root in .pm.yaml, then ".pm".
+// flagRoot, the ACTA_ROOT env var, the PM_ROOT env var, root in .acta.yaml,
+// root in .pm.yaml, then ".acta/" if it exists, else ".pm/" if it exists,
+// else ".acta/". Other settings come from .acta.yaml when it exists,
+// otherwise from .pm.yaml. A missing root in the winning file falls back
+// to the other file, so an .acta.yaml with only dirs still honours root
+// in .pm.yaml.
 func Load(cwd, flagRoot string) (Config, error) {
 	repo, isGit := findRepo(cwd)
 	cfg := Default(repo)
 	cfg.IsGit = isGit
 
-	var fc fileConfig
-	raw, err := os.ReadFile(filepath.Join(repo, ".pm.yaml"))
+	var actaFC, pmFC fileConfig
+	var haveActa bool
+	raw, err := os.ReadFile(filepath.Join(repo, ".acta.yaml"))
 	switch {
 	case err == nil:
-		if err := yaml.Unmarshal(raw, &fc); err != nil {
+		haveActa = true
+		if err := yaml.Unmarshal(raw, &actaFC); err != nil {
+			return Config{}, fmt.Errorf(".acta.yaml: %w", err)
+		}
+	case !errors.Is(err, os.ErrNotExist):
+		return Config{}, err
+	}
+
+	raw, err = os.ReadFile(filepath.Join(repo, ".pm.yaml"))
+	switch {
+	case err == nil:
+		if err := yaml.Unmarshal(raw, &pmFC); err != nil {
 			return Config{}, fmt.Errorf(".pm.yaml: %w", err)
 		}
 	case !errors.Is(err, os.ErrNotExist):
 		return Config{}, err
 	}
 
-	root := ".pm"
+	// The new file wins when it exists; the old file only fills a missing
+	// root, so mixed pairs never surprise.
+	fc := pmFC
+	if haveActa {
+		fc = actaFC
+		if fc.Root == "" {
+			fc.Root = pmFC.Root
+		}
+	}
+
+	root := ".acta"
 	switch {
 	case flagRoot != "":
 		root = flagRoot
+	case os.Getenv("ACTA_ROOT") != "":
+		root = os.Getenv("ACTA_ROOT")
 	case os.Getenv("PM_ROOT") != "":
 		root = os.Getenv("PM_ROOT")
 	case fc.Root != "":
 		root = fc.Root
+	case dirExists(filepath.Join(repo, ".acta")):
+		root = ".acta"
+	case dirExists(filepath.Join(repo, ".pm")):
+		root = ".pm"
 	}
 	cfg.Root = inRepo(repo, root)
 
@@ -157,4 +191,11 @@ func inRepo(repo, p string) string {
 		return filepath.Clean(p)
 	}
 	return filepath.Join(repo, p)
+}
+
+// dirExists is true for a real folder, so an old .pm/ still full of plans
+// keeps working until the user runs migrate-root.
+func dirExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && st.IsDir()
 }

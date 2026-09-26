@@ -66,11 +66,11 @@ All tasks run in order (each touches files the next one builds on): wave 1 task 
 
 **verify:** Every step of the root lookup order resolves as the spec lists, including `.pm/` only, `.acta/` only, both (`.acta/` wins), neither (`.acta/`), `PM_ROOT` and `.pm.yaml` honored when the new ones are missing; voice reads `~/.acta/voice.yaml`, falls back to `~/.pm/voice.yaml`, always writes the new file; `acta migrate-root` moves `.pm/` to `.acta/` (and `.pm.yaml` to `.acta.yaml`) with `git mv` in one commit, and refuses with exit 1 when `.acta/` exists, when `.pm/` is missing, or when `.pm/` has uncommitted changes. List every lookup case and refusal checked.
 
-- [ ] **Step 1: Failing tests** for each case above (temp repos, `t.Setenv` for env vars, a temp HOME for voice).
-- [ ] **Step 2: Run to see them fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Gate.**
-- [ ] **Step 5: Commit** (`feat: .acta root with .pm fallback, and acta migrate-root`), tick `#task-3 --all`.
+- [x] **Step 1: Failing tests** for each case above (temp repos, `t.Setenv` for env vars, a temp HOME for voice).
+- [x] **Step 2: Run to see them fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Gate.**
+- [x] **Step 5: Commit** (`feat: .acta root with .pm fallback, and acta migrate-root`), tick `#task-3 --all`.
 
 ---
 
