@@ -50,7 +50,7 @@ There is never a round 4. A round with no BLOCKER does not start. Findings in te
 
 ## Small changes
 
-A change you judge small (one concern, trivial logic, no trust boundary, and you are sure) may take an inline self-review instead of the two reviewers: read the full diff, answer the three questions, state a verdict. Security, auth, data migration and money always take the two reviewers. Work another agent wrote (the `dispatch` executor) always takes the two reviewers: you did not watch it being written.
+Small means one file, and only text or config with no code logic. Two or more files, or any code change, take the two reviewers. A small change may take an inline self-review instead: read the full diff, answer the three questions, state a verdict. Security, auth, data migration and money always take the two reviewers. Work another agent wrote (the `dispatch` executor) always takes the two reviewers: you did not watch it being written.
 
 ## Receiving findings
 

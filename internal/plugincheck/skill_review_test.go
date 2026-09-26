@@ -11,7 +11,8 @@ func TestSkillReview(t *testing.T) {
 			"deep lens", "never a round 4", "code-reviewer.md", "CLEAN or BLOCKED",
 			"## Receiving findings", "Fix round", "pm:land",
 			"## Where findings go", "pm:bug", "already on the parent branch",
+			"Small means one file, and only text or config with no code logic.",
 		},
-		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies"},
+		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small"},
 	})
 }
