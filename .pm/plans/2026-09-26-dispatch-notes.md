@@ -1,3 +1,7 @@
+---
+id: PLAN-2
+hash: z2gs
+---
 # Dispatch checkpoint and closing ticks Implementation Plan
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.

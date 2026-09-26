@@ -1,3 +1,7 @@
+---
+id: PLAN-9
+hash: jz3d
+---
 # Spec line counts only .md paths Implementation Plan
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.

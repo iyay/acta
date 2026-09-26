@@ -19,24 +19,8 @@ func gitCommit(t *testing.T, dir, msg string) {
 	}
 }
 
-// dropBrokenFile removes fixture files pmb id cannot handle yet, so id
-// tests work on the repo without them: the unparseable frontmatter in
-// 2026-09-17-broken.md, and the type-bug file in specs/ that gets a new
-// number on every run (see bugs/2026-09-26-id-dies-on-broken-frontmatter
-// and bugs/2026-09-26-id-flip-flops-type-bug-in-specs).
-func dropBrokenFile(t *testing.T, dir string) {
-	t.Helper()
-	for _, f := range []string{".pm/specs/2026-09-17-broken.md", ".pm/specs/2026-09-15-really-bug.md"} {
-		if err := os.Remove(filepath.Join(dir, f)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	gitCommit(t, dir, "drop files pmb id cannot handle yet")
-}
-
 func TestIDGivesAndIsIdempotent(t *testing.T) {
 	dir := fixtureRepo(t)
-	dropBrokenFile(t, dir)
 	before := commitCount(t, dir)
 	out, errOut, code := pmb(t, dir, "", "id")
 	if code != 0 {
@@ -65,7 +49,6 @@ func TestIDGivesAndIsIdempotent(t *testing.T) {
 
 func TestIDResolvesInShowTickSet(t *testing.T) {
 	dir := fixtureRepo(t)
-	dropBrokenFile(t, dir)
 	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
@@ -89,7 +72,6 @@ func TestIDResolvesInShowTickSet(t *testing.T) {
 
 func TestIDUnknown(t *testing.T) {
 	dir := fixtureRepo(t)
-	dropBrokenFile(t, dir)
 	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
@@ -99,9 +81,28 @@ func TestIDUnknown(t *testing.T) {
 	}
 }
 
+// With auto_commit off the ids are written and left in the working tree, and
+// the command still says what it did and succeeds.
+func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
+	dir := fixtureRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".pm.yaml"), []byte("auto_commit: false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitCommit(t, dir, "auto_commit off")
+	before := commitCount(t, dir)
+	out, errOut, code := pmb(t, dir, "", "id")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	if !strings.Contains(out, "SPEC-") {
+		t.Fatalf("no change lines: %q", out)
+	}
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %s, want %s with auto_commit off", got, before)
+	}
+}
 func TestIDFixDuplicates(t *testing.T) {
 	dir := fixtureRepo(t)
-	dropBrokenFile(t, dir)
 	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
@@ -131,7 +132,6 @@ func TestIDFixDuplicates(t *testing.T) {
 
 func TestListShowsShortIDFirst(t *testing.T) {
 	dir := fixtureRepo(t)
-	dropBrokenFile(t, dir)
 	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
@@ -143,6 +143,7 @@ func TestListShowsShortIDFirst(t *testing.T) {
 	if len(lines) == 0 {
 		t.Fatalf("empty list: %q", out)
 	}
+	withoutID := 0
 	for _, line := range lines {
 		i := strings.Index(line, "SPEC-")
 		if i < 0 {
@@ -152,9 +153,17 @@ func TestListShowsShortIDFirst(t *testing.T) {
 		if j < 0 {
 			j = strings.Index(line, "plans/")
 		}
+		if i < 0 && strings.Contains(line, "2026-09-17-broken") {
+			// The one file whose frontmatter will not parse keeps no id.
+			withoutID++
+			continue
+		}
 		if i < 0 || j < 0 || i > j {
 			t.Fatalf("short id not first: %q", line)
 		}
+	}
+	if withoutID != 1 {
+		t.Fatalf("%d lines without a short id, want only the broken one", withoutID)
 	}
 	out, _, code = pmb(t, dir, "", "list", "--json")
 	if code != 0 {
@@ -171,12 +180,22 @@ func TestListShowsShortIDFirst(t *testing.T) {
 	if len(items) == 0 {
 		t.Fatal("no items")
 	}
+	// Only the file whose frontmatter will not parse has no id, so it is the
+	// one that cannot be listed with a short id first.
+	noID := 0
 	for _, it := range items {
 		if it.ShortID == "" || it.Hash == "" {
+			if strings.Contains(it.ID, "2026-09-17-broken") {
+				noID++
+				continue
+			}
 			t.Fatalf("item lacks short_id/hash: %+v", it)
 		}
 		if !strings.Contains(it.ID, "/") {
 			t.Fatalf("id is not the path: %+v", it)
 		}
+	}
+	if noID != 1 {
+		t.Fatalf("%d items without ids, want only the broken one", noID)
 	}
 }

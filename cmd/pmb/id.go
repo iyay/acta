@@ -47,6 +47,9 @@ func cmdID(args []string, stdout, stderr io.Writer) int {
 	for _, c := range changes {
 		fmt.Fprintln(stdout, c)
 	}
+	for _, s := range o.Skips {
+		fmt.Fprintln(stderr, s)
+	}
 	if o.Skipped {
 		fmt.Fprintln(stderr, "written, not committed:", o.Reason)
 		return exitSkipped

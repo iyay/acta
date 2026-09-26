@@ -1,5 +1,7 @@
 ---
 status: done
+id: SPEC-2
+hash: i2b1
 ---
 # pm: a lean workflow plugin that replaces superpowers
 

@@ -99,3 +99,63 @@ func TestDuplicateShortIDsAreProblems(t *testing.T) {
 		}
 	}
 }
+
+// The prefix a file is read with is the kind it ends up as, so a file that
+// says type: bug in specs/ reads as BUG and a plan file reads as PLAN. The
+// folder a file sits in is not the kind it is.
+func TestPrefixFollowsTheKindTheFileIs(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-20-a-design.md": "---\ntype: bug\nid: BUG-3\nhash: m2x9\n---\n# A\n",
+		"plans/2026-09-21-b.md":        "---\nid: PLAN-12\nhash: k3f2\n---\n# B\n\n### Task 1: T\n- [ ] a\n",
+	})
+	spec := b.Get("specs/2026-09-20-a-design")
+	if spec.Kind != KindBug || spec.ShortID != "BUG-3" || spec.Hash != "BUG-m2x9" {
+		t.Fatalf("bug in specs = kind %q id %q hash %q", spec.Kind, spec.ShortID, spec.Hash)
+	}
+	if got := strings.Join(spec.Problems, "; "); got != "" {
+		t.Fatalf("clean file has problems: %q", got)
+	}
+	plan := b.Get("plans/2026-09-21-b")
+	if plan.ShortID != "PLAN-12" || plan.Hash != "PLAN-k3f2" {
+		t.Fatalf("plan ids = %q %q", plan.ShortID, plan.Hash)
+	}
+	if got := strings.Join(plan.Problems, "; "); got != "" {
+		t.Fatalf("clean plan has problems: %q", got)
+	}
+}
+
+// A value in the wrong shape stays a problem and never becomes an ID, and the
+// file's own id is kept so a tool can see it without reading the file again.
+func TestIDsKeepTheWrittenValue(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\nhash: toolong\n---\n# A\n",
+	})
+	it := b.Get("specs/2026-09-20-a-design")
+	if it.ShortID != "" || it.Hash != "" {
+		t.Fatalf("bad values became ids: %q %q", it.ShortID, it.Hash)
+	}
+	if it.RawID != "SPEC-zz" || it.RawHash != "toolong" {
+		t.Fatalf("written values lost: %q %q", it.RawID, it.RawHash)
+	}
+	got := strings.Join(it.Problems, "; ")
+	if !strings.Contains(got, "bad id SPEC-zz") || !strings.Contains(got, "bad hash toolong") {
+		t.Fatalf("problems = %q", got)
+	}
+}
+
+// A plan whose tasks belong to a spec still has a file, and that file is what
+// holds the plan's own id.
+func TestHeldPlanKeepsItsOwnFile(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-20-a-design.md": "# A\n",
+		"plans/2026-09-21-b.md":        "---\nparent: specs/2026-09-20-a-design\nid: PLAN-12\nhash: k3f2\n---\n# B\n\n### Task 1: T\n- [ ] a\n",
+	})
+	holder := b.Get("specs/2026-09-20-a-design")
+	held := holder.HeldPlans()
+	if len(held) != 1 {
+		t.Fatalf("held plans = %d, want 1", len(held))
+	}
+	if !strings.HasSuffix(held[0].Path, "plans/2026-09-21-b.md") || held[0].RawID != "PLAN-12" || held[0].RawHash != "k3f2" {
+		t.Fatalf("held plan = %+v", held[0])
+	}
+}

@@ -29,6 +29,14 @@ func IsHash(s string) bool {
 	return true
 }
 
+// IsID says if id is a well formed short ID for prefix: the prefix, a dash,
+// then a number that does not start with a zero. A tool uses it to tell a
+// value it may fill in from one that is already written down.
+func IsID(id, prefix string) bool {
+	n, ok := strings.CutPrefix(id, prefix+"-")
+	return ok && n != "" && strings.Trim(n, "0123456789") == "" && n[0] != '0'
+}
+
 // setIDs copies id and hash from frontmatter. A value in the wrong shape is
 // a problem, not an ID, so a typo cannot steal another item's name. Calling
 // it again replaces its own old verdict, so a plan first read as a story and
@@ -42,21 +50,30 @@ func setIDs(it *Item, prefix string, doc Doc) {
 		}
 	}
 	it.Problems = kept
-	if id := field(doc.Front, "id"); id != "" {
-		n, ok := strings.CutPrefix(id, prefix+"-")
-		if ok && n != "" && strings.Trim(n, "0123456789") == "" && n[0] != '0' {
-			it.ShortID = id
+	it.RawID, it.RawHash = field(doc.Front, "id"), field(doc.Front, "hash")
+	if it.RawID != "" {
+		if IsID(it.RawID, prefix) {
+			it.ShortID = it.RawID
 		} else {
-			it.Problems = append(it.Problems, "bad id "+id)
+			it.Problems = append(it.Problems, "bad id "+it.RawID)
 		}
 	}
-	if h := field(doc.Front, "hash"); h != "" {
-		if IsHash(h) {
-			it.Hash = prefix + "-" + h
+	if it.RawHash != "" {
+		if IsHash(it.RawHash) {
+			it.Hash = prefix + "-" + it.RawHash
 		} else {
-			it.Problems = append(it.Problems, "bad hash "+h)
+			it.Problems = append(it.Problems, "bad hash "+it.RawHash)
 		}
 	}
+}
+
+// frontErr says what is wrong with a file's frontmatter, or "" when it
+// parsed. Such a file is left alone.
+func frontErr(doc Doc) string {
+	if doc.FrontErr == nil {
+		return ""
+	}
+	return "frontmatter: " + doc.FrontErr.Error()
 }
 
 // addAlias maps a short ID to an item. Two items with one short ID both get a
@@ -85,6 +102,8 @@ func (b *Board) aliasPlan(p planFile, holder *Item) {
 	tmp := &Item{}
 	setIDs(tmp, "PLAN", p.doc)
 	holder.Problems = append(holder.Problems, tmp.Problems...)
+	holder.held = append(holder.held, HeldPlan{Path: p.path, RawID: tmp.RawID, RawHash: tmp.RawHash,
+		FrontErr: frontErr(p.doc)})
 	b.addAlias(tmp.ShortID, holder, "id")
 	b.addAlias(tmp.Hash, holder, "hash")
 }

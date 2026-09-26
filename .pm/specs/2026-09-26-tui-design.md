@@ -1,5 +1,7 @@
 ---
 status: done
+id: SPEC-4
+hash: ttye
 ---
 # pmb: TUI and CLI over the pm-board file contract
 

@@ -65,18 +65,33 @@ func CommitPaths(repo string, paths []string, msg string) Result {
 	return Result{Committed: true}
 }
 
-// AddedAt is the unix time of the first commit that added path, or 0 when
-// the path was never committed.
-func AddedAt(repo, path string) (int64, error) {
-	out, err := run(repo, "log", "--diff-filter=A", "--format=%ct", "--reverse", "--", path)
+// FirstSeen is where path first shows up along the first-parent history of
+// HEAD: its place in git rev-list --first-parent --reverse HEAD, counting
+// from zero. A file the branch only got through a merge is seen at that
+// merge, and a file never committed comes last. Commit order, not clock
+// time, so two commits in the same second cannot swap the order.
+func FirstSeen(repo, path string) (int, error) {
+	out, err := run(repo, "rev-list", "--first-parent", "--reverse", "HEAD")
 	if err != nil {
 		return 0, err
 	}
-	first, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
-	if first == "" {
-		return 0, nil
+	var commits []string
+	for _, h := range strings.Split(strings.TrimSpace(out), "\n") {
+		if h != "" {
+			commits = append(commits, h)
+		}
 	}
-	return strconv.ParseInt(first, 10, 64)
+	touched, err := run(repo, "log", "--first-parent", "--format=%H", "--reverse", "--", path)
+	if err != nil {
+		return 0, err
+	}
+	first, _, _ := strings.Cut(strings.TrimSpace(touched), "\n")
+	for i, h := range commits {
+		if h == first {
+			return i, nil
+		}
+	}
+	return len(commits), nil
 }
 
 // busy says why the repo cannot take a commit now, or "" when it can.

@@ -1,3 +1,7 @@
+---
+id: SPEC-3
+hash: sulf
+---
 # Short IDs for specs, plans, tasks and bugs
 
 Status: approved by the user on 2026-09-26. Builds on `.pm/specs/2026-09-26-file-contract-design.md` (section 1, IDs).

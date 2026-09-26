@@ -46,12 +46,26 @@ type Item struct {
 	ShortID      string // number ID like PLAN-12 or PLAN-12.3; "" when the file has none
 	Hash         string // permanent ID like PLAN-k3f2 or PLAN-k3f2.3; "" when none
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
+	RawID        string // id as the frontmatter holds it, "" when the file has none
+	RawHash      string // hash as the frontmatter holds it, "" when the file has none
 
+	held     []HeldPlan
 	fmStatus string
 	plans    int
 	specFile bool
 	seq      int
 }
+
+// HeldPlan is a plan file whose tasks show on another item, with the values
+// its own frontmatter holds.
+type HeldPlan struct {
+	Path, RawID, RawHash string
+	FrontErr             string
+}
+
+// HeldPlans lists the plan files whose tasks show on this item, in file
+// order. A tool that renumbers a plan needs these files, not the holder.
+func (it *Item) HeldPlans() []HeldPlan { return it.held }
 
 // Board holds every item of one repo, newest first.
 type Board struct {
@@ -342,7 +356,7 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
 	it.fmStatus = field(doc.Front, "status")
-	setIDs(it, Prefix(k, false), doc)
+	setIDs(it, Prefix(it.Kind, false), doc)
 	return it
 }
 
