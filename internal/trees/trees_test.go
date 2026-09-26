@@ -113,6 +113,102 @@ func TestOthersReadsUnmergedBranches(t *testing.T) {
 	}
 }
 
+func TestOthersReadsWorktreeKeptOnOldRoot(t *testing.T) {
+	repo, _ := setup(t)
+	// The main tree moved to .acta, but the worktree on disk still keeps .pm.
+	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if it := b.Get("plans/2026-09-21-a#task-1"); it.Status != "doing" || it.Worktree != "feat" {
+		t.Fatalf("task = %+v, want the checked box from the .pm worktree", it)
+	}
+}
+
+func TestOthersReadsWorktreeAlreadyOnNewRoot(t *testing.T) {
+	repo, wt := setup(t)
+	// The main tree still uses .pm, but the worktree already moved to .acta.
+	if err := os.RemoveAll(filepath.Join(wt, ".pm")); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(wt, ".acta/plans/2026-09-21-b.md"), "# Plan B\n\n### Task 1: One\n- [x] a\n- [ ] b\n")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if it := b.Get("plans/2026-09-21-b#task-1"); it == nil || it.Worktree != "feat" {
+		t.Fatalf("task = %+v, want the plan from the .acta worktree", it)
+	}
+}
+
+func TestOthersKeepsMatchingRootName(t *testing.T) {
+	repo, wt := setup(t)
+	// Both trees moved to .acta: the worktree must be read from .acta itself.
+	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
+	if err := os.RemoveAll(filepath.Join(wt, ".pm")); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(wt, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [x] a\n- [ ] b\n")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	others := Others(cfg)
+	if len(others) != 1 || others[0].Branch != "feat" || others[0].Cfg.Root != filepath.Join(wt, ".acta") {
+		t.Fatalf("others = %+v, want feat read from its own .acta", others)
+	}
+}
+
+func TestOthersReadsUnmergedBranchOnOldRoot(t *testing.T) {
+	repo, _ := setup(t)
+	run(t, repo, "checkout", "-q", "-b", "feat-x")
+	write(t, filepath.Join(repo, ".pm/specs/2026-09-26-x.md"), "# Branch story\n")
+	run(t, repo, "add", ".")
+	run(t, repo, "commit", "-q", "-m", "spec on feat-x")
+	run(t, repo, "checkout", "-q", "main")
+	// The main tree moved to .acta, but feat-x only ever held .pm files
+	// and is not checked out anywhere.
+	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if it := b.Get("specs/2026-09-26-x"); it == nil || it.Worktree != "feat-x" || it.OnDisk {
+		t.Fatalf("branch story = %+v, want feat-x read from git", it)
+	}
+}
+
+func TestOthersListsCheckedOutBranchOnce(t *testing.T) {
+	repo, _ := setup(t)
+	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, tr := range Others(cfg) {
+		if tr.Branch == "feat" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("feat listed %d times, want once", n)
+	}
+}
+
 func TestOthersOutsideGit(t *testing.T) {
 	cfg, _ := config.Load(t.TempDir(), "")
 	if Others(cfg) != nil {

@@ -94,7 +94,26 @@ All tasks run in order (each touches files the next one builds on): wave 1 task 
 
 **verify:** After `go run ./cmd/acta migrate-root`, this repo has `.acta/` and no `.pm/`, the move is one commit, `go run ./cmd/acta list --all` shows the same items (same short IDs, same statuses) as before the move, and the full gate passes. List the item count before and after.
 
-- [ ] **Step 1:** Record `go run ./cmd/acta list --all --json | jq length` and the list of short IDs.
-- [ ] **Step 2:** Run `go run ./cmd/acta migrate-root` (it commits). The orchestrator must have committed the plan file's ticks before this step, so `.pm/` has no uncommitted changes.
-- [ ] **Step 3:** Compare the list after the move with step 1; run the gate.
-- [ ] **Step 4:** Tick `plans/2026-09-27-rename-acta#task-5 --all` with `go run ./cmd/acta tick ...` (the plan now lives under `.acta/plans/`).
+- [x] **Step 1:** Record `go run ./cmd/acta list --all --json | jq length` and the list of short IDs.
+- [x] **Step 2:** Run `go run ./cmd/acta migrate-root` (it commits). The orchestrator must have committed the plan file's ticks before this step, so `.pm/` has no uncommitted changes.
+- [x] **Step 3:** Compare the list after the move with step 1; run the gate.
+- [x] **Step 4:** Tick `plans/2026-09-27-rename-acta#task-5 --all` with `go run ./cmd/acta tick ...` (the plan now lives under `.acta/plans/`).
+
+## Fix round 1
+
+### Task F1: migrate-root commits only the move and never half-moves
+
+**Files:** `internal/cli/migrate.go`, its test file.
+
+**verify:** On every repo state, `acta migrate-root` either moves `.pm/` (and `.pm.yaml`) to `.acta/` (and `.acta.yaml`) in exactly one commit that holds only those renames and a board that still lists every item afterwards, or refuses with exit 1 and changes nothing (working tree, index and HEAD byte-identical to before). List every repo state checked: clean; unrelated file staged; unrelated file modified but not staged; untracked `.pm.yaml`; modified `.pm.yaml`; `.pm.yaml` with `root: .pm`; `.pm.yaml` with other settings only; `.acta/` exists; `.pm/` missing; changes under `.pm/`.
+
+Review round 1 BLOCKERs (both axes), each needs a red test first:
+
+1. `internal/cli/migrate.go:66-67`: `git commit -q -m ...` has no pathspec, so anything the user had staged lands in the "move root folder" commit (`echo s > other.txt; git add other.txt; acta migrate-root` gives a commit with `A other.txt`). Expected: commit with a pathspec limited to `.pm .acta .pm.yaml .acta.yaml`, and the unrelated staged file stays staged and uncommitted afterwards.
+2. `internal/cli/migrate.go:59-66`: `.pm.yaml` handling. (a) An untracked or modified `.pm.yaml` passes the dirty check (which only looks at `.pm`), then the rename step fails after `.pm/` was already moved and staged: half-move, exit 3, and `.pm.yaml` `root: .pm` then points the board at a folder that is gone. (b) A tracked `.pm.yaml` with `root: .pm` is renamed as is, so `.acta.yaml` says `root: .pm` and `acta list --all` prints nothing. Spec §3: rename `.pm.yaml` only when it only holds settings. Expected: before any `git mv`, refuse (exit 1, nothing changed) when `.pm.yaml` is untracked or modified; when it holds `root: .pm` (or `root: ./.pm`), write it as `.acta.yaml` without that `root` line (the default lookup finds `.acta/`), in the same single commit; if any step after the first `git mv` fails, undo the moves so the repo is back as it was.
+
+- [ ] **Step 1: Write the failing tests** (one per repo state in the verify line that is not already covered).
+- [ ] **Step 2: Run them to see them fail.**
+- [ ] **Step 3: Fix** `migrate.go`.
+- [ ] **Step 4: Gate:** `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
+- [ ] **Step 5: Commit** (`fix(cli): migrate-root commits only the move and never half-moves`), tick `plans/2026-09-27-rename-acta#task-F1 --all` with `go run ./cmd/acta tick`.
