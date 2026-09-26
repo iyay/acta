@@ -1,0 +1,145 @@
+---
+name: review
+description: Use once, when every task of a plan is committed, and on each fix round after that. Dispatches two read-only reviewers in parallel (Spec axis and Standards axis) over an explicit git range, sorts every finding into BLOCKER or NOTE, and stops after three rounds. Also covers how to receive findings.
+---
+
+# Review
+
+Review happens once, when every task of the plan is committed, then once per fix round. Never after each task.
+
+## Two reviewers, in parallel
+
+Dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
+
+- **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
+- **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.
+
+Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Without a range a reviewer looks at the wrong span. Reviewers never edit, stage, commit or run a formatter; they may run tests to prove a finding. Ask them to test a property, not to hunt for any case you did not test.
+
+## Finding bar: BLOCKER or NOTE
+
+A **BLOCKER** is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
+
+Everything else is a **NOTE**: one line each, kept in memory, never a task. Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
+
+## The three questions, and the deep lens
+
+Outside the deep lens, the review answers three questions and stops:
+1. Does it match the approved spec and plan?
+2. Does it run: tests and type checks green, output shown?
+3. Do the tests go red when the change is reverted?
+
+The deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) applies only to trust boundaries, auth, money, migrations and deletes.
+
+Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTEs as a flat list, and a last line of one word: CLEAN or BLOCKED.
+
+## Budget: three rounds, then land or ask
+
+1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: land now with `pm:land`.
+2. BLOCKERs: one fix task holding all of them, appended to the same plan as a `## Fix round <n>` section, in the same worktree, landing as one commit.
+3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: land. BLOCKER: one more fix task.
+4. Round 3 reviews the second fix range only. CLEAN: land. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head.
+
+There is never a round 4. A round with no BLOCKER does not start. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE.
+
+## Small changes
+
+A change you judge small (one concern, trivial logic, no trust boundary, and you are sure) may take an inline self-review instead of the two reviewers: read the full diff, answer the three questions, state a verdict. Security, auth, data migration and money always take the two reviewers. Work another agent wrote (the `dispatch` executor) always takes the two reviewers: you did not watch it being written.
+
+## Receiving findings
+
+Verify each finding against the code before acting. Push back with reasoning when a reviewer is wrong; a wrong finding routed as a task wastes a round.
+
+### The Response Pattern
+
+```
+WHEN receiving code review feedback:
+
+1. READ: Complete feedback without reacting
+2. UNDERSTAND: Restate requirement in own words (or ask)
+3. VERIFY: Check against codebase reality
+4. EVALUATE: Technically sound for THIS codebase?
+5. RESPOND: Technical acknowledgment or reasoned pushback
+6. IMPLEMENT: One item at a time, test each
+```
+
+### Forbidden Responses
+
+**NEVER:**
+- "You're absolutely right!" (explicit instruction-file violation)
+- "Great point!" / "Excellent feedback!" (performative)
+- "Let me implement that now" (before verification)
+
+**INSTEAD:**
+- Restate the technical requirement
+- Ask clarifying questions
+- Push back with technical reasoning if wrong
+- Just start working (actions > words)
+
+### Handling Unclear Feedback
+
+```
+IF any item is unclear:
+  STOP - do not implement anything yet
+  ASK for clarification on unclear items
+
+WHY: Items may be related. Partial understanding = wrong implementation.
+```
+
+**Example:**
+```
+your human partner: "Fix 1-6"
+You understand 1,2,3,6. Unclear on 4,5.
+
+❌ WRONG: Implement 1,2,3,6 now, ask about 4,5 later
+✅ RIGHT: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
+```
+
+### When To Push Back
+
+Push back when:
+- Suggestion breaks existing functionality
+- Reviewer lacks full context
+- Violates YAGNI (unused feature)
+- Technically incorrect for this stack
+- Legacy/compatibility reasons exist
+- Conflicts with your human partner's architectural decisions
+
+**How to push back:**
+- Use technical reasoning, not defensiveness
+- Ask specific questions
+- Reference working tests/code
+- Involve your human partner if architectural
+
+**If you're uncomfortable pushing back out loud:** Name that tension, then tell your partner about the issue you've seen. They'll appreciate your honesty.
+
+### Acknowledging Correct Feedback
+
+When feedback IS correct:
+```
+✅ "Fixed. [Brief description of what changed]"
+✅ "Good catch - [specific issue]. Fixed in [location]."
+✅ [Just fix it and show in the code]
+
+❌ "You're absolutely right!"
+❌ "Great point!"
+❌ "Thanks for catching that!"
+❌ "Thanks for [anything]"
+❌ ANY gratitude expression
+```
+
+**Why no thanks:** Actions speak. Just fix it. The code itself shows you heard the feedback.
+
+**If you catch yourself about to write "Thanks":** DELETE IT. State the fix instead.
+
+### Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Performative agreement | State requirement or just act |
+| Blind implementation | Verify against codebase first |
+| Batch without testing | One at a time, test each |
+| Assuming reviewer is right | Check if breaks things |
+| Avoiding pushback | Technical correctness > comfort |
+| Partial implementation | Clarify all items first |
+| Can't verify, proceed anyway | State limitation, ask for direction |
