@@ -227,6 +227,52 @@ func TestMigrateRootRefusesUntrackedYaml(t *testing.T) {
 	assertRefused(t, dir)
 }
 
+// TestMigrateRootRefusesIgnoredUntrackedYaml covers a .pm.yaml that is
+// untracked and also listed in .gitignore. A plain git status cannot see an
+// ignored file, so the command has to ask git whether the file is tracked at
+// all and refuse before the first move. Without that the move happens and
+// git mv fails late with a raw git error and exit 3.
+func TestMigrateRootRefusesIgnoredUntrackedYaml(t *testing.T) {
+	dir := planRepo(t)
+	writeRepoFile(t, dir, ".gitignore", ".pm.yaml\n")
+	commitAll(t, dir, "ignore yaml", ".gitignore")
+	writeRepoFile(t, dir, ".pm.yaml", "root: .pm\n")
+	if s := gitOut(t, dir, "status", "--porcelain"); strings.Contains(s, ".pm.yaml") {
+		t.Fatalf("fixture broken, .pm.yaml shows in status %q", s)
+	}
+
+	before := repoSnapshot(t, dir)
+	var stdout, stderr strings.Builder
+	if code := migrateRoot(dir, &stdout, &stderr); code != 1 {
+		t.Fatalf("exit %d, want 1 (stderr %q)", code, stderr.String())
+	}
+	if s := stderr.String(); !strings.Contains(s, ".pm.yaml") || strings.Count(s, "\n") != 1 {
+		t.Fatalf("stderr %q must be one line naming .pm.yaml", s)
+	}
+	if after := repoSnapshot(t, dir); after != before {
+		t.Fatalf("a refusal changed the repo\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// TestMigrateRootMovesYamlThatIsTrackedButIgnored pins the other side of that
+// check: a .pm.yaml that is committed and only added to .gitignore later is
+// still tracked, so git can rename it and the move goes ahead.
+func TestMigrateRootMovesYamlThatIsTrackedButIgnored(t *testing.T) {
+	dir := migrateRepo(t)
+	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n")
+	commitAll(t, dir, "add yaml", ".pm.yaml")
+	writeRepoFile(t, dir, ".gitignore", ".pm.yaml\n")
+	commitAll(t, dir, "ignore yaml", ".gitignore")
+
+	var stdout, stderr strings.Builder
+	if code := migrateRoot(dir, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d stderr %q", code, stderr.String())
+	}
+	if body := gitRaw(t, dir, "HEAD", ".acta.yaml"); body != "dirs:\n  plans: plans\n" {
+		t.Fatalf(".acta.yaml in HEAD is %q", body)
+	}
+}
+
 func TestMigrateRootRefusesModifiedYaml(t *testing.T) {
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n")
