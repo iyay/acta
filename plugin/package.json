@@ -1,0 +1,13 @@
+{
+  "name": "pm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "omp extension for the pm plugin: session rules and the voice reminder",
+  "pi": {
+    "extensions": ["./omp/index.ts"],
+    "skills": ["./skills"]
+  },
+  "omp": {
+    "extensions": ["./omp/index.ts"]
+  }
+}

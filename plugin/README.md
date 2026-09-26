@@ -15,7 +15,7 @@ through `pmb`, the pm-board CLI.
    /plugin marketplace add /path/to/pm-board/plugin
    /plugin install pm@pm-local
    ```
-3. omp: see `omp/FACTS.md` for the commands proven on this machine.
+3. omp: `omp plugin link /path/to/pm-board/plugin`; if the extension does not run, see `omp/FACTS.md#installing-pm-in-omp`.
 
 The plugin writes only inside its own folder, `~/.pm/`, and the repo's `.pm/`.
 It never edits your CLAUDE.md, AGENTS.md or settings.

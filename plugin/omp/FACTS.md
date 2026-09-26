@@ -87,3 +87,29 @@ Type evidence: `BeforeAgentStartEventResult` in
 `{ stdout: string; stderr: string; code: number; killed: boolean }`,
 matching the observed `KEYS=stdout,stderr,code,killed`.
 
+
+## Installing pm in omp
+
+Install with `omp plugin link <path to pm-board>/plugin`. Linking loads the
+skills and the extension (`omp/index.ts`, declared under both the `pi` and
+`omp` keys of `plugin/package.json`) the same way the other installed plugins
+load. If the extension does not run after linking, add the extension path
+under `extensions:` in `~/.omp/agent/config.yml`. Both steps run in user
+scope; the user runs them, this plan only documents them.
+
+## pm extension check
+
+Checked 2026-09-26 with pmb on PATH, from a scratch folder (`<worktree>` is
+the pm-board checkout this plugin lives in):
+
+```text
+$ cd "$(mktemp -d)" && PM_VOICE_FILE="$(mktemp -d)/voice.yaml" command omp --no-session \
+    --plugin-dir <worktree>/plugin \
+    -e <worktree>/plugin/omp/index.ts \
+    -p "Quote the first line of any context message you received that starts with 'pm plugin is active'."
+"pm plugin is active. Use its skills for every workflow step:"
+```
+
+The extension runs under `-e` + `--plugin-dir`: the answer quotes the first
+line of the session rules, then the rules text flags the conflicting workflow
+plugin and the voice setup questions follow.
