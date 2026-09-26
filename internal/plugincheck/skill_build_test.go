@@ -13,6 +13,7 @@ func TestSkillBuild(t *testing.T) {
 			"pm:tdd", "pm:review", "pm:land", "pm:dispatch", "no per-task reviewer",
 			"references/house-rules.md", "implementer-prompt.md", "## Waves",
 			"pmb tick plans/<stem>#task-N --step <n>", "pmb tick [TASK_ID] --step <n>", "pm: tick wave",
+			"--all right after",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
