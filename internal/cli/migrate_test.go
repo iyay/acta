@@ -84,6 +84,16 @@ func TestMigrateRootHappyPath(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".pm.yaml")); !os.IsNotExist(err) {
 		t.Fatalf(".pm.yaml still exists")
 	}
+	// The move commit must hold the renames and nothing else.
+	want := map[string]bool{".pm/note.md": true, ".acta/note.md": true, ".pm.yaml": true, ".acta.yaml": true}
+	for _, p := range commitPaths(t, dir) {
+		if !want[p] {
+			t.Fatalf("commit touches %q, want only the move", p)
+		}
+	}
+	if got := gitRaw(t, dir, "HEAD", ".acta.yaml"); strings.Contains(got, "root:") {
+		t.Fatalf(".acta.yaml keeps a root line: %q", got)
+	}
 	msgs := gitLog(t, dir)
 	if len(msgs) != before+1 {
 		t.Fatalf("want one new commit, log is %v", msgs)
