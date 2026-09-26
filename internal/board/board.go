@@ -38,6 +38,8 @@ type Item struct {
 	Path         string   // absolute file path
 	Line         int      // 1-based line to open the file at
 	Legacy       bool
+	Worktree     string // branch of the worktree the file came from; "" for the main tree
+	OnDisk       bool   // false for items read from a branch that is not checked out
 	Problems     []string
 	Body         string // file body without frontmatter; a task holds only its section
 	TaskNum      string
@@ -86,12 +88,93 @@ type planFile struct {
 	id, path, date, slug string
 	legacy               bool
 	doc                  Doc
+	tree                 string
+	onDisk               bool
 }
 
-// Load reads the root folder and the legacy folders of cfg. A missing folder
-// is not an error; it just has no items.
-func Load(cfg config.Config) (*Board, error) {
+// Tree is another worktree of the same repo, read with its own config.
+// When Files is not nil the tree is a branch read from git, not from disk.
+type Tree struct {
+	Cfg    config.Config
+	Branch string
+	Files  map[string][]byte
+}
+
+type srcFile struct {
+	id, path, date, slug string
+	kind                 Kind // "" for a plan
+	legacy               bool
+	doc                  Doc
+	tree                 string // worktree or branch name; "" for the main tree
+	onDisk               bool
+	ticked               int
+}
+
+// Load reads one tree: the root folder and the legacy folders of cfg.
+func Load(cfg config.Config) (*Board, error) { return LoadTrees(cfg, nil) }
+
+// LoadTrees reads the main tree and the other worktrees into one board. A file
+// found only in a worktree is shown from there; a file found in both is shown
+// from the worktree only when its plan has more ticked boxes. A worktree that
+// cannot be read is skipped, so it never hides the main board.
+func LoadTrees(main config.Config, others []Tree) (*Board, error) {
+	files, err := collect(Tree{Cfg: main})
+	if err != nil {
+		return nil, err
+	}
+	at := map[string]int{}
+	for i, f := range files {
+		at[fileKey(f)] = i
+	}
+	for _, t := range others {
+		more, err := collect(t)
+		if err != nil {
+			continue
+		}
+		for _, f := range more {
+			k := fileKey(f)
+			i, ok := at[k]
+			if !ok {
+				at[k] = len(files)
+				files = append(files, f)
+				continue
+			}
+			if f.ticked > files[i].ticked {
+				files[i] = f
+			}
+		}
+	}
+
 	b := &Board{byID: map[string]*Item{}}
+	var plans []planFile
+	for _, f := range files {
+		if f.kind == "" {
+			plans = append(plans, planFile{id: f.id, path: f.path, date: f.date, slug: f.slug, legacy: f.legacy, doc: f.doc, tree: f.tree, onDisk: f.onDisk})
+			continue
+		}
+		it := fileItem(f.kind, f.id, f.path, f.date, f.slug, f.legacy, f.doc)
+		it.specFile = f.kind == KindStory
+		it.Worktree = f.tree
+		it.OnDisk = f.onDisk
+		b.add(it)
+	}
+	// Plans link after every spec and bug is known, so order does not matter.
+	for _, p := range plans {
+		b.linkPlan(p)
+	}
+	b.derive()
+	b.sortItems()
+	return b, nil
+}
+
+// collect reads every planning file of one tree. A missing folder has no
+// files. A tree with Files set is a branch read from git: only its root folder
+// counts, and its paths are shown as "<branch>:<path>".
+func collect(t Tree) ([]srcFile, error) {
+	if t.Files != nil {
+		return collectFiles(t), nil
+	}
+	cfg, tree := t.Cfg, t.Branch
 	type source struct {
 		base, idRoot string
 		dirs         config.Dirs
@@ -102,8 +185,7 @@ func Load(cfg config.Config) (*Board, error) {
 		sources = append(sources, source{base: l, idRoot: cfg.RepoRoot,
 			dirs: config.Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}, legacy: true})
 	}
-
-	var plans []planFile
+	var out []srcFile
 	for _, s := range sources {
 		parts := []struct {
 			dir  string
@@ -121,25 +203,61 @@ func Load(cfg config.Config) (*Board, error) {
 					return nil, err
 				}
 				doc := Parse(src)
-				id := makeID(s.idRoot, f)
 				date, slug := splitName(filepath.Base(f))
-				if part.kind == "" {
-					plans = append(plans, planFile{id: id, path: f, date: date, slug: slug, legacy: s.legacy, doc: doc})
-					continue
+				ticked := 0
+				for _, t := range doc.Tasks {
+					ticked += t.Done
 				}
-				it := fileItem(part.kind, id, f, date, slug, s.legacy, doc)
-				it.specFile = part.kind == KindStory
-				b.add(it)
+				out = append(out, srcFile{id: makeID(s.idRoot, f), path: f, date: date, slug: slug,
+					kind: part.kind, legacy: s.legacy, doc: doc, tree: tree, onDisk: true, ticked: ticked})
 			}
 		}
 	}
-	// Plans link after every spec and bug is known, so order does not matter.
-	for _, p := range plans {
-		b.linkPlan(p)
+	return out, nil
+}
+
+func collectFiles(t Tree) []srcFile {
+	cfg := t.Cfg
+	rootRel, err := filepath.Rel(cfg.RepoRoot, cfg.Root)
+	if err != nil {
+		return nil
 	}
-	b.derive()
-	b.sortItems()
-	return b, nil
+	rootRel = filepath.ToSlash(rootRel)
+	kinds := map[string]Kind{cfg.Dirs.Specs: KindStory, cfg.Dirs.Bugs: KindBug, cfg.Dirs.Plans: ""}
+	names := make([]string, 0, len(t.Files))
+	for name := range t.Files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var out []srcFile
+	for _, name := range names {
+		rest, ok := strings.CutPrefix(name, rootRel+"/")
+		if !ok || !strings.HasSuffix(rest, ".md") {
+			continue
+		}
+		dir, file, ok := strings.Cut(rest, "/")
+		kind, known := kinds[dir]
+		if !ok || !known || strings.Contains(file, "/") {
+			continue
+		}
+		doc := Parse(t.Files[name])
+		date, slug := splitName(file)
+		ticked := 0
+		for _, ts := range doc.Tasks {
+			ticked += ts.Done
+		}
+		out = append(out, srcFile{id: strings.TrimSuffix(rest, ".md"), path: t.Branch + ":" + name,
+			date: date, slug: slug, kind: kind, doc: doc, tree: t.Branch, ticked: ticked})
+	}
+	return out
+}
+
+// fileKey keeps root and legacy files apart, since their ids use different roots.
+func fileKey(f srcFile) string {
+	if f.legacy {
+		return "legacy:" + f.id
+	}
+	return "root:" + f.id
 }
 
 // Get returns the item with this id, or nil.
@@ -235,6 +353,8 @@ func (b *Board) linkPlan(p planFile) {
 	}
 	if parent == nil {
 		parent = fileItem(KindStory, p.id, p.path, p.date, p.slug, p.legacy, p.doc)
+		parent.Worktree = p.tree
+		parent.OnDisk = p.onDisk
 		if problem != "" {
 			parent.Problems = append(parent.Problems, problem)
 		}
@@ -253,7 +373,8 @@ func (b *Board) linkPlan(p planFile) {
 		}
 		b.add(&Item{ID: id, Kind: KindTask, Title: title, Date: p.date, Slug: p.slug,
 			Ref: parent.Ref, Parent: parent.ID, Done: t.Done, Total: t.Total,
-			Path: p.path, Line: t.Line, Legacy: p.legacy, Body: t.Body, TaskNum: t.Num})
+			Path: p.path, Line: t.Line, Legacy: p.legacy, Body: t.Body, TaskNum: t.Num,
+			Worktree: p.tree, OnDisk: p.onDisk})
 		parent.Children = append(parent.Children, id)
 	}
 }

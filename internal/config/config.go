@@ -21,12 +21,14 @@ type Dirs struct {
 
 // Config says where the planning files of one repo live. Paths are absolute.
 type Config struct {
-	RepoRoot   string
-	Root       string
-	Dirs       Dirs
-	Legacy     []string
-	AutoCommit bool
-	IsGit      bool
+	RepoRoot    string
+	Root        string
+	Dirs        Dirs
+	Legacy      []string
+	AutoCommit  bool
+	IsGit       bool
+	Branches    []string // glob patterns; empty means every unmerged branch
+	BranchesOff bool
 }
 
 type fileConfig struct {
@@ -34,6 +36,7 @@ type fileConfig struct {
 	Dirs       Dirs      `yaml:"dirs"`
 	Legacy     *[]string `yaml:"legacy"`
 	AutoCommit *bool     `yaml:"auto_commit"`
+	Branches   *[]string `yaml:"branches"`
 }
 
 // Default is what a repo gets with no .pm.yaml, no flag and no env var.
@@ -94,6 +97,15 @@ func Load(cwd, flagRoot string) (Config, error) {
 	}
 	if fc.AutoCommit != nil {
 		cfg.AutoCommit = *fc.AutoCommit
+	}
+	// branches: missing reads every unmerged branch; [] reads none; a list
+	// keeps only names matching one of its patterns.
+	if fc.Branches != nil {
+		if len(*fc.Branches) == 0 {
+			cfg.BranchesOff = true
+		} else {
+			cfg.Branches = append([]string(nil), (*fc.Branches)...)
+		}
 	}
 	return cfg, nil
 }

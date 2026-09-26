@@ -130,3 +130,20 @@ func TestLoadOutsideGit(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestLoadBranches(t *testing.T) {
+	repo := gitInit(t)
+	t.Setenv("PM_ROOT", "")
+	got, _ := Load(repo, "")
+	if got.BranchesOff || got.Branches != nil {
+		t.Fatalf("default: %+v", got)
+	}
+	write(t, filepath.Join(repo, ".pm.yaml"), "branches: []\n")
+	if got, _ := Load(repo, ""); !got.BranchesOff {
+		t.Fatal("branches: [] must turn branch reading off")
+	}
+	write(t, filepath.Join(repo, ".pm.yaml"), "branches: [\"feat/*\"]\n")
+	if got, _ := Load(repo, ""); got.BranchesOff || !reflect.DeepEqual(got.Branches, []string{"feat/*"}) {
+		t.Fatalf("patterns: %+v", got)
+	}
+}
