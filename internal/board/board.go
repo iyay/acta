@@ -43,6 +43,9 @@ type Item struct {
 	Problems     []string
 	Body         string // file body without frontmatter; a task holds only its section
 	TaskNum      string
+	ShortID      string // number ID like PLAN-12 or PLAN-12.3; "" when the file has none
+	Hash         string // permanent ID like PLAN-k3f2 or PLAN-k3f2.3; "" when none
+	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 
 	fmStatus string
 	plans    int
@@ -54,6 +57,7 @@ type Item struct {
 type Board struct {
 	Items []*Item
 	byID  map[string]*Item
+	alias map[string]*Item // short IDs (number and hash, any case) to items
 }
 
 var (
@@ -145,7 +149,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		}
 	}
 
-	b := &Board{byID: map[string]*Item{}}
+	b := &Board{byID: map[string]*Item{}, alias: map[string]*Item{}}
 	var plans []planFile
 	for _, f := range files {
 		if f.kind == "" {
@@ -157,6 +161,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		it.Worktree = f.tree
 		it.OnDisk = f.onDisk
 		b.add(it)
+		b.aliasItem(it)
 	}
 	// Plans link after every spec and bug is known, so order does not matter.
 	for _, p := range plans {
@@ -260,8 +265,13 @@ func fileKey(f srcFile) string {
 	return "root:" + f.id
 }
 
-// Get returns the item with this id, or nil.
-func (b *Board) Get(id string) *Item { return b.byID[id] }
+// Get finds an item by path ID, number ID or hash ID. Short IDs ignore case.
+func (b *Board) Get(id string) *Item {
+	if it := b.byID[id]; it != nil {
+		return it
+	}
+	return b.alias[strings.ToLower(id)]
+}
 
 // List gives non-legacy items of kind k. Closed ones are left out unless all is set.
 func (b *Board) List(k Kind, all bool) []*Item {
@@ -332,6 +342,7 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
 	it.fmStatus = field(doc.Front, "status")
+	setIDs(it, Prefix(k, false), doc)
 	return it
 }
 
@@ -359,8 +370,15 @@ func (b *Board) linkPlan(p planFile) {
 			parent.Problems = append(parent.Problems, problem)
 		}
 		b.add(parent)
+		// Plans speak PLAN even when they stand in for a story.
+		setIDs(parent, "PLAN", p.doc)
+		b.aliasItem(parent)
+	} else {
+		b.aliasPlan(p, parent)
 	}
 	parent.plans++
+	planIDs := &Item{}
+	setIDs(planIDs, "PLAN", p.doc)
 	for _, t := range p.doc.Tasks {
 		id := p.id + "#task-" + t.Num
 		if b.byID[id] != nil {
@@ -371,10 +389,12 @@ func (b *Board) linkPlan(p planFile) {
 		if title == "" {
 			title = "Task " + t.Num
 		}
-		b.add(&Item{ID: id, Kind: KindTask, Title: title, Date: p.date, Slug: p.slug,
+		task := &Item{ID: id, Kind: KindTask, Title: title, Date: p.date, Slug: p.slug,
 			Ref: parent.Ref, Parent: parent.ID, Done: t.Done, Total: t.Total,
 			Path: p.path, Line: t.Line, Legacy: p.legacy, Body: t.Body, TaskNum: t.Num,
-			Worktree: p.tree, OnDisk: p.onDisk})
+			PlanPath: p.path, Worktree: p.tree, OnDisk: p.onDisk}
+		b.add(task)
+		b.aliasTask(task, planIDs.ShortID, planIDs.Hash)
 		parent.Children = append(parent.Children, id)
 	}
 }
