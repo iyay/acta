@@ -75,13 +75,13 @@ Only use this if Step 1a does not apply — you have no native worktree tool ava
 Directory selection, in priority order. Explicit user preference always beats observed filesystem state.
 
 1. Check your instructions for a declared worktree directory preference. If the user has already specified one, use it without asking.
-2. Otherwise use `../<repo>-<slug>`, next to the repo, never inside it.
+2. Otherwise use `../<repo>-<slug>`, next to the repo, never inside it (`$REPO` is the repo folder name, `$SLUG` the branch name).
 
 Create it:
 
 ```bash
-git worktree add "$LOCATION/$BRANCH_NAME" -b "$BRANCH_NAME"
-cd "$LOCATION/$BRANCH_NAME"
+git worktree add "../$REPO-$SLUG" -b "$SLUG"
+cd "../$REPO-$SLUG"
 ```
 
 Sandbox fallback: if `git worktree add` fails with a permission error, tell the user the sandbox blocked worktree creation and you are working in the current directory instead. Then run setup and baseline tests in place.
