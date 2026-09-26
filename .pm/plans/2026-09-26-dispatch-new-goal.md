@@ -40,7 +40,7 @@
 - Consumes: nothing.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/plugincheck/skill_dispatch_test.go`:
 
@@ -67,12 +67,12 @@ func TestDispatchNewThenGoal(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `go test ./internal/plugincheck -run TestDispatchNewThenGoal -count=1`
 Expected: FAIL naming missing strings in both files and the old "Back-to-back" line in SKILL.md.
 
-- [ ] **Step 3: Fix `plugin/skills/dispatch/SKILL.md`**
+- [x] **Step 3: Fix `plugin/skills/dispatch/SKILL.md`**
 
 In the section "## `/new` and `/goal` — every dispatch, every backend", replace the line starting `Order: \`/new\` → \`/goal` (the one that ends "Back-to-back, no settle-wait. Checkpoint after the `/goal`.") with:
 
@@ -87,7 +87,7 @@ In the section "## `/new` and `/goal` — every dispatch, every backend", replac
 `/new` and `/goal` go as two prompts, never in one prompt, and `/new` never goes before omp is ready: otherwise both land as one message and the goal never sets. These reads are part of delivery, not the comprehension checkpoint. Checkpoint after the `/goal`.
 ```
 
-- [ ] **Step 4: Fix `plugin/skills/dispatch/herdr-delivery.md`**
+- [x] **Step 4: Fix `plugin/skills/dispatch/herdr-delivery.md`**
 
 In "## Deliver the pointer message", replace the line `New session, plan, or worktree — clear first, then set the goal:` and the code block right after it with:
 
@@ -111,16 +111,16 @@ herdr agent read <slug> --source visible --lines 6     # status bar must show: �
 
 Then change the line `Fix round on the plan the agent already holds — \`/goal\` alone, same inline tail:` to `Step 4, fix round: \`/goal\` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:`.
 
-- [ ] **Step 5: Run the tests to see them pass**
+- [x] **Step 5: Run the tests to see them pass**
 
 Run: `go test ./internal/plugincheck -count=1`
 Expected: PASS (the existing `TestSkillDispatch` MaxLines 620 still holds).
 
-- [ ] **Step 6: Prove each file is guarded on its own**
+- [x] **Step 6: Prove each file is guarded on its own**
 
 In a scratch copy, revert only `plugin/skills/dispatch/SKILL.md` (`git stash push plugin/skills/dispatch/SKILL.md`), run `go test ./internal/plugincheck -run TestDispatchNewThenGoal -count=1`, see FAIL for `dispatch/SKILL.md`, then `git stash pop`. Do the same for `herdr-delivery.md`.
 
-- [ ] **Step 7: Run the gate, then commit**
+- [x] **Step 7: Run the gate, then commit**
 
 ```bash
 git add plugin/skills/dispatch/SKILL.md plugin/skills/dispatch/herdr-delivery.md internal/plugincheck/skill_dispatch_test.go
@@ -128,3 +128,61 @@ git commit -m "fix(plugin): dispatch sends /new and /goal as two confirmed steps
 ```
 
 Then run `pmb tick plans/2026-09-26-dispatch-new-goal#task-1 --all`.
+
+## Fix round 1
+
+### Task F1: Put back the fix-round example
+
+**Files:**
+- Modify: `plugin/skills/dispatch/herdr-delivery.md` (the line "Step 4, fix round: ..." in "## Deliver the pointer message")
+- Test: `internal/plugincheck/skill_dispatch_test.go` (func `TestDispatchNewThenGoal`)
+
+**verify:** herdr-delivery.md gives a copyable fix-round command right under the "Step 4, fix round" line, with the `<fixed-from>..<new-head>` review range, and a test goes red if that command is removed again. List every fix-round mention in both dispatch files and what command each points to.
+
+Review round 1 BLOCKER: commit 79e81ab deleted the fix-round bash block under that line; the plan only asked to reword the line. `grep -rn fixed-from plugin/skills` finds nothing.
+
+- [ ] **Step 1: Write the failing test**
+
+In `TestDispatchNewThenGoal`, after the loop, add:
+
+```go
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The fix-round command was once deleted by accident. It is the only one
+	// with the fix range, so an agent on a fix round needs it.
+	if !strings.Contains(string(b), "/pm:review <fixed-from>..<new-head>") {
+		t.Error("dispatch/herdr-delivery.md lost the fix-round command with <fixed-from>..<new-head>")
+	}
+```
+
+- [ ] **Step 2: Run it to see it fail**
+
+Run: `go test ./internal/plugincheck -run TestDispatchNewThenGoal -count=1`
+Expected: FAIL with "lost the fix-round command".
+
+- [ ] **Step 3: Put the block back**
+
+Directly under the line `Step 4, fix round: \`/goal\` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:` insert this block (it is the one deleted in 79e81ab, word for word, plus the check line):
+
+````markdown
+```bash
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (pm:build, pm:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
+herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
+```
+````
+
+- [ ] **Step 4: Run the tests, then the gate**
+
+Run: `go test ./internal/plugincheck -count=1`, then `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
+Expected: PASS (dispatch folder stays under MaxLines 620).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add plugin/skills/dispatch/herdr-delivery.md internal/plugincheck/skill_dispatch_test.go
+git commit -m "fix(plugin): restore the fix-round dispatch command"
+```
+
+Then run `pmb tick plans/2026-09-26-dispatch-new-goal#task-F1 --all`.
