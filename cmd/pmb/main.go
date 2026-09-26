@@ -92,8 +92,10 @@ func run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdHook(args[1:], stdout, stderr)
 	case "tick":
 		return cmdTick(args[1:], stdout, stderr)
+	case "id":
+		return cmdID(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use list, show, set, tick or bug new\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick or bug new\n", args[0])
 		return exitBadInput
 	}
 }
@@ -164,6 +166,8 @@ func loadAllTrees(root string, stderr io.Writer) (config.Config, *board.Board, i
 
 type outItem struct {
 	ID           string       `json:"id"`
+	ShortID      string       `json:"short_id"`
+	Hash         string       `json:"hash"`
 	Type         string       `json:"type"`
 	Title        string       `json:"title"`
 	Status       string       `json:"status"`
@@ -191,7 +195,7 @@ func toJSON(cfg config.Config, it *board.Item) outItem {
 			rel = r
 		}
 	}
-	j := outItem{ID: it.ID, Type: string(it.Kind), Title: it.Title, Status: it.Status,
+	j := outItem{ID: it.ID, ShortID: it.ShortID, Hash: it.Hash, Type: string(it.Kind), Title: it.Title, Status: it.Status,
 		StatusSource: it.StatusSource, Ref: it.Ref, Parent: it.Parent,
 		Children: append([]string{}, it.Children...), Progress: jsonProgress{it.Done, it.Total},
 		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Worktree: it.Worktree, OnDisk: it.OnDisk,
@@ -229,7 +233,11 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 		return printJSON(stdout, stderr, out)
 	}
 	for _, it := range out {
-		fmt.Fprintf(stdout, "%-11s %-6s %s  %s\n", it.Status, it.Type, it.ID, it.Title)
+		short := it.ShortID
+		if short == "" {
+			short = "-"
+		}
+		fmt.Fprintf(stdout, "%-11s %-6s %-10s %s  %s\n", it.Status, it.Type, short, it.ID, it.Title)
 	}
 	return exitOK
 }
@@ -255,8 +263,12 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	if *asJSON {
 		return printJSON(stdout, stderr, j)
 	}
+	head := j.ID
+	if j.ShortID != "" {
+		head = j.ShortID + " " + j.Hash + " " + j.ID
+	}
 	fmt.Fprintf(stdout, "%s  %s\ntype: %s\nstatus: %s (%s)\nprogress: %d/%d\npath: %s\n",
-		j.ID, j.Title, j.Type, j.Status, j.StatusSource, j.Progress.Done, j.Progress.Total, j.Path)
+		head, j.Title, j.Type, j.Status, j.StatusSource, j.Progress.Done, j.Progress.Total, j.Path)
 	if j.Ref != "" {
 		fmt.Fprintf(stdout, "ref: %s\n", j.Ref)
 	}
