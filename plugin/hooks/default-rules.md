@@ -1,4 +1,4 @@
-pm plugin is active. Use its skills for every workflow step:
+pm plugin is active. Before each workflow step, load its pm skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
 - pm:brainstorm: before any new feature, fix or behaviour change; design first, then wait for a yes
 - pm:plan: after the design is approved; tasks with verify lines and waves, then wait for a yes
 - pm:build: run an approved plan in a worktree; executor subagent (default), dispatch or inline
@@ -18,6 +18,7 @@ Core rules:
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
+7. If your instructions name a skill from the superpowers plugin that is not installed, use the pm skill for that step: brainstorming→pm:brainstorm, writing-plans→pm:plan, subagent-driven-development→pm:build, using-git-worktrees→pm:build, test-driven-development→pm:tdd, systematic-debugging→pm:debug, requesting-code-review→pm:review, receiving-code-review→pm:review, verification-before-completion→pm:land, finishing-a-development-branch→pm:land.
 
 Voice:
 - Write every chat message to the user in English.

@@ -197,3 +197,31 @@ func TestDefaultRulesFile(t *testing.T) {
 		t.Fatal("plugin/hooks/default-rules.md is stale; run: go test ./internal/hook -run TestDefaultRulesFile -update")
 	}
 }
+
+func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
+	worst := korean()
+	worst.Conflicts = []string{"superpowers@a"}
+	mappings := []string{
+		"brainstorming→pm:brainstorm", "writing-plans→pm:plan",
+		"subagent-driven-development→pm:build", "using-git-worktrees→pm:build",
+		"test-driven-development→pm:tdd", "systematic-debugging→pm:debug",
+		"requesting-code-review→pm:review", "receiving-code-review→pm:review",
+		"verification-before-completion→pm:land", "finishing-a-development-branch→pm:land",
+	}
+	for name, in := range map[string]Input{
+		"voice set": korean(),
+		"conflicts": worst,
+		"first run": {Voice: voice.Default()},
+		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		out := SessionStart(in)
+		for _, want := range append([]string{
+			"load its pm skill with the Skill tool", "This list is only an index",
+			"skill from the superpowers plugin that is not installed",
+		}, mappings...) {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: missing %q", name, want)
+			}
+		}
+	}
+}
