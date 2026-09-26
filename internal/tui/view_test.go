@@ -19,10 +19,13 @@ func sized(m Model, w, h int) Model {
 }
 
 // ansi strips the color codes a style leaves behind, so a test can read the
-// screen the way a person does.
+// screen the way a person does. It also strips the OSC 8 hyperlink wrappers
+// the bottom line puts around its links, leaving the link words behind.
 var ansi = regexp.MustCompile("\x1b\\[[0-9;]*[A-Za-z]")
 
-func plain(s string) string { return ansi.ReplaceAllString(s, "") }
+var osc = regexp.MustCompile("\x1b\\]8;;[^\x1b\\\\]*\x1b\\\\")
+
+func plain(s string) string { return ansi.ReplaceAllString(osc.ReplaceAllString(s, ""), "") }
 
 // body cuts the pane walls off a screen line and drops the padding on the
 // right, so a test sees only what the pane holds.
@@ -72,7 +75,7 @@ func TestViewShowsTheThreePanes(t *testing.T) {
 		"[1]─Specs", "─ Plans", "─ Tasks", "─ Bugs",
 		"[2]─Done", "─ Dropped",
 		"[3]─Detail",
-		"pmb · basic · live · 20:46",
+		"basic · live · 2026-09-27 20:46",
 		"specs/2026-09-20-alpha  Alpha story",
 		"in-progress · 1/2",
 		"ID        : specs/2026-09-20-alpha",
@@ -258,43 +261,107 @@ func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
 	}
 }
 
-func TestViewStatusLineShowsKeysAndClock(t *testing.T) {
+func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	m := sized(clocked(newModel(t), 20, 46), 100, 30)
 	last := lastLine(m.View())
 	if got := lipgloss.Width(last); got != 100 {
 		t.Errorf("the status line is %d cells wide, want 100", got)
 	}
-	if !strings.HasPrefix(plain(last), "1 2 3") {
-		t.Errorf("the key hints should sit on the left, got %q", plain(last))
+	if !strings.HasPrefix(plain(last), "? help") {
+		t.Errorf("the left should show only ? help, got %q", plain(last))
 	}
-	if !strings.Contains(last, "pmb · basic · live · 20:46") {
-		t.Errorf("the clock or the mode is missing: %q", plain(last))
+	if !strings.Contains(last, "basic · live · 2026-09-27 20:46") {
+		t.Errorf("the project, mode or date is missing: %q", plain(last))
 	}
-	if !strings.HasSuffix(plain(last), "20:46") {
-		t.Error("the clock should sit on the right")
+	if !strings.Contains(last, "Feedback") {
+		t.Errorf("the feedback link is missing: %q", plain(last))
+	}
+	if strings.Contains(plain(last), "Donate") {
+		t.Errorf("Donate shows with no url set: %q", plain(last))
+	}
+	if strings.Contains(plain(last), "pmb") {
+		t.Errorf("the line must not name pmb: %q", plain(last))
 	}
 	m.manual = true
-	if !strings.Contains(m.View(), "pmb · basic · paused · 20:46") {
+	if !strings.Contains(m.View(), "basic · paused · 2026-09-27 20:46") {
 		t.Error("watching off should read paused")
 	}
-	m.status = "pm: x status done ✓ committed"
+	m.status = "pm: x status done committed"
 	m = sized(m, 100, 30)
-	if !strings.Contains(m.View(), "✓ committed") {
+	if !strings.Contains(m.View(), "committed") {
 		t.Error("the last message should take the place of the hints")
 	}
 	m.searching, m.query = true, "alpha"
 	if !strings.Contains(plain(m.View()), "/alpha") {
 		t.Error("the search box should take the place of the hints")
 	}
-	// A narrow line gives up the hints, never the clock or the mode.
-	for _, w := range []int{59, 40, 30} {
+	for w := 30; w <= 200; w++ {
 		last := lastLine(sized(clocked(newModel(t), 20, 46), w, 20).View())
-		if got := lipgloss.Width(last); got != w {
-			t.Errorf("at %d columns the status line is %d cells wide", w, got)
+		if got := lipgloss.Width(last); got > w {
+			t.Fatalf("at %d columns the status line is %d cells wide", w, got)
 		}
-		if !strings.HasSuffix(plain(last), "pmb · basic · live · 20:46") {
-			t.Errorf("at %d columns the clock is missing: %q", w, plain(last))
+		if !strings.Contains(plain(last), "2026-09-27 20:46") {
+			t.Fatalf("at %d columns the date and time are missing: %q", w, plain(last))
 		}
+		if strings.Contains(plain(last), "pmb") {
+			t.Fatalf("at %d columns the line names pmb: %q", w, plain(last))
+		}
+	}
+}
+
+func TestViewStatusLineShowsDonateWhenSet(t *testing.T) {
+	m := sized(clocked(newModel(t), 20, 46), 200, 30)
+	m.cfg.Links.Donate = "https://ko-fi.com/someone"
+	last := lastLine(m.View())
+	if !strings.Contains(plain(last), "Donate") {
+		t.Errorf("Donate missing with the url set: %q", plain(last))
+	}
+	if !strings.Contains(plain(last), "Feedback") {
+		t.Errorf("Feedback missing: %q", plain(last))
+	}
+	m.cfg.Links.Donate = ""
+	if strings.Contains(plain(lastLine(m.View())), "Donate") {
+		t.Errorf("Donate shows with no url set: %q", plain(lastLine(m.View())))
+	}
+}
+
+func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
+	wide := plain(lastLine(sized(clocked(newModel(t), 20, 46), 200, 30).View()))
+	if !strings.Contains(wide, "basic · live · 2026-09-27 20:46") {
+		t.Fatalf("a wide line keeps all three, got %q", wide)
+	}
+	var sawProject, sawBareMode, sawDateOnly, sawLeftGone bool
+	for w := 199; w >= 30; w-- {
+		line := plain(lastLine(sized(clocked(newModel(t), 20, 46), w, 20).View()))
+		if !strings.Contains(line, "2026-09-27 20:46") {
+			t.Fatalf("at %d columns the date and time are gone: %q", w, line)
+		}
+		switch {
+		case strings.Contains(line, "basic"):
+			sawProject = true
+		case strings.Contains(line, "live") && !sawBareMode:
+			if sawDateOnly {
+				t.Fatalf("at %d columns the status came back after the date stood alone: %q", w, line)
+			}
+			sawBareMode = true
+		case !strings.Contains(line, "live"):
+			sawDateOnly = true
+		}
+		if !strings.Contains(line, "? help") {
+			sawLeftGone = true
+		}
+	}
+	if !sawProject {
+		t.Error("no width kept the project")
+	}
+	if !sawBareMode {
+		t.Error("no width dropped the project but kept the status")
+	}
+	if !sawDateOnly {
+		t.Error("no width dropped the status but kept the date")
+	}
+	if !sawLeftGone {
+		t.Error("no width gave up the left side")
 	}
 }
 
@@ -307,7 +374,7 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	if !strings.Contains(v, "[1]─Specs") || !strings.Contains(v, "[3]─Detail") {
 		t.Error("the popup should cover the panes, not replace them")
 	}
-	if !strings.HasSuffix(plain(lastLine(v)), "20:46") {
+	if !strings.HasSuffix(plain(lastLine(v)), "2026-09-27 20:46 | Feedback  dev") {
 		t.Error("the popup should not hide the status line")
 	}
 	if strings.Contains(press(m, "?").View(), "Keys") {

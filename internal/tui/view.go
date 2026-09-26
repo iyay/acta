@@ -22,7 +22,7 @@ var (
 )
 
 // hints is what the left of the status line says when nothing else is going on.
-const hints = "1 2 3 tab · ] [ tab · j k · enter edit · ? help"
+const hints = "? help"
 
 // helpLines is the key map the ? popup shows, grouped by pane.
 const helpLines = `1 2 3 tab       move between the panes
@@ -312,9 +312,122 @@ func (m Model) detailLines(w int) []string {
 	return lines
 }
 
-// statusLine draws the bottom line: the key hints, the search box or the last
-// message on the left, and where the board comes from, whether it is watched,
-// and the clock on the right.
+// statusPiece is one word group of the right side of the bottom line: the
+// words on screen and the link they open, empty when the words open nothing.
+// nInfo says how many leading pieces are info words (project, mode, date),
+// so the view and the mouse split info from links at the same place.
+type statusPiece struct {
+	text  string
+	url   string
+	nInfo int
+	x     int
+	w     int
+}
+
+// statusPieces lays out the right side of the bottom line: the project, the
+// watch mode and the date with time, then a divider, then the links and the
+// version. A narrow line drops the project first, then the mode, but the date
+// and time stay always, so the clock never leaves the screen. The view draws
+// these pieces and the mouse reads their boxes, so a click and the drawn
+// words cannot drift apart.
+func (m Model) statusPieces() []statusPiece {
+	info := []string{filepath.Base(m.cfg.RepoRoot), m.mode(), m.now.Format("2006-01-02 15:04")}
+	var links []statusPiece
+	if m.cfg.Links.Donate != "" {
+		links = append(links, statusPiece{text: "Donate", url: m.cfg.Links.Donate})
+	}
+	if m.cfg.Links.Feedback != "" {
+		links = append(links, statusPiece{text: "Feedback", url: m.cfg.Links.Feedback})
+	}
+	tail := append(links, statusPiece{text: m.version})
+	out := joinStatus(info, tail, m.width)
+	// Walk the same gaps the text draws, so each click box starts where its
+	// words start on screen.
+	right := statusText(out)
+	x := m.width - lipgloss.Width(right)
+	nInfo := 0
+	for _, p := range out {
+		if p.url != "" {
+			break
+		}
+		nInfo++
+	}
+	for i := range out {
+		if i > 0 {
+			if i == nInfo {
+				x += lipgloss.Width(" | ")
+			} else if i < nInfo {
+				x += lipgloss.Width(" · ")
+			} else {
+				x += 2
+			}
+		}
+		out[i].x, out[i].w, out[i].nInfo = x, lipgloss.Width(out[i].text), nInfo
+		x += out[i].w
+	}
+	return out
+}
+
+// joinStatus picks how many info words fit: it drops the project first, then
+// the mode, and keeps the date, the links and the version always. The left
+// side takes its cells first, so the drop matches the drawn line.
+func joinStatus(info []string, tail []statusPiece, w int) []statusPiece {
+	for len(info) > 1 {
+		out := append(infoPieces(info), tail...)
+		if lipgloss.Width(statusText(out))+lipgloss.Width(hints) <= w {
+			return out
+		}
+		info = info[1:]
+	}
+	return append(infoPieces(info), tail...)
+}
+
+func infoPieces(info []string) []statusPiece {
+	out := make([]statusPiece, 0, len(info))
+	for _, t := range info {
+		out = append(out, statusPiece{text: t})
+	}
+	return out
+}
+
+// statusText draws the pieces the way the bottom line shows them: the info
+// words joined by " · ", then " | ", then the links and the version joined by
+// two spaces. Links carry an OSC 8 wrapper so cmd+click opens them.
+func statusText(pieces []statusPiece) string {
+	nInfo := 0
+	for _, p := range pieces {
+		if p.url != "" {
+			break
+		}
+		nInfo++
+	}
+	words := make([]string, 0, len(pieces))
+	for _, p := range pieces {
+		word := p.text
+		if p.url != "" {
+			word = osc8(p.url, p.text)
+		}
+		words = append(words, word)
+	}
+	right := strings.Join(words[:nInfo], " · ")
+	if len(words) > nInfo {
+		if right != "" {
+			right += " | "
+		}
+		right += strings.Join(words[nInfo:], "  ")
+	}
+	return right
+}
+
+// osc8 wraps text in a terminal hyperlink, so cmd+click opens the url in
+// terminals that read them. Plain text stays readable where links do not work.
+func osc8(url, text string) string {
+	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
+}
+
+// statusLine draws the bottom line: the help hint, the search box or the last
+// message on the left, and the project, the watch mode, the date and time,
+// the links and the version on the right.
 func (m Model) statusLine() string {
 	left, dim := hints, true
 	switch {
@@ -323,22 +436,42 @@ func (m Model) statusLine() string {
 	case m.status != "":
 		left, dim = m.status, false
 	}
-	right := fmt.Sprintf("pmb · %s · %s · %s", filepath.Base(m.cfg.RepoRoot), m.mode(), m.now.Format("15:04"))
-	// The clock and the mode are what the line always tells, so the hints are
-	// what gives way when the window is narrow.
-	room := m.width - lipgloss.Width(right) - 1
-	if room < lipgloss.Width(left) {
-		if room < 1 {
+	pieces := m.statusPieces()
+	right := statusText(pieces)
+	m.statusBoxes = boxesOf(pieces)
+	// The date and the links are what the line always tells, so the left
+	// gives way first when the window is narrow.
+	room := m.width - lipgloss.Width(right) - lipgloss.Width(left)
+	if room < 0 {
+		if m.width-lipgloss.Width(right) <= 0 {
 			return fit(right, m.width)
 		}
-		left, room = fit(left, room), 1
-	} else {
-		room = m.width - lipgloss.Width(left) - lipgloss.Width(right)
+		left = fit(left, m.width-lipgloss.Width(right))
+		room = m.width - lipgloss.Width(right) - lipgloss.Width(left)
+		if room < 0 {
+			room = 0
+		}
 	}
 	if dim {
 		left = faint.Render(left)
 	}
-	return left + strings.Repeat(" ", room) + faint.Render(right)
+	gap := ""
+	if room > 0 {
+		gap = strings.Repeat(" ", room)
+	}
+	return left + gap + faint.Render(right)
+}
+
+// boxesOf keeps the link boxes of the drawn pieces, so a click and the drawn
+// words come from the same numbers.
+func boxesOf(pieces []statusPiece) []statusPiece {
+	out := make([]statusPiece, 0, len(pieces))
+	for _, p := range pieces {
+		if p.url != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // mode says whether the board follows the files as they change.

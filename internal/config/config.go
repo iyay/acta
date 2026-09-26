@@ -29,6 +29,13 @@ type Config struct {
 	IsGit       bool
 	Branches    []string // glob patterns; empty means every unmerged branch
 	BranchesOff bool
+	Links       Links
+}
+
+// Links holds the footer URLs: ko-fi for Donate, the tracker for Feedback.
+type Links struct {
+	Donate   string `yaml:"donate"`
+	Feedback string `yaml:"feedback"`
 }
 
 type fileConfig struct {
@@ -37,6 +44,7 @@ type fileConfig struct {
 	Legacy     *[]string `yaml:"legacy"`
 	AutoCommit *bool     `yaml:"auto_commit"`
 	Branches   *[]string `yaml:"branches"`
+	Links      Links     `yaml:"links"`
 }
 
 // Default is what a repo gets with no .pm.yaml, no flag and no env var.
@@ -47,6 +55,7 @@ func Default(repoRoot string) Config {
 		Dirs:       Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"},
 		Legacy:     []string{filepath.Join(repoRoot, "docs", "superpowers")},
 		AutoCommit: true,
+		Links:      Links{Feedback: "https://github.com/iyay/acta/issues"},
 	}
 }
 
@@ -106,6 +115,12 @@ func Load(cwd, flagRoot string) (Config, error) {
 		} else {
 			cfg.Branches = append([]string(nil), (*fc.Branches)...)
 		}
+	}
+	// Links: donate stays empty when unset; feedback falls back to the issue
+	// tracker when the file leaves it out.
+	cfg.Links = fc.Links
+	if cfg.Links.Feedback == "" {
+		cfg.Links.Feedback = "https://github.com/iyay/acta/issues"
 	}
 	return cfg, nil
 }

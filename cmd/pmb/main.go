@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -39,7 +40,13 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	}
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
-	m := tui.New(cfg, b, lipgloss.HasDarkBackground()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
+	// The version comes from the build info: a tag for go install, dev for a
+	// local build with no version stamped in.
+	version := "dev"
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		version = info.Main.Version
+	}
+	m := tui.New(cfg, b, lipgloss.HasDarkBackground()).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	load := func() (*board.Board, error) { return trees.Load(cfg) }
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
