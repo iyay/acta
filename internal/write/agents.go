@@ -11,8 +11,9 @@ import (
 // agentRec is what the board reads for one task: who works on it, and when
 // they last said so.
 type agentRec struct {
-	Agent string `json:"agent"`
-	At    string `json:"at"`
+	Agent   string `json:"agent"`
+	At      string `json:"at"`
+	Started bool   `json:"started,omitempty"` // true once someone ran tick --start
 }
 
 // AgentName works out the name to record. The flag wins; otherwise the
@@ -39,10 +40,7 @@ func AgentName(flag string, env func(string) string) string {
 // this only has to keep the file itself readable: it writes a temp file next
 // to it and renames, which no reader ever sees half-written. A file that is
 // not valid JSON is replaced, because a broken record must not stop a tick.
-func RecordAgent(root, taskID, agent string, now time.Time) error {
-	if agent == "" {
-		return nil
-	}
+func RecordAgent(root, taskID, agent string, now time.Time, started bool) error {
 	path := filepath.Join(root, ".agents.json")
 	recs := map[string]agentRec{}
 	if b, err := os.ReadFile(path); err == nil {
@@ -51,7 +49,15 @@ func RecordAgent(root, taskID, agent string, now time.Time) error {
 			recs = old
 		}
 	}
-	recs[taskID] = agentRec{Agent: agent, At: now.Format(time.RFC3339)}
+	// A plain tick with nobody named has nothing to write. A start always
+	// writes, even without a name, so the board sees the task going.
+	if agent == "" && !started {
+		return nil
+	}
+	prev := recs[taskID]
+	// A later tick keeps an earlier start: losing it would drop the task
+	// back to todo while someone is still on it.
+	recs[taskID] = agentRec{Agent: agent, At: now.Format(time.RFC3339), Started: started || prev.Started}
 	b, err := json.MarshalIndent(recs, "", "  ")
 	if err != nil {
 		return err

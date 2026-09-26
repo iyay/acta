@@ -53,6 +53,7 @@ type Item struct {
 	RawHash      string // hash as the frontmatter holds it, "" when the file has none
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
+	Started      bool   // tasks only: someone ran tick --start on it
 
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
@@ -176,6 +177,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 	for _, p := range plans {
 		b.linkPlan(p)
 	}
+	b.fillStarted(main, others)
 	b.derive()
 	b.fillCommitTimes()
 	b.fillAgents(main, others)
@@ -440,7 +442,7 @@ func (b *Board) findSpec(path string) *Item {
 func (b *Board) derive() {
 	for _, it := range b.Items {
 		if it.Kind == KindTask {
-			it.Status, it.StatusSource = taskStatus(it.Done, it.Total), "derived"
+			it.Status, it.StatusSource = taskStatus(it.Done, it.Total, it.Started), "derived"
 		}
 	}
 	for _, it := range b.Items {
@@ -469,9 +471,13 @@ func (b *Board) derive() {
 	}
 }
 
-func taskStatus(done, total int) string {
+func taskStatus(done, total int, started bool) string {
 	switch {
 	case done == 0:
+		// Started with no box ticked yet: work has begun, so it is doing.
+		if started {
+			return "doing"
+		}
 		return "todo"
 	case done == total:
 		return "done"

@@ -13,8 +13,9 @@ import (
 
 // agentRec is one record of who last ticked a task, in the file a tick writes.
 type agentRec struct {
-	Agent string `json:"agent"`
-	At    string `json:"at"`
+	Agent   string `json:"agent"`
+	At      string `json:"at"`
+	Started bool   `json:"started,omitempty"` // true once someone ran tick --start
 }
 
 // readAgents collects the agent of every task from the .agents.json of each
@@ -59,13 +60,7 @@ func newer(a, b agentRec) bool {
 // that last ticked it; a plan, spec or bug takes the distinct agents of its
 // open tasks. A tree read from git has no file to read, so it adds nothing.
 func (b *Board) fillAgents(main config.Config, others []Tree) {
-	roots := []string{main.Root}
-	for _, t := range others {
-		if t.Files == nil {
-			roots = append(roots, t.Cfg.Root)
-		}
-	}
-	recs := readAgents(roots)
+	recs := readAgents(agentRoots(main, others))
 	for _, it := range b.Items {
 		if it.Kind == KindTask {
 			if it.Status != "done" {
@@ -74,6 +69,30 @@ func (b *Board) fillAgents(main config.Config, others []Tree) {
 			continue
 		}
 		it.Agent = b.agentsOfTasks(it, recs)
+	}
+}
+
+// agentRoots lists the folders whose .agents.json the board reads: the main
+// root plus every worktree on disk, so a start in one worktree counts here.
+func agentRoots(main config.Config, others []Tree) []string {
+	roots := []string{main.Root}
+	for _, t := range others {
+		if t.Files == nil {
+			roots = append(roots, t.Cfg.Root)
+		}
+	}
+	return roots
+}
+
+// fillStarted marks every task that carries a started record. It runs before
+// derive, so a task with no ticked box still reads as doing and lifts its
+// plan and spec.
+func (b *Board) fillStarted(main config.Config, others []Tree) {
+	recs := readAgents(agentRoots(main, others))
+	for _, it := range b.Items {
+		if it.Kind == KindTask {
+			it.Started = recs[it.ID].Started
+		}
 	}
 }
 

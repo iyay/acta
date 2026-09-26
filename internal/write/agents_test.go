@@ -40,7 +40,7 @@ func TestAgentName(t *testing.T) {
 func TestRecordAgentWritesTheRecord(t *testing.T) {
 	root := t.TempDir()
 	at := time.Date(2026, 9, 26, 20, 46, 0, 0, time.FixedZone("WIB", 7*3600))
-	if err := RecordAgent(root, taskID, "omp", at); err != nil {
+	if err := RecordAgent(root, taskID, "omp", at, false); err != nil {
 		t.Fatal(err)
 	}
 	recs := readAgents(t, root)
@@ -62,10 +62,10 @@ func TestRecordAgentUpdatesOneKeyAndKeepsTheRest(t *testing.T) {
 	root := t.TempDir()
 	first := time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
 	later := first.Add(time.Hour)
-	if err := RecordAgent(root, "plans/p#task-1", "claude", first); err != nil {
+	if err := RecordAgent(root, "plans/p#task-1", "claude", first, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := RecordAgent(root, taskID, "omp", later); err != nil {
+	if err := RecordAgent(root, taskID, "omp", later, false); err != nil {
 		t.Fatal(err)
 	}
 	recs := readAgents(t, root)
@@ -82,7 +82,7 @@ func TestRecordAgentReplacesBrokenJSON(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := RecordAgent(root, taskID, "omp", time.Now()); err != nil {
+	if err := RecordAgent(root, taskID, "omp", time.Now(), false); err != nil {
 		t.Fatalf("broken file must be replaced, not crash: %v", err)
 	}
 	if recs := readAgents(t, root); recs[taskID].Agent != "omp" {
@@ -92,7 +92,7 @@ func TestRecordAgentReplacesBrokenJSON(t *testing.T) {
 
 func TestRecordAgentWithoutANameWritesNothing(t *testing.T) {
 	root := t.TempDir()
-	if err := RecordAgent(root, taskID, "", time.Now()); err != nil {
+	if err := RecordAgent(root, taskID, "", time.Now(), false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".agents.json")); !os.IsNotExist(err) {
@@ -114,4 +114,33 @@ func readAgents(t *testing.T, root string) map[string]agentRec {
 		t.Fatal("empty file")
 	}
 	return recs
+}
+
+// A start is kept: the next normal tick updates name and time but must not
+// clear the started flag, or the board would drop back to todo.
+func TestRecordAgentKeepsStartedOnALaterTick(t *testing.T) {
+	root := t.TempDir()
+	if err := RecordAgent(root, taskID, "", time.Now(), true); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "omp", time.Now().Add(time.Hour), false); err != nil {
+		t.Fatal(err)
+	}
+	r := readAgents(t, root)[taskID]
+	if !r.Started || r.Agent != "omp" {
+		t.Fatalf("record = %+v, want agent omp with started kept", r)
+	}
+}
+
+// A start with no agent name still writes: the board must see the start
+// even when the harness names nobody.
+func TestRecordAgentStartWritesWithoutAName(t *testing.T) {
+	root := t.TempDir()
+	if err := RecordAgent(root, taskID, "", time.Now(), true); err != nil {
+		t.Fatal(err)
+	}
+	r, ok := readAgents(t, root)[taskID]
+	if !ok || !r.Started {
+		t.Fatalf("record = %+v (present %t), want started true", r, ok)
+	}
 }
