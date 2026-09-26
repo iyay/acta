@@ -116,6 +116,9 @@ func (m Model) rowLabel(r row) string {
 		label += it.Ref + " "
 	}
 	label += it.Title
+	if it.Worktree != "" {
+		label += " · " + it.Worktree
+	}
 	if it.Kind == board.KindTask {
 		if p := m.board.Get(it.Parent); p != nil {
 			label += " · " + p.Title
@@ -156,8 +159,16 @@ func (m Model) detailView(w, h int) string {
 		fmt.Fprintf(&b, "parent %s\n", p.Title)
 	}
 	fmt.Fprintf(&b, "id     %s\n", it.ID)
-	if rel, err := filepath.Rel(m.cfg.RepoRoot, it.Path); err == nil {
-		fmt.Fprintf(&b, "file   %s\n", rel)
+	switch {
+	case it.Worktree != "" && !it.OnDisk:
+		fmt.Fprintf(&b, "branch %s (not checked out)\n", it.Worktree)
+	case it.Worktree != "":
+		fmt.Fprintf(&b, "worktree %s\n", it.Worktree)
+	}
+	if it.OnDisk {
+		if rel, err := filepath.Rel(m.cfg.RepoRoot, it.Path); err == nil {
+			fmt.Fprintf(&b, "file   %s\n", rel)
+		}
 	}
 	if it.FixedIn != "" {
 		fmt.Fprintf(&b, "fixed  %s\n", it.FixedIn)

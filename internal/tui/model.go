@@ -100,6 +100,13 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 	}
 }
 
+// WithLoad replaces how the model reloads the board, for example to read
+// every worktree of the repo.
+func (m Model) WithLoad(f func() (*board.Board, error)) Model {
+	m.load = f
+	return m
+}
+
 func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -247,6 +254,9 @@ func (m *Model) openPopup(key string) {
 	case it.Kind == board.KindTask:
 		m.status = "tasks take their status from their checkboxes"
 		return
+	case it.Worktree != "":
+		m.status = "shown from worktree " + it.Worktree + "; edit it there"
+		return
 	case it.Legacy:
 		m.status = "legacy file, move it into the root folder first"
 		return
@@ -352,6 +362,10 @@ func (m Model) enter() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	it := m.board.Get(rows[i].id)
+	if !it.OnDisk {
+		m.status = "branch " + it.Worktree + " is not checked out; open it with: git worktree add ../<repo>-" + it.Worktree + " " + it.Worktree
+		return m, nil
+	}
 	return m, tea.ExecProcess(editor.Cmd(it.Path, it.Line), func(err error) tea.Msg {
 		return editorDoneMsg{err: err}
 	})

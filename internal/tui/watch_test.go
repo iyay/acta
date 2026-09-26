@@ -34,7 +34,7 @@ func TestWatchGathersEventsIntoOneReload(t *testing.T) {
 		mu.Unlock()
 		return &board.Board{}, nil
 	}
-	stop, err := Watch([]string{dir, filepath.Join(dir, "missing")}, load, func(m tea.Msg) { msgs <- m })
+	stop, err := Watch(func() []string { return []string{dir, filepath.Join(dir, "missing")} }, load, func(m tea.Msg) { msgs <- m })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +55,30 @@ func TestWatchGathersEventsIntoOneReload(t *testing.T) {
 	}
 	if loads != 1 {
 		t.Fatalf("loads = %d, want 1 for a burst of writes", loads)
+	}
+}
+
+func TestWatchPicksUpFoldersCreatedLater(t *testing.T) {
+	dir := t.TempDir()
+	later := filepath.Join(dir, "later")
+	msgs := make(chan tea.Msg, 10)
+	stop, err := Watch(func() []string { return []string{dir, later} },
+		func() (*board.Board, error) { return &board.Board{}, nil }, func(m tea.Msg) { msgs <- m })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stop()
+	if err := os.Mkdir(later, 0o755); err != nil { // an event in dir: first reload, which adds later
+		t.Fatal(err)
+	}
+	<-msgs
+	if err := os.WriteFile(filepath.Join(later, "f.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-msgs:
+	case <-time.After(3 * time.Second):
+		t.Fatal("a folder created after start was never watched")
 	}
 }
 

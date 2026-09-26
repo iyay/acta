@@ -17,6 +17,7 @@ import (
 	"pm-board/internal/board"
 	"pm-board/internal/config"
 	"pm-board/internal/editor"
+	"pm-board/internal/trees"
 	"pm-board/internal/tui"
 	"pm-board/internal/write"
 )
@@ -31,17 +32,18 @@ const (
 // runTUI opens the TUI with live reload. When the watcher cannot start, the
 // TUI still opens in manual mode.
 var runTUI = func(cfg config.Config, stderr io.Writer) int {
-	b, err := board.Load(cfg)
+	b, err := trees.Load(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
-	m := tui.New(cfg, b, lipgloss.HasDarkBackground())
+	m := tui.New(cfg, b, lipgloss.HasDarkBackground()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	load := func() (*board.Board, error) { return board.Load(cfg) }
-	if stop, err := tui.Watch(tui.WatchDirs(cfg), load, p.Send); err != nil {
+	load := func() (*board.Board, error) { return trees.Load(cfg) }
+	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
+	if stop, err := tui.Watch(dirs, load, p.Send); err != nil {
 		go p.Send(tui.WatchFailed(err))
 	} else {
 		defer stop()
@@ -143,6 +145,21 @@ func loadBoard(root string, stderr io.Writer) (config.Config, *board.Board, int)
 	return cfg, b, exitOK
 }
 
+// loadAllTrees reads the main tree plus every worktree and unmerged branch,
+// so list and show report progress from anywhere in the repo.
+func loadAllTrees(root string, stderr io.Writer) (config.Config, *board.Board, int) {
+	cfg, code := loadConfig(root, stderr)
+	if code != exitOK {
+		return cfg, nil, code
+	}
+	b, err := trees.Load(cfg)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return cfg, nil, exitOther
+	}
+	return cfg, b, exitOK
+}
+
 type outItem struct {
 	ID           string       `json:"id"`
 	Type         string       `json:"type"`
@@ -155,6 +172,8 @@ type outItem struct {
 	Progress     jsonProgress `json:"progress"`
 	Path         string       `json:"path"`
 	Legacy       bool         `json:"legacy"`
+	Worktree     string       `json:"worktree"`
+	OnDisk       bool         `json:"on_disk"`
 	Problems     []string     `json:"problems"`
 }
 
@@ -164,14 +183,17 @@ type jsonProgress struct {
 }
 
 func toJSON(cfg config.Config, it *board.Item) outItem {
-	rel, err := filepath.Rel(cfg.RepoRoot, it.Path)
-	if err != nil {
-		rel = it.Path
+	rel := it.Path
+	if it.OnDisk {
+		if r, err := filepath.Rel(cfg.RepoRoot, it.Path); err == nil {
+			rel = r
+		}
 	}
 	j := outItem{ID: it.ID, Type: string(it.Kind), Title: it.Title, Status: it.Status,
 		StatusSource: it.StatusSource, Ref: it.Ref, Parent: it.Parent,
 		Children: append([]string{}, it.Children...), Progress: jsonProgress{it.Done, it.Total},
-		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Problems: append([]string{}, it.Problems...)}
+		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Worktree: it.Worktree, OnDisk: it.OnDisk,
+		Problems: append([]string{}, it.Problems...)}
 	return j
 }
 
@@ -187,7 +209,7 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "--type must be story, task or bug\n")
 		return exitBadInput
 	}
-	cfg, b, code := loadBoard(*root, stderr)
+	cfg, b, code := loadAllTrees(*root, stderr)
 	if code != exitOK {
 		return code
 	}
@@ -218,7 +240,7 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: pmb show <id> [--json]")
 		return exitBadInput
 	}
-	cfg, b, code := loadBoard(*root, stderr)
+	cfg, b, code := loadAllTrees(*root, stderr)
 	if code != exitOK {
 		return code
 	}

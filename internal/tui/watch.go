@@ -28,21 +28,28 @@ func WatchDirs(cfg config.Config) []string {
 }
 
 // Watch reloads the board after files change and hands the result to send.
-// Folders that do not exist are skipped; r still reloads by hand.
-func Watch(dirs []string, load func() (*board.Board, error), send func(tea.Msg)) (func(), error) {
+// dirs is asked again after every reload, so a folder or worktree that appears
+// later is watched from then on. Missing folders are skipped.
+func Watch(dirs func() []string, load func() (*board.Board, error), send func(tea.Msg)) (func(), error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
-	for _, d := range dirs {
-		if st, err := os.Stat(d); err != nil || !st.IsDir() {
-			continue
-		}
-		if err := w.Add(d); err != nil {
-			w.Close()
-			return nil, err
+	watched := map[string]bool{}
+	addAll := func() {
+		for _, d := range dirs() {
+			if watched[d] {
+				continue
+			}
+			if st, err := os.Stat(d); err != nil || !st.IsDir() {
+				continue
+			}
+			if w.Add(d) == nil {
+				watched[d] = true
+			}
 		}
 	}
+	addAll()
 	done := make(chan struct{})
 	fire := make(chan struct{}, 1)
 	go func() {
@@ -71,6 +78,7 @@ func Watch(dirs []string, load func() (*board.Board, error), send func(tea.Msg))
 				send(watchFailedMsg{err: err})
 			case <-fire:
 				b, err := load()
+				addAll()
 				send(reloadMsg{b: b, err: err})
 			}
 		}
