@@ -22,7 +22,7 @@ func gitCommit(t *testing.T, dir, msg string) {
 func TestIDGivesAndIsIdempotent(t *testing.T) {
 	dir := fixtureRepo(t)
 	before := commitCount(t, dir)
-	out, errOut, code := pmb(t, dir, "", "id")
+	out, errOut, code := acta(t, dir, "", "id")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
@@ -35,7 +35,7 @@ func TestIDGivesAndIsIdempotent(t *testing.T) {
 	if got := commitCount(t, dir); got != strconv.Itoa(n+1) {
 		t.Fatalf("commits %s, want %d", got, n+1)
 	}
-	again, errOut, code := pmb(t, dir, "", "id")
+	again, errOut, code := acta(t, dir, "", "id")
 	if code != 0 {
 		t.Fatalf("second exit %d: %s", code, errOut)
 	}
@@ -49,10 +49,10 @@ func TestIDGivesAndIsIdempotent(t *testing.T) {
 
 func TestIDResolvesInShowTickSet(t *testing.T) {
 	dir := fixtureRepo(t)
-	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
-	out, errOut, code := pmb(t, dir, "", "show", "PLAN-3")
+	out, errOut, code := acta(t, dir, "", "show", "PLAN-3")
 	if code != 0 {
 		t.Fatalf("show exit %d: %s", code, errOut)
 	}
@@ -64,7 +64,7 @@ func TestIDResolvesInShowTickSet(t *testing.T) {
 		{"tick", "PLAN-2.1", "--step", "1"},
 		{"set", "BUG-2", "status", "fixing"},
 	} {
-		if _, errOut, code := pmb(t, dir, "", args...); code != 0 {
+		if _, errOut, code := acta(t, dir, "", args...); code != 0 {
 			t.Errorf("%v: exit %d: %s", args, code, errOut)
 		}
 	}
@@ -72,10 +72,10 @@ func TestIDResolvesInShowTickSet(t *testing.T) {
 
 func TestIDUnknown(t *testing.T) {
 	dir := fixtureRepo(t)
-	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
-	_, errOut, code := pmb(t, dir, "", "show", "PLAN-999")
+	_, errOut, code := acta(t, dir, "", "show", "PLAN-999")
 	if code != 1 || !strings.Contains(errOut, "unknown id PLAN-999") {
 		t.Fatalf("exit %d stderr %q, want 1 with unknown id PLAN-999", code, errOut)
 	}
@@ -90,7 +90,7 @@ func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
 	}
 	gitCommit(t, dir, "auto_commit off")
 	before := commitCount(t, dir)
-	out, errOut, code := pmb(t, dir, "", "id")
+	out, errOut, code := acta(t, dir, "", "id")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
@@ -103,7 +103,7 @@ func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
 }
 func TestIDFixDuplicates(t *testing.T) {
 	dir := fixtureRepo(t)
-	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
 	src, err := os.ReadFile(filepath.Join(dir, ".pm/bugs/2026-09-26-open.md"))
@@ -114,14 +114,14 @@ func TestIDFixDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitCommit(t, dir, "dup")
-	out, errOut, code := pmb(t, dir, "", "id", "--fix-duplicates")
+	out, errOut, code := acta(t, dir, "", "id", "--fix-duplicates")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	if !strings.Contains(out, "-> BUG-") {
 		t.Fatalf("change line lacks -> BUG-: %q", out)
 	}
-	again, _, code := pmb(t, dir, "", "id", "--fix-duplicates")
+	again, _, code := acta(t, dir, "", "id", "--fix-duplicates")
 	if code != 0 {
 		t.Fatalf("second exit %d", code)
 	}
@@ -132,10 +132,10 @@ func TestIDFixDuplicates(t *testing.T) {
 
 func TestListShowsShortIDFirst(t *testing.T) {
 	dir := fixtureRepo(t)
-	if _, errOut, code := pmb(t, dir, "", "id"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
-	out, _, code := pmb(t, dir, "", "list", "--type", "story")
+	out, _, code := acta(t, dir, "", "list", "--type", "story")
 	if code != 0 {
 		t.Fatalf("list exit %d", code)
 	}
@@ -165,7 +165,7 @@ func TestListShowsShortIDFirst(t *testing.T) {
 	if withoutID != 1 {
 		t.Fatalf("%d lines without a short id, want only the broken one", withoutID)
 	}
-	out, _, code = pmb(t, dir, "", "list", "--json")
+	out, _, code = acta(t, dir, "", "list", "--json")
 	if code != 0 {
 		t.Fatalf("list --json exit %d", code)
 	}

@@ -15,7 +15,7 @@ func TestTickCommand(t *testing.T) {
 	plan := filepath.Join(dir, ".pm/plans/2026-09-21-alpha.md")
 	before, _ := os.ReadFile(plan)
 
-	out, errOut, code := pmb(t, dir, "", "tick", "plans/2026-09-21-alpha#task-2", "--step", "2")
+	out, errOut, code := acta(t, dir, "", "tick", "plans/2026-09-21-alpha#task-2", "--step", "2")
 	if code != 0 || strings.TrimSpace(out) != "plans/2026-09-21-alpha#task-2 2/2" {
 		t.Fatalf("exit %d out %q err %q", code, out, errOut)
 	}
@@ -23,10 +23,10 @@ func TestTickCommand(t *testing.T) {
 	if strings.Count(string(after), "- [x]") != strings.Count(string(before), "- [x]")+1 {
 		t.Fatal("tick did not add exactly one ticked box")
 	}
-	if out, _, _ := pmb(t, dir, "", "list", "--type", "task", "--json"); strings.Contains(out, "task-2") {
+	if out, _, _ := acta(t, dir, "", "list", "--type", "task", "--json"); strings.Contains(out, "task-2") {
 		t.Fatal("task 2 should now be done and leave the active list")
 	}
-	if st, _, _ := pmb(t, dir, "", "tick", "plans/2026-09-21-alpha#task-2", "--all"); st == "" {
+	if st, _, _ := acta(t, dir, "", "tick", "plans/2026-09-21-alpha#task-2", "--all"); st == "" {
 		t.Fatal("--all on a done task should still print progress")
 	}
 
@@ -39,7 +39,7 @@ func TestTickCommand(t *testing.T) {
 		{"tick", "plans/2026-09-21-alpha#task-1", "--step", "1", "--all"},
 		{"tick", "plans/2026-09-21-alpha#task-1"},
 	} {
-		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+		if _, _, code := acta(t, dir, "", args...); code != 1 {
 			t.Errorf("%v: exit %d, want 1", args, code)
 		}
 	}
@@ -55,7 +55,7 @@ func TestTickHelp(t *testing.T) {
 		{"tick", "-h"},
 		{"tick", "plans/2026-09-21-alpha#task-1", "-h"},
 	} {
-		out, errOut, code := pmb(t, dir, "", args...)
+		out, errOut, code := acta(t, dir, "", args...)
 		if code != 0 {
 			t.Errorf("%v: exit %d, want 0", args, code)
 		}
@@ -86,11 +86,11 @@ func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
 		t.Fatalf("git commit: %v %s", out, err)
 	}
 	id := "plans/2026-09-29-crlf#task-1"
-	if _, errOut, code := pmb(t, dir, "", "set", "plans/2026-09-29-crlf", "status", "in-progress"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "set", "plans/2026-09-29-crlf", "status", "in-progress"); code != 0 {
 		t.Fatalf("set: exit %d: %s", code, errOut)
 	}
 	pre, _ := os.ReadFile(filepath.Join(dir, rel))
-	out, errOut, code := pmb(t, dir, "", "tick", id, "--step", "1")
+	out, errOut, code := acta(t, dir, "", "tick", id, "--step", "1")
 	if code != 0 || strings.TrimSpace(out) != id+" 1/1" {
 		t.Fatalf("tick: exit %d out %q err %q", code, out, errOut)
 	}
@@ -99,7 +99,7 @@ func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
 	if want := strings.Replace(string(pre), "- [ ] a1", "- [x] a1", 1); string(after) != want {
 		t.Fatalf("got %q want %q", after, want)
 	}
-	show, errOut, code := pmb(t, dir, "", "show", id, "--json")
+	show, errOut, code := acta(t, dir, "", "show", id, "--json")
 	if code != 0 {
 		t.Fatalf("show: exit %d: %s", code, errOut)
 	}
@@ -135,7 +135,7 @@ func TestTickRecordsTheAgent(t *testing.T) {
 			} else {
 				args = append(args, "plans/2026-09-21-alpha#task-1", "--step", "1")
 			}
-			if _, errOut, code := pmb(t, dir, "", args...); c.wantErr && code == 0 {
+			if _, errOut, code := acta(t, dir, "", args...); c.wantErr && code == 0 {
 				t.Fatalf("exit 0, want a failure: %q", errOut)
 			}
 			rec := agentsFile(t, dir)
@@ -218,7 +218,7 @@ func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 	plan := filepath.Join(dir, ".pm/plans/2026-09-21-alpha.md")
 	id := "plans/2026-09-21-alpha#task-1"
 	before, _ := os.ReadFile(plan)
-	if _, errOut, code := pmb(t, dir, "", "tick", id, "--start", "--agent", "omp"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "tick", id, "--start", "--agent", "omp"); code != 0 {
 		t.Fatalf("--start: exit %d err %q, want 0", code, errOut)
 	}
 	after, _ := os.ReadFile(plan)
@@ -234,7 +234,7 @@ func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 		{"tick", id, "--start", "--all"},
 		{"tick", id, "--start", "--step", "1"},
 	} {
-		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+		if _, _, code := acta(t, dir, "", args...); code != 1 {
 			t.Errorf("%v: exit %d, want 1", args, code)
 		}
 		same, _ := os.ReadFile(agentsFile(t, dir))

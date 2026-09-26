@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -30,7 +30,7 @@ func cmdID(args []string, stdout, stderr io.Writer) int {
 	var o write.Outcome
 	if *fix {
 		if len(pos) > 0 {
-			fmt.Fprintln(stderr, "usage: pmb id [--fix-duplicates] [<path-id>...]")
+			fmt.Fprintln(stderr, "usage: acta id [--fix-duplicates] [<path-id>...]")
 			return exitBadInput
 		}
 		changes, o, err = write.FixDuplicates(cfg, b)

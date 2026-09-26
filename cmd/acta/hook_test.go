@@ -21,23 +21,23 @@ func TestHookCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, _, code := pmb(t, dir, "", "hook", "prompt")
+	out, _, code := acta(t, dir, "", "hook", "prompt")
 	if code != 0 || !strings.Contains(out, "not set up yet") {
 		t.Fatalf("prompt before setup: %d %q", code, out)
 	}
-	out, _, code = pmb(t, dir, "", "hook", "session-start", "--known", known)
+	out, _, code = acta(t, dir, "", "hook", "session-start", "--known", known)
 	if code != 0 || !strings.Contains(out, "Voice: not set up yet.") || !strings.Contains(out, "superpowers@superpowers-dev") {
 		t.Fatalf("session-start before setup: %d\n%s", code, out)
 	}
 
-	if _, _, code := pmb(t, dir, "", "voice", "set", "--language", "Korean"); code != 0 {
+	if _, _, code := acta(t, dir, "", "voice", "set", "--language", "Korean"); code != 0 {
 		t.Fatal("voice set failed")
 	}
-	out, _, _ = pmb(t, dir, "", "hook", "prompt")
+	out, _, _ = acta(t, dir, "", "hook", "prompt")
 	if strings.TrimSpace(out) != "pm voice: reply in Korean, adhd style." {
 		t.Fatalf("prompt after setup: %q", out)
 	}
-	out, _, _ = pmb(t, dir, "", "hook", "session-start")
+	out, _, _ = acta(t, dir, "", "hook", "session-start")
 	if !strings.Contains(out, "in Korean.") || strings.Contains(out, "Another workflow plugin") {
 		t.Fatalf("session-start without --known: %s", out)
 	}
@@ -45,12 +45,12 @@ func TestHookCommands(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "voice.yaml"), []byte("style: [\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if out, _, code := pmb(t, dir, "", "hook", "session-start"); code != 0 || !strings.Contains(out, "could not be read") {
+	if out, _, code := acta(t, dir, "", "hook", "session-start"); code != 0 || !strings.Contains(out, "could not be read") {
 		t.Fatalf("broken voice must still exit 0 with a message: %d %s", code, out)
 	}
 
 	for _, args := range [][]string{{"hook"}, {"hook", "frob"}, {"hook", "session-start", "--nope"}} {
-		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+		if _, _, code := acta(t, dir, "", args...); code != 1 {
 			t.Errorf("%v: exit %d, want 1", args, code)
 		}
 	}
@@ -62,7 +62,7 @@ func TestHookSessionStartIgnoresTheAgentFile(t *testing.T) {
 	dir := fixtureRepo(t)
 	ignore := filepath.Join(dir, ".pm", ".gitignore")
 	for range 2 {
-		if _, _, code := pmb(t, dir, "", "hook", "session-start"); code != 0 {
+		if _, _, code := acta(t, dir, "", "hook", "session-start"); code != 0 {
 			t.Fatalf("session-start exit %d", code)
 		}
 	}

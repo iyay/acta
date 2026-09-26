@@ -13,18 +13,18 @@ func TestVoiceSetAndShow(t *testing.T) {
 	vf := filepath.Join(dir, "voice.yaml")
 	t.Setenv("PM_VOICE_FILE", vf)
 
-	out, _, code := pmb(t, dir, "", "voice", "show", "--json")
+	out, _, code := acta(t, dir, "", "voice", "show", "--json")
 	if code != 0 || !strings.Contains(out, `"exists": false`) || !strings.Contains(out, `"chat_language": "English"`) {
 		t.Fatalf("show before set: exit %d %s", code, out)
 	}
 
-	if out, errOut, code := pmb(t, dir, "", "voice", "set", "--language", "Korean", "--tone", "Short."); code != 0 || strings.TrimSpace(out) != vf {
+	if out, errOut, code := acta(t, dir, "", "voice", "set", "--language", "Korean", "--tone", "Short."); code != 0 || strings.TrimSpace(out) != vf {
 		t.Fatalf("set: exit %d out %q err %q", code, out, errOut)
 	}
-	if _, _, code := pmb(t, dir, "", "voice", "set", "--style", "plain"); code != 0 {
+	if _, _, code := acta(t, dir, "", "voice", "set", "--style", "plain"); code != 0 {
 		t.Fatalf("second set exit %d", code)
 	}
-	out, _, _ = pmb(t, dir, "", "voice", "show", "--json")
+	out, _, _ = acta(t, dir, "", "voice", "show", "--json")
 	var got map[string]any
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestVoiceSetAndShow(t *testing.T) {
 		t.Fatalf("show after set: %v", got)
 	}
 
-	if _, _, code := pmb(t, dir, "", "voice", "set", "--clear-tone"); code != 0 {
+	if _, _, code := acta(t, dir, "", "voice", "set", "--clear-tone"); code != 0 {
 		t.Fatalf("clear-tone exit %d", code)
 	}
 	b, _ := os.ReadFile(vf)
@@ -54,7 +54,7 @@ func TestVoiceBadInput(t *testing.T) {
 		{"voice", "frob"},
 		{"voice", "show", "extra"},
 	} {
-		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+		if _, _, code := acta(t, dir, "", args...); code != 1 {
 			t.Errorf("%v: exit %d, want 1", args, code)
 		}
 	}
@@ -65,7 +65,7 @@ func TestVoiceBadInput(t *testing.T) {
 	if err := os.WriteFile(vf, []byte("style: [\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, errOut, code := pmb(t, dir, "", "voice", "set", "--language", "Korean"); code != 1 || !strings.Contains(errOut, "fix or delete") {
+	if _, errOut, code := acta(t, dir, "", "voice", "set", "--language", "Korean"); code != 1 || !strings.Contains(errOut, "fix or delete") {
 		t.Fatalf("set over a broken file: exit %d %q", code, errOut)
 	}
 	if b, _ := os.ReadFile(vf); string(b) != "style: [\n" {

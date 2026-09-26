@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-const tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all | --start]"
+const tickUsage = "usage: acta tick plans/<stem>#task-N [--step N | --all | --start]"
 
 // cmdTick ticks checkboxes in a plan so the board shows progress while an
 // agent works. It never commits: the plan file is shared, and the
