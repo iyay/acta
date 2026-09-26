@@ -87,7 +87,10 @@ Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI
 **Tech Stack:** [Key technologies/libraries]
 
 **Spec:** [path to the spec/design doc this plan implements — the plan
-argues from the spec, so the spec travels with it; executors read both]
+argues from the spec, so the spec travels with it; executors read both.
+A Bounded plan with no spec file writes exactly
+`**Spec:** none (Bounded, approved in chat on <date>)`, with no other
+backticks on the line: pmb reads a .md path there as the spec]
 
 ## Global Constraints
 
