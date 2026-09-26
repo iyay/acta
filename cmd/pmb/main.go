@@ -11,9 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
 	"pm-board/internal/board"
 	"pm-board/internal/config"
 	"pm-board/internal/editor"
+	"pm-board/internal/tui"
 	"pm-board/internal/write"
 )
 
@@ -24,10 +28,29 @@ const (
 	exitOther    = 3
 )
 
-// runTUI opens the TUI. Task 10 replaces this stub.
+// runTUI opens the TUI with live reload. When the watcher cannot start, the
+// TUI still opens in manual mode.
 var runTUI = func(cfg config.Config, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "TUI not built yet")
-	return exitOther
+	b, err := board.Load(cfg)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	// Ask the terminal for its background now; asking inside the program
+	// fights Bubble Tea for stdin.
+	m := tui.New(cfg, b, lipgloss.HasDarkBackground())
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	load := func() (*board.Board, error) { return board.Load(cfg) }
+	if stop, err := tui.Watch(tui.WatchDirs(cfg), load, p.Send); err != nil {
+		go p.Send(tui.WatchFailed(err))
+	} else {
+		defer stop()
+	}
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	return exitOK
 }
 
 func main() {
