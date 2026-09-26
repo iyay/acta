@@ -161,7 +161,7 @@ func TestHouseRules(t *testing.T) {
 			t.Errorf("house-rules.md missing %q", want)
 		}
 	}
-	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md"} {
+	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md", "per-task reviewer"} {
 		if strings.Contains(txt, bad) {
 			t.Errorf("house-rules.md still has %q", bad)
 		}

@@ -10,6 +10,7 @@ func TestSkillReview(t *testing.T) {
 			"Spec axis", "Standards axis", "BLOCKER", "NOTE", "three questions",
 			"deep lens", "never a round 4", "code-reviewer.md", "CLEAN or BLOCKED",
 			"## Receiving findings", "Fix round", "pm:land",
+			"## Where findings go", "pm:bug", "already on the parent branch",
 		},
 		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies"},
 	})

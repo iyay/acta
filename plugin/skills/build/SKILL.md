@@ -62,7 +62,7 @@ You have two mechanisms. Try them in this order.
 
 #### 1a. Native Worktree Tools (preferred)
 
-The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
+Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
 
 Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
 
@@ -75,10 +75,7 @@ Only use this if Step 1a does not apply — you have no native worktree tool ava
 Directory selection, in priority order. Explicit user preference always beats observed filesystem state.
 
 1. Check your instructions for a declared worktree directory preference. If the user has already specified one, use it without asking.
-2. Check for an existing project-local worktree directory (`ls -d .worktrees`, else `ls -d worktrees`). If found, use it. If both exist, `.worktrees` wins.
-3. With no other guidance, default to `.worktrees/` at the project root.
-
-Safety check for project-local directories only: run `git check-ignore -q` on the directory before creating the worktree. If it is not ignored, add it to .gitignore, commit that change, then proceed. An unignored worktree directory commits the whole tree into the repo.
+2. Otherwise use `../<repo>-<slug>`, next to the repo, never inside it.
 
 Create it:
 

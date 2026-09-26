@@ -10,6 +10,7 @@ func TestSkillDispatch(t *testing.T) {
 			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "pm:review", "pm:land", "pm:build",
 			"PROPERTY", "ultrathink orchestrate", "Never wait", ".pm/plans/", "herdr-delivery.md", ".pm/bugs",
 		},
-		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six"},
+		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
+			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-"},
 	})
 }

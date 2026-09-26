@@ -2,7 +2,7 @@
 
 These apply to any agent started from a pm:dispatch brief. Read this before writing the todo list. The brief carries the job facts (plan, tickets, worktree, gates); this file carries the rules that hold for every dispatch.
 
-SKILL: pm:build — one implementer subagent per ticket. You are the main agent in this pane: you write ZERO code yourself. Skip the skill's per-task reviewer; review happens on the orchestrator's side. pm:tdd at every seam — failing test first, no code before red. Red test or error you cannot explain → pm:debug before any edit. Before you claim any ticket done → pm:land: run the gate, show output.
+SKILL: pm:build — one implementer subagent per ticket. You are the main agent in this pane: you write ZERO code yourself. Review happens on the orchestrator's side, never yours. pm:tdd at every seam — failing test first, no code before red. Red test or error you cannot explain → pm:debug before any edit. Before you claim any ticket done → pm:land: run the gate, show output.
 PROPERTIES, NOT INSTANCES: each verify line is a claim that must hold on EVERY path, not the one case that was reported. Before you fix anything, enumerate every path, caller and surface that could break the claim, and report that list with your commit. A fix that closes only the reported case is not done. If your change widens a boundary, check the neighbours that share it.
 BUGS YOU CONFIRM OUTSIDE YOUR TICKETS: do not fix them (surgical). Record each one with pmb bug new (see pm:bug); in this worktree the bug file commits on your branch and lands with it. Only confirmed bugs with a repro; no guesses.
 PARALLEL — spawn as many subagents as the tickets allow:

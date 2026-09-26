@@ -42,6 +42,12 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTE
 
 There is never a round 4. A round with no BLOCKER does not start. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE.
 
+## Where findings go
+
+- A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into the one fix task of this round (`## Fix round <n>` in the same plan), where it already shows on the board under the story.
+- A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `pm:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
+- A NOTE stays a NOTE: one line in memory, no file, no task.
+
 ## Small changes
 
 A change you judge small (one concern, trivial logic, no trust boundary, and you are sure) may take an inline self-review instead of the two reviewers: read the full diff, answer the three questions, state a verdict. Security, auth, data migration and money always take the two reviewers. Work another agent wrote (the `dispatch` executor) always takes the two reviewers: you did not watch it being written.

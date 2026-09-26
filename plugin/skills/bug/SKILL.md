@@ -1,6 +1,6 @@
 ---
 name: bug
-description: Use when a bug is confirmed (root cause proven with file:line and a repro, a review BLOCKER, or a bug found while reading and reported to the user), when the user asks to note something as a bug, or when a recorded bug's fix has landed. Writes the bug file through pmb.
+description: Use when a bug is confirmed (root cause proven with file:line and a repro, a defect found in code already on the parent branch, or a bug found while reading and reported to the user), when the user asks to note something as a bug, or when a recorded bug's fix has landed. Writes the bug file through pmb.
 ---
 
 # Bug
@@ -10,11 +10,11 @@ Bugs live as files under `.pm/bugs/`, one per bug, in the shape the pm-board fil
 ## When
 
 - `pm:debug` proved a root cause: `file:line` plus a repro.
-- `pm:review` returned a BLOCKER.
+- `pm:review` found a defect in code already on the parent branch (not one the diff under review brought in).
 - You found a bug while reading and told the user.
 - The user asks to note something as a bug, in any language.
 
-Not a bug file: a guess, a review NOTE, a problem in test tooling or CI glue, anything not reproduced yet.
+Not a bug file: a guess, a review NOTE, a BLOCKER in the diff under review (it is unfinished work of that story and goes into the plan's fix round), a problem in test tooling or CI glue, anything not reproduced yet.
 
 ## Record
 

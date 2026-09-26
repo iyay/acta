@@ -14,6 +14,7 @@ func TestSkillBuild(t *testing.T) {
 			"references/house-rules.md", "implementer-prompt.md", "## Waves",
 			"pmb tick", "pm: tick wave",
 		},
-		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5"},
+		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
+			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees"},
 	})
 }

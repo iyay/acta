@@ -286,7 +286,6 @@ The PARALLEL rules live in `references/house-rules.md` now, read before the todo
 - **Waves declared up front** in the todo list ("wave 1: T-1, T-3, T-4 parallel · wave 2: T-2 — depends on T-1"), so drift is visible at the comprehension checkpoint.
 - **Parallelism never relaxes the gates.** No batching commits at the end of a wave, no "test it all together", no shared scratch files between subagents.
 - **Skills are HOW, not WHO.** Subagents are plain `general-purpose` implementers; `pm:tdd` runs inside them. Never a skill name in a `subagent_type` slot.
-- **OVERRIDE on the skill:** the recipient skips `pm:build`'s per-task reviewer and its "fix round R of 5" loop. Review is yours, once per round, from your side (`pm:review`).
 
 You require this; you do not police the exact wave count. A genuinely dependent chain run serially is correct. Six independent tickets run serially is a finding — say so in the fix round, and re-dispatch the remaining tickets as a parallel wave.
 
@@ -354,7 +353,7 @@ User explicitly wants a *different* pane to review → that message needs: liter
 
 ## After a review — route as one fix ticket, three rounds max
 
-**Clean** = Spec axis matches AND zero BLOCKERs (the skill's Critical with a reproducible scenario; Important/Minor = NOTE). Clean AND every ticket done → "Landing", same turn, no ask.
+**Clean** = Spec axis matches AND zero BLOCKERs (the finding bar in `pm:review`). Clean AND every ticket done → "Landing", same turn, no ask.
 
 Not clean after round 1 or 2 → the fix round goes out **in this same turn, automatically**. A findings list handed to the user with no dispatch behind it is an incomplete turn. Steps:
 
@@ -369,7 +368,7 @@ Not clean after round 1 or 2 → the fix round goes out **in this same turn, aut
 
 Escalate before the cap only when a finding needs a human decision. New findings do not reset or extend the round count.
 
-## Landing — WORKTREE LANDING, from the main checkout
+## Landing — from the main checkout
 
 Clean and complete → you merge and tear down **in the same turn the clean verdict arrives**. Never ask; never report "ready to merge". The approved plan covers it (`pm:land`: "land without asking" — the options menu is overridden, its test gate and cleanup steps still apply).
 
@@ -394,4 +393,4 @@ Report after landing, ADHD shape: merge SHA first, post-merge gate numbers you r
 
 Memory: before reporting done, one sweep — a gotcha that burned time, a dispatch mechanic that failed, an agreed convention → write it now. Routing: domain term → `CONTEXT.md`, decision → ADR, runbook → `.okf/`, session-scoped → memory. Diff play-by-play is noise.
 
-**Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--Users-iyay-Nayakatara-PMIS-codes-febe-be-pmis-.claude-worktrees-qty-fix--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic. Landing report gets one line: `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` when the file is missing or adds nothing.
+**Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--home-me-code-app-worktree--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic. Landing report gets one line: `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` when the file is missing or adds nothing.
