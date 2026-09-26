@@ -13,22 +13,34 @@ import (
 // their order and the body is copied byte for byte.
 func SetField(src []byte, key, value string) ([]byte, error) {
 	text := string(src)
-	if !strings.HasPrefix(text, "---\n") {
+	nl := "\n"
+	// The reader already accepts CRLF, so an edit must too: keep the
+	// file's own line ending or a CRLF file gains a second block.
+	if strings.HasPrefix(text, "---\r\n") {
+		nl = "\r\n"
+	} else if !strings.HasPrefix(text, "---\n") {
 		block, err := encode(&yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode}}}, key, value)
 		if err != nil {
 			return nil, err
 		}
 		return []byte("---\n" + block + "---\n" + text), nil
 	}
-	if strings.HasSuffix(text, "\n---") {
-		text += "\n"
-	}
-	rest := text[3:]
-	end := strings.Index(rest, "\n---\n")
+	open := "---" + nl
+	rest := text[len("---"):] // keep the newline: "\n---\n" finds an empty block
+	inner := nl + "---" + nl
+	end := strings.Index(rest, inner)
+	body := ""
 	if end < 0 {
-		return nil, errors.New("frontmatter has no closing ---")
+		// The closing fence is the last line, with or without its newline.
+		if strings.HasSuffix(rest, nl+"---") {
+			end = len(rest) - len(nl+"---")
+		} else {
+			return nil, errors.New("frontmatter has no closing ---")
+		}
+	} else {
+		body = rest[end+len(inner):]
 	}
-	front, body := rest[1:end+1], rest[end+5:]
+	front := rest[1 : end+1]
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
@@ -41,7 +53,10 @@ func SetField(src []byte, key, value string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []byte("---\n" + block + "---\n" + body), nil
+	if nl == "\r\n" {
+		block = strings.ReplaceAll(block, "\n", "\r\n")
+	}
+	return []byte(open + block + "---" + nl + body), nil
 }
 
 func encode(doc *yaml.Node, key, value string) (string, error) {

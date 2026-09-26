@@ -107,6 +107,40 @@ func TestParseTasks(t *testing.T) {
 	}
 }
 
+func TestParseTaskNumberAsWritten(t *testing.T) {
+	cases := []struct{ heading, num, title string }{
+		{"### Task 1: First step", "1", "First step"},
+		{"### Task F1 (be): Fix it", "F1", "(be): Fix it"},
+		{"### Task F-1: Drop the stored-column fallback", "F-1", "Drop the stored-column fallback"},
+		{"### Task F-2: Re-check the quantity math", "F-2", "Re-check the quantity math"},
+		{"### Task 2a: Suffix letter", "2a", "Suffix letter"},
+		{"### Task F-10: Double digits", "F-10", "Double digits"},
+		{"### Task 2", "2", ""},
+		{"### Task 3. Dot separator", "3", "Dot separator"},
+		{"### Task F-1 - Dash separator", "F-1", "- Dash separator"},
+	}
+	for _, c := range cases {
+		d := Parse([]byte("# Plan\n\n" + c.heading + "\n"))
+		if len(d.Tasks) != 1 {
+			t.Errorf("%q: got %d tasks, want 1", c.heading, len(d.Tasks))
+			continue
+		}
+		if g := d.Tasks[0]; g.Num != c.num || g.Title != c.title {
+			t.Errorf("%q = num %q title %q, want num %q title %q", c.heading, g.Num, g.Title, c.num, c.title)
+		}
+	}
+}
+
+func TestParseDashTasksDoNotCollapse(t *testing.T) {
+	d := Parse([]byte("# Plan\n\n### Task F-1: First\n\n### Task F-2: Second\n"))
+	if len(d.Tasks) != 2 {
+		t.Fatalf("got %d tasks, want 2: %+v", len(d.Tasks), d.Tasks)
+	}
+	if d.Tasks[0].Num != "F-1" || d.Tasks[1].Num != "F-2" {
+		t.Fatalf("nums = %q, %q", d.Tasks[0].Num, d.Tasks[1].Num)
+	}
+}
+
 func TestParseTitleIgnoresFence(t *testing.T) {
 	d := Parse([]byte("```\n# not a title\n```\n# Real title\n"))
 	if d.Title != "Real title" {

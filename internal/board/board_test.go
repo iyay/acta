@@ -46,6 +46,9 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 		"plans/2026-09-23-lonely#task-1":        {KindTask, "todo", "derived", 0, 0},
 		"bugs/2026-09-24-crash":                 {KindBug, "fixed", "derived", 1, 1},
 		"plans/2026-09-25-crash-fix#task-F1":    {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks":           {KindStory, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks#task-F-1":  {KindTask, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks#task-F-2":  {KindTask, "done", "derived", 2, 2},
 		"bugs/2026-09-26-open":                  {KindBug, "open", "derived", 0, 0},
 		"plans/2026-09-27-orphan":               {KindStory, "done", "derived", 1, 1},
 		"specs/2026-09-19-dropped":              {KindStory, "dropped", "frontmatter", 0, 0},
@@ -65,8 +68,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 			t.Errorf("%s = kind %s status %s (%s) %d/%d, want %+v", id, it.Kind, it.Status, it.StatusSource, it.Done, it.Total, w)
 		}
 	}
-	if len(b.Items) != 19 {
-		t.Errorf("got %d items, want 19: %v", len(b.Items), ids(b.Items))
+	if len(b.Items) != 22 {
+		t.Errorf("got %d items, want 22: %v", len(b.Items), ids(b.Items))
 	}
 }
 
@@ -93,6 +96,25 @@ func TestLoadLinksPlans(t *testing.T) {
 	task := b.Get("plans/2026-09-25-crash-fix#task-F1")
 	if task.Title != "(be): Guard the nil config" || task.Line != 6 || task.Ref != "B-1" {
 		t.Errorf("F1 = title %q line %d ref %q", task.Title, task.Line, task.Ref)
+	}
+}
+
+func TestLoadDashTasks(t *testing.T) {
+	b := loadFixture(t)
+	t1 := b.Get("plans/2026-09-26-dash-tasks#task-F-1")
+	t2 := b.Get("plans/2026-09-26-dash-tasks#task-F-2")
+	if t1 == nil || t2 == nil {
+		t.Fatalf("dash tasks missing: F-1=%v F-2=%v", t1 != nil, t2 != nil)
+	}
+	if t1.Title != "Drop the stored-column fallback" || t1.Line != 3 {
+		t.Errorf("F-1 = title %q line %d", t1.Title, t1.Line)
+	}
+	if t2.Title != "Re-check the quantity math" || t2.Line != 8 {
+		t.Errorf("F-2 = title %q line %d", t2.Title, t2.Line)
+	}
+	parent := b.Get("plans/2026-09-26-dash-tasks")
+	if parent.Done != 2 || parent.Total != 2 {
+		t.Errorf("parent progress = %d/%d, want 2/2", parent.Done, parent.Total)
 	}
 }
 
@@ -142,8 +164,8 @@ func TestLists(t *testing.T) {
 	check("active bugs", ids(b.List(KindBug, false)), []string{"bugs/2026-09-26-open", "specs/2026-09-15-really-bug"})
 	check("active tasks", ids(b.List(KindTask, false)), []string{"plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha#task-2"})
 	check("untyped", ids(b.Untyped(false)), []string{"docs/superpowers/specs/2026-01-01-old"})
-	if got := len(b.List(KindStory, true)); got != 8 {
-		t.Errorf("all non-legacy stories = %d, want 8", got)
+	if got := len(b.List(KindStory, true)); got != 9 {
+		t.Errorf("all non-legacy stories = %d, want 9", got)
 	}
 	for _, it := range b.List(KindTask, true) {
 		if it.Legacy {

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	taskRe = regexp.MustCompile(`^### Task ([A-Za-z0-9]+)\b[:.]?\s*(.*)$`)
+	taskRe = regexp.MustCompile(`^### Task ([^:.\s]+)[:.]?\s*(.*)$`)
 	boxRe  = regexp.MustCompile(`^\s*[-*] \[([ xX])\]`)
 	specRe = regexp.MustCompile(`^\*\*Spec:\*\*\s*(.+)$`)
 )

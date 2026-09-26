@@ -120,6 +120,30 @@ func TestSetValueDirtyFileIsWrittenNotCommitted(t *testing.T) {
 	}
 }
 
+func TestSetValueCRLFFileKeepsRef(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".pm/specs/2026-09-26-win.md": "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n",
+	})
+	b := mustLoad(t, cfg)
+	if got := b.Get("specs/2026-09-26-win").Ref; got != "TICK-7" {
+		t.Fatalf("ref before set = %q, want TICK-7", got)
+	}
+	if _, err := SetValue(cfg, b, "specs/2026-09-26-win", "status", "approved"); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(cfg.Root, "specs/2026-09-26-win.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(raw)
+	if strings.Count(strings.ReplaceAll(s, "\r\n", "\n"), "---\n") != 2 {
+		t.Fatalf("two frontmatter blocks after set: %q", s)
+	}
+	if got := mustLoad(t, cfg).Get("specs/2026-09-26-win").Ref; got != "TICK-7" {
+		t.Fatalf("ref after set = %q, want TICK-7 (file %q)", got, s)
+	}
+}
+
 func TestSetValueAutoCommitOff(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	cfg.AutoCommit = false
