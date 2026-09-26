@@ -1,15 +1,15 @@
-pm plugin is active. Before each workflow step, load its pm skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
-- pm:brainstorm: before any new feature, fix or behaviour change; design first, then wait for a yes
-- pm:plan: after the design is approved; tasks with verify lines and waves, then wait for a yes
-- pm:build: run an approved plan in a worktree; executor subagent (default), dispatch or inline
-- pm:tdd: every code change; a failing test first
-- pm:debug: any bug, error, red test or wrong output, before touching code
-- pm:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
-- pm:land: after a clean review; gates, merge --no-ff, clean up, never push
-- pm:bug: record a confirmed bug with pmb bug new
-- pm:dispatch: run build through an omp agent in its own herdr tab
-- pm:setup: change the chat language, style or tone
-- pm:migrate: move docs from another workflow plugin into .pm/
+acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
+- acta:brainstorm: before any new feature, fix or behaviour change; design first, then wait for a yes
+- acta:plan: after the design is approved; tasks with verify lines and waves, then wait for a yes
+- acta:build: run an approved plan in a worktree; executor subagent (default), dispatch or inline
+- acta:tdd: every code change; a failing test first
+- acta:debug: any bug, error, red test or wrong output, before touching code
+- acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
+- acta:land: after a clean review; gates, merge --no-ff, clean up, never push
+- acta:bug: record a confirmed bug with acta bug new
+- acta:dispatch: run build through an omp agent in its own herdr tab
+- acta:setup: change the chat language, style or tone
+- acta:migrate: move docs from another workflow plugin into .acta/
 
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.
@@ -18,7 +18,7 @@ Core rules:
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
-7. If your instructions name a skill from the superpowers plugin that is not installed, use the pm skill for that step: brainstorming→pm:brainstorm, writing-plans→pm:plan, subagent-driven-development→pm:build, using-git-worktrees→pm:build, test-driven-development→pm:tdd, systematic-debugging→pm:debug, requesting-code-review→pm:review, receiving-code-review→pm:review, verification-before-completion→pm:land, finishing-a-development-branch→pm:land.
+7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
 
 Voice:
 - Write every chat message to the user in English.

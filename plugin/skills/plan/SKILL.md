@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Use after a design is approved, before any code. Turns the spec into a task-by-task plan in .pm/plans/ - failing test first, exact files, a property-shaped verify line and a wave for every task - then waits for the user's yes.
+description: Use after a design is approved, before any code. Turns the spec into a task-by-task plan in .acta/plans/ - failing test first, exact files, a property-shaped verify line and a wave for every task - then waits for the user's yes.
 ---
 
 # Writing Plans
@@ -11,13 +11,13 @@ Write comprehensive implementation plans assuming the engineer has zero context 
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
-**Announce at start:** "I'm using pm:plan to create the implementation plan."
+**Announce at start:** "I'm using acta:plan to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via `pm:build` at execution time.
+**Context:** If working in an isolated worktree, it should have been created via `acta:build` at execution time.
 
-**Save plans to:** `.pm/plans/YYYY-MM-DD-<feature-name>.md` (`.pm/` is the default root; `.pm.yaml`, `PM_ROOT` or `pmb --root` can move it).
+**Save plans to:** `.acta/plans/YYYY-MM-DD-<feature-name>.md` (`.acta/` is the default root; `.acta.yaml`, `ACTA_ROOT` or `acta --root` can move it).
 - (User preferences for plan location override this default)
-- Right after saving, run `pmb id` right after so the plan gets its PLAN number and hash before anyone refers to it.
+- Right after saving, run `acta id` right after so the plan gets its PLAN number and hash before anyone refers to it.
 
 ## Scope Check
 
@@ -61,7 +61,7 @@ Group tasks into waves by file ownership. Two tasks in one wave never touch the 
 
 ## Keep it small
 
-Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI, then existing code, then stdlib, then native, then an installed dependency, then one line, then the minimum; never cut validation, security or accessibility." Tasks come from the user's ask only: no task for a helper, probe or list the user did not ask for. Review findings never become tasks here, except the one fix task `pm:review` asks for.
+Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI, then existing code, then stdlib, then native, then an installed dependency, then one line, then the minimum; never cut validation, security or accessibility." Tasks come from the user's ask only: no task for a helper, probe or list the user did not ask for. Review findings never become tasks here, except the one fix task `acta:review` asks for.
 
 ## Bite-Sized Task Granularity
 
@@ -79,7 +79,7 @@ Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.
+> **For agentic workers:** run this plan with acta:build, task by task. Steps use checkbox (`- [ ]`) syntax, and acta reads those boxes as task progress.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -91,7 +91,7 @@ Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI
 argues from the spec, so the spec travels with it; executors read both.
 A Bounded plan with no spec file writes exactly
 `**Spec:** none (Bounded, approved in chat on <date>)`, with no other
-backticks on the line: pmb reads a .md path there as the spec]
+backticks on the line: acta reads a .md path there as the spec]
 
 ## Global Constraints
 
@@ -180,4 +180,4 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 Save the plan, show it to the user, and wait for a yes. Approval of the design did not approve the plan.
 
-Then run it with `pm:build`. Ask which executor only if the user has not said: `subagent` (default), `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).
+Then run it with `acta:build`. Ask which executor only if the user has not said: `subagent` (default), `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).

@@ -1,4 +1,4 @@
-pm plugin
+acta plugin
 
 Parts of this plugin are copied from, or adapted from, other MIT-licensed
 projects. Their copyright and license notices follow.
@@ -16,7 +16,7 @@ Adapted into:
 
 i-have-adhd - https://github.com/ayghri/i-have-adhd
 Copyright (c) 2026 Ayoub Ghriss
-Adapted into: the adhd style rules printed by pmb hook session-start.
+Adapted into: the adhd style rules printed by acta hook session-start.
 
 MIT License
 

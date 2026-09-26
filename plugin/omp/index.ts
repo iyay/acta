@@ -1,4 +1,4 @@
-// pm for omp. omp does not run Claude Code's shell hooks, so this extension
+// acta for omp. omp does not run Claude Code's shell hooks, so this extension
 // sends the same text through omp's own events: the session rules on the first
 // message and after compaction, and the voice reminder on every message.
 import { readFileSync } from "node:fs";
@@ -11,10 +11,10 @@ const defaultsFile = join(pluginRoot, "hooks", "default-rules.md");
 
 type Exec = (cmd: string, args: string[]) => Promise<{ stdout: string; code: number }>;
 
-// runPmb returns pmb's output, or null when pmb is missing or fails.
-async function runPmb(exec: Exec, args: string[]): Promise<string | null> {
+// runActa returns acta's output, or null when acta is missing or fails.
+async function runActa(exec: Exec, args: string[]): Promise<string | null> {
   try {
-    const r = await exec("pmb", args);
+    const r = await exec("acta", args);
     return r.code === 0 ? r.stdout.trim() : null;
   } catch {
     return null;
@@ -30,22 +30,22 @@ export function createState(exec: Exec, readDefaults: () => string = () => readF
     async contextFor(): Promise<string> {
       const parts: string[] = [];
       if (!rulesSent) {
-        const rules = await runPmb(exec, ["hook", "session-start", "--known", knownFile]);
+        const rules = await runActa(exec, ["hook", "session-start", "--known", knownFile]);
         parts.push(
           rules ??
             readDefaults().trim() +
-              "\n\npm: the pmb binary is not installed or failed, so these are the default rules (English, adhd style).",
+              "\n\nacta: the acta binary is not installed or failed, so these are the default rules (English, adhd style).",
         );
         rulesSent = true;
       }
-      const reminder = await runPmb(exec, ["hook", "prompt"]);
+      const reminder = await runActa(exec, ["hook", "prompt"]);
       if (reminder) parts.push(reminder);
       return parts.join("\n\n");
     },
   };
 }
 
-export default function pm(pi: any) {
+export default function acta(pi: any) {
   const exec: Exec = async (cmd, args) => {
     const r = await pi.exec(cmd, args);
     return { stdout: String(r?.stdout ?? ""), code: Number(r?.code ?? 1) };
@@ -57,6 +57,6 @@ export default function pm(pi: any) {
     const content = await state.contextFor();
     if (!content) return;
     // Shape follows BeforeAgentStartEventResult: no attribution field.
-    return { message: { customType: "pm", content, display: false } };
+    return { message: { customType: "acta", content, display: false } };
   });
 }

@@ -5,7 +5,7 @@ description: Use when the session rules say the voice is not set up yet, or when
 
 # Setup
 
-The chat language, style and tone live in `~/.pm/voice.yaml` (or the file `PM_VOICE_FILE` names). `pmb` reads it at the start of every session and before every message.
+The chat language, style and tone live in `~/.acta/voice.yaml` (or the file `PM_VOICE_FILE` names). `acta` reads it at the start of every session and before every message.
 
 ## First run
 
@@ -18,14 +18,14 @@ When the session rules say the voice is not set up, ask these once, in English, 
 Save the answers, writing the language as its full English name (Korean, not ko):
 
 ```bash
-pmb voice set --language Korean --style adhd --tone "Casual, short sentences."
+acta voice set --language Korean --style adhd --tone "Casual, short sentences."
 ```
 
 From the next message on, talk in the chosen language.
 
 ## Change later
 
-Pass only the flags that change: `pmb voice set --style plain`, `pmb voice set --clear-tone`, `pmb voice set --repo-language English`. `pmb voice show` prints the current setting.
+Pass only the flags that change: `acta voice set --style plain`, `acta voice set --clear-tone`, `acta voice set --repo-language English`. `acta voice show` prints the current setting.
 
 ## Limits
 

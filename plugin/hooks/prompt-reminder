@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Adds a one-line voice reminder to every message, so a long session keeps the
-# user's chat language. Prints nothing when pmb is missing, and never fails.
-if command -v pmb >/dev/null 2>&1; then
-  pmb hook prompt
+# user's chat language. Prints nothing when acta is missing, and never fails.
+if command -v acta >/dev/null 2>&1; then
+  acta hook prompt
 fi
 exit 0

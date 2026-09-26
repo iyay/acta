@@ -1,4 +1,4 @@
-// Package hook builds the text the pm plugin puts in front of the agent: the
+// Package hook builds the text the acta plugin puts in front of the agent: the
 // session rules at the start and a one-line voice reminder on every message.
 package hook
 
@@ -13,7 +13,7 @@ import (
 	"github.com/iyay/acta/internal/voice"
 )
 
-// Skill is one pm skill and when to use it.
+// Skill is one acta skill and when to use it.
 type Skill struct{ Name, When string }
 
 // Skills is the index printed every session. The plugin's skill folders must
@@ -26,10 +26,10 @@ var Skills = []Skill{
 	{"debug", "any bug, error, red test or wrong output, before touching code"},
 	{"review", "when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most"},
 	{"land", "after a clean review; gates, merge --no-ff, clean up, never push"},
-	{"bug", "record a confirmed bug with pmb bug new"},
+	{"bug", "record a confirmed bug with acta bug new"},
 	{"dispatch", "run build through an omp agent in its own herdr tab"},
 	{"setup", "change the chat language, style or tone"},
-	{"migrate", "move docs from another workflow plugin into .pm/"},
+	{"migrate", "move docs from another workflow plugin into .acta/"},
 }
 
 // Input is everything the hook text depends on.
@@ -37,7 +37,7 @@ type Input struct {
 	Voice       voice.Voice
 	VoiceExists bool
 	VoiceErr    error
-	Conflicts   []string // enabled workflow plugins that clash with pm
+	Conflicts   []string // enabled workflow plugins that clash with acta
 }
 
 const coreRules = `
@@ -48,7 +48,7 @@ Core rules:
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
-7. If your instructions name a skill from the superpowers plugin that is not installed, use the pm skill for that step: brainstorming→pm:brainstorm, writing-plans→pm:plan, subagent-driven-development→pm:build, using-git-worktrees→pm:build, test-driven-development→pm:tdd, systematic-debugging→pm:debug, requesting-code-review→pm:review, receiving-code-review→pm:review, verification-before-completion→pm:land, finishing-a-development-branch→pm:land.
+7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
 `
 
 // adhdRules is a short form of the i-have-adhd plugin's rules (MIT).
@@ -66,21 +66,21 @@ Style (ADHD reader):
 `
 
 const firstRun = `
-Voice: not set up yet. If the user's CLAUDE.md or AGENTS.md already names a chat language or style, do not ask the questions below: offer once to save those values with the pmb voice set command below, and wait for a yes.
+Voice: not set up yet. If the user's CLAUDE.md or AGENTS.md already names a chat language or style, do not ask the questions below: offer once to save those values with the acta voice set command below, and wait for a yes.
 Otherwise, before other work in this session, ask the user once, in English:
 1. Which language should chat use? (default English)
 2. Style: adhd (answer first, short steps) or plain? (default adhd)
 3. Anything about tone, in their own words? (optional)
-Then save it: pmb voice set --language <full language name> --style <adhd|plain> [--tone "<text>"]
+Then save it: acta voice set --language <full language name> --style <adhd|plain> [--tone "<text>"]
 Until then, write in English (or the language CLAUDE.md names), adhd style.
 `
 
 // SessionStart is the text for the start of a session and after compaction.
 func SessionStart(in Input) string {
 	var b strings.Builder
-	b.WriteString("pm plugin is active. Before each workflow step, load its pm skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:\n")
+	b.WriteString("acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:\n")
 	for _, s := range Skills {
-		fmt.Fprintf(&b, "- pm:%s: %s\n", s.Name, s.When)
+		fmt.Fprintf(&b, "- acta:%s: %s\n", s.Name, s.When)
 	}
 	b.WriteString(coreRules)
 	switch {
@@ -88,7 +88,7 @@ func SessionStart(in Input) string {
 		b.WriteString(firstRun)
 		b.WriteString(adhdRules)
 	case in.VoiceErr != nil:
-		fmt.Fprintf(&b, "\nVoice: the voice file could not be read (%v). Write in English, adhd style, until it is fixed; pm:setup rewrites it.\n", in.VoiceErr)
+		fmt.Fprintf(&b, "\nVoice: the voice file could not be read (%v). Write in English, adhd style, until it is fixed; acta:setup rewrites it.\n", in.VoiceErr)
 		b.WriteString(adhdRules)
 	default:
 		v := in.Voice
@@ -123,11 +123,11 @@ func SessionStart(in Input) string {
 func Prompt(in Input) string {
 	switch {
 	case !in.VoiceExists:
-		return "pm voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."
+		return "acta voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."
 	case in.VoiceErr != nil:
-		return "pm voice: the voice file could not be read; reply in English, adhd style."
+		return "acta voice: the voice file could not be read; reply in English, adhd style."
 	default:
-		return fmt.Sprintf("pm voice: reply in %s, %s style.", in.Voice.ChatLanguage, in.Voice.Style)
+		return fmt.Sprintf("acta voice: reply in %s, %s style.", in.Voice.ChatLanguage, in.Voice.Style)
 	}
 }
 
@@ -174,7 +174,7 @@ func EnabledPlugins(claudeDir, repoRoot string) []string {
 	return out
 }
 
-// LoadKnown reads the list of workflow plugins that clash with pm: one name
+// LoadKnown reads the list of workflow plugins that clash with acta: one name
 // per line, blank lines and # comments skipped. No file means no list.
 func LoadKnown(path string) []string {
 	if path == "" {
@@ -195,12 +195,12 @@ func LoadKnown(path string) []string {
 }
 
 // Conflicts keeps enabled plugins whose plugin name or marketplace name is on
-// the known list. pm itself never counts.
+// the known list. acta itself never counts.
 func Conflicts(enabled, known []string) []string {
 	var out []string
 	for _, e := range enabled {
 		name, market, ok := strings.Cut(e, "@")
-		if !ok || strings.EqualFold(name, "pm") {
+		if !ok || strings.EqualFold(name, "acta") {
 			continue
 		}
 		for _, k := range known {

@@ -1,6 +1,6 @@
 {
-  "name": "pm",
-  "description": "A lean workflow for Claude Code and omp: brainstorm, plan, build, test first, debug, review, land. Planning files go to .pm/ through pmb.",
+  "name": "acta",
+  "description": "A lean workflow for Claude Code and omp: brainstorm, plan, build, test first, debug, review, land. Planning files go to .acta/ through acta.",
   "version": "0.1.0",
   "author": { "name": "Rian" },
   "license": "MIT",

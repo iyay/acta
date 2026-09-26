@@ -15,15 +15,15 @@ func TestSkillBuild(t *testing.T) {
 			"## Executors", "`subagent`", "`dispatch`", "`inline`",
 			`model: "sonnet"`, `agent="task"`, "Do not ask whether to create a worktree",
 			"../<repo>-<slug>", "git rev-parse --show-toplevel", "git add -A",
-			"pm:tdd", "pm:review", "pm:land", "pm:dispatch", "no per-task reviewer",
-			"pmb tick plans/<stem>#task-N --step <n>", "pmb tick [TASK_ID] --step <n>", "pm: tick wave",
-			"pmb tick plans/<stem>#task-N --all",
-			"pmb show <plan id> --json", "progress.done",
+			"acta:tdd", "acta:review", "acta:land", "acta:dispatch", "no per-task reviewer",
+			"acta tick plans/<stem>#task-N --step <n>", "acta tick [TASK_ID] --step <n>", "acta: tick wave",
+			"acta tick plans/<stem>#task-N --all",
+			"acta show <plan id> --json", "progress.done",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees",
-			`"$LOCATION/$BRANCH_NAME"`, "pmb tick <task-id>", "run it again with --all"},
+			`"$LOCATION/$BRANCH_NAME"`, "acta tick <task-id>", "run it again with --all"},
 	})
 }
 
@@ -35,8 +35,8 @@ func TestBuildTickRuleEverywhere(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), "pmb tick [TASK_ID] --all") {
-		t.Error("implementer-prompt.md missing \"pmb tick [TASK_ID] --all\"")
+	if !strings.Contains(string(b), "acta tick [TASK_ID] --all") {
+		t.Error("implementer-prompt.md missing \"acta tick [TASK_ID] --all\"")
 	}
 }
 
@@ -60,7 +60,7 @@ func TestBuildSkillTickCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	for _, want := range []string{"run `pmb tick plans/<stem>#task-N --all`", "pmb show <plan id> --json", "progress.done"} {
+	for _, want := range []string{"run `acta tick plans/<stem>#task-N --all`", "acta show <plan id> --json", "progress.done"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("build/SKILL.md missing %q", want)
 		}
@@ -98,7 +98,7 @@ func TestBuildStartTickPrompt(t *testing.T) {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	const want = "Very first action: run `pmb tick [TASK_ID] --start`"
+	const want = "Very first action: run `acta tick [TASK_ID] --start`"
 	if !strings.Contains(txt, want) {
 		t.Errorf("implementer-prompt.md missing %q", want)
 	}
@@ -115,7 +115,7 @@ func TestBuildStartTickSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	const want = "very first action on every task: run `pmb tick plans/<stem>#task-N --start`"
+	const want = "very first action on every task: run `acta tick plans/<stem>#task-N --start`"
 	if !strings.Contains(txt, want) {
 		t.Errorf("build/SKILL.md missing %q", want)
 	}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import pm, { createState } from "./index";
+import acta, { createState } from "./index";
 
 function fakeExec(outputs: Record<string, { stdout: string; code: number }>) {
   const calls: string[] = [];
@@ -17,8 +17,8 @@ function fakeExec(outputs: Record<string, { stdout: string; code: number }>) {
 describe("createState", () => {
   test("first message gets rules and reminder, later ones only the reminder", async () => {
     const { exec } = fakeExec({
-      "pmb hook session-start": { stdout: "RULES\n", code: 0 },
-      "pmb hook prompt": { stdout: "REMINDER\n", code: 0 },
+      "acta hook session-start": { stdout: "RULES\n", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
     });
     const s = createState(exec, () => "DEFAULTS");
     expect(await s.contextFor()).toBe("RULES\n\nREMINDER");
@@ -28,20 +28,20 @@ describe("createState", () => {
   });
 
   test("session-start passes the known-plugins file", async () => {
-    const { exec, calls } = fakeExec({ "pmb": { stdout: "X", code: 0 } });
+    const { exec, calls } = fakeExec({ "acta": { stdout: "X", code: 0 } });
     await createState(exec, () => "").contextFor();
-    expect(calls[0]).toMatch(/^pmb hook session-start --known .*hooks\/workflow-plugins\.txt$/);
+    expect(calls[0]).toMatch(/^acta hook session-start --known .*hooks\/workflow-plugins\.txt$/);
   });
 
-  test("missing pmb falls back to the default rules and no reminder", async () => {
+  test("missing acta falls back to the default rules and no reminder", async () => {
     const { exec } = fakeExec({});
     const out = await createState(exec, () => "DEFAULTS\n").contextFor();
     expect(out).toContain("DEFAULTS");
-    expect(out).toContain("pmb binary is not installed or failed");
+    expect(out).toContain("acta binary is not installed or failed");
   });
 
-  test("failing pmb counts as missing", async () => {
-    const { exec } = fakeExec({ "pmb": { stdout: "partial", code: 1 } });
+  test("failing acta counts as missing", async () => {
+    const { exec } = fakeExec({ "acta": { stdout: "partial", code: 1 } });
     const out = await createState(exec, () => "DEFAULTS").contextFor();
     expect(out.startsWith("DEFAULTS")).toBe(true);
     expect(out).not.toContain("partial");
@@ -49,16 +49,16 @@ describe("createState", () => {
 });
 
 describe("extension", () => {
-  test("registers the three events and injects a pm message", async () => {
+  test("registers the three events and injects an acta message", async () => {
     const handlers: Record<string, Function> = {};
     const pi = {
       on: (event: string, fn: Function) => { handlers[event] = fn; },
       exec: async (_cmd: string, args: string[]) => ({ stdout: args[1] === "prompt" ? "REMINDER" : "RULES", code: 0 }),
     };
-    pm(pi);
+    acta(pi);
     expect(Object.keys(handlers).sort()).toEqual(["before_agent_start", "session_compact", "session_start"]);
     const r = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" });
-    expect(r.message.customType).toBe("pm");
+    expect(r.message.customType).toBe("acta");
     expect(r.message.content).toBe("RULES\n\nREMINDER");
     expect(r.message.display).toBe(false);
     expect("attribution" in r.message).toBe(false);

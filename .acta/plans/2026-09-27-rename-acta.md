@@ -80,11 +80,11 @@ All tasks run in order (each touches files the next one builds on): wave 1 task 
 
 **verify:** No plugin file names a `pm:` skill, a bare `pmb ` command, or `.pm/` as the default root, except the one sentence that explains the `pmb` alias; manifest and package names are `acta`; the session-start hook text names `acta:*` skills; every plugincheck test passes with the new required and forbidden strings, plus one new test that fails if any `pm:` skill name or bare `pmb ` command returns. List the grep commands that prove it.
 
-- [ ] **Step 1: Failing test:** `TestNoOldNames` in plugincheck walks `plugin/` and fails on `pm:` skill names, a bare `pmb ` command, or `.pm/` (allowing the alias sentence); update the `Must`/`MustNot` lists to the new names.
-- [ ] **Step 2: Run to see it fail.**
-- [ ] **Step 3: Rewrite** the text (`pm:` → `acta:`, `pmb` → `acta`, `.pm/` → `.acta/`, `PM_ROOT` → `ACTA_ROOT`, plugin name `pm` → `acta`), keeping each file's meaning.
-- [ ] **Step 4: Gate.**
-- [ ] **Step 5: Commit** (`feat(plugin): the plugin is acta`), tick `#task-4 --all`.
+- [x] **Step 1: Failing test:** `TestNoOldNames` in plugincheck walks `plugin/` and fails on `pm:` skill names, a bare `pmb ` command, or `.pm/` (allowing the alias sentence); update the `Must`/`MustNot` lists to the new names.
+- [x] **Step 2: Run to see it fail.**
+- [x] **Step 3: Rewrite** the text (`pm:` → `acta:`, `pmb` → `acta`, `.pm/` → `.acta/`, `PM_ROOT` → `ACTA_ROOT`, plugin name `pm` → `acta`), keeping each file's meaning.
+- [x] **Step 4: Gate.**
+- [x] **Step 5: Commit** (`feat(plugin): the plugin is acta`), tick `#task-4 --all`.
 
 ---
 
