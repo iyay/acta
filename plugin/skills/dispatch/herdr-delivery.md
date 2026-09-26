@@ -165,13 +165,15 @@ They apply to one turn only. Repeat them in every round, fix rounds included.
 
 ## Comprehension checkpoint
 
-~20 seconds after the prompt, one read:
+About 20 seconds after the prompt, exactly one read. No loops, no sleeps, no second read:
 
 ```bash
 herdr agent read <slug> --source recent-unwrapped --lines 60
 ```
 
-The todo list must name the brief's ticket ids. Invented modules, phases, or endpoints = confabulation:
+If the todo list is not on screen yet, report "checkpoint unconfirmed" in the Phase 1 report and yield anyway: the reply-back is the real signal.
+
+When the todo list is on screen, it must name the brief's ticket ids. Invented modules, phases, or endpoints = confabulation:
 
 ```bash
 herdr agent send-keys <slug> esc

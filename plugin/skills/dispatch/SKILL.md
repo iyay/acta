@@ -291,7 +291,7 @@ You require this; you do not police the exact wave count. A genuinely dependent 
 
 ## Comprehension checkpoint
 
-~20s after the `/goal`, one read. Two things must be true in the todo list:
+About 20s after the `/goal`, exactly one read (`herdr agent read <slug> --source recent-unwrapped --lines 60`). No loops, no sleeps, no second read. If the todo list is not on screen yet, report "checkpoint unconfirmed" in the Phase 1 report and yield anyway: the reply-back is the real signal. When the todo list is on screen, two things must be true:
 
 1. It names the ticket ids from the brief. Invented modules/phases/endpoints = it confabulated before reading → interrupt key, re-dispatch with a corrective preamble ("there is NO `<X>`, NO `<Y>` — writing those = drift").
 2. It declares waves, and wave 1 holds every ticket that has no dependency. A flat serial list of independent tickets = fan-out drift → interrupt, re-dispatch with the wave plan spelled out ("wave 1: T-1, T-3, T-4 in ONE message").
