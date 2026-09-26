@@ -86,6 +86,8 @@ func run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "voice":
 		return cmdVoice(args[1:], stdout, stderr)
+	case "hook":
+		return cmdHook(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q; use list, show, set or bug new\n", args[0])
 		return exitBadInput
@@ -251,7 +253,7 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
-		fmt.Fprintln(stderr, "usage: pmb set <id> status|type <value>")
+		fmt.Fprintln(stderr, "usage: pmb set <id> status|type|fixed_in|ref <value>")
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
