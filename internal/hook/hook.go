@@ -65,12 +65,13 @@ Style (ADHD reader):
 `
 
 const firstRun = `
-Voice: not set up yet. Before other work in this session, ask the user once, in English:
+Voice: not set up yet. If the user's CLAUDE.md or AGENTS.md already names a chat language or style, do not ask the questions below: offer once to save those values with the pmb voice set command below, and wait for a yes.
+Otherwise, before other work in this session, ask the user once, in English:
 1. Which language should chat use? (default English)
 2. Style: adhd (answer first, short steps) or plain? (default adhd)
 3. Anything about tone, in their own words? (optional)
 Then save it: pmb voice set --language <full language name> --style <adhd|plain> [--tone "<text>"]
-Until then, write in English, adhd style.
+Until then, write in English (or the language CLAUDE.md names), adhd style.
 `
 
 // SessionStart is the text for the start of a session and after compaction.

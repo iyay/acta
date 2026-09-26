@@ -58,7 +58,8 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 
 func TestSessionStartFirstRun(t *testing.T) {
 	out := SessionStart(Input{Voice: voice.Default()})
-	for _, want := range []string{"Voice: not set up yet.", "pmb voice set --language", "Style (ADHD reader):"} {
+	for _, want := range []string{"Voice: not set up yet.", "pmb voice set --language", "Style (ADHD reader):",
+		"already names a chat language or style", "or the language CLAUDE.md names"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("first run missing %q", want)
 		}
