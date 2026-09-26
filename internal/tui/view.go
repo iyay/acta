@@ -11,235 +11,515 @@ import (
 	"pm-board/internal/board"
 )
 
+// One small palette, readable on a dark and on a light terminal. The accent
+// marks the pane with the focus and the tab that is on; the dim brush paints
+// what is secondary. The plain text color is left to the terminal.
 var (
-	faint    = lipgloss.NewStyle().Faint(true)
-	bold     = lipgloss.NewStyle().Bold(true)
-	selected = lipgloss.NewStyle().Reverse(true)
-	frame    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+	accentColor = lipgloss.AdaptiveColor{Light: "25", Dark: "39"}
+	accent      = lipgloss.NewStyle().Foreground(accentColor)
+	faint       = lipgloss.NewStyle().Faint(true)
+	selected    = lipgloss.NewStyle().Reverse(true)
 )
 
-const helpText = `pmb keys
+// hints is what the left of the status line says when nothing else is going on.
+const hints = "1 2 3 tab · ] [ tab · j k · enter edit · ? help"
 
-  1 2 3, tab     switch tab
-  j k, arrows    move
-  g G            top, bottom
-  ctrl-d ctrl-u  scroll the detail pane
-  enter          open in $EDITOR (a task opens at its heading)
-  /              search, esc clears
-  a              active / all
-  t s            set type / status
-  n              new bug
-  r              reload
-  ?              close this help
-  q              quit`
+// helpLines is the key map the ? popup shows, grouped by pane.
+const helpLines = `1 2 3 tab       move between the panes
+] [             next / previous tab
+j k g G         move a list, scroll the detail
+ctrl+d ctrl+u   page down and up
+enter t s n     edit, set, new bug
+/ r q           search, reload, quit
+? esc           close this help`
 
-// View draws the whole screen.
+// View draws the whole screen: the panes, the status line, and any popup on
+// top of them.
 func (m Model) View() string {
-	if m.help {
-		lines := strings.Split(helpText, "\n")
-		for i, ln := range lines {
-			lines[i] = truncate(ln, m.width)
+	g := m.geometry()
+	h := max(3, m.height-1)
+	var body string
+	if g.wide {
+		left := lipgloss.JoinVertical(lipgloss.Left, m.paneView(paneOpen, g.open), m.paneView(paneDone, g.done))
+		body = lipgloss.JoinHorizontal(lipgloss.Top, left, m.paneView(paneDetail, g.detail))
+	} else {
+		body = m.paneView(m.focus, g.full)
+	}
+	lines := strings.Split(body, "\n")
+	if len(lines) > h {
+		lines = lines[:h]
+	}
+	for i, ln := range lines {
+		lines[i] = fit(ln, m.width)
+	}
+	body = strings.Join(lines, "\n")
+	if pop := m.popupBox(); pop != "" {
+		body = m.cover(body, pop, h)
+	}
+	return body + "\n" + fit(m.statusLine(), m.width)
+}
+
+// paneView draws one pane: its border with the title inside the top line, the
+// rows it holds, and the bottom line, which carries the line count of the
+// detail when that pane has the focus.
+func (m Model) paneView(p pane, b box) string {
+	if b.w < 2 || b.h < 2 {
+		return ""
+	}
+	edge := m.edge(p)
+	inner := b.w - 2
+	var content []string
+	foot := ""
+	if p == paneDetail {
+		content, foot = m.detailView(inner, b.inner)
+	} else {
+		content = m.listView(p, inner, b)
+	}
+	rows := make([]string, 0, b.h)
+	rows = append(rows, m.paneTop(p, b, edge))
+	for i := range b.inner {
+		line := ""
+		if i < len(content) {
+			line = content[i]
 		}
-		return strings.Join(lines, "\n")
+		rows = append(rows, edge.Render("│")+pad(line, inner)+edge.Render("│"))
 	}
-	leftW := clamp(m.width*2/5, 12, max(12, m.width-8))
-	rightW := max(8, m.width-leftW)
-	bodyH := max(5, m.height-4)
-
-	left := frame.Width(leftW - 2).Height(bodyH - 2).Render(m.listView(leftW-2, bodyH-2))
-	right := frame.Width(rightW - 2).Height(bodyH - 2).Render(m.detailView(rightW-2, bodyH-2))
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.header(),
-		m.tabsView(),
-		lipgloss.JoinHorizontal(lipgloss.Top, left, right),
-		m.footer(),
-	)
+	rows = append(rows, paneBottom(b, edge, foot))
+	return strings.Join(rows, "\n")
 }
 
-func (m Model) header() string {
-	mode := "live"
-	if m.manual {
-		mode = "manual"
+// paneTop draws the top line of a pane. The title sits inside the border,
+// lazygit style: the pane number, then the tabs. The tab that is on is bold in
+// the accent color and the others stay dim.
+func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
+	names := m.tabsOf(p)
+	if p == paneDetail {
+		names = []string{"Detail"}
 	}
-	return bold.Render(truncate(fmt.Sprintf("pmb · %s · active · %s", filepath.Base(m.cfg.RepoRoot), mode), m.width))
-}
-
-func (m Model) tabsView() string {
-	var plain, parts []string
-	for i, name := range tabNames {
-		// Read each tab's count from the list that tab actually draws, so the
-		// number and the rows can never disagree.
-		plain = append(plain, fmt.Sprintf("[%d] %s %d", i+1, name, len(m.board.List(tabKinds[i], false))))
-		label := plain[i]
-		if i == m.tab && m.query == "" {
-			label = selected.Render(label)
+	on := m.tab
+	if p == paneDone {
+		on = m.doneTab
+	}
+	segs := []segment{{text: fmt.Sprintf("─[%d]─", p+1), style: edge}}
+	for i, name := range names {
+		if i > 0 {
+			segs = append(segs, segment{text: " ─ ", style: edge, sep: true})
 		}
-		parts = append(parts, label)
+		style := faint
+		switch {
+		case p == paneDetail:
+			if m.focus == p {
+				style = accent.Bold(true)
+			}
+		case i == on:
+			style = accent.Bold(true)
+		}
+		segs = append(segs, segment{text: name, style: style})
 	}
-	full := strings.Join(parts, "  ")
-	if lipgloss.Width(full) <= m.width {
-		return full
-	}
-	return truncate(strings.Join(plain, "  "), m.width)
+	return topLine(b.w, edge, segs)
 }
 
-func (m Model) listView(w, h int) string {
-	rows := m.openRows()
+// segment is one piece of a border title and the brush it is painted with.
+// The dashes between two names are a segment of their own, marked as sep, so
+// they can be dropped together with the name they follow.
+type segment struct {
+	text  string
+	style lipgloss.Style
+	sep   bool
+}
+
+// topLine draws the top line of a box of width w: the left corner, the pieces,
+// then dashes up to the right corner. Pieces that do not fit are dropped from
+// the right, and a piece that alone is too wide is cut, so the line never
+// grows past w.
+func topLine(w int, edge lipgloss.Style, segs []segment) string {
+	if w < 2 {
+		return edge.Render(strings.Repeat("─", max(0, w)))
+	}
+	inner := w - 2
+	for len(segs) > 1 && segWidth(segs) > inner {
+		segs = segs[:len(segs)-1]
+	}
+	for len(segs) > 1 && segs[len(segs)-1].sep {
+		segs = segs[:len(segs)-1]
+	}
+	if segWidth(segs) > inner {
+		return edge.Render("╭") + fit(edge.Render(plainSegs(segs)), inner) + edge.Render("╮")
+	}
+	var b strings.Builder
+	b.WriteString(edge.Render("╭"))
+	for _, s := range segs {
+		b.WriteString(s.style.Render(s.text))
+	}
+	if fill := inner - segWidth(segs); fill > 0 {
+		b.WriteString(edge.Render(strings.Repeat("─", fill)))
+	}
+	b.WriteString(edge.Render("╮"))
+	return b.String()
+}
+
+func segWidth(segs []segment) int {
+	w := 0
+	for _, s := range segs {
+		w += lipgloss.Width(s.text)
+	}
+	return w
+}
+
+func plainSegs(segs []segment) string {
+	var b strings.Builder
+	for _, s := range segs {
+		b.WriteString(s.text)
+	}
+	return b.String()
+}
+
+// paneBottom draws the bottom line of a pane, with the line count of the
+// detail when there is one.
+func paneBottom(b box, edge lipgloss.Style, foot string) string {
+	inner := b.w - 2
+	text := ""
+	if foot != "" {
+		text = fit(" "+foot+" ", inner)
+	}
+	fill := strings.Repeat("─", max(0, inner-lipgloss.Width(text)))
+	return edge.Render("╰") + edge.Render(text) + edge.Render(fill) + edge.Render("╯")
+}
+
+// listView draws the rows of a list pane. Every row takes two lines, the title
+// and the dim meta line, plus a blank line under it, so a click on either line
+// lands on the same row.
+func (m Model) listView(p pane, w int, b box) []string {
+	rows, sel, idx := m.slotOf(p)
 	if len(rows) == 0 {
-		return faint.Render("nothing here")
+		return []string{faint.Render("nothing here")}
 	}
-	cur := m.cursor()
-	start := max(0, cur-h+1)
-	var lines []string
-	for i := start; i < len(rows) && len(lines) < h; i++ {
-		line := truncate(m.rowLabel(rows[i]), w)
-		if i == cur {
-			line = selected.Render(line)
+	cur := cursorOf(rows, *sel, *idx)
+	out := make([]string, 0, b.rows*rowLines)
+	for i := range b.rows {
+		n := b.first + i
+		if n >= len(rows) {
+			break
 		}
-		lines = append(lines, line)
+		title, meta := m.rowText(rows[n])
+		title, meta = truncate(title, w), truncate(meta, w)
+		switch {
+		case n == cur:
+			title, meta = selected.Render(title), selected.Render(meta)
+		case p == paneOpen:
+			title, meta = accent.Render(title), faint.Render(meta)
+		default:
+			meta = faint.Render(meta)
+		}
+		out = append(out, title, meta, "")
 	}
-	return strings.Join(lines, "\n")
+	return out
 }
 
-func (m Model) rowLabel(r row) string {
+// rowText gives the two lines of one row: the short ID, or the file path when
+// the file has no ID yet, with the title; and a dim line with the status, the
+// progress and the agent when one is working on it.
+func (m Model) rowText(r row) (string, string) {
 	if r.group {
 		arrow := "▸"
 		if m.groupOpen {
 			arrow = "▾"
 		}
-		return fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false)))
+		return fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false))), ""
 	}
 	it := m.board.Get(r.id)
-	label := strings.Repeat("  ", r.depth) + icon(it) + " "
-	if it.Ref != "" && it.Kind != board.KindTask {
-		label += it.Ref + " "
+	if it == nil {
+		return r.id, ""
 	}
-	label += it.Title
-	if it.Worktree != "" {
-		label += " · " + it.Worktree
+	name := it.ShortID
+	if name == "" {
+		name = it.ID
 	}
-	if it.Kind == board.KindTask {
-		if p := m.board.Get(it.Parent); p != nil {
-			label += " · " + p.Title
-		}
+	var parts []string
+	if it.Status != "" {
+		parts = append(parts, it.Status)
 	}
-	return label + "  " + faint.Render(short(it))
+	if it.Total > 0 {
+		parts = append(parts, fmt.Sprintf("%d/%d", it.Done, it.Total))
+	}
+	if it.Agent != "" {
+		parts = append(parts, it.Agent)
+	}
+	return strings.Repeat("  ", r.depth) + name + "  " + it.Title, "  " + strings.Join(parts, " · ")
 }
 
-func (m Model) detailView(w, h int) string {
-	if m.popup != nil {
-		return m.popupView()
+// detailView gives the lines of pane [3] and the line count for its bottom
+// border. The body scrolls, and the cut of that scroll happens here, so the
+// model never needs to know how long the body is.
+func (m Model) detailView(w, h int) ([]string, string) {
+	lines := m.detailLines(w)
+	foot := ""
+	if m.focus == paneDetail && len(lines) > 0 {
+		foot = fmt.Sprintf("%d/%d", min(m.scroll+1, len(lines)), len(lines))
 	}
-	if m.slug != nil {
-		return "new bug slug: " + *m.slug + "█\n\n" + faint.Render("lower case words joined by -, enter to open the editor, esc to cancel")
-	}
-	it := m.Selected()
-	if it == nil {
-		if len(m.board.Items) == 0 {
-			return "this repo has no .pm/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans."
-		}
-		return faint.Render("enter opens the group")
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s · %s\n", strings.ToUpper(string(it.Kind)), bold.Render(it.Title))
-	status := it.Status
-	if it.StatusSource == "frontmatter" {
-		status += " (set by hand)"
-	}
-	fmt.Fprintf(&b, "%s · %d/%d", status, it.Done, it.Total)
-	if it.Kind != board.KindTask {
-		b.WriteString(" tasks")
-	}
-	b.WriteString("\n")
-	if it.Ref != "" {
-		fmt.Fprintf(&b, "ref    %s\n", it.Ref)
-	}
-	if p := m.board.Get(it.Parent); p != nil {
-		fmt.Fprintf(&b, "parent %s\n", p.Title)
-	}
-	fmt.Fprintf(&b, "id     %s\n", it.ID)
-	switch {
-	case it.Worktree != "" && !it.OnDisk:
-		fmt.Fprintf(&b, "branch %s (not checked out)\n", it.Worktree)
-	case it.Worktree != "":
-		fmt.Fprintf(&b, "worktree %s\n", it.Worktree)
-	}
-	if it.OnDisk {
-		if rel, err := filepath.Rel(m.cfg.RepoRoot, it.Path); err == nil {
-			fmt.Fprintf(&b, "file   %s\n", rel)
-		}
-	}
-	if it.FixedIn != "" {
-		fmt.Fprintf(&b, "fixed  %s\n", it.FixedIn)
-	}
-	for _, p := range it.Problems {
-		fmt.Fprintf(&b, "! %s\n", p)
-	}
-	if len(it.Children) > 0 {
-		b.WriteString("\nTasks\n")
-		for _, id := range it.Children {
-			c := m.board.Get(id)
-			fmt.Fprintf(&b, " %s %s %s  %d/%d\n", icon(c), c.TaskNum, c.Title, c.Done, c.Total)
-		}
-	}
-	b.WriteString(faint.Render(strings.Repeat("─", max(1, w))) + "\n")
-	b.WriteString(m.render(it.Body, w))
-
-	lines := strings.Split(b.String(), "\n")
-	start := min(m.scroll, max(0, len(lines)-1))
-	lines = lines[start:]
+	lines = lines[min(m.scroll, max(0, len(lines)-1)):]
 	if len(lines) > h {
 		lines = lines[:h]
 	}
-	for i, ln := range lines {
-		lines[i] = truncate(ln, w)
+	return lines, foot
+}
+
+// detailLines draws the header and the body of the item on show. Labels are
+// upper case, padded to one width, with the colons in one column, and a line
+// with no value is left out.
+func (m Model) detailLines(w int) []string {
+	it := m.Selected()
+	if it == nil {
+		if len(m.board.Items) == 0 {
+			return cut("this repo has no .pm/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
+		}
+		return []string{faint.Render("enter opens the group")}
+	}
+	fields := []struct{ label, value string }{
+		{"ID", idText(it)},
+		{kindLabel(it.Kind), it.Title},
+		{"STATUS", it.Status},
+		{"REF", it.Ref},
+		{"SPEC", m.specText(it)},
+		{"WORKTREE", worktreeText(it)},
+		{"AGENT", it.Agent},
+		{"FILE", m.fileText(it)},
+		{"TASKS", progressText(it)},
+		{"FIXED", it.FixedIn},
+	}
+	width := 0
+	for _, f := range fields {
+		width = max(width, len(f.label))
+	}
+	width += 2
+	var lines []string
+	for _, f := range fields {
+		if f.value == "" {
+			continue
+		}
+		lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", width, f.label, f.value), w))
+	}
+	for _, p := range it.Problems {
+		lines = append(lines, truncate("! "+p, w))
+	}
+	lines = append(lines, faint.Render(strings.Repeat("─", max(1, w))))
+	for _, ln := range strings.Split(m.render(it.Body, w), "\n") {
+		lines = append(lines, fit(ln, w))
+	}
+	return lines
+}
+
+// statusLine draws the bottom line: the key hints, the search box or the last
+// message on the left, and where the board comes from, whether it is watched,
+// and the clock on the right.
+func (m Model) statusLine() string {
+	left, dim := hints, true
+	switch {
+	case m.searching || m.query != "":
+		left, dim = "/"+m.query, false
+	case m.status != "":
+		left, dim = m.status, false
+	}
+	right := fmt.Sprintf("pmb · %s · %s · %s", filepath.Base(m.cfg.RepoRoot), m.mode(), m.now.Format("15:04"))
+	// The clock and the mode are what the line always tells, so the hints are
+	// what gives way when the window is narrow.
+	room := m.width - lipgloss.Width(right) - 1
+	if room < lipgloss.Width(left) {
+		if room < 1 {
+			return fit(right, m.width)
+		}
+		left, room = fit(left, room), 1
+	} else {
+		room = m.width - lipgloss.Width(left) - lipgloss.Width(right)
+	}
+	if dim {
+		left = faint.Render(left)
+	}
+	return left + strings.Repeat(" ", room) + faint.Render(right)
+}
+
+// mode says whether the board follows the files as they change.
+func (m Model) mode() string {
+	if m.manual {
+		return "paused"
+	}
+	return "live"
+}
+
+// edge is the brush of a pane border: the accent on the pane with the focus,
+// dim on the others, so the focus is plain to see.
+func (m Model) edge(p pane) lipgloss.Style {
+	if m.focus == p {
+		return accent
+	}
+	return faint
+}
+
+// popupBox draws what sits on top of the panes: the help screen, the picker
+// for a value, or the slug prompt of a new bug. It is empty when nothing is
+// open.
+func (m Model) popupBox() string {
+	switch {
+	case m.help:
+		return m.boxView("Keys", helpLines)
+	case m.popup != nil:
+		var b strings.Builder
+		for i, o := range m.popup.options {
+			if i == m.popup.idx {
+				b.WriteString(selected.Render("> "+o) + "\n")
+			} else {
+				b.WriteString("  " + o + "\n")
+			}
+		}
+		b.WriteString("\n" + faint.Render("j k to move, enter to save, esc to cancel"))
+		return m.boxView("Set "+m.popup.field, b.String())
+	case m.slug != nil:
+		return m.boxView("New bug", "new bug slug: "+*m.slug+"█\n\n"+
+			faint.Render("lower case words joined by -, enter to open the editor, esc to cancel"))
+	}
+	return ""
+}
+
+// boxView draws a centered box with a title inside its top border.
+func (m Model) boxView(title, content string) string {
+	w := clamp(m.width*2/3, 24, 60)
+	if w > m.width {
+		w = m.width
+	}
+	if w < 6 {
+		return ""
+	}
+	inner := w - 2
+	rows := []string{topLine(w, accent, []segment{{text: "─", style: accent}, {text: title, style: accent.Bold(true)}})}
+	for _, ln := range strings.Split(content, "\n") {
+		rows = append(rows, accent.Render("│")+pad(fit(ln, inner), inner)+accent.Render("│"))
+	}
+	rows = append(rows, accent.Render("╰"+strings.Repeat("─", inner)+"╯"))
+	return strings.Join(rows, "\n")
+}
+
+// cover puts a box over the middle of the body, so the panes stay on screen
+// above and below it.
+func (m Model) cover(body, box string, h int) string {
+	lines := strings.Split(body, "\n")
+	rows := strings.Split(box, "\n")
+	top := max(0, (h-len(rows))/2)
+	for i, r := range rows {
+		if top+i >= len(lines) {
+			break
+		}
+		lines[top+i] = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, fit(r, m.width))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) popupView() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "set %s\n\n", m.popup.field)
-	for i, o := range m.popup.options {
-		if i == m.popup.idx {
-			b.WriteString(selected.Render("> "+o) + "\n")
-		} else {
-			b.WriteString("  " + o + "\n")
+// idText gives the ID line of the detail: the number ID, the permanent hash
+// and the path, with the empty pieces left out.
+func idText(it *board.Item) string {
+	var parts []string
+	for _, s := range []string{it.ShortID, it.Hash, it.ID} {
+		if s != "" {
+			parts = append(parts, s)
 		}
 	}
-	b.WriteString("\n" + faint.Render("j k to move, enter to save, esc to cancel"))
-	return b.String()
+	return strings.Join(parts, " · ")
 }
 
-func (m Model) footer() string {
-	if m.searching || m.query != "" {
-		return truncate("/"+m.query, m.width)
+// shortRef names an item the short way: its number ID, else its hash, else the
+// path ID.
+func shortRef(it *board.Item) string {
+	switch {
+	case it.ShortID != "":
+		return it.ShortID
+	case it.Hash != "":
+		return it.Hash
 	}
-	if m.status != "" {
-		return truncate(m.status, m.width)
-	}
-	return faint.Render(truncate("1 2 3 tab · j k move · enter edit · / search · a all · t type · s status · n bug · ? help · q quit", m.width))
+	return it.ID
 }
 
-func icon(it *board.Item) string {
-	if len(it.Problems) > 0 {
-		return "!"
+// kindLabel is the label of the line that names the kind and the title.
+func kindLabel(k board.Kind) string {
+	switch k {
+	case board.KindPlan:
+		return "PLAN"
+	case board.KindTask:
+		return "TASK"
+	case board.KindBug:
+		return "BUG"
 	}
-	switch it.Status {
-	case "done", "fixed", "dropped", "wontfix":
-		return "●"
-	case "draft", "approved", "todo", "open":
-		return "○"
-	default:
-		return "◐"
-	}
+	return "SPEC"
 }
 
-func short(it *board.Item) string {
-	if it.Total > 0 {
-		return fmt.Sprintf("%d/%d", it.Done, it.Total)
+// specText names the spec or bug a plan carries, and is empty for the items
+// that link none.
+func (m Model) specText(it *board.Item) string {
+	if it.SpecID == "" {
+		return ""
 	}
-	return it.Status
+	if s := m.board.Get(it.SpecID); s != nil {
+		return shortRef(s) + " · " + s.Title
+	}
+	return it.SpecID
+}
+
+// worktreeText names the branch an item came from, and says so when that
+// worktree is not checked out on disk.
+func worktreeText(it *board.Item) string {
+	switch {
+	case it.Worktree == "":
+		return ""
+	case !it.OnDisk:
+		return it.Worktree + " (not checked out)"
+	}
+	return it.Worktree
+}
+
+// fileText gives the path of the file, seen from the repo root.
+func (m Model) fileText(it *board.Item) string {
+	if !it.OnDisk {
+		return ""
+	}
+	if rel, err := filepath.Rel(m.cfg.RepoRoot, it.Path); err == nil {
+		return rel
+	}
+	return it.Path
+}
+
+// progressText gives the ticked boxes of an item, or nothing when it has none.
+func progressText(it *board.Item) string {
+	if it.Total == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d/%d", it.Done, it.Total)
+}
+
+// cut splits text into lines and clamps each one to w cells.
+func cut(text string, w int) []string {
+	lines := strings.Split(text, "\n")
+	for i, ln := range lines {
+		lines[i] = truncate(ln, w)
+	}
+	return lines
+}
+
+// fit cuts a line to w cells, and counts the cells the way the terminal does,
+// so a line that carries colors is never cut in the middle of a code.
+func fit(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= w {
+		return s
+	}
+	return lipgloss.NewStyle().MaxWidth(w).Render(s)
+}
+
+// pad fills a line out to w cells, so the pane walls stay in one column.
+func pad(s string, w int) string {
+	if gap := w - lipgloss.Width(s); gap > 0 {
+		return s + strings.Repeat(" ", gap)
+	}
+	return fit(s, w)
 }
 
 // truncate cuts a line to w cells so panes never wrap and break the layout.
