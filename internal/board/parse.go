@@ -111,20 +111,31 @@ func Parse(src []byte) Doc {
 	return d
 }
 
-// specPath takes the path out of the text after "**Spec:**". A path in
-// backticks wins; otherwise the first word is used.
+// specPath takes the spec path out of the text after "**Spec:**". Only a
+// path ending in .md counts, so a plan with no spec ("none", a note in
+// backticks) shows no false warning. A path in backticks wins over a bare
+// word.
 func specPath(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.Index(s, "`"); i >= 0 {
-		if j := strings.Index(s[i+1:], "`"); j >= 0 {
-			return s[i+1 : i+1+j]
+	for rest := s; ; {
+		i := strings.Index(rest, "`")
+		if i < 0 {
+			break
+		}
+		j := strings.Index(rest[i+1:], "`")
+		if j < 0 {
+			break
+		}
+		if p := rest[i+1 : i+1+j]; strings.HasSuffix(p, ".md") {
+			return p
+		}
+		rest = rest[i+2+j:]
+	}
+	for _, f := range strings.Fields(s) {
+		// Trim brackets at the start and punctuation at the end, but keep a
+		// leading dot so ".pm/specs/x.md" stays whole.
+		if p := strings.TrimRight(strings.TrimLeft(f, "(["), ")],.:"); strings.HasSuffix(p, ".md") {
+			return p
 		}
 	}
-	f := strings.Fields(s)
-	if len(f) == 0 {
-		return ""
-	}
-	// Trim brackets at the start and punctuation at the end, but keep a
-	// leading dot so ".pm/specs/x.md" stays whole.
-	return strings.TrimRight(strings.TrimLeft(f[0], "(["), ")],.")
+	return ""
 }
