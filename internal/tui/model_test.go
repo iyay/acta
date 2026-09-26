@@ -2,10 +2,14 @@ package tui
 
 import (
 	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -16,16 +20,79 @@ import (
 
 func fixture(t *testing.T) (config.Config, *board.Board) {
 	t.Helper()
-	dir, err := filepath.Abs("../board/testdata/basic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg := config.Default(dir)
+	cfg := config.Default(fixtureRoot(t))
 	b, err := board.Load(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return cfg, b
+}
+
+var (
+	fixtureOnce sync.Once
+	fixtureDir  string
+	fixtureErr  error
+)
+
+// fixtureRoot gives the fixture folder, copied out of this repo once for the
+// whole run. The tests read it outside the repo because pane [2] orders
+// finished items by the last commit on the file: inside the repo this repo's
+// own history would decide what the tests expect, and every later commit
+// touching a fixture would break them.
+func fixtureRoot(t *testing.T) string {
+	t.Helper()
+	fixtureOnce.Do(func() {
+		src, err := filepath.Abs("../board/testdata/basic")
+		if err != nil {
+			fixtureErr = err
+			return
+		}
+		tmp, err := os.MkdirTemp("", "pm-board-tui")
+		if err != nil {
+			fixtureErr = err
+			return
+		}
+		dir := filepath.Join(tmp, "basic")
+		if err := copyTree(src, dir); err != nil {
+			fixtureErr = err
+			return
+		}
+		fixtureDir = dir
+	})
+	if fixtureErr != nil {
+		t.Fatal(fixtureErr)
+	}
+	return fixtureDir
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if fixtureDir != "" {
+		os.RemoveAll(filepath.Dir(fixtureDir))
+	}
+	os.Exit(code)
+}
+
+// copyTree writes every file of src under dst.
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		to := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(to, 0o755)
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(to, b, 0o644)
+	})
 }
 
 func newModel(t *testing.T) Model {
@@ -594,12 +661,18 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	if n.full.x != 0 || n.full.y != 0 || n.full.w != 40 || n.full.h != 19 {
 		t.Fatalf("the focused pane should take the whole screen: %+v", n.full)
 	}
-	// The tab names sit where the title draws them.
-	if len(g.open.tabs) != 4 || g.open.tabs[0] != (tabBox{x: 4, w: 5}) || g.open.tabs[1].x != 12 {
-		t.Fatalf("pane [1] tabs %+v", g.open.tabs)
+	// The tab boxes sit where the drawn title puts the names, so a click lands
+	// on the word it points at. The place comes from the view, not from a
+	// number written down here, which is how the two drifted apart before.
+	title := strings.Split(plain(m.View()), "\n")[g.open.y]
+	for i, name := range tabNames {
+		want := cellAt(t, title, name)
+		if got := g.open.tabs[i]; got.x != want || got.w != len(name) {
+			t.Fatalf("pane [1] tab %q sits at %+v, but the title draws it at %d: %q", name, got, want, title)
+		}
 	}
-	if len(g.done.tabs) != 2 || len(g.detail.tabs) != 0 {
-		t.Fatalf("pane [2] tabs %+v pane [3] tabs %+v", g.done.tabs, g.detail.tabs)
+	if len(g.open.tabs) != len(tabNames) || len(g.done.tabs) != 2 || len(g.detail.tabs) != 0 {
+		t.Fatalf("pane [1] tabs %+v pane [2] tabs %+v pane [3] tabs %+v", g.open.tabs, g.done.tabs, g.detail.tabs)
 	}
 }
 
@@ -778,5 +851,239 @@ func TestNewBugSlugInput(t *testing.T) {
 	m = press(m, "esc")
 	if m.slug != nil {
 		t.Fatal("esc should cancel the slug prompt")
+	}
+}
+
+// clickWidths gives the widths from 60 to 200 columns where the left column
+// changes size, plus both ends of the range. The tab boxes and the drawn names
+// both come from that column, so these are every title shape a window can take.
+func clickWidths() []int {
+	var out []int
+	for w := 60; w <= 200; w++ {
+		if w == 60 || clamp(w*3/10, 28, 48) != clamp((w-1)*3/10, 28, 48) {
+			out = append(out, w)
+		}
+	}
+	if out[len(out)-1] != 200 {
+		out = append(out, 200)
+	}
+	return out
+}
+
+// cellAt gives the screen column where name starts in a drawn line. A border
+// cell like the corner is one column but three bytes, and the mouse counts
+// columns, so the place is counted in cells and not in bytes.
+func cellAt(t *testing.T, line, name string) int {
+	t.Helper()
+	i := strings.Index(line, name)
+	if i < 0 {
+		t.Fatalf("the line does not draw %q: %q", name, line)
+	}
+	return utf8.RuneCountInString(line[:i])
+}
+
+// drawnLetter gives the screen row and column of the first or the last letter
+// of name in the title of a list pane, read back from the view, so this test
+// cannot pass with a number the view does not draw. ok is false when the title
+// is too narrow to draw that name at all.
+func drawnLetter(m Model, p pane, name, end string) (y, x int, ok bool) {
+	b := m.geometry().open
+	if p == paneDone {
+		b = m.geometry().done
+	}
+	line := strings.Split(plain(m.View()), "\n")[b.y]
+	i := strings.Index(line, name)
+	if i < 0 {
+		return b.y, 0, false
+	}
+	x = utf8.RuneCountInString(line[:i])
+	if end == "last" {
+		x += len(name) - 1
+	}
+	return b.y, x, true
+}
+
+// openTab puts pane [1] on the tab with that number.
+func openTab(t *testing.T, m Model, tab int) Model {
+	t.Helper()
+	m = press(m, "1")
+	for i := 0; i < len(tabNames) && m.tab != tab; i++ {
+		m = press(m, "]")
+	}
+	if m.tab != tab {
+		t.Fatalf("could not open %q", tabNames[tab])
+	}
+	return m
+}
+
+// openTabBefore puts pane [1] on the tab before that number, so a click that
+// lands on nothing cannot pass by leaving the tab where it already was.
+func openTabBefore(t *testing.T, m Model, tab int) Model {
+	return openTab(t, m, (tab+len(tabNames)-1)%len(tabNames))
+}
+
+// doneTabBefore puts pane [2] on another finished tab than that number. A pane
+// with a single tab stays where it is, and the click is still checked against
+// what the title draws.
+func doneTabBefore(t *testing.T, m Model, tab int) Model {
+	t.Helper()
+	m = press(m, "2")
+	other := (tab + 1) % len(m.doneTabNames())
+	if other == tab {
+		return m
+	}
+	for i := 0; i < 2 && m.doneTab != other; i++ {
+		m = press(m, "]")
+	}
+	if m.doneTab != other {
+		t.Fatalf("could not open finished tab %d", other)
+	}
+	return m
+}
+
+// TestClickLandsOnEveryDrawnTabName is the property behind the mouse: the first
+// and the last letter of every tab name the title draws, in pane [1] and pane
+// [2], at every window size from 60 to 200 columns, must switch to that tab; a
+// click on the dashes between two names must switch nothing. The letters come
+// from the drawn title, so a click box that drifts from the view fails here.
+func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
+	widths := clickWidths()
+	clicked := map[int]bool{}
+	m := sized(newModel(t), widths[0], 40)
+
+	for _, w := range widths {
+		for tab := range tabNames {
+			for _, end := range []string{"first", "last"} {
+				m = sized(m, w, 40)
+				m = openTabBefore(t, m, tab)
+				y, x, ok := drawnLetter(m, paneOpen, tabNames[tab], end)
+				if !ok {
+					continue // a narrow title drops the names that do not fit
+				}
+				if p, _, idx := m.hit(x, y); p != paneOpen || idx != tab {
+					t.Fatalf("at %d columns the %s letter of %q maps to pane [%d] tab %d, want tab %d", w, end, tabNames[tab], p+1, idx, tab)
+				}
+				if got := click(m, x, y).tab; got != tab {
+					t.Fatalf("at %d columns a click on the %s letter of %q gave tab %d, want %d", w, end, tabNames[tab], got, tab)
+				}
+				clicked[tab] = true
+			}
+		}
+	}
+	for tab := range tabNames {
+		if !clicked[tab] {
+			t.Errorf("no width from 60 to 200 drew %q, so it was never clicked", tabNames[tab])
+		}
+	}
+
+	// Pane [2] follows the tab of pane [1]: Done and Dropped for Specs, Plans
+	// and Tasks, Fixed and Wontfix for Bugs. Tasks has Done alone.
+	for _, w := range widths {
+		for tab := range tabNames {
+			m = sized(m, w, 40)
+			m = openTab(t, m, tab)
+			for i, name := range m.doneTabNames() {
+				for _, end := range []string{"first", "last"} {
+					m = doneTabBefore(t, m, i)
+					y, x, ok := drawnLetter(m, paneDone, name, end)
+					if !ok {
+						t.Fatalf("with %q open, at %d columns pane [2] does not draw %q", tabNames[tab], w, name)
+					}
+					if p, _, idx := m.hit(x, y); p != paneDone || idx != i {
+						t.Fatalf("with %q open, at %d columns the %s letter of %q maps to pane [%d] tab %d, want tab %d", tabNames[tab], w, end, name, p+1, idx, i)
+					}
+					if got := click(m, x, y).doneTab; got != i {
+						t.Fatalf("with %q open, at %d columns a click on the %s letter of %q gave finished tab %d, want %d", tabNames[tab], w, end, name, got, i)
+					}
+				}
+			}
+		}
+	}
+
+	// The dashes between two names belong to no tab.
+	for _, w := range widths {
+		m = sized(m, w, 40)
+		m = openTabBefore(t, m, tabBugs)
+		before := m.tab
+		for _, name := range tabNames[:len(tabNames)-1] {
+			y, last, ok := drawnLetter(m, paneOpen, name, "last")
+			if !ok {
+				continue
+			}
+			x := last + 2 // the dash of the " ─ " between the two names
+			if _, _, idx := m.hit(x, y); idx != -1 {
+				t.Fatalf("at %d columns the dash after %q maps to tab %d", w, name, idx)
+			}
+			if got := click(m, x, y).tab; got != before {
+				t.Fatalf("at %d columns a click on the dash after %q moved to tab %d", w, name, got)
+			}
+		}
+		for _, tab := range []int{tabSpecs, tabPlans, tabBugs} {
+			m = sized(openTab(t, m, tab), w, 40)
+			m = doneTabBefore(t, m, 1)
+			before := m.doneTab
+			y, last, _ := drawnLetter(m, paneDone, m.doneTabNames()[0], "last")
+			x := last + 2
+			if _, _, idx := m.hit(x, y); idx != -1 {
+				t.Fatalf("at %d columns the dash after %q maps to finished tab %d", w, m.doneTabNames()[0], idx)
+			}
+			if got := click(m, x, y).doneTab; got != before {
+				t.Fatalf("at %d columns a click on the dash after %q moved to finished tab %d", w, m.doneTabNames()[0], got)
+			}
+		}
+	}
+}
+
+// TestDonePaneShowsTheMostRecentlyCommittedFirst is the order of pane [2]: the
+// last commit on the file decides, and the file-name date is the fallback when
+// git has no commit for the file.
+func TestDonePaneShowsTheMostRecentlyCommittedFirst(t *testing.T) {
+	day := func(date string) int64 {
+		ts, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ts.Unix()
+	}
+	item := func(id, date string, commit int64) *board.Item {
+		return &board.Item{ID: id, Kind: board.KindStory, Title: id, Date: date, Status: "done", CommitAt: commit}
+	}
+	for _, tc := range []struct {
+		name  string
+		items []*board.Item
+		want  []string
+	}{
+		{
+			// The repro from the plan: the file named 09-01 was committed
+			// today, the one named 09-20 last a week ago.
+			name:  "the last commit beats the file name",
+			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", day("2026-09-20")), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-27"))},
+			want:  []string{"specs/2026-09-01-early", "specs/2026-09-20-late"},
+		},
+		{
+			name:  "the file name decides when git has no commit",
+			items: []*board.Item{item("specs/2026-09-01-early", "2026-09-01", 0), item("specs/2026-09-20-late", "2026-09-20", 0)},
+			want:  []string{"specs/2026-09-20-late", "specs/2026-09-01-early"},
+		},
+		{
+			name:  "a commit and a file name compare on the same line",
+			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", 0), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-27"))},
+			want:  []string{"specs/2026-09-01-early", "specs/2026-09-20-late"},
+		},
+		{
+			name:  "an older commit loses to a newer file name",
+			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", 0), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-10"))},
+			want:  []string{"specs/2026-09-20-late", "specs/2026-09-01-early"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newModel(t)
+			m.board = &board.Board{Items: tc.items}
+			m.tab, m.doneTab = tabSpecs, 0
+			got := strings.Join(doneRowIDs(m), " ")
+			if want := strings.Join(tc.want, " "); got != want {
+				t.Fatalf("pane [2] lists %q, want %q", got, want)
+			}
+		})
 	}
 }

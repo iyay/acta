@@ -46,13 +46,16 @@ Subagent (general-purpose):
     4. Run the repo's formatter and type checks before the commit.
     5. Commit your work, staged by path, never `git add -A` or `git add .`;
        formatting goes in the task commit, never in a commit of its own.
-    6. Right after each step, run `pmb tick [TASK_ID] --step <n> --agent omp`
-       from the worktree so the board shows live progress ([TASK_ID] is
-       plans/<stem>#task-N, for example plans/2026-09-26-tick-fixes#task-3);
-       right after the task's commit, run `pmb tick [TASK_ID] --all --agent omp`
-       (yes, --all right after the commit) so no box stays open; never commit
-       the plan file. The flag names you on the board, because the omp harness
-       sets no agent variable.
+    6. Right after each step, run the tick command from the worktree so the
+       board shows live progress: `pmb tick [TASK_ID] --step <n>`, where
+       [TASK_ID] is plans/<stem>#task-N, for example
+       plans/2026-09-26-tick-fixes#task-3; right after the task's commit, run
+       `pmb tick [TASK_ID] --all` (yes, --all right after the commit) so no box
+       stays open; never commit the plan file. Add `--agent omp` to those
+       commands only when `AI_AGENT` is empty: the omp harness sets no agent
+       variable, so that flag is what names you on the board. Under Claude Code
+       `AI_AGENT` is set, and the flag would override it and record your work
+       as omp, so pass no flag there.
     7. Self-review (see below).
     8. Report back.
 

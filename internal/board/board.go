@@ -27,6 +27,7 @@ type Item struct {
 	Kind         Kind
 	Title        string
 	Date         string // YYYY-MM-DD from the file name, or ""
+	CommitAt     int64  // seconds since the epoch of the last commit on the file, 0 when git has none
 	Slug         string
 	Status       string
 	StatusSource string // "derived" or "frontmatter"
@@ -176,6 +177,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		b.linkPlan(p)
 	}
 	b.derive()
+	b.fillCommitTimes()
 	b.fillAgents(main, others)
 	b.sortItems()
 	return b, nil

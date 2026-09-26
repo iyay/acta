@@ -90,7 +90,8 @@ func (m Model) paneView(p pane, b box) string {
 
 // paneTop draws the top line of a pane. The title sits inside the border,
 // lazygit style: the pane number, then the tabs. The tab that is on is bold in
-// the accent color and the others stay dim.
+// the accent color and the others stay dim. The pieces come from titlePieces,
+// the same helper the mouse counts its click boxes with.
 func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 	names := m.tabsOf(p)
 	if p == paneDetail {
@@ -100,10 +101,12 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 	if p == paneDone {
 		on = m.doneTab
 	}
-	segs := []segment{{text: fmt.Sprintf("─[%d]─", p+1), style: edge}}
-	for i, name := range names {
-		if i > 0 {
-			segs = append(segs, segment{text: " ─ ", style: edge, sep: true})
+	pieces := titlePieces(p, names)
+	segs := make([]segment, 0, len(pieces))
+	for _, piece := range pieces {
+		if piece.tab < 0 {
+			segs = append(segs, segment{text: piece.text, style: edge, sep: piece.sep})
+			continue
 		}
 		style := faint
 		switch {
@@ -111,10 +114,10 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 			if m.focus == p {
 				style = accent.Bold(true)
 			}
-		case i == on:
+		case piece.tab == on:
 			style = accent.Bold(true)
 		}
-		segs = append(segs, segment{text: name, style: style})
+		segs = append(segs, segment{text: piece.text, style: style})
 	}
 	return topLine(b.w, edge, segs)
 }

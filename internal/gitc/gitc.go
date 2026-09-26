@@ -94,6 +94,40 @@ func FirstSeen(repo, path string) (int, error) {
 	return len(commits), nil
 }
 
+// LastCommit gives the time of the newest commit that touched path, counted in
+// seconds since the epoch, and says whether git knows the file at all. A folder
+// with no checkout answers false without running git, because a board outside
+// git loads often and a process costs more than that answer is worth.
+func LastCommit(repo, path string) (int64, bool) {
+	if !inRepo(repo) {
+		return 0, false
+	}
+	out, err := run(repo, "log", "-1", "--format=%ct", "--", path)
+	if err != nil {
+		return 0, false
+	}
+	sec, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return sec, true
+}
+
+// inRepo says whether dir sits inside a checkout, which the .git entry at the
+// top of it tells: a folder or a file in a linked worktree, both work.
+func inRepo(dir string) bool {
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
+}
+
 // busy says why the repo cannot take a commit now, or "" when it can.
 func busy(repo string) string {
 	states := []struct{ file, what string }{
