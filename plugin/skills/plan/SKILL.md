@@ -17,6 +17,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Save plans to:** `.pm/plans/YYYY-MM-DD-<feature-name>.md` (`.pm/` is the default root; `.pm.yaml`, `PM_ROOT` or `pmb --root` can move it).
 - (User preferences for plan location override this default)
+- Right after saving, run `pmb id` right after so the plan gets its PLAN number and hash before anyone refers to it.
 
 ## Scope Check
 
