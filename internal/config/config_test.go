@@ -41,7 +41,8 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if want.Root != filepath.Join(repo, ".pm") || !want.AutoCommit ||
 		!reflect.DeepEqual(want.Legacy, []string{filepath.Join(repo, "docs", "superpowers")}) ||
-		want.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}) {
+		want.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}) ||
+		want.Links.Feedback != "https://github.com/iyay/acta/issues" || want.Links.Donate != "" {
 		t.Fatalf("bad defaults %+v", want)
 	}
 }
@@ -145,5 +146,37 @@ func TestLoadBranches(t *testing.T) {
 	write(t, filepath.Join(repo, ".pm.yaml"), "branches: [\"feat/*\"]\n")
 	if got, _ := Load(repo, ""); got.BranchesOff || !reflect.DeepEqual(got.Branches, []string{"feat/*"}) {
 		t.Fatalf("patterns: %+v", got)
+	}
+}
+
+func TestLoadLinks(t *testing.T) {
+	repo := gitInit(t)
+	t.Setenv("PM_ROOT", "")
+	write(t, filepath.Join(repo, ".pm.yaml"),
+		"links:\n  donate: https://ko-fi.com/someone\n  feedback: https://example.com/bugs\n")
+	got, err := Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Links.Donate != "https://ko-fi.com/someone" {
+		t.Fatalf("Donate = %q, want the ko-fi url", got.Links.Donate)
+	}
+	if got.Links.Feedback != "https://example.com/bugs" {
+		t.Fatalf("Feedback = %q, want the custom url", got.Links.Feedback)
+	}
+}
+
+func TestLoadLinksDefaults(t *testing.T) {
+	repo := gitInit(t)
+	t.Setenv("PM_ROOT", "")
+	got, err := Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Links.Feedback != "https://github.com/iyay/acta/issues" {
+		t.Fatalf("Feedback = %q, want the issue tracker", got.Links.Feedback)
+	}
+	if got.Links.Donate != "" {
+		t.Fatalf("Donate = %q, want empty when unset", got.Links.Donate)
 	}
 }

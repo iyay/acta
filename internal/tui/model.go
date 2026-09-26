@@ -9,7 +9,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"pm-board/internal/board"
 	"pm-board/internal/config"
@@ -124,28 +123,31 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 
 // Model is the whole screen state. Bubble Tea copies it on every update.
 type Model struct {
-	cfg       config.Config
-	board     *board.Board
-	focus     pane // the pane with the focus
-	last      pane // the list pane that had it last, for pane [3]
-	tab       int  // which tab pane [1] shows
-	doneTab   int  // which tab pane [2] shows
-	sel       [4]string
-	idx       [4]int // selected row number per tab, used when the id vanishes
-	doneSel   [4][2]string
-	doneIdx   [4][2]int
-	query     string
-	searching bool
-	groupOpen bool
-	popup     *popup
-	slug      *string // non-nil while typing the slug of a new bug
-	help      bool
-	status    string
-	manual    bool
-	width     int
-	height    int
-	scroll    int // how far the body of pane [3] is scrolled
-	now       time.Time
+	cfg         config.Config
+	board       *board.Board
+	focus       pane // the pane with the focus
+	last        pane // the list pane that had it last, for pane [3]
+	tab         int  // which tab pane [1] shows
+	doneTab     int  // which tab pane [2] shows
+	sel         [4]string
+	idx         [4]int // selected row number per tab, used when the id vanishes
+	doneSel     [4][2]string
+	doneIdx     [4][2]int
+	query       string
+	searching   bool
+	groupOpen   bool
+	popup       *popup
+	slug        *string // non-nil while typing the slug of a new bug
+	help        bool
+	status      string
+	manual      bool
+	width       int
+	height      int
+	scroll      int // how far the body of pane [3] is scrolled
+	now         time.Time
+	version     string                 // build version shown on the bottom line
+	open        func(url string) error // opens a link in the browser
+	statusBoxes []statusPiece          // click boxes of the bottom line links
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
@@ -156,7 +158,8 @@ type Model struct {
 // before the program starts, because asking later fights Bubble Tea for stdin.
 func New(cfg config.Config, b *board.Board, dark bool) Model {
 	return Model{
-		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(),
+		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
+		open: defaultOpen,
 		load: func() (*board.Board, error) { return board.Load(cfg) },
 		// Load fresh so the write never checks against a stale board.
 		setValue: func(id, field, value string) (write.Outcome, error) {
@@ -468,6 +471,17 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
 		return m, nil
 	}
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
+		msg.Y == m.height-1 {
+		if url, ok := m.linkAt(msg.X); ok {
+			open := m.open
+			if open == nil {
+				open = defaultOpen
+			}
+			_ = open(url)
+		}
+		return m, nil
+	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
 	case tea.MouseButtonWheelUp:
@@ -555,46 +569,6 @@ func (m Model) tabsOf(p pane) []string {
 		return nil
 	}
 	return tabNames[:]
-}
-
-// titlePiece is one piece of a pane title: the pane number, a tab name, or the
-// dashes between two names. tab is the tab the piece names, or -1 for a piece
-// that names none; sep marks the dashes between two names. The view paints
-// these pieces and the mouse counts their cells, so the click boxes and the
-// drawn names cannot drift apart.
-type titlePiece struct {
-	text string
-	tab  int
-	sep  bool
-}
-
-// titlePieces lays out the title of pane p: the corner with the pane number,
-// then the tab names joined by " ─ ".
-func titlePieces(p pane, names []string) []titlePiece {
-	out := make([]titlePiece, 0, 2*len(names)+1)
-	out = append(out, titlePiece{text: fmt.Sprintf("─[%d]─", p+1), tab: -1})
-	for i, name := range names {
-		if i > 0 {
-			out = append(out, titlePiece{text: " ─ ", tab: -1, sep: true})
-		}
-		out = append(out, titlePiece{text: name, tab: i})
-	}
-	return out
-}
-
-// tabX gives where each tab name starts in the title of the pane whose left
-// edge is at x, walked over the same pieces the view draws, so a click and the
-// drawn name always come from the same numbers.
-func tabX(p pane, x int, names []string) []tabBox {
-	x++ // the corner of the border sits before every piece
-	out := make([]tabBox, 0, len(names))
-	for _, piece := range titlePieces(p, names) {
-		if piece.tab >= 0 {
-			out = append(out, tabBox{x: x, w: lipgloss.Width(piece.text)})
-		}
-		x += lipgloss.Width(piece.text)
-	}
-	return out
 }
 
 // rowAt gives the row under a screen line, or -1 for the border, the title and

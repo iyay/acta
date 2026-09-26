@@ -1087,3 +1087,88 @@ func TestDonePaneShowsTheMostRecentlyCommittedFirst(t *testing.T) {
 		})
 	}
 }
+
+// statusY gives the screen row of the bottom line, read back from the view so
+// a click test cannot pass on a row the view never draws.
+func statusY(t *testing.T, m Model) int {
+	t.Helper()
+	n := len(strings.Split(m.View(), "\n"))
+	if n < 1 {
+		t.Fatal("the view draws nothing")
+	}
+	return n - 1
+}
+
+// statusX gives the screen column where name starts on the bottom line, so a
+// click lands on the drawn link and not on a number the view never painted.
+func statusX(t *testing.T, m Model, name string) int {
+	t.Helper()
+	last := lastLine(m.View())
+	i := strings.Index(plain(last), name)
+	if i < 0 {
+		t.Fatalf("the bottom line shows no %q: %q", name, plain(last))
+	}
+	return utf8.RuneCountInString(plain(last)[:i])
+}
+
+func TestClickOnBottomLineLinksOpensThem(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		link string
+		url  string
+	}{
+		{"donate", "Donate", "https://ko-fi.com/someone"},
+		{"feedback", "Feedback", "https://example.com/bugs"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := sized(clocked(newModel(t), 20, 46), 200, 30)
+			m.cfg.Links.Donate = "https://ko-fi.com/someone"
+			m.cfg.Links.Feedback = "https://example.com/bugs"
+			var got []string
+			m.open = func(url string) error {
+				got = append(got, url)
+				return nil
+			}
+			click(m, statusX(t, m, tc.link), statusY(t, m))
+			if len(got) != 1 || got[0] != tc.url {
+				t.Fatalf("opener got %q, want %q", got, tc.url)
+			}
+		})
+	}
+}
+
+func TestClickElsewhereOnBottomLineOpensNothing(t *testing.T) {
+	m := sized(clocked(newModel(t), 20, 46), 200, 30)
+	m.cfg.Links.Donate = "https://ko-fi.com/someone"
+	var got []string
+	m.open = func(url string) error {
+		got = append(got, url)
+		return nil
+	}
+	y := statusY(t, m)
+	before := plain(lastLine(m.View()))
+	pipe := strings.Index(before, "|")
+	if pipe < 0 {
+		t.Fatalf("the bottom line has no divider: %q", before)
+	}
+	click(m, 0, y)
+	click(m, len([]rune(before[:pipe]))-1, y)
+	if len(got) != 0 {
+		t.Fatalf("opener got %q, want nothing", got)
+	}
+}
+
+func TestNormalizeVersion(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want string
+	}{
+		{"v0.3.0", "v0.3.0"},
+		{"", "dev"},
+		{"(devel)", "dev"},
+	} {
+		if got := normalizeVersion(tc.in); got != tc.want {
+			t.Errorf("normalizeVersion(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

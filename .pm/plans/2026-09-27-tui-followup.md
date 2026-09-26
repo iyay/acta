@@ -47,11 +47,11 @@ hash: bmx1
 
 **Interfaces:** Produces `agentRec.Started bool` (json `started,omitempty`) in both `internal/write/agents.go` and `internal/board/agents.go`; `write.RecordAgent(root, taskID, agent string, now time.Time, started bool) error` (update both callers); `Item.Started bool` on tasks.
 
-- [ ] **Step 1: Failing tests:** `tick_test.go` (`--start` writes `started:true`, file content unchanged, exit 0; `--start --all` and `--start --step 1` exit 1 with no write); `agents_test.go` in write (started kept on a later record); `agents_test.go` in board (started + 0 ticked gives `doing`, parent in progress; done task has no agent).
-- [ ] **Step 2: Run them to see them fail.**
-- [ ] **Step 3: Implement.** Add `--start` to `cmdTick`; validate the three-way exclusion; on `--start` skip `write.Tick`, still run `EnsureGitignore` and `RecordAgent(..., true)` (with no agent name, record `started` anyway with an empty agent). In the board, `fillAgents` runs after `derive` today; read the agent records before `derive` (keep the fill step after it), set `Started` on tasks, and make the task status `doing` for `done == 0 && started`, so `derive` lifts the parent as today.
-- [ ] **Step 4: Run to see them pass.**
-- [ ] **Step 5: Gate, commit** (`feat(tick): --start marks a task started`), tick `#task-1 --all`.
+- [x] **Step 1: Failing tests:** `tick_test.go` (`--start` writes `started:true`, file content unchanged, exit 0; `--start --all` and `--start --step 1` exit 1 with no write); `agents_test.go` in write (started kept on a later record); `agents_test.go` in board (started + 0 ticked gives `doing`, parent in progress; done task has no agent).
+- [x] **Step 2: Run them to see them fail.**
+- [x] **Step 3: Implement.** Add `--start` to `cmdTick`; validate the three-way exclusion; on `--start` skip `write.Tick`, still run `EnsureGitignore` and `RecordAgent(..., true)` (with no agent name, record `started` anyway with an empty agent). In the board, `fillAgents` runs after `derive` today; read the agent records before `derive` (keep the fill step after it), set `Started` on tasks, and make the task status `doing` for `done == 0 && started`, so `derive` lifts the parent as today.
+- [x] **Step 4: Run to see them pass.**
+- [x] **Step 5: Gate, commit** (`feat(tick): --start marks a task started`), tick `#task-1 --all`.
 
 ---
 
@@ -59,11 +59,11 @@ hash: bmx1
 
 **verify:** Every place in the build skill, the implementer prompt and the dispatch delivery that tells an implementer how to tick names `pmb tick <id> --start` as the very first action of a task, before the failing test, with the same `--agent` rule as other ticks (Claude: nothing extra; omp: `--agent omp`); each file has its own test that goes red if its line is removed. List every place checked.
 
-- [ ] **Step 1: Failing tests** per file in plugincheck (`--start` present in each of the three files; the implementer prompt puts it before the failing-test step).
-- [ ] **Step 2: Run to see them fail.**
-- [ ] **Step 3: Write the text** in the three files next to the existing tick instructions.
-- [ ] **Step 4: Run to see them pass** (MaxLines still hold; dispatch folder is near 620, keep the addition to one line per file).
-- [ ] **Step 5: Gate, commit** (`feat(plugin): implementers mark tasks started first`), tick `#task-2 --all`.
+- [x] **Step 1: Failing tests** per file in plugincheck (`--start` present in each of the three files; the implementer prompt puts it before the failing-test step).
+- [x] **Step 2: Run to see them fail.**
+- [x] **Step 3: Write the text** in the three files next to the existing tick instructions.
+- [x] **Step 4: Run to see them pass** (MaxLines still hold; dispatch folder is near 620, keep the addition to one line per file).
+- [x] **Step 5: Gate, commit** (`feat(plugin): implementers mark tasks started first`), tick `#task-2 --all`.
 
 ---
 
@@ -73,11 +73,11 @@ hash: bmx1
 
 **Interfaces:** `config.Config.Links struct{ Donate, Feedback string }` (yaml `links: {donate:, feedback:}`, feedback default); `tui.New(..., version string)` or `Model.WithVersion(v string)`; `Model.open func(url string) error` (default runs `open` on darwin, `xdg-open` elsewhere); links written with OSC 8 around the text.
 
-- [ ] **Step 1: Failing tests:** `config_test.go` (links read from `.pm.yaml`, feedback default); `view_test.go` (line shapes at several widths with a fixed `m.now`, Donate hidden/shown, no `pmb`); `model_test.go` (click on each link calls a fake opener with the right URL; click elsewhere on the line calls nothing); version helper table (`v0.3.0`, empty, `(devel)`).
-- [ ] **Step 2: Run to see them fail.**
-- [ ] **Step 3: Implement.** First move `titlePiece`/`titlePieces`/`tabX` into `internal/tui/title.go` (no behavior change, tests stay green), then build the status line in `view.go` from pieces whose x positions the model also uses for clicks (same rule as tab boxes: one helper for text and boxes). `cmd/pmb/main.go` reads `debug.ReadBuildInfo()` and passes the version.
-- [ ] **Step 4: Run to see them pass.**
-- [ ] **Step 5: Gate, commit** (`feat(tui): bottom line with date, links and version`), tick `#task-3 --all`.
+- [x] **Step 1: Failing tests:** `config_test.go` (links read from `.pm.yaml`, feedback default); `view_test.go` (line shapes at several widths with a fixed `m.now`, Donate hidden/shown, no `pmb`); `model_test.go` (click on each link calls a fake opener with the right URL; click elsewhere on the line calls nothing); version helper table (`v0.3.0`, empty, `(devel)`).
+- [x] **Step 2: Run to see them fail.**
+- [x] **Step 3: Implement.** First move `titlePiece`/`titlePieces`/`tabX` into `internal/tui/title.go` (no behavior change, tests stay green), then build the status line in `view.go` from pieces whose x positions the model also uses for clicks (same rule as tab boxes: one helper for text and boxes). `cmd/pmb/main.go` reads `debug.ReadBuildInfo()` and passes the version.
+- [x] **Step 4: Run to see them pass.**
+- [x] **Step 5: Gate, commit** (`feat(tui): bottom line with date, links and version`), tick `#task-3 --all`.
 
 ---
 
