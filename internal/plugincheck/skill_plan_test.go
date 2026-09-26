@@ -9,7 +9,7 @@ func TestSkillPlan(t *testing.T) {
 		Must: []string{
 			".pm/plans/", "pm:build", "verify:", "## Waves", "ponytail-lazy",
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",
-			"No Placeholders", "Global Constraints",
+			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer"},
 	})
