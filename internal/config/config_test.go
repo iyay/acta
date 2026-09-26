@@ -30,21 +30,23 @@ func write(t *testing.T, path, body string) {
 
 func TestLoadDefaults(t *testing.T) {
 	repo := gitInit(t)
+	t.Setenv("ACTA_ROOT", "")
 	t.Setenv("PM_ROOT", "")
 	got, err := Load(repo, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := Default(repo)
-	want.IsGit = true
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %+v\nwant %+v", got, want)
+	// A fresh folder with no yaml and no root folders is a new repo, so
+	// Load resolves to .acta/ even though the Default base still names .pm/.
+	if want := filepath.Join(repo, ".acta"); got.Root != want {
+		t.Fatalf("Root = %s, want %s", got.Root, want)
 	}
-	if want.Root != filepath.Join(repo, ".pm") || !want.AutoCommit ||
-		!reflect.DeepEqual(want.Legacy, []string{filepath.Join(repo, "docs", "superpowers")}) ||
-		want.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}) ||
-		want.Links.Feedback != "https://github.com/iyay/acta/issues" || want.Links.Donate != "" {
-		t.Fatalf("bad defaults %+v", want)
+	base := Default(repo)
+	if base.Root != filepath.Join(repo, ".pm") || !base.AutoCommit ||
+		!reflect.DeepEqual(base.Legacy, []string{filepath.Join(repo, "docs", "superpowers")}) ||
+		base.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}) ||
+		base.Links.Feedback != "https://github.com/iyay/acta/issues" || base.Links.Donate != "" {
+		t.Fatalf("bad defaults %+v", base)
 	}
 }
 

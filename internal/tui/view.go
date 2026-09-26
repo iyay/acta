@@ -408,7 +408,7 @@ func (m Model) detailLines(w int) []string {
 	it := m.Selected()
 	if it == nil {
 		if len(m.board.Items) == 0 {
-			return cut("this repo has no .pm/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
+			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
 		}
 		return []string{faint.Render("enter opens the group")}
 	}

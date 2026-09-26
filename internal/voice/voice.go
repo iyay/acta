@@ -12,7 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Voice is one user's setting. It lives in ~/.pm/voice.yaml.
+// Voice is one user's setting. It now lives in ~/.acta/voice.yaml; the old
+// ~/.pm/voice.yaml is only read when the new file is missing.
 type Voice struct {
 	ChatLanguage string `yaml:"chat_language"`
 	Style        string `yaml:"style"`
@@ -28,7 +29,8 @@ func Default() Voice {
 	return Voice{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
 }
 
-// Path is PM_VOICE_FILE when set, else ~/.pm/voice.yaml.
+// Path is PM_VOICE_FILE when set, else ~/.acta/voice.yaml. Writes always go
+// here, so one place holds the truth.
 func Path() (string, error) {
 	if p := os.Getenv("PM_VOICE_FILE"); p != "" {
 		return p, nil
@@ -37,7 +39,44 @@ func Path() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return filepath.Join(home, ".acta", "voice.yaml"), nil
+}
+
+// oldPath is where the setting lived before the rename. Reads fall back to
+// it, writes never touch it.
+func oldPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
 	return filepath.Join(home, ".pm", "voice.yaml"), nil
+}
+
+// Resolve reads the new file first and the old one when the new file is
+// missing, so existing users keep their setting after the rename.
+func Resolve() (Voice, bool, error) {
+	path, err := Path()
+	if err != nil {
+		return Default(), false, err
+	}
+	v, exists, err := Load(path)
+	if exists || err != nil || os.Getenv("PM_VOICE_FILE") != "" {
+		return v, exists, err
+	}
+	old, err := oldPath()
+	if err != nil {
+		return Default(), false, err
+	}
+	return Load(old)
+}
+
+// SaveResolved writes to the new file, never to the old one.
+func SaveResolved(v Voice) error {
+	path, err := Path()
+	if err != nil {
+		return err
+	}
+	return Save(path, v)
 }
 
 // Load reads the voice file. A missing file gives the defaults and
