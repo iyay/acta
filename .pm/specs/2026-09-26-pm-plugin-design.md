@@ -167,6 +167,16 @@ repo_language: en    # for everything written to the repo
    plugin's house rules; move `~/.claude/skills/agent-dispatch` to an archive.
 4. Rollback before step 3 is turning superpowers back on; CLAUDE.md is untouched until then.
 
+### Pass criteria before step 3
+
+Step 3 starts only when the two dogfood plans of step 2 show all three:
+
+1. The agent invokes the right `pm:*` skill for each workflow step without the user reminding it.
+2. No code is written before the spec is approved.
+3. Review rounds per plan are equal to or fewer than comparable superpowers plans.
+
+If (1) fails, strengthen the skill index in the session-start hook (`internal/hook/hook.go`, one file) and run the dogfood again.
+
 ## 8. Living next to other workflow plugins
 
 Users may already run superpowers, gstack, Matt Pocock's skills or similar. Two workflow

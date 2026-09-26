@@ -19,12 +19,10 @@ var (
 // headingLine (1-based), or every box of that task when step is 0. Only the
 // ticked lines change.
 func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
-	text := string(src)
-	nl := "\n"
-	if strings.Contains(text, "\r\n") {
-		nl = "\r\n"
-	}
-	lines := strings.Split(text, nl)
+	// Split on \n like the board parser so a 1-based Line means the same
+	// line here. Each line keeps its own trailing \r; the heading, fence
+	// and box matches are all prefix checks, so a trailing \r is harmless.
+	lines := strings.Split(string(src), "\n")
 	if headingLine < 1 || headingLine > len(lines) || !tickTaskRe.MatchString(lines[headingLine-1]) {
 		return nil, 0, 0, bad("line %d is not a ### Task heading", headingLine)
 	}
@@ -66,7 +64,7 @@ func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
 			done++
 		}
 	}
-	return []byte(strings.Join(lines, nl)), done, len(boxes), nil
+	return []byte(strings.Join(lines, "\n")), done, len(boxes), nil
 }
 
 // Tick ticks a box in the plan file at path. A lock file keeps two

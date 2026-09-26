@@ -42,6 +42,63 @@ func TestTickTextCRLF(t *testing.T) {
 	}
 }
 
+func TestTickTextMixedLineEndings(t *testing.T) {
+	// Every layout the board parser accepts. The board turns \r\n into \n
+	// and splits on \n, so task 1's heading is line 3 and its boxes are
+	// a1 then a2 whichever endings each line keeps.
+	body := []string{"# Plan", "", "### Task 1: a", "- [ ] a1", "- [ ] a2", "", "### Task 2: b", "- [ ] b1", ""}
+	layouts := []struct {
+		name string
+		join func([]string) string
+	}{
+		{"all LF", func(ls []string) string { return strings.Join(ls, "\n") }},
+		{"all CRLF", func(ls []string) string { return strings.Join(ls, "\r\n") }},
+		{"LF frontmatter over CRLF body", func(ls []string) string {
+			return "---\nstatus: open\n---\n" + strings.Join(ls, "\r\n")
+		}},
+		{"CRLF frontmatter over LF body", func(ls []string) string {
+			return "---\r\nstatus: open\r\n---\r\n" + strings.Join(ls, "\n")
+		}},
+		{"alternating lines", func(ls []string) string {
+			out := ""
+			for i, l := range ls {
+				if i > 0 {
+					out += "\n"
+				}
+				out += l
+				if i%2 == 0 {
+					out += "\r"
+				}
+			}
+			return out
+		}},
+		{"no trailing newline", func(ls []string) string {
+			return strings.TrimSuffix(strings.Join(ls, "\n"), "\n")
+		}},
+	}
+	for _, l := range layouts {
+		t.Run(l.name, func(t *testing.T) {
+			src := l.join(body)
+			heading := strings.Count(src[:strings.Index(src, "### Task 1: a")], "\n") + 1
+			out, done, total, err := TickText([]byte(src), heading, 2)
+			if err != nil {
+				t.Fatalf("TickText: %v", err)
+			}
+			if done != 1 || total != 2 {
+				t.Fatalf("progress = %d/%d, want 1/2", done, total)
+			}
+			if !strings.Contains(string(out), "- [x] a2") || strings.Contains(string(out), "- [x] a1") || strings.Contains(string(out), "- [x] b1") {
+				t.Fatalf("wrong box ticked:\n%s", out)
+			}
+			// Only the ticked line may change: every line keeps its own ending.
+			want := strings.Replace(src, "- [ ] a2", "- [x] a2", 1)
+			if string(out) != want {
+				t.Fatalf("got %q want %q", out, want)
+			}
+		})
+	}
+}
+
 func TestTickTextBadInput(t *testing.T) {
 	for name, c := range map[string]struct{ line, step int }{
 		"step too big":       {3, 4},

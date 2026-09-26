@@ -46,6 +46,46 @@ func TestTickCommand(t *testing.T) {
 	}
 }
 
+func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
+	dir := fixtureRepo(t)
+	// Plan's BLOCKER repro: a CRLF plan with no frontmatter. pmb set
+	// prepends an LF-only frontmatter block, so the file ends up mixed.
+	body := "# Plan\r\n\r\n### Task 1: a\r\n- [ ] a1\r\n\r\n### Task 2: b\r\n- [ ] b1\r\n"
+	rel := filepath.Join(".pm", "plans", "2026-09-29-crlf.md")
+	if err := os.WriteFile(filepath.Join(dir, rel), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "-C", dir, "add", rel).CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v %s", out, err)
+	}
+	if out, err := exec.Command("git", "-C", dir, "commit", "-q", "-m", "crlf plan").CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v %s", out, err)
+	}
+	id := "plans/2026-09-29-crlf#task-1"
+	if _, errOut, code := pmb(t, dir, "", "set", "plans/2026-09-29-crlf", "status", "in-progress"); code != 0 {
+		t.Fatalf("set: exit %d: %s", code, errOut)
+	}
+	pre, _ := os.ReadFile(filepath.Join(dir, rel))
+	out, errOut, code := pmb(t, dir, "", "tick", id, "--step", "1")
+	if code != 0 || strings.TrimSpace(out) != id+" 1/1" {
+		t.Fatalf("tick: exit %d out %q err %q", code, out, errOut)
+	}
+	after, _ := os.ReadFile(filepath.Join(dir, rel))
+	// Exactly the Nth box as the board counts it, no other byte changes.
+	if want := strings.Replace(string(pre), "- [ ] a1", "- [x] a1", 1); string(after) != want {
+		t.Fatalf("got %q want %q", after, want)
+	}
+	show, errOut, code := pmb(t, dir, "", "show", id, "--json")
+	if code != 0 {
+		t.Fatalf("show: exit %d: %s", code, errOut)
+	}
+	var it jsonItem
+	decode(t, show, &it)
+	if it.Progress.Done != 1 || it.Progress.Total != 1 {
+		t.Fatalf("show progress = %+v, tick printed 1/1", it.Progress)
+	}
+}
+
 func commitCount(t *testing.T, dir string) string {
 	t.Helper()
 	out, err := exec.Command("git", "-C", dir, "rev-list", "--count", "HEAD").Output()
