@@ -29,7 +29,7 @@ func TestListShowsWorktreeProgress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, _, code := pmb(t, repo, "", "show", "plans/2026-09-21-alpha#task-2", "--json")
+	out, _, code := acta(t, repo, "", "show", "plans/2026-09-21-alpha#task-2", "--json")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -43,7 +43,7 @@ func TestListShowsWorktreeProgress(t *testing.T) {
 	if it.Status != "done" || it.Worktree != "feat" {
 		t.Fatalf("task from the worktree = %+v", it)
 	}
-	out, _, _ = pmb(t, repo, "", "show", "specs/2026-09-22-beta", "--json")
+	out, _, _ = acta(t, repo, "", "show", "specs/2026-09-22-beta", "--json")
 	if err := json.Unmarshal([]byte(out), &it); err != nil || it.Worktree != "" {
 		t.Fatalf("main item must say worktree \"\": %s", out)
 	}
@@ -67,7 +67,7 @@ func TestListShowsBranchItems(t *testing.T) {
 	gitDo("commit", "-q", "-m", "spec on feat-x")
 	gitDo("checkout", "-q", "main")
 
-	out, _, code := pmb(t, repo, "", "show", "specs/2026-09-28-branch", "--json")
+	out, _, code := acta(t, repo, "", "show", "specs/2026-09-28-branch", "--json")
 	if code != 0 || !strings.Contains(out, `"worktree": "feat-x"`) || !strings.Contains(out, `"on_disk": false`) ||
 		!strings.Contains(out, `"path": "feat-x:.pm/specs/2026-09-28-branch.md"`) {
 		t.Fatalf("branch item: exit %d %s", code, out)

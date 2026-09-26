@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"flag"
@@ -11,7 +11,7 @@ import (
 	"github.com/iyay/acta/internal/voice"
 )
 
-const hookUsage = "usage: pmb hook session-start [--known <file>] | pmb hook prompt"
+const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt"
 
 // cmdHook prints hook text. After its arguments parse it always exits 0:
 // a hook that fails would get in the way of the user's session.

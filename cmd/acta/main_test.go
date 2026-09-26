@@ -11,16 +11,22 @@ import (
 	"testing"
 )
 
-var bin string
+var actaBin string
+var pmbBin string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "pmb-bin")
+	dir, err := os.MkdirTemp("", "acta-bin")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	bin = filepath.Join(dir, "pmb")
-	if out, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
+	actaBin = filepath.Join(dir, "acta")
+	if out, err := exec.Command("go", "build", "-o", actaBin, ".").CombinedOutput(); err != nil {
+		fmt.Println(string(out))
+		os.Exit(1)
+	}
+	pmbBin = filepath.Join(dir, "pmb")
+	if out, err := exec.Command("go", "build", "-o", pmbBin, "../pmb").CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		os.Exit(1)
 	}
@@ -69,7 +75,17 @@ func fixtureRepo(t *testing.T) string {
 	return dst
 }
 
+func acta(t *testing.T, dir, stdin string, args ...string) (string, string, int) {
+	t.Helper()
+	return runBin(t, actaBin, dir, stdin, args...)
+}
+
 func pmb(t *testing.T, dir, stdin string, args ...string) (string, string, int) {
+	t.Helper()
+	return runBin(t, pmbBin, dir, stdin, args...)
+}
+
+func runBin(t *testing.T, bin, dir, stdin string, args ...string) (string, string, int) {
 	t.Helper()
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
@@ -113,7 +129,7 @@ func decode(t *testing.T, s string, v any) {
 
 func TestListJSON(t *testing.T) {
 	dir := fixtureRepo(t)
-	out, _, code := pmb(t, dir, "", "list", "--type", "story", "--json")
+	out, _, code := acta(t, dir, "", "list", "--type", "story", "--json")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -135,7 +151,7 @@ func TestListJSON(t *testing.T) {
 // A plan is its own item, so a list line says so instead of calling it a story.
 func TestListShowsPlansAsPlans(t *testing.T) {
 	dir := fixtureRepo(t)
-	out, _, code := pmb(t, dir, "", "list", "--all")
+	out, _, code := acta(t, dir, "", "list", "--all")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -159,11 +175,11 @@ func TestListShowsPlansAsPlans(t *testing.T) {
 
 func TestListAllIncludesLegacyTasks(t *testing.T) {
 	dir := fixtureRepo(t)
-	out, _, _ := pmb(t, dir, "", "list", "--type", "task", "--all", "--json")
+	out, _, _ := acta(t, dir, "", "list", "--type", "task", "--all", "--json")
 	if !strings.Contains(out, `"docs/superpowers/plans/2026-01-02-old#task-1"`) {
 		t.Fatalf("legacy task missing: %s", out)
 	}
-	out, _, _ = pmb(t, dir, "", "list", "--type", "task", "--json")
+	out, _, _ = acta(t, dir, "", "list", "--type", "task", "--json")
 	if strings.Contains(out, "2026-01-02-old") {
 		t.Fatal("legacy task shown without --all")
 	}
@@ -171,7 +187,7 @@ func TestListAllIncludesLegacyTasks(t *testing.T) {
 
 func TestShow(t *testing.T) {
 	dir := fixtureRepo(t)
-	out, _, code := pmb(t, dir, "", "show", "specs/2026-09-20-alpha", "--json")
+	out, _, code := acta(t, dir, "", "show", "specs/2026-09-20-alpha", "--json")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
@@ -181,14 +197,14 @@ func TestShow(t *testing.T) {
 		it.Path != ".pm/specs/2026-09-20-alpha.md" || it.Ref != "A-1" || it.StatusSource != "derived" {
 		t.Fatalf("got %+v", it)
 	}
-	if _, _, code := pmb(t, dir, "", "show", "specs/nope"); code != 1 {
+	if _, _, code := acta(t, dir, "", "show", "specs/nope"); code != 1 {
 		t.Fatalf("unknown id exit %d, want 1", code)
 	}
 }
 
 func TestSet(t *testing.T) {
 	dir := fixtureRepo(t)
-	if _, errOut, code := pmb(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {
+	if _, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, ".pm/bugs/2026-09-26-open.md"))
@@ -202,7 +218,7 @@ func TestSet(t *testing.T) {
 		{"set", "--nope"},
 		{"frobnicate"},
 	} {
-		if _, _, code := pmb(t, dir, "", args...); code != 1 {
+		if _, _, code := acta(t, dir, "", args...); code != 1 {
 			t.Errorf("%v: exit %d, want 1", args, code)
 		}
 	}
@@ -214,7 +230,7 @@ func TestSetDirtyFileExits2(t *testing.T) {
 	if err := os.WriteFile(p, []byte("# Button does nothing\n\n## Symptom\nEdited.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, errOut, code := pmb(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing")
+	_, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing")
 	if code != 2 || !strings.Contains(errOut, "other uncommitted changes") {
 		t.Fatalf("exit %d stderr %q", code, errOut)
 	}
@@ -222,7 +238,7 @@ func TestSetDirtyFileExits2(t *testing.T) {
 
 func TestBugNewFromStdin(t *testing.T) {
 	dir := fixtureRepo(t)
-	out, errOut, code := pmb(t, dir, "## Symptom\nTwo ACKs.\n", "bug", "new", "ack-dup", "--ref", "New-261")
+	out, errOut, code := acta(t, dir, "## Symptom\nTwo ACKs.\n", "bug", "new", "ack-dup", "--ref", "New-261")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
@@ -231,7 +247,42 @@ func TestBugNewFromStdin(t *testing.T) {
 	if err != nil || !strings.Contains(string(b), "ref: New-261") || !strings.Contains(string(b), "Two ACKs.") {
 		t.Fatalf("path %q file %q err %v", path, b, err)
 	}
-	if _, _, code := pmb(t, dir, "## Repro\nx\n", "bug", "new", "no-symptom"); code != 1 {
+	if _, _, code := acta(t, dir, "## Repro\nx\n", "bug", "new", "no-symptom"); code != 1 {
 		t.Fatalf("no symptom exit %d, want 1", code)
+	}
+}
+
+const pmbWarning = "pmb is now acta; this name goes away in a later version"
+
+// TestPmbAliasWarns needs the thin pmb wrapper: warn on stderr first,
+// then match the acta run on stdout and exit code.
+func TestPmbAliasWarns(t *testing.T) {
+	dir := fixtureRepo(t)
+	wantOut, _, wantCode := acta(t, dir, "", "list", "--all")
+	gotOut, gotErr, gotCode := pmb(t, dir, "", "list", "--all")
+	if !strings.HasPrefix(gotErr, pmbWarning+"\n") {
+		t.Fatalf("stderr %q, want it to start with %q", gotErr, pmbWarning)
+	}
+	if gotOut != wantOut {
+		t.Fatalf("stdout mismatch:\nacta: %q\npmb: %q", wantOut, gotOut)
+	}
+	if gotCode != wantCode {
+		t.Fatalf("exit %d, want %d", gotCode, wantCode)
+	}
+}
+
+// TestUsageSaysActa needs every help line to name acta, never pmb.
+func TestUsageSaysActa(t *testing.T) {
+	dir := fixtureRepo(t)
+	_, noArgsErr, _ := acta(t, dir, "", "-h")
+	if !strings.Contains(noArgsErr, "acta") || strings.Contains(noArgsErr, "pmb") {
+		t.Fatalf("acta -h stderr %q, want acta without pmb", noArgsErr)
+	}
+	_, tickErr, tickCode := acta(t, dir, "", "tick", "-h")
+	if tickCode != 0 {
+		t.Fatalf("acta tick -h exit %d", tickCode)
+	}
+	if !strings.Contains(tickErr, "acta") || strings.Contains(tickErr, "pmb") {
+		t.Fatalf("acta tick -h stderr %q, want acta without pmb", tickErr)
 	}
 }

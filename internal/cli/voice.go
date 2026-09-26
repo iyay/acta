@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"github.com/iyay/acta/internal/voice"
 )
 
-const voiceUsage = "usage: pmb voice show [--json] | pmb voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L]"
+const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L]"
 
 func cmdVoice(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {

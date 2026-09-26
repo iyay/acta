@@ -52,11 +52,11 @@ All tasks run in order (each touches files the next one builds on): wave 1 task 
 
 **verify:** `acta <anything>` behaves exactly as `pmb <anything>` did (same stdout, exit code); `pmb <anything>` prints the one warning line to stderr first and otherwise matches `acta`; every usage/help string says `acta`; the test binary is built from `cmd/acta`. List the commands compared.
 
-- [ ] **Step 1: Failing tests:** in the CLI tests, build both binaries in `TestMain`; `TestPmbAliasWarns` (stderr starts with the warning line, stdout equals `acta`'s for `list --all`); `TestUsageSaysActa` (`acta` with no args and `acta tick -h` mention `acta`, not `pmb`).
-- [ ] **Step 2: Run to see them fail.**
-- [ ] **Step 3: Implement** the move and the alias.
-- [ ] **Step 4: Gate.**
-- [ ] **Step 5: Commit** (`feat(cli): the CLI is acta; pmb warns and forwards`), tick `#task-2 --all`.
+- [x] **Step 1: Failing tests:** in the CLI tests, build both binaries in `TestMain`; `TestPmbAliasWarns` (stderr starts with the warning line, stdout equals `acta`'s for `list --all`); `TestUsageSaysActa` (`acta` with no args and `acta tick -h` mention `acta`, not `pmb`).
+- [x] **Step 2: Run to see them fail.**
+- [x] **Step 3: Implement** the move and the alias.
+- [x] **Step 4: Gate.**
+- [x] **Step 5: Commit** (`feat(cli): the CLI is acta; pmb warns and forwards`), tick `#task-2 --all`.
 
 ---
 
