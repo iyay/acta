@@ -88,3 +88,38 @@ func TestBuildAgentFlagOnlyWhenTheHarnessSetsNothing(t *testing.T) {
 		t.Error("implementer-prompt.md never says the flag is for a harness with no AI_AGENT")
 	}
 }
+
+// TestBuildStartTickPrompt checks implementer-prompt.md on its own. The
+// implementer only ever reads this one file, so the --start rule has to live
+// in it directly, before the failing-test step.
+func TestBuildStartTickPrompt(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "build", "implementer-prompt.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	const want = "Very first action: run `pmb tick [TASK_ID] --start`"
+	if !strings.Contains(txt, want) {
+		t.Errorf("implementer-prompt.md missing %q", want)
+	}
+	if strings.Index(txt, "--start") > strings.Index(txt, "failing test first") {
+		t.Error("implementer-prompt.md names --start after the failing-test step; it must come first")
+	}
+}
+
+// TestBuildStartTickSkill checks SKILL.md on its own. CheckSkill looks at the
+// whole build folder, so a revert of SKILL.md alone could stay green.
+func TestBuildStartTickSkill(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "build", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	const want = "very first action on every task: run `pmb tick plans/<stem>#task-N --start`"
+	if !strings.Contains(txt, want) {
+		t.Errorf("build/SKILL.md missing %q", want)
+	}
+	if !strings.Contains(txt, "Claude: pass no flag; omp: add `--agent omp`") {
+		t.Error("build/SKILL.md never states the --agent rule for --start")
+	}
+}

@@ -39,7 +39,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	}
 	// Starting and ticking are different actions; mixing them is a typo,
 	// and writing half of each would lie to the board. A bare tick with
-	// no flag ticks every box, so --start only conflicts with the flags.
+	// no flag is already rejected, so --start only conflicts with the flags.
 	if len(pos) != 1 || *start && (*all || *step > 0) || !*start && ((*step > 0) == *all) {
 		fmt.Fprintln(stderr, tickUsage)
 		return exitBadInput

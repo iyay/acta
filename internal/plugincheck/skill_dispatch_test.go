@@ -87,3 +87,21 @@ func TestDispatchAgentFlag(t *testing.T) {
 		t.Error("herdr-delivery.md missing \"--agent omp\"")
 	}
 }
+
+// TestDispatchStartTick reads herdr-delivery.md on its own. The brief's tick
+// rule is the only place that tells the omp recipient how to tick, so the
+// --start first action has to live in it directly.
+func TestDispatchStartTick(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	const want = "pmb tick plans/<stem>#task-N --start --agent omp"
+	if !strings.Contains(txt, want) {
+		t.Errorf("herdr-delivery.md missing %q", want)
+	}
+	if !strings.Contains(txt, "very first action of every task, before the failing test") {
+		t.Error("herdr-delivery.md never says --start comes before the failing test")
+	}
+}
