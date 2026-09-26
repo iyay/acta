@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 
@@ -9,17 +10,26 @@ import (
 	"pm-board/internal/write"
 )
 
-const tickUsage = "usage: pmb tick <task-id> [--step N | --all]"
+const tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all]"
 
 // cmdTick ticks checkboxes in a plan so the board shows progress while an
 // agent works. It never commits: the plan file is shared, and the
 // orchestrator commits it once per wave.
 func cmdTick(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("tick", stderr)
+	// Show the id shape on -h/--help so agents copy it right.
+	fs.Usage = func() { fmt.Fprintln(stderr, tickUsage) }
 	step := fs.Int("step", 0, "tick this checkbox, counting from 1")
 	all := fs.Bool("all", false, "tick every checkbox of the task")
 	pos, err := parseMixed(fs, args)
-	if err != nil || len(pos) != 1 || (*step > 0) == *all {
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return exitOK
+		}
+		fmt.Fprintln(stderr, tickUsage)
+		return exitBadInput
+	}
+	if len(pos) != 1 || (*step > 0) == *all {
 		fmt.Fprintln(stderr, tickUsage)
 		return exitBadInput
 	}

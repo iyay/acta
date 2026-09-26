@@ -45,6 +45,23 @@ func TestTickCommand(t *testing.T) {
 		t.Fatalf("tick must never commit: %s commits, want 1", n)
 	}
 }
+func TestTickHelp(t *testing.T) {
+	dir := fixtureRepo(t)
+	for _, args := range [][]string{
+		{"tick", "--help"},
+		{"tick", "-help"},
+		{"tick", "-h"},
+		{"tick", "plans/2026-09-21-alpha#task-1", "-h"},
+	} {
+		out, errOut, code := pmb(t, dir, "", args...)
+		if code != 0 {
+			t.Errorf("%v: exit %d, want 0", args, code)
+		}
+		if got := out + errOut; !strings.Contains(got, "plans/<stem>#task-N") {
+			t.Errorf("%v: output %q names no plans/<stem>#task-N id", args, got)
+		}
+	}
+}
 
 func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
 	dir := fixtureRepo(t)
