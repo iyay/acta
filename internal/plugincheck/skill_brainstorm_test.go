@@ -10,6 +10,7 @@ func TestSkillBrainstorm(t *testing.T) {
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".pm/specs/", "pm:plan", "CONTEXT.md", "docs/adr/",
 			"trust boundary", "each gets its own yes", "pmb list --json",
+			"run " + "`pmb id`" + ` right after`,
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style"},
 	})
