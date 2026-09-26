@@ -38,6 +38,7 @@ Subagent (general-purpose):
     the build skill). Read them first.
 
     Once you're clear on requirements:
+    Very first action: run `pmb tick [TASK_ID] --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
     1. `pm:tdd` at every step: write the failing test first, watch it fail,
        then the minimum code, watch it pass.
     2. Implement exactly what the task specifies — the task's verify line

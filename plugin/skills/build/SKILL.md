@@ -135,6 +135,7 @@ Every implementer hand-off, built from [implementer-prompt.md](implementer-promp
 - run the repo's formatter and type checks before the commit; formatting goes in the task commit, never in a commit of its own;
 - comments in plain English a ten-year-old can read, saying why; no marker tags;
 - report in the user's chat language (see the session rules); write everything in the repo in the repo language;
+- very first action on every task: run `pmb tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`);
 - right after each step, run `pmb tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `pmb tick plans/2026-09-26-tick-fixes#task-3 --step 2`); right after the task's commit, run `pmb tick plans/<stem>#task-N --all` so no box stays open; never commit the plan file.
 
 The standing rules for every worker are in `references/house-rules.md` (two folders up from this skill); point the implementer at its absolute path.

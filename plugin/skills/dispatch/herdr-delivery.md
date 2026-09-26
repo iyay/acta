@@ -148,6 +148,8 @@ herdr agent read <slug> --source visible --lines 6     # status bar must show: ğ
 
 `/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
+**The very first action of every task, before the failing test:** `pmb tick plans/<stem>#task-N --start --agent omp` (the brief names omp because the recipient harness sets no agent variable).
+
 **The brief's tick rule carries the name.** The recipient is an omp pane and its harness sets no agent variable, so every tick command in the brief names it:
 
 ```bash
