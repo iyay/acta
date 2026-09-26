@@ -54,16 +54,18 @@ func TestParseCRLF(t *testing.T) {
 
 func TestParseSpecLine(t *testing.T) {
 	cases := map[string]string{
-		"**Spec:** `docs/superpowers/specs/2026-09-25-a-design.md`\n":               "docs/superpowers/specs/2026-09-25-a-design.md",
-		"**Spec:** .pm/specs/2026-09-16-finished.md\n":                              ".pm/specs/2026-09-16-finished.md",
-		"**Spec:** `.pm/specs/x.md`, which builds on `.pm/specs/y.md`.\n":           ".pm/specs/x.md",
-		"Spec: `not-bold.md`\n":                                                     "",
-		"**Spec:** none (Bounded, approved in chat on 2026-09-26)\n":                "",
-		"**Spec:** No spec file. Source: memory `tick-fixes-review-notes`.\n":       "",
-		"**Spec:** Bounded design approved in chat on 2026-09-26 (no spec file):\n": "",
-		"**Spec:** `notes` then `.pm/specs/z.md`\n":                                 ".pm/specs/z.md",
-		"**Spec:** see .pm/specs/typo-desing.md\n":                                  ".pm/specs/typo-desing.md",
-		"**Spec:** (.pm/specs/w.md).\n":                                             ".pm/specs/w.md",
+		"**Spec:** `docs/superpowers/specs/2026-09-25-a-design.md`\n":                              "docs/superpowers/specs/2026-09-25-a-design.md",
+		"**Spec:** .pm/specs/2026-09-16-finished.md\n":                                             ".pm/specs/2026-09-16-finished.md",
+		"**Spec:** `.pm/specs/x.md`, which builds on `.pm/specs/y.md`.\n":                          ".pm/specs/x.md",
+		"Spec: `not-bold.md`\n":                                                                    "",
+		"**Spec:** none (Bounded, approved in chat on 2026-09-26)\n":                               "",
+		"**Spec:** No spec file. Source: memory `tick-fixes-review-notes`.\n":                      "",
+		"**Spec:** Bounded design approved in chat on 2026-09-26 (no spec file):\n":                "",
+		"**Spec:** `notes` then `.pm/specs/z.md`\n":                                                ".pm/specs/z.md",
+		"**Spec:** see .pm/specs/typo-desing.md\n":                                                 ".pm/specs/typo-desing.md",
+		"**Spec:** (.pm/specs/w.md).\n":                                                            ".pm/specs/w.md",
+		"**Spec:** Design approved in chat (Bounded). Rulings: (1) CLAUDE.md or AGENTS.md wins.\n": "",
+		"**Spec:** see README.md and .pm/specs/v.md\n":                                             ".pm/specs/v.md",
 	}
 	for in, want := range cases {
 		if got := Parse([]byte("# P\n\n" + in)).SpecPath; got != want {

@@ -170,7 +170,7 @@ Then run `pmb tick plans/2026-09-26-spec-line-md#task-2 --all`.
 
 **verify:** No bare word without a `/` (like `CLAUDE.md` or `README.md` in a sentence) is ever taken as the spec, every bare `.md` word that contains a `/` still is (so a mistyped spec path still warns), and backtick spans keep the rule they have now. List every Spec line shape checked, and run `go run ./cmd/pmb list` to show no plan in `.pm/plans/` has a false "spec ... not found" line. User ruling 2026-09-26: option A.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to the `cases` map in `TestParseSpecLine`:
 
@@ -179,21 +179,21 @@ Add to the `cases` map in `TestParseSpecLine`:
 		"**Spec:** see README.md and .pm/specs/v.md\n":                                               ".pm/specs/v.md",
 ```
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `go test ./internal/board -run TestParseSpecLine -count=1`
 Expected: FAIL with `SpecPath = "CLAUDE.md", want ""` and `SpecPath = "README.md", want ".pm/specs/v.md"`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In the bare-word loop of `specPath`, change the condition to `strings.HasSuffix(p, ".md") && strings.Contains(p, "/")`, and add one comment line above it: `// A bare word must look like a path, so a file named in a sentence (CLAUDE.md) is not taken as the spec.`
 
-- [ ] **Step 4: Run the tests to see them pass, then the gate**
+- [x] **Step 4: Run the tests to see them pass, then the gate**
 
 Run: `go test ./internal/board -count=1`, then `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`, then `go run ./cmd/pmb list` and check no `! spec` line.
 Expected: PASS, no `! spec` line.
 
-- [ ] **Step 5: Commit (gofmt folded in, never a formatting-only commit)**
+- [x] **Step 5: Commit (gofmt folded in, never a formatting-only commit)**
 
 ```bash
 git add internal/board/parse.go internal/board/parse_test.go
