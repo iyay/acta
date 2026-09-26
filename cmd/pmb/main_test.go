@@ -123,12 +123,37 @@ func TestListJSON(t *testing.T) {
 	for _, it := range items {
 		got = append(got, it.ID)
 	}
-	want := "plans/2026-09-23-lonely specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken"
+	want := "specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("ids %v", got)
 	}
 	if items[0].Children == nil || items[0].Problems == nil {
 		t.Fatal("children and problems must be [] not null")
+	}
+}
+
+// A plan is its own item, so a list line says so instead of calling it a story.
+func TestListShowsPlansAsPlans(t *testing.T) {
+	dir := fixtureRepo(t)
+	out, _, code := pmb(t, dir, "", "list", "--all")
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	var found int
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		// A plan item's ID is the plan path; a task's ID adds "#task-n".
+		if len(fields) < 4 || !strings.HasPrefix(fields[3], "plans/") || strings.Contains(fields[3], "#") {
+			continue
+		}
+		found++
+		if fields[1] != "plan" {
+			t.Errorf("plan line has no plan type: %q", line)
+		}
+	}
+	if found == 0 {
+		t.Fatalf("no plan in the list: %s", out)
 	}
 }
 

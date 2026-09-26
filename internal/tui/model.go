@@ -147,6 +147,7 @@ func (m Model) rows() []row {
 	}
 	rows := toRows(m.board.List(tabKinds[m.tab], m.showAll), 0)
 	if m.tab == tabStories {
+		rows = toRows(m.storyItems(), 0)
 		if legacy := m.board.Untyped(m.showAll); len(legacy) > 0 {
 			rows = append(rows, row{id: groupRowID, group: true})
 			if m.groupOpen {
@@ -163,6 +164,31 @@ func toRows(items []*board.Item, depth int) []row {
 		rows = append(rows, row{id: it.ID, depth: depth})
 	}
 	return rows
+}
+
+// storyItems gives the Stories tab its rows. A plan that has a spec shows on
+// that spec's row, but a plan with none has no other home, so it lists here
+// too until plans get a tab of their own.
+func (m Model) storyItems() []*board.Item {
+	stories := m.board.List(board.KindStory, m.showAll)
+	plans := m.board.List(board.KindPlan, m.showAll)
+	out := make([]*board.Item, 0, len(stories)+len(plans))
+	for _, p := range plans {
+		if p.SpecID == "" {
+			out = append(out, p)
+		}
+	}
+	// Both lists run newest first, so a merge keeps that order.
+	i := 0
+	for _, s := range stories {
+		for i < len(out) && out[i].Date > s.Date {
+			i++
+		}
+		out = append(out, nil)
+		copy(out[i+1:], out[i:])
+		out[i] = s
+	}
+	return out
 }
 
 // cursor finds the selected id; when it is gone it falls back to the old row number.

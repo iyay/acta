@@ -43,7 +43,7 @@ func TestGetResolvesEveryIDForm(t *testing.T) {
 		"specs/2026-09-20-a-design": "specs/2026-09-20-a-design",
 		"SPEC-4":                    "specs/2026-09-20-a-design",
 		"spec-m2x9":                 "specs/2026-09-20-a-design",
-		"PLAN-12":                   "specs/2026-09-20-a-design",
+		"PLAN-12":                   "plans/2026-09-21-a",
 		"PLAN-12.3":                 "plans/2026-09-21-a#task-3",
 		"plan-k3f2.f1":              "plans/2026-09-21-a#task-F1",
 		"PLAN-1234":                 "plans/2026-09-22-solo",
@@ -143,19 +143,25 @@ func TestIDsKeepTheWrittenValue(t *testing.T) {
 	}
 }
 
-// A plan whose tasks belong to a spec still has a file, and that file is what
-// holds the plan's own id.
-func TestHeldPlanKeepsItsOwnFile(t *testing.T) {
+// A plan whose tasks belong to a spec is an item of its own, and the plan
+// file is where its own id lives.
+func TestPlanKeepsItsOwnFile(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-20-a-design.md": "# A\n",
 		"plans/2026-09-21-b.md":        "---\nparent: specs/2026-09-20-a-design\nid: PLAN-12\nhash: k3f2\n---\n# B\n\n### Task 1: T\n- [ ] a\n",
 	})
-	holder := b.Get("specs/2026-09-20-a-design")
-	held := holder.HeldPlans()
-	if len(held) != 1 {
-		t.Fatalf("held plans = %d, want 1", len(held))
+	plan := b.Get("plans/2026-09-21-b")
+	if plan == nil || plan.Kind != KindPlan {
+		t.Fatalf("plan = %v", plan)
 	}
-	if !strings.HasSuffix(held[0].Path, "plans/2026-09-21-b.md") || held[0].RawID != "PLAN-12" || held[0].RawHash != "k3f2" {
-		t.Fatalf("held plan = %+v", held[0])
+	if !strings.HasSuffix(plan.Path, "plans/2026-09-21-b.md") || plan.ShortID != "PLAN-12" || plan.Hash != "PLAN-k3f2" {
+		t.Fatalf("plan = %+v", plan)
+	}
+	if plan.SpecID != "specs/2026-09-20-a-design" {
+		t.Fatalf("plan spec = %q", plan.SpecID)
+	}
+	if holder := b.Get("specs/2026-09-20-a-design"); len(holder.Children) != 1 ||
+		holder.Children[0] != "plans/2026-09-21-b#task-1" {
+		t.Fatalf("spec children = %v", holder.Children)
 	}
 }

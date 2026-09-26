@@ -147,8 +147,8 @@ type idFile struct {
 	file, id, hash, prefix, frontErr string
 }
 
-// idFiles lists every plan, spec and bug file on disk, including the plan
-// files whose tasks belong to a spec or a bug.
+// idFiles lists every plan, spec and bug file on disk. A plan file is its own
+// item on the board now, so it is reached like any other.
 func idFiles(b *board.Board) []idFile {
 	var out []idFile
 	for _, it := range b.Items {
@@ -167,9 +167,6 @@ func idFiles(b *board.Board) []idFile {
 			}
 		}
 		out = append(out, idFile{file, it.RawID, it.RawHash, filePrefix(it, file), why})
-		for _, h := range it.HeldPlans() {
-			out = append(out, idFile{h.Path, h.RawID, h.RawHash, "PLAN", h.FrontErr})
-		}
 	}
 	return out
 }
@@ -248,15 +245,6 @@ func candidates(cfg config.Config, b *board.Board, only []string) ([]cand, []str
 			file = it.PlanPath
 		}
 		add(it, file, prefixOf(it))
-		for _, h := range it.HeldPlans() {
-			add(it, h.Path, "PLAN")
-		}
-	}
-	for _, it := range b.Items {
-		if it.Kind != board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk || it.PlanPath == "" {
-			continue
-		}
-		add(it, it.PlanPath, "PLAN")
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].file < out[j].file })
 	sort.Strings(skips)

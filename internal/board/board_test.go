@@ -39,27 +39,31 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 	}
 	cases := map[string]want{
 		"specs/2026-09-20-alpha":                 {KindStory, "in-progress", "derived", 1, 2},
+		"plans/2026-09-21-alpha":                 {KindPlan, "in-progress", "derived", 1, 2},
 		"plans/2026-09-21-alpha#task-1":          {KindTask, "done", "derived", 2, 2},
 		"plans/2026-09-21-alpha#task-2":          {KindTask, "doing", "derived", 1, 2},
 		"specs/2026-09-22-beta":                  {KindStory, "draft", "derived", 0, 0},
-		"plans/2026-09-23-lonely":                {KindStory, "approved", "derived", 0, 1},
+		"plans/2026-09-23-lonely":                {KindPlan, "approved", "derived", 0, 1},
 		"plans/2026-09-23-lonely#task-1":         {KindTask, "todo", "derived", 0, 0},
 		"bugs/2026-09-24-crash":                  {KindBug, "fixed", "derived", 1, 1},
+		"plans/2026-09-25-crash-fix":             {KindPlan, "done", "derived", 1, 1},
 		"plans/2026-09-25-crash-fix#task-F1":     {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-28-dotted-tasks":          {KindStory, "done", "derived", 2, 2},
+		"plans/2026-09-28-dotted-tasks":          {KindPlan, "done", "derived", 2, 2},
 		"plans/2026-09-28-dotted-tasks#task-2.1": {KindTask, "done", "derived", 2, 2},
 		"plans/2026-09-28-dotted-tasks#task-2.2": {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-26-dash-tasks":            {KindStory, "done", "derived", 2, 2},
+		"plans/2026-09-26-dash-tasks":            {KindPlan, "done", "derived", 2, 2},
 		"plans/2026-09-26-dash-tasks#task-F-1":   {KindTask, "done", "derived", 2, 2},
 		"plans/2026-09-26-dash-tasks#task-F-2":   {KindTask, "done", "derived", 2, 2},
 		"bugs/2026-09-26-open":                   {KindBug, "open", "derived", 0, 0},
-		"plans/2026-09-27-orphan":                {KindStory, "done", "derived", 1, 1},
+		"plans/2026-09-27-orphan":                {KindPlan, "done", "derived", 1, 1},
 		"specs/2026-09-19-dropped":               {KindStory, "dropped", "frontmatter", 0, 0},
 		"specs/2026-09-18-weird":                 {KindStory, "bogus", "frontmatter", 0, 0},
 		"specs/2026-09-17-broken":                {KindStory, "draft", "derived", 0, 0},
 		"specs/2026-09-16-finished":              {KindStory, "done", "derived", 1, 1},
+		"plans/2026-09-16-finished":              {KindPlan, "done", "derived", 1, 1},
 		"specs/2026-09-15-really-bug":            {KindBug, "open", "derived", 0, 0},
 		"docs/superpowers/specs/2026-01-01-old":  {KindStory, "approved", "derived", 0, 1},
+		"docs/superpowers/plans/2026-01-02-old":  {KindPlan, "approved", "derived", 0, 1},
 	}
 	for id, w := range cases {
 		it := b.Get(id)
@@ -71,8 +75,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 			t.Errorf("%s = kind %s status %s (%s) %d/%d, want %+v", id, it.Kind, it.Status, it.StatusSource, it.Done, it.Total, w)
 		}
 	}
-	if len(b.Items) != 25 {
-		t.Errorf("got %d items, want 25: %v", len(b.Items), ids(b.Items))
+	if len(b.Items) != 29 {
+		t.Errorf("got %d items, want 29: %v", len(b.Items), ids(b.Items))
 	}
 }
 
@@ -99,6 +103,39 @@ func TestLoadLinksPlans(t *testing.T) {
 	task := b.Get("plans/2026-09-25-crash-fix#task-F1")
 	if task.Title != "(be): Guard the nil config" || task.Line != 6 || task.Ref != "B-1" {
 		t.Errorf("F1 = title %q line %d ref %q", task.Title, task.Line, task.Ref)
+	}
+}
+
+// Every plan file is its own item, with or without a spec, and a spec keeps
+// the progress and status it had while the plan folded into it.
+func TestPlansAreItems(t *testing.T) {
+	b := loadFixture(t)
+	alpha := b.Get("plans/2026-09-21-alpha")
+	if alpha == nil || alpha.Kind != KindPlan {
+		t.Fatalf("alpha plan = %v", alpha)
+	}
+	if alpha.SpecID != "specs/2026-09-20-alpha" {
+		t.Errorf("alpha plan spec = %q, want the spec it names", alpha.SpecID)
+	}
+	want := []string{"plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2"}
+	if !reflect.DeepEqual(alpha.Children, want) {
+		t.Errorf("alpha plan children = %v, want %v", alpha.Children, want)
+	}
+	lonely := b.Get("plans/2026-09-23-lonely")
+	if lonely == nil || lonely.Kind != KindPlan {
+		t.Fatalf("lonely plan = %v", lonely)
+	}
+	if lonely.SpecID != "" {
+		t.Errorf("lonely plan spec = %q, want empty", lonely.SpecID)
+	}
+	spec := b.Get("specs/2026-09-20-alpha")
+	if spec.Done != 1 || spec.Total != 2 || spec.Status != "in-progress" {
+		t.Errorf("alpha spec = %d/%d %s, want 1/2 in-progress", spec.Done, spec.Total, spec.Status)
+	}
+	for _, it := range b.List(KindTask, true) {
+		if it.PlanID == "" {
+			t.Errorf("task %s names no plan", it.ID)
+		}
 	}
 }
 
@@ -180,14 +217,20 @@ func TestLists(t *testing.T) {
 		}
 	}
 	check("active stories", ids(b.List(KindStory, false)), []string{
-		"plans/2026-09-23-lonely", "specs/2026-09-22-beta", "specs/2026-09-20-alpha",
+		"specs/2026-09-22-beta", "specs/2026-09-20-alpha",
 		"specs/2026-09-18-weird", "specs/2026-09-17-broken",
+	})
+	check("active plans", ids(b.List(KindPlan, false)), []string{
+		"plans/2026-09-23-lonely", "plans/2026-09-21-alpha",
 	})
 	check("active bugs", ids(b.List(KindBug, false)), []string{"bugs/2026-09-26-open", "specs/2026-09-15-really-bug"})
 	check("active tasks", ids(b.List(KindTask, false)), []string{"plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha#task-2"})
 	check("untyped", ids(b.Untyped(false)), []string{"docs/superpowers/specs/2026-01-01-old"})
-	if got := len(b.List(KindStory, true)); got != 10 {
-		t.Errorf("all non-legacy stories = %d, want 10", got)
+	if got := len(b.List(KindStory, true)); got != 6 {
+		t.Errorf("all non-legacy stories = %d, want 6", got)
+	}
+	if got := len(b.List(KindPlan, true)); got != 7 {
+		t.Errorf("all non-legacy plans = %d, want 7", got)
 	}
 	for _, it := range b.List(KindTask, true) {
 		if it.Legacy {

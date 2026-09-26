@@ -118,8 +118,15 @@ func TestLoadTreesFromBranchFiles(t *testing.T) {
 	if b.Get("docs/superpowers/specs/2026-01-01-old") != nil {
 		t.Fatal("legacy folders must not be read from branches")
 	}
-	if m := b.Get("plans/2026-09-21-a"); m != nil {
-		t.Fatal("plan must link, not stand alone")
+	m := b.Get("plans/2026-09-21-a")
+	if m == nil || m.Kind != KindPlan {
+		t.Fatalf("plan from a branch = %+v", m)
+	}
+	if m.SpecID != "specs/2026-09-20-a" {
+		t.Fatalf("plan spec = %q, want the spec it names", m.SpecID)
+	}
+	if m.Worktree != "feat-x" || m.OnDisk {
+		t.Fatalf("plan from a branch is not marked as one: %+v", m)
 	}
 	for _, it := range b.Items {
 		if it.Worktree == "" && !it.OnDisk {

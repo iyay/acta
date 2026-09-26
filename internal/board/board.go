@@ -18,6 +18,7 @@ const (
 	KindStory Kind = "story"
 	KindTask  Kind = "task"
 	KindBug   Kind = "bug"
+	KindPlan  Kind = "plan"
 )
 
 // Item is one story, task or bug.
@@ -32,7 +33,9 @@ type Item struct {
 	Ref          string
 	FixedIn      string
 	Parent       string   // tasks only
-	Children     []string // stories and bugs: their task ids, in file order
+	SpecID       string   // plans only: the spec or bug whose tasks the plan carries
+	PlanID       string   // tasks only: the plan file the task belongs to
+	Children     []string // stories, bugs and plans: their task ids, in file order
 	Done         int      // task: ticked boxes; story or bug: done tasks
 	Total        int      // task: all boxes; story or bug: all tasks
 	Path         string   // absolute file path
@@ -45,27 +48,17 @@ type Item struct {
 	TaskNum      string
 	ShortID      string // number ID like PLAN-12 or PLAN-12.3; "" when the file has none
 	Hash         string // permanent ID like PLAN-k3f2 or PLAN-k3f2.3; "" when none
-	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	RawID        string // id as the frontmatter holds it, "" when the file has none
 	RawHash      string // hash as the frontmatter holds it, "" when the file has none
+	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 
-	held     []HeldPlan
+	// plans counts the plans that hang on this item. A plan item is one plan
+	// itself, so it counts itself.
 	fmStatus string
 	plans    int
 	specFile bool
 	seq      int
 }
-
-// HeldPlan is a plan file whose tasks show on another item, with the values
-// its own frontmatter holds.
-type HeldPlan struct {
-	Path, RawID, RawHash string
-	FrontErr             string
-}
-
-// HeldPlans lists the plan files whose tasks show on this item, in file
-// order. A tool that renumbers a plan needs these files, not the holder.
-func (it *Item) HeldPlans() []HeldPlan { return it.held }
 
 // Board holds every item of one repo, newest first.
 type Board struct {
@@ -84,7 +77,7 @@ var (
 // Allowed lists the status values the contract gives a kind.
 func Allowed(k Kind) []string {
 	switch k {
-	case KindStory:
+	case KindStory, KindPlan:
 		return append([]string(nil), storyStatuses...)
 	case KindBug:
 		return append([]string(nil), bugStatuses...)
@@ -298,11 +291,12 @@ func (b *Board) List(k Kind, all bool) []*Item {
 	return out
 }
 
-// Untyped gives legacy stories and bugs. Closed ones are left out unless all is set.
+// Untyped gives legacy stories and bugs. A legacy plan is a plan now, so it is
+// left out. Closed ones are left out unless all is set.
 func (b *Board) Untyped(all bool) []*Item {
 	var out []*Item
 	for _, it := range b.Items {
-		if it.Legacy && it.Kind != KindTask && (all || !Closed(it.Status)) {
+		if it.Legacy && it.Kind != KindTask && it.Kind != KindPlan && (all || !Closed(it.Status)) {
 			out = append(out, it)
 		}
 	}
@@ -360,8 +354,9 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	return it
 }
 
-// linkPlan finds the parent of a plan's tasks: frontmatter parent, then the
-// **Spec:** line, then the plan stands in for a story of its own.
+// linkPlan gives a plan its own item and hangs the plan's tasks under it. The
+// spec or bug the plan names keeps the same tasks, so its own progress and
+// status do not change.
 func (b *Board) linkPlan(p planFile) {
 	var parent *Item
 	problem := ""
@@ -376,40 +371,46 @@ func (b *Board) linkPlan(p planFile) {
 			problem = "spec " + p.doc.SpecPath + " not found"
 		}
 	}
-	if parent == nil {
-		parent = fileItem(KindStory, p.id, p.path, p.date, p.slug, p.legacy, p.doc)
-		parent.Worktree = p.tree
-		parent.OnDisk = p.onDisk
-		if problem != "" {
-			parent.Problems = append(parent.Problems, problem)
-		}
-		b.add(parent)
-		// Plans speak PLAN even when they stand in for a story.
-		setIDs(parent, "PLAN", p.doc)
-		b.aliasItem(parent)
-	} else {
-		b.aliasPlan(p, parent)
+	plan := fileItem(KindPlan, p.id, p.path, p.date, p.slug, p.legacy, p.doc)
+	plan.Worktree = p.tree
+	plan.OnDisk = p.onDisk
+	if problem != "" {
+		plan.Problems = append(plan.Problems, problem)
 	}
-	parent.plans++
-	planIDs := &Item{}
-	setIDs(planIDs, "PLAN", p.doc)
+	b.add(plan)
+	// A plan speaks PLAN, whatever kind its frontmatter or its folder claims.
+	setIDs(plan, "PLAN", p.doc)
+	b.aliasItem(plan)
+	// A plan is one plan, so it counts itself when its status is derived.
+	plan.plans = 1
+	if parent != nil {
+		plan.SpecID = parent.ID
+		parent.plans++
+	}
 	for _, t := range p.doc.Tasks {
 		id := p.id + "#task-" + t.Num
 		if b.byID[id] != nil {
-			parent.Problems = append(parent.Problems, "duplicate task "+t.Num+" in "+p.id)
+			plan.Problems = append(plan.Problems, "duplicate task "+t.Num+" in "+p.id)
 			continue
 		}
 		title := t.Title
 		if title == "" {
 			title = "Task " + t.Num
 		}
+		holder := parent
+		if holder == nil {
+			holder = plan
+		}
 		task := &Item{ID: id, Kind: KindTask, Title: title, Date: p.date, Slug: p.slug,
-			Ref: parent.Ref, Parent: parent.ID, Done: t.Done, Total: t.Total,
+			Ref: holder.Ref, Parent: holder.ID, PlanID: p.id, Done: t.Done, Total: t.Total,
 			Path: p.path, Line: t.Line, Legacy: p.legacy, Body: t.Body, TaskNum: t.Num,
 			PlanPath: p.path, Worktree: p.tree, OnDisk: p.onDisk}
 		b.add(task)
-		b.aliasTask(task, planIDs.ShortID, planIDs.Hash)
-		parent.Children = append(parent.Children, id)
+		b.aliasTask(task, plan.ShortID, plan.Hash)
+		plan.Children = append(plan.Children, id)
+		if parent != nil {
+			parent.Children = append(parent.Children, id)
+		}
 	}
 }
 
