@@ -60,6 +60,11 @@ func TestTickHelp(t *testing.T) {
 		if got := out + errOut; !strings.Contains(got, "plans/<stem>#task-N") {
 			t.Errorf("%v: output %q names no plans/<stem>#task-N id", args, got)
 		}
+		for _, flag := range []string{"-step", "-all", "tick every checkbox of the task"} {
+			if !strings.Contains(out+errOut, flag) {
+				t.Errorf("%v: output %q does not list %q", args, out+errOut, flag)
+			}
+		}
 	}
 }
 

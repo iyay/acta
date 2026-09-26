@@ -49,7 +49,9 @@ Subagent (general-purpose):
     6. Right after each step, run `pmb tick [TASK_ID] --step <n>` from the
        worktree so the board shows live progress ([TASK_ID] is
        plans/<stem>#task-N, for example plans/2026-09-26-tick-fixes#task-3);
-       never commit the plan file.
+       right after the task's commit, run `pmb tick [TASK_ID] --all` (yes,
+       --all right after the commit) so no box stays open; never commit the
+       plan file.
     7. Self-review (see below).
     8. Report back.
 

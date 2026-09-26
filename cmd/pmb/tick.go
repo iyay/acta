@@ -17,8 +17,11 @@ const tickUsage = "usage: pmb tick plans/<stem>#task-N [--step N | --all]"
 // orchestrator commits it once per wave.
 func cmdTick(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("tick", stderr)
-	// Show the id shape on -h/--help so agents copy it right.
-	fs.Usage = func() { fmt.Fprintln(stderr, tickUsage) }
+	// Show the id shape and the flags on -h/--help so agents copy it right.
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, tickUsage)
+		fs.PrintDefaults()
+	}
 	step := fs.Int("step", 0, "tick this checkbox, counting from 1")
 	all := fs.Bool("all", false, "tick every checkbox of the task")
 	pos, err := parseMixed(fs, args)
