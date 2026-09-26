@@ -29,10 +29,13 @@ var randHash = func() string {
 
 // AssignIDs gives every non-legacy spec, plan and bug in the root folder that
 // lacks an id or hash a number past the highest of its prefix and a hash no
-// other item has. Existing values never change. One commit holds the run.
+// other item has. A value already written in a file is never changed, so a
+// run writes a field only when the file has none, and a file it cannot read
+// is skipped with its reason instead of ending the run. One commit holds the
+// run.
 func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outcome, error) {
 	next, taken := scanIDs(b)
-	cands := candidates(b, only)
+	cands, skips := candidates(cfg, b, only)
 	var changes, paths []string
 	for _, c := range cands {
 		orig, err := os.ReadFile(c.file)
@@ -46,7 +49,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 			next[c.prefix]++
 			out, err := SetField(src, "id", id)
 			if err != nil {
-				return nil, Outcome{}, err
+				return nil, Outcome{Skips: skips}, err
 			}
 			src = out
 		}
@@ -54,7 +57,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 			hash = freeHash(taken)
 			out, err := SetField(src, "hash", hash)
 			if err != nil {
-				return nil, Outcome{}, err
+				return nil, Outcome{Skips: skips}, err
 			}
 			src = out
 		}
@@ -62,7 +65,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 			continue
 		}
 		if err := os.WriteFile(c.file, src, 0o644); err != nil {
-			return nil, Outcome{}, err
+			return nil, Outcome{Skips: skips}, err
 		}
 		taken[hash] = true
 		rel, _ := filepath.Rel(cfg.Root, c.file)
@@ -70,23 +73,27 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		paths = append(paths, c.file)
 	}
 	if len(paths) == 0 {
-		return nil, Outcome{}, nil
+		return nil, Outcome{Skips: skips}, nil
 	}
 	sort.Strings(paths)
+	if !cfg.AutoCommit {
+		return changes, Outcome{Reason: "auto_commit is off", Skips: skips}, nil
+	}
 	r := gitc.CommitPaths(cfg.RepoRoot, paths, "pm: assign short ids")
-	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason}, nil
+	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
 }
 
 // FixDuplicates gives each later holder of a number the next free number.
-// The first item to reach the branch keeps its number, hashes never move.
+// The file that reached the branch first keeps its number, so the order
+// follows the first-parent history and not the clock. Hashes never move.
 func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error) {
 	next, _ := scanIDs(b)
-	groups := map[string][]*board.Item{}
-	for _, it := range b.Items {
-		if it.Kind == board.KindTask || it.ShortID == "" || it.Legacy || it.Worktree != "" || !it.OnDisk {
+	groups := map[string][]idFile{}
+	for _, f := range idFiles(b) {
+		if f.id == "" || badReason(f) != "" {
 			continue
 		}
-		groups[it.ShortID] = append(groups[it.ShortID], it)
+		groups[f.id] = append(groups[f.id], f)
 	}
 	var keys []string
 	for k, g := range groups {
@@ -102,18 +109,15 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 	for _, k := range keys {
 		g := groups[k]
 		sort.SliceStable(g, func(i, j int) bool {
-			ai, _ := gitc.AddedAt(cfg.RepoRoot, g[i].Path)
-			aj, _ := gitc.AddedAt(cfg.RepoRoot, g[j].Path)
-			if ai == 0 || aj == 0 {
-				return aj == 0 && ai != 0
-			}
+			ai, _ := gitc.FirstSeen(cfg.RepoRoot, g[i].file)
+			aj, _ := gitc.FirstSeen(cfg.RepoRoot, g[j].file)
 			return ai < aj
 		})
 		prefix := strings.TrimSuffix(k, "-"+numPart(k))
-		for _, it := range g[1:] {
+		for _, f := range g[1:] {
 			id := fmt.Sprintf("%s-%d", prefix, next[prefix])
 			next[prefix]++
-			src, err := os.ReadFile(it.Path)
+			src, err := os.ReadFile(f.file)
 			if err != nil {
 				return nil, Outcome{}, err
 			}
@@ -121,17 +125,78 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 			if err != nil {
 				return nil, Outcome{}, err
 			}
-			if err := os.WriteFile(it.Path, out, 0o644); err != nil {
+			if err := os.WriteFile(f.file, out, 0o644); err != nil {
 				return nil, Outcome{}, err
 			}
-			rel, _ := filepath.Rel(cfg.Root, it.Path)
+			rel, _ := filepath.Rel(cfg.Root, f.file)
 			changes = append(changes, k+" -> "+id+" ("+filepath.ToSlash(rel)+")")
-			paths = append(paths, it.Path)
+			paths = append(paths, f.file)
 		}
 	}
 	sort.Strings(paths)
+	if !cfg.AutoCommit {
+		return changes, Outcome{Reason: "auto_commit is off"}, nil
+	}
 	r := gitc.CommitPaths(cfg.RepoRoot, paths, "pm: fix duplicate short ids")
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason}, nil
+}
+
+// idFile is one plan, spec or bug file with the values its own frontmatter
+// holds, so a tool works on the files and not on the board's reading of them.
+type idFile struct {
+	file, id, hash, prefix, frontErr string
+}
+
+// idFiles lists every plan, spec and bug file on disk, including the plan
+// files whose tasks belong to a spec or a bug.
+func idFiles(b *board.Board) []idFile {
+	var out []idFile
+	for _, it := range b.Items {
+		if it.Kind == board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk {
+			continue
+		}
+		file := it.Path
+		if it.PlanPath != "" {
+			file = it.PlanPath
+		}
+		why := ""
+		for _, p := range it.Problems {
+			if strings.HasPrefix(p, "frontmatter: ") {
+				why = p
+				break
+			}
+		}
+		out = append(out, idFile{file, it.RawID, it.RawHash, filePrefix(it, file), why})
+		for _, h := range it.HeldPlans() {
+			out = append(out, idFile{h.Path, h.RawID, h.RawHash, "PLAN", h.FrontErr})
+		}
+	}
+	return out
+}
+
+// filePrefix is the prefix a file's own id must carry: PLAN for a plan file,
+// and for anything else the kind the file ends up as.
+func filePrefix(it *board.Item, file string) string {
+	if strings.Contains(filepath.ToSlash(file), "/plans/") {
+		return "PLAN"
+	}
+	return string(board.Prefix(it.Kind, false))
+}
+
+// badReason says why a file must be left alone: frontmatter that will not
+// parse, or a value in the wrong shape. A value someone wrote down is never
+// replaced with a generated one.
+func badReason(f idFile) string {
+	if f.frontErr != "" {
+		return f.frontErr
+	}
+	if f.id != "" && !board.IsID(f.id, f.prefix) {
+		return "bad id " + f.id
+	}
+	if f.hash != "" && !board.IsHash(f.hash) {
+		return "bad hash " + f.hash
+	}
+	return ""
 }
 
 type cand struct {
@@ -142,18 +207,37 @@ type cand struct {
 	hash   string
 }
 
-func candidates(b *board.Board, only []string) []cand {
+// candidates lists the files to write, and the files to leave alone with the
+// reason. What a file already holds comes from the file, so a value is
+// written only where the file has none.
+func candidates(cfg config.Config, b *board.Board, only []string) ([]cand, []string) {
+	present := map[string]idFile{}
+	for _, f := range idFiles(b) {
+		present[f.file] = f
+	}
 	seen := map[string]bool{}
 	var out []cand
-	add := func(it *board.Item, file, prefix, id, hash string) {
-		if seen[file] || (id != "" && hash != "") {
+	var skips []string
+	add := func(it *board.Item, file, prefix string) {
+		if seen[file] {
 			return
 		}
 		if len(only) > 0 && !named(only, it) {
 			return
 		}
 		seen[file] = true
-		out = append(out, cand{it: it, file: file, prefix: prefix, id: id, hash: hash})
+		f := present[file]
+		if why := badReason(f); why != "" {
+			skips = append(skips, "skip "+fileID(cfg, file)+": "+why)
+			if f.frontErr != "" {
+				// Frontmatter that will not parse takes no field at all.
+				return
+			}
+		}
+		if f.id != "" && f.hash != "" {
+			return
+		}
+		out = append(out, cand{it: it, file: file, prefix: prefix, id: f.id, hash: f.hash})
 	}
 	for _, it := range b.Items {
 		if it.Kind == board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk {
@@ -163,23 +247,20 @@ func candidates(b *board.Board, only []string) []cand {
 		if it.PlanPath != "" {
 			file = it.PlanPath
 		}
-		add(it, file, prefixOf(it), it.ShortID, bareHash(it.Hash))
+		add(it, file, prefixOf(it))
+		for _, h := range it.HeldPlans() {
+			add(it, h.Path, "PLAN")
+		}
 	}
 	for _, it := range b.Items {
 		if it.Kind != board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk || it.PlanPath == "" {
 			continue
 		}
-		id, hash := it.ShortID, it.Hash
-		if i := strings.Index(id, "."); i >= 0 {
-			id = id[:i]
-		}
-		if i := strings.Index(hash, "."); i >= 0 {
-			hash = hash[:i]
-		}
-		add(it, it.PlanPath, "PLAN", id, bareHash(hash))
+		add(it, it.PlanPath, "PLAN")
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].file < out[j].file })
-	return out
+	sort.Strings(skips)
+	return out, skips
 }
 
 func named(only []string, it *board.Item) bool {
@@ -282,10 +363,12 @@ func freeHash(taken map[string]bool) string {
 	}
 }
 
-func pathID(cfg config.Config, it *board.Item) string {
-	rel, err := filepath.Rel(cfg.Root, it.Path)
+// fileID names a file the way a person types it: its path under the root,
+// without the .md.
+func fileID(cfg config.Config, file string) string {
+	rel, err := filepath.Rel(cfg.Root, file)
 	if err != nil {
-		return it.ID
+		return strings.TrimSuffix(filepath.Base(file), ".md")
 	}
 	return strings.TrimSuffix(filepath.ToSlash(rel), ".md")
 }

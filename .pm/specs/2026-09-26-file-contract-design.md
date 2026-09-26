@@ -1,5 +1,7 @@
 ---
 status: done
+id: SPEC-1
+hash: s8ma
 ---
 # pm-board file contract
 

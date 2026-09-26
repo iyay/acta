@@ -1,3 +1,7 @@
+---
+id: PLAN-5
+hash: swyd
+---
 # pm plugin follow-ups Implementation Plan
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.

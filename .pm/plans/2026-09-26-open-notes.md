@@ -1,3 +1,7 @@
+---
+id: PLAN-4
+hash: s3zy
+---
 # Close open review NOTEs Implementation Plan
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.

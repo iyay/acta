@@ -162,21 +162,57 @@ func TestCommitPaths(t *testing.T) {
 	}
 }
 
-func TestAddedAt(t *testing.T) {
+// FirstSeen answers with the place of a file in the branch history, so two
+// files keep a stable order even when their commits share one second.
+func TestFirstSeen(t *testing.T) {
 	dir := setupRepo(t)
-	first, err := AddedAt(dir, "a.md")
-	if err != nil || first == 0 {
-		t.Fatalf("first = %d, %v", first, err)
+	first, err := FirstSeen(dir, "a.md")
+	if err != nil || first != 0 {
+		t.Fatalf("first commit index = %d, %v", first, err)
 	}
 	writeFile(t, filepath.Join(dir, "a.md"), "a again\n")
 	git(t, dir, "add", "a.md")
 	git(t, dir, "commit", "-q", "-m", "second")
-	again, err := AddedAt(dir, "a.md")
+	again, err := FirstSeen(dir, "a.md")
 	if err != nil || again != first {
 		t.Fatalf("after second commit = %d, want first %d, err %v", again, first, err)
 	}
-	zero, err := AddedAt(dir, "untracked.md")
-	if err != nil || zero != 0 {
-		t.Fatalf("untracked = %d, %v", zero, err)
+	t.Setenv("GIT_AUTHOR_DATE", "2020-01-01T00:00:00Z")
+	t.Setenv("GIT_COMMITTER_DATE", "2020-01-01T00:00:00Z")
+	writeFile(t, filepath.Join(dir, "c.md"), "c one second too\n")
+	git(t, dir, "add", "c.md")
+	git(t, dir, "commit", "-q", "-m", "same second as the commit before")
+	same, err := FirstSeen(dir, "c.md")
+	if err != nil || same <= again {
+		t.Fatalf("later file index = %d, want past %d, err %v", same, again, err)
+	}
+	if untracked, err := FirstSeen(dir, "untracked.md"); err != nil || untracked <= same {
+		t.Fatalf("untracked = %d, want past %d, err %v", untracked, same, err)
+	}
+}
+
+// A file that only arrives through a merge is seen at the merge, so the file
+// that was on main keeps the lower place.
+func TestFirstSeenCountsTheMerge(t *testing.T) {
+	dir := setupRepo(t)
+	git(t, dir, "checkout", "-q", "-b", "side")
+	writeFile(t, filepath.Join(dir, "side.md"), "side\n")
+	git(t, dir, "add", ".")
+	git(t, dir, "commit", "-q", "-m", "side adds its file")
+	git(t, dir, "checkout", "-q", "main")
+	writeFile(t, filepath.Join(dir, "main.md"), "main\n")
+	git(t, dir, "add", ".")
+	git(t, dir, "commit", "-q", "-m", "main adds its file")
+	git(t, dir, "merge", "-q", "--no-ff", "-m", "merge side", "side")
+	main, err := FirstSeen(dir, "main.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	side, err := FirstSeen(dir, "side.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if main >= side {
+		t.Fatalf("main file at %d, side file at %d, want main first", main, side)
 	}
 }

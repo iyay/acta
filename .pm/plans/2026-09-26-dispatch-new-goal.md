@@ -1,3 +1,7 @@
+---
+id: PLAN-1
+hash: mbm7
+---
 # Dispatch sends /new and /goal as two confirmed steps Implementation Plan
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.

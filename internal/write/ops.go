@@ -34,6 +34,7 @@ type Outcome struct {
 	Committed bool
 	Skipped   bool // auto-commit was on but the commit did not happen
 	Reason    string
+	Skips     []string // one "skip <path id>: <reason>" line per file left alone
 }
 
 func bad(format string, args ...any) error {
