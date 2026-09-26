@@ -44,3 +44,24 @@ func TestDispatchCheckpointOneRead(t *testing.T) {
 		t.Errorf("dispatch/SKILL.md says \"checkpoint unconfirmed\" %d times; the loop item and the section both need it", n)
 	}
 }
+
+// TestDispatchNewThenGoal reads each dispatch file on its own. /new and
+// /goal once landed as one message, and the goal never set.
+func TestDispatchNewThenGoal(t *testing.T) {
+	wants := []string{"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "fix round: `/goal` only"}
+	for _, file := range []string{"SKILL.md", "herdr-delivery.md"} {
+		b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		txt := string(b)
+		for _, want := range wants {
+			if !strings.Contains(txt, want) {
+				t.Errorf("dispatch/%s missing %q", file, want)
+			}
+		}
+		if strings.Contains(txt, "Back-to-back, no settle-wait") {
+			t.Errorf("dispatch/%s still says \"Back-to-back, no settle-wait\"", file)
+		}
+	}
+}

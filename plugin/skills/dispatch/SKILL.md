@@ -135,7 +135,14 @@ Map, not instructions. Flags and failure handling live in the reference file.
 - **`/goal` every turn, no exceptions**, including fix rounds and re-dispatch after drift. The goal survives the harness's own compaction; a plain prompt does not. One `/goal` per turn, one brief, no bare follow-up.
 - `/goal` carries the reply-back command inline.
 
-Order: `/new` → `/goal <one-line summary> + read brief at <abs-path> + literal reply-back`. Back-to-back, no settle-wait. Checkpoint after the `/goal`.
+**Order — HARD RULE, four steps, a check after each:**
+
+1. Wait until omp is ready: the pane shows its empty input box (`herdr agent read <slug> --source visible`). A just-launched omp is not ready yet.
+2. Send `/new` alone. Read the pane until it shows "New session started". Then rename the agent by pane id (`/new` drops the name).
+3. Send `/goal` alone. Read the status bar until it shows `🎯 Goal`. `⏸ Goal` or no goal → see the held-goal block below and send it again.
+4. fix round: `/goal` only — no `/new`; still check `🎯 Goal`.
+
+`/new` and `/goal` go as two prompts, never in one prompt, and `/new` never goes before omp is ready: otherwise both land as one message and the goal never sets. These reads are part of delivery, not the comprehension checkpoint. Checkpoint after the `/goal`.
 
 **A held goal silently refuses the next one — on omp `/new` does NOT clear it.** Symptom: prompt returns success, pane shows `Warning: Resume the current goal first, or drop it…`, status bar `⏸ Goal 0`, agent idle having never seen your objective. Clear it:
 

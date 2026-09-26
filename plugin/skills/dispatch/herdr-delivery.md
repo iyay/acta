@@ -132,18 +132,23 @@ Report that the `headroom wrap` layer was lost. Other kinds only when the user n
 
 ## Deliver the pointer message
 
-New session, plan, or worktree — clear first, then set the goal:
+New session, plan, or worktree — HARD RULE, four steps, a check after each (same as SKILL.md):
 
 ```bash
+# 1. omp ready: its empty input box is on screen
+herdr agent read <slug> --source visible --lines 10
+# 2. /new alone, then confirm "New session started", then rename by pane id
 herdr agent prompt <slug> "/new"
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. You are the main agent here: write ZERO code yourself. Run pm:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving pm:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. When your last ticket is committed, run this VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <base>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\". Each verify line is a PROPERTY that must hold on EVERY path, not the one case reported: enumerate every path, caller and surface that could break it and report that list. Line numbers in the brief are hints, never boundaries — confirm with lsp and grep. Read the hand-off, AGENTS.md and the plan BEFORE writing any todo list."
+herdr agent read <slug> --source visible --lines 10    # must show: New session started
+herdr agent rename <pane-id> <slug>
+# 3. /goal alone, then confirm 🎯 Goal in the status bar
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. You are the main agent here: write ZERO code yourself. Run pm:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving pm:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. When your last ticket is committed, run this VERBATIM: herdr agent …
+herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
 ```
 
-Fix round on the plan the agent already holds — `/goal` alone, same inline tail:
+`/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
-```bash
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (pm:build, pm:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
-```
+Step 4, fix round: `/goal` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:
 
 **Quoting**: `$HERDR_PANE_ID` in the *address* expands in your shell (your literal pane id); `\$HERDR_PANE_ID` in the payload stays unexpanded for the recipient.
 
