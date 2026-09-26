@@ -20,7 +20,7 @@ func TestOmpPackageJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(readFile(t, "package.json")), &p); err != nil {
 		t.Fatal(err)
 	}
-	if p.Name != "pm" || !p.Private || len(p.Deps) != 0 {
+	if p.Name != "acta" || !p.Private || len(p.Deps) != 0 {
 		t.Fatalf("package.json = %+v", p)
 	}
 	if !reflect.DeepEqual(p.Pi.Extensions, []string{"./omp/index.ts"}) {

@@ -7,7 +7,7 @@ import (
 )
 
 // EnsureGitignore adds line to the root folder's .gitignore when it is not
-// there yet. pmb writes files it must never commit, and a gitignore line is
+// there yet. acta writes files it must never commit, and a gitignore line is
 // what keeps them out of every commit and out of git status. Callers ignore
 // the error: a session hook that failed would get in the user's way.
 //

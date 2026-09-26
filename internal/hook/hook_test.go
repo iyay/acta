@@ -21,7 +21,7 @@ func korean() Input {
 func TestSessionStartListsSkillsAndRules(t *testing.T) {
 	out := SessionStart(korean())
 	for _, s := range Skills {
-		if !strings.Contains(out, "- pm:"+s.Name+": ") {
+		if !strings.Contains(out, "- acta:"+s.Name+": ") {
 			t.Errorf("skill %s missing", s.Name)
 		}
 	}
@@ -58,7 +58,7 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 
 func TestSessionStartFirstRun(t *testing.T) {
 	out := SessionStart(Input{Voice: voice.Default()})
-	for _, want := range []string{"Voice: not set up yet.", "pmb voice set --language", "Style (ADHD reader):",
+	for _, want := range []string{"Voice: not set up yet.", "acta voice set --language", "Style (ADHD reader):",
 		"already names a chat language or style", "or the language CLAUDE.md names"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("first run missing %q", want)
@@ -103,9 +103,9 @@ func TestPrompt(t *testing.T) {
 		in   Input
 		want string
 	}{
-		"set":     {korean(), "pm voice: reply in Korean, adhd style."},
-		"missing": {Input{Voice: voice.Default()}, "pm voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."},
-		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "pm voice: the voice file could not be read; reply in English, adhd style."},
+		"set":     {korean(), "acta voice: reply in Korean, adhd style."},
+		"missing": {Input{Voice: voice.Default()}, "acta voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."},
+		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta voice: the voice file could not be read; reply in English, adhd style."},
 	}
 	for name, c := range cases {
 		if got := Prompt(c.in); got != c.want {
@@ -154,13 +154,13 @@ func TestLoadKnownAndConflicts(t *testing.T) {
 	if LoadKnown("") != nil || LoadKnown(filepath.Join(t.TempDir(), "none")) != nil {
 		t.Fatal("missing file should give nil")
 	}
-	enabled := []string{"superpowers@superpowers-dev", "gstack@x", "skills@mattpocock", "caveman@caveman", "pm@pm-local", "noat"}
+	enabled := []string{"superpowers@superpowers-dev", "gstack@x", "skills@mattpocock", "caveman@caveman", "acta@acta-local", "noat"}
 	got := Conflicts(enabled, known)
 	if !reflect.DeepEqual(got, []string{"superpowers@superpowers-dev", "gstack@x", "skills@mattpocock"}) {
 		t.Fatalf("conflicts = %v", got)
 	}
-	if got := Conflicts([]string{"pm@pm-local"}, []string{"pm", "pm-local"}); len(got) != 0 {
-		t.Fatalf("pm must never match itself: %v", got)
+	if got := Conflicts([]string{"acta@acta-local"}, []string{"acta", "acta-local"}); len(got) != 0 {
+		t.Fatalf("acta must never match itself: %v", got)
 	}
 }
 
@@ -176,8 +176,8 @@ func TestClaudeDir(t *testing.T) {
 	}
 }
 
-// The fallback file the hook script prints when pmb is missing must match
-// what pmb would print for a default voice.
+// The fallback file the hook script prints when acta is missing must match
+// what acta would print for a default voice.
 func TestDefaultRulesFile(t *testing.T) {
 	path := filepath.Join("..", "..", "plugin", "hooks", "default-rules.md")
 	want := SessionStart(Input{Voice: voice.Default(), VoiceExists: true})
@@ -202,11 +202,11 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 	worst := korean()
 	worst.Conflicts = []string{"superpowers@a"}
 	mappings := []string{
-		"brainstorming→pm:brainstorm", "writing-plans→pm:plan",
-		"subagent-driven-development→pm:build", "using-git-worktrees→pm:build",
-		"test-driven-development→pm:tdd", "systematic-debugging→pm:debug",
-		"requesting-code-review→pm:review", "receiving-code-review→pm:review",
-		"verification-before-completion→pm:land", "finishing-a-development-branch→pm:land",
+		"brainstorming→acta:brainstorm", "writing-plans→acta:plan",
+		"subagent-driven-development→acta:build", "using-git-worktrees→acta:build",
+		"test-driven-development→acta:tdd", "systematic-debugging→acta:debug",
+		"requesting-code-review→acta:review", "receiving-code-review→acta:review",
+		"verification-before-completion→acta:land", "finishing-a-development-branch→acta:land",
 	}
 	for name, in := range map[string]Input{
 		"voice set": korean(),
@@ -216,7 +216,7 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 	} {
 		out := SessionStart(in)
 		for _, want := range append([]string{
-			"load its pm skill with the Skill tool", "This list is only an index",
+			"load its acta skill with the Skill tool", "This list is only an index",
 			"skill from the superpowers plugin that is not installed",
 		}, mappings...) {
 			if !strings.Contains(out, want) {

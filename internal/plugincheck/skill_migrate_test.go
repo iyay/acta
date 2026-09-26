@@ -7,8 +7,8 @@ func TestSkillMigrate(t *testing.T) {
 		Name:     "migrate",
 		MaxLines: 120,
 		Must: []string{
-			"pmb migrate superpowers", "--apply", "Show the table", "Write nothing before that",
-			"one commit", "Never push", "git log --diff-filter=A", "pmb list --all --json", "legacy",
+			"acta migrate superpowers", "--apply", "Show the table", "Write nothing before that",
+			"one commit", "Never push", "git log --diff-filter=A", "acta list --all --json", "legacy",
 		},
 		MustNot: []string{"superpowers:"},
 	})

@@ -7,8 +7,8 @@ func TestSkillSetup(t *testing.T) {
 		Name:     "setup",
 		MaxLines: 60,
 		Must: []string{
-			"pmb voice set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
-			"pmb voice show", "adhd", "plain", "It never edits CLAUDE.md", "full English name",
+			"acta voice set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
+			"acta voice show", "adhd", "plain", "It never edits CLAUDE.md", "full English name",
 		},
 		MustNot: []string{"superpowers:"},
 	})

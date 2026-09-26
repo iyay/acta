@@ -12,9 +12,9 @@ func TestSkillDispatch(t *testing.T) {
 		Name:     "dispatch",
 		MaxLines: 620,
 		Must: []string{
-			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "pm:review", "pm:land", "pm:build",
-			"PROPERTY", "ultrathink orchestrate", "Never wait", ".pm/plans/", "herdr-delivery.md", ".pm/bugs",
-			"pm:bug", "already on the parent branch", "exactly one read", "checkpoint unconfirmed",
+			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "acta:review", "acta:land", "acta:build",
+			"PROPERTY", "ultrathink orchestrate", "Never wait", ".acta/plans/", "herdr-delivery.md", ".acta/bugs",
+			"acta:bug", "already on the parent branch", "exactly one read", "checkpoint unconfirmed",
 		},
 		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
 			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-",
@@ -70,7 +70,7 @@ func TestDispatchNewThenGoal(t *testing.T) {
 	}
 	// The fix-round command was once deleted by accident. It is the only one
 	// with the fix range, so an agent on a fix round needs it.
-	if !strings.Contains(string(b), "/pm:review <fixed-from>..<new-head>") {
+	if !strings.Contains(string(b), "/acta:review <fixed-from>..<new-head>") {
 		t.Error("dispatch/herdr-delivery.md lost the fix-round command with <fixed-from>..<new-head>")
 	}
 }
@@ -97,7 +97,7 @@ func TestDispatchStartTick(t *testing.T) {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	const want = "pmb tick plans/<stem>#task-N --start --agent omp"
+	const want = "acta tick plans/<stem>#task-N --start --agent omp"
 	if !strings.Contains(txt, want) {
 		t.Errorf("herdr-delivery.md missing %q", want)
 	}

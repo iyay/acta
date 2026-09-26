@@ -38,8 +38,8 @@ Subagent (general-purpose):
     the build skill). Read them first.
 
     Once you're clear on requirements:
-    Very first action: run `pmb tick [TASK_ID] --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
-    1. `pm:tdd` at every step: write the failing test first, watch it fail,
+    Very first action: run `acta tick [TASK_ID] --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
+    1. `acta:tdd` at every step: write the failing test first, watch it fail,
        then the minimum code, watch it pass.
     2. Implement exactly what the task specifies — the task's verify line
        is the definition of done.
@@ -48,10 +48,10 @@ Subagent (general-purpose):
     5. Commit your work, staged by path, never `git add -A` or `git add .`;
        formatting goes in the task commit, never in a commit of its own.
     6. Right after each step, run the tick command from the worktree so the
-       board shows live progress: `pmb tick [TASK_ID] --step <n>`, where
+       board shows live progress: `acta tick [TASK_ID] --step <n>`, where
        [TASK_ID] is plans/<stem>#task-N, for example
        plans/2026-09-26-tick-fixes#task-3; right after the task's commit, run
-       `pmb tick [TASK_ID] --all` (yes, --all right after the commit) so no box
+       `acta tick [TASK_ID] --all` (yes, --all right after the commit) so no box
        stays open; never commit the plan file. Add `--agent omp` to those
        commands only when `AI_AGENT` is empty: the omp harness sets no agent
        variable, so that flag is what names you on the board. Under Claude Code
@@ -73,7 +73,7 @@ Subagent (general-purpose):
     Do all of this task's work yourself. Never spawn a subagent to
     implement part of the task, and above all never spawn a reviewer to
     check your work — there is no per-task reviewer; review happens once,
-    at the close, through `pm:review`. Self-review (below) means reading
+    at the close, through `acta:review`. Self-review (below) means reading
     your own diff. If you catch yourself thinking "an independent review
     would strengthen my report", report instead: that review is already
     scheduled at the close.

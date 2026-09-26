@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Use before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .pm/specs/. No code until the user says yes.
+description: Use before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .acta/specs/. No code until the user says yes.
 ---
 
 # Brainstorming Ideas Into Designs
@@ -45,13 +45,13 @@ override it:
 - **Architectural** — new projects, new subsystems, changes that
   restructure how components fit together or alter interfaces others
   depend on. Follow the full process: questions, approaches, sectioned
-  design, written spec, then the pm:plan skill.
+  design, written spec, then the acta:plan skill.
 
 When in doubt between two paths, take the heavier one. The ratchet is
 one-way: hidden complexity discovered mid-task upgrades the path —
 stop, say so, and step up. Nothing downgrades mid-task.
 
-**Sensitive changes take the heavier path.** A change that touches a trust boundary, auth, money, or a data migration gets a written spec in `.pm/specs/` even when it is Bounded.
+**Sensitive changes take the heavier path.** A change that touches a trust boundary, auth, money, or a data migration gets a written spec in `.acta/specs/` even when it is Bounded.
 
 ## Anti-Pattern: "Too Simple To Need Approval"
 
@@ -98,10 +98,10 @@ your path and complete them in order.
 2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
 4. **Present design** — in sections scaled to their complexity, get user approval after each section
-5. **Write design doc** — save to `.pm/specs/YYYY-MM-DD-<topic>-design.md`, run `pmb id` right after so the spec gets its SPEC number and hash, and commit
+5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPEC number and hash, and commit
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 7. **User reviews written spec** — ask user to review the spec file before proceeding
-8. **Transition to implementation** — invoke pm:plan skill to create implementation plan
+8. **Transition to implementation** — invoke acta:plan skill to create implementation plan
 
 ## Process Flow
 
@@ -122,7 +122,7 @@ digraph brainstorming {
     "Write design doc" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
-    "Invoke pm:plan skill" [shape=doublecircle];
+    "Invoke acta:plan skill" [shape=doublecircle];
     "Hidden complexity? Upgrade path" [shape=box];
 
     "Classify: spike / bounded / architectural" -> "Present question + probe (2-3 sentences)" [label="spike"];
@@ -143,12 +143,12 @@ digraph brainstorming {
     "Write design doc" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke pm:plan skill" [label="approved"];
+    "User reviews spec?" -> "Invoke acta:plan skill" [label="approved"];
 }
 ```
 
 **Terminal states are path-bound.** Architectural: the ONLY skill you
-invoke after brainstorming is pm:plan — never frontend-design,
+invoke after brainstorming is acta:plan — never frontend-design,
 mcp-builder, or any other implementation skill. Bounded: after
 approval, implementation proceeds directly through the normal
 development workflow; no plan document. Spike: the terminal state is a
@@ -204,12 +204,12 @@ is the whole process.
 
 **Documentation:**
 
-- Write the validated design (spec) to `.pm/specs/YYYY-MM-DD-<topic>-design.md`
+- Write the validated design (spec) to `.acta/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
 - Write plainly and briefly; short words, short sentences
 - Commit the design document to git
 
-**Where files go.** `.pm/` is the default root; `.pm.yaml`, the `PM_ROOT` variable or `pmb --root` can move it. `pmb list --json` shows the specs and plans that already exist. Commit the spec on the branch the work will use: create its worktree now, the way `pm:build` describes, and commit the spec there as the first commit.
+**Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Commit the spec on the branch the work will use: create its worktree now, the way `acta:build` describes, and commit the spec there as the first commit.
 
 **Shared language.** While refining the design, keep `CONTEXT.md` (one domain term per line, in English) and `docs/adr/` (one file per hard-to-explain decision: the decision, why, the alternatives rejected) up to date. Propose a new `CONTEXT.md` term to the user and wait for a yes. These files change only during brainstorming.
 
@@ -233,6 +233,6 @@ Wait for the user's response. If they request changes, make them and re-run the 
 **Implementation:**
 
 - Approval of the design does not approve the plan; each gets its own yes.
-- Invoke the pm:plan skill to create a detailed implementation plan
-- Do NOT invoke any other skill. pm:plan is the next step.
+- Invoke the acta:plan skill to create a detailed implementation plan
+- Do NOT invoke any other skill. acta:plan is the next step.
 

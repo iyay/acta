@@ -7,10 +7,10 @@ func TestSkillPlan(t *testing.T) {
 		Name:     "plan",
 		MaxLines: 260,
 		Must: []string{
-			".pm/plans/", "pm:build", "verify:", "## Waves", "ponytail-lazy",
+			".acta/plans/", "acta:build", "verify:", "## Waves", "ponytail-lazy",
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",
 			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
-			"run `pmb id` right after",
+			"run `acta id` right after",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer"},
 	})

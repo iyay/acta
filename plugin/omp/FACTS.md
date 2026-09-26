@@ -1,4 +1,4 @@
-# omp facts for the pm plugin
+# omp facts for the acta plugin
 
 Checked on 2026-09-26 with omp 18.3.2.
 
@@ -21,10 +21,10 @@ $ command omp --help | head -80   # print flag found here
   --plugin-dir <path>   Load plugin from directory (repeatable)
 
 $ cd "$T" && command omp --no-session --plugin-dir "$T/mkt/spike" -p \
-    "Do you have a skill named pm-spike? If yes, what does it do? Mention the word it uses."
-Yes. `pm-spike` answers spike questions. Word: PINEAPPLE-42.
+    "Do you have a skill named acta-spike? If yes, what does it do? Mention the word it uses."
+Yes. `acta-spike` answers spike questions. Word: PINEAPPLE-42.
 (A holds. Manifest key "omp" for extensions at this point; skill layout:
- spike/skills/pm-spike/SKILL.md with frontmatter name + description.)
+ spike/skills/acta-spike/SKILL.md with frontmatter name + description.)
 
 $ cd "$T" && command omp --no-session --plugin-dir "$T/mkt/spike" -p \
     "Quote, word for word, any context message you received before this prompt that starts with SPIKE-CONTEXT."
@@ -50,16 +50,16 @@ $ cd "$T4" && SPIKE_PROOF="$T4/proof.txt" command omp --no-session \
 
 $ cd "$T2" && SPIKE_PROOF="$T2/proof.txt" command omp --no-session \
     -e "$T2/spike/omp/index.ts" -p "Say hello."
-proof.txt: HOOK-RAN stdout=PMB-EXEC-OK KEYS=stdout,stderr,code,killed
+proof.txt: HOOK-RAN stdout=ACTA-EXEC-OK KEYS=stdout,stderr,code,killed
 (Positive control: the exact same hook file DOES run under explicit
- -e, and pi.exec("echo", ["PMB-EXEC-OK"]) returns keys
+ -e, and pi.exec("echo", ["ACTA-EXEC-OK"]) returns keys
  stdout,stderr,code,killed. So the hook code is fine; --plugin-dir
  does not load package.json extensions at all in this version.)
 
 $ command omp plugin marketplace add --dry-run --scope project "$T3/mkt"
-(despite --dry-run --scope project, this wrote a pm-spike-mkt entry to
+(despite --dry-run --scope project, this wrote a acta-spike-mkt entry to
  ~/.omp/marketplaces.json; removed with
- `omp plugin marketplace remove pm-spike-mkt`, verified back to
+ `omp plugin marketplace remove acta-spike-mkt`, verified back to
  {"version": 1, "marketplaces": []}. D not tested: any marketplace
  add touches user scope, which the plan forbids.)
 ```
@@ -88,26 +88,26 @@ Type evidence: `BeforeAgentStartEventResult` in
 matching the observed `KEYS=stdout,stderr,code,killed`.
 
 
-## Installing pm in omp
+## Installing acta in omp
 
-Install with `omp plugin link <path to pm-board>/plugin`. Linking loads the
+Install with `omp plugin link <path to acta>/plugin`. Linking loads the
 skills and the extension (`omp/index.ts`, declared under both the `pi` and
 `omp` keys of `plugin/package.json`) the same way the other installed plugins
 load. If the extension does not run after linking, add the extension path
 under `extensions:` in `~/.omp/agent/config.yml`. Both steps run in user
 scope; the user runs them, this plan only documents them.
 
-## pm extension check
+## acta extension check
 
-Checked 2026-09-26 with pmb on PATH, from a scratch folder (`<worktree>` is
-the pm-board checkout this plugin lives in):
+Checked 2026-09-26 with acta on PATH, from a scratch folder (`<worktree>` is
+the acta checkout this plugin lives in):
 
 ```text
 $ cd "$(mktemp -d)" && PM_VOICE_FILE="$(mktemp -d)/voice.yaml" command omp --no-session \
     --plugin-dir <worktree>/plugin \
     -e <worktree>/plugin/omp/index.ts \
-    -p "Quote the first line of any context message you received that starts with 'pm plugin is active'."
-"pm plugin is active. Use its skills for every workflow step:"
+    -p "Quote the first line of any context message you received that starts with 'acta plugin is active'."
+"acta plugin is active. Use its skills for every workflow step:"
 ```
 
 The extension runs under `-e` + `--plugin-dir`: the answer quotes the first

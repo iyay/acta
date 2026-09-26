@@ -1,11 +1,11 @@
 ---
 name: build
-description: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through pm:dispatch) or inline (you write the code). Commits each task; review and landing follow through pm:review and pm:land.
+description: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land.
 ---
 
 # Build
 
-Run an approved plan, task by task, in its own worktree. Every task starts with a failing test (`pm:tdd`) and ends with one commit. Review happens once, at the close (`pm:review`), then `pm:land` merges.
+Run an approved plan, task by task, in its own worktree. Every task starts with a failing test (`acta:tdd`) and ends with one commit. Review happens once, at the close (`acta:review`), then `acta:land` merges.
 
 Refuse to start without an approved spec and an approved plan. Say which one is missing.
 
@@ -14,7 +14,7 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 | Executor | Who writes the code | How |
 |---|---|---|
 | `subagent` (default) | a fresh subagent per task | Claude Code: the Agent tool with `model: "sonnet"`. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
-| `dispatch` | an omp agent in its own herdr tab | follow `pm:dispatch`; it refuses without herdr |
+| `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr |
 | `inline` | you | only when the user says "inline" |
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
@@ -22,14 +22,14 @@ With `subagent` and `dispatch` you are the orchestrator: you write no code yours
 ## Models
 
 - Implementers and other workers: `sonnet` in Claude Code, `agent="task"` in omp. Set it on every dispatch; a dispatch with no model is a mistake even when the default matches.
-- Reviewers (`pm:review`): the orchestrator's own model, never lower.
+- Reviewers (`acta:review`): the orchestrator's own model, never lower.
 - The first line of every subagent report names the model it ran on. Missing or wrong: discard the report and dispatch again.
 
 ## Worktree
 
 Do not ask whether to create a worktree. Every change gets one: feature, fix, one-liner, config, docs in the repo. The main checkout is read-only for agents.
 
-Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `pm:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
+Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `acta:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
 
 ### Step 0: Detect Existing Isolation
 
@@ -130,13 +130,13 @@ Before dispatching, scan the plan once for tasks that contradict each other or t
 Every implementer hand-off, built from [implementer-prompt.md](implementer-prompt.md), says:
 - the worktree path, branch and parent branch, the plan path and task number, the files, and the task's verify line;
 - first action: print `pwd` and `git rev-parse --show-toplevel`; both must equal the worktree path, else stop with zero writes;
-- `pm:tdd` at every step: failing test first, watch it fail, minimal code, watch it pass;
+- `acta:tdd` at every step: failing test first, watch it fail, minimal code, watch it pass;
 - stage by path, never `git add -A` or `git add .`;
 - run the repo's formatter and type checks before the commit; formatting goes in the task commit, never in a commit of its own;
 - comments in plain English a ten-year-old can read, saying why; no marker tags;
 - report in the user's chat language (see the session rules); write everything in the repo in the repo language;
-- very first action on every task: run `pmb tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`);
-- right after each step, run `pmb tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `pmb tick plans/2026-09-26-tick-fixes#task-3 --step 2`); right after the task's commit, run `pmb tick plans/<stem>#task-N --all` so no box stays open; never commit the plan file.
+- very first action on every task: run `acta tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`);
+- right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `acta tick plans/2026-09-26-tick-fixes#task-3 --step 2`); right after the task's commit, run `acta tick plans/<stem>#task-N --all` so no box stays open; never commit the plan file.
 
 The standing rules for every worker are in `references/house-rules.md` (two folders up from this skill); point the implementer at its absolute path.
 
@@ -159,14 +159,14 @@ The commit is in and the verify line passes: mark the todo complete and move on.
 | "I'll fix it myself, dispatching is overhead" | Orchestrator fixes skip review and pollute your context. Dispatch the implementer. |
 | "The implementer spawned its own reviewer — free extra assurance" | A worker-spawned reviewer duplicates the closing review at full cost and its approval counts for nothing. Tell implementers never to spawn reviewers. |
 | "Review each task as it lands, to be safe" | No per-task reviewer. One review at the close costs less and catches the same breakage. |
-| "Small task, skip the failing test" | No exemptions: `pm:tdd` on every task, even a one-liner. |
+| "Small task, skip the failing test" | No exemptions: `acta:tdd` on every task, even a one-liner. |
 | "Let the implementer commit the plan file with its tick" | Several implementers share the plan file, so none of them commits it. You commit it per wave. |
 
 ## Waves
 
 Run the plan's waves in order. Inside a wave, dispatch every task's implementer in one message, several at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Read-only probes can run beside a wave.
 
-Implementers tick their own boxes with `pmb tick`, and several of them share the plan file, so none of them commits it. When a wave is done, commit the plan file yourself, staged by path: `git commit -m "pm: tick wave <n>" -- <plan path>`.
+Implementers tick their own boxes with `acta tick`, and several of them share the plan file, so none of them commits it. When a wave is done, commit the plan file yourself, staged by path: `git commit -m "acta: tick wave <n>" -- <plan path>`.
 
 ### 1. Identify Independent Domains
 
@@ -190,7 +190,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 **Context:** worktree path, branch, plan path, task number, verify line.
 
 **No constraints:** the worker refactors everything and commits the plan file.
-**Constraints:** stage by path, `pmb tick plans/<stem>#task-N --step <n>` after each step, `pmb tick plans/<stem>#task-N --all` right after the commit so no box stays open, never commit the plan file.
+**Constraints:** stage by path, `acta tick plans/<stem>#task-N --step <n>` after each step, `acta tick plans/<stem>#task-N --all` right after the commit so no box stays open, never commit the plan file.
 
 **Vague output:** "done" - you learn nothing.
 **Specific:** the short status contract from the template: status, commits, test summary, concerns.
@@ -199,4 +199,4 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 ## Close
 
-When every task is committed: run the full test suite and the type checks, show the output, then use `pm:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `pmb show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `pmb tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+When every task is committed: run the full test suite and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.

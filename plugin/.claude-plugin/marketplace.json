@@ -1,11 +1,11 @@
 {
-  "name": "pm-local",
-  "description": "Local marketplace for the pm plugin in the pm-board repo",
+  "name": "acta-local",
+  "description": "Local marketplace for the acta plugin in the acta repo",
   "owner": { "name": "Rian" },
   "plugins": [
     {
-      "name": "pm",
-      "description": "A lean workflow for Claude Code and omp, writing planning files to .pm/ through pmb.",
+      "name": "acta",
+      "description": "A lean workflow for Claude Code and omp, writing planning files to .acta/ through acta.",
       "version": "0.1.0",
       "source": "./"
     }

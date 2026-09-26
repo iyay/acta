@@ -45,9 +45,9 @@ Use for ANY technical issue:
 
 You MUST complete each phase before proceeding to the next.
 
-**Read only until the hypothesis is proven.** Phases 1 to 3 change no file. When the fix needs code, it goes back to `pm:brainstorm` and gets its own worktree through `pm:build`; the reproduction becomes the regression test. Three failed fixes: stop, question the design, and tell the user.
+**Read only until the hypothesis is proven.** Phases 1 to 3 change no file. When the fix needs code, it goes back to `acta:brainstorm` and gets its own worktree through `acta:build`; the reproduction becomes the regression test. Three failed fixes: stop, question the design, and tell the user.
 
-**A confirmed bug gets a file.** Once the root cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `pm:bug` before moving on.
+**A confirmed bug gets a file.** Once the root cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `acta:bug` before moving on.
 
 ### Phase 1: Root Cause Investigation
 
@@ -178,7 +178,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `pm:tdd` skill for writing proper failing tests
+   - Use the `acta:tdd` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -190,7 +190,7 @@ You MUST complete each phase before proceeding to the next.
    - Test passes now?
    - No other tests broken?
    - Issue actually resolved?
-   - Use the `pm:land` skill before claiming success
+   - Use the `acta:land` skill before claiming success
 4. **If Fix Doesn't Work**
    - STOP
    - Count: How many fixes have you tried?

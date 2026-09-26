@@ -8,9 +8,9 @@ func TestSkillBrainstorm(t *testing.T) {
 		MaxLines: 360,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
-			".pm/specs/", "pm:plan", "CONTEXT.md", "docs/adr/",
-			"trust boundary", "each gets its own yes", "pmb list --json",
-			"run " + "`pmb id`" + ` right after`,
+			".acta/specs/", "acta:plan", "CONTEXT.md", "docs/adr/",
+			"trust boundary", "each gets its own yes", "acta list --json",
+			"run " + "`acta id`" + ` right after`,
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style"},
 	})

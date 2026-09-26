@@ -1,6 +1,6 @@
 # herdr delivery
 
-Every `pm:name` here is a skill from the `pm` plugin, same as SKILL.md. `mattpocock-skills:*` is gone.
+Every `acta:name` here is a skill from the `acta` plugin, same as SKILL.md. `mattpocock-skills:*` is gone.
 
 ## Completion signal — a reply-back push plus a one-shot lifecycle read, never a wait
 
@@ -9,7 +9,7 @@ Two independent channels. Use both; they cover each other's failure mode.
 **Channel 1 — the reply-back push (required in every brief).** The recipient's final action fires the review command straight into your session:
 
 ```bash
-herdr agent prompt <your-pane-id> "/pm:review <base-sha>..<new-head-sha> — plan <path>, round <slug>, pane $HERDR_PANE_ID"
+herdr agent prompt <your-pane-id> "/acta:review <base-sha>..<new-head-sha> — plan <path>, round <slug>, pane $HERDR_PANE_ID"
 ```
 
 Your pane id is `$HERDR_PANE_ID` — resolve it at dispatch time and embed it **literally** in the brief; the recipient cannot look it up.
@@ -30,7 +30,7 @@ herdr agent get <slug>          # .result.agent.agent_status → working | idle 
 
 `idle` can also mean the recipient stopped early, and `unknown` never proves completion. Compare `git log` and `git diff --stat` against the brief's ticket list before reviewing. Because the lifecycle proves so little, **when you read it does not matter** — which is why waiting on it is wasted.
 
-`working` → say so in one line and yield; `idle`/`done` → verify from git, then `pm:review`, then route or land — all in this turn, no ask; `blocked` → see Failure handling.
+`working` → say so in one line and yield; `idle`/`done` → verify from git, then `acta:review`, then route or land — all in this turn, no ask; `blocked` → see Failure handling.
 
 `idle` means ready for input and its tab was seen in the focused UI; `done` is the same idle state after unseen background work. CLI reads do not mark a tab seen.
 
@@ -122,7 +122,7 @@ herdr agent start <slug> --kind omp --pane <pane-id> -- --yolo
 
 Report that the `headroom wrap` layer was lost. Other kinds only when the user names one. Names match `[a-z][a-z0-9_-]{0,31}`.
 
-**pm must be installed in the recipient harness too.** Skills do not travel with the worktree; each harness installs its own copy. Before the first dispatch on a machine: check the harness lists `pm:dispatch`. Missing ‒ the recipient will freestyle every `pm:` line in the brief — STOP and report, do not dispatch.
+**acta must be installed in the recipient harness too.** Skills do not travel with the worktree; each harness installs its own copy. Before the first dispatch on a machine: check the harness lists `acta:dispatch`. Missing ‒ the recipient will freestyle every `acta:` line in the brief — STOP and report, do not dispatch.
 
 ## Agent lifecycle across rounds
 
@@ -142,26 +142,26 @@ herdr agent prompt <slug> "/new"
 herdr agent read <slug> --source visible --lines 10    # must show: New session started
 herdr agent rename <pane-id> <slug>
 # 3. /goal alone, then confirm 🎯 Goal in the status bar
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. You are the main agent here: write ZERO code yourself. Run pm:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving pm:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. When your last ticket is committed, run this VERBATIM: herdr agent …
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. You are the main agent here: write ZERO code yourself. Run acta:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving acta:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. When your last ticket is committed, run this VERBATIM: herdr agent …
 herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
 ```
 
 `/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
-**The very first action of every task, before the failing test:** `pmb tick plans/<stem>#task-N --start --agent omp` (the brief names omp because the recipient harness sets no agent variable).
+**The very first action of every task, before the failing test:** `acta tick plans/<stem>#task-N --start --agent omp` (the brief names omp because the recipient harness sets no agent variable).
 
 **The brief's tick rule carries the name.** The recipient is an omp pane and its harness sets no agent variable, so every tick command in the brief names it:
 
 ```bash
-pmb tick plans/<stem>#task-N --step <n> --agent omp
-pmb tick plans/<stem>#task-N --all --agent omp   # right after the ticket's commit
+acta tick plans/<stem>#task-N --step <n> --agent omp
+acta tick plans/<stem>#task-N --all --agent omp   # right after the ticket's commit
 ```
 
-`pmb tick` writes that name into the worktree's git-ignored `.agents.json`, which is what the board reads to show who works on what. Without the flag the name is missing and the row stays blank.
+`acta tick` writes that name into the worktree's git-ignored `.agents.json`, which is what the board reads to show who works on what. Without the flag the name is missing and the row stays blank.
 
 Step 4, fix round: `/goal` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:
 ```bash
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (pm:build, pm:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (acta:build, acta:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/acta:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
 herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
 ```
 
@@ -181,7 +181,7 @@ They apply to one turn only. Repeat them in every round, fix rounds included.
 
 ## Check the advisor before dispatching risky work
 
-`herdr agent prompt <slug> "/advisor"` reports whether a reviewer model is paired to omp's `advisor` role. When one is, it reads every turn on its own context and injects concerns or hard blockers inline, so a narrowed fix gets challenged during the work rather than two review rounds later. Unset on a security, auth, data-migration or money dispatch → say so in the Phase 1 report; one advisor note costs less than a `pm:review` round.
+`herdr agent prompt <slug> "/advisor"` reports whether a reviewer model is paired to omp's `advisor` role. When one is, it reads every turn on its own context and injects concerns or hard blockers inline, so a narrowed fix gets challenged during the work rather than two review rounds later. Unset on a security, auth, data-migration or money dispatch → say so in the Phase 1 report; one advisor note costs less than a `acta:review` round.
 
 ## Comprehension checkpoint
 
@@ -211,6 +211,6 @@ Re-dispatch with a corrective preamble ("there is NO `<X>`, NO `<Y>` — writing
 
 ## Worktree provisioning
 
-Default: plain `git worktree add ../<repo>-<slug> -b <slug> production` (SKILL.md Step -1) plus the reuse-else-new-tab flow. This is the `pm:build` git fallback run by hand — no consent prompt.
+Default: plain `git worktree add ../<repo>-<slug> -b <slug> production` (SKILL.md Step -1) plus the reuse-else-new-tab flow. This is the `acta:build` git fallback run by hand — no consent prompt.
 
 `herdr worktree create` also creates a new **workspace** — a context switch. Probed 2026-08-06: it produced two workspaces and added no pane to the caller's workspace, so it cannot replace the default flow. Use only when the user explicitly asks for an isolated workspace. Clean-up: `herdr worktree remove --workspace <id>` and `herdr workspace close <id>`.
