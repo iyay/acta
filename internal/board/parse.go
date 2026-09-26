@@ -133,7 +133,8 @@ func specPath(s string) string {
 	for _, f := range strings.Fields(s) {
 		// Trim brackets at the start and punctuation at the end, but keep a
 		// leading dot so ".pm/specs/x.md" stays whole.
-		if p := strings.TrimRight(strings.TrimLeft(f, "(["), ")],.:"); strings.HasSuffix(p, ".md") {
+		// A bare word must look like a path, so a file named in a sentence (CLAUDE.md) is not taken as the spec.
+		if p := strings.TrimRight(strings.TrimLeft(f, "(["), ")],.:"); strings.HasSuffix(p, ".md") && strings.Contains(p, "/") {
 			return p
 		}
 	}
