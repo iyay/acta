@@ -147,6 +147,16 @@ func checkMovable(top string, stderr io.Writer) (bool, int) {
 		fmt.Fprintln(stderr, "migrate-root: .pm.yaml has uncommitted changes, commit or stash first")
 		return false, exitBadInput
 	}
+	// An ignored .pm.yaml is invisible to a plain status, so ask git whether it
+	// keeps the file at all. Without this the move happens and git mv fails
+	// afterwards, and the user reads a raw git error instead of a clear reason.
+	if tracked, err := gitTracked(top, ".pm.yaml"); err != nil {
+		fmt.Fprintln(stderr, "migrate-root: could not ask git about .pm.yaml, nothing moved")
+		return false, exitOther
+	} else if !tracked {
+		fmt.Fprintln(stderr, "migrate-root: .pm.yaml is not tracked, add and commit it or delete it, then run this again")
+		return false, exitBadInput
+	}
 	value, ok := rootValue(string(body))
 	if !ok {
 		return false, exitOK
@@ -229,4 +239,15 @@ func gitStatus(top string, args ...string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// gitTracked tells whether git keeps the file at the given path in its index.
+// A file git does not list is not tracked, whether it is ignored or simply
+// new, and git mv cannot rename it.
+func gitTracked(top, path string) (bool, error) {
+	out, err := exec.Command("git", "-C", top, "ls-files", "--", path).Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) != "", nil
 }
