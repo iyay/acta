@@ -5,6 +5,7 @@ These apply to any agent started from a acta:dispatch brief. Read this before wr
 SKILL: acta:build — one implementer subagent per ticket. You are the main agent in this pane: you write ZERO code yourself. Review happens on the orchestrator's side, never yours. acta:tdd at every seam — failing test first, no code before red. Red test or error you cannot explain → acta:debug before any edit. Before you claim any ticket done → acta:land: run the gate, show output.
 PROPERTIES, NOT INSTANCES: each verify line is a claim that must hold on EVERY path, not the one case that was reported. Before you fix anything, enumerate every path, caller and surface that could break the claim, and report that list with your commit. A fix that closes only the reported case is not done. If your change widens a boundary, check the neighbours that share it.
 BUGS YOU CONFIRM OUTSIDE YOUR TICKETS: do not fix them (surgical). Record each one with acta bug new (see acta:bug); in this worktree the bug file commits on your branch and lands with it. Only confirmed bugs with a repro; no guesses.
+NOTES: never write NOTEs to memory. The orchestrator files them with acta debt new once the round is CLEAN.
 PARALLEL — spawn as many subagents as the tickets allow:
   - One implementer subagent per ticket, MINIMUM. You never implement a ticket in your own context.
   - Group tickets into waves by FILE OWNERSHIP. Disjoint files + no dependency = same wave, dispatched TOGETHER in ONE message, not one after another.

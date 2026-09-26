@@ -238,3 +238,72 @@ func TestLastCommitTime(t *testing.T) {
 		t.Errorf("a folder with no repo gave %d, true", got)
 	}
 }
+
+// The author of a file is the person whose commit first added it, so a later
+// edit by someone else never changes who wrote the file.
+func TestAuthorIsTheFirstCommit(t *testing.T) {
+	repo := firstCommitRepo(t, "Ana")
+	t.Setenv("GIT_AUTHOR_NAME", "Budi")
+	t.Setenv("GIT_COMMITTER_NAME", "Budi")
+	writeFile(t, filepath.Join(repo, "a.md"), "a again\n")
+	git(t, repo, "commit", "-qam", "second")
+
+	if name, ok := Author(repo, filepath.Join(repo, "a.md")); !ok || name != "Ana" {
+		t.Fatalf("Author = %q, %v, want Ana, true", name, ok)
+	}
+	if name, ok := Author(repo, filepath.Join(repo, "new.md")); ok || name != "" {
+		t.Errorf("a file git never saw gave %q, %v, want empty, false", name, ok)
+	}
+	// A repo with a .git but no commit has no author for anything either.
+	empty := t.TempDir()
+	git(t, empty, "init", "-q", "-b", "main")
+	if name, ok := Author(empty, filepath.Join(empty, "a.md")); ok || name != "" {
+		t.Errorf("a repo with no commit gave %q, %v, want empty, false", name, ok)
+	}
+	// A folder outside any checkout answers at once, without running git.
+	if name, ok := Author(t.TempDir(), filepath.Join(repo, "a.md")); ok || name != "" {
+		t.Errorf("a folder with no repo gave %q, %v, want empty, false", name, ok)
+	}
+}
+
+// UserName is the name this checkout commits under, for a file git has no
+// commit of yet. It says empty when git has no name to give.
+func TestUserName(t *testing.T) {
+	repo := firstCommitRepo(t, "Ana")
+	git(t, repo, "config", "user.name", "Sari")
+	if got := UserName(repo); got != "Sari" {
+		t.Errorf("UserName = %q, want Sari", got)
+	}
+	if got := UserName(t.TempDir()); got != "" {
+		t.Errorf("a folder with no repo named %q, want empty", got)
+	}
+	// Whatever the machine keeps in its own config, a checkout that names
+	// nobody itself answers empty.
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	bare := t.TempDir()
+	git(t, bare, "init", "-q", "-b", "main")
+	if got := UserName(bare); got != "" {
+		t.Errorf("a checkout with no user.name gave %q, want empty", got)
+	}
+}
+
+// firstCommitRepo is a checkout whose one commit was written by name.
+func firstCommitRepo(t *testing.T, name string) string {
+	t.Helper()
+	for k, v := range map[string]string{
+		"GIT_AUTHOR_NAME": name, "GIT_COMMITTER_NAME": name,
+		"GIT_AUTHOR_EMAIL": name + "@example.com", "GIT_COMMITTER_EMAIL": name + "@example.com",
+	} {
+		t.Setenv(k, v)
+	}
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, filepath.Join(dir, "a.md"), "a\n")
+	git(t, dir, "add", ".")
+	git(t, dir, "commit", "-q", "-m", "first")
+	return dir
+}

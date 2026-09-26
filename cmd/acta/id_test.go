@@ -106,11 +106,11 @@ func TestIDFixDuplicates(t *testing.T) {
 	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
 	}
-	src, err := os.ReadFile(filepath.Join(dir, ".pm/bugs/2026-09-26-open.md"))
+	src, err := os.ReadFile(filepath.Join(dir, ".acta/bugs/2026-09-26-open.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".pm/bugs/2026-09-27-dup.md"), src, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".acta/bugs/2026-09-27-dup.md"), src, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	gitCommit(t, dir, "dup")

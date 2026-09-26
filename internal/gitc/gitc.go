@@ -113,6 +113,39 @@ func LastCommit(repo, path string) (int64, bool) {
 	return sec, true
 }
 
+// Author gives the name of the person whose commit first added path, and says
+// whether git knows the file at all. A file nobody committed has no author, so
+// the caller can fall back to the name this checkout commits under.
+func Author(repo, path string) (string, bool) {
+	if !inRepo(repo) {
+		return "", false
+	}
+	out, err := run(repo, "log", "--diff-filter=A", "--format=%an", "--", path)
+	if err != nil {
+		return "", false
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	name := strings.TrimSpace(lines[len(lines)-1])
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
+// UserName gives the name this checkout commits under, or "" when git has no
+// name to give. A folder outside any checkout answers at once, without running
+// git.
+func UserName(repo string) string {
+	if !inRepo(repo) {
+		return ""
+	}
+	out, err := run(repo, "config", "user.name")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
 // inRepo says whether dir sits inside a checkout, which the .git entry at the
 // top of it tells: a folder or a file in a linked worktree, both work.
 func inRepo(dir string) bool {

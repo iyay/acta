@@ -315,7 +315,7 @@ TICKETS (anchor for your todo list — exactly these N):
   <TICKET-1> — <title> → verify: <the PROPERTY that must hold, over every path>
   <TICKET-2> — <title> → verify: <property>
 WORKTREE: <abs path> (branch <slug>, parent <production>, base <base-sha>) — cd there FIRST, work ONLY there. Main checkout stays clean. No git checkout, no cd out, NO git push.
-FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket.
+FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — the orchestrator files them with `acta debt new` once the round is CLEAN.
 HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from this skill) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
 GATES (from the worktree): <one-shot test runner>; typecheck; git diff --stat vs <base-sha> shows only plan files.

@@ -195,13 +195,13 @@ func TestNumberKeysFocusThatPane(t *testing.T) {
 
 func TestOpenTabsCycleAndWrap(t *testing.T) {
 	m := newModel(t)
-	for _, want := range []int{tabPlans, tabTasks, tabBugs, tabSpecs} {
+	for _, want := range []int{tabPlans, tabTasks, tabBugs, tabDebt, tabSpecs} {
 		m = press(m, "]")
 		if m.tab != want {
 			t.Fatalf("] gave tab %d, want %d", m.tab, want)
 		}
 	}
-	for _, want := range []int{tabBugs, tabTasks, tabPlans, tabSpecs} {
+	for _, want := range []int{tabDebt, tabBugs, tabTasks, tabPlans, tabSpecs} {
 		m = press(m, "[")
 		if m.tab != want {
 			t.Fatalf("[ gave tab %d, want %d", m.tab, want)
@@ -222,6 +222,7 @@ func TestDonePaneTabsFollowTheOpenTab(t *testing.T) {
 		{[]string{"]"}, "Done Dropped"},
 		{[]string{"]", "]"}, "Done"},
 		{[]string{"]", "]", "]"}, "Fixed Wontfix"},
+		{[]string{"]", "]", "]", "]"}, "Done Wontfix"},
 	} {
 		m := press(newModel(t), append(tc.keys, "2")...)
 		if got := strings.Join(m.doneTabNames(), " "); got != tc.names {
@@ -276,10 +277,79 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		{[]string{"]"}, "plans/2026-09-21-alpha \x00divider plans/2026-09-23-lonely"},
 		{[]string{"]", "]"}, "plans/2026-09-21-alpha#task-2 \x00divider plans/2026-09-23-lonely#task-1"},
 		{[]string{"]", "]", "]"}, "bugs/2026-09-26-open specs/2026-09-15-really-bug"},
+		{[]string{"]", "]", "]", "]"}, "debt/2026-09-27-orphan-debt#item-1"},
 	} {
 		m := press(newModel(t), tc.keys...)
 		if got := strings.Join(rowIDs(m), " "); got != tc.rows {
 			t.Errorf("after %v pane [1] holds %q, want %q", tc.keys, got, tc.rows)
+		}
+	}
+}
+
+// debtModel builds a small board with one plan and one debt file that names
+// it as parent, so the Debt tab tests do not depend on the shared basic
+// fixture (which already carries its own orphan debt file with a broken
+// parent, used by the board package's tests).
+func debtModel(t *testing.T) Model {
+	t.Helper()
+	cfg := treeCfg(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+		".acta/debt/2026-09-27-short-ids.md":  "---\nid: DEBT-1\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
+	})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return m
+}
+
+func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
+	m := openTab(t, debtModel(t), tabDebt)
+	if got := strings.Join(rowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-1" {
+		t.Fatalf("Debt open rows %q, want only the open line", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "a" {
+		t.Fatalf("Debt open item = %+v, want title a", it)
+	}
+}
+
+func TestDebtDonePaneSplitsDoneAndWontfix(t *testing.T) {
+	m := press(openTab(t, debtModel(t), tabDebt), "2")
+	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-2" {
+		t.Fatalf("Debt Done rows %q", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "b" {
+		t.Fatalf("Debt Done item = %+v, want title b", it)
+	}
+	m = press(m, "]")
+	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-3" {
+		t.Fatalf("Debt Wontfix rows %q", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "c" {
+		t.Fatalf("Debt Wontfix item = %+v, want title c", it)
+	}
+}
+
+// TestDebtFileDoesNotChangeTheOtherTabs is the property behind adding a fifth
+// tab: a debt file on the board must never leak into, or take rows away from,
+// Specs, Plans, Tasks or Bugs.
+func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
+	withDebt := debtModel(t)
+	without := withDebt
+	plain, err := board.Load(treeCfg(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	without.board = plain
+	for _, tab := range []int{tabSpecs, tabPlans, tabTasks, tabBugs} {
+		a := strings.Join(rowIDs(openTab(t, withDebt, tab)), " ")
+		b := strings.Join(rowIDs(openTab(t, without, tab)), " ")
+		if a != b {
+			t.Fatalf("tab %d changed with the debt file present: got %q, want %q", tab, a, b)
 		}
 	}
 }
@@ -361,69 +431,112 @@ func TestTopAndBottomKeysInListPanes(t *testing.T) {
 }
 
 func TestScrollKeysInPaneDetail(t *testing.T) {
-	m := press(newModel(t), "3")
-	if m.scroll != 0 {
-		t.Fatalf("scroll %d", m.scroll)
+	m := press(longModel(t), "]", "3")
+	if m.off[paneDetail] != 0 {
+		t.Fatalf("the detail starts at the top: %d", m.off[paneDetail])
 	}
 	m = press(m, "ctrl+d")
-	if m.scroll != pageLines {
-		t.Fatalf("ctrl+d scrolled to %d", m.scroll)
+	if m.off[paneDetail] != pageLines {
+		t.Fatalf("ctrl+d scrolled to %d", m.off[paneDetail])
 	}
 	m = press(m, "ctrl+u", "ctrl+u")
-	if m.scroll != 0 {
-		t.Fatalf("scroll went below 0: %d", m.scroll)
+	if m.off[paneDetail] != 0 {
+		t.Fatalf("scroll went below 0: %d", m.off[paneDetail])
 	}
 	m = press(m, "j", "j")
-	if m.scroll != 2 {
-		t.Fatalf("j should scroll one line: %d", m.scroll)
+	if m.off[paneDetail] != 2 {
+		t.Fatalf("j should scroll one line: %d", m.off[paneDetail])
 	}
 	m = press(m, "g")
-	if m.scroll != 0 {
-		t.Fatalf("g should go back to the top: %d", m.scroll)
+	if m.off[paneDetail] != 0 {
+		t.Fatalf("g should go back to the top: %d", m.off[paneDetail])
 	}
 	m = press(m, "G")
-	if m.scroll == 0 {
-		t.Fatal("G should go to the bottom of the body")
+	if m.off[paneDetail] != m.lastOff(paneDetail) || m.off[paneDetail] == 0 {
+		t.Fatalf("G should go to the bottom of the body: %d", m.off[paneDetail])
 	}
 }
 
 func TestScrollKeysDoNothingInListPanes(t *testing.T) {
-	m := press(newModel(t), "3", "ctrl+d", "1")
-	if m.scroll != 0 {
-		t.Fatalf("leaving pane [3] should drop the scroll: %d", m.scroll)
+	m := press(longModel(t), "]", "3", "ctrl+d", "1")
+	if m.off[paneDetail] != pageLines {
+		t.Fatalf("leaving pane [3] should keep the body where it was: %d", m.off[paneDetail])
 	}
+	// A key in a list picks another item, and another item starts the body
+	// at its own top. It never scrolls the body the way a key in pane [3]
+	// does.
 	m = press(m, "ctrl+d")
-	if m.scroll != 0 {
-		t.Fatalf("a list pane should not scroll the body: %d", m.scroll)
+	if m.off[paneDetail] != 0 {
+		t.Fatalf("a list pane should not scroll the body: %d", m.off[paneDetail])
 	}
 	m = press(m, "ctrl+u", "j", "k")
-	if m.scroll != 0 {
-		t.Fatalf("a list pane should not scroll the body: %d", m.scroll)
+	if m.off[paneDetail] != 0 {
+		t.Fatalf("another item should start the body at the top: %d", m.off[paneDetail])
 	}
-	if m.Selected().ID != "specs/2026-09-20-alpha" {
-		t.Fatalf("j and k should still move: %v", m.Selected())
+	if m.cursor() != 0 {
+		t.Fatalf("j and k should still move: row %d", m.cursor())
 	}
 }
 
 func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
 	m := newModel(t)
 	g := m.geometry()
-	// A row takes three lines: the title, the dim meta line and a blank one.
-	m = click(m, 2, g.open.y+1+2*rowLines)
+	// A row takes one line, so the third line of the pane is the third row.
+	m = click(m, 2, g.open.y+1+2)
 	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
-	// The blank line under a row belongs to no row, so it only takes focus.
-	m = click(m, 2, g.open.y+1+2)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
-		t.Fatalf("the blank line should not select: %v", m.Selected())
-	}
-	// The same works in pane [2].
+	// The same works in pane [2], where the second row is the orphan plan.
 	m = press(newModel(t), "]", "2")
 	g = m.geometry()
-	m = click(m, 2, g.done.y+1+rowLines)
+	m = click(m, 2, g.done.y+1+1)
 	if m.focus != paneDone || m.Selected().ID != "plans/2026-09-27-orphan" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
+	}
+}
+
+// TestAClickOnTheFirstAndLastVisibleRowLandsOnThatRow reads the rows the pane
+// shows and clicks where each of the two ends is drawn, so a click cannot land
+// on the neighbour of the row the eye sees.
+func TestAClickOnTheFirstAndLastVisibleRowLandsOnThatRow(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		keys []string
+		p    pane
+	}{
+		{"open", nil, paneOpen},
+		{"done", []string{"]", "2"}, paneDone},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := sized(press(newModel(t), tc.keys...), 120, 40)
+			b := paneBox(m, tc.p)
+			rows, _, _ := m.slotOf(tc.p)
+			shown := rows[b.first:min(len(rows), b.first+b.rows)]
+			// The divider and the folded group row hold no item, so the
+			// ends are the first and the last item the pane draws.
+			first, last := -1, -1
+			for i, r := range shown {
+				if r.divider || r.group {
+					continue
+				}
+				if first < 0 {
+					first = i
+				}
+				last = i
+			}
+			if first < 0 || first == last {
+				t.Fatalf("the pane shows %d item rows, want at least two to click", len(shown))
+			}
+			for name, at := range map[string]int{"first": first, "last": last} {
+				after := click(m, 2, b.y+1+at)
+				if after.focus != tc.p {
+					t.Errorf("a click on the %s row focused pane %d, want %d", name, after.focus, tc.p)
+				}
+				if got := after.Selected(); got == nil || got.ID != shown[at].id {
+					t.Errorf("a click on the %s row selected %v, want %s", name, got, shown[at].id)
+				}
+			}
+		})
 	}
 }
 
@@ -473,51 +586,10 @@ func TestClickInsideAPaneOnlyFocusesIt(t *testing.T) {
 	}
 }
 
-func TestWheelActsOnThePaneUnderThePointer(t *testing.T) {
-	m := newModel(t)
-	g := m.geometry()
-	m = wheel(m, 2, g.open.y+2, true)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-20-alpha" {
-		t.Fatalf("the wheel should not move off the first row: %v", m.Selected())
-	}
-	m = wheel(m, 2, g.open.y+2, false)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
-		t.Fatalf("the wheel should move down: %v", m.Selected())
-	}
-	m = wheel(m, 2, g.open.y+2, false)
-	m = wheel(m, 2, g.open.y+2, true)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
-		t.Fatalf("the wheel should move back up: %v", m.Selected())
-	}
-	// The pane under the pointer wins over the one that has the focus.
-	m = press(newModel(t), "3")
-	m = wheel(m, 2, g.open.y+2, false)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
-		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
-	}
-	// Over pane [2] the wheel moves that pane.
-	m = press(newModel(t), "]", "2")
-	m = wheel(m, 2, g.done.y+2, false)
-	if m.focus != paneDone || m.Selected().ID != "plans/2026-09-27-orphan" {
-		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
-	}
-	// Over pane [3] it scrolls the body.
-	m = press(newModel(t), "3")
-	m = wheel(m, 119, 5, false)
-	if m.scroll == 0 {
-		t.Fatal("the wheel should scroll pane [3]")
-	}
-	m = press(newModel(t), "3")
-	m = wheel(m, 119, 5, true)
-	if m.scroll != 0 {
-		t.Fatalf("the wheel should scroll back to the top: %d", m.scroll)
-	}
-}
-
 func TestKeysContinueFromAClickedRow(t *testing.T) {
 	m := newModel(t)
 	g := m.geometry()
-	m = click(m, 2, g.open.y+1+2*rowLines)
+	m = click(m, 2, g.open.y+1+2)
 	m = press(m, "j")
 	if m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("j moved to %v", m.Selected())
@@ -618,6 +690,9 @@ func TestItemKeysUseTheFocusedListPane(t *testing.T) {
 }
 
 func TestGeometryPlacesThePanes(t *testing.T) {
+	// 120 columns, the normal width: pane [1] must still fit all five tab
+	// names ("Specs ─ Plans ─ Tasks ─ Bugs ─ Debt") at the left column's
+	// usual size, not a wider one carved out just for the tab title.
 	m := sized(newModel(t), 120, 40)
 	g := m.geometry()
 	if !g.wide || g.leftW != 36 {
@@ -634,19 +709,23 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	if g.detail.x != 36 || g.detail.y != 0 || g.detail.w != 84 || g.detail.h != 39 {
 		t.Fatalf("pane [3] %+v", g.detail)
 	}
-	// The border takes two lines and every row three, so a pane shows whole
-	// rows only, and the window follows the cursor.
-	if g.open.inner != 24 || g.open.rows != 8 || g.open.first != 0 {
+	// The border takes two lines and a row one, so a pane shows as many rows
+	// as it has room for.
+	if g.open.inner != 24 || g.open.rows != 24 || g.open.first != 0 {
 		t.Fatalf("pane [1] holds %+v", g.open)
 	}
-	if g.done.inner != 11 || g.done.rows != 3 || g.done.first != 0 {
+	if g.done.inner != 11 || g.done.rows != 11 || g.done.first != 0 {
 		t.Fatalf("pane [2] holds %+v", g.done)
 	}
-	// Pane [2] shows three rows at a time, so its window slides down to keep
-	// the last of the five finished plans in sight.
+	// All five names must still be in the drawn title at this normal width.
+	if title := strings.Split(plain(m.View()), "\n")[g.open.y]; !strings.Contains(title, "Debt") {
+		t.Fatalf("pane [1] title at 120 columns is missing Debt: %q", title)
+	}
+	// Pane [2] has room for its five finished plans, so the window stays at
+	// the top even with the cursor on the last one.
 	g = press(m, "]", "2", "G").geometry()
-	if g.done.first != 2 || g.done.rows != 3 {
-		t.Fatalf("pane [2] should scroll to the cursor: %+v", g.done)
+	if g.done.first != 0 || g.done.rows != 11 {
+		t.Fatalf("pane [2] should keep every finished plan in sight: %+v", g.done)
 	}
 	// The left column is 30% of the width, held between 28 and 48.
 	for _, w := range []int{60, 80, 100, 120, 200} {
@@ -1013,7 +1092,7 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 			if !ok {
 				continue
 			}
-			x := last + 2 // the dash of the " ─ " between the two names
+			x := last + 1 // the separator cell right after the name, dash or plain space
 			if _, _, idx := m.hit(x, y); idx != -1 {
 				t.Fatalf("at %d columns the dash after %q maps to tab %d", w, name, idx)
 			}
@@ -1026,12 +1105,49 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 			m = doneTabBefore(t, m, 1)
 			before := m.doneTab
 			y, last, _ := drawnLetter(m, paneDone, m.doneTabNames()[0], "last")
-			x := last + 2
+			x := last + 1
 			if _, _, idx := m.hit(x, y); idx != -1 {
 				t.Fatalf("at %d columns the dash after %q maps to finished tab %d", w, m.doneTabNames()[0], idx)
 			}
 			if got := click(m, x, y).doneTab; got != before {
 				t.Fatalf("at %d columns a click on the dash after %q moved to finished tab %d", w, m.doneTabNames()[0], got)
+			}
+		}
+	}
+}
+
+// TestTabTitleAlwaysShowsTheOpenTab is the Task 8 regression: at 120 columns
+// the pane [1] title used to drop the open tab's own name off the end, so no
+// tab looked selected and a click on its old spot fell into the detail pane.
+// This checks, at every width the review named, for every open tab, that the
+// title always keeps that tab's name, and that any other name still drawn
+// clicks to the right tab.
+func TestTabTitleAlwaysShowsTheOpenTab(t *testing.T) {
+	m := newModel(t)
+	for _, w := range []int{60, 80, 100, 120, 140, 200} {
+		for tab := range tabNames {
+			m = sized(openTab(t, m, tab), w, 40)
+			title := strings.Split(plain(m.View()), "\n")[m.geometry().open.y]
+			if !strings.Contains(title, tabNames[tab]) {
+				t.Fatalf("at %d columns with %q open, the title drops the open tab: %q", w, tabNames[tab], title)
+			}
+			if w == 120 {
+				for _, name := range tabNames {
+					if !strings.Contains(title, name) {
+						t.Errorf("at 120 columns the title is missing %q: %q", name, title)
+					}
+				}
+			}
+			for other := range tabNames {
+				for _, end := range []string{"first", "last"} {
+					y, x, ok := drawnLetter(m, paneOpen, tabNames[other], end)
+					if !ok {
+						continue // a narrow title drops names other than the open one
+					}
+					if got := click(m, x, y).tab; got != other {
+						t.Fatalf("at %d columns a click on the %s letter of %q gave tab %d, want %d", w, end, tabNames[other], got, other)
+					}
+				}
 			}
 		}
 	}
@@ -1262,18 +1378,18 @@ func splitModel(t *testing.T, keys ...string) Model {
 
 // openGroupIDs reads the item ids of pane [1] with the divider and group rows
 // dropped, so a test sees only the item order.
-func openGroupIDs(m Model) (doing, rest []string) {
+func openGroupIDs(m Model) (going, rest []string) {
 	for _, r := range m.openRows() {
 		if r.group || r.divider {
 			continue
 		}
 		if inProgress(m.board.Get(r.id)) {
-			doing = append(doing, r.id)
+			going = append(going, r.id)
 		} else {
 			rest = append(rest, r.id)
 		}
 	}
-	return doing, rest
+	return going, rest
 }
 
 func TestInProgressRowsComeFirstInEveryTab(t *testing.T) {
@@ -1287,21 +1403,21 @@ func TestInProgressRowsComeFirstInEveryTab(t *testing.T) {
 		if m.tab != tab {
 			t.Fatalf("tab %d not open, got %d", tab, m.tab)
 		}
-		doing, rest := openGroupIDs(m)
-		if len(doing) == 0 || len(rest) == 0 {
-			t.Fatalf("tab %d holds doing %v rest %v", tab, doing, rest)
+		going, rest := openGroupIDs(m)
+		if len(going) == 0 || len(rest) == 0 {
+			t.Fatalf("tab %d holds going %v rest %v", tab, going, rest)
 		}
 		rows := ids(m.openRows())
-		if rows[0] != doing[0] || rows[len(doing)] != dividerRowID {
+		if rows[0] != going[0] || rows[len(going)] != dividerRowID {
 			t.Fatalf("tab %d rows %v", tab, rows)
 		}
-		for i, id := range doing {
+		for i, id := range going {
 			if rows[i] != id {
 				t.Fatalf("tab %d rows %v", tab, rows)
 			}
 		}
 		for i, id := range rest {
-			if rows[len(doing)+1+i] != id {
+			if rows[len(going)+1+i] != id {
 				t.Fatalf("tab %d rows %v", tab, rows)
 			}
 		}
@@ -1315,13 +1431,52 @@ func TestStartedTaskWithNoTicksSortsAsInProgress(t *testing.T) {
 		t.Fatalf("the lonely task should have no ticked box, got %d", lonely.Done)
 	}
 	lonely.Started = true
-	lonely.Status = "doing"
+	lonely.Status = "in-progress"
 	m = openTab(t, m, tabTasks)
 	rows := ids(m.openRows())
-	// Both tasks are doing now, so no divider sits between them.
+	// Both tasks are under way now, so no divider sits between them.
 	if len(rows) != 2 || rows[0] != lonely.ID {
 		t.Fatalf("the started task should lead, rows %v", rows)
 	}
+}
+
+// A task someone started before ticking a box is work under way, so its row
+// wears the accent and ends on its count and its agent, the same as a task
+// with a box ticked.
+func TestAStartedTaskKeepsTheAccentAndItsCountAndAgent(t *testing.T) {
+	withColors(func() {
+		cfg := treeCfg(t, map[string]string{
+			".acta/plans/2026-09-21-a.md": "# A plan\n\n### Task 1: One\n- [ ] a\n- [ ] b\n\n### Task 2: Two\n- [ ] c\n",
+			".acta/.agents.json":          `{"plans/2026-09-21-a#task-1": {"agent": "omp", "at": "2026-09-26T09:00:00+07:00", "started": true}}`,
+		})
+		b, err := board.Load(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := New(cfg, b, true)
+		m.render = func(md string, _ int) string { return md }
+		m = press(sized(focused(m, paneOpen, tabTasks), 200, 40), "j")
+		it := b.Get("plans/2026-09-21-a#task-1")
+		if it == nil || it.Status != "in-progress" || it.Done != 0 || it.Total != 2 {
+			t.Fatalf("the started task = %+v, want in-progress at 0 of 2", it)
+		}
+		bx := paneBox(m, paneOpen)
+		lines := innerLines(m, bx)
+		if len(lines) < 3 {
+			t.Fatalf("the pane drew %d lines: %q", len(lines), lines)
+		}
+		if got := plain(lines[0]); !strings.HasSuffix(strings.TrimRight(got, " "), "0/2 · omp") {
+			t.Errorf("the started row is %q, want it to end on 0/2 · omp", got)
+		}
+		if got := plain(lines[1]); !isDivider(got) {
+			t.Errorf("line 1 is %q, want the divider", got)
+		}
+		// The cursor has moved on, so row 0 is drawn like every other
+		// in-progress row the reader is not on.
+		if row := paintedLine(m.View(), bx, 0); !wears(row, 2) || !wears(row, 38, 5, 39) {
+			t.Errorf("the started row should be dim and wear the accent: %q", row)
+		}
+	})
 }
 
 func TestUnknownStatusSortsAsNotStarted(t *testing.T) {
@@ -1441,19 +1596,19 @@ func TestCursorSkipsTheDivider(t *testing.T) {
 	}
 	// The selection still moves over both groups.
 	m = press(splitModel(t), "g")
-	var seenDoing, seenTodo bool
+	var seenGoing, seenTodo bool
 	for i := 0; i < len(m.openRows()); i++ {
 		if sel := m.Selected(); sel != nil {
 			if inProgress(sel) {
-				seenDoing = true
+				seenGoing = true
 			} else {
 				seenTodo = true
 			}
 		}
 		m = press(m, "j")
 	}
-	if !seenDoing || !seenTodo {
-		t.Fatalf("the cursor should cross both groups, doing %v todo %v", seenDoing, seenTodo)
+	if !seenGoing || !seenTodo {
+		t.Fatalf("the cursor should cross both groups, going %v todo %v", seenGoing, seenTodo)
 	}
 }
 
@@ -1471,7 +1626,7 @@ func TestClickOnTheDividerKeepsTheSelection(t *testing.T) {
 		t.Fatal("no divider to click")
 	}
 	before := m.openRows()[m.cursor()].id
-	after := click(m, 2, g.open.y+1+div*rowLines)
+	after := click(m, 2, g.open.y+1+div)
 	if got := after.openRows()[after.cursor()].id; got != before {
 		t.Fatalf("a click on the divider moved from %s to %s", before, got)
 	}
@@ -1535,9 +1690,9 @@ func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
 }
 
 func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
-		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
 	}}
 	b, err := board.LoadTrees(main, []board.Tree{branch})
 	if err != nil {
@@ -1594,9 +1749,9 @@ func TestEOpensTheEditorFromEveryPane(t *testing.T) {
 }
 
 func TestEOnABranchItemWarns(t *testing.T) {
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
-		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
 	}}
 	b, err := board.LoadTrees(main, []board.Tree{branch})
 	if err != nil {

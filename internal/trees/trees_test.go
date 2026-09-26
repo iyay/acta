@@ -65,7 +65,7 @@ func TestOthersAndLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if it := b.Get("plans/2026-09-21-a#task-1"); it.Status != "doing" || it.Worktree != "feat" {
+	if it := b.Get("plans/2026-09-21-a#task-1"); it.Status != "in-progress" || it.Worktree != "feat" {
 		t.Fatalf("task = %+v", it)
 	}
 
@@ -125,7 +125,7 @@ func TestOthersReadsWorktreeKeptOnOldRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if it := b.Get("plans/2026-09-21-a#task-1"); it.Status != "doing" || it.Worktree != "feat" {
+	if it := b.Get("plans/2026-09-21-a#task-1"); it.Status != "in-progress" || it.Worktree != "feat" {
 		t.Fatalf("task = %+v, want the checked box from the .pm worktree", it)
 	}
 }

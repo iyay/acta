@@ -117,10 +117,23 @@ func migrateRoot(repo string, stdout, stderr io.Writer) int {
 }
 
 // checkMovable refuses every repo state where the move would be wrong or
-// impossible: .pm/ with uncommitted work, and a .pm.yaml that git cannot
-// rename as it is or that points the board somewhere the move does not reach.
-// It returns whether the root line has to go.
+// impossible: a .acta.yaml that is in the way, .pm/ with uncommitted work, and
+// a .pm.yaml that git cannot rename as it is or that points the board somewhere
+// the move does not reach. It returns whether the root line has to go.
 func checkMovable(top string, stderr io.Writer) (bool, int) {
+	// The move ends in a file called .acta.yaml, so that name has to be free
+	// before anything moves. os.Lstat looks at the name itself and never
+	// follows a link, so a link that points nowhere or at itself still counts
+	// as a name that is taken, which os.Stat would miss.
+	if _, err := os.Lstat(filepath.Join(top, ".acta.yaml")); err == nil {
+		fmt.Fprintln(stderr, "migrate-root: .acta.yaml already exists, move or delete it yourself, nothing moved")
+		return false, exitBadInput
+	} else if !os.IsNotExist(err) {
+		// The name could not be looked up, so nobody can promise it is free,
+		// and the move must not run into a name that is already taken.
+		fmt.Fprintln(stderr, "migrate-root: could not read .acta.yaml, nothing moved")
+		return false, exitOther
+	}
 	dirty, err := pmDirty(top)
 	if err != nil {
 		fmt.Fprintln(stderr, "migrate-root: could not check git status, nothing moved")

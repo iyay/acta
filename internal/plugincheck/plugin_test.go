@@ -156,7 +156,7 @@ func TestWorkflowPluginsList(t *testing.T) {
 
 func TestHouseRules(t *testing.T) {
 	txt := readFile(t, "references", "house-rules.md")
-	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back"} {
+	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back", "never write NOTEs to memory"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("house-rules.md missing %q", want)
 		}

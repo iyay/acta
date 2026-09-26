@@ -1,6 +1,9 @@
 package board
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // Prefix gives the short ID prefix of a kind. A plan file is always PLAN,
 // whether the board shows it as a plan or as something else.
@@ -10,6 +13,8 @@ func Prefix(k Kind, plan bool) string {
 		return "PLAN"
 	case k == KindBug:
 		return "BUG"
+	case k == KindDebt || k == KindDebtItem:
+		return "DEBT"
 	default:
 		return "SPEC"
 	}
@@ -96,4 +101,16 @@ func (b *Board) aliasTask(t *Item, planID, planHash string) {
 		t.Hash = planHash + "." + t.TaskNum
 	}
 	b.aliasItem(t)
+}
+
+// aliasDebtItem gives a debt-item its file's IDs plus its own line number.
+func (b *Board) aliasDebtItem(it *Item, fileShort, fileHash string, num int) {
+	n := strconv.Itoa(num)
+	if fileShort != "" {
+		it.ShortID = fileShort + "." + n
+	}
+	if fileHash != "" {
+		it.Hash = fileHash + "." + n
+	}
+	b.aliasItem(it)
 }

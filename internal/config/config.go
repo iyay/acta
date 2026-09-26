@@ -18,6 +18,7 @@ type Dirs struct {
 	Specs string `yaml:"specs"`
 	Plans string `yaml:"plans"`
 	Bugs  string `yaml:"bugs"`
+	Debt  string `yaml:"debt"`
 }
 
 // Config says where the planning files of one repo live. Paths are absolute.
@@ -49,12 +50,13 @@ type fileConfig struct {
 }
 
 // Default is the starting config. Load overwrites the Root here: it picks
-// .acta/ for a new repo and .pm/ when the repo still has the old folder.
+// .acta/ for a new repo and swaps in .pm/ only when a repo still has that
+// old folder and nothing newer.
 func Default(repoRoot string) Config {
 	return Config{
 		RepoRoot:   repoRoot,
-		Root:       filepath.Join(repoRoot, ".pm"),
-		Dirs:       Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"},
+		Root:       filepath.Join(repoRoot, ".acta"),
+		Dirs:       Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt"},
 		Legacy:     []string{filepath.Join(repoRoot, "docs", "superpowers")},
 		AutoCommit: true,
 		Links:      Links{Feedback: "https://github.com/iyay/acta/issues"},
@@ -131,6 +133,9 @@ func Load(cwd, flagRoot string) (Config, error) {
 	}
 	if fc.Dirs.Bugs != "" {
 		cfg.Dirs.Bugs = fc.Dirs.Bugs
+	}
+	if fc.Dirs.Debt != "" {
+		cfg.Dirs.Debt = fc.Dirs.Debt
 	}
 	// A present but empty legacy list means "no legacy folders".
 	if fc.Legacy != nil {

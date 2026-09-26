@@ -13,7 +13,7 @@ import (
 // closedSpec writes one finished spec file under dir and gives its path back.
 func closedSpec(t *testing.T, dir, name string) string {
 	t.Helper()
-	path := filepath.Join(dir, ".pm", "specs", name+".md")
+	path := filepath.Join(dir, ".acta", "specs", name+".md")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -91,6 +91,12 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 			return exitBadInput
 		}
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
+	case "debt":
+		if len(args) < 2 || args[1] != "new" {
+			fmt.Fprintln(stderr, "usage: acta debt new <plan id> [--title T] < notes.md")
+			return exitBadInput
+		}
+		return cmdDebtNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "voice":
 		return cmdVoice(args[1:], stdout, stderr)
 	case "hook":
@@ -102,7 +108,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "migrate-root":
 		return cmdMigrateRoot(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root or bug new\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root, bug new or debt new\n", args[0])
 		return exitBadInput
 	}
 }
@@ -343,6 +349,31 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 		fmt.Fprintln(stderr, "template left unchanged; nothing saved")
 		return exitBadInput
 	}
+	return report(o, err, stdout, stderr)
+}
+
+func cmdDebtNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writer) int {
+	fs, root := flags("debt new", stderr)
+	title := fs.String("title", "", "debt heading (default: Review NOTEs: <plan title>)")
+	pos, err := parseMixed(fs, args)
+	if err != nil || len(pos) != 1 {
+		fmt.Fprintln(stderr, "usage: acta debt new <plan id> [--title T] < notes.md")
+		return exitBadInput
+	}
+	if stdinIsTTY {
+		fmt.Fprintln(stderr, "pipe NOTEs on stdin")
+		return exitBadInput
+	}
+	cfg, b, code := loadBoard(*root, stderr)
+	if code != exitOK {
+		return code
+	}
+	body, err := io.ReadAll(stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	o, err := write.NewDebt(cfg, b, pos[0], *title, body)
 	return report(o, err, stdout, stderr)
 }
 

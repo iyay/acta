@@ -1,6 +1,7 @@
 package board
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -176,5 +177,19 @@ func TestParseTitleIgnoresFence(t *testing.T) {
 	d := Parse([]byte("```\n# not a title\n```\n# Real title\n"))
 	if d.Title != "Real title" {
 		t.Fatalf("title = %q", d.Title)
+	}
+}
+
+func TestParseDebtChecklist(t *testing.T) {
+	src := "---\nid: DEBT-3\n---\n# Review NOTEs: X\n\nintro line\n\n- [ ] open one\n- [x] done one\n- [X] done two\n- [-] skipped one\n\n```\n- [ ] inside fence\n```\n"
+	doc := Parse([]byte(src))
+	want := []ItemLine{
+		{Num: 1, Text: "open one", Line: 8, State: ' '},
+		{Num: 2, Text: "done one", Line: 9, State: 'x'},
+		{Num: 3, Text: "done two", Line: 10, State: 'x'},
+		{Num: 4, Text: "skipped one", Line: 11, State: '-'},
+	}
+	if !reflect.DeepEqual(doc.Items, want) {
+		t.Fatalf("items = %#v, want %#v", doc.Items, want)
 	}
 }

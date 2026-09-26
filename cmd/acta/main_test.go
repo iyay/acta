@@ -194,11 +194,38 @@ func TestShow(t *testing.T) {
 	var it jsonItem
 	decode(t, out, &it)
 	if it.Status != "in-progress" || it.Progress.Done != 1 || it.Progress.Total != 2 || len(it.Children) != 2 ||
-		it.Path != ".pm/specs/2026-09-20-alpha.md" || it.Ref != "A-1" || it.StatusSource != "derived" {
+		it.Path != ".acta/specs/2026-09-20-alpha.md" || it.Ref != "A-1" || it.StatusSource != "derived" {
 		t.Fatalf("got %+v", it)
 	}
 	if _, _, code := acta(t, dir, "", "show", "specs/nope"); code != 1 {
 		t.Fatalf("unknown id exit %d, want 1", code)
+	}
+}
+
+// A task under way reads in-progress on the show line and in the JSON list,
+// and the old word never turns up in either.
+func TestAStartedOrHalfTickedTaskReadsInProgress(t *testing.T) {
+	dir := fixtureRepo(t)
+	out, errOut, code := acta(t, dir, "", "show", "plans/2026-09-21-alpha#task-2")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	if !strings.Contains(out, "status: in-progress (derived)") || strings.Contains(out, "doing") {
+		t.Fatalf("show says %q, want the status in-progress", out)
+	}
+	list, _, code := acta(t, dir, "", "list", "--all", "--json")
+	if code != 0 {
+		t.Fatalf("list exit %d", code)
+	}
+	var items []jsonItem
+	decode(t, list, &items)
+	if len(items) == 0 {
+		t.Fatal("the fixture board has items")
+	}
+	for _, it := range items {
+		if it.Status == "doing" {
+			t.Errorf("%s reads doing in the JSON list, want in-progress", it.ID)
+		}
 	}
 }
 
@@ -207,7 +234,7 @@ func TestSet(t *testing.T) {
 	if _, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, ".pm/bugs/2026-09-26-open.md"))
+	b, _ := os.ReadFile(filepath.Join(dir, ".acta/bugs/2026-09-26-open.md"))
 	if !strings.HasPrefix(string(b), "---\nstatus: fixing\n---\n") {
 		t.Fatalf("file %q", b)
 	}
@@ -226,7 +253,7 @@ func TestSet(t *testing.T) {
 
 func TestSetDirtyFileExits2(t *testing.T) {
 	dir := fixtureRepo(t)
-	p := filepath.Join(dir, ".pm/bugs/2026-09-26-open.md")
+	p := filepath.Join(dir, ".acta/bugs/2026-09-26-open.md")
 	if err := os.WriteFile(p, []byte("# Button does nothing\n\n## Symptom\nEdited.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

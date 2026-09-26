@@ -52,8 +52,8 @@ func gitRun(t *testing.T, dir string, args ...string) string {
 }
 
 var baseFiles = map[string]string{
-	".pm/bugs/2026-09-24-crash.md":             "---\nref: B-1\n---\n# Crash\n\n## Symptom\nIt crashes.\n",
-	".pm/plans/2026-09-25-crash-fix.md":        "---\nparent: bugs/2026-09-24-crash\n---\n# Fix\n\n### Task 1: Fix\n- [ ] a\n",
+	".acta/bugs/2026-09-24-crash.md":           "---\nref: B-1\n---\n# Crash\n\n## Symptom\nIt crashes.\n",
+	".acta/plans/2026-09-25-crash-fix.md":      "---\nparent: bugs/2026-09-24-crash\n---\n# Fix\n\n### Task 1: Fix\n- [ ] a\n",
 	"docs/superpowers/specs/2026-01-01-old.md": "# Old\n",
 }
 
@@ -76,7 +76,7 @@ func TestSetValueCommits(t *testing.T) {
 	if string(body) != "---\nref: B-1\nstatus: fixed\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "pm: bugs/2026-09-24-crash status fixed" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash status fixed" {
 		t.Fatalf("commit message %q", got)
 	}
 }
@@ -122,7 +122,7 @@ func TestSetValueDirtyFileIsWrittenNotCommitted(t *testing.T) {
 
 func TestSetValueCRLFFileKeepsRef(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-26-win.md": "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n",
+		".acta/specs/2026-09-26-win.md": "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n",
 	})
 	b := mustLoad(t, cfg)
 	if got := b.Get("specs/2026-09-26-win").Ref; got != "TICK-7" {
@@ -182,7 +182,7 @@ func TestNewBug(t *testing.T) {
 	if !strings.Contains(string(body), "ref: New-261") || !strings.Contains(string(body), "## Symptom") {
 		t.Fatalf("file lost content: %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "pm: new bug 2026-09-26-ack-dup" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: new bug 2026-09-26-ack-dup" {
 		t.Fatalf("commit message %q", got)
 	}
 }
@@ -265,15 +265,15 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "pm: bugs/2026-09-24-crash ref New-261" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash ref New-261" {
 		t.Fatalf("commit message %q", got)
 	}
 }
 
 func TestSetValueFixedInAndRefBadInput(t *testing.T) {
 	files := map[string]string{
-		".pm/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
-		".pm/specs/2026-09-20-alpha.md": "# Alpha\n",
+		".acta/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
+		".acta/specs/2026-09-20-alpha.md": "# Alpha\n",
 	}
 	cfg := repoWith(t, files)
 	b := mustLoad(t, cfg)
@@ -303,11 +303,37 @@ func TestSetValueFixedInAndRefBadInput(t *testing.T) {
 	}
 }
 
+// TestCommitMessagesNeverUsePmPrefix runs every write path once and reads
+// the whole log, so a leftover "pm:" string anywhere gets caught in one
+// place instead of one assertion per call site.
+func TestCommitMessagesNeverUsePmPrefix(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	if _, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "status", "fixed"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewBug(cfg, "guard-bug", "", "", []byte("## Symptom\nx\n")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "", []byte("a\n")); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	log := gitRun(t, cfg.RepoRoot, "log", "--format=%s")
+	for _, line := range strings.Split(strings.TrimSpace(log), "\n") {
+		if strings.HasPrefix(line, "pm:") {
+			t.Errorf("commit %q still uses the old pm: prefix", line)
+		}
+	}
+}
+
 func TestSetValueFixedInAndRefKindsAndBounds(t *testing.T) {
 	files := map[string]string{
-		".pm/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
-		".pm/specs/2026-09-20-alpha.md": "# Alpha\n",
-		".pm/plans/2026-09-25-fix.md":   "# Fix\n\n### Task 1: Fix\n- [ ] a\n",
+		".acta/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
+		".acta/specs/2026-09-20-alpha.md": "# Alpha\n",
+		".acta/plans/2026-09-25-fix.md":   "# Fix\n\n### Task 1: Fix\n- [ ] a\n",
 	}
 	cfg := repoWith(t, files)
 	b := mustLoad(t, cfg)

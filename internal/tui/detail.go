@@ -1,0 +1,220 @@
+package tui
+
+import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/iyay/acta/internal/board"
+)
+
+// The dots of the list between the header and the body: work under way wears
+// the accent, work not begun and work finished wear nothing, so a long list
+// reads at a glance.
+const (
+	dotGoing   = "●"
+	dotWaiting = "○"
+	dotDone    = "✓"
+)
+
+// detailLines draws the header, the list of work and the body of the item on
+// show. Labels are upper case, padded to one width, with the colons in one
+// column, and a line with no value is left out.
+func (m Model) detailLines(w int) []string {
+	it := m.Selected()
+	if it == nil {
+		if len(m.board.Items) == 0 {
+			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
+		}
+		return []string{faint.Render("enter opens the group")}
+	}
+	fields := []struct{ label, value string }{
+		{"ID", idText(it)},
+		{kindLabel(it.Kind), it.Title},
+		{"STATUS", it.Status},
+		{"AUTHOR", it.Author},
+		{"FROM", m.fromText(it)},
+		{"REF", it.Ref},
+		{"SPEC", m.specText(it)},
+		{"WORKTREE", worktreeText(it)},
+		{"AGENT", it.Agent},
+		{"FILE", m.fileText(it)},
+		{tasksLabel(it.Kind), progressText(it)},
+		{"FIXED", it.FixedIn},
+	}
+	width := 0
+	for _, f := range fields {
+		width = max(width, len(f.label))
+	}
+	width += 2
+	var lines []string
+	for _, f := range fields {
+		if f.value == "" {
+			continue
+		}
+		lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", width, f.label, f.value), w))
+	}
+	for _, p := range it.Problems {
+		lines = append(lines, truncate("! "+p, w))
+	}
+	lines = append(lines, faint.Render(strings.Repeat("─", max(1, w))))
+	lines = append(lines, m.workLines(it, w)...)
+	for _, ln := range strings.Split(m.render(it.Body, w), "\n") {
+		lines = append(lines, fit(ln, w))
+	}
+	return lines
+}
+
+// workLines are the lines of work an item holds, one line each. What a kind
+// lists: a plan its tasks, a task its steps, a spec or a bug the tasks of
+// every plan under it, a debt file or debt item the lines of the debt file.
+// An item with no work at all lists nothing and leaves no empty line.
+func (m Model) workLines(it *board.Item, w int) []string {
+	switch it.Kind {
+	case board.KindTask:
+		return m.stepLines(it, w)
+	case board.KindDebt, board.KindDebtItem:
+		return m.debtLines(it, w)
+	case board.KindPlan:
+		return m.taskLines(it, w)
+	}
+	return m.planLines(it, w)
+}
+
+// taskLines are the tasks of a plan, in file order.
+func (m Model) taskLines(plan *board.Item, w int) []string {
+	var out []string
+	for _, id := range plan.Children {
+		if t := m.board.Get(id); t != nil {
+			out = append(out, workLine(t, false, w))
+		}
+	}
+	return out
+}
+
+// planLines are the tasks of every plan under a spec or a bug, one plain line
+// naming each plan above its own tasks, because a plan is a file of its own
+// and the reader has to know whose tasks they are.
+func (m Model) planLines(parent *board.Item, w int) []string {
+	var out []string
+	for _, it := range m.board.Items {
+		if it.Kind != board.KindPlan || it.SpecID != parent.ID {
+			continue
+		}
+		out = append(out, truncate(shortRef(it)+"  "+it.Title, w))
+		out = append(out, m.taskLines(it, w)...)
+	}
+	return out
+}
+
+// debtLines are the checklist lines of a debt file. The line on show is the
+// bright one, the others are dim, so the reader knows which NOTE is open.
+func (m Model) debtLines(it *board.Item, w int) []string {
+	file, on := it, it.ID
+	if it.Kind == board.KindDebtItem {
+		if file = m.board.Get(it.Parent); file == nil {
+			return nil
+		}
+	}
+	var out []string
+	for _, id := range file.Children {
+		line := m.board.Get(id)
+		if line == nil {
+			continue
+		}
+		out = append(out, workLine(line, id == on, w))
+	}
+	return out
+}
+
+// stepLines are the checklist boxes of a task. A step has no id of its own and
+// no count, so its line is the dot and the words; the first box still open in
+// a task under way is the step the reader is on.
+func (m Model) stepLines(it *board.Item, w int) []string {
+	going := inProgress(it)
+	var out []string
+	for _, sec := range board.Parse([]byte(it.Body)).Tasks {
+		for _, s := range sec.Steps {
+			mark, brush := dotWaiting, faint
+			switch {
+			case s.State != ' ':
+				mark = dotDone
+			case going:
+				mark, brush, going = dotGoing, accent, false
+			}
+			out = append(out, brush.Render(truncate(mark+" "+s.Text, w)))
+		}
+	}
+	return out
+}
+
+// workLine is one line of the list: the dot, the short ID, the title, and for
+// work under way its count and its agent, the same tail a list row wears. A
+// line the reader is on stays bright; the rest are dim, dot included.
+func workLine(it *board.Item, on bool, w int) string {
+	mark, brush := dotWaiting, faint
+	switch {
+	case board.Closed(it.Status):
+		mark = dotDone
+	case inProgress(it):
+		mark, brush = dotGoing, work
+	}
+	if on {
+		brush = lipgloss.NewStyle()
+	}
+	text := shortRef(it) + "  " + it.Title
+	if inProgress(it) {
+		text += "  " + progressText(it)
+		if it.Agent != "" {
+			text += " · " + it.Agent
+		}
+	}
+	return brush.Render(truncate(mark+" "+text, w))
+}
+
+// tasksLabel names the line that counts the work: a task counts its steps, so
+// it says SUBTASKS, and everything else counts its tasks.
+func tasksLabel(k board.Kind) string {
+	if k == board.KindTask {
+		return "SUBTASKS"
+	}
+	return "TASKS"
+}
+
+// kindLabel is the label of the line that names the kind and the title.
+func kindLabel(k board.Kind) string {
+	switch k {
+	case board.KindPlan:
+		return "PLAN"
+	case board.KindTask:
+		return "TASK"
+	case board.KindBug:
+		return "BUG"
+	case board.KindDebtItem:
+		return "DEBT"
+	}
+	return "SPEC"
+}
+
+// fromText names the plan a debt item's review came from, read straight off
+// the debt file's own frontmatter, because the board only keeps that link
+// long enough to check it, not to hand it back later.
+func (m Model) fromText(it *board.Item) string {
+	if it.Kind != board.KindDebtItem {
+		return ""
+	}
+	raw, err := os.ReadFile(it.Path)
+	if err != nil {
+		return ""
+	}
+	planID, _ := board.Parse(raw).Front["parent"].(string)
+	if planID == "" {
+		return ""
+	}
+	if p := m.board.Get(planID); p != nil {
+		return shortRef(p) + " · " + p.Title
+	}
+	return planID
+}

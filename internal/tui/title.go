@@ -20,31 +20,90 @@ type titlePiece struct {
 	sep  bool
 }
 
-// titlePieces lays out the title of pane p: the corner with the pane number,
-// then the tab names joined by " ─ ".
-func titlePieces(p pane, names []string) []titlePiece {
+// namedPieces lays out the title of pane p: the corner with the pane number,
+// then the kept tab names joined by sep. keep nil means every name is kept; a
+// dropped name leaves no piece behind at all, so it takes no room and draws
+// no click box.
+func namedPieces(p pane, names []string, keep []bool, sep string) []titlePiece {
 	out := make([]titlePiece, 0, 2*len(names)+1)
 	out = append(out, titlePiece{text: fmt.Sprintf("─[%d]─", p+1), tab: -1})
+	first := true
 	for i, name := range names {
-		if i > 0 {
-			out = append(out, titlePiece{text: " ─ ", tab: -1, sep: true})
+		if keep != nil && !keep[i] {
+			continue
+		}
+		if !first {
+			out = append(out, titlePiece{text: sep, tab: -1, sep: true})
 		}
 		out = append(out, titlePiece{text: name, tab: i})
+		first = false
 	}
 	return out
 }
 
-// tabX gives where each tab name starts in the title of the pane whose left
-// edge is at x, walked over the same pieces the view draws, so a click and the
-// drawn name always come from the same numbers.
-func tabX(p pane, x int, names []string) []tabBox {
-	x++ // the corner of the border sits before every piece
-	out := make([]tabBox, 0, len(names))
-	for _, piece := range titlePieces(p, names) {
-		if piece.tab >= 0 {
-			out = append(out, tabBox{x: x, w: lipgloss.Width(piece.text)})
+// titleWidth adds up the screen cells every piece takes.
+func titleWidth(pieces []titlePiece) int {
+	w := 0
+	for _, p := range pieces {
+		w += lipgloss.Width(p.text)
+	}
+	return w
+}
+
+// dropOrder gives the tab indices to drop one at a time when a title still
+// does not fit: starting from the far (right) end, but skipping the tab that
+// is open, since that one must never be the one that goes missing.
+func dropOrder(n, on int) []int {
+	out := make([]int, 0, max(0, n-1))
+	for i := n - 1; i >= 0; i-- {
+		if i != on {
+			out = append(out, i)
 		}
-		x += lipgloss.Width(piece.text)
+	}
+	return out
+}
+
+// titlePieces works out which tab names actually fit a title of inner cells:
+// first the full names with the usual " ─ " dashes, then the same names with
+// a tighter single-space separator, and only then by dropping names (farthest
+// from the open one first, which is never dropped) until what is left fits.
+// paneTop and tabX both call this, so the letters the screen draws and the
+// boxes the mouse checks can never drift apart.
+func titlePieces(p pane, names []string, on, inner int) []titlePiece {
+	for _, sep := range []string{" ─ ", " "} {
+		pieces := namedPieces(p, names, nil, sep)
+		if titleWidth(pieces) <= inner {
+			return pieces
+		}
+	}
+	keep := make([]bool, len(names))
+	for i := range keep {
+		keep[i] = true
+	}
+	pieces := namedPieces(p, names, keep, " ")
+	for _, i := range dropOrder(len(names), on) {
+		if titleWidth(pieces) <= inner {
+			break
+		}
+		keep[i] = false
+		pieces = namedPieces(p, names, keep, " ")
+	}
+	return pieces
+}
+
+// tabX gives where each tab name starts in the title of the pane whose left
+// edge is at x and whose border is w cells wide, walked over the same pieces
+// the view draws, so a click and the drawn name always come from the same
+// numbers. A name the title drops keeps its slot in the result but gets a
+// zero-width box, so no click can ever land on it.
+func tabX(p pane, x, w int, names []string, on int) []tabBox {
+	out := make([]tabBox, len(names))
+	pos := x + 1 // the corner of the border sits before every piece
+	for _, piece := range titlePieces(p, names, on, max(0, w-2)) {
+		if piece.tab >= 0 {
+			out[piece.tab] = tabBox{x: pos, w: lipgloss.Width(piece.text)}
+		}
+		pos += lipgloss.Width(piece.text)
 	}
 	return out
 }

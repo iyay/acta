@@ -79,7 +79,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 	if !cfg.AutoCommit {
 		return changes, Outcome{Reason: "auto_commit is off", Skips: skips}, nil
 	}
-	r := gitc.CommitPaths(cfg.RepoRoot, paths, "pm: assign short ids")
+	r := gitc.CommitPaths(cfg.RepoRoot, paths, "acta: assign short ids")
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
 }
 
@@ -137,7 +137,7 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 	if !cfg.AutoCommit {
 		return changes, Outcome{Reason: "auto_commit is off"}, nil
 	}
-	r := gitc.CommitPaths(cfg.RepoRoot, paths, "pm: fix duplicate short ids")
+	r := gitc.CommitPaths(cfg.RepoRoot, paths, "acta: fix duplicate short ids")
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason}, nil
 }
 
@@ -152,7 +152,9 @@ type idFile struct {
 func idFiles(b *board.Board) []idFile {
 	var out []idFile
 	for _, it := range b.Items {
-		if it.Kind == board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk {
+		// A task lives inside its plan file and a debt-item lives inside
+		// its debt file, so neither is a file of its own.
+		if it.Kind == board.KindTask || it.Kind == board.KindDebtItem || it.Legacy || it.Worktree != "" || !it.OnDisk {
 			continue
 		}
 		file := it.Path
@@ -237,7 +239,7 @@ func candidates(cfg config.Config, b *board.Board, only []string) ([]cand, []str
 		out = append(out, cand{it: it, file: file, prefix: prefix, id: f.id, hash: f.hash})
 	}
 	for _, it := range b.Items {
-		if it.Kind == board.KindTask || it.Legacy || it.Worktree != "" || !it.OnDisk {
+		if it.Kind == board.KindTask || it.Kind == board.KindDebtItem || it.Legacy || it.Worktree != "" || !it.OnDisk {
 			continue
 		}
 		file := it.Path
@@ -288,7 +290,7 @@ func isPlanFile(it *board.Item) bool {
 }
 
 func scanIDs(b *board.Board) (map[string]int, map[string]bool) {
-	next := map[string]int{"SPEC": 1, "PLAN": 1, "BUG": 1}
+	next := map[string]int{"SPEC": 1, "PLAN": 1, "BUG": 1, "DEBT": 1}
 	taken := map[string]bool{}
 	note := func(prefix, id, hash string) {
 		if n, err := strconv.Atoi(strings.TrimPrefix(id, prefix+"-")); err == nil && !strings.Contains(id, ".") {

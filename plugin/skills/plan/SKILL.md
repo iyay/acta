@@ -34,6 +34,10 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+## Debt items
+
+A plan that works a debt item sets `parent: debt/<stem>` in its header and names the DEBT ids it closes; `acta:land` ticks those items after the merge.
+
 ## Task Right-Sizing
 
 A task is the smallest unit that carries its own test cycle and is worth a
@@ -42,6 +46,9 @@ configuration, scaffolding, and documentation steps into the task whose
 deliverable needs them; split only where a reviewer could meaningfully
 reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
+
+A plan never holds a step that can only happen after landing; that work goes
+in the landing report as the next action.
 
 ## Verify lines are properties
 

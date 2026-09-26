@@ -27,8 +27,8 @@ func treeCfg(t *testing.T, files map[string]string) config.Config {
 
 func worktreeModel(t *testing.T) Model {
 	t.Helper()
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
-	wt := treeCfg(t, map[string]string{".pm/bugs/2026-09-24-wt.md": "# Worktree bug\n\n## Symptom\ny\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	wt := treeCfg(t, map[string]string{".acta/bugs/2026-09-24-wt.md": "# Worktree bug\n\n## Symptom\ny\n"})
 	b, err := board.LoadTrees(main, []board.Tree{{Cfg: wt, Branch: "feat"}})
 	if err != nil {
 		t.Fatal(err)
@@ -64,9 +64,9 @@ func TestWorktreeItemsAreReadOnly(t *testing.T) {
 }
 
 func TestBranchItemsAreNotOpened(t *testing.T) {
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
-		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
 	}}
 	b, err := board.LoadTrees(main, []board.Tree{branch})
 	if err != nil {

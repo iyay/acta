@@ -12,7 +12,7 @@ import (
 
 func TestTickCommand(t *testing.T) {
 	dir := fixtureRepo(t)
-	plan := filepath.Join(dir, ".pm/plans/2026-09-21-alpha.md")
+	plan := filepath.Join(dir, ".acta/plans/2026-09-21-alpha.md")
 	before, _ := os.ReadFile(plan)
 
 	out, errOut, code := acta(t, dir, "", "tick", "plans/2026-09-21-alpha#task-2", "--step", "2")
@@ -59,8 +59,8 @@ func TestTickHelp(t *testing.T) {
 		if code != 0 {
 			t.Errorf("%v: exit %d, want 0", args, code)
 		}
-		if got := out + errOut; !strings.Contains(got, "plans/<stem>#task-N") {
-			t.Errorf("%v: output %q names no plans/<stem>#task-N id", args, got)
+		if got := out + errOut; !strings.Contains(got, "acta tick <id>") {
+			t.Errorf("%v: output %q names no acta tick <id> usage", args, got)
 		}
 		for _, flag := range []string{"-step", "-all", "tick every checkbox of the task"} {
 			if !strings.Contains(out+errOut, flag) {
@@ -75,7 +75,7 @@ func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
 	// Plan's BLOCKER repro: a CRLF plan with no frontmatter. pmb set
 	// prepends an LF-only frontmatter block, so the file ends up mixed.
 	body := "# Plan\r\n\r\n### Task 1: a\r\n- [ ] a1\r\n\r\n### Task 2: b\r\n- [ ] b1\r\n"
-	rel := filepath.Join(".pm", "plans", "2026-09-29-crlf.md")
+	rel := filepath.Join(".acta", "plans", "2026-09-29-crlf.md")
 	if err := os.WriteFile(filepath.Join(dir, rel), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestTickRecordsTheAgent(t *testing.T) {
 // agentsFile is where a tick records the agent in the default root folder.
 func agentsFile(t *testing.T, dir string) string {
 	t.Helper()
-	return filepath.Join(dir, ".pm", ".agents.json")
+	return filepath.Join(dir, ".acta", ".agents.json")
 }
 
 func readRecords(t *testing.T, path string) map[string]struct {
@@ -215,7 +215,7 @@ func commitCount(t *testing.T, dir string) string {
 // mix with the flags that tick boxes, writing nothing when refused.
 func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 	dir := fixtureRepo(t)
-	plan := filepath.Join(dir, ".pm/plans/2026-09-21-alpha.md")
+	plan := filepath.Join(dir, ".acta/plans/2026-09-21-alpha.md")
 	id := "plans/2026-09-21-alpha#task-1"
 	before, _ := os.ReadFile(plan)
 	if _, errOut, code := acta(t, dir, "", "tick", id, "--start", "--agent", "omp"); code != 0 {

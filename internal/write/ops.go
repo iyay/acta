@@ -91,7 +91,7 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	if err := os.WriteFile(it.Path, out, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, it.Path, fmt.Sprintf("pm: %s %s %s", id, field, value), dirty), nil
+	return finish(cfg, it.Path, fmt.Sprintf("acta: %s %s %s", id, field, value), dirty), nil
 }
 
 // NewBug writes a bug file from a body an agent sent and commits it. The new
@@ -124,7 +124,7 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 	if err := os.WriteFile(path, content, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, path, "pm: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
+	return finish(cfg, path, "acta: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
 }
 
 // StartBug writes the bare template so an editor can open it.
@@ -156,7 +156,121 @@ func FinishBug(cfg config.Config, path string, tmpl []byte) (Outcome, error) {
 		}
 		return Outcome{Path: path}, ErrUnchanged
 	}
-	return finish(cfg, path, "pm: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
+	return finish(cfg, path, "acta: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
+}
+
+// NewDebt writes review NOTEs onto a plan as a checklist file in the debt
+// folder. Running it again for the same plan on the same day appends only
+// the lines that are not already on the file, so paging the same NOTEs
+// twice never duplicates a line or a commit.
+func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []byte) (Outcome, error) {
+	it := b.Get(planID)
+	if it == nil {
+		return Outcome{}, bad("unknown id %s", planID)
+	}
+	if it.Kind != board.KindPlan {
+		return Outcome{}, bad("%s is not a plan", planID)
+	}
+	texts := splitNotes(notes)
+	if len(texts) == 0 {
+		return Outcome{}, bad("no notes on stdin")
+	}
+	// The debt file names itself after today, not the day the plan was
+	// written, so it keeps the plan's slug and drops the plan's own date.
+	path := filepath.Join(cfg.Root, cfg.Dirs.Debt, Now().Format("2006-01-02")+"-"+it.Slug+".md")
+	fileStem := strings.TrimSuffix(filepath.Base(path), ".md")
+
+	src, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		return appendDebt(cfg, path, fileStem, src, texts)
+	case !os.IsNotExist(err):
+		return Outcome{}, err
+	}
+	return createDebt(cfg, b, path, fileStem, title, it, texts)
+}
+
+// appendDebt adds only the lines a file does not already hold. Nothing new
+// means nothing written and nothing committed.
+func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []string) (Outcome, error) {
+	have := map[string]bool{}
+	for _, line := range board.Parse(src).Items {
+		have[line.Text] = true
+	}
+	var add []string
+	for _, t := range texts {
+		if !have[t] {
+			have[t] = true
+			add = append(add, t)
+		}
+	}
+	if len(add) == 0 {
+		return Outcome{Path: path}, nil
+	}
+	dirty, err := dirtyBefore(cfg, path)
+	if err != nil {
+		return Outcome{}, err
+	}
+	out := string(src)
+	if !strings.HasSuffix(out, "\n") {
+		out += "\n"
+	}
+	for _, t := range add {
+		out += "- [ ] " + t + "\n"
+	}
+	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+		return Outcome{}, err
+	}
+	return finish(cfg, path, "acta: new debt "+fileStem, dirty), nil
+}
+
+// createDebt writes a fresh debt file with its own id, hash and parent link
+// back to the plan the NOTEs came from.
+func createDebt(cfg config.Config, b *board.Board, path, fileStem, title string, plan *board.Item, texts []string) (Outcome, error) {
+	heading := title
+	if heading == "" {
+		heading = "Review NOTEs: " + plan.Title
+	}
+	var body strings.Builder
+	body.WriteString("# " + heading + "\n\n")
+	for _, t := range texts {
+		body.WriteString("- [ ] " + t + "\n")
+	}
+	content := []byte(body.String())
+	next, taken := scanIDs(b)
+	var err error
+	if content, err = SetField(content, "id", fmt.Sprintf("DEBT-%d", next["DEBT"])); err != nil {
+		return Outcome{}, err
+	}
+	if content, err = SetField(content, "hash", freeHash(taken)); err != nil {
+		return Outcome{}, err
+	}
+	if content, err = SetField(content, "parent", fileID(cfg, plan.Path)); err != nil {
+		return Outcome{}, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return Outcome{}, err
+	}
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		return Outcome{}, err
+	}
+	return finish(cfg, path, "acta: new debt "+fileStem, false), nil
+}
+
+// splitNotes turns raw stdin into one trimmed line of text per note. A
+// leading "- " bullet is dropped, and blank lines are skipped, so the
+// command reads either a plain list or a markdown checklist.
+func splitNotes(notes []byte) []string {
+	var out []string
+	for _, ln := range strings.Split(string(notes), "\n") {
+		ln = strings.TrimSpace(ln)
+		ln = strings.TrimPrefix(ln, "- ")
+		ln = strings.TrimSpace(ln)
+		if ln != "" {
+			out = append(out, ln)
+		}
+	}
+	return out
 }
 
 func bugPath(cfg config.Config, slug string) (string, error) {

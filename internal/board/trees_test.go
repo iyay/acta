@@ -24,21 +24,21 @@ func tree(t *testing.T, files map[string]string) config.Config {
 }
 
 const specA = "# Story A\n"
-const planBehind = "# Plan A\n\n**Spec:** .pm/specs/2026-09-20-a.md\n\n### Task 1: One\n- [x] a\n- [ ] b\n"
-const planAhead = "# Plan A\n\n**Spec:** .pm/specs/2026-09-20-a.md\n\n### Task 1: One\n- [x] a\n- [x] b\n"
+const planBehind = "# Plan A\n\n**Spec:** .acta/specs/2026-09-20-a.md\n\n### Task 1: One\n- [x] a\n- [ ] b\n"
+const planAhead = "# Plan A\n\n**Spec:** .acta/specs/2026-09-20-a.md\n\n### Task 1: One\n- [x] a\n- [x] b\n"
 
 func TestLoadTreesPicksTheWorktreeAhead(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md":    specA,
-		".pm/plans/2026-09-21-a.md":    planBehind,
-		".pm/specs/2026-09-22-same.md": "# Same\n",
+		".acta/specs/2026-09-20-a.md":    specA,
+		".acta/plans/2026-09-21-a.md":    planBehind,
+		".acta/specs/2026-09-22-same.md": "# Same\n",
 	})
 	wt := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md":    specA,
-		".pm/plans/2026-09-21-a.md":    planAhead,
-		".pm/specs/2026-09-22-same.md": "# Same, edited in the worktree\n",
-		".pm/specs/2026-09-25-new.md":  "# New story\n",
-		".pm/plans/2026-09-25-new.md":  "# New plan\n\n**Spec:** .pm/specs/2026-09-25-new.md\n\n### Task 1: Start\n- [ ] a\n",
+		".acta/specs/2026-09-20-a.md":    specA,
+		".acta/plans/2026-09-21-a.md":    planAhead,
+		".acta/specs/2026-09-22-same.md": "# Same, edited in the worktree\n",
+		".acta/specs/2026-09-25-new.md":  "# New story\n",
+		".acta/plans/2026-09-25-new.md":  "# New plan\n\n**Spec:** .acta/specs/2026-09-25-new.md\n\n### Task 1: Start\n- [ ] a\n",
 	})
 	b, err := LoadTrees(main, []Tree{{Cfg: wt, Branch: "feat"}})
 	if err != nil {
@@ -63,8 +63,8 @@ func TestLoadTreesPicksTheWorktreeAhead(t *testing.T) {
 }
 
 func TestLoadTreesMainAheadWins(t *testing.T) {
-	main := tree(t, map[string]string{".pm/plans/2026-09-21-a.md": planAhead})
-	wt := tree(t, map[string]string{".pm/plans/2026-09-21-a.md": planBehind})
+	main := tree(t, map[string]string{".acta/plans/2026-09-21-a.md": planAhead})
+	wt := tree(t, map[string]string{".acta/plans/2026-09-21-a.md": planBehind})
 	b, err := LoadTrees(main, []Tree{{Cfg: wt, Branch: "feat"}})
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestLoadTreesMainAheadWins(t *testing.T) {
 }
 
 func TestLoadTreesLegacyAndBrokenTrees(t *testing.T) {
-	main := tree(t, map[string]string{".pm/specs/2026-09-20-a.md": specA})
+	main := tree(t, map[string]string{".acta/specs/2026-09-20-a.md": specA})
 	wt := tree(t, map[string]string{
 		"docs/superpowers/plans/2026-01-02-old.md": "# Old plan\n\n### Task 1: Old\n- [x] a\n",
 	})
@@ -94,14 +94,14 @@ func TestLoadTreesLegacyAndBrokenTrees(t *testing.T) {
 
 func TestLoadTreesFromBranchFiles(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md": specA,
-		".pm/plans/2026-09-21-a.md": planBehind,
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": planBehind,
 	})
 
 	branchCfg := config.Default(filepath.Join(t.TempDir(), "not-on-disk"))
 	files := map[string][]byte{
-		".pm/plans/2026-09-21-a.md":                []byte(planAhead),
-		".pm/specs/2026-09-26-x.md":                []byte("# Branch story\n"),
+		".acta/plans/2026-09-21-a.md":              []byte(planAhead),
+		".acta/specs/2026-09-26-x.md":              []byte("# Branch story\n"),
 		"docs/superpowers/specs/2026-01-01-old.md": []byte("# Legacy on a branch is skipped\n"),
 	}
 	b, err := LoadTrees(main, []Tree{{Cfg: branchCfg, Branch: "feat-x", Files: files}})
@@ -109,7 +109,7 @@ func TestLoadTreesFromBranchFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	task := b.Get("plans/2026-09-21-a#task-1")
-	if task.Status != "done" || task.Worktree != "feat-x" || task.OnDisk || task.Path != "feat-x:.pm/plans/2026-09-21-a.md" {
+	if task.Status != "done" || task.Worktree != "feat-x" || task.OnDisk || task.Path != "feat-x:.acta/plans/2026-09-21-a.md" {
 		t.Fatalf("task from a branch = %+v", task)
 	}
 	if s := b.Get("specs/2026-09-26-x"); s == nil || s.OnDisk || s.Worktree != "feat-x" {
@@ -136,7 +136,7 @@ func TestLoadTreesFromBranchFiles(t *testing.T) {
 }
 
 func TestLoadIsLoadTreesWithNoOthers(t *testing.T) {
-	main := tree(t, map[string]string{".pm/specs/2026-09-20-a.md": specA})
+	main := tree(t, map[string]string{".acta/specs/2026-09-20-a.md": specA})
 	a, _ := Load(main)
 	b, _ := LoadTrees(main, nil)
 	if len(a.Items) != 1 || len(b.Items) != 1 || a.Items[0].ID != b.Items[0].ID {

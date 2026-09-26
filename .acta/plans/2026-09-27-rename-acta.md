@@ -128,8 +128,8 @@ Review round 1 BLOCKERs (both axes), each needs a red test first:
 
 Review round 2 BLOCKER (Spec axis): `internal/cli/migrate.go:42-45` / `checkMovable` checks only `.acta/`, not `.acta.yaml`. (A) Untracked `.acta.yaml` with `root: .pm`, no `.pm.yaml`: rc 0, the move commits, `.acta.yaml` still points at `.pm`, `acta list --all` prints nothing. (B) Tracked `.pm.yaml` plus `.acta.yaml` as a directory: rc 0, the commit holds `.pm.yaml -> .acta.yaml/.pm.yaml`, the board fails with "is a directory". Expected: refuse (exit 1, nothing changed) whenever `.acta.yaml` exists, checked with `os.Lstat` before the first move.
 
-- [ ] **Step 1: Failing tests** for each form above.
-- [ ] **Step 2: Run them to see them fail.**
-- [ ] **Step 3: Fix** in `checkMovable`.
-- [ ] **Step 4: Gate.**
-- [ ] **Step 5: Commit** (`fix(cli): migrate-root refuses an existing .acta.yaml`), tick `plans/2026-09-27-rename-acta#task-F2 --all` with `go run ./cmd/acta tick`.
+- [x] **Step 1: Failing tests** for each form above.
+- [x] **Step 2: Run them to see them fail.**
+- [x] **Step 3: Fix** in `checkMovable`.
+- [x] **Step 4: Gate.**
+- [x] **Step 5: Commit** (`fix(cli): migrate-root refuses an existing .acta.yaml`), tick `plans/2026-09-27-rename-acta#task-F2 --all` with `go run ./cmd/acta tick`.
