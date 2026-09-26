@@ -15,10 +15,12 @@ import (
 type Kind string
 
 const (
-	KindStory Kind = "story"
-	KindTask  Kind = "task"
-	KindBug   Kind = "bug"
-	KindPlan  Kind = "plan"
+	KindStory    Kind = "story"
+	KindTask     Kind = "task"
+	KindBug      Kind = "bug"
+	KindPlan     Kind = "plan"
+	KindDebt     Kind = "debt"
+	KindDebtItem Kind = "debt-item"
 )
 
 // Item is one story, task or bug.
@@ -74,6 +76,7 @@ var (
 	storyStatuses = []string{"draft", "approved", "in-progress", "done", "dropped"}
 	bugStatuses   = []string{"open", "fixing", "fixed", "wontfix"}
 	taskStatuses  = []string{"todo", "doing", "done"}
+	debtStatuses  = []string{"open", "done", "wontfix"}
 	datedName     = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})-(.+)$`)
 )
 
@@ -84,6 +87,8 @@ func Allowed(k Kind) []string {
 		return append([]string(nil), storyStatuses...)
 	case KindBug:
 		return append([]string(nil), bugStatuses...)
+	case KindDebt, KindDebtItem:
+		return append([]string(nil), debtStatuses...)
 	default:
 		return append([]string(nil), taskStatuses...)
 	}
@@ -161,6 +166,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 
 	b := &Board{byID: map[string]*Item{}, alias: map[string]*Item{}}
 	var plans []planFile
+	var debts []debtFile
 	for _, f := range files {
 		if f.kind == "" {
 			plans = append(plans, planFile{id: f.id, path: f.path, date: f.date, slug: f.slug, legacy: f.legacy, doc: f.doc, tree: f.tree, onDisk: f.onDisk})
@@ -172,10 +178,18 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		it.OnDisk = f.onDisk
 		b.add(it)
 		b.aliasItem(it)
+		if f.kind == KindDebt {
+			debts = append(debts, debtFile{it: it, doc: f.doc})
+		}
 	}
 	// Plans link after every spec and bug is known, so order does not matter.
 	for _, p := range plans {
 		b.linkPlan(p)
+	}
+	// Debt files can name a plan as their parent, so they link once every
+	// plan exists on the board.
+	for _, d := range debts {
+		b.linkDebt(d)
 	}
 	b.fillStarted(main, others)
 	b.derive()
@@ -208,8 +222,13 @@ func collect(t Tree) ([]srcFile, error) {
 		parts := []struct {
 			dir  string
 			kind Kind
-		}{{s.dirs.Specs, KindStory}, {s.dirs.Bugs, KindBug}, {s.dirs.Plans, ""}}
+		}{{s.dirs.Specs, KindStory}, {s.dirs.Bugs, KindBug}, {s.dirs.Debt, KindDebt}, {s.dirs.Plans, ""}}
 		for _, part := range parts {
+			// A legacy source has no debt folder, so an empty dir name is
+			// skipped instead of globbing the whole legacy root.
+			if part.dir == "" {
+				continue
+			}
 			files, err := filepath.Glob(filepath.Join(s.base, part.dir, "*.md"))
 			if err != nil {
 				return nil, err
@@ -241,7 +260,7 @@ func collectFiles(t Tree) []srcFile {
 		return nil
 	}
 	rootRel = filepath.ToSlash(rootRel)
-	kinds := map[string]Kind{cfg.Dirs.Specs: KindStory, cfg.Dirs.Bugs: KindBug, cfg.Dirs.Plans: ""}
+	kinds := map[string]Kind{cfg.Dirs.Specs: KindStory, cfg.Dirs.Bugs: KindBug, cfg.Dirs.Debt: KindDebt, cfg.Dirs.Plans: ""}
 	names := make([]string, 0, len(t.Files))
 	for name := range t.Files {
 		names = append(names, name)
@@ -420,6 +439,46 @@ func (b *Board) linkPlan(p planFile) {
 	}
 }
 
+// debtFile pairs an already-added debt Item with the doc it came from, so its
+// checklist lines can be turned into debt-item children once every plan on
+// the board is known.
+type debtFile struct {
+	it  *Item
+	doc Doc
+}
+
+// itemStatus turns a checklist box state into a debt-item status.
+func itemStatus(state byte) string {
+	switch state {
+	case 'x':
+		return "done"
+	case '-':
+		return "wontfix"
+	default:
+		return "open"
+	}
+}
+
+// linkDebt checks a debt file's parent plan and gives it one debt-item child
+// per checklist line, the same way linkPlan gives a plan its task children.
+func (b *Board) linkDebt(d debtFile) {
+	if want := field(d.doc.Front, "parent"); want != "" {
+		if p := b.byID[want]; p == nil || p.Kind != KindPlan {
+			d.it.Problems = append(d.it.Problems, "parent "+want+" not found")
+		}
+	}
+	for _, line := range d.doc.Items {
+		id := d.it.ID + "#item-" + fmt.Sprintf("%d", line.Num)
+		item := &Item{ID: id, Kind: KindDebtItem, Title: line.Text, Date: d.it.Date, Slug: d.it.Slug,
+			Parent: d.it.ID, Path: d.it.Path, Line: line.Line, Legacy: d.it.Legacy,
+			Status: itemStatus(line.State), StatusSource: "derived",
+			Worktree: d.it.Worktree, OnDisk: d.it.OnDisk}
+		b.add(item)
+		b.aliasDebtItem(item, d.it.ShortID, d.it.Hash, line.Num)
+		d.it.Children = append(d.it.Children, id)
+	}
+}
+
 // findSpec matches a **Spec:** path to a spec file by file name. A root spec
 // wins over a legacy one with the same name.
 func (b *Board) findSpec(path string) *Item {
@@ -446,7 +505,23 @@ func (b *Board) derive() {
 		}
 	}
 	for _, it := range b.Items {
-		if it.Kind == KindTask {
+		if it.Kind == KindTask || it.Kind == KindDebtItem {
+			continue
+		}
+		if it.Kind == KindDebt {
+			done := 0
+			for _, id := range it.Children {
+				if Closed(b.byID[id].Status) {
+					done++
+				}
+			}
+			it.Done, it.Total = done, len(it.Children)
+			it.StatusSource = "derived"
+			if it.Total > 0 && done == it.Total {
+				it.Status = "done"
+			} else {
+				it.Status = "open"
+			}
 			continue
 		}
 		done, started := 0, 0

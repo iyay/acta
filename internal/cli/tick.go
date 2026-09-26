@@ -13,7 +13,7 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-const tickUsage = "usage: acta tick plans/<stem>#task-N [--step N | --all | --start]"
+const tickUsage = "usage: acta tick <id> [--step N | --all | --start | --wontfix]"
 
 // cmdTick ticks checkboxes in a plan so the board shows progress while an
 // agent works. It never commits: the plan file is shared, and the
@@ -29,6 +29,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	all := fs.Bool("all", false, "tick every checkbox of the task")
 	agent := fs.String("agent", "", "name the agent running this tick (default: the AI_AGENT variable)")
 	start := fs.Bool("start", false, "mark the task started without ticking a box")
+	wontfix := fs.Bool("wontfix", false, "mark a debt line wontfix instead of done")
 	pos, err := parseMixed(fs, args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -37,10 +38,15 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, tickUsage)
 		return exitBadInput
 	}
-	// Starting and ticking are different actions; mixing them is a typo,
-	// and writing half of each would lie to the board. A bare tick with
-	// no flag is already rejected, so --start only conflicts with the flags.
-	if len(pos) != 1 || *start && (*all || *step > 0) || !*start && ((*step > 0) == *all) {
+	// Exactly one action per call: mixing two would lie to the board about
+	// which one actually happened, and a bare tick with none is a typo.
+	set := 0
+	for _, on := range []bool{*step > 0, *all, *start, *wontfix} {
+		if on {
+			set++
+		}
+	}
+	if len(pos) != 1 || set != 1 {
 		fmt.Fprintln(stderr, tickUsage)
 		return exitBadInput
 	}
@@ -53,17 +59,42 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	case it == nil:
 		fmt.Fprintf(stderr, "unknown id %s\n", pos[0])
 		return exitBadInput
+	case it.Kind == board.KindDebtItem:
+		// A debt line is only ever ticked whole or marked wontfix: it has
+		// no steps of its own and nothing to start.
+		if *step > 0 || *start {
+			fmt.Fprintln(stderr, tickUsage)
+			return exitSkipped
+		}
 	case it.Kind != board.KindTask:
 		fmt.Fprintf(stderr, "%s is not a task\n", pos[0])
 		return exitBadInput
 	case it.Legacy:
 		fmt.Fprintf(stderr, "%s is in a legacy folder; move it into the root folder first\n", pos[0])
 		return exitBadInput
+	case *wontfix:
+		// wontfix is a debt-only state; a plan task has no such box.
+		fmt.Fprintln(stderr, tickUsage)
+		return exitSkipped
 	}
-	if *start {
+	switch {
+	case it.Kind == board.KindDebtItem:
+		state := byte('x')
+		if *wontfix {
+			state = '-'
+		}
+		if err := write.TickLine(it.Path, it.Line, state); err != nil {
+			fmt.Fprintln(stderr, err)
+			if errors.Is(err, write.ErrBadInput) {
+				return exitBadInput
+			}
+			return exitOther
+		}
+		fmt.Fprintf(stdout, "%s ticked\n", it.ID)
+	case *start:
 		// No box moves; only the started record below is written.
 		fmt.Fprintf(stdout, "%s started\n", it.ID)
-	} else {
+	default:
 		n := *step
 		if *all {
 			n = 0

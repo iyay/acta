@@ -65,6 +65,7 @@ The approved plan already covers the merge. Do not show a menu (merge, PR, keep,
 5. Run the gates again on the merge result. Red: say so plainly and leave the merge for the user.
 6. Clean up: `git worktree remove <path>`, then `git branch -d <branch>`. `-d` refusing means not fully merged: stop and report. Never delete a worktree that has uncommitted work.
 7. If the plan fixed a bug under `.acta/bugs/`, record the merge: `acta set bugs/<file-name-without-.md> fixed_in <merge-sha>`.
-8. Never `git push`, and never force anything.
+8. If the plan's `parent` is `debt/<stem>`, run `acta tick <DEBT-n.m> --all` for each DEBT id the plan names as closed.
+9. Never `git push`, and never force anything.
 
-Report after landing: the merge sha first, the gate numbers you ran after the merge, what was cleaned up, and one next action.
+Report after landing: the merge sha first, the gate numbers you ran after the merge, what was cleaned up, one next action, and, if step 8 ran, the debt file and how many items it closed.

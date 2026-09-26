@@ -194,7 +194,7 @@ func TestShow(t *testing.T) {
 	var it jsonItem
 	decode(t, out, &it)
 	if it.Status != "in-progress" || it.Progress.Done != 1 || it.Progress.Total != 2 || len(it.Children) != 2 ||
-		it.Path != ".pm/specs/2026-09-20-alpha.md" || it.Ref != "A-1" || it.StatusSource != "derived" {
+		it.Path != ".acta/specs/2026-09-20-alpha.md" || it.Ref != "A-1" || it.StatusSource != "derived" {
 		t.Fatalf("got %+v", it)
 	}
 	if _, _, code := acta(t, dir, "", "show", "specs/nope"); code != 1 {
@@ -207,7 +207,7 @@ func TestSet(t *testing.T) {
 	if _, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, ".pm/bugs/2026-09-26-open.md"))
+	b, _ := os.ReadFile(filepath.Join(dir, ".acta/bugs/2026-09-26-open.md"))
 	if !strings.HasPrefix(string(b), "---\nstatus: fixing\n---\n") {
 		t.Fatalf("file %q", b)
 	}
@@ -226,7 +226,7 @@ func TestSet(t *testing.T) {
 
 func TestSetDirtyFileExits2(t *testing.T) {
 	dir := fixtureRepo(t)
-	p := filepath.Join(dir, ".pm/bugs/2026-09-26-open.md")
+	p := filepath.Join(dir, ".acta/bugs/2026-09-26-open.md")
 	if err := os.WriteFile(p, []byte("# Button does nothing\n\n## Symptom\nEdited.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

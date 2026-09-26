@@ -21,7 +21,7 @@ func writeFile(t *testing.T, path, body string) {
 
 const planAgents = `# Plan A
 
-**Spec:** .pm/specs/2026-09-20-a.md
+**Spec:** .acta/specs/2026-09-20-a.md
 
 ### Task 1: One
 - [x] a
@@ -55,11 +55,11 @@ func agentsOf(b *Board) string {
 
 func TestAgentsOnOpenTasksAndTheirParents(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md":    specA,
-		".pm/plans/2026-09-21-a.md":    planAgents,
-		".pm/bugs/2026-09-24-crash.md": "# App crashes on start\n",
-		".pm/plans/2026-09-25-fix.md":  bugPlanAgents,
-		".pm/.agents.json": `{
+		".acta/specs/2026-09-20-a.md":    specA,
+		".acta/plans/2026-09-21-a.md":    planAgents,
+		".acta/bugs/2026-09-24-crash.md": "# App crashes on start\n",
+		".acta/plans/2026-09-25-fix.md":  bugPlanAgents,
+		".acta/.agents.json": `{
   "plans/2026-09-21-a#task-1": {"agent": "bob", "at": "2026-09-26T09:00:00+07:00"},
   "plans/2026-09-21-a#task-2": {"agent": "claude", "at": "2026-09-26T10:00:00+07:00"},
   "plans/2026-09-21-a#task-3": {"agent": "omp", "at": "2026-09-26T11:00:00+07:00"},
@@ -93,8 +93,8 @@ func TestAgentsOnOpenTasksAndTheirParents(t *testing.T) {
 
 func TestNoAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md": specA,
-		".pm/plans/2026-09-21-a.md": planAhead,
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": planAhead,
 	})
 	b, err := Load(main)
 	if err != nil {
@@ -109,9 +109,9 @@ func TestNoAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 
 func TestBrokenAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md": specA,
-		".pm/plans/2026-09-21-a.md": planBehind,
-		".pm/.agents.json":          "{not json at all",
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": planBehind,
+		".acta/.agents.json":          "{not json at all",
 	})
 	b, err := Load(main)
 	if err != nil {
@@ -124,8 +124,8 @@ func TestBrokenAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 	}
 	// A broken file in one root must not blind the others.
 	wt := tree(t, map[string]string{
-		".pm/plans/2026-09-22-b.md": planBehind,
-		".pm/.agents.json":          `{"plans/2026-09-22-b#task-1": {"agent": "omp", "at": "2026-09-26T12:00:00+07:00"}}`,
+		".acta/plans/2026-09-22-b.md": planBehind,
+		".acta/.agents.json":          `{"plans/2026-09-22-b#task-1": {"agent": "omp", "at": "2026-09-26T12:00:00+07:00"}}`,
 	})
 	b, err = LoadTrees(main, []Tree{{Cfg: wt, Branch: "feat"}})
 	if err != nil {
@@ -152,16 +152,16 @@ func TestNewestAgentWinsAcrossRoots(t *testing.T) {
 - [ ] a
 `
 	main := tree(t, map[string]string{
-		".pm/plans/2026-09-21-a.md": plan,
-		".pm/.agents.json": `{
+		".acta/plans/2026-09-21-a.md": plan,
+		".acta/.agents.json": `{
   "plans/2026-09-21-a#task-1": {"agent": "omp", "at": "2026-09-26T12:00:00+07:00"},
   "plans/2026-09-21-a#task-2": {"agent": "claude", "at": "2026-09-26T12:00:00+07:00"}
 }`,
 	})
 	wt := tree(t, map[string]string{
-		".pm/plans/2026-09-21-a.md": plan,
-		".pm/plans/2026-09-22-b.md": plan,
-		".pm/.agents.json": `{
+		".acta/plans/2026-09-21-a.md": plan,
+		".acta/plans/2026-09-22-b.md": plan,
+		".acta/.agents.json": `{
   "plans/2026-09-21-a#task-1": {"agent": "claude", "at": "2026-09-26T09:00:00+07:00"},
   "plans/2026-09-21-a#task-2": {"agent": "omp", "at": "2026-09-26T13:00:00+07:00"},
   "plans/2026-09-22-b#task-1": {"agent": "claude", "at": "2026-09-26T13:00:00+07:00"}
@@ -195,7 +195,7 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
 ### Task 1: One
 - [ ] a
 `
-	main := tree(t, map[string]string{".pm/plans/2026-09-21-a.md": plan})
+	main := tree(t, map[string]string{".acta/plans/2026-09-21-a.md": plan})
 	// The branch folder holds a record for the branch's own plan, which must
 	// stay unread: a branch read from git is not on disk.
 	gone := filepath.Join(t.TempDir(), "gone")
@@ -203,7 +203,7 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
   "plans/2026-09-27-x#task-1": {"agent": "claude", "at": "2026-09-26T12:00:00+07:00"}
 }`)
 	b, err := LoadTrees(main, []Tree{{Cfg: config.Default(gone), Branch: "feat-x", Files: map[string][]byte{
-		".pm/plans/2026-09-27-x.md": []byte(plan),
+		".acta/plans/2026-09-27-x.md": []byte(plan),
 	}}})
 	if err != nil {
 		t.Fatal(err)
@@ -225,15 +225,15 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
 func TestStartedTaskShowsDoingBeforeAnyBox(t *testing.T) {
 	plan := `# Plan A
 
-**Spec:** .pm/specs/2026-09-20-a.md
+**Spec:** .acta/specs/2026-09-20-a.md
 
 ### Task 1: One
 - [ ] a
 `
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md": specA,
-		".pm/plans/2026-09-21-a.md": plan,
-		".pm/.agents.json": `{
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": plan,
+		".acta/.agents.json": `{
   "plans/2026-09-21-a#task-1": {"agent": "", "at": "2026-09-26T09:00:00+07:00", "started": true}
 }`,
 	})
@@ -255,9 +255,9 @@ func TestStartedTaskShowsDoingBeforeAnyBox(t *testing.T) {
 // A done task with an old started record stays done and shows no agent.
 func TestDoneTaskWithStartedRecordShowsNoAgent(t *testing.T) {
 	main := tree(t, map[string]string{
-		".pm/specs/2026-09-20-a.md": specA,
-		".pm/plans/2026-09-21-a.md": planAhead,
-		".pm/.agents.json": `{
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": planAhead,
+		".acta/.agents.json": `{
   "plans/2026-09-21-a#task-1": {"agent": "omp", "at": "2026-09-26T09:00:00+07:00", "started": true}
 }`,
 	})

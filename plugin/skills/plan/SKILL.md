@@ -34,6 +34,10 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+## Debt items
+
+A plan that works a debt item sets `parent: debt/<stem>` in its header and names the DEBT ids it closes; `acta:land` ticks those items after the merge.
+
 ## Task Right-Sizing
 
 A task is the smallest unit that carries its own test cycle and is worth a

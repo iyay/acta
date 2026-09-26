@@ -10,7 +10,7 @@ func TestSkillPlan(t *testing.T) {
 			".acta/plans/", "acta:build", "verify:", "## Waves", "ponytail-lazy",
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",
 			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
-			"run `acta id` right after",
+			"run `acta id` right after", "parent: debt/",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer"},
 	})

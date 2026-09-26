@@ -195,13 +195,13 @@ func TestNumberKeysFocusThatPane(t *testing.T) {
 
 func TestOpenTabsCycleAndWrap(t *testing.T) {
 	m := newModel(t)
-	for _, want := range []int{tabPlans, tabTasks, tabBugs, tabSpecs} {
+	for _, want := range []int{tabPlans, tabTasks, tabBugs, tabDebt, tabSpecs} {
 		m = press(m, "]")
 		if m.tab != want {
 			t.Fatalf("] gave tab %d, want %d", m.tab, want)
 		}
 	}
-	for _, want := range []int{tabBugs, tabTasks, tabPlans, tabSpecs} {
+	for _, want := range []int{tabDebt, tabBugs, tabTasks, tabPlans, tabSpecs} {
 		m = press(m, "[")
 		if m.tab != want {
 			t.Fatalf("[ gave tab %d, want %d", m.tab, want)
@@ -222,6 +222,7 @@ func TestDonePaneTabsFollowTheOpenTab(t *testing.T) {
 		{[]string{"]"}, "Done Dropped"},
 		{[]string{"]", "]"}, "Done"},
 		{[]string{"]", "]", "]"}, "Fixed Wontfix"},
+		{[]string{"]", "]", "]", "]"}, "Done Wontfix"},
 	} {
 		m := press(newModel(t), append(tc.keys, "2")...)
 		if got := strings.Join(m.doneTabNames(), " "); got != tc.names {
@@ -276,10 +277,79 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		{[]string{"]"}, "plans/2026-09-21-alpha \x00divider plans/2026-09-23-lonely"},
 		{[]string{"]", "]"}, "plans/2026-09-21-alpha#task-2 \x00divider plans/2026-09-23-lonely#task-1"},
 		{[]string{"]", "]", "]"}, "bugs/2026-09-26-open specs/2026-09-15-really-bug"},
+		{[]string{"]", "]", "]", "]"}, "debt/2026-09-27-orphan-debt#item-1"},
 	} {
 		m := press(newModel(t), tc.keys...)
 		if got := strings.Join(rowIDs(m), " "); got != tc.rows {
 			t.Errorf("after %v pane [1] holds %q, want %q", tc.keys, got, tc.rows)
+		}
+	}
+}
+
+// debtModel builds a small board with one plan and one debt file that names
+// it as parent, so the Debt tab tests do not depend on the shared basic
+// fixture (which already carries its own orphan debt file with a broken
+// parent, used by the board package's tests).
+func debtModel(t *testing.T) Model {
+	t.Helper()
+	cfg := treeCfg(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+		".acta/debt/2026-09-27-short-ids.md":  "---\nid: DEBT-1\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
+	})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return m
+}
+
+func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
+	m := openTab(t, debtModel(t), tabDebt)
+	if got := strings.Join(rowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-1" {
+		t.Fatalf("Debt open rows %q, want only the open line", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "a" {
+		t.Fatalf("Debt open item = %+v, want title a", it)
+	}
+}
+
+func TestDebtDonePaneSplitsDoneAndWontfix(t *testing.T) {
+	m := press(openTab(t, debtModel(t), tabDebt), "2")
+	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-2" {
+		t.Fatalf("Debt Done rows %q", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "b" {
+		t.Fatalf("Debt Done item = %+v, want title b", it)
+	}
+	m = press(m, "]")
+	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-3" {
+		t.Fatalf("Debt Wontfix rows %q", got)
+	}
+	if it := m.Selected(); it == nil || it.Title != "c" {
+		t.Fatalf("Debt Wontfix item = %+v, want title c", it)
+	}
+}
+
+// TestDebtFileDoesNotChangeTheOtherTabs is the property behind adding a fifth
+// tab: a debt file on the board must never leak into, or take rows away from,
+// Specs, Plans, Tasks or Bugs.
+func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
+	withDebt := debtModel(t)
+	without := withDebt
+	plain, err := board.Load(treeCfg(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	without.board = plain
+	for _, tab := range []int{tabSpecs, tabPlans, tabTasks, tabBugs} {
+		a := strings.Join(rowIDs(openTab(t, withDebt, tab)), " ")
+		b := strings.Join(rowIDs(openTab(t, without, tab)), " ")
+		if a != b {
+			t.Fatalf("tab %d changed with the debt file present: got %q, want %q", tab, a, b)
 		}
 	}
 }
@@ -618,6 +688,9 @@ func TestItemKeysUseTheFocusedListPane(t *testing.T) {
 }
 
 func TestGeometryPlacesThePanes(t *testing.T) {
+	// 120 columns, the normal width: pane [1] must still fit all five tab
+	// names ("Specs ─ Plans ─ Tasks ─ Bugs ─ Debt") at the left column's
+	// usual size, not a wider one carved out just for the tab title.
 	m := sized(newModel(t), 120, 40)
 	g := m.geometry()
 	if !g.wide || g.leftW != 36 {
@@ -641,6 +714,10 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	}
 	if g.done.inner != 11 || g.done.rows != 3 || g.done.first != 0 {
 		t.Fatalf("pane [2] holds %+v", g.done)
+	}
+	// All five names must still be in the drawn title at this normal width.
+	if title := strings.Split(plain(m.View()), "\n")[g.open.y]; !strings.Contains(title, "Debt") {
+		t.Fatalf("pane [1] title at 120 columns is missing Debt: %q", title)
 	}
 	// Pane [2] shows three rows at a time, so its window slides down to keep
 	// the last of the five finished plans in sight.
@@ -1013,7 +1090,7 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 			if !ok {
 				continue
 			}
-			x := last + 2 // the dash of the " ─ " between the two names
+			x := last + 1 // the separator cell right after the name, dash or plain space
 			if _, _, idx := m.hit(x, y); idx != -1 {
 				t.Fatalf("at %d columns the dash after %q maps to tab %d", w, name, idx)
 			}
@@ -1026,12 +1103,49 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 			m = doneTabBefore(t, m, 1)
 			before := m.doneTab
 			y, last, _ := drawnLetter(m, paneDone, m.doneTabNames()[0], "last")
-			x := last + 2
+			x := last + 1
 			if _, _, idx := m.hit(x, y); idx != -1 {
 				t.Fatalf("at %d columns the dash after %q maps to finished tab %d", w, m.doneTabNames()[0], idx)
 			}
 			if got := click(m, x, y).doneTab; got != before {
 				t.Fatalf("at %d columns a click on the dash after %q moved to finished tab %d", w, m.doneTabNames()[0], got)
+			}
+		}
+	}
+}
+
+// TestTabTitleAlwaysShowsTheOpenTab is the Task 8 regression: at 120 columns
+// the pane [1] title used to drop the open tab's own name off the end, so no
+// tab looked selected and a click on its old spot fell into the detail pane.
+// This checks, at every width the review named, for every open tab, that the
+// title always keeps that tab's name, and that any other name still drawn
+// clicks to the right tab.
+func TestTabTitleAlwaysShowsTheOpenTab(t *testing.T) {
+	m := newModel(t)
+	for _, w := range []int{60, 80, 100, 120, 140, 200} {
+		for tab := range tabNames {
+			m = sized(openTab(t, m, tab), w, 40)
+			title := strings.Split(plain(m.View()), "\n")[m.geometry().open.y]
+			if !strings.Contains(title, tabNames[tab]) {
+				t.Fatalf("at %d columns with %q open, the title drops the open tab: %q", w, tabNames[tab], title)
+			}
+			if w == 120 {
+				for _, name := range tabNames {
+					if !strings.Contains(title, name) {
+						t.Errorf("at 120 columns the title is missing %q: %q", name, title)
+					}
+				}
+			}
+			for other := range tabNames {
+				for _, end := range []string{"first", "last"} {
+					y, x, ok := drawnLetter(m, paneOpen, tabNames[other], end)
+					if !ok {
+						continue // a narrow title drops names other than the open one
+					}
+					if got := click(m, x, y).tab; got != other {
+						t.Fatalf("at %d columns a click on the %s letter of %q gave tab %d, want %d", w, end, tabNames[other], got, other)
+					}
+				}
 			}
 		}
 	}
@@ -1535,9 +1649,9 @@ func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
 }
 
 func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
-		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
 	}}
 	b, err := board.LoadTrees(main, []board.Tree{branch})
 	if err != nil {
@@ -1594,9 +1708,9 @@ func TestEOpensTheEditorFromEveryPane(t *testing.T) {
 }
 
 func TestEOnABranchItemWarns(t *testing.T) {
-	main := treeCfg(t, map[string]string{".pm/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
-		".pm/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
 	}}
 	b, err := board.LoadTrees(main, []board.Tree{branch})
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 
 func TestWatchDirs(t *testing.T) {
 	cfg := config.Default("/r")
-	want := []string{"/r/.pm", "/r/.pm/specs", "/r/.pm/plans", "/r/.pm/bugs",
+	want := []string{"/r/.acta", "/r/.acta/specs", "/r/.acta/plans", "/r/.acta/bugs",
 		"/r/docs/superpowers", "/r/docs/superpowers/specs", "/r/docs/superpowers/plans", "/r/docs/superpowers/bugs"}
 	if got := WatchDirs(cfg); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v", got)

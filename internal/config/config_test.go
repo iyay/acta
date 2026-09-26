@@ -37,14 +37,14 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A fresh folder with no yaml and no root folders is a new repo, so
-	// Load resolves to .acta/ even though the Default base still names .pm/.
+	// Load resolves to .acta/, same as the Default base.
 	if want := filepath.Join(repo, ".acta"); got.Root != want {
 		t.Fatalf("Root = %s, want %s", got.Root, want)
 	}
 	base := Default(repo)
-	if base.Root != filepath.Join(repo, ".pm") || !base.AutoCommit ||
+	if base.Root != filepath.Join(repo, ".acta") || !base.AutoCommit ||
 		!reflect.DeepEqual(base.Legacy, []string{filepath.Join(repo, "docs", "superpowers")}) ||
-		base.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs"}) ||
+		base.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt"}) ||
 		base.Links.Feedback != "https://github.com/iyay/acta/issues" || base.Links.Donate != "" {
 		t.Fatalf("bad defaults %+v", base)
 	}
@@ -101,7 +101,7 @@ func TestLoadFileOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Dirs != (Dirs{Specs: "s", Plans: "plans", Bugs: "bugs"}) {
+	if got.Dirs != (Dirs{Specs: "s", Plans: "plans", Bugs: "bugs", Debt: "debt"}) {
 		t.Fatalf("Dirs = %+v", got.Dirs)
 	}
 	if len(got.Legacy) != 0 {
@@ -109,6 +109,19 @@ func TestLoadFileOverrides(t *testing.T) {
 	}
 	if got.AutoCommit {
 		t.Fatal("AutoCommit should be off")
+	}
+}
+
+func TestLoadDebtDirOverride(t *testing.T) {
+	repo := gitInit(t)
+	t.Setenv("PM_ROOT", "")
+	write(t, filepath.Join(repo, ".acta.yaml"), "dirs:\n  debt: backlog\n")
+	got, err := Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Dirs.Debt != "backlog" {
+		t.Fatalf("Dirs.Debt = %q, want backlog", got.Dirs.Debt)
 	}
 }
 

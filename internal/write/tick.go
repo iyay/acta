@@ -18,6 +18,9 @@ import (
 var (
 	tickTaskRe = regexp.MustCompile(`^### Task \S`)
 	tickBoxRe  = regexp.MustCompile(`^(\s*[-*] \[)([ xX])(\])`)
+	// A debt line also allows the wontfix state, so this one accepts a
+	// box already in any of the three states, not just open or done.
+	tickAnyBoxRe = regexp.MustCompile(`^(\s*[-*] \[)([ xX-])(\])`)
 )
 
 // TickText ticks box number step (1-based) of the task whose heading is on
@@ -93,6 +96,31 @@ func Tick(path string, headingLine, step int) (int, int, error) {
 		return 0, 0, err
 	}
 	return done, total, os.Rename(tmp, path)
+}
+
+// TickLine sets the single checklist box on line (1-based) of the file at
+// path to state ('x' or '-'). It is for a debt file, where each checklist
+// line is its own item instead of one line among a task's boxes.
+func TickLine(path string, line int, state byte) error {
+	unlock, err := lock(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(src), "\n")
+	if line < 1 || line > len(lines) || !tickAnyBoxRe.MatchString(lines[line-1]) {
+		return bad("line %d is not a checklist box", line)
+	}
+	lines[line-1] = tickAnyBoxRe.ReplaceAllString(lines[line-1], "${1}"+string(state)+"${3}")
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // lockBase is where the per-user lock folder lives. It is fixed, not

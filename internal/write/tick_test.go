@@ -120,6 +120,33 @@ func TestTickTextBadInput(t *testing.T) {
 	}
 }
 
+func TestTickLineSetsOnlyThatBox(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d.md")
+	os.WriteFile(path, []byte("# R\n\n- [ ] a\n- [ ] b\n- [x] c\n"), 0o644)
+	if err := TickLine(path, 4, '-'); err != nil {
+		t.Fatal(err)
+	}
+	if err := TickLine(path, 5, 'x'); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "# R\n\n- [ ] a\n- [-] b\n- [x] c\n" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestTickLineRejectsNonBox(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d.md")
+	os.WriteFile(path, []byte("# R\n\ntext\n"), 0o644)
+	if err := TickLine(path, 3, 'x'); err == nil {
+		t.Fatal("want error on a line with no box")
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "# R\n\ntext\n" {
+		t.Fatalf("file changed: %q", got)
+	}
+}
+
 func TestTickFileConcurrent(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "plan.md")
 	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {

@@ -10,7 +10,7 @@ func TestSkillBrainstorm(t *testing.T) {
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:plan", "CONTEXT.md", "docs/adr/",
 			"trust boundary", "each gets its own yes", "acta list --json",
-			"run " + "`acta id`" + ` right after`,
+			"run " + "`acta id`" + ` right after`, "parent: debt/",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style"},
 	})

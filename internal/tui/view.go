@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -120,7 +121,7 @@ func split(h int) (int, int) {
 // box measures one pane at the given rectangle and works out which of its
 // rows the screen shows, so the view and the mouse count the same ones.
 func (m Model) box(p pane, x, y, w, h int) box {
-	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(p, x, m.tabsOf(p))}
+	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(p, x, w, m.tabsOf(p), m.onTab(p))}
 	if p == paneDetail {
 		return b
 	}
@@ -224,11 +225,8 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 	if p == paneDetail {
 		names = []string{"Detail"}
 	}
-	on := m.tab
-	if p == paneDone {
-		on = m.doneTab
-	}
-	pieces := titlePieces(p, names)
+	on := m.onTab(p)
+	pieces := titlePieces(p, names, on, max(0, b.w-2))
 	segs := make([]segment, 0, len(pieces))
 	for _, piece := range pieces {
 		if piece.tab < 0 {
@@ -373,6 +371,13 @@ func (m Model) rowText(r row) (string, string) {
 		name = it.ID
 	}
 	var parts []string
+	// A debt line is grouped under its file's short id, so a person can see
+	// which review it came from without opening the detail pane.
+	if it.Kind == board.KindDebtItem {
+		if file := m.board.Get(it.Parent); file != nil {
+			parts = append(parts, shortRef(file))
+		}
+	}
 	if it.Status != "" {
 		parts = append(parts, it.Status)
 	}
@@ -416,6 +421,7 @@ func (m Model) detailLines(w int) []string {
 		{"ID", idText(it)},
 		{kindLabel(it.Kind), it.Title},
 		{"STATUS", it.Status},
+		{"FROM", m.fromText(it)},
 		{"REF", it.Ref},
 		{"SPEC", m.specText(it)},
 		{"WORKTREE", worktreeText(it)},
@@ -758,8 +764,31 @@ func kindLabel(k board.Kind) string {
 		return "TASK"
 	case board.KindBug:
 		return "BUG"
+	case board.KindDebtItem:
+		return "DEBT"
 	}
 	return "SPEC"
+}
+
+// fromText names the plan a debt item's review came from, read straight off
+// the debt file's own frontmatter, because the board only keeps that link
+// long enough to check it, not to hand it back later.
+func (m Model) fromText(it *board.Item) string {
+	if it.Kind != board.KindDebtItem {
+		return ""
+	}
+	raw, err := os.ReadFile(it.Path)
+	if err != nil {
+		return ""
+	}
+	planID, _ := board.Parse(raw).Front["parent"].(string)
+	if planID == "" {
+		return ""
+	}
+	if p := m.board.Get(planID); p != nil {
+		return shortRef(p) + " · " + p.Title
+	}
+	return planID
 }
 
 // specText names the spec or bug a plan carries, and is empty for the items

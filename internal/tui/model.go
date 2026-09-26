@@ -32,11 +32,12 @@ const (
 	tabPlans
 	tabTasks
 	tabBugs
+	tabDebt
 )
 
 var (
-	tabKinds = [4]board.Kind{board.KindStory, board.KindPlan, board.KindTask, board.KindBug}
-	tabNames = [4]string{"Specs", "Plans", "Tasks", "Bugs"}
+	tabKinds = [5]board.Kind{board.KindStory, board.KindPlan, board.KindTask, board.KindBug, board.KindDebtItem}
+	tabNames = [5]string{"Specs", "Plans", "Tasks", "Bugs", "Debt"}
 )
 
 // doneTab is one tab of pane [2]: the name in its title and the status it
@@ -49,11 +50,12 @@ type doneTab struct {
 
 // Pane [2] follows the tab of pane [1]. A task is only ever done, so it has
 // no second finished tab.
-var doneTabs = [4][2]doneTab{
+var doneTabs = [5][2]doneTab{
 	{{"Done", "done"}, {"Dropped", "dropped"}},
 	{{"Done", "done"}, {"Dropped", "dropped"}},
 	{{"Done", "done"}, {}},
 	{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}},
+	{{"Done", "done"}, {"Wontfix", "wontfix"}},
 }
 
 // rowLines is how many screen lines one row takes: the title, the dim meta
@@ -110,10 +112,10 @@ type Model struct {
 	last      pane // the list pane that had it last, for pane [3]
 	tab       int  // which tab pane [1] shows
 	doneTab   int  // which tab pane [2] shows
-	sel       [4]string
-	idx       [4]int // selected row number per tab, used when the id vanishes
-	doneSel   [4][2]string
-	doneIdx   [4][2]int
+	sel       [5]string
+	idx       [5]int // selected row number per tab, used when the id vanishes
+	doneSel   [5][2]string
+	doneIdx   [5][2]int
 	query     string
 	searching bool
 	groupOpen bool
@@ -262,6 +264,15 @@ func (m Model) doneRows() []row {
 		return finished[i].SortTime() > finished[j].SortTime()
 	})
 	return toRows(finished, 0)
+}
+
+// onTab gives the tab of pane p that is open, so its title never drops that
+// name even when the pane is too narrow to draw every tab.
+func (m Model) onTab(p pane) int {
+	if p == paneDone {
+		return m.doneTab
+	}
+	return m.tab
 }
 
 // doneTabNames gives the tab names pane [2] shows for the tab of pane [1].
@@ -617,7 +628,7 @@ func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		value := p.options[p.idx]
 		o, err := m.setValue(it.ID, p.field, value)
-		m.status = outcomeText(fmt.Sprintf("pm: %s %s %s", it.ID, p.field, value), o, err)
+		m.status = outcomeText(fmt.Sprintf("acta: %s %s %s", it.ID, p.field, value), o, err)
 		return m, m.reloadCmd()
 	}
 	m.popup = &p
@@ -729,7 +740,7 @@ func (m Model) afterEditor(msg editorDoneMsg) (tea.Model, tea.Cmd) {
 		if errors.Is(err, write.ErrUnchanged) {
 			m.status = "bug not saved: template left unchanged"
 		} else {
-			m.status = outcomeText("pm: new bug", o, err)
+			m.status = outcomeText("acta: new bug", o, err)
 		}
 	}
 	return m, m.reloadCmd()

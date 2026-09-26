@@ -75,8 +75,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 			t.Errorf("%s = kind %s status %s (%s) %d/%d, want %+v", id, it.Kind, it.Status, it.StatusSource, it.Done, it.Total, w)
 		}
 	}
-	if len(b.Items) != 29 {
-		t.Errorf("got %d items, want 29: %v", len(b.Items), ids(b.Items))
+	if len(b.Items) != 31 {
+		t.Errorf("got %d items, want 31: %v", len(b.Items), ids(b.Items))
 	}
 }
 
@@ -180,9 +180,10 @@ func TestLoadDottedTasks(t *testing.T) {
 func TestLoadRecordsProblems(t *testing.T) {
 	b := loadFixture(t)
 	cases := map[string]string{
-		"plans/2026-09-27-orphan": "parent bugs/nope not found",
-		"specs/2026-09-18-weird":  "unknown status bogus",
-		"specs/2026-09-17-broken": "frontmatter:",
+		"plans/2026-09-27-orphan":     "parent bugs/nope not found",
+		"specs/2026-09-18-weird":      "unknown status bogus",
+		"specs/2026-09-17-broken":     "frontmatter:",
+		"debt/2026-09-27-orphan-debt": "parent plans/nope not found",
 	}
 	for id, part := range cases {
 		it := b.Get(id)
@@ -273,5 +274,37 @@ func TestAllowedAndClosed(t *testing.T) {
 	}
 	if Closed("in-progress") || Closed("bogus") {
 		t.Error("open statuses marked closed")
+	}
+}
+
+func TestLoadDebtFileAndLines(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+		"debt/2026-09-27-short-ids.md":  "---\nid: DEBT-3\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
+	})
+	f := b.Get("DEBT-3")
+	if f == nil || f.Kind != KindDebt || f.Status != "open" || f.Done != 2 || f.Total != 3 {
+		t.Fatalf("file = %+v", f)
+	}
+	for _, id := range []string{"DEBT-3", "debt-3", "debt-t9qe", "DEBT-T9QE", "debt/2026-09-27-short-ids"} {
+		if b.Get(id) != f {
+			t.Errorf("%s does not resolve to the file", id)
+		}
+	}
+	cases := map[string]string{"DEBT-3.1": "open", "debt-3.1": "open", "debt-t9qe.2": "done", "DEBT-T9QE.2": "done", "debt/2026-09-27-short-ids#item-3": "wontfix"}
+	for id, status := range cases {
+		it := b.Get(id)
+		if it == nil || it.Kind != KindDebtItem || it.Status != status {
+			t.Errorf("%s = %+v, want status %s", id, it, status)
+		}
+	}
+}
+
+func TestDebtFileDoneWhenAllLinesClosed(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"debt/2026-09-27-x.md": "---\nid: DEBT-1\n---\n# R\n\n- [x] a\n- [-] b\n",
+	})
+	if got := b.Get("DEBT-1").Status; got != "done" {
+		t.Fatalf("status = %s, want done", got)
 	}
 }

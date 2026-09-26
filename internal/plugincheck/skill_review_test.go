@@ -12,7 +12,8 @@ func TestSkillReview(t *testing.T) {
 			"## Receiving findings", "Fix round", "acta:land",
 			"## Where findings go", "acta:bug", "already on the parent branch",
 			"Small means one file, and only text or config with no code logic.",
+			"acta debt new",
 		},
-		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small"},
+		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory"},
 	})
 }

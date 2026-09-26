@@ -13,10 +13,10 @@ import (
 
 func TestAssignIDsGivesMissingOnly(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
-		".pm/specs/2026-09-21-b-design.md": "# B\n",
-		".pm/plans/2026-09-22-p.md":        "# P\n\n### Task 1: One\n- [ ] x\n",
-		".pm/bugs/2026-09-23-c.md":         "# C\n",
+		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
+		".acta/specs/2026-09-21-b-design.md": "# B\n",
+		".acta/plans/2026-09-22-p.md":        "# P\n\n### Task 1: One\n- [ ] x\n",
+		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	before, _ := os.ReadFile(filepath.Join(cfg.Root, "specs/2026-09-20-a-design.md"))
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
@@ -43,8 +43,8 @@ func TestAssignIDsGivesMissingOnly(t *testing.T) {
 
 func TestAssignIDsOneCommit(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-21-b-design.md": "# B\n",
-		".pm/bugs/2026-09-23-c.md":         "# C\n",
+		".acta/specs/2026-09-21-b-design.md": "# B\n",
+		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	before, _ := strconv.Atoi(gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"))
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
@@ -59,10 +59,10 @@ func TestAssignIDsOneCommit(t *testing.T) {
 
 func TestAssignIDsCountsOtherTrees(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/plans/2026-09-22-p.md": "# P\n\n### Task 1: One\n- [ ] x\n",
+		".acta/plans/2026-09-22-p.md": "# P\n\n### Task 1: One\n- [ ] x\n",
 	})
 	b, err := board.LoadTrees(cfg, []board.Tree{{Cfg: cfg, Branch: "x", Files: map[string][]byte{
-		".pm/plans/2026-09-25-q.md": []byte("---\nid: PLAN-9\nhash: aaaa\n---\n# Q\n"),
+		".acta/plans/2026-09-25-q.md": []byte("---\nid: PLAN-9\nhash: aaaa\n---\n# Q\n"),
 	}}})
 	changes, _, err := AssignIDs(cfg, b, nil)
 	if err != nil || len(changes) != 1 {
@@ -88,8 +88,8 @@ func TestAssignIDsSkipsLegacy(t *testing.T) {
 
 func TestAssignIDsOnlyNamed(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-21-b-design.md": "# B\n",
-		".pm/bugs/2026-09-23-c.md":         "# C\n",
+		".acta/specs/2026-09-21-b-design.md": "# B\n",
+		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), []string{"bugs/2026-09-23-c"})
 	if err != nil || len(changes) != 1 {
@@ -116,8 +116,8 @@ func TestAssignIDsHashClash(t *testing.T) {
 	}
 	defer func() { randHash = old }()
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
-		".pm/bugs/2026-09-23-c.md":         "# C\n",
+		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
+		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func TestAssignIDsHashClash(t *testing.T) {
 
 func TestFixDuplicates(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/bugs/2026-09-20-first.md": "---\nid: BUG-7\nhash: aaaa\n---\n# First\n",
+		".acta/bugs/2026-09-20-first.md": "---\nid: BUG-7\nhash: aaaa\n---\n# First\n",
 	})
 	time.Sleep(1100 * time.Millisecond)
 	full := filepath.Join(cfg.Root, "bugs/2026-09-21-second.md")
@@ -170,9 +170,9 @@ func TestFixDuplicatesNoOp(t *testing.T) {
 // the other files still get their IDs, and one commit holds the run.
 func TestAssignIDsSkipsBrokenFrontmatterAndCommitsTheRest(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-17-broken.md":   "---\nref: [unclosed\n---\n# Broken\n",
-		".pm/specs/2026-09-20-a-design.md": "# A\n",
-		".pm/bugs/2026-09-23-c.md":         "# C\n",
+		".acta/specs/2026-09-17-broken.md":   "---\nref: [unclosed\n---\n# Broken\n",
+		".acta/specs/2026-09-20-a-design.md": "# A\n",
+		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
@@ -203,7 +203,7 @@ func TestAssignIDsSkipsBrokenFrontmatterAndCommitsTheRest(t *testing.T) {
 // BUG both times, and the second run has nothing left to do.
 func TestAssignIDsPrefixFollowsTheKindTheFileIs(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-15-really-bug.md": "---\ntype: bug\n---\n# Really a bug\n",
+		".acta/specs/2026-09-15-really-bug.md": "---\ntype: bug\n---\n# Really a bug\n",
 	})
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
 	if err != nil || !out.Committed || len(changes) != 1 {
@@ -235,8 +235,8 @@ func TestAssignIDsPrefixFollowsTheKindTheFileIs(t *testing.T) {
 // on stderr.
 func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\n---\n# A\n",
-		".pm/bugs/2026-09-23-c.md":         "---\nhash: toolong\n---\n# C\n",
+		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\n---\n# A\n",
+		".acta/bugs/2026-09-23-c.md":         "---\nhash: toolong\n---\n# C\n",
 	})
 	_, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
 	if err != nil {
@@ -273,7 +273,7 @@ func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 // With auto_commit off the files are written and left for the person, and
 // the run says so the way finish does.
 func TestAssignIDsAutoCommitOff(t *testing.T) {
-	cfg := repoWith(t, map[string]string{".pm/bugs/2026-09-23-c.md": "# C\n"})
+	cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-23-c.md": "# C\n"})
 	cfg.AutoCommit = false
 	before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
@@ -294,7 +294,7 @@ func TestAssignIDsAutoCommitOff(t *testing.T) {
 // A file written on a branch before the main file in clock time still gives
 // the number up, because it only reaches the branch at the merge.
 func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
-	cfg := repoWith(t, map[string]string{".pm/bugs/2026-09-20-seed.md": "# Seed\n"})
+	cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-20-seed.md": "# Seed\n"})
 	put := func(rel, body string) {
 		t.Helper()
 		if err := os.WriteFile(filepath.Join(cfg.RepoRoot, rel), []byte(body), 0o644); err != nil {
@@ -307,11 +307,11 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 		t.Setenv("GIT_COMMITTER_DATE", date)
 		gitRun(t, cfg.RepoRoot, args...)
 	}
-	put(".pm/bugs/2026-09-21-main.md", "---\nid: BUG-7\nhash: bbbb\n---\n# Main\n")
+	put(".acta/bugs/2026-09-21-main.md", "---\nid: BUG-7\nhash: bbbb\n---\n# Main\n")
 	at("2030-01-01T00:00:00Z", "add", ".")
 	at("2030-01-01T00:00:00Z", "commit", "-q", "-m", "main adds BUG-7")
 	at("2020-01-01T00:00:00Z", "checkout", "-q", "-b", "side")
-	put(".pm/bugs/2026-09-22-side.md", "---\nid: BUG-7\nhash: cccc\n---\n# Side\n")
+	put(".acta/bugs/2026-09-22-side.md", "---\nid: BUG-7\nhash: cccc\n---\n# Side\n")
 	at("2020-01-01T00:00:00Z", "add", ".")
 	at("2020-01-01T00:00:00Z", "commit", "-q", "-m", "side adds BUG-7")
 	at("2024-01-01T00:00:00Z", "checkout", "-q", "main")
@@ -334,11 +334,11 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 // specs, so the plan files themselves are the ones to repair.
 func TestFixDuplicatesRepairsPlansHeldBySpecs(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-20-a-design.md": "# A\n",
-		".pm/specs/2026-09-21-b-design.md": "# B\n",
-		".pm/plans/2026-09-25-a.md":        "---\nparent: specs/2026-09-20-a-design\nid: PLAN-13\nhash: aaaa\n---\n# Fix A\n\n### Task 1: T\n- [ ] a\n",
+		".acta/specs/2026-09-20-a-design.md": "# A\n",
+		".acta/specs/2026-09-21-b-design.md": "# B\n",
+		".acta/plans/2026-09-25-a.md":        "---\nparent: specs/2026-09-20-a-design\nid: PLAN-13\nhash: aaaa\n---\n# Fix A\n\n### Task 1: T\n- [ ] a\n",
 	})
-	second := filepath.Join(cfg.RepoRoot, ".pm/plans/2026-09-26-b.md")
+	second := filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-26-b.md")
 	if err := os.WriteFile(second, []byte("---\nparent: specs/2026-09-21-b-design\nid: PLAN-13\nhash: bbbb\n---\n# Fix B\n\n### Task 1: T\n- [ ] a\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -364,8 +364,8 @@ func TestFixDuplicatesRepairsPlansHeldBySpecs(t *testing.T) {
 // not it has tasks to reach it.
 func TestAssignIDsGivesHeldPlanWithoutTasksAnID(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".pm/specs/2026-09-20-a-design.md": "# A\n",
-		".pm/plans/2026-09-25-a.md":        "---\nparent: specs/2026-09-20-a-design\n---\n# Fix A\n\nNothing to tick yet.\n",
+		".acta/specs/2026-09-20-a-design.md": "# A\n",
+		".acta/plans/2026-09-25-a.md":        "---\nparent: specs/2026-09-20-a-design\n---\n# Fix A\n\nNothing to tick yet.\n",
 	})
 	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
 	if err != nil || !out.Committed {
@@ -380,6 +380,20 @@ func TestAssignIDsGivesHeldPlanWithoutTasksAnID(t *testing.T) {
 	}
 	if b := mustLoad(t, cfg); b.Get("PLAN-1") == nil {
 		t.Fatal("the new plan id does not resolve")
+	}
+}
+
+func TestAssignIDsGivesDebtFileANumber(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/debt/2026-09-27-x.md": "# Review NOTEs: X\n\n- [ ] a\n",
+	})
+	changes, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || !out.Committed || len(changes) != 1 {
+		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
+	}
+	b := mustLoad(t, cfg)
+	if b.Get("DEBT-1") == nil {
+		t.Fatal("the new debt id does not resolve")
 	}
 }
 

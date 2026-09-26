@@ -12,7 +12,16 @@ var (
 	taskRe = regexp.MustCompile(`^### Task ([^:\s]*[^:\s.])(?:[.:])?\s*(.*)$`)
 	boxRe  = regexp.MustCompile(`^\s*[-*] \[([ xX])\]`)
 	specRe = regexp.MustCompile(`^\*\*Spec:\*\*\s*(.+)$`)
+	itemRe = regexp.MustCompile(`^\s*[-*] \[([ xX-])\] (.*)$`)
 )
+
+// ItemLine is one checklist line of a debt file, outside any task section.
+type ItemLine struct {
+	Num   int
+	Text  string
+	Line  int  // 1-based line in the file
+	State byte // ' ' open, 'x' done, '-' wontfix
+}
 
 // TaskSec is one "### Task N" section of a plan.
 type TaskSec struct {
@@ -32,7 +41,8 @@ type Doc struct {
 	Title    string
 	SpecPath string
 	Tasks    []TaskSec
-	Body     string // the file without its frontmatter block
+	Items    []ItemLine // debt checklist lines outside any task section
+	Body     string     // the file without its frontmatter block
 }
 
 // Parse reads frontmatter, the first "# " title, the "**Spec:**" line and the
@@ -101,6 +111,12 @@ func Parse(src []byte) Doc {
 						cur.Done++
 					}
 				}
+			} else if m := itemRe.FindStringSubmatch(ln); m != nil {
+				state := m[1][0]
+				if state == 'X' {
+					state = 'x'
+				}
+				d.Items = append(d.Items, ItemLine{Num: len(d.Items) + 1, Text: m[2], Line: i + 1, State: state})
 			}
 		}
 		if cur != nil {

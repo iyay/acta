@@ -9,12 +9,12 @@ import (
 	"github.com/iyay/acta/internal/config"
 )
 
-// boardWith writes files under a temp .pm root and loads the board.
+// boardWith writes files under a temp .acta root and loads the board.
 func boardWith(t *testing.T, files map[string]string) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	for rel, body := range files {
-		p := filepath.Join(dir, ".pm", rel)
+		p := filepath.Join(dir, ".acta", rel)
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -31,7 +31,7 @@ func boardWith(t *testing.T, files map[string]string) *Board {
 
 var idFiles = map[string]string{
 	"specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
-	"plans/2026-09-21-a.md":        "---\nid: PLAN-12\nhash: k3f2\n---\n# A plan\n\n**Spec:** `.pm/specs/2026-09-20-a-design.md`\n\n### Task 3: Three\n- [ ] x\n\n### Task F1: Fix\n- [ ] y\n",
+	"plans/2026-09-21-a.md":        "---\nid: PLAN-12\nhash: k3f2\n---\n# A plan\n\n**Spec:** `.acta/specs/2026-09-20-a-design.md`\n\n### Task 3: Three\n- [ ] x\n\n### Task F1: Fix\n- [ ] y\n",
 	"plans/2026-09-22-solo.md":     "---\nid: PLAN-1234\nhash: q8d1\n---\n# Solo\n\n**Spec:** none (Bounded, approved in chat on 2026-09-22)\n\n### Task 1: One\n- [ ] z\n",
 	"bugs/2026-09-23-crash.md":     "---\nid: BUG-7\nhash: b7aa\n---\n# Crash\n",
 	"plans/2026-09-24-plain.md":    "# Plain\n\n### Task 1: One\n- [ ] w\n",

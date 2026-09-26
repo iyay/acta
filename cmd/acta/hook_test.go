@@ -60,7 +60,7 @@ func TestHookCommands(t *testing.T) {
 // git status. The line is added once and never committed.
 func TestHookSessionStartIgnoresTheAgentFile(t *testing.T) {
 	dir := fixtureRepo(t)
-	ignore := filepath.Join(dir, ".pm", ".gitignore")
+	ignore := filepath.Join(dir, ".acta", ".gitignore")
 	for range 2 {
 		if _, _, code := acta(t, dir, "", "hook", "session-start"); code != 0 {
 			t.Fatalf("session-start exit %d", code)

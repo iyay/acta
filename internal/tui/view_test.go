@@ -82,14 +82,14 @@ func TestViewShowsTheThreePanes(t *testing.T) {
 	m := sized(clocked(newModel(t), 20, 46), 200, 40)
 	v := m.View()
 	for _, want := range []string{
-		"[1]─Specs", "─ Plans", "─ Tasks", "─ Bugs",
+		"[1]─Specs", "─ Plans", "─ Tasks", "─ Bugs", "─ Debt",
 		"[2]─Done", "─ Dropped",
 		"[3]─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"specs/2026-09-20-alpha  Alpha story",
 		"in-progress · 1/2",
 		"ID        : specs/2026-09-20-alpha",
-		"FILE      : .pm/specs/2026-09-20-alpha.md",
+		"FILE      : .acta/specs/2026-09-20-alpha.md",
 		"Some text.",
 	} {
 		if !strings.Contains(v, want) {
@@ -233,6 +233,58 @@ func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 	}
 }
 
+func TestViewDebtDetailAndRowMeta(t *testing.T) {
+	cfg := treeCfg(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
+		".acta/debt/2026-09-27-short-ids.md":  "---\nid: DEBT-1\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
+	})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	// 120 columns, the normal width, must still draw all five tab names.
+	m = sized(openTab(t, m, tabDebt), 120, 40)
+
+	v := m.View()
+	// The gap between names can be the wide " ─ " or, once five names need
+	// to fit, a plain space, so look for the names themselves in order.
+	if i, j := strings.Index(v, "Bugs"), strings.Index(v, "Debt"); i < 0 || j < i {
+		t.Fatalf("Debt should come after Bugs in the tab title: %q", v)
+	}
+
+	g := m.geometry()
+	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
+	var at []int
+	var labels []string
+	for _, seg := range column(v, g.detail.x, g.detail.w) {
+		row := strings.TrimRight(strings.TrimPrefix(strings.TrimSuffix(seg, "│"), "│"), " ")
+		if !colon.MatchString(row) {
+			continue
+		}
+		at = append(at, strings.Index(row, ":"))
+		labels = append(labels, row)
+	}
+	for _, c := range at {
+		if c != at[0] {
+			t.Fatalf("the detail colons do not line up: %v (%v)", at, labels)
+		}
+	}
+	detail := strings.Join(labels, "\n")
+	for _, want := range []string{`DEBT\s+: a$`, `STATUS\s+: open$`, `FROM\s+: PLAN-3 . Short IDs$`} {
+		if ok, _ := regexp.MatchString("(?m)"+want, detail); !ok {
+			t.Errorf("detail header is missing %q, got:\n%s", want, detail)
+		}
+	}
+
+	id := m.openRows()[0].id
+	_, meta := m.rowText(row{id: id})
+	if !strings.Contains(meta, "DEBT-1") {
+		t.Errorf("the row meta line should name the debt file, got %q", meta)
+	}
+}
+
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 	m := sized(press(newModel(t), "]", "j"), 120, 40)
 	g := m.geometry()
@@ -272,7 +324,7 @@ func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
 		t.Error("the problems of the selected item are missing")
 	}
 	if !strings.Contains(plain(m.View()), "untyped (1)") {
-		t.Error("the row that holds the files outside .pm/ is missing")
+		t.Error("the row that holds the files outside .acta/ is missing")
 	}
 }
 
@@ -301,7 +353,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	if !strings.Contains(m.View(), "basic · paused · 2026-09-27 20:46") {
 		t.Error("watching off should read paused")
 	}
-	m.status = "pm: x status done committed"
+	m.status = "acta: x status done committed"
 	m = sized(m, 100, 30)
 	if !strings.Contains(m.View(), "committed") {
 		t.Error("the last message should take the place of the hints")
@@ -433,6 +485,7 @@ func TestViewFinishedTabsFollowTheOpenTab(t *testing.T) {
 		{nil, "[2]─Done ─ Dropped"},
 		{[]string{"]", "]", "2"}, "[2]─Done──"},
 		{[]string{"]", "]", "]", "2"}, "[2]─Fixed ─ Wontfix"},
+		{[]string{"]", "]", "]", "]", "2"}, "[2]─Done ─ Wontfix"},
 	} {
 		v := sized(press(newModel(t), tc.keys...), 120, 40).View()
 		if !strings.Contains(v, tc.want) {

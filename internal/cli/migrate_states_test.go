@@ -413,3 +413,193 @@ func TestMigrateRootRefusalNamesTheProblem(t *testing.T) {
 		t.Fatalf("stderr %q must name .pm.yaml", s)
 	}
 }
+
+// repoState records everything a refusal must leave alone, and it looks at
+// every entry with os.Lstat instead of reading it. That way a .acta.yaml that
+// is a folder, a link, a broken link or a link pointing at itself is part of
+// the picture instead of an error in the walk.
+func repoState(t *testing.T, dir string) string {
+	t.Helper()
+	var b strings.Builder
+	fmt.Fprintf(&b, "HEAD %s\n", gitOut(t, dir, "rev-parse", "HEAD"))
+	fmt.Fprintf(&b, "STATUS %q\n", gitOut(t, dir, "status", "--porcelain"))
+	fmt.Fprintf(&b, "CACHED %q\n", gitOut(t, dir, "diff", "--cached"))
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, rerr := filepath.Rel(dir, p)
+		if rerr != nil {
+			return rerr
+		}
+		if d.IsDir() {
+			if rel == ".git" {
+				return filepath.SkipDir
+			}
+			fmt.Fprintf(&b, "DIR %s\n", filepath.ToSlash(rel))
+			return nil
+		}
+		info, lerr := os.Lstat(p)
+		if lerr != nil {
+			return lerr
+		}
+		if info.Mode()&fs.ModeSymlink != 0 {
+			// Record where the link points, not what it points at, so a link
+			// loop never turns into a walk that never ends.
+			target, terr := os.Readlink(p)
+			if terr != nil {
+				return terr
+			}
+			fmt.Fprintf(&b, "LINK %s -> %s\n", filepath.ToSlash(rel), target)
+			return nil
+		}
+		data, rerr := os.ReadFile(p)
+		if rerr != nil {
+			return rerr
+		}
+		fmt.Fprintf(&b, "FILE %s %q\n", filepath.ToSlash(rel), string(data))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+// assertRefusedActaYaml runs migrate-root and wants exit 1 with a message and
+// a repo that is byte for byte what it was. wantName is the file the message
+// has to name, or "" when another refusal wins and any clear line will do.
+func assertRefusedActaYaml(t *testing.T, dir, wantName string) {
+	t.Helper()
+	before := repoState(t, dir)
+	var stdout, stderr strings.Builder
+	if code := migrateRoot(dir, &stdout, &stderr); code != 1 {
+		t.Fatalf("exit %d, want 1 (stderr %q)", code, stderr.String())
+	}
+	if stderr.String() == "" {
+		t.Fatal("a refusal must say what to do on stderr")
+	}
+	if wantName != "" && !strings.Contains(stderr.String(), wantName) {
+		t.Fatalf("stderr %q must name %s", stderr.String(), wantName)
+	}
+	if after := repoState(t, dir); after != before {
+		t.Fatalf("a refusal changed the repo\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// writeTrackedActaYaml puts a .acta.yaml in the repo and commits it, so the
+// file is known, tracked and clean.
+func writeTrackedActaYaml(t *testing.T, dir, body string) {
+	t.Helper()
+	writeRepoFile(t, dir, ".acta.yaml", body)
+	commitAll(t, dir, "add acta yaml", ".acta.yaml")
+}
+
+// symlink makes a link at rel in the repo pointing at target.
+func symlink(t *testing.T, dir, target, rel string) {
+	t.Helper()
+	if err := os.Symlink(target, filepath.Join(dir, filepath.FromSlash(rel))); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// actaYamlForms is every shape .acta.yaml can have in the repo root before the
+// move. Each one has to make the command refuse with exit 1 and change
+// nothing, because the move writes that exact name. wantName is the file the
+// message has to name, or "" when the case also holds a state that refuses
+// first, where any clear line will do.
+var actaYamlForms = []struct {
+	name     string
+	wantName string
+	setup    func(t *testing.T, dir string)
+}{
+	{"tracked file clean", ".acta.yaml", func(t *testing.T, dir string) {
+		writeTrackedActaYaml(t, dir, "voice: id\n")
+	}},
+	{"untracked file", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".acta.yaml", "root: .pm\n")
+	}},
+	{"ignored file", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".gitignore", ".acta.yaml\n")
+		commitAll(t, dir, "add ignore", ".gitignore")
+		writeRepoFile(t, dir, ".acta.yaml", "root: .pm\n")
+		if s := gitOut(t, dir, "status", "--porcelain"); strings.Contains(s, ".acta.yaml") {
+			t.Fatalf("git status %q should not see the ignored .acta.yaml", s)
+		}
+	}},
+	{"tracked file modified", ".acta.yaml", func(t *testing.T, dir string) {
+		writeTrackedActaYaml(t, dir, "voice: id\n")
+		writeRepoFile(t, dir, ".acta.yaml", "voice: other\n")
+	}},
+	{"tracked file staged", ".acta.yaml", func(t *testing.T, dir string) {
+		writeTrackedActaYaml(t, dir, "voice: id\n")
+		writeRepoFile(t, dir, ".acta.yaml", "voice: other\n")
+		gitOut(t, dir, "add", "--", ".acta.yaml")
+	}},
+	{"empty file", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".acta.yaml", "")
+	}},
+	{"empty folder", ".acta.yaml", func(t *testing.T, dir string) {
+		if err := os.Mkdir(filepath.Join(dir, ".acta.yaml"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}},
+	{"folder holding a file", ".acta.yaml", func(t *testing.T, dir string) {
+		if err := os.Mkdir(filepath.Join(dir, ".acta.yaml"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeRepoFile(t, dir, ".acta.yaml/inside.md", "hi\n")
+	}},
+	{"symlink to a file", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, "other.yaml", "voice: id\n")
+		symlink(t, dir, "other.yaml", ".acta.yaml")
+	}},
+	{"symlink to a folder", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, "other/inside.md", "hi\n")
+		symlink(t, dir, "other", ".acta.yaml")
+	}},
+	{"dangling symlink", ".acta.yaml", func(t *testing.T, dir string) {
+		symlink(t, dir, "not-here.yaml", ".acta.yaml")
+	}},
+	{"symlink loop", ".acta.yaml", func(t *testing.T, dir string) {
+		symlink(t, dir, ".acta.yaml", ".acta.yaml")
+	}},
+	{"with a tracked .pm.yaml", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".pm.yaml", "root: .pm\n")
+		commitAll(t, dir, "add yaml", ".pm.yaml")
+		writeRepoFile(t, dir, ".acta.yaml", "root: .pm\n")
+	}},
+	{"with no .pm folder", "", func(t *testing.T, dir string) {
+		// Removing the folder and committing it leaves the repo with no .pm
+		// to move, so this form can be paired with that state as well.
+		gitOut(t, dir, "rm", "-r", "-q", "--", ".pm")
+		gitOut(t, dir, "commit", "-q", "-m", "drop pm")
+		writeRepoFile(t, dir, ".acta.yaml", "root: .pm\n")
+	}},
+	{"with an .acta folder", "", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".acta/inside.md", "hi\n")
+		writeRepoFile(t, dir, ".acta.yaml", "root: .pm\n")
+	}},
+	{"different letter case", ".acta.yaml", func(t *testing.T, dir string) {
+		writeRepoFile(t, dir, ".ACTA.YAML", "root: .pm\n")
+		// A case-insensitive filesystem already has this name taken. A
+		// case-sensitive one does not, and there is nothing to refuse.
+		if _, err := os.Lstat(filepath.Join(dir, ".acta.yaml")); err != nil {
+			t.Skipf("this filesystem keeps letter case, so .ACTA.YAML is another name: %v", err)
+		}
+	}},
+}
+
+// TestMigrateRootRefusesEveryActaYaml walks every form .acta.yaml can take in
+// the repo root. The move ends in a file with that name, so an existing one in
+// any shape has to stop the command before the first git mv, whatever git
+// thinks of it and whatever the filesystem follows links to.
+func TestMigrateRootRefusesEveryActaYaml(t *testing.T) {
+	for _, form := range actaYamlForms {
+		t.Run(form.name, func(t *testing.T) {
+			dir := migrateRepo(t)
+			form.setup(t, dir)
+			assertRefusedActaYaml(t, dir, form.wantName)
+		})
+	}
+}

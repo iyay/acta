@@ -16,7 +16,7 @@ func TestListShowsWorktreeProgress(t *testing.T) {
 		t.Fatalf("worktree add: %v %s", err, out)
 	}
 	t.Cleanup(func() { os.RemoveAll(wt) })
-	plan := filepath.Join(wt, ".pm/plans/2026-09-21-alpha.md")
+	plan := filepath.Join(wt, ".acta/plans/2026-09-21-alpha.md")
 	b, _ := os.ReadFile(plan)
 	ticked := []byte(string(b))
 	for i := 0; i+5 <= len(ticked); i++ {
@@ -60,7 +60,7 @@ func TestListShowsBranchItems(t *testing.T) {
 		}
 	}
 	gitDo("checkout", "-q", "-b", "feat-x")
-	if err := os.WriteFile(filepath.Join(repo, ".pm/specs/2026-09-28-branch.md"), []byte("# Branch story\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repo, ".acta/specs/2026-09-28-branch.md"), []byte("# Branch story\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	gitDo("add", ".")
@@ -69,7 +69,7 @@ func TestListShowsBranchItems(t *testing.T) {
 
 	out, _, code := acta(t, repo, "", "show", "specs/2026-09-28-branch", "--json")
 	if code != 0 || !strings.Contains(out, `"worktree": "feat-x"`) || !strings.Contains(out, `"on_disk": false`) ||
-		!strings.Contains(out, `"path": "feat-x:.pm/specs/2026-09-28-branch.md"`) {
+		!strings.Contains(out, `"path": "feat-x:.acta/specs/2026-09-28-branch.md"`) {
 		t.Fatalf("branch item: exit %d %s", code, out)
 	}
 }
