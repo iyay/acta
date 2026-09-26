@@ -172,8 +172,15 @@ func TestNewBug(t *testing.T) {
 		t.Fatalf("path %s want %s", o.Path, want)
 	}
 	body, _ := os.ReadFile(want)
-	if string(body) != "---\nref: New-261\n---\n# ack dup\n\n## Symptom\nTwo ACKs.\n" {
-		t.Fatalf("file = %q", body)
+	got := mustLoad(t, cfg).Get("BUG-1")
+	if got == nil || got.Path != want {
+		t.Fatalf("BUG-1 = %+v, want path %s", got, want)
+	}
+	if !board.IsHash(strings.TrimPrefix(got.Hash, "BUG-")) {
+		t.Fatalf("hash %q", got.Hash)
+	}
+	if !strings.Contains(string(body), "ref: New-261") || !strings.Contains(string(body), "## Symptom") {
+		t.Fatalf("file lost content: %q", body)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "pm: new bug 2026-09-26-ack-dup" {
 		t.Fatalf("commit message %q", got)

@@ -93,7 +93,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	return finish(cfg, it.Path, fmt.Sprintf("pm: %s %s %s", id, field, value), dirty), nil
 }
 
-// NewBug writes a bug file from a body an agent sent and commits it.
+// NewBug writes a bug file from a body an agent sent and commits it. The new
+// file gets the next BUG number and a fresh hash before it is written.
 func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, error) {
 	path, err := bugPath(cfg, slug)
 	if err != nil {
@@ -102,6 +103,19 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 	content := BugFile(title, slug, ref, body)
 	if !HasSymptom(content) {
 		return Outcome{}, bad("a bug needs a ## Symptom section")
+	}
+	b, err := board.Load(cfg)
+	if err != nil {
+		return Outcome{}, err
+	}
+	next, taken := scanIDs(b)
+	content, err = SetField(content, "id", fmt.Sprintf("BUG-%d", next["BUG"]))
+	if err != nil {
+		return Outcome{}, err
+	}
+	content, err = SetField(content, "hash", freeHash(taken))
+	if err != nil {
+		return Outcome{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return Outcome{}, err
