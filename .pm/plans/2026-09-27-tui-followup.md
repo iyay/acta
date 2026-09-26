@@ -106,8 +106,8 @@ Review round 1 BLOCKERs:
 1. Security, `internal/tui/title.go:70-75` + `internal/config/config.go:119-123`: `links.donate`/`links.feedback` from a cloned repo's `.pm.yaml` go straight to `exec.Command("open"|"xdg-open", url)` with no scheme check. `donate: "file:///<repo>/tools/Donate.app"` or `donate: "-aTerminal"` makes a click on Donate launch a local program. Expected: accept only `http://` and `https://` at config load (case-insensitive scheme, parsed with `net/url`, host not empty); drop anything else (Donate hidden, Feedback falls back to the default URL). Tests with `file:`, `javascript:`, `-aTerminal`, `http://` with no host, and a good https URL.
 2. `internal/tui/view.go:484` and `:580`: when the right side is wider than the window, `fit(right, m.width)` draws it from column 0 but the boxes start at `m.width - lipgloss.Width(right)` (negative), so boxes sit 1-10 columns left of the words (width 36 with Donate: Donate drawn at 19-24, box at 15-20). Expected: compute the boxes from the same fitted pieces that are drawn, after cutting. Test: for every width 30..200, with and without Donate, read each word's cells from the rendered line and click each one; click every other cell and expect no open.
 
-- [ ] **Step 1: Write the failing tests** for both.
-- [ ] **Step 2: Run them to see them fail.**
-- [ ] **Step 3: Fix.** Also drop the dead `m.statusBoxes` assignment in the value-receiver method if the fix makes it unused.
-- [ ] **Step 4: Gate:** `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
-- [ ] **Step 5: Commit** (`fix(tui): links are http(s) only and clicks match drawn words at every width`), tick `#task-F1 --all`.
+- [x] **Step 1: Write the failing tests** for both.
+- [x] **Step 2: Run them to see them fail.**
+- [x] **Step 3: Fix.** Also drop the dead `m.statusBoxes` assignment in the value-receiver method if the fix makes it unused.
+- [x] **Step 4: Gate:** `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
+- [x] **Step 5: Commit** (`fix(tui): links are http(s) only and clicks match drawn words at every width`), tick `#task-F1 --all`.

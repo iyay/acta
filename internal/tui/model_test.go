@@ -1161,6 +1161,80 @@ func TestClickElsewhereOnBottomLineOpensNothing(t *testing.T) {
 	}
 }
 
+func TestClicksMatchDrawnWordsAtEveryWidth(t *testing.T) {
+	for _, donate := range []string{"", "https://ko-fi.com/someone"} {
+		for w := 30; w <= 200; w++ {
+			m := sized(clocked(newModel(t), 20, 46), w, 30)
+			m.cfg.Links.Donate = donate
+			m.cfg.Links.Feedback = "https://example.com/bugs"
+			raw := lastLine(m.View())
+			// The truth is what the terminal draws: each hyperlink wrapper
+			// carries its url next to its visible words.
+			segs := linkSegments(raw)
+			flat := plain(raw)
+			type span struct {
+				start, end int
+				url        string
+			}
+			var spans []span
+			base := 0
+			for _, seg := range segs {
+				if seg.text == "" {
+					continue
+				}
+				i := strings.Index(flat[base:], seg.text)
+				if i < 0 {
+					t.Fatalf("donate %q at %d columns: drawn %q not found in %q", donate, w, seg.text, flat)
+				}
+				start := utf8.RuneCountInString(flat[:base+i])
+				spans = append(spans, span{start, start + utf8.RuneCountInString(seg.text), seg.url})
+				base += i + len(seg.text)
+			}
+			if donate != "" {
+				found := false
+				for _, s := range spans {
+					if s.url == donate {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatalf("donate %q at %d columns: no drawn link opens it: %q", donate, w, flat)
+				}
+			}
+			found := false
+			for _, s := range spans {
+				if s.url == "https://example.com/bugs" {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("at %d columns: no drawn link opens feedback: %q", w, flat)
+			}
+			y := statusY(t, m)
+			for x := range w {
+				want := ""
+				for _, s := range spans {
+					if x >= s.start && x < s.end {
+						want = s.url
+					}
+				}
+				var got []string
+				m.open = func(url string) error {
+					got = append(got, url)
+					return nil
+				}
+				click(m, x, y)
+				if want == "" && len(got) != 0 {
+					t.Fatalf("donate %q at %d columns: cell %d opened %q, want nothing (line %q)", donate, w, x, got, flat)
+				}
+				if want != "" && (len(got) != 1 || got[0] != want) {
+					t.Fatalf("donate %q at %d columns: cell %d opened %q, want %q (line %q)", donate, w, x, got, want, flat)
+				}
+			}
+		}
+	}
+}
+
 func TestNormalizeVersion(t *testing.T) {
 	for _, tc := range []struct {
 		in   string

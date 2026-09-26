@@ -104,31 +104,30 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 
 // Model is the whole screen state. Bubble Tea copies it on every update.
 type Model struct {
-	cfg         config.Config
-	board       *board.Board
-	focus       pane // the pane with the focus
-	last        pane // the list pane that had it last, for pane [3]
-	tab         int  // which tab pane [1] shows
-	doneTab     int  // which tab pane [2] shows
-	sel         [4]string
-	idx         [4]int // selected row number per tab, used when the id vanishes
-	doneSel     [4][2]string
-	doneIdx     [4][2]int
-	query       string
-	searching   bool
-	groupOpen   bool
-	popup       *popup
-	slug        *string // non-nil while typing the slug of a new bug
-	help        bool
-	status      string
-	manual      bool
-	width       int
-	height      int
-	scroll      int // how far the body of pane [3] is scrolled
-	now         time.Time
-	version     string                 // build version shown on the bottom line
-	open        func(url string) error // opens a link in the browser
-	statusBoxes []statusPiece          // click boxes of the bottom line links
+	cfg       config.Config
+	board     *board.Board
+	focus     pane // the pane with the focus
+	last      pane // the list pane that had it last, for pane [3]
+	tab       int  // which tab pane [1] shows
+	doneTab   int  // which tab pane [2] shows
+	sel       [4]string
+	idx       [4]int // selected row number per tab, used when the id vanishes
+	doneSel   [4][2]string
+	doneIdx   [4][2]int
+	query     string
+	searching bool
+	groupOpen bool
+	popup     *popup
+	slug      *string // non-nil while typing the slug of a new bug
+	help      bool
+	status    string
+	manual    bool
+	width     int
+	height    int
+	scroll    int // how far the body of pane [3] is scrolled
+	now       time.Time
+	version   string                 // build version shown on the bottom line
+	open      func(url string) error // opens a link in the browser
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -178,5 +179,43 @@ func TestLoadLinksDefaults(t *testing.T) {
 	}
 	if got.Links.Donate != "" {
 		t.Fatalf("Donate = %q, want empty when unset", got.Links.Donate)
+	}
+}
+
+func TestLoadLinksKeepOnlyHTTP(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		donate       string
+		feedback     string
+		wantDonate   string
+		wantFeedback string
+	}{
+		{"good https", "https://ko-fi.com/someone", "https://example.com/bugs", "https://ko-fi.com/someone", "https://example.com/bugs"},
+		{"uppercase scheme", "HTTPS://Example.COM/ok", "HTTP://Example.COM/bugs", "HTTPS://Example.COM/ok", "HTTP://Example.COM/bugs"},
+		{"file url", "file:///tmp/Donate.app", "file:///tmp/bugs", "", "https://github.com/iyay/acta/issues"},
+		{"javascript", "javascript:alert(1)", "javascript:alert(1)", "", "https://github.com/iyay/acta/issues"},
+		{"flag", "-aTerminal", "-aTerminal", "", "https://github.com/iyay/acta/issues"},
+		{"hostless http", "http://", "http://", "", "https://github.com/iyay/acta/issues"},
+		{"hostless https", "https://", "https://", "", "https://github.com/iyay/acta/issues"},
+		{"ftp", "ftp://host/x", "ftp://host/x", "", "https://github.com/iyay/acta/issues"},
+		{"leading space", " https://ko-fi.com/someone", " https://example.com/bugs", "", "https://github.com/iyay/acta/issues"},
+		{"empty", "", "", "", "https://github.com/iyay/acta/issues"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := gitInit(t)
+			t.Setenv("PM_ROOT", "")
+			write(t, filepath.Join(repo, ".pm.yaml"),
+				fmt.Sprintf("links:\n  donate: %q\n  feedback: %q\n", tc.donate, tc.feedback))
+			got, err := Load(repo, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Links.Donate != tc.wantDonate {
+				t.Errorf("Donate = %q, want %q", got.Links.Donate, tc.wantDonate)
+			}
+			if got.Links.Feedback != tc.wantFeedback {
+				t.Errorf("Feedback = %q, want %q", got.Links.Feedback, tc.wantFeedback)
+			}
+		})
 	}
 }
