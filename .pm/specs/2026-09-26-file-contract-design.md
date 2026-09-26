@@ -1,3 +1,6 @@
+---
+status: done
+---
 # pm-board file contract
 
 Date: 2026-09-26. Sub-project 0 of pm-board.

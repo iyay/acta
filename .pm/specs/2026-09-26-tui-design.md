@@ -1,3 +1,6 @@
+---
+status: done
+---
 # pmb: TUI and CLI over the pm-board file contract
 
 Date: 2026-09-26. Sub-project 1 of pm-board.

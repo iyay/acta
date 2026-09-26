@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -94,21 +95,56 @@ func Tick(path string, headingLine, step int) (int, int, error) {
 	return done, total, os.Rename(tmp, path)
 }
 
-// lock takes an OS lock (flock) on a file in the temp folder, named from
-// the plan's real path. The kernel drops the lock when the process ends,
-// even in a crash, so no lock is ever left behind to take over, and two
-// processes can never both hold it. Keeping the file out of the repo means
-// no stray file shows up in git status.
-func lock(plan string) (func(), error) {
+// lockBase is where the per-user lock folder lives. It is fixed, not
+// os.TempDir, so two processes with a different TMPDIR still share one lock.
+var lockBase = "/tmp"
+
+// lockPath gives the lock file for a plan, inside a folder only this user
+// can use. /tmp is shared, so the folder is checked before we trust it.
+func lockPath(plan string) (string, error) {
 	real, err := filepath.Abs(plan)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if r, err := filepath.EvalSymlinks(real); err == nil {
 		real = r
 	}
+	dir := filepath.Join(lockBase, fmt.Sprintf("pmb-%d", os.Getuid()))
 	sum := sha256.Sum256([]byte(real))
-	path := filepath.Join(os.TempDir(), "pmb-"+hex.EncodeToString(sum[:8])+".lock")
+	return filepath.Join(dir, "pmb-"+hex.EncodeToString(sum[:8])+".lock"), nil
+}
+
+// safeDir makes the lock folder, or checks the one already there. Someone
+// else could make it first to steal or block our locks, so it must be a
+// real folder, ours, and closed to everyone else.
+func safeDir(dir string) error {
+	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
+		return err
+	}
+	fi, err := os.Lstat(dir)
+	if err != nil {
+		return err
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !fi.IsDir() || !ok || int(st.Uid) != os.Getuid() || fi.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("lock folder %s is not a private folder owned by you", dir)
+	}
+	return nil
+}
+
+// lock takes an OS lock (flock) on a file in a private folder under /tmp,
+// named from the plan's real path. The kernel drops the lock when the
+// process ends, even in a crash, so no lock is ever left behind to take
+// over, and two processes can never both hold it. Keeping the file out of
+// the repo means no stray file shows up in git status.
+func lock(plan string) (func(), error) {
+	path, err := lockPath(plan)
+	if err != nil {
+		return nil, err
+	}
+	if err := safeDir(filepath.Dir(path)); err != nil {
+		return nil, err
+	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err

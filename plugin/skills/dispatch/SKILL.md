@@ -77,7 +77,7 @@ Phase 2 resumes on either trigger: the REPLY-BACK notification lands, or the use
 2. **Provision** (Step -1): worktree outside the repo, then look the agent up by slug and reuse; create its own tab only on a miss. Never a split beside you.
 3. **Write the hand-off doc** (Step 0a). Pointer at plan + tickets plus the mechanics no skill supplies. Not a rewritten plan.
 4. **Deliver**: `/new` on a new session/plan/worktree, then always `/goal` carrying the brief path and the literal reply-back command.
-5. **Comprehension checkpoint**: one read ~20s later — todo list must name the ticket ids, else drift; correct and re-dispatch.
+5. **Comprehension checkpoint**: exactly one read ~20s later — todo list must name the ticket ids, else drift; correct and re-dispatch. Todo list not up yet: report "checkpoint unconfirmed" and yield.
 6. **STOP. Report and yield.**
 
 The recipient is the main agent in its pane: writes zero code itself, **fans every ticket out to implementer subagents per `pm:build` — as many in parallel as file ownership allows** (see "Spread the work"), commits per ticket, does NOT review, fires reply-back, never touches its tab.
@@ -291,7 +291,7 @@ You require this; you do not police the exact wave count. A genuinely dependent 
 
 ## Comprehension checkpoint
 
-About 20s after the `/goal`, exactly one read (`herdr agent read <slug> --source recent-unwrapped --lines 60`). No loops, no sleeps, no second read. If the todo list is not on screen yet, report "checkpoint unconfirmed" in the Phase 1 report and yield anyway: the reply-back is the real signal. When the todo list is on screen, two things must be true:
+About 20s after the `/goal`, exactly one read (`herdr agent read <slug> --source recent-unwrapped --lines 60`). No loops, no sleeps, no second read. If the todo list is not on screen yet, report "checkpoint unconfirmed" in the Phase 1 report and yield anyway: the reply-back is the real signal. A re-dispatch after drift gets its own one read, under the same rule. Reads to find out why something failed, after a reply-back or a stuck report, are outside this rule. When the todo list is on screen, two things must be true:
 
 1. It names the ticket ids from the brief. Invented modules/phases/endpoints = it confabulated before reading → interrupt key, re-dispatch with a corrective preamble ("there is NO `<X>`, NO `<Y>` — writing those = drift").
 2. It declares waves, and wave 1 holds every ticket that has no dependency. A flat serial list of independent tickets = fan-out drift → interrupt, re-dispatch with the wave plan spelled out ("wave 1: T-1, T-3, T-4 in ONE message").

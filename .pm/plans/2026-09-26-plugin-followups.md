@@ -42,7 +42,7 @@
 
 **verify:** no skill or reference file tells an agent to record a BLOCKER in the diff under review as a bug file, to skip a per-task reviewer or fix loop that no longer exists, to use Critical / Important / Minor, to follow a CLAUDE.md section name, or to create a worktree inside the repo; and `pm:review` says where each kind of finding goes (diff BLOCKER to a fix round, pre-existing defect to `pm:bug`). List the files checked.
 
-- [ ] **Step 1: Tighten the tests** so each stale phrase is forbidden and each new rule is required:
+- [x] **Step 1: Tighten the tests** so each stale phrase is forbidden and each new rule is required:
 
 `skill_bug_test.go`: add `"already on the parent branch"` to `Must`; add `"returned a BLOCKER"` and `"a review BLOCKER"` to `MustNot`.
 
@@ -54,9 +54,9 @@
 
 `skill_build_test.go`: add to `MustNot`: `"default to \`.worktrees/\`"`, `"Step 0 consent"`, `"ls -d .worktrees"`.
 
-- [ ] **Step 2: Run, watch them fail** for the stale phrases: `go test -count=1 ./internal/plugincheck/`
+- [x] **Step 2: Run, watch them fail** for the stale phrases: `go test -count=1 ./internal/plugincheck/`
 
-- [ ] **Step 3: Edit the text.**
+- [x] **Step 3: Edit the text.**
 
 `plugin/skills/bug/SKILL.md`:
 - In the frontmatter `description`, replace `a review BLOCKER, ` with `a defect found in code already on the parent branch, `.
@@ -86,9 +86,9 @@
 - In 1b, replace items 2 and 3 of the directory list with one item: `2. Otherwise use \`../<repo>-<slug>\`, next to the repo, never inside it.`
 - Delete the paragraph that starts `Safety check for project-local directories only:` (there are no project-local worktree folders any more).
 
-- [ ] **Step 4: Run, watch them pass:** `go test -count=1 ./internal/plugincheck/`, then the full gate.
+- [x] **Step 4: Run, watch them pass:** `go test -count=1 ./internal/plugincheck/`, then the full gate.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/bug/SKILL.md plugin/skills/review/SKILL.md plugin/skills/dispatch/SKILL.md plugin/references/house-rules.md plugin/skills/build/SKILL.md internal/plugincheck/skill_bug_test.go internal/plugincheck/skill_review_test.go internal/plugincheck/skill_dispatch_test.go internal/plugincheck/plugin_test.go internal/plugincheck/skill_build_test.go
@@ -103,7 +103,7 @@ git commit -m "fix(plugin): review BLOCKERs stay in the fix round; drop stale sk
 
 **verify:** every unmerged local branch shows by its own name, whether or not a tag, remote-tracking ref or another ref shares its short name, and names with slashes keep them. List the name clashes tested.
 
-- [ ] **Step 1: Failing test** (append to `worktrees_test.go`):
+- [x] **Step 1: Failing test** (append to `worktrees_test.go`):
 
 ```go
 func TestUnmergedBranchesWithSameNameTag(t *testing.T) {
@@ -128,13 +128,13 @@ func TestUnmergedBranchesWithSameNameTag(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run, watch it fail** (`heads/dup` and `heads/feat/x` come back): `go test -count=1 ./internal/gitc/ -run SameNameTag`
+- [x] **Step 2: Run, watch it fail** (`heads/dup` and `heads/feat/x` come back): `go test -count=1 ./internal/gitc/ -run SameNameTag`
 
-- [ ] **Step 3: Fix:** in `UnmergedBranches`, change `--format=%(refname:short)` to `--format=%(refname:lstrip=2)`.
+- [x] **Step 3: Fix:** in `UnmergedBranches`, change `--format=%(refname:short)` to `--format=%(refname:lstrip=2)`.
 
-- [ ] **Step 4: Run, watch it pass,** then the full gate.
+- [x] **Step 4: Run, watch it pass,** then the full gate.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/gitc/gitc.go internal/gitc/worktrees_test.go
