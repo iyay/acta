@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"pm-board/internal/board"
 	"pm-board/internal/config"
@@ -71,7 +73,8 @@ type row struct {
 	depth int
 }
 
-// tabBox is where one tab name sits in the top border of a pane.
+// tabBox is where one tab name sits in the top border of a pane, in screen
+// cells, the way the mouse counts them.
 type tabBox struct{ x, w int }
 
 // box is where one pane sits on the screen and what it holds. first and rows
@@ -229,20 +232,24 @@ func (m Model) openRows() []row {
 	return rows
 }
 
-// doneRows gives pane [2] the finished items of the tab it follows, newest
-// first, which is the order the board already hands them over in.
+// doneRows gives pane [2] the finished items of the tab it follows, the ones
+// touched last at the top: the date of the last commit on the file decides, and
+// the date in the file name is the fallback for a file git has no commit for.
 func (m Model) doneRows() []row {
 	d := doneTabs[m.tab][m.doneTab]
 	if d.name == "" {
 		return nil
 	}
-	var rows []row
+	var finished []*board.Item
 	for _, it := range m.board.List(tabKinds[m.tab], true) {
 		if it.Status == d.status {
-			rows = append(rows, row{id: it.ID})
+			finished = append(finished, it)
 		}
 	}
-	return rows
+	sort.SliceStable(finished, func(i, j int) bool {
+		return finished[i].SortTime() > finished[j].SortTime()
+	})
+	return toRows(finished, 0)
 }
 
 // doneTabNames gives the tab names pane [2] shows for the tab of pane [1].
@@ -529,7 +536,7 @@ func split(h int) (int, int) {
 // box measures one pane at the given rectangle and works out which of its
 // rows the screen shows, so the view and the mouse count the same ones.
 func (m Model) box(p pane, x, y, w, h int) box {
-	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(m.tabsOf(p))}
+	b := box{x: x, y: y, w: w, h: h, inner: max(0, h-2), tabs: tabX(p, x, m.tabsOf(p))}
 	if p == paneDetail {
 		return b
 	}
@@ -550,15 +557,42 @@ func (m Model) tabsOf(p pane) []string {
 	return tabNames[:]
 }
 
-// tabX gives where each tab name starts inside a pane title, so a click on
-// the word Tasks lands on that tab. It counts the cells the title draws: the
-// pane number, one dash, then the names joined by " dash ".
-func tabX(names []string) []tabBox {
-	x := 1 + 3 // the corner, then the pane number in brackets
+// titlePiece is one piece of a pane title: the pane number, a tab name, or the
+// dashes between two names. tab is the tab the piece names, or -1 for a piece
+// that names none; sep marks the dashes between two names. The view paints
+// these pieces and the mouse counts their cells, so the click boxes and the
+// drawn names cannot drift apart.
+type titlePiece struct {
+	text string
+	tab  int
+	sep  bool
+}
+
+// titlePieces lays out the title of pane p: the corner with the pane number,
+// then the tab names joined by " ─ ".
+func titlePieces(p pane, names []string) []titlePiece {
+	out := make([]titlePiece, 0, 2*len(names)+1)
+	out = append(out, titlePiece{text: fmt.Sprintf("─[%d]─", p+1), tab: -1})
+	for i, name := range names {
+		if i > 0 {
+			out = append(out, titlePiece{text: " ─ ", tab: -1, sep: true})
+		}
+		out = append(out, titlePiece{text: name, tab: i})
+	}
+	return out
+}
+
+// tabX gives where each tab name starts in the title of the pane whose left
+// edge is at x, walked over the same pieces the view draws, so a click and the
+// drawn name always come from the same numbers.
+func tabX(p pane, x int, names []string) []tabBox {
+	x++ // the corner of the border sits before every piece
 	out := make([]tabBox, 0, len(names))
-	for _, n := range names {
-		out = append(out, tabBox{x: x, w: len(n)})
-		x += len(n) + 3
+	for _, piece := range titlePieces(p, names) {
+		if piece.tab >= 0 {
+			out = append(out, tabBox{x: x, w: lipgloss.Width(piece.text)})
+		}
+		x += lipgloss.Width(piece.text)
 	}
 	return out
 }

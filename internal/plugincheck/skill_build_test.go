@@ -69,3 +69,22 @@ func TestBuildSkillTickCommands(t *testing.T) {
 		t.Error("build/SKILL.md still says \"run it again with --all\"")
 	}
 }
+
+// TestBuildAgentFlagOnlyWhenTheHarnessSetsNothing guards the prompt text that
+// the Claude Code subagent executor reads too. A bare --agent omp on the tick
+// overrides AI_AGENT, so Claude's work would be recorded as omp.
+func TestBuildAgentFlagOnlyWhenTheHarnessSetsNothing(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "build", "implementer-prompt.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	for _, bad := range []string{"--step <n> --agent omp", "--all --agent omp"} {
+		if strings.Contains(txt, bad) {
+			t.Errorf("implementer-prompt.md passes the flag unconditionally: %q", bad)
+		}
+	}
+	if !strings.Contains(txt, "AI_AGENT") {
+		t.Error("implementer-prompt.md never says the flag is for a harness with no AI_AGENT")
+	}
+}
