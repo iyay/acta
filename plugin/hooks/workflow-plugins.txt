@@ -1,0 +1,5 @@
+# Workflow plugins that clash with pm. One name per line: a plugin name or a
+# marketplace name, matched without case. Lines starting with # are skipped.
+superpowers
+gstack
+mattpocock

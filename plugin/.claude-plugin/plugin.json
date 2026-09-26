@@ -1,0 +1,8 @@
+{
+  "name": "pm",
+  "description": "A lean workflow for Claude Code and omp: brainstorm, plan, build, test first, debug, review, land. Planning files go to .pm/ through pmb.",
+  "version": "0.1.0",
+  "author": { "name": "Rian" },
+  "license": "MIT",
+  "keywords": ["workflow", "tdd", "review", "planning"]
+}

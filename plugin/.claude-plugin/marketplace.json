@@ -1,0 +1,13 @@
+{
+  "name": "pm-local",
+  "description": "Local marketplace for the pm plugin in the pm-board repo",
+  "owner": { "name": "Rian" },
+  "plugins": [
+    {
+      "name": "pm",
+      "description": "A lean workflow for Claude Code and omp, writing planning files to .pm/ through pmb.",
+      "version": "0.1.0",
+      "source": "./"
+    }
+  ]
+}

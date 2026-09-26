@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Prints the pm rules for this session. It never blocks the session, so it
+# always exits 0. When pmb is missing or fails, it prints the default rules.
+here="$(cd "$(dirname "$0")" && pwd)"
+if command -v pmb >/dev/null 2>&1; then
+  pmb hook session-start --known "$here/workflow-plugins.txt" && exit 0
+fi
+cat "$here/default-rules.md"
+echo
+echo "pm: the pmb binary is not installed or failed, so these are the default rules (English, adhd style). Build it from the pm-board repo: go build -o \"\$(go env GOPATH)/bin/pmb\" ./cmd/pmb"
+exit 0
