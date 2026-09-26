@@ -64,4 +64,13 @@ func TestDispatchNewThenGoal(t *testing.T) {
 			t.Errorf("dispatch/%s still says \"Back-to-back, no settle-wait\"", file)
 		}
 	}
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The fix-round command was once deleted by accident. It is the only one
+	// with the fix range, so an agent on a fix round needs it.
+	if !strings.Contains(string(b), "/pm:review <fixed-from>..<new-head>") {
+		t.Error("dispatch/herdr-delivery.md lost the fix-round command with <fixed-from>..<new-head>")
+	}
 }

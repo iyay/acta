@@ -141,7 +141,7 @@ Then run `pmb tick plans/2026-09-26-dispatch-new-goal#task-1 --all`.
 
 Review round 1 BLOCKER: commit 79e81ab deleted the fix-round bash block under that line; the plan only asked to reword the line. `grep -rn fixed-from plugin/skills` finds nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `TestDispatchNewThenGoal`, after the loop, add:
 
@@ -157,12 +157,12 @@ In `TestDispatchNewThenGoal`, after the loop, add:
 	}
 ```
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `go test ./internal/plugincheck -run TestDispatchNewThenGoal -count=1`
 Expected: FAIL with "lost the fix-round command".
 
-- [ ] **Step 3: Put the block back**
+- [x] **Step 3: Put the block back**
 
 Directly under the line `Step 4, fix round: \`/goal\` only, on the plan the agent already holds, same inline tail; still confirm ðŸŽ¯ Goal:` insert this block (it is the one deleted in 79e81ab, word for word, plus the check line):
 
@@ -173,12 +173,12 @@ herdr agent read <slug> --source visible --lines 6     # status bar must show: ð
 ```
 ````
 
-- [ ] **Step 4: Run the tests, then the gate**
+- [x] **Step 4: Run the tests, then the gate**
 
 Run: `go test ./internal/plugincheck -count=1`, then `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 ./... && (cd plugin && bun test)`.
 Expected: PASS (dispatch folder stays under MaxLines 620).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/dispatch/herdr-delivery.md internal/plugincheck/skill_dispatch_test.go

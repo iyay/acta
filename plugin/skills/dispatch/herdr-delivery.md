@@ -149,6 +149,10 @@ herdr agent read <slug> --source visible --lines 6     # status bar must show: �
 `/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
 Step 4, fix round: `/goal` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:
+```bash
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (pm:build, pm:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/pm:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
+herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
+```
 
 **Quoting**: `$HERDR_PANE_ID` in the *address* expands in your shell (your literal pane id); `\$HERDR_PANE_ID` in the payload stays unexpanded for the recipient.
 
