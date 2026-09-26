@@ -70,7 +70,13 @@ func (m Model) header() string {
 func (m Model) tabsView() string {
 	var plain, parts []string
 	for i, name := range tabNames {
-		plain = append(plain, fmt.Sprintf("[%d] %s %d", i+1, name, len(m.board.List(tabKinds[i], m.showAll))))
+		// Read each tab's count from the list that tab actually draws, so the
+		// number and the rows can never disagree.
+		n := len(m.board.List(tabKinds[i], m.showAll))
+		if tab(i) == tabStories {
+			n = len(m.storyItems())
+		}
+		plain = append(plain, fmt.Sprintf("[%d] %s %d", i+1, name, n))
 		label := plain[i]
 		if tab(i) == m.tab && m.query == "" {
 			label = selected.Render(label)

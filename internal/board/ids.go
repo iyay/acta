@@ -3,10 +3,10 @@ package board
 import "strings"
 
 // Prefix gives the short ID prefix of a kind. A plan file is always PLAN,
-// even when the board shows it as a story.
+// whether the board shows it as a plan or as something else.
 func Prefix(k Kind, plan bool) string {
 	switch {
-	case plan:
+	case plan || k == KindPlan:
 		return "PLAN"
 	case k == KindBug:
 		return "BUG"
@@ -67,15 +67,6 @@ func setIDs(it *Item, prefix string, doc Doc) {
 	}
 }
 
-// frontErr says what is wrong with a file's frontmatter, or "" when it
-// parsed. Such a file is left alone.
-func frontErr(doc Doc) string {
-	if doc.FrontErr == nil {
-		return ""
-	}
-	return "frontmatter: " + doc.FrontErr.Error()
-}
-
 // addAlias maps a short ID to an item. Two items with one short ID both get a
 // problem line, and the first one keeps the name.
 func (b *Board) addAlias(key string, it *Item, what string) {
@@ -94,18 +85,6 @@ func (b *Board) addAlias(key string, it *Item, what string) {
 func (b *Board) aliasItem(it *Item) {
 	b.addAlias(it.ShortID, it, "id")
 	b.addAlias(it.Hash, it, "hash")
-}
-
-// aliasPlan names a plan whose tasks belong to a spec or bug. Its short IDs
-// lead to that item, which is where the plan's tasks show.
-func (b *Board) aliasPlan(p planFile, holder *Item) {
-	tmp := &Item{}
-	setIDs(tmp, "PLAN", p.doc)
-	holder.Problems = append(holder.Problems, tmp.Problems...)
-	holder.held = append(holder.held, HeldPlan{Path: p.path, RawID: tmp.RawID, RawHash: tmp.RawHash,
-		FrontErr: frontErr(p.doc)})
-	b.addAlias(tmp.ShortID, holder, "id")
-	b.addAlias(tmp.Hash, holder, "hash")
 }
 
 // aliasTask gives a task its plan's IDs plus its own number.
