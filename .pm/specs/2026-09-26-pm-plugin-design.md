@@ -1,3 +1,6 @@
+---
+status: done
+---
 # pm: a lean workflow plugin that replaces superpowers
 
 Date: 2026-09-26. Sub-project 2 of pm-board.
