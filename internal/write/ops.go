@@ -24,6 +24,8 @@ var (
 	Now = time.Now
 
 	slugRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+	shaRe  = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
+	refRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,39}$`)
 )
 
 // Outcome says what happened to the file after a write.
@@ -58,8 +60,19 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if !allowed(board.Allowed(it.Kind), value) {
 			return Outcome{}, bad("%q is not a %s status (%s)", value, it.Kind, strings.Join(board.Allowed(it.Kind), ", "))
 		}
+	case "fixed_in":
+		if it.Kind != board.KindBug {
+			return Outcome{}, bad("fixed_in is only for bugs")
+		}
+		if !shaRe.MatchString(value) {
+			return Outcome{}, bad("fixed_in must be a commit sha of 7 to 40 lower-case hex characters, not %q", value)
+		}
+	case "ref":
+		if !refRe.MatchString(value) {
+			return Outcome{}, bad("ref %q must be one word of letters, digits and . _ / -, at most 40 characters", value)
+		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status or type", field)
+		return Outcome{}, bad("unknown field %q; use status, type, fixed_in or ref", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)

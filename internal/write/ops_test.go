@@ -244,3 +244,95 @@ func TestStartAndFinishBug(t *testing.T) {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
 }
+func TestSetValueFixedInAndRef(t *testing.T) {
+	cfg := repoWith(t, baseFiles)
+	o, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "fixed_in", "d2277688f")
+	if err != nil || !o.Committed {
+		t.Fatalf("fixed_in: %+v %v", o, err)
+	}
+	o, err = SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "ref", "New-261")
+	if err != nil || !o.Committed {
+		t.Fatalf("ref: %+v %v", o, err)
+	}
+	body, _ := os.ReadFile(filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md"))
+	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
+		t.Fatalf("file = %q", body)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "pm: bugs/2026-09-24-crash ref New-261" {
+		t.Fatalf("commit message %q", got)
+	}
+}
+
+func TestSetValueFixedInAndRefBadInput(t *testing.T) {
+	files := map[string]string{
+		".pm/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
+		".pm/specs/2026-09-20-alpha.md": "# Alpha\n",
+	}
+	cfg := repoWith(t, files)
+	b := mustLoad(t, cfg)
+	cases := []struct{ name, id, field, value string }{
+		{"fixed_in on a story", "specs/2026-09-20-alpha", "fixed_in", "abc1234"},
+		{"sha too short", "bugs/2026-09-24-crash", "fixed_in", "abc12"},
+		{"sha upper case", "bugs/2026-09-24-crash", "fixed_in", "ABC1234"},
+		{"sha too long", "bugs/2026-09-24-crash", "fixed_in", strings.Repeat("a", 41)},
+		{"sha not hex", "bugs/2026-09-24-crash", "fixed_in", "xyz1234"},
+		{"ref with space", "bugs/2026-09-24-crash", "ref", "New 261"},
+		{"ref empty", "bugs/2026-09-24-crash", "ref", ""},
+		{"ref newline", "bugs/2026-09-24-crash", "ref", "A\nB"},
+		{"ref too long", "bugs/2026-09-24-crash", "ref", strings.Repeat("a", 41)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, err := SetValue(cfg, b, c.id, c.field, c.value); !errors.Is(err, ErrBadInput) {
+				t.Fatalf("err = %v, want ErrBadInput", err)
+			}
+		})
+	}
+	if out := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); out != "" {
+		t.Fatalf("bad input changed files: %s", out)
+	}
+	if _, err := SetValue(cfg, b, "specs/2026-09-20-alpha", "ref", "S-1"); err != nil {
+		t.Fatalf("ref on a story should work: %v", err)
+	}
+}
+
+func TestSetValueFixedInAndRefKindsAndBounds(t *testing.T) {
+	files := map[string]string{
+		".pm/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
+		".pm/specs/2026-09-20-alpha.md": "# Alpha\n",
+		".pm/plans/2026-09-25-fix.md":   "# Fix\n\n### Task 1: Fix\n- [ ] a\n",
+	}
+	cfg := repoWith(t, files)
+	b := mustLoad(t, cfg)
+	// fixed_in is bugs-only: spec story, plan-as-story and task all refuse.
+	for _, id := range []string{"specs/2026-09-20-alpha", "plans/2026-09-25-fix", "plans/2026-09-25-fix#task-1"} {
+		if _, err := SetValue(cfg, b, id, "fixed_in", "d2277688f"); !errors.Is(err, ErrBadInput) {
+			t.Fatalf("fixed_in on %s: err = %v, want ErrBadInput", id, err)
+		}
+	}
+	// ref is stories and bugs only: tasks refuse.
+	if _, err := SetValue(cfg, b, "plans/2026-09-25-fix#task-1", "ref", "S-1"); !errors.Is(err, ErrBadInput) {
+		t.Fatalf("ref on task err = %v, want ErrBadInput", err)
+	}
+	// empty fixed_in is rejected; there is no clear path.
+	if _, err := SetValue(cfg, b, "bugs/2026-09-24-crash", "fixed_in", ""); !errors.Is(err, ErrBadInput) {
+		t.Fatalf("empty fixed_in err = %v, want ErrBadInput", err)
+	}
+	// ref must start with a letter or digit.
+	for _, v := range []string{".a", "/a", "-a", "_a"} {
+		if _, err := SetValue(cfg, b, "bugs/2026-09-24-crash", "ref", v); !errors.Is(err, ErrBadInput) {
+			t.Fatalf("ref %q err = %v, want ErrBadInput", v, err)
+		}
+	}
+	// lower bounds and 40-char upper bounds pass.
+	if _, err := SetValue(cfg, b, "bugs/2026-09-24-crash", "fixed_in", strings.Repeat("a", 40)); err != nil {
+		t.Fatalf("40-char sha: %v", err)
+	}
+	if _, err := SetValue(cfg, mustLoad(t, cfg), "specs/2026-09-20-alpha", "ref", strings.Repeat("a", 40)); err != nil {
+		t.Fatalf("40-char ref: %v", err)
+	}
+	if out := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); out != "" {
+		// only the two boundary writes above committed; nothing dirty remains.
+		t.Fatalf("dirty files after bounds: %s", out)
+	}
+}
