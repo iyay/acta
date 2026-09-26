@@ -17,11 +17,11 @@ func sized(m Model, w, h int) Model {
 }
 
 func TestViewShowsListAndDetail(t *testing.T) {
-	m := sized(press(newModel(t), "j", "j"), 120, 40)
+	m := sized(press(newModel(t), "j"), 120, 40)
 	v := m.View()
 	for _, want := range []string{
 		"pmb · basic · active · live",
-		"[1] Stories 5", "[2] Tasks 2", "[3] Bugs 2",
+		"[1] Specs 4", "[2] Plans 2", "[3] Tasks 2", "[4] Bugs 2",
 		"Alpha story", "A-1", "in-progress", "1/2",
 		"First step", "Second step",
 		"specs/2026-09-20-alpha",
@@ -39,7 +39,7 @@ func TestViewShowsListAndDetail(t *testing.T) {
 }
 
 func TestViewTaskShowsParentAndOwnSection(t *testing.T) {
-	m := sized(press(newModel(t), "2", "j"), 120, 40)
+	m := sized(press(newModel(t), "]", "]", "j"), 120, 40)
 	v := m.View()
 	if !strings.Contains(v, "Second step · Alpha story") {
 		t.Error("task row does not show its parent")
@@ -50,7 +50,7 @@ func TestViewTaskShowsParentAndOwnSection(t *testing.T) {
 }
 
 func TestViewProblemsGroupAndStatus(t *testing.T) {
-	m := sized(press(newModel(t), "a"), 120, 60)
+	m := sized(newModel(t), 120, 60)
 	v := m.View()
 	if !strings.Contains(v, "! ") || !strings.Contains(v, "untyped (1)") {
 		t.Error("problem marker or untyped group missing")
@@ -79,7 +79,7 @@ func TestViewHelpAndPopup(t *testing.T) {
 	if !strings.Contains(m.View(), "new bug") {
 		t.Error("help screen missing")
 	}
-	m = sized(press(newModel(t), "3", "s"), 100, 30)
+	m = sized(press(newModel(t), "]", "]", "]", "s"), 100, 30)
 	if !strings.Contains(m.View(), "wontfix") {
 		t.Error("popup options not shown")
 	}
@@ -94,7 +94,7 @@ func TestViewNarrowNeverOverflows(t *testing.T) {
 		w, h := wh[0], wh[1]
 		m := sized(newModel(t), w, h)
 		for name, sm := range map[string]Model{
-			"base": m, "tasks": press(m, "2"), "popup": press(m, "3", "s"),
+			"base": m, "plans": press(m, "]"), "popup": press(m, "]", "]", "]", "s"),
 			"slug": press(m, "n"), "help": press(m, "?"),
 		} {
 			for _, line := range strings.Split(sized(sm, w, h).View(), "\n") {

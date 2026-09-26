@@ -15,7 +15,7 @@ var (
 	faint    = lipgloss.NewStyle().Faint(true)
 	bold     = lipgloss.NewStyle().Bold(true)
 	selected = lipgloss.NewStyle().Reverse(true)
-	pane     = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+	frame    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 )
 
 const helpText = `pmb keys
@@ -46,8 +46,8 @@ func (m Model) View() string {
 	rightW := max(8, m.width-leftW)
 	bodyH := max(5, m.height-4)
 
-	left := pane.Width(leftW - 2).Height(bodyH - 2).Render(m.listView(leftW-2, bodyH-2))
-	right := pane.Width(rightW - 2).Height(bodyH - 2).Render(m.detailView(rightW-2, bodyH-2))
+	left := frame.Width(leftW - 2).Height(bodyH - 2).Render(m.listView(leftW-2, bodyH-2))
+	right := frame.Width(rightW - 2).Height(bodyH - 2).Render(m.detailView(rightW-2, bodyH-2))
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.header(),
 		m.tabsView(),
@@ -57,14 +57,11 @@ func (m Model) View() string {
 }
 
 func (m Model) header() string {
-	filter, mode := "active", "live"
-	if m.showAll {
-		filter = "all"
-	}
+	mode := "live"
 	if m.manual {
 		mode = "manual"
 	}
-	return bold.Render(truncate(fmt.Sprintf("pmb · %s · %s · %s", filepath.Base(m.cfg.RepoRoot), filter, mode), m.width))
+	return bold.Render(truncate(fmt.Sprintf("pmb · %s · active · %s", filepath.Base(m.cfg.RepoRoot), mode), m.width))
 }
 
 func (m Model) tabsView() string {
@@ -72,13 +69,9 @@ func (m Model) tabsView() string {
 	for i, name := range tabNames {
 		// Read each tab's count from the list that tab actually draws, so the
 		// number and the rows can never disagree.
-		n := len(m.board.List(tabKinds[i], m.showAll))
-		if tab(i) == tabStories {
-			n = len(m.storyItems())
-		}
-		plain = append(plain, fmt.Sprintf("[%d] %s %d", i+1, name, n))
+		plain = append(plain, fmt.Sprintf("[%d] %s %d", i+1, name, len(m.board.List(tabKinds[i], false))))
 		label := plain[i]
-		if tab(i) == m.tab && m.query == "" {
+		if i == m.tab && m.query == "" {
 			label = selected.Render(label)
 		}
 		parts = append(parts, label)
@@ -91,7 +84,7 @@ func (m Model) tabsView() string {
 }
 
 func (m Model) listView(w, h int) string {
-	rows := m.rows()
+	rows := m.openRows()
 	if len(rows) == 0 {
 		return faint.Render("nothing here")
 	}
@@ -114,7 +107,7 @@ func (m Model) rowLabel(r row) string {
 		if m.groupOpen {
 			arrow = "▾"
 		}
-		return fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(m.showAll)))
+		return fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false)))
 	}
 	it := m.board.Get(r.id)
 	label := strings.Repeat("  ", r.depth) + icon(it) + " "

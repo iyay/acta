@@ -40,7 +40,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
 	m := tui.New(cfg, b, lipgloss.HasDarkBackground()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	load := func() (*board.Board, error) { return trees.Load(cfg) }
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
 	if stop, err := tui.Watch(dirs, load, p.Send); err != nil {
