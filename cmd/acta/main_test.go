@@ -202,6 +202,33 @@ func TestShow(t *testing.T) {
 	}
 }
 
+// A task under way reads in-progress on the show line and in the JSON list,
+// and the old word never turns up in either.
+func TestAStartedOrHalfTickedTaskReadsInProgress(t *testing.T) {
+	dir := fixtureRepo(t)
+	out, errOut, code := acta(t, dir, "", "show", "plans/2026-09-21-alpha#task-2")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	if !strings.Contains(out, "status: in-progress (derived)") || strings.Contains(out, "doing") {
+		t.Fatalf("show says %q, want the status in-progress", out)
+	}
+	list, _, code := acta(t, dir, "", "list", "--all", "--json")
+	if code != 0 {
+		t.Fatalf("list exit %d", code)
+	}
+	var items []jsonItem
+	decode(t, list, &items)
+	if len(items) == 0 {
+		t.Fatal("the fixture board has items")
+	}
+	for _, it := range items {
+		if it.Status == "doing" {
+			t.Errorf("%s reads doing in the JSON list, want in-progress", it.ID)
+		}
+	}
+}
+
 func TestSet(t *testing.T) {
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {

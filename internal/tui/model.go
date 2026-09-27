@@ -4,7 +4,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"math"
 	"sort"
 	"time"
 
@@ -58,9 +57,9 @@ var doneTabs = [5][2]doneTab{
 	{{"Done", "done"}, {"Wontfix", "wontfix"}},
 }
 
-// rowLines is how many screen lines one row takes: the title, the dim meta
-// line under it, and a blank line between rows.
-const rowLines = 3
+// rowLines is how many screen lines one row takes. A row is one line, so the
+// screen line of a row and the row itself are the same number.
+const rowLines = 1
 
 // pageLines is how far ctrl+d, ctrl+u and the wheel jump in pane [3].
 const pageLines = 10
@@ -68,7 +67,7 @@ const pageLines = 10
 // groupRowID marks the folded row that holds the legacy items.
 const groupRowID = "\x00untyped"
 
-// dividerRowID marks the dim line between the in-progress rows and the
+// dividerRowID marks the full-width rule between the in-progress rows and the
 // not-started ones. It is never a real item, so the cursor skips it.
 const dividerRowID = "\x00divider"
 
@@ -126,7 +125,7 @@ type Model struct {
 	manual    bool
 	width     int
 	height    int
-	scroll    int // how far the body of pane [3] is scrolled
+	off       [3]int // the first line each pane shows, one offset per pane
 	now       time.Time
 	version   string                 // build version shown on the bottom line
 	open      func(url string) error // opens a link in the browser
@@ -174,7 +173,18 @@ func nextMinute() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		if msg.Width == m.width && msg.Height == m.height {
+			break
+		}
 		m.width, m.height = msg.Width, msg.Height
+		// A pane that just got shorter cannot keep the place it had.
+		m.clampOff(paneOpen)
+		m.clampOff(paneDone)
+		m.clampOff(paneDetail)
+		// The renderer only paints the cells the new frame uses, so a window
+		// that shrinks leaves the rest of the old frame on screen. Wiping it
+		// is the only way to take those rows back.
+		return m, tea.ClearScreen
 	case reloadMsg:
 		if msg.err != nil {
 			m.status = "reload failed: " + msg.err.Error()
@@ -208,7 +218,7 @@ func inProgress(it *board.Item) bool {
 		return true
 	}
 	switch it.Status {
-	case "doing", "in-progress", "fixing":
+	case "in-progress", "fixing":
 		return true
 	}
 	return false
@@ -389,9 +399,10 @@ func (m *Model) moveTo(i int) {
 	}
 	if rows[i].id != *sel {
 		// Another item in pane [3] starts at its own top.
-		m.scroll = 0
+		m.off[paneDetail] = 0
 	}
 	*sel, *idx = rows[i].id, i
+	m.keepVisible(m.listPane())
 }
 
 func (m *Model) moveBy(lines int) { m.moveTo(m.cursor() + lines) }
@@ -406,7 +417,7 @@ func (m *Model) focusPane(p pane) {
 	if p != paneDetail {
 		m.last = p
 	}
-	m.scroll = 0
+	m.keepVisible(p)
 }
 
 // cycleTab walks the focused pane along its own tabs and wraps around. Pane
@@ -423,13 +434,14 @@ func (m *Model) cycleTab(step int) {
 	}
 	// Tasks have one finished tab, so coming from Bugs the second is gone.
 	m.doneTab = min(m.doneTab, len(m.doneTabNames())-1)
+	m.keepVisible(m.focus)
 }
 
 // step moves the cursor in a list pane and scrolls the body in pane [3], so
 // one set of keys works wherever the focus is.
 func (m *Model) step(lines int) {
 	if m.focus == paneDetail {
-		m.scroll = max(0, m.scroll+lines)
+		m.scrollPane(m.focus, lines)
 		return
 	}
 	m.moveBy(lines)
@@ -437,18 +449,17 @@ func (m *Model) step(lines int) {
 
 func (m *Model) top() {
 	if m.focus == paneDetail {
-		m.scroll = 0
+		m.off[paneDetail] = 0
 		return
 	}
 	m.moveTo(0)
 }
 
-// end goes to the last row, or to the bottom of the body in pane [3]. The
-// view cuts that jump to the last line it drew, so the model never needs to
-// know how long the body is.
+// end goes to the last row, or to the bottom of the body in pane [3], which
+// is the last line that pane has room for.
 func (m *Model) end() {
 	if m.focus == paneDetail {
-		m.scroll = math.MaxInt
+		m.off[paneDetail] = m.lastOff(paneDetail)
 		return
 	}
 	m.moveTo(len(m.listOf()) - 1)
@@ -543,12 +554,17 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
 	case tea.MouseButtonWheelUp:
-		m.focusPane(p)
-		m.step(-1)
+		// The wheel belongs to the focused pane, the way the keys do, and it
+		// never takes the focus. A wheel over another pane is ignored, so
+		// scrolling can never move a pane the user is not looking at.
+		if p == m.focus {
+			m.scrollPane(p, -1)
+		}
 		return m, nil
 	case tea.MouseButtonWheelDown:
-		m.focusPane(p)
-		m.step(1)
+		if p == m.focus {
+			m.scrollPane(p, 1)
+		}
 		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
@@ -559,10 +575,11 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	case tabIdx >= 0:
 		m.clickTab(p, tabIdx)
 	case rowIdx >= 0:
-		// A click on the divider only takes the focus; the dim line holds
-		// no item, so the selection stays where it was.
+		// A click on the divider, or on the space below the last row, only
+		// takes the focus: neither holds an item, so the selection stays
+		// where it was.
 		rows, _, _ := m.slotOf(p)
-		if rowIdx < len(rows) && rows[rowIdx].divider {
+		if rowIdx >= len(rows) || rows[rowIdx].divider {
 			return m, nil
 		}
 		m.moveTo(rowIdx)
@@ -578,6 +595,9 @@ func (m *Model) clickTab(p pane, idx int) {
 	case paneOpen:
 		m.tab = clamp(idx, 0, len(tabNames)-1)
 	}
+	// The tab that is on now has its own rows, so the pane has to find its
+	// cursor again.
+	m.keepVisible(p)
 }
 
 func (m *Model) openPopup(key string) {

@@ -11,6 +11,7 @@ func TestSkillPlan(t *testing.T) {
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",
 			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
 			"run `acta id` right after", "parent: debt/",
+			"never holds a step that can only happen after landing",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer"},
 	})

@@ -426,7 +426,7 @@ Run by the orchestrator after Tasks 1-5, on the branch, with a fresh `go build -
 - [x] **Step 2:** For each plan, pipe its NOTEs into `/tmp/acta-debt debt new <plan id>`.
 - [x] **Step 3:** For each NOTE fixed since (check the code), run `/tmp/acta-debt tick <DEBT-n.m> --all`.
 - [x] **Step 4:** Run `/tmp/acta-debt show <each DEBT id>` and check lines and states match Step 1.
-- [ ] **Step 5:** After the branch lands, delete those memory files and their `MEMORY.md` lines (memory lives outside the repo; no commit).
+- [x] **Step 5:** After the branch lands, delete those memory files and their `MEMORY.md` lines (memory lives outside the repo; no commit).
 
 ### Task 7: Commit prefix `acta:` and default root `.acta`
 

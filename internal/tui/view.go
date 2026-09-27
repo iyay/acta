@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -25,6 +24,10 @@ type box struct {
 	tabs        []tabBox // where each tab name sits in the top border
 }
 
+// textW is how many cells a pane has for its words: the width without the two
+// walls. A pane that scrolls gives one of those cells to the scrollbar.
+func (b box) textW() int { return max(0, b.w-2) }
+
 // geom is the whole screen measured in cells from its top left corner. The
 // view and the mouse both read it, so a click lands where it looks.
 type geom struct {
@@ -42,8 +45,17 @@ type geom struct {
 var (
 	accentColor = lipgloss.AdaptiveColor{Light: "25", Dark: "39"}
 	accent      = lipgloss.NewStyle().Foreground(accentColor)
-	faint       = lipgloss.NewStyle().Faint(true)
-	selected    = lipgloss.NewStyle().Reverse(true)
+	// work marks a row whose work has begun. Dimmed, because the selected
+	// row is the one that should catch the eye.
+	work = lipgloss.NewStyle().Foreground(accentColor).Faint(true)
+	// faint paints every row the cursor is not on.
+	faint = lipgloss.NewStyle().Faint(true)
+	// selected paints the row the cursor is on: a dark band across the whole
+	// row with bright text on it, never reversed video, so the words stay
+	// readable wherever the band falls.
+	selected = lipgloss.NewStyle().Bold(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "255"}).
+			Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"})
 )
 
 // hints is what the left of the status line says when nothing else is going on.
@@ -81,41 +93,8 @@ func (m Model) View() string {
 		lines[i] = fit(ln, m.width)
 	}
 	body = strings.Join(lines, "\n")
-	if pop := m.popupBox(); pop != "" {
-		body = m.cover(body, pop, h)
-	}
+	body = m.cover(body)
 	return body + "\n" + fit(m.statusLine(), m.width)
-}
-
-// geometry measures the screen. The left column is 30% of the width, held
-// between 28 and 48 columns, and below 60 columns only the focused pane is on
-// screen because two columns of a small terminal fit nothing.
-func (m Model) geometry() geom {
-	// The last line belongs to the status line, so the panes share the rest.
-	bodyH := max(3, m.height-1)
-	top, bottom := split(bodyH)
-	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48)}
-	rest := max(0, m.width-g.leftW)
-	g.open = m.box(paneOpen, 0, 0, g.leftW, top)
-	g.done = m.box(paneDone, 0, top, g.leftW, bottom)
-	// A pane of zero width is not on screen, which is how a narrow terminal
-	// leaves two of the three out.
-	g.detail = m.box(paneDetail, g.leftW, 0, rest, bodyH)
-	if g.wide {
-		return g
-	}
-	g.full = m.box(m.focus, 0, 0, m.width, bodyH)
-	// Only the focused pane is on screen now, so the other two are zero boxes
-	// and neither the view nor the mouse finds them.
-	g.open, g.done, g.detail = box{}, box{}, box{}
-	return g
-}
-
-// split divides the height between the two left panes: about two thirds for
-// the open one, and never fewer than five rows each.
-func split(h int) (int, int) {
-	top := max(5, h*2/3)
-	return top, max(5, h-top)
 }
 
 // box measures one pane at the given rectangle and works out which of its
@@ -126,8 +105,8 @@ func (m Model) box(p pane, x, y, w, h int) box {
 		return b
 	}
 	b.rows = b.inner / rowLines
-	rows, sel, idx := m.slotOf(p)
-	b.first = max(0, cursorOf(rows, *sel, *idx)+1-b.rows)
+	rows, _, _ := m.slotOf(p)
+	b.first = firstOf(m.off[p], len(rows), b.rows)
 	return b
 }
 
@@ -143,17 +122,13 @@ func (m Model) tabsOf(p pane) []string {
 }
 
 // rowAt gives the row under a screen line, or -1 for the border, the title and
-// the blank line between rows.
+// the space below the last row.
 func (b box) rowAt(y int) int {
 	off := y - b.y - 1
-	if off < 0 || b.rows == 0 {
+	if off < 0 || off >= b.rows {
 		return -1
 	}
-	i := off / rowLines
-	if i >= b.rows || off%rowLines > 1 {
-		return -1
-	}
-	return b.first + i
+	return b.first + off
 }
 
 // hit says what sits under a mouse cell: the pane, the row of it and the tab
@@ -188,18 +163,34 @@ func (m Model) hit(x, y int) (pane, int, int) {
 }
 
 // paneView draws one pane: its border with the title inside the top line, the
-// rows it holds, and the bottom line, which carries the line count of the
-// detail when that pane has the focus.
+// rows it holds, the scrollbar down the right wall when there is more content
+// than rows, and the bottom line, which carries the n/m of what is on screen.
 func (m Model) paneView(p pane, b box) string {
 	if b.w < 2 || b.h < 2 {
 		return ""
 	}
 	edge := m.edge(p)
-	inner := b.w - 2
-	var content []string
-	foot := ""
+	// The words of a pane that overflows get one cell less, because the
+	// scrollbar takes that cell. The model measures the content at this same
+	// width, so the line count on screen is the line count the offset counts.
+	inner := m.textOf(p, b)
+	total := m.linesAt(p, inner)
+	first := b.first
 	if p == paneDetail {
-		content, foot = m.detailView(inner, b.inner)
+		first = firstOf(m.off[p], total, b.inner)
+	}
+	bar := scrollbar(total, b.inner, first, b.inner)
+	foot := ""
+	// A pane too narrow to spare a cell has nowhere to put the scrollbar, so
+	// it keeps that cell and writes no count either.
+	if len(bar) > 0 && inner < b.textW() {
+		foot = count(first, total)
+	} else {
+		bar = nil
+	}
+	var content []string
+	if p == paneDetail {
+		content = m.detailView(inner, first, b.inner)
 	} else {
 		content = m.listView(p, inner, b)
 	}
@@ -210,41 +201,14 @@ func (m Model) paneView(p pane, b box) string {
 		if i < len(content) {
 			line = content[i]
 		}
-		rows = append(rows, edge.Render("│")+pad(line, inner)+edge.Render("│"))
+		cell := ""
+		if i < len(bar) {
+			cell = faint.Render(bar[i])
+		}
+		rows = append(rows, edge.Render("│")+pad(line, inner)+cell+edge.Render("│"))
 	}
 	rows = append(rows, paneBottom(b, edge, foot))
 	return strings.Join(rows, "\n")
-}
-
-// paneTop draws the top line of a pane. The title sits inside the border,
-// lazygit style: the pane number, then the tabs. The tab that is on is bold in
-// the accent color and the others stay dim. The pieces come from titlePieces,
-// the same helper the mouse counts its click boxes with.
-func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
-	names := m.tabsOf(p)
-	if p == paneDetail {
-		names = []string{"Detail"}
-	}
-	on := m.onTab(p)
-	pieces := titlePieces(p, names, on, max(0, b.w-2))
-	segs := make([]segment, 0, len(pieces))
-	for _, piece := range pieces {
-		if piece.tab < 0 {
-			segs = append(segs, segment{text: piece.text, style: edge, sep: piece.sep})
-			continue
-		}
-		style := faint
-		switch {
-		case p == paneDetail:
-			if m.focus == p {
-				style = accent.Bold(true)
-			}
-		case piece.tab == on:
-			style = accent.Bold(true)
-		}
-		segs = append(segs, segment{text: piece.text, style: style})
-	}
-	return topLine(b.w, edge, segs)
 }
 
 // segment is one piece of a border title and the brush it is painted with.
@@ -254,36 +218,6 @@ type segment struct {
 	text  string
 	style lipgloss.Style
 	sep   bool
-}
-
-// topLine draws the top line of a box of width w: the left corner, the pieces,
-// then dashes up to the right corner. Pieces that do not fit are dropped from
-// the right, and a piece that alone is too wide is cut, so the line never
-// grows past w.
-func topLine(w int, edge lipgloss.Style, segs []segment) string {
-	if w < 2 {
-		return edge.Render(strings.Repeat("─", max(0, w)))
-	}
-	inner := w - 2
-	for len(segs) > 1 && segWidth(segs) > inner {
-		segs = segs[:len(segs)-1]
-	}
-	for len(segs) > 1 && segs[len(segs)-1].sep {
-		segs = segs[:len(segs)-1]
-	}
-	if segWidth(segs) > inner {
-		return edge.Render("╭") + fit(edge.Render(plainSegs(segs)), inner) + edge.Render("╮")
-	}
-	var b strings.Builder
-	b.WriteString(edge.Render("╭"))
-	for _, s := range segs {
-		b.WriteString(s.style.Render(s.text))
-	}
-	if fill := inner - segWidth(segs); fill > 0 {
-		b.WriteString(edge.Render(strings.Repeat("─", fill)))
-	}
-	b.WriteString(edge.Render("╮"))
-	return b.String()
 }
 
 func segWidth(segs []segment) int {
@@ -302,152 +236,16 @@ func plainSegs(segs []segment) string {
 	return b.String()
 }
 
-// paneBottom draws the bottom line of a pane, with the line count of the
-// detail when there is one.
-func paneBottom(b box, edge lipgloss.Style, foot string) string {
-	inner := b.w - 2
-	text := ""
-	if foot != "" {
-		text = fit(" "+foot+" ", inner)
-	}
-	fill := strings.Repeat("─", max(0, inner-lipgloss.Width(text)))
-	return edge.Render("╰") + edge.Render(text) + edge.Render(fill) + edge.Render("╯")
-}
-
-// listView draws the rows of a list pane. Every row takes two lines, the title
-// and the dim meta line, plus a blank line under it, so a click on either line
-// lands on the same row.
-func (m Model) listView(p pane, w int, b box) []string {
-	rows, sel, idx := m.slotOf(p)
-	if len(rows) == 0 {
-		return []string{faint.Render("nothing here")}
-	}
-	cur := cursorOf(rows, *sel, *idx)
-	out := make([]string, 0, b.rows*rowLines)
-	for i := range b.rows {
-		n := b.first + i
-		if n >= len(rows) {
-			break
-		}
-		if rows[n].divider {
-			out = append(out, faint.Render(truncate("─ ─ ─", w)), "", "")
-			continue
-		}
-		title, meta := m.rowText(rows[n])
-		title, meta = truncate(title, w), truncate(meta, w)
-		switch {
-		case n == cur:
-			title, meta = selected.Render(title), selected.Render(meta)
-		case p == paneOpen && inProgress(m.board.Get(rows[n].id)):
-			// In-progress rows wear the accent; not-started rows stay plain.
-			title, meta = accent.Render(title), faint.Render(meta)
-		case p == paneOpen:
-			meta = faint.Render(meta)
-		default:
-			meta = faint.Render(meta)
-		}
-		out = append(out, title, meta, "")
-	}
-	return out
-}
-
-// rowText gives the two lines of one row: the short ID, or the file path when
-// the file has no ID yet, with the title; and a dim line with the status, the
-// progress and the agent when one is working on it.
-func (m Model) rowText(r row) (string, string) {
-	if r.group {
-		arrow := "▸"
-		if m.groupOpen {
-			arrow = "▾"
-		}
-		return fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false))), ""
-	}
-	it := m.board.Get(r.id)
-	if it == nil {
-		return r.id, ""
-	}
-	name := it.ShortID
-	if name == "" {
-		name = it.ID
-	}
-	var parts []string
-	// A debt line is grouped under its file's short id, so a person can see
-	// which review it came from without opening the detail pane.
-	if it.Kind == board.KindDebtItem {
-		if file := m.board.Get(it.Parent); file != nil {
-			parts = append(parts, shortRef(file))
-		}
-	}
-	if it.Status != "" {
-		parts = append(parts, it.Status)
-	}
-	if it.Total > 0 {
-		parts = append(parts, fmt.Sprintf("%d/%d", it.Done, it.Total))
-	}
-	if it.Agent != "" {
-		parts = append(parts, it.Agent)
-	}
-	return strings.Repeat("  ", r.depth) + name + "  " + it.Title, "  " + strings.Join(parts, " · ")
-}
-
-// detailView gives the lines of pane [3] and the line count for its bottom
-// border. The body scrolls, and the cut of that scroll happens here, so the
-// model never needs to know how long the body is.
-func (m Model) detailView(w, h int) ([]string, string) {
+// detailView gives the lines of pane [3] from the one its offset points at,
+// so the body scrolls and the model never needs to know how long it is.
+func (m Model) detailView(w, first, h int) []string {
 	lines := m.detailLines(w)
-	foot := ""
-	if m.focus == paneDetail && len(lines) > 0 {
-		foot = fmt.Sprintf("%d/%d", min(m.scroll+1, len(lines)), len(lines))
+	if first >= len(lines) {
+		return nil
 	}
-	lines = lines[min(m.scroll, max(0, len(lines)-1)):]
+	lines = lines[first:]
 	if len(lines) > h {
 		lines = lines[:h]
-	}
-	return lines, foot
-}
-
-// detailLines draws the header and the body of the item on show. Labels are
-// upper case, padded to one width, with the colons in one column, and a line
-// with no value is left out.
-func (m Model) detailLines(w int) []string {
-	it := m.Selected()
-	if it == nil {
-		if len(m.board.Items) == 0 {
-			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
-		}
-		return []string{faint.Render("enter opens the group")}
-	}
-	fields := []struct{ label, value string }{
-		{"ID", idText(it)},
-		{kindLabel(it.Kind), it.Title},
-		{"STATUS", it.Status},
-		{"FROM", m.fromText(it)},
-		{"REF", it.Ref},
-		{"SPEC", m.specText(it)},
-		{"WORKTREE", worktreeText(it)},
-		{"AGENT", it.Agent},
-		{"FILE", m.fileText(it)},
-		{"TASKS", progressText(it)},
-		{"FIXED", it.FixedIn},
-	}
-	width := 0
-	for _, f := range fields {
-		width = max(width, len(f.label))
-	}
-	width += 2
-	var lines []string
-	for _, f := range fields {
-		if f.value == "" {
-			continue
-		}
-		lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", width, f.label, f.value), w))
-	}
-	for _, p := range it.Problems {
-		lines = append(lines, truncate("! "+p, w))
-	}
-	lines = append(lines, faint.Render(strings.Repeat("─", max(1, w))))
-	for _, ln := range strings.Split(m.render(it.Body, w), "\n") {
-		lines = append(lines, fit(ln, w))
 	}
 	return lines
 }
@@ -712,21 +510,23 @@ func (m Model) boxView(title, content string) string {
 	for _, ln := range strings.Split(content, "\n") {
 		rows = append(rows, accent.Render("│")+pad(fit(ln, inner), inner)+accent.Render("│"))
 	}
-	rows = append(rows, accent.Render("╰"+strings.Repeat("─", inner)+"╯"))
+	rows = append(rows, accent.Render("└"+strings.Repeat("─", inner)+"┘"))
 	return strings.Join(rows, "\n")
 }
 
-// cover puts a box over the middle of the body, so the panes stay on screen
-// above and below it.
-func (m Model) cover(body, box string, h int) string {
+// cover puts the popup over the middle of the body and keeps the panes it
+// hides on either side of the box, so only the box itself changes on screen.
+func (m Model) cover(body string) string {
+	rows := strings.Split(m.popupBox(), "\n")
+	x0, y0, w, _ := popupRect(rows, m.width, m.height)
+	if w == 0 {
+		return body
+	}
 	lines := strings.Split(body, "\n")
-	rows := strings.Split(box, "\n")
-	top := max(0, (h-len(rows))/2)
 	for i, r := range rows {
-		if top+i >= len(lines) {
-			break
+		if y0+i < len(lines) {
+			lines[y0+i] = splice(lines[y0+i], r, x0, w)
 		}
-		lines[top+i] = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, fit(r, m.width))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -753,42 +553,6 @@ func shortRef(it *board.Item) string {
 		return it.Hash
 	}
 	return it.ID
-}
-
-// kindLabel is the label of the line that names the kind and the title.
-func kindLabel(k board.Kind) string {
-	switch k {
-	case board.KindPlan:
-		return "PLAN"
-	case board.KindTask:
-		return "TASK"
-	case board.KindBug:
-		return "BUG"
-	case board.KindDebtItem:
-		return "DEBT"
-	}
-	return "SPEC"
-}
-
-// fromText names the plan a debt item's review came from, read straight off
-// the debt file's own frontmatter, because the board only keeps that link
-// long enough to check it, not to hand it back later.
-func (m Model) fromText(it *board.Item) string {
-	if it.Kind != board.KindDebtItem {
-		return ""
-	}
-	raw, err := os.ReadFile(it.Path)
-	if err != nil {
-		return ""
-	}
-	planID, _ := board.Parse(raw).Front["parent"].(string)
-	if planID == "" {
-		return ""
-	}
-	if p := m.board.Get(planID); p != nil {
-		return shortRef(p) + " · " + p.Title
-	}
-	return planID
 }
 
 // specText names the spec or bug a plan carries, and is empty for the items

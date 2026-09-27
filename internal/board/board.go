@@ -46,6 +46,7 @@ type Item struct {
 	Legacy       bool
 	Worktree     string // branch of the worktree the file came from; "" for the main tree
 	OnDisk       bool   // false for items read from a branch that is not checked out
+	Author       string // the git author of the commit that first added the file this item lives in
 	Problems     []string
 	Body         string // file body without frontmatter; a task holds only its section
 	TaskNum      string
@@ -75,7 +76,7 @@ type Board struct {
 var (
 	storyStatuses = []string{"draft", "approved", "in-progress", "done", "dropped"}
 	bugStatuses   = []string{"open", "fixing", "fixed", "wontfix"}
-	taskStatuses  = []string{"todo", "doing", "done"}
+	taskStatuses  = []string{"todo", "in-progress", "done"}
 	debtStatuses  = []string{"open", "done", "wontfix"}
 	datedName     = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})-(.+)$`)
 )
@@ -193,6 +194,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 	}
 	b.fillStarted(main, others)
 	b.derive()
+	b.fillAuthors(main.Root)
 	b.fillCommitTimes()
 	b.fillAgents(main, others)
 	b.sortItems()
@@ -472,7 +474,9 @@ func (b *Board) linkDebt(d debtFile) {
 		item := &Item{ID: id, Kind: KindDebtItem, Title: line.Text, Date: d.it.Date, Slug: d.it.Slug,
 			Parent: d.it.ID, Path: d.it.Path, Line: line.Line, Legacy: d.it.Legacy,
 			Status: itemStatus(line.State), StatusSource: "derived",
-			Worktree: d.it.Worktree, OnDisk: d.it.OnDisk}
+			// The checklist becomes the list in the detail pane, so the body
+			// holds only the words the file has around it.
+			Body: d.doc.Text, Worktree: d.it.Worktree, OnDisk: d.it.OnDisk}
 		b.add(item)
 		b.aliasDebtItem(item, d.it.ShortID, d.it.Hash, line.Num)
 		d.it.Children = append(d.it.Children, id)
@@ -530,7 +534,7 @@ func (b *Board) derive() {
 			case "done":
 				done++
 				started++
-			case "doing":
+			case "in-progress":
 				started++
 			}
 		}
@@ -549,15 +553,15 @@ func (b *Board) derive() {
 func taskStatus(done, total int, started bool) string {
 	switch {
 	case done == 0:
-		// Started with no box ticked yet: work has begun, so it is doing.
+		// Started with no box ticked yet: work has begun, so it is in progress.
 		if started {
-			return "doing"
+			return "in-progress"
 		}
 		return "todo"
 	case done == total:
 		return "done"
 	default:
-		return "doing"
+		return "in-progress"
 	}
 }
 

@@ -59,13 +59,14 @@ Skip any step = lying, not verifying
 The approved plan already covers the merge. Do not show a menu (merge, PR, keep, discard) and do not ask.
 
 1. Preconditions, all of them: every task committed, nothing uncommitted in the worktree, the full test suite and type checks green with the output shown, and the review verdict CLEAN. Any one missing: report it, do not merge.
-2. Stray files: `git diff --name-only <base>..<head>` must list no `node_modules`, `.venv` or `.env*` path, and `git ls-tree -r <head>` must hold no symlink (mode `120000`) the plan did not add. Found: strip them from the branch first.
-3. Parent: the branch recorded when the worktree was made. Unsure: ask the user; it is the one question allowed here.
-4. From the main checkout: `git merge --no-ff <branch> -m "<what landed>. Verified at merge: <gate numbers>"`. Capture the main checkout path before leaving the worktree, since cleanup must run from outside it. A conflict: resolve it hunk by hunk by the intent of each side; never `--abort`, never drop a side. Cannot resolve it: stop, keep the worktree, report. Right after the merge, run `acta id --fix-duplicates` in the main checkout: two branches can take the same number, and this gives the later one the next free number (the hash never changes). Put each renumber line it prints in the landing report.
-5. Run the gates again on the merge result. Red: say so plainly and leave the merge for the user.
-6. Clean up: `git worktree remove <path>`, then `git branch -d <branch>`. `-d` refusing means not fully merged: stop and report. Never delete a worktree that has uncommitted work.
-7. If the plan fixed a bug under `.acta/bugs/`, record the merge: `acta set bugs/<file-name-without-.md> fixed_in <merge-sha>`.
-8. If the plan's `parent` is `debt/<stem>`, run `acta tick <DEBT-n.m> --all` for each DEBT id the plan names as closed.
-9. Never `git push`, and never force anything.
+2. Plan progress: run `acta show <plan id>`. When `done` is less than `total`, do not merge: tick each box whose work is really done, and report the rest to the user.
+3. Stray files: `git diff --name-only <base>..<head>` must list no `node_modules`, `.venv` or `.env*` path, and `git ls-tree -r <head>` must hold no symlink (mode `120000`) the plan did not add. Found: strip them from the branch first.
+4. Parent: the branch recorded when the worktree was made. Unsure: ask the user; it is the one question allowed here.
+5. From the main checkout: `git merge --no-ff <branch> -m "<what landed>. Verified at merge: <gate numbers>"`. Capture the main checkout path before leaving the worktree, since cleanup must run from outside it. A conflict: resolve it hunk by hunk by the intent of each side; never `--abort`, never drop a side. Cannot resolve it: stop, keep the worktree, report. Right after the merge, run `acta id --fix-duplicates` in the main checkout: two branches can take the same number, and this gives the later one the next free number (the hash never changes). Put each renumber line it prints in the landing report.
+6. Run the gates again on the merge result. Red: say so plainly and leave the merge for the user.
+7. Clean up: `git worktree remove <path>`, then `git branch -d <branch>`. `-d` refusing means not fully merged: stop and report. Never delete a worktree that has uncommitted work.
+8. If the plan fixed a bug under `.acta/bugs/`, record the merge: `acta set bugs/<file-name-without-.md> fixed_in <merge-sha>`.
+9. If the plan's `parent` is `debt/<stem>`, run `acta tick <DEBT-n.m> --all` for each DEBT id the plan names as closed.
+10. Never `git push`, and never force anything.
 
-Report after landing: the merge sha first, the gate numbers you ran after the merge, what was cleaned up, one next action, and, if step 8 ran, the debt file and how many items it closed.
+Report after landing: the merge sha first, the gate numbers you ran after the merge, what was cleaned up, one next action, and, if step 9 ran, the debt file and how many items it closed.

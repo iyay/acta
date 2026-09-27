@@ -47,6 +47,9 @@ deliverable needs them; split only where a reviewer could meaningfully
 reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
 
+A plan never holds a step that can only happen after landing; that work goes
+in the landing report as the next action.
+
 ## Verify lines are properties
 
 Every task carries a `verify:` line. Write it as a claim that must hold on every path, never as the one case someone saw:

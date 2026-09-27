@@ -85,7 +85,7 @@ func agentRoots(main config.Config, others []Tree) []string {
 }
 
 // fillStarted marks every task that carries a started record. It runs before
-// derive, so a task with no ticked box still reads as doing and lifts its
+// derive, so a task with no ticked box still reads as in progress and lifts its
 // plan and spec.
 func (b *Board) fillStarted(main config.Config, others []Tree) {
 	recs := readAgents(agentRoots(main, others))

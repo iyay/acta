@@ -30,7 +30,15 @@ type TaskSec struct {
 	Line  int // 1-based line of the heading in the file
 	Done  int
 	Total int
+	Steps []Step // the checklist boxes of the section, in file order
 	Body  string // the section, heading included
+}
+
+// Step is one checklist box inside a task section.
+type Step struct {
+	Num   int
+	Text  string
+	State byte // ' ' open, 'x' done
 }
 
 // Doc is what one markdown file says about itself.
@@ -43,6 +51,7 @@ type Doc struct {
 	Tasks    []TaskSec
 	Items    []ItemLine // debt checklist lines outside any task section
 	Body     string     // the file without its frontmatter block
+	Text     string     // the same body without the debt checklist lines
 }
 
 // Parse reads frontmatter, the first "# " title, the "**Spec:**" line and the
@@ -68,7 +77,7 @@ func Parse(src []byte) Doc {
 		}
 	}
 	d.Body = strings.Join(lines[start:], "\n")
-
+	var text []string
 	var cur *TaskSec
 	var curLines []string
 	flush := func() {
@@ -107,9 +116,11 @@ func Parse(src []byte) Doc {
 			if cur != nil {
 				if m := boxRe.FindStringSubmatch(ln); m != nil {
 					cur.Total++
-					if m[1] != " " {
+					state := m[1][0]
+					if state != ' ' {
 						cur.Done++
 					}
+					cur.Steps = append(cur.Steps, Step{Num: cur.Total, Text: stepText(ln), State: state})
 				}
 			} else if m := itemRe.FindStringSubmatch(ln); m != nil {
 				state := m[1][0]
@@ -117,6 +128,10 @@ func Parse(src []byte) Doc {
 					state = 'x'
 				}
 				d.Items = append(d.Items, ItemLine{Num: len(d.Items) + 1, Text: m[2], Line: i + 1, State: state})
+			} else {
+				// The debt file keeps its checklist in the list above the
+				// body, so the body holds only the words around it.
+				text = append(text, ln)
 			}
 		}
 		if cur != nil {
@@ -124,7 +139,16 @@ func Parse(src []byte) Doc {
 		}
 	}
 	flush()
+	d.Text = strings.Join(text, "\n")
 	return d
+}
+
+// stepText is what a checklist box says, without the box itself.
+func stepText(ln string) string {
+	if i := strings.Index(ln, "]"); i >= 0 {
+		return strings.TrimSpace(ln[i+1:])
+	}
+	return strings.TrimSpace(ln)
 }
 
 // specPath takes the spec path out of the text after "**Spec:**". Only a

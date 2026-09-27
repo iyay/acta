@@ -220,9 +220,9 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
 	}
 }
 
-// A task someone started but has not ticked yet reads as doing, so its plan
+// A task someone started but has not ticked yet reads in-progress, so its plan
 // and spec show progress; a done task never shows an agent again.
-func TestStartedTaskShowsDoingBeforeAnyBox(t *testing.T) {
+func TestStartedTaskShowsInProgressBeforeAnyBox(t *testing.T) {
 	plan := `# Plan A
 
 **Spec:** .acta/specs/2026-09-20-a.md
@@ -241,8 +241,8 @@ func TestStartedTaskShowsDoingBeforeAnyBox(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if it := b.Get("plans/2026-09-21-a#task-1"); it == nil || it.Status != "doing" {
-		t.Fatalf("started task status = %+v, want doing", it)
+	if it := b.Get("plans/2026-09-21-a#task-1"); it == nil || it.Status != "in-progress" {
+		t.Fatalf("started task status = %+v, want in-progress", it)
 	}
 	if it := b.Get("plans/2026-09-21-a"); it == nil || it.Status != "in-progress" {
 		t.Fatalf("plan status = %+v, want in-progress", it)

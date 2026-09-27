@@ -1,12 +1,15 @@
 package board
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/gitc"
 )
 
 func loadFixture(t *testing.T) *Board {
@@ -41,7 +44,7 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 		"specs/2026-09-20-alpha":                 {KindStory, "in-progress", "derived", 1, 2},
 		"plans/2026-09-21-alpha":                 {KindPlan, "in-progress", "derived", 1, 2},
 		"plans/2026-09-21-alpha#task-1":          {KindTask, "done", "derived", 2, 2},
-		"plans/2026-09-21-alpha#task-2":          {KindTask, "doing", "derived", 1, 2},
+		"plans/2026-09-21-alpha#task-2":          {KindTask, "in-progress", "derived", 1, 2},
 		"specs/2026-09-22-beta":                  {KindStory, "draft", "derived", 0, 0},
 		"plans/2026-09-23-lonely":                {KindPlan, "approved", "derived", 0, 1},
 		"plans/2026-09-23-lonely#task-1":         {KindTask, "todo", "derived", 0, 0},
@@ -77,6 +80,27 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 	}
 	if len(b.Items) != 31 {
 		t.Errorf("got %d items, want 31: %v", len(b.Items), ids(b.Items))
+	}
+}
+
+// A task that has begun reads in-progress, whichever way it began: one ticked
+// box of three, or a started record and nothing ticked yet.
+func TestTaskUnderWayReadsInProgress(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"plans/2026-09-21-a.md": "# A plan\n\n### Task 1: One\n- [x] a\n- [ ] b\n- [ ] c\n",
+	})
+	it := b.Get("plans/2026-09-21-a#task-1")
+	if it == nil || it.Status != "in-progress" || it.Done != 1 || it.Total != 3 {
+		t.Fatalf("half ticked task = %+v, want in-progress at 1 of 3", it)
+	}
+}
+
+// The word doing is gone for good, so no item the board holds can read it.
+func TestNoItemOnTheBoardReadsDoing(t *testing.T) {
+	for _, it := range loadFixture(t).Items {
+		if it.Status == "doing" {
+			t.Errorf("%s reads doing, want in-progress", it.ID)
+		}
 	}
 }
 
@@ -267,6 +291,9 @@ func TestAllowedAndClosed(t *testing.T) {
 	if !reflect.DeepEqual(Allowed(KindStory), []string{"draft", "approved", "in-progress", "done", "dropped"}) {
 		t.Error("story statuses")
 	}
+	if !reflect.DeepEqual(Allowed(KindTask), []string{"todo", "in-progress", "done"}) {
+		t.Error("task statuses")
+	}
 	for _, s := range []string{"done", "fixed", "dropped", "wontfix"} {
 		if !Closed(s) {
 			t.Errorf("%s should be closed", s)
@@ -307,4 +334,128 @@ func TestDebtFileDoneWhenAllLinesClosed(t *testing.T) {
 	if got := b.Get("DEBT-1").Status; got != "done" {
 		t.Fatalf("status = %s, want done", got)
 	}
+}
+
+// The author of an item is the person whose commit first added its file. A
+// task lives in the plan file and takes its author, a debt item in the debt
+// file. A file git has no commit for belongs to whoever commits here now, and
+// a folder outside git leaves the field empty.
+func TestAuthorComesFromTheFirstCommit(t *testing.T) {
+	dir := authorRepo(t, "Ana", map[string]string{
+		"specs/2026-09-20-a.md": "---\nid: SPEC-1\n---\n# Spec A\n",
+		"plans/2026-09-21-a.md": "---\nid: PLAN-1\n---\n# Plan A\n\n**Spec:** `.acta/specs/2026-09-20-a.md`\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n",
+	})
+	b := loadDir(t, dir)
+	for _, id := range []string{"SPEC-1", "PLAN-1", "PLAN-1.1", "PLAN-1.2"} {
+		it := b.Get(id)
+		if it == nil {
+			t.Errorf("the board holds no %s", id)
+			continue
+		}
+		if it.Author != "Ana" {
+			t.Errorf("%s author = %q, want Ana", id, it.Author)
+		}
+	}
+
+	late := filepath.Join(dir, ".acta", "bugs", "2026-09-22-b.md")
+	if err := os.MkdirAll(filepath.Dir(late), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(late, []byte("---\nid: BUG-1\n---\n# Bug B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, dir, "config", "user.name", "Sari")
+	if got := loadDir(t, dir).Get("BUG-1").Author; got != "Sari" {
+		t.Errorf("a file with no commit has author %q, want the user.name Sari", got)
+	}
+
+	outside := boardWith(t, map[string]string{"plans/2026-09-21-a.md": "# Plan A\n"})
+	if got := outside.Get("plans/2026-09-21-a").Author; got != "" {
+		t.Errorf("a board outside git has author %q, want empty", got)
+	}
+}
+
+// A debt item lives in its debt file, so it takes that file's author and the
+// text around the checklist as its body, not the whole file again.
+func TestDebtItemTakesTheDebtFile(t *testing.T) {
+	dir := authorRepo(t, "Budi", map[string]string{
+		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\nProse about the review.\n\n- [ ] first note\n- [x] second note\n",
+	})
+	b := loadDir(t, dir)
+	if got := b.Get("DEBT-1").Author; got != "Budi" {
+		t.Errorf("the debt file has author %q, want Budi", got)
+	}
+	it := b.Get("DEBT-1.1")
+	if it == nil || it.Author != "Budi" {
+		t.Fatalf("debt item = %+v, want the debt file's author Budi", it)
+	}
+	got := it.Body
+	if !strings.Contains(got, "Prose about the review.") {
+		t.Errorf("debt item body = %q, want the prose of the file", got)
+	}
+	if strings.Contains(got, "first note") {
+		t.Errorf("debt item body = %q, want no checklist line in it", got)
+	}
+}
+
+// Git is asked once per file, not once per item: a spec, a plan with three
+// tasks and a debt file with two lines are three files, not seven questions.
+func TestAuthorIsAskedOncePerFile(t *testing.T) {
+	var files []string
+	gitAuthor = func(_ string, path string) (string, bool) {
+		files = append(files, path)
+		return "", false
+	}
+	names := 0
+	gitUserName = func(string) string {
+		names++
+		return "Sari"
+	}
+	t.Cleanup(func() { gitAuthor, gitUserName = gitc.Author, gitc.UserName })
+
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-20-a.md":    "---\nid: SPEC-1\n---\n# Spec A\n",
+		"plans/2026-09-21-a.md":    "---\nid: PLAN-1\n---\n# Plan A\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n\n### Task 3: Three\n- [ ] z\n",
+		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] one\n- [ ] two\n",
+	})
+	if len(files) != 3 {
+		t.Fatalf("git was asked about %d files, want 3 (a spec, a plan, a debt file): %v", len(files), files)
+	}
+	if names != 1 {
+		t.Errorf("user.name was read %d times in one load, want 1", names)
+	}
+	for _, id := range []string{"SPEC-1", "PLAN-1", "PLAN-1.3", "DEBT-1.1", "DEBT-1.2"} {
+		if got := b.Get(id).Author; got != "Sari" {
+			t.Errorf("%s author = %q, want the one name the whole load read", id, got)
+		}
+	}
+}
+
+// authorRepo writes the files into a fresh checkout and commits them as name,
+// so every file on the board has an author to find.
+func authorRepo(t *testing.T, name string, files map[string]string) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, dir, "init", "-q", "-b", "main")
+	for rel, body := range files {
+		p := filepath.Join(dir, ".acta", rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitRun(t, dir, "add", ".")
+	cmd := exec.Command("git", "-C", dir, "commit", "-q", "-m", "add the board")
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME="+name, "GIT_COMMITTER_NAME="+name,
+		"GIT_AUTHOR_EMAIL="+name+"@example.com", "GIT_COMMITTER_EMAIL="+name+"@example.com")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v %s", err, out)
+	}
+	return dir
 }
