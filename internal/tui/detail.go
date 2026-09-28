@@ -165,16 +165,25 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 	return out
 }
 
+// dotOf is the status dot of an item: finished, under way, or waiting. The
+// tree rows and the detail lists both wear it, so the two always agree.
+func dotOf(it *board.Item) string {
+	switch {
+	case board.Closed(it.Status):
+		return dotDone
+	case inProgress(it):
+		return dotGoing
+	}
+	return dotWaiting
+}
+
 // workLine is one line of the list: the dot, the short ID, the title, and for
 // work under way its count and its agent, the same tail a list row wears. A
 // line the reader is on stays bright; the rest are dim, dot included.
 func workLine(it *board.Item, on bool, w int) string {
-	mark, brush := dotWaiting, faint
-	switch {
-	case board.Closed(it.Status):
-		mark = dotDone
-	case inProgress(it):
-		mark, brush = dotGoing, work
+	mark, brush := dotOf(it), faint
+	if mark == dotGoing {
+		brush = work
 	}
 	if on {
 		brush = lipgloss.NewStyle()

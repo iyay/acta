@@ -252,7 +252,11 @@ func headOf(m Model, r row) string {
 	if name == "" {
 		name = it.ID
 	}
-	return strings.TrimSpace(strings.Repeat("  ", r.depth) + name + "  " + it.Title)
+	lead := strings.Repeat("  ", r.depth)
+	if r.tree {
+		lead += m.treeMark(r, it) + " "
+	}
+	return strings.TrimSpace(lead + name + "  " + it.Title)
 }
 
 // isThatRow says whether a drawn line is that row and nothing else, cut to
