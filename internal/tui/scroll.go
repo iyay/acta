@@ -20,27 +20,23 @@ func firstOf(off, total, visible int) int {
 	return clamp(off, 0, max(0, total-visible))
 }
 
-// scrollbar gives the column of cells down the right wall of a pane that
-// says where the pane sits inside its content: one cell per inner row, a
-// thumb where the window is and a track everywhere else. Nothing is drawn
-// when the content fits, because then all of it is on screen already.
-func scrollbar(total, visible, first, h int) []string {
+// scrollbar says, line by line down the right wall of a pane, which lines the
+// thumb covers: true where the window is, false everywhere else. A pane whose
+// content fits has no window to point at, so every line is false.
+func scrollbar(total, visible, first, h int) []bool {
+	bar := make([]bool, max(0, h))
 	if total <= visible || h <= 0 {
-		return nil
+		return bar
 	}
 	// The thumb keeps the size of the window, so a pane that shows a tenth
-	// of its content gets a thumb of a tenth of the column.
+	// of its content gets a thumb of a tenth of the wall.
 	thumb := max(1, h*visible/total)
 	pos := 0
 	if last := total - visible; last > 0 {
 		pos = clamp(first, 0, last) * (h - thumb) / last
 	}
-	bar := make([]string, h)
-	for i := range bar {
-		bar[i] = "░"
-	}
 	for i := pos; i < pos+thumb; i++ {
-		bar[i] = "█"
+		bar[i] = true
 	}
 	return bar
 }
@@ -76,19 +72,7 @@ func (m Model) fitOf(p pane) int {
 
 // linesOf is how many lines pane p holds in all, as wide as it is now.
 func (m Model) linesOf(p pane) int {
-	return m.linesAt(p, m.textOf(p, m.boxOf(p)))
-}
-
-// textOf is the width a pane draws its words at, and the width its content is
-// measured at. A pane with more content than lines gives one cell to the
-// scrollbar, so a body that wraps has fewer cells and more lines. The model
-// and the view both measure here, or the end of a body never lands on screen.
-func (m Model) textOf(p pane, b box) int {
-	inner := b.textW()
-	if inner > 1 && m.linesAt(p, inner-1) > b.inner {
-		return inner - 1
-	}
-	return inner
+	return m.linesAt(p, m.boxOf(p).textW())
 }
 
 // linesAt is how many lines pane p holds when its text is w cells wide: the

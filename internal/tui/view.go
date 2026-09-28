@@ -25,7 +25,8 @@ type box struct {
 }
 
 // textW is how many cells a pane has for its words: the width without the two
-// walls. A pane that scrolls gives one of those cells to the scrollbar.
+// walls. The scrollbar rides the right wall, so no cell inside the pane goes
+// to it.
 func (b box) textW() int { return max(0, b.w-2) }
 
 // geom is the whole screen measured in cells from its top left corner. The
@@ -175,9 +176,9 @@ func (b box) rowAt(y int) int {
 }
 
 // paneView draws one pane: its border with the title inside the top line, the
-// rows it holds, the scrollbar down the right wall when there is more content
-// than rows, and the bottom line, which a sidebar pane closes with the item
-// count of what it holds.
+// rows it holds, and the bottom line, which a sidebar pane closes with the
+// item count of what it holds. The scrollbar thumb is the right wall itself,
+// so the words of the pane get every cell between the two walls.
 func (m Model) paneView(p pane, b box) string {
 	if b.w < 2 || b.h < 1 {
 		return ""
@@ -189,24 +190,17 @@ func (m Model) paneView(p pane, b box) string {
 	if b.h == 1 {
 		return m.paneTop(p, b, edge)
 	}
-	// The words of a pane that overflows get one cell less, because the
-	// scrollbar takes that cell. The model measures the content at this same
-	// width, so the line count on screen is the line count the offset counts.
-	inner := m.textOf(p, b)
+	inner := b.textW()
 	total := m.linesAt(p, inner)
 	first := b.first
 	if p == paneDetail {
 		first = firstOf(m.off[p], total, b.inner)
 	}
+	// A thumb marks the window on the right wall, in the brush the wall
+	// already wears, so the focus reads the same on the border as inside.
 	bar := scrollbar(total, b.inner, first, b.inner)
-	// A pane too narrow to spare a cell has nowhere to put the scrollbar, so
-	// it keeps that cell.
-	if len(bar) == 0 || inner >= b.textW() {
-		bar = nil
-	}
 	// Every sidebar pane counts the items it holds and the one under the
-	// cursor. The detail box counts lines, not items, so it writes nothing
-	// and keeps its scrollbar.
+	// cursor. The detail box counts lines, not items, so it writes nothing.
 	foot := ""
 	if p != paneDetail {
 		rows, sel, idx := m.slotOf(p)
@@ -225,11 +219,11 @@ func (m Model) paneView(p pane, b box) string {
 		if i < len(content) {
 			line = content[i]
 		}
-		cell := ""
-		if i < len(bar) {
-			cell = faint.Render(bar[i])
+		wall := "│"
+		if i < len(bar) && bar[i] {
+			wall = "┃"
 		}
-		rows = append(rows, edge.Render("│")+pad(line, inner)+cell+edge.Render("│"))
+		rows = append(rows, edge.Render("│")+pad(line, inner)+edge.Render(wall))
 	}
 	rows = append(rows, paneBottom(b, edge, foot))
 	return strings.Join(rows, "\n")
@@ -514,7 +508,7 @@ func (m Model) popupBox() string {
 		b.WriteString("\n" + faint.Render("j k to move, enter to save, esc to cancel"))
 		return m.boxView("Set "+m.popup.field, b.String())
 	case m.slug != nil:
-		return m.boxView("New bug", "new bug slug: "+*m.slug+"█\n\n"+
+		return m.boxView("New bug", "new bug slug: "+*m.slug+"▌\n\n"+
 			faint.Render("lower case words joined by -, enter to open the editor, esc to cancel"))
 	}
 	return ""

@@ -95,7 +95,8 @@ func scrollBox(m Model, p pane) box {
 }
 
 // paneRows gives the lines pane p draws between its walls, padding included,
-// so a test can take the words and the scrollbar cell apart.
+// so a test can read the words of a row. The right wall wears the plain bar or
+// the scrollbar thumb, and both walls come off here.
 func paneRows(m Model, p pane) []string {
 	b := scrollBox(m, p)
 	col := column(m.View(), b.x, b.w)
@@ -105,32 +106,55 @@ func paneRows(m Model, p pane) []string {
 		if y >= len(col) {
 			break
 		}
-		out = append(out, strings.TrimSuffix(strings.TrimPrefix(plain(col[y]), "│"), "│"))
+		out = append(out, cutWalls(plain(col[y])))
 	}
 	return out
 }
 
-// lastCell gives the cell at the right end of every line of a pane, which is
-// where the scrollbar sits, and a space when the pane has none.
-func lastCell(rows []string) []string {
-	out := make([]string, 0, len(rows))
-	for _, r := range rows {
-		c := []rune(r)
-		if len(c) == 0 {
+// cutWalls takes both walls off a drawn line of a pane, whichever glyph each
+// one wears.
+func cutWalls(line string) string {
+	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(line, "│"), "┃"), "│")
+}
+
+// wallCells gives the right wall of every line a pane draws: the plain bar, or
+// the thumb on the lines the pane has scrolled to.
+func wallCells(m Model, p pane) []string {
+	b := scrollBox(m, p)
+	col := column(m.View(), b.x, b.w)
+	out := make([]string, 0, b.inner)
+	for i := range b.inner {
+		y := b.y + 1 + i
+		if y >= len(col) {
+			break
+		}
+		r := []rune(plain(col[y]))
+		if len(r) == 0 {
 			out = append(out, " ")
 			continue
 		}
-		out = append(out, string(c[len(c)-1]))
+		out = append(out, string(r[len(r)-1]))
 	}
 	return out
+}
+
+// thumbRows counts the lines a thumb covers.
+func thumbRows(bar []bool) int {
+	n := 0
+	for _, on := range bar {
+		if on {
+			n++
+		}
+	}
+	return n
 }
 
 // thumbSpan gives the first and the last line the scrollbar thumb covers, or
 // two -1 when the pane draws no thumb at all.
-func thumbSpan(rows []string) (top, bottom int) {
+func thumbSpan(m Model, p pane) (top, bottom int) {
 	top, bottom = -1, -1
-	for i, c := range lastCell(rows) {
-		if c != "█" {
+	for i, c := range wallCells(m, p) {
+		if c != "┃" {
 			continue
 		}
 		if top < 0 {
@@ -143,8 +167,8 @@ func thumbSpan(rows []string) (top, bottom int) {
 
 // thumbAt gives the line the scrollbar thumb starts on, or -1 when the pane
 // draws no thumb at all.
-func thumbAt(rows []string) int {
-	top, _ := thumbSpan(rows)
+func thumbAt(m Model, p pane) int {
+	top, _ := thumbSpan(m, p)
 	return top
 }
 
@@ -167,15 +191,14 @@ func footOf(t *testing.T, m Model, p pane) string {
 	return strings.Trim(bottomLine(t, m, p), "─└┘ ")
 }
 
-// drawnFirst gives the first line a pane has on screen, walls, padding and the
-// scrollbar cell cut off, which is where the reader looks to see what a box is
-// showing.
+// drawnFirst gives the first line a pane has on screen, walls and padding cut
+// off, which is where the reader looks to see what a box is showing.
 func drawnFirst(m Model, p pane) string {
 	rows := paneRows(m, p)
 	if len(rows) == 0 {
 		return ""
 	}
-	return strings.TrimSpace(strings.TrimRight(rows[0], " ░█"))
+	return strings.TrimSpace(rows[0])
 }
 
 // shows says whether the screen has the content line at index i on top of
@@ -184,7 +207,7 @@ func drawnFirst(m Model, p pane) string {
 // claims a place it has not drawn is caught here.
 func shows(m Model, p pane, i int) bool {
 	if p == paneDetail {
-		lines := m.detailLines(m.textOf(p, scrollBox(m, p)))
+		lines := m.detailLines(scrollBox(m, p).textW())
 		return i >= 0 && i < len(lines) && drawnFirst(m, p) == strings.TrimSpace(lines[i])
 	}
 	drawn := paneRows(m, p)
@@ -235,8 +258,44 @@ func headOf(m Model, r row) string {
 // isThatRow says whether a drawn line is that row and nothing else, cut to
 // the cells it had room for.
 func isThatRow(m Model, r row, line string) bool {
-	rest := strings.TrimRight(line, " ░█")
+	rest := strings.TrimRight(line, " ")
 	return rest == cutTo(headOf(m, r), lipgloss.Width(rest))
+}
+
+// TestScrollbarRowsAreThumbOnly is the whole thumb rule: no thumb when the
+// content fits, a thumb of at least one line, the thumb on the first line at
+// the top and on the last line at the end, and a thumb that keeps the size of
+// the window the pane shows.
+func TestScrollbarRowsAreThumbOnly(t *testing.T) {
+	cases := []struct {
+		total, visible, first, h int
+		want                     string // one char per line: T thumb, . no thumb
+	}{
+		{10, 10, 0, 10, ".........."}, // fits: no thumb
+		{0, 10, 0, 10, ".........."},
+		{100, 10, 0, 10, "T........."},
+		{100, 10, 90, 10, ".........T"},
+		{20, 10, 5, 10, "..TTTTT..."},
+		{1000, 5, 500, 5, "..T.."},
+	}
+	for _, c := range cases {
+		rows := scrollbar(c.total, c.visible, c.first, c.h)
+		if len(rows) != c.h {
+			t.Errorf("scrollbar(%d,%d,%d,%d) has %d lines, want %d", c.total, c.visible, c.first, c.h, len(rows), c.h)
+			continue
+		}
+		got := ""
+		for _, on := range rows {
+			if on {
+				got += "T"
+				continue
+			}
+			got += "."
+		}
+		if got != c.want {
+			t.Errorf("scrollbar(%d,%d,%d,%d) = %s, want %s", c.total, c.visible, c.first, c.h, got, c.want)
+		}
+	}
 }
 
 func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
@@ -250,39 +309,36 @@ func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
 	for _, c := range cases {
 		bar := scrollbar(c.total, c.vis, c.first, c.vis)
 		if len(bar) != c.vis {
-			t.Fatalf("bar has %d cells, want %d", len(bar), c.vis)
+			t.Fatalf("bar has %d lines, want %d", len(bar), c.vis)
 		}
-		if (bar[0] == "█") != c.wantTop || (bar[c.vis-1] == "█") != c.wantBottom {
+		if bar[0] != c.wantTop || bar[c.vis-1] != c.wantBottom {
 			t.Errorf("%+v: bar %v", c, bar)
 		}
 	}
-	if len(scrollbar(5, 10, 0, 10)) != 0 {
-		t.Error("no scrollbar when the content fits")
+	if slices.Contains(scrollbar(5, 10, 0, 10), true) {
+		t.Error("a thumb on a pane whose content fits")
 	}
 }
 
 func TestScrollbarThumbSitsBetweenTheEnds(t *testing.T) {
-	// Half way down, the thumb sits inside the track, never on either end.
+	// Half way down, the thumb sits inside the column, never on either end.
 	bar := scrollbar(100, 10, 45, 10)
 	if len(bar) != 10 {
-		t.Fatalf("bar has %d cells, want 10", len(bar))
+		t.Fatalf("bar has %d lines, want 10", len(bar))
 	}
-	if bar[0] == "█" || bar[9] == "█" {
+	if bar[0] || bar[9] {
 		t.Errorf("the thumb jumped to an end: %v", bar)
 	}
-	if n := strings.Count(strings.Join(bar, ""), "█"); n != 1 {
-		t.Errorf("one cell should be the thumb: %v", bar)
+	if n := thumbRows(bar); n != 1 {
+		t.Errorf("one line should be the thumb, got %d: %v", n, bar)
 	}
-	if n := strings.Count(strings.Join(bar, ""), "░"); n != 9 {
-		t.Errorf("the rest of the column should be track: %v", bar)
-	}
-	// A window that covers half the content gets a thumb of half the
-	// column, so the thumb never lies about how much is on screen.
+	// A window that covers half the content gets a thumb of half the column,
+	// so the thumb never lies about how much is on screen.
 	bar = scrollbar(100, 50, 25, 10)
-	if n := strings.Count(strings.Join(bar, ""), "█"); n != 5 {
-		t.Errorf("half of the content should give a thumb of 5 cells: %v", bar)
+	if n := thumbRows(bar); n != 5 {
+		t.Errorf("half of the content should give a thumb of 5 lines, got %d: %v", n, bar)
 	}
-	if bar[1] != "░" || bar[2] != "█" || bar[6] != "█" || bar[7] != "░" {
+	if bar[1] || !bar[2] || !bar[6] || bar[7] {
 		t.Errorf("the thumb should sit in the middle of the column: %v", bar)
 	}
 }
@@ -292,43 +348,43 @@ func TestScrollbarSurvivesOddNumbers(t *testing.T) {
 	// as the start: a stale offset cannot leave the thumb off the column.
 	for _, c := range []struct {
 		first    int
-		wantCell int
+		wantLine int
 	}{
 		{-5, 0}, {0, 0}, {45, 4}, {90, 9}, {999, 9},
 	} {
 		bar := scrollbar(100, 10, c.first, 10)
 		if len(bar) != 10 {
-			t.Fatalf("first %d: bar has %d cells, want 10", c.first, len(bar))
+			t.Fatalf("first %d: bar has %d lines, want 10", c.first, len(bar))
 		}
-		if n := strings.Count(strings.Join(bar, ""), "█"); n != 1 {
-			t.Errorf("first %d: one cell should be the thumb: %v", c.first, bar)
+		if n := thumbRows(bar); n != 1 {
+			t.Errorf("first %d: one line should be the thumb, got %d: %v", c.first, n, bar)
 		}
-		if bar[c.wantCell] != "█" {
-			t.Errorf("first %d: the thumb should sit on cell %d: %v", c.first, c.wantCell, bar)
+		if !bar[c.wantLine] {
+			t.Errorf("first %d: the thumb should sit on line %d: %v", c.first, c.wantLine, bar)
 		}
 	}
 	// A pane with no line to show still draws a column instead of crashing.
-	if bar := scrollbar(10, 0, 0, 10); len(bar) != 10 {
-		t.Errorf("a pane with no visible line has %d cells, want 10", len(bar))
+	if bar := scrollbar(10, 0, 0, 10); len(bar) != 10 || !bar[0] {
+		t.Errorf("a pane with no visible line drew %v, want a thumb on line 0", bar)
 	}
-	// Content that exactly fills the pane needs no scrollbar, and neither
-	// does a pane too short to draw one.
-	if len(scrollbar(10, 10, 0, 10)) != 0 || len(scrollbar(10, 4, 0, 0)) != 0 {
-		t.Error("a scrollbar where there is nothing to scroll")
+	// Content that exactly fills the pane needs no thumb, and neither does a
+	// pane too short to draw one.
+	if slices.Contains(scrollbar(10, 10, 0, 10), true) || len(scrollbar(10, 4, 0, 0)) != 0 {
+		t.Error("a thumb where there is nothing to scroll")
 	}
 }
 
 func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 	// The fixture fits in every box of a tall enough screen, so none of them
-	// draws a scrollbar.
+	// draws a thumb.
 	tall := press(sized(newModel(t), 120, 80), "3")
 	for _, p := range []pane{panePlans, paneDone, paneDetail} {
-		if at := thumbAt(paneRows(tall, p)); at != -1 {
-			t.Errorf("pane %d draws a scrollbar for content that fits, thumb on line %d", p, at)
+		if at := thumbAt(tall, p); at != -1 {
+			t.Errorf("pane %d draws a thumb for content that fits, on line %d", p, at)
 		}
 	}
 	// The long board overflows in all three, and each one says so with a
-	// scrollbar sitting at the top of the column.
+	// thumb sitting at the top of its own wall.
 	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		// The detail box needs an item under it before it has a body to
 		// scroll, so it is read from the same board with one selected.
@@ -336,8 +392,8 @@ func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 		if p == paneDetail {
 			m = press(paneModel(t, panePlans), "0")
 		}
-		if at := thumbAt(paneRows(m, p)); at != 0 {
-			t.Errorf("pane %d draws no scrollbar at the top, thumb on line %d", p, at)
+		if at := thumbAt(m, p); at != 0 {
+			t.Errorf("pane %d draws no thumb at the top, thumb on line %d", p, at)
 		}
 	}
 }
@@ -391,8 +447,17 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 		if !shows(m, p, m.lastOff(p)) {
 			t.Errorf("pane %d: at the end the box should start at line %d, it shows %q", p, m.lastOff(p), drawnFirst(m, p))
 		}
-		if strings.TrimSpace(paneRows(m, p)[0]) == "" {
-			t.Errorf("pane %d: the wheel left the first line blank", p)
+		// A body of a plan is mostly empty lines, so the first line on screen
+		// may be one of them. A row of a list never is, because every row has
+		// words on it.
+		blank := 0
+		for _, ln := range paneRows(m, p) {
+			if strings.TrimSpace(ln) == "" {
+				blank++
+			}
+		}
+		if blank == len(paneRows(m, p)) || (p != paneDetail && blank > 0) {
+			t.Errorf("pane %d: the wheel left %d of %d lines blank", p, blank, len(paneRows(m, p)))
 		}
 	}
 }
@@ -429,11 +494,11 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 				t.Errorf("pane %d: content that fits writes %q, want %q", p, got, want)
 			}
 		}
-		if at := thumbAt(paneRows(m, p)); at != -1 {
+		if at := thumbAt(m, p); at != -1 {
 			t.Errorf("pane %d: content that fits draws a thumb on line %d", p, at)
 		}
 		if p == paneDetail {
-			lines := m.detailLines(m.textOf(p, scrollBox(m, p)))
+			lines := m.detailLines(scrollBox(m, p).textW())
 			if got, want := strings.TrimRight(paneRows(m, p)[0], " "), plain(strings.TrimRight(lines[0], " ")); got != want {
 				t.Errorf("pane %d: the first line on screen is %q, the body starts on %q", p, got, want)
 			}
@@ -619,7 +684,7 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 	if !isFirstLine(m, paneDetail, paneRows(m, paneDetail)[0]) {
 		t.Errorf("the detail does not show its first line: %q", paneRows(m, paneDetail)[0])
 	}
-	if top := thumbAt(paneRows(m, paneDetail)); top != 0 {
+	if top := thumbAt(m, paneDetail); top != 0 {
 		t.Errorf("the detail thumb sits on line %d after picking another item, want 0", top)
 	}
 }
@@ -631,7 +696,7 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 		if !shows(m, p, 0) {
 			t.Fatalf("pane %d at the top shows %q, want its first line", p, drawnFirst(m, p))
 		}
-		if top := thumbAt(paneRows(m, p)); top != 0 {
+		if top := thumbAt(m, p); top != 0 {
 			t.Errorf("pane %d at the top has its thumb on line %d, want 0", p, top)
 		}
 		// Middle: the thumb leaves both ends and the top of the box moves
@@ -643,7 +708,7 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 			t.Fatalf("pane %d sits at %d of %d, which is neither the middle nor the end", p, first, m.lastOff(p))
 		}
 		b := scrollBox(m, p)
-		if top, bottom := thumbSpan(paneRows(m, p)); top <= 0 || bottom >= b.inner-1 {
+		if top, bottom := thumbSpan(m, p); top <= 0 || bottom >= b.inner-1 {
 			t.Errorf("pane %d in the middle has its thumb on lines %d to %d of %d", p, top, bottom, b.inner)
 		}
 		if !shows(m, p, first) {
@@ -656,7 +721,7 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 		if m.off[p] != last {
 			t.Errorf("pane %d at the end sits at %d of %d", p, m.off[p], last)
 		}
-		if _, bottom := thumbSpan(paneRows(m, p)); bottom != b.inner-1 {
+		if _, bottom := thumbSpan(m, p); bottom != b.inner-1 {
 			t.Errorf("pane %d at the end has its thumb ending on line %d, want %d", p, bottom, b.inner-1)
 		}
 		if !shows(m, p, last) {
@@ -665,8 +730,8 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 		// The last line on screen is the last line of the content.
 		drawn := paneRows(m, p)
 		if p == paneDetail {
-			lines := m.detailLines(m.textOf(p, b))
-			if got, want := strings.TrimRight(drawn[len(drawn)-1], " ░█"), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
+			lines := m.detailLines(b.textW())
+			if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 				t.Errorf("pane %d ends on %q, the content ends on %q", p, got, want)
 			}
 		} else {
@@ -704,7 +769,7 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 				t.Errorf("pane %d writes %q for content that fits, want %q", p, got, want)
 			}
 		}
-		if at := thumbAt(paneRows(m, p)); at != -1 {
+		if at := thumbAt(m, p); at != -1 {
 			t.Errorf("pane %d draws a thumb on line %d for content that fits", p, at)
 		}
 		// A window so short that the box shows a handful of lines still
@@ -767,8 +832,8 @@ func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
 		// The last line the box draws is the last line of its own content.
 		drawn := paneRows(m, p)
 		if p == paneDetail {
-			lines := m.detailLines(m.textOf(p, b))
-			if got, want := strings.TrimRight(drawn[len(drawn)-1], " ░█"), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
+			lines := m.detailLines(b.textW())
+			if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 				t.Errorf("pane %d ends on %q, the body ends on %q", p, got, want)
 			}
 		} else {
@@ -777,7 +842,7 @@ func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
 				t.Errorf("pane %d ends on %q, the last row on screen is %q", p, drawn[len(drawn)-1], headOf(m, r))
 			}
 		}
-		if _, bottom := thumbSpan(paneRows(m, p)); bottom != b.inner-1 {
+		if _, bottom := thumbSpan(m, p); bottom != b.inner-1 {
 			t.Errorf("pane %d: after G the thumb ends on line %d, want %d", p, bottom, b.inner-1)
 		}
 	}
@@ -789,7 +854,7 @@ func isFirstLine(m Model, p pane, line string) bool {
 	b := scrollBox(m, p)
 	if p == paneDetail {
 		lines := m.detailLines(b.textW())
-		return strings.TrimRight(line, " ░█") == plain(strings.TrimRight(lines[0], " "))
+		return strings.TrimRight(line, " ") == plain(strings.TrimRight(lines[0], " "))
 	}
 	rows, _, _ := m.slotOf(p)
 	return len(rows) > 0 && isThatRow(m, rows[0], line)
@@ -874,9 +939,9 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 		if !shows(m, paneDetail, m.lastOff(paneDetail)) {
 			t.Errorf("a body ending %s shows %q after G, want the last window", tail(body), drawnFirst(m, paneDetail))
 		}
-		lines := m.detailLines(m.textOf(paneDetail, b))
+		lines := m.detailLines(b.textW())
 		drawn := paneRows(m, paneDetail)
-		if got, want := strings.TrimRight(drawn[len(drawn)-1], " ░█"), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
+		if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 			t.Errorf("a body ending %q ends on screen on %q, its content ends on %q", tail(body), got, want)
 		}
 		for i, ln := range strings.Split(m.View(), "\n") {
@@ -924,8 +989,8 @@ func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 		if !shows(m, paneSpecs, m.off[paneSpecs]) {
 			t.Errorf("groupOpen %v: the pane shows %q, it sits at %d", open, drawnFirst(m, paneSpecs), m.off[paneSpecs])
 		}
-		if top := thumbAt(paneRows(m, paneSpecs)); top < 0 {
-			t.Errorf("groupOpen %v: a long list draws no scrollbar", open)
+		if top := thumbAt(m, paneSpecs); top < 0 {
+			t.Errorf("groupOpen %v: a long list draws no thumb", open)
 		}
 		if strings.TrimSpace(paneRows(m, paneSpecs)[0]) == "" {
 			t.Errorf("groupOpen %v: the first line on screen is blank", open)
