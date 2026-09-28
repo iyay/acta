@@ -732,7 +732,7 @@ Waves: wave 5 = Task 7, wave 6 = Task 8 (both touch `internal/tui/view.go`).
 - Consumes: `scrollbar(total, visible, first, h int) []string` (today it returns `░`/`█` cells for an inner column).
 - Produces: `scrollbar` returns, per row, whether the thumb covers that row (`[]bool`, length `h`; all false when `total <= visible`); the thumb stays proportional to `visible/total` with a minimum of 1 row, placed the way the current code places it. The right border is drawn from that list: `┃` where true, `│` where false, both in the border style the pane already uses.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestScrollbarRowsAreThumbOnly(t *testing.T) {
@@ -775,21 +775,21 @@ func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 
 Adjust the exact rows in the table to the current proportional placement if one case differs by one row, and say so in the reply; the rule under test is: no thumb when content fits, thumb touches the top at the start and the bottom at the end, at least 1 row.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'ScrollbarRows|ThumbSits' -v`
 Expected: FAIL (scrollbar returns strings; thumb drawn inside the pane).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 Change `scrollbar` to return `[]bool`. In `paneView`, stop reserving the inner column for the bar, so the content gets that column back. Draw the right border row by row: `┃` where the thumb is, `│` elsewhere, in the pane's border style. Remove the `░`/`█` glyphs.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -809,7 +809,7 @@ git commit -m "feat(tui): scrollbar thumb on the right border, no track"
 - Consumes: `cover(body string) string`, `popupBox() string`.
 - Produces: `cover` draws the body behind the box with ANSI styling stripped and one faint grey style applied (`lipgloss.NewStyle().Faint(true).Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})`), and draws the box as today. No new Model state.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestPopupDimsTheBackground(t *testing.T) {
@@ -834,21 +834,21 @@ func TestPopupDimsTheBackground(t *testing.T) {
 
 Write the dim check in full: use `ansi.Strip` from the ANSI package already in go.mod (or lipgloss's own helper) to get plain text, then compare each background segment to `dim.Render(plain)`. Pick the key that opens each popup from the real key switch; skip a popup kind only if it cannot open on the fixture, and say which.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run PopupDims -v`
 Expected: FAIL (background keeps its colors).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `cover`, before placing the box, strip the styling from each body segment that sits outside the box and render it with the dim style. Keep the box exactly as today.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
