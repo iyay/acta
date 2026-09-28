@@ -197,16 +197,32 @@ func TestReturnVisitKeepsPaneRowAndTree(t *testing.T) {
 	}
 }
 
+// TestAShrunkListClampsTheCursor shrinks the list under the cursor from
+// three rows to two. The cursor has to land on the last row that is left,
+// which is neither the row it was on nor the first row of the new list.
 func TestAShrunkListClampsTheCursor(t *testing.T) {
-	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "G", tabKey(tabSpecs))
-	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-only.md": "# Only bug\n\n## Symptom\nx\n"})
+	bugs := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "G")
+	if got := cursorOf(bugs.rowsOf(paneList), bugs.sel[paneList], bugs.idx[paneList]); got != 2 {
+		t.Fatalf("before the reload the cursor is on row %d, want the last of the 3 bugs", got)
+	}
+	m := press(bugs, tabKey(tabSpecs))
+	cfg := treeCfg(t, map[string]string{
+		".acta/bugs/2026-09-28-lag.md":  "# Lag\n\n## Symptom\nx\n",
+		".acta/bugs/2026-09-26-open.md": "# Open\n\n## Symptom\nx\n",
+	})
 	b, err := board.Load(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	next, _ := m.Update(reloadMsg{b: b})
 	m = press(next.(Model), tabKey(tabBugs))
-	if it := m.Selected(); it == nil || it.ID != "bugs/2026-09-20-only" {
+	if got := len(m.rowsOf(paneList)); got != 2 {
+		t.Fatalf("the reloaded list has %d rows, want the 2 bugs left", got)
+	}
+	if got := cursorOf(m.rowsOf(paneList), m.sel[paneList], m.idx[paneList]); got != 1 {
+		t.Errorf("after the list shrank the cursor is on row %d, want the last row left (1)", got)
+	}
+	if it := m.Selected(); it == nil || it.ID != "bugs/2026-09-26-open" {
 		t.Errorf("after the list shrank the cursor is on %v, want the last row left", it)
 	}
 }
