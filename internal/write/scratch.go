@@ -30,7 +30,9 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 	}
 	next, taken := scanIDs(b)
 	shortID := fmt.Sprintf("SCRATCH-%d", next["SCRATCH"])
-	content := body
+	// The frontmatter is built on its own and the body is added afterwards, so
+	// a body that opens with a "---" rule cannot be read as frontmatter.
+	var content []byte
 	for _, f := range []struct{ key, value string }{
 		{"id", shortID},
 		{"hash", freeHash(taken)},
@@ -42,6 +44,7 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 			return Outcome{}, err
 		}
 	}
+	content = append(content, body...)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return Outcome{}, err
 	}

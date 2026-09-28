@@ -86,6 +86,26 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	}
 }
 
+func TestNewScratchKeepsABodyThatStartsWithARule(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	body := []byte("---\nstill my body\n")
+	o, err := NewScratch(cfg, "rule-body", "", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(o.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(got), "created: \"2026-09-26\"\n---\n"+string(body)) {
+		t.Errorf("file = %q", got)
+	}
+	if s := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); s != "" {
+		t.Errorf("tree dirty after a commit: %s", s)
+	}
+}
+
 func TestNewScratchTitleFlagAndUnicode(t *testing.T) {
 	fixNow(t)
 	cfg := repoWith(t, baseFiles)
