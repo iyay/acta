@@ -114,7 +114,7 @@ func (m Model) View() string {
 	} else {
 		body = m.paneView(m.focus, g.full)
 	}
-	lines := append([]string{pad(m.tabBar(), m.width)}, strings.Split(body, "\n")...)
+	lines := append([]string{pad(m.tabBar(m.width), m.width)}, strings.Split(body, "\n")...)
 	if len(lines) > h {
 		lines = lines[:h]
 	}
@@ -133,15 +133,47 @@ func (m Model) View() string {
 	return body + "\n" + line
 }
 
-// tabBar draws the top line: every tab name in order, the open one in
-// brackets and the accent, so the reader always sees where they are.
-func (m Model) tabBar() string {
-	names := make([]string, len(topTabs))
-	for i, t := range topTabs {
-		names[i] = faint.Render(t.name)
-		if i == m.top {
-			names[i] = accent.Bold(true).Render("[" + t.name + "]")
+// tabBar draws the top line: the tab names that fit the window, in order, the
+// open one in brackets and the accent, so the reader always sees where they
+// are. A window too narrow for every name loses the ones farthest from the
+// open tab first, so the open tab never goes off the line.
+func (m Model) tabBar(width int) string {
+	drop := make([]bool, len(topTabs))
+	line := m.barLine(drop)
+	for lipgloss.Width(line) > width {
+		// dropOrder walks the tabs from the right and skips the open one, so
+		// the first name at the widest distance is the right one of a tie.
+		farthest, at := -1, -1
+		for _, j := range dropOrder(len(topTabs), m.top) {
+			if drop[j] {
+				continue
+			}
+			if d := max(j-m.top, m.top-j); d > farthest {
+				farthest, at = d, j
+			}
 		}
+		if at < 0 {
+			break
+		}
+		drop[at] = true
+		line = m.barLine(drop)
+	}
+	return line
+}
+
+// barLine joins the tab names that are not in drop, so the bar can be measured
+// with one name less at a time until it fits the window.
+func (m Model) barLine(drop []bool) string {
+	names := make([]string, 0, len(topTabs))
+	for i, t := range topTabs {
+		if drop[i] {
+			continue
+		}
+		if i == m.top {
+			names = append(names, accent.Bold(true).Render("["+t.name+"]"))
+			continue
+		}
+		names = append(names, faint.Render(t.name))
 	}
 	return " " + strings.Join(names, "  ")
 }

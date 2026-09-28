@@ -112,6 +112,98 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 	}
 }
 
+// The tab bar is the one place the reader sees which tab is open, so a narrow
+// screen has to drop the names farthest from the open tab rather than cut the
+// open name away, and it must never show half a name of another tab.
+func TestTabBarKeepsTheOpenTab(t *testing.T) {
+	for i, tab := range topTabs {
+		m := sized(press(newModel(t), tabKey(i)), 200, 40)
+		open := "[" + tab.name + "]"
+		for w := 1; w <= 200; w++ {
+			bar := plain(strings.Split(sized(m, w, 40).View(), "\n")[0])
+			if w >= len(open)+1 {
+				if !strings.Contains(bar, open) {
+					t.Fatalf("%s at %d columns: %q has no %q", tab.name, w, bar, open)
+				}
+			} else if want := " " + open; len(bar) != min(w, len(want)) || !strings.HasPrefix(want, bar) {
+				// Too narrow even for the name, so the line holds as much of
+				// it as the width allows, and nothing else.
+				t.Fatalf("%s at %d columns: %q, want the first %d cells of %q", tab.name, w, bar, min(w, len(want)), want)
+			}
+			// A cut name reads as a word of its own, so every word on the line
+			// has to be a whole name or a piece of the open one.
+			for _, word := range strings.Fields(bar) {
+				if word == open || strings.HasPrefix(open, word) {
+					continue
+				}
+				if slices.ContainsFunc(topTabs[:], func(t topTab) bool { return t.name == word }) {
+					continue
+				}
+				t.Fatalf("%s at %d columns: %q shows %q, which is not a whole tab name", tab.name, w, bar, word)
+			}
+		}
+	}
+}
+
+// The bar has to say which names go missing first: the one that sits farthest
+// from the open tab, and on a tie the right one, so a name the reader is
+// working in always outlives the ones around it.
+func TestTabBarDropsTheNameFarthestFromTheOpenTab(t *testing.T) {
+	for i, tab := range topTabs {
+		m := sized(press(newModel(t), tabKey(i)), 200, 40)
+		for w := 1; w <= 200; w++ {
+			bar := plain(strings.Split(sized(m, w, 40).View(), "\n")[0])
+			drop := make([]bool, len(topTabs))
+			for widthOfBar(drop, i) > w {
+				// dropOrder walks the tabs from the right, skipping the open
+				// one, so the first match at the widest distance is the one
+				// on the right, which is the one a tie has to drop.
+				farthest, at := -1, -1
+				for _, j := range dropOrder(len(topTabs), i) {
+					if drop[j] {
+						continue
+					}
+					if d := max(j-i, i-j); d > farthest {
+						farthest, at = d, j
+					}
+				}
+				if at < 0 {
+					break
+				}
+				drop[at] = true
+			}
+			for j, other := range topTabs {
+				if j == i {
+					continue
+				}
+				if got := strings.Contains(bar, other.name); got != !drop[j] {
+					t.Fatalf("%s at %d columns: %q holds %q = %t, want %t", tab.name, w, bar, other.name, got, !drop[j])
+				}
+			}
+		}
+	}
+}
+
+// widthOfBar counts the cells the top line takes when the tabs in drop are
+// missing and tab i is the open one, the same way the view counts them.
+func widthOfBar(drop []bool, open int) int {
+	w := 1
+	for i, tab := range topTabs {
+		if drop[i] {
+			continue
+		}
+		if w > 1 {
+			w += 2
+		}
+		if i == open {
+			w += len(tab.name) + 2
+			continue
+		}
+		w += len(tab.name)
+	}
+	return w
+}
+
 func TestViewNeverOverflowsAnyWindow(t *testing.T) {
 	for w := 30; w <= 200; w++ {
 		for h := 10; h <= 60; h++ {
