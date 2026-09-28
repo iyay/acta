@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -372,6 +373,52 @@ func TestDoctorFixOutsideGitRepoWritesNothing(t *testing.T) {
 	}
 	if _, err := os.Stat(e.ActaRoot); !os.IsNotExist(err) {
 		t.Fatalf("Fix made %s outside a git repo", e.ActaRoot)
+	}
+}
+
+// A root that points out of the repo is the one case where --fix has no
+// work it may do. The check names the root, because --fix cannot move it.
+func TestDoctorFixWritesNothingWhenRootLeavesTheRepo(t *testing.T) {
+	cases := []struct {
+		name string
+		root func(t *testing.T, e Env) string
+	}{
+		{"parent folder", func(_ *testing.T, e Env) string { return filepath.Join(e.RepoRoot, "..", "escaped") }},
+		{"absolute path", func(t *testing.T, _ Env) string { return filepath.Join(t.TempDir(), "elsewhere") }},
+		{"sibling with the repo name as prefix", func(_ *testing.T, e Env) string { return e.RepoRoot + "-other" }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := env(t)
+			e.ActaRoot = c.root(t, e)
+			paths, err := Fix(e)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(paths) != 0 {
+				t.Fatalf("paths %v", paths)
+			}
+			if _, err := os.Stat(e.ActaRoot); !os.IsNotExist(err) {
+				t.Fatalf("Fix made %s outside the repo", e.ActaRoot)
+			}
+			r := byName(Run(e), "repo")
+			wantLevel(t, r, Fail, "root")
+			if strings.Contains(r.Fix, "acta doctor --fix") {
+				t.Fatalf("fix %q sends the user to --fix, which cannot move root", r.Fix)
+			}
+		})
+	}
+}
+
+// A config file that does not parse is a broken setup, not a skipped
+// check, so the repo line has to carry the error and fail.
+func TestDoctorRepoFailsOnBrokenConfig(t *testing.T) {
+	e := env(t)
+	e.ConfigErr = errors.New(".acta.yaml: yaml: line 1: did not find expected node content")
+	r := byName(Run(e), "repo")
+	wantLevel(t, r, Fail, "")
+	if !strings.Contains(r.Msg, ".acta.yaml") {
+		t.Fatalf("msg %q does not carry the parse error", r.Msg)
 	}
 }
 
