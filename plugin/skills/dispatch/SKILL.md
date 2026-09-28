@@ -63,7 +63,7 @@ Forbidden until the user's next message or the reply-back notification: `herdr a
 
 Why: the recipient takes minutes to hours; blocking burns your context and freezes the user's session. Its completion signal is unreliable anyway (idle can mean stopped early), so you re-derive every number from git whenever you look. Waiting adds nothing; looking later costs nothing.
 
-One exception: the ~20s pause before the single checkpoint read.
+Two exceptions: the ~20s pause before the single checkpoint read, and the idle watcher below, which runs as a background job and never blocks the turn.
 
 Phase 1 report, ADHD shape (first line = fact, last line = one next action): base SHA, worktree path, branch, slug + pane id, ticket ids handed over, checkpoint verdict, any call you locked in the brief, then the literal next step ("on reply-back: verify `<base>..HEAD` → `acta:review` → fix rounds → land, no further ask"). Then yield.
 
@@ -76,9 +76,10 @@ Phase 2 resumes on either trigger: the REPLY-BACK notification lands, or the use
 1. **Entry gate** passed (above).
 2. **Provision** (Step -1): worktree outside the repo, then look the agent up by slug and reuse; create its own tab only on a miss. Never a split beside you.
 3. **Write the hand-off doc** (Step 0a). Pointer at plan + tickets plus the mechanics no skill supplies. Not a rewritten plan.
-4. **Deliver**: `/new` on a new session/plan/worktree, then always `/goal` carrying the brief path and the literal reply-back command.
+4. **Deliver**: `/new` on a new session/plan/worktree, `acta dispatch init` in the worktree, then always `/goal` carrying the brief path and the reply-back line.
 5. **Comprehension checkpoint**: exactly one read ~20s later — todo list must name the ticket ids, else drift; correct and re-dispatch. Todo list not up yet: report "checkpoint unconfirmed" and yield.
-6. **STOP. Report and yield.**
+6. **Start the watcher** (background, below), then stop.
+7. **STOP. Report and yield.**
 
 The recipient is the main agent in its pane: writes zero code itself, **fans every ticket out to implementer subagents per `acta:build` — as many in parallel as file ownership allows** (see "Spread the work"), commits per ticket, does NOT review, fires reply-back, never touches its tab.
 
@@ -123,9 +124,9 @@ Full surface: the separate `herdr` skill.
 | `/new` + `/goal` | both via `herdr agent prompt <slug>` |
 | Checkpoint | `herdr agent read <slug> --source recent-unwrapped --lines 60` |
 | Completion (later turn) | `herdr agent get <slug>` once when you return |
-| Between rounds | nothing |
+| Reply-back | `acta reply-back` in the worktree, run by the build skill; the brief and the `/goal` only name it |
+| Record | `acta dispatch init --pane $HERDR_PANE_ID --plan <plan> [--round <slug>]` in the worktree, before every `/goal` |
 | Stray split pane | `herdr pane move <pane> --new-tab --no-focus --label <slug>` |
-| Reply-back | in brief AND inline in `/goal` (`herdr agent prompt $HERDR_PANE_ID …`) |
 
 Map, not instructions. Flags and failure handling live in the reference file.
 
@@ -133,14 +134,23 @@ Map, not instructions. Flags and failure handling live in the reference file.
 
 - **`/new` first** on a new session, new plan, or new worktree. Skip only for a fix round on the same plan in the same worktree — context is the asset there. In doubt → send it; the brief is on disk.
 - **`/goal` every turn, no exceptions**, including fix rounds and re-dispatch after drift. The goal survives the harness's own compaction; a plain prompt does not. One `/goal` per turn, one brief, no bare follow-up.
-- `/goal` carries the reply-back command inline.
+- `/goal` names the reply-back line: after the last commit the build skill runs `acta reply-back`. It carries no command to fill in.
 
-**Order — HARD RULE, four steps, a check after each:**
+**Write the record before the `/goal` — HARD RULE, every dispatch and every fix round.** In the worktree, so `acta reply-back` on the other side has a pane, a base and a plan to send:
+
+```bash
+acta dispatch init --pane $HERDR_PANE_ID --plan <plan> [--round <slug>]
+```
+
+`base` is the HEAD at that moment, so each fix round reviews its own range. Run it again before every fix round's `/goal`; `--round` defaults to the branch name.
+
+**Order — HARD RULE, five steps, a check after each:**
 
 1. Wait until omp is ready: the pane shows its empty input box (`herdr agent read <slug> --source visible`). A just-launched omp is not ready yet.
 2. Send `/new` alone. Read the pane until it shows "New session started". Then rename the agent by pane id (`/new` drops the name).
-3. Send `/goal` alone. Read the status bar until it shows `🎯 Goal`. `⏸ Goal` or no goal → see the held-goal block below and send it again.
-4. fix round: `/goal` only — no `/new`; still check `🎯 Goal`.
+3. Run `acta dispatch init` in the worktree, so the reply-back has a record to read.
+4. Send `/goal` alone. Read the status bar until it shows `🎯 Goal`. `⏸ Goal` or no goal → see the held-goal block below and send it again.
+5. fix round: `acta dispatch init` again, then `/goal` only — no `/new`; still check `🎯 Goal`.
 
 `/new` and `/goal` go as two prompts, never in one prompt, and `/new` never goes before omp is ready: otherwise both land as one message and the goal never sets. These reads are part of delivery, not the comprehension checkpoint. Checkpoint after the `/goal`.
 
@@ -158,20 +168,18 @@ Harness with no `/goal` → plain prompt, and say so in the report.
 
 ## Reply-back — every brief, every backend
 
-Every brief ends with a REPLY-BACK line, and every `/goal` repeats it inline. Belt and braces: it is the single most-skipped instruction.
+Every brief ends with a REPLY-BACK line, and every `/goal` repeats it. Belt and braces: it is the single most-skipped instruction.
 
-Literal, runnable, one line, address + range pre-filled. The payload is the review command itself, so the notification is the trigger:
+One sentence, the same in both places:
 
 ```
-REPLY-BACK — run this VERBATIM after the last commit. No summary, no test counts, no verdict:
-herdr agent prompt wJ:p1 "/acta:review <base-sha>..<new-head-sha> — plan <plan-path-or-ticket-ref>, round <slug>, pane $HERDR_PANE_ID"
+REPLY-BACK: after the last commit the build skill runs `acta reply-back`.
 ```
 
-- Range first and bare. Notes after an em-dash: the plan ref (`requesting-code-review` needs the plan for its `{PLAN_OR_REQUIREMENTS}` slot, which is the Spec axis) and `pane $HERDR_PANE_ID` (expands in the recipient's shell → names the pane that produced it).
-- Scope only, never numbers or verdict. Self-reported figures were wrong 5/5 in one session.
-- No self-close line. The tab is reused; you close it at landing.
+- The recipient runs no command and fills no placeholder. `acta reply-back` reads the record `acta dispatch init` wrote, so the range, the plan, the round and the pane all come from the worktree instead of from a hand-edited line.
+- A real blocker is `acta reply-back --blocked "<reason>"`, sent the same way.
 - Arrival does not excuse verify. A recipient can fire it after 2 of 6 tickets.
-- Blocked → same command, blocker as prose in place of the range.
+- No self-close line. The tab is reused; you close it at landing.
 
 ## omp magic keywords — two free words in every `/goal`
 
@@ -307,12 +315,30 @@ About 20s after the `/goal`, exactly one read (`herdr agent read <slug> --source
 
 Never skip for destructive work or weaker harnesses; both kinds of drift track model tier.
 
+## Idle watcher — the one background job, right after the checkpoint
+
+Right after the comprehension checkpoint, start this as a background job (Claude Code: `run_in_background`), then yield:
+
+```bash
+herdr agent wait <slug> --until idle --until done
+```
+
+Its exit arrives as a notification, so it never blocks your turn. This is the one exception to "Never wait": foreground waits, polling loops and `sleep` stay banned.
+
+On that notification:
+
+1. A reply-back already arrived → do nothing.
+2. Every task of the plan is ticked → start `acta:review`, the same as a reply-back.
+3. Tasks still open → send one short `/goal` (finish the open tasks, then the build skill runs `acta reply-back`) and start the watcher again.
+4. Idle again with no new commit since the nudge → tell the user and stop the loop for this plan. `idle` can flash between two subagents, which is why step 2 reads git and the plan, not the agent status.
+
 ## Hand-off brief format
 
 ```
 <one-line summary of the job>
 
 PLAN: <.acta/plans/…md> (design: <.acta/specs/…md>) — read FIRST, before any todo list. Its tasks are the ONLY tickets; no decomposition of your own.
+SKILL: load build (omp: build) and tdd before the todo list, and follow them for every task.
 TICKETS (anchor for your todo list — exactly these N):
   <TICKET-1> — <title> → verify: <the PROPERTY that must hold, over every path>
   <TICKET-2> — <title> → verify: <property>
@@ -321,11 +347,12 @@ FILES: the plan names the area; find the exact lines yourself with lsp and grep.
 HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from this skill) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
 GATES (from the worktree): <one-shot test runner>; typecheck; git diff --stat vs <base-sha> shows only plan files.
-REPLY-BACK — run VERBATIM after the last commit. Scope only. Blocked? same command, blocker as prose.
-  herdr agent prompt <orchestrator-pane> "/acta:review <base-sha>..<new-head-sha> — plan <path>, round <slug>, pane $HERDR_PANE_ID"
+REPLY-BACK: after the last commit the build skill runs `acta reply-back`. Nothing else to hand-fill.
 ```
 
 Include only sections that apply, keep the order. REPLY-BACK stays one line.
+
+Briefs never list allowed acta commands; they may only forbid acta write commands the build skill does not call. A whitelist overrides the build skill and breaks it.
 
 Why the rules live in a separate file instead of the brief: the recipient may never load the repo rules (omp does not by default), so the rules still have to reach it — but from one file, read once, instead of being retyped into every brief. If the recipient runs in a sandbox that cannot read outside its worktree, copy `references/house-rules.md` next to the brief and point the HOUSE RULES line there instead.
 

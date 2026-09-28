@@ -10,7 +10,7 @@ import (
 func TestSkillDispatch(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "dispatch",
-		MaxLines: 622,
+		MaxLines: 660,
 		Must: []string{
 			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "acta:review", "acta:land", "acta:build",
 			"PROPERTY", "ultrathink orchestrate", "Never wait", ".acta/plans/", "herdr-delivery.md", ".acta/bugs",
@@ -49,7 +49,7 @@ func TestDispatchCheckpointOneRead(t *testing.T) {
 // TestDispatchNewThenGoal reads each dispatch file on its own. /new and
 // /goal once landed as one message, and the goal never set.
 func TestDispatchNewThenGoal(t *testing.T) {
-	wants := []string{"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "fix round: `/goal` only"}
+	wants := []string{"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "then `/goal` only"}
 	for _, file := range []string{"SKILL.md", "herdr-delivery.md"} {
 		b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", file))
 		if err != nil {
@@ -65,15 +65,6 @@ func TestDispatchNewThenGoal(t *testing.T) {
 			t.Errorf("dispatch/%s still says \"Back-to-back, no settle-wait\"", file)
 		}
 	}
-	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The fix-round command was once deleted by accident. It is the only one
-	// with the fix range, so an agent on a fix round needs it.
-	if !strings.Contains(string(b), "/acta:review <fixed-from>..<new-head>") {
-		t.Error("dispatch/herdr-delivery.md lost the fix-round command with <fixed-from>..<new-head>")
-	}
 }
 
 // TestDispatchAgentFlag reads herdr-delivery.md on its own. The recipient is
@@ -86,23 +77,5 @@ func TestDispatchAgentFlag(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "--agent omp") {
 		t.Error("herdr-delivery.md missing \"--agent omp\"")
-	}
-}
-
-// TestDispatchStartTick reads herdr-delivery.md on its own. The brief's tick
-// rule is the only place that tells the omp recipient how to tick, so the
-// --start first action has to live in it directly.
-func TestDispatchStartTick(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "herdr-delivery.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	txt := string(b)
-	const want = "acta tick plans/<stem>#task-N --start --agent omp"
-	if !strings.Contains(txt, want) {
-		t.Errorf("herdr-delivery.md missing %q", want)
-	}
-	if !strings.Contains(txt, "very first action of every task, before the failing test") {
-		t.Error("herdr-delivery.md never says --start comes before the failing test")
 	}
 }

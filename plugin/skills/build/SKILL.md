@@ -204,3 +204,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 ## Close
 
 When every task is committed: run the full test suite and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+
+### Reply back when a dispatch record exists
+
+When `<acta root>/.dispatch.json` exists, a dispatch handed you this branch, so the pane that sent it waits to hear from you. Run `acta reply-back` after the last task commit. Exit 1 lists the open tasks: finish them and run it again. A real blocker is `acta reply-back --blocked "<reason>"`. A dispatch recipient does not stop before `acta reply-back` exits 0.
