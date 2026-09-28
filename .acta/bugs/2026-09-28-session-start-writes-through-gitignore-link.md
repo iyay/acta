@@ -1,6 +1,7 @@
 ---
 id: BUG-3
 hash: q0zm
+fixed_in: 739178e
 ---
 # Session start writes a file outside the repo when .acta/.gitignore is a symlink
 
