@@ -408,7 +408,7 @@ git commit -m "feat(tui): plans lists fold open into their tasks"
 - Consumes: `treeRows`, `toggleRow`, `row.tree`, `Model.openPlans`, `dotOf` from Task 1.
 - Produces: `type topTab struct{ name string; kind board.Kind; done []doneTab; tree bool }`; `var topTabs = [...]topTab{...}`; consts `tabScratches`, `tabBugs`, `tabDebts`, `tabSpecs`, `tabPlans`, `tabActivities` (0..5); consts `paneList = pane(0)`, `paneDone = pane(1)`, `paneDetail = pane(2)`, `sidePanes = 2`, `boxes = 3`; `type tabState struct{ focus, last pane; sel []string; idx, off []int; done int }`; `func (m *Model) openTab(i int)`; `func (m Model) panes() []pane`; `func (m *Model) cyclePane(step int)`; `func (m Model) activityRows() []row`; `func (m Model) tabBar() string`; Model fields `top int`, `tabs [len(topTabs)]tabState`, `done int`. Removed: `sidebar`, `sidebarTab`, `sidebarPane`, `paneActive`, `paneSpecs`, `panePlans`, `paneBugs`, `tabOf`, `activeRows`, `Model.follows`, `Model.tab`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace `internal/tui/sidebar_test.go` whole. It keeps `TestNoDividerRow` (walk rewritten) and `TestScratchDetailNamesTheLinkedSpec` (unchanged body). The old tests go with a named replacement each: `TestNumberKeysFocusTheirBox` becomes `TestNumberKeysOpenTheirTab`, `TestTabCyclesSixBoxes` becomes `TestTabCyclesOnlyTheOpenTabsPanes`, `TestSidebarTitles` becomes `TestTopTabsTable`, `TestActiveHoldsOnlyWorkInProgress` becomes `TestActivitiesListsOnlyInProgressTasks`, `TestDoneFollowsLastSidebarPane` becomes `TestDoneSubTabKeysOnlyActOnTheDonePane` plus the Done columns of `TestTopTabsTable`.
 
@@ -790,12 +790,12 @@ Every other test in `model_test.go`, `view_test.go`, `scroll_test.go`, `frame_te
 
 `TestGeometryPlacesThePanes` at 120 by 40 on the Plans tab expects two side boxes `{0, 1, 36, 19}` and `{0, 20, 36, 19}`, the detail box `{36, 1, 84, 38}`, and on Activities one side box `{0, 1, 36, 38}`. `TestViewShowsTheSidebarAndTheDetail` expects the tab bar line ` Scratches  Bugs  Debts  Specs  [Plans]  Activities` after `tabKey(tabPlans)`, and `─List`, `─Done ─ Dropped`, `[0]─Detail`. `TestViewHelpPopupCoversThePanes` also checks the help lists `1-6`, `← →`, `tab shift+tab`, `[ ]` and `space enter`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -v`
 Expected: FAIL to build with `undefined: topTabs`, `undefined: tabActivities`, `m.top undefined`, `m.openTab undefined`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 `internal/tui/sidebar.go` becomes this file whole (the `treeRows` from Task 1 stays at its end, unchanged):
 
@@ -1264,15 +1264,37 @@ esc              back to the list, close this help
 	}
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS, the whole package, including every test moved by the table above.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
 git add internal/tui
 git commit -m "feat(tui): top tab bar with one tab per kind"
+```
+
+## Fix round 1
+
+### Task 3: The tab bar always shows the open tab
+
+Review round 1 (range da82e5b..b1b2c57) found one BLOCKER. `tabBar()` (`internal/tui/view.go`) builds one line with every tab name, and `pad` / `fit` cut it from the right. On a terminal narrower than the bar (about 51 columns), the open tab can be cut away: at 40 columns on the start tab Activities the top line reads ` Scratches  Bugs  Debts  Specs  Plans  [`, and pane titles only say `List`, so the reader cannot tell where they are. At da82e5b the focused pane title always kept its open name below 60 columns.
+
+**Files:** `internal/tui/view.go`, `internal/tui/view_test.go`
+
+**verify:** At every width from 1 to 200 columns and for every open tab, the top line holds the open tab's name in brackets whole, or as much of it as the width allows when even the name alone does not fit, and it never shows a cut name of another tab. When the bar does not fit, names are dropped from the side farthest from the open tab first, the same way `dropOrder` in `internal/tui/title.go` drops pane-title parts. List every width band checked (fits, drops some names, only the open name, narrower than the open name) for each tab.
+
+- [ ] **Step 1: Write the failing test** in `internal/tui/view_test.go`: for each of the 6 tabs and each width 1..200, open the tab, set the width, render, take the first line with ANSI stripped, and assert it contains `[<name>]` when the width is at least len(name)+3, and that every other name on the line appears whole.
+- [ ] **Step 2: Run** `go test ./internal/tui/ -run TestTabBar -v`. Expected: FAIL at 40 columns on Activities.
+- [ ] **Step 3: Implement** in `tabBar(width int)`: start from all names; while the joined width is over the screen width, drop the name farthest from the open tab (ties: drop the right one); when only the open name is left and it still does not fit, let `fit` cut it. Pass `m.width` from the caller.
+- [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [ ] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/tui/view.go internal/tui/view_test.go .acta/plans/2026-09-28-tui-top-tabs.md
+git commit -m "fix(tui): keep the open tab in a narrow tab bar"
 ```
