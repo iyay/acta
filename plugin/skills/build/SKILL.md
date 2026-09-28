@@ -19,6 +19,8 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
+Before you pick one, run `acta voice show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
+
 ## Models
 
 - Implementers and other workers: `sonnet` in Claude Code, `agent="task"` in omp. Set it on every dispatch; a dispatch with no model is a mistake even when the default matches.
