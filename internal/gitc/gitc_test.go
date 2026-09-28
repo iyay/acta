@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -215,27 +214,6 @@ func TestFirstSeenCountsTheMerge(t *testing.T) {
 	}
 	if main >= side {
 		t.Fatalf("main file at %d, side file at %d, want main first", main, side)
-	}
-}
-
-func TestLastCommitTime(t *testing.T) {
-	repo := setupRepo(t)
-	a := filepath.Join(repo, "a.md")
-	want, err := strconv.ParseInt(git(t, repo, "log", "-1", "--format=%ct", "--", "a.md"), 10, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, ok := LastCommit(repo, a)
-	if !ok || got != want {
-		t.Fatalf("LastCommit = %d, %v; want %d, true", got, ok, want)
-	}
-	// A file git never saw has no time to give.
-	if got, ok := LastCommit(repo, filepath.Join(repo, "new.md")); ok {
-		t.Errorf("a file with no commit gave %d, true", got)
-	}
-	// A folder outside any repo answers at once, without running git.
-	if got, ok := LastCommit(t.TempDir(), a); ok {
-		t.Errorf("a folder with no repo gave %d, true", got)
 	}
 }
 

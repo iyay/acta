@@ -94,25 +94,6 @@ func FirstSeen(repo, path string) (int, error) {
 	return len(commits), nil
 }
 
-// LastCommit gives the time of the newest commit that touched path, counted in
-// seconds since the epoch, and says whether git knows the file at all. A folder
-// with no checkout answers false without running git, because a board outside
-// git loads often and a process costs more than that answer is worth.
-func LastCommit(repo, path string) (int64, bool) {
-	if !inRepo(repo) {
-		return 0, false
-	}
-	out, err := run(repo, "log", "-1", "--format=%ct", "--", path)
-	if err != nil {
-		return 0, false
-	}
-	sec, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return sec, true
-}
-
 // Author gives the name of the person whose commit first added path, and says
 // whether git knows the file at all. A file nobody committed has no author, so
 // the caller can fall back to the name this checkout commits under.

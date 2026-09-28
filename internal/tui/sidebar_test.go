@@ -184,7 +184,9 @@ func TestFirstVisitSelectsTheTopRowAndShowsIt(t *testing.T) {
 
 func TestReturnVisitKeepsPaneRowAndTree(t *testing.T) {
 	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "j", "tab")
-	m = press(m, tabKey(tabPlans), " ", tabKey(tabBugs))
+	// Oldest first puts alpha before lonely, so step down to lonely before
+	// opening it: lonely has one task, alpha has two.
+	m = press(m, tabKey(tabPlans), "j", " ", tabKey(tabBugs))
 	if m.focus != paneDone {
 		t.Errorf("back on Bugs the focus is on pane %d, want Done", m.focus)
 	}
@@ -206,9 +208,11 @@ func TestAShrunkListClampsTheCursor(t *testing.T) {
 		t.Fatalf("before the reload the cursor is on row %d, want the last of the 3 bugs", got)
 	}
 	m := press(bugs, tabKey(tabSpecs))
+	// Oldest first puts lag last, so the reload has to drop lag itself (not
+	// the oldest bug) to make the cursor actually clamp to a new row.
 	cfg := treeCfg(t, map[string]string{
-		".acta/bugs/2026-09-28-lag.md":  "# Lag\n\n## Symptom\nx\n",
-		".acta/bugs/2026-09-26-open.md": "# Open\n\n## Symptom\nx\n",
+		".acta/specs/2026-09-15-really-bug.md": "---\ntype: bug\n---\n# Really a bug\n",
+		".acta/bugs/2026-09-26-open.md":        "# Open\n\n## Symptom\nx\n",
 	})
 	b, err := board.Load(cfg)
 	if err != nil {
@@ -251,17 +255,21 @@ func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("Activities holds %q, want the in-progress task of each plan %q", got, want)
 	}
-	// Every task in progress of the real fixture is on show, and nothing that
-	// is only open, raw, todo or finished sneaks in.
+	// Every task in progress of the real fixture is on show, oldest file date
+	// first, and nothing that is only open, raw, todo or finished sneaks in.
 	full := sized(newModel(t), 160, 50)
-	var ids_ []string
+	var going []*board.Item
 	for _, it := range full.board.Items {
 		if it.Kind == board.KindTask && inProgress(it) {
-			ids_ = append(ids_, it.ID)
+			going = append(going, it)
 		}
 	}
-	if len(ids_) == 0 {
+	if len(going) == 0 {
 		t.Fatal("the fixture holds no task in progress, so this test proves nothing")
+	}
+	var ids_ []string
+	for _, it := range ordered(going, false) {
+		ids_ = append(ids_, it.ID)
 	}
 	listed := ids(full.rowsOf(paneList))
 	if !slices.Equal(listed, ids_) {

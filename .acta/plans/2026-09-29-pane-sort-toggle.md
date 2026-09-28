@@ -304,7 +304,7 @@ git commit -m "feat(tui): sort every pane by file date, o flips the focused pane
 **Interfaces:**
 - Consumes: `Model.newest []bool` from Task 1.
 
-- [ ] **Step 1: Write the failing tests** in `internal/tui/frame_test.go`
+- [x] **Step 1: Write the failing tests** in `internal/tui/frame_test.go`
 
 ```go
 func TestTitleShowsTheSortOfEachPane(t *testing.T) {
@@ -335,12 +335,12 @@ func TestHelpListsTheSortKey(t *testing.T) {
 
 Add `"strings"` to the imports if the file does not have it. If a test item title or ID on the default board contains the word `oldest` or `newest`, give the test its own empty `board.Board{}`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'TitleShowsTheSort|HelpListsTheSortKey' -v`
 Expected: FAIL: `0 panes say oldest` and `help does not list o`.
 
-- [ ] **Step 3: Add the word to the title** in `paneTop`, right before `return topLine(b.w, edge, segs)`:
+- [x] **Step 3: Add the word to the title** in `paneTop`, right before `return topLine(b.w, edge, segs)`:
 
 ```go
 	// The sort word goes last, so a narrow title drops it before any tab name.
@@ -355,13 +355,13 @@ Expected: FAIL: `0 panes say oldest` and `help does not list o`.
 
 Check that `topLine` drops pieces from the right (its comment says so); if it no longer does, stop and report.
 
-- [ ] **Step 4: Add the help line** in `helpLines`, right after the `z` line, lined up with the other rows:
+- [x] **Step 4: Add the help line** in `helpLines`, right after the `z` line, lined up with the other rows:
 
 ```
 o                flip the sort: oldest / newest
 ```
 
-- [ ] **Step 5: Run the tests to see them pass**
+- [x] **Step 5: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -run 'TitleShowsTheSort|HelpListsTheSortKey' -v`
 Expected: PASS.
@@ -369,7 +369,7 @@ Expected: PASS.
 Run: `gofmt -l . && go vet ./... && go test ./...`
 Expected: clean, all PASS. A golden or width test of the title may now see the extra word: update its expected text to include it and name it in the report.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/tui/frame.go internal/tui/view.go internal/tui/frame_test.go
@@ -391,19 +391,19 @@ git commit -m "feat(tui): show each pane's sort in its title, list o in help"
 **Interfaces:**
 - Consumes: Task 1 removed the last reader of `SortTime` in `internal/tui/sidebar.go`.
 
-- [ ] **Step 1: Confirm the removed code has no reader left**
+- [x] **Step 1: Confirm the removed code has no reader left**
 
 Run: `grep -rn "SortTime\|CommitAt\|fillCommitTimes\|LastCommit" --include='*.go' .`
 Expected: hits only in `internal/board/closed.go`, `internal/board/board.go`, `internal/board/closed_test.go` and `internal/gitc/`. Any other hit: stop and report.
 
-- [ ] **Step 2: Delete the code and its tests**
+- [x] **Step 2: Delete the code and its tests**
 
 - `internal/board/closed.go`: delete `fillCommitTimes` and `SortTime` with their comments. Keep `fillAuthors` and the `gitAuthor` / `gitUserName` variables. Drop imports that go unused.
 - `internal/board/board.go`: delete the `CommitAt` line in `Item` and the `b.fillCommitTimes()` call.
 - `internal/board/closed_test.go`: delete every test that calls `SortTime` or sets `CommitAt`. Keep the author tests.
 - `internal/gitc`: if Step 1 showed `LastCommit` has no caller outside `internal/board/closed.go`, delete it and its test.
 
-- [ ] **Step 3: Run the checks**
+- [x] **Step 3: Run the checks**
 
 Run: `grep -rn "SortTime\|CommitAt\|fillCommitTimes" --include='*.go' .`
 Expected: no output.
@@ -411,7 +411,7 @@ Expected: no output.
 Run: `gofmt -l . && go vet ./... && go test ./...`
 Expected: clean, all PASS, including the `fillAuthors` tests.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A internal/board internal/gitc

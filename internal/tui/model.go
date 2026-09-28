@@ -71,6 +71,7 @@ type Model struct {
 	top       int                    // the open tab, an index into topTabs
 	tabs      [len(topTabs)]tabState // the saved place of each tab that is not open
 	done      int                    // the Done sub-tab the open tab shows
+	newest    []bool                 // per list box: true shows the newest file date first
 	sel       []string
 	idx       []int // selected row number per pane, used when the id vanishes
 	query     string
@@ -108,6 +109,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		sel:      s.sel,
 		idx:      s.idx,
 		off:      s.off,
+		newest:   make([]bool, sidePanes),
 		expanded: -1,
 		load:     func() (*board.Board, error) { return board.Load(cfg) },
 		// Load fresh so the write never checks against a stale board.
@@ -391,6 +393,11 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.reloadCmd()
 	case "t", "s":
 		m.openPopup(k.String())
+	case "o":
+		// The detail box has no list to sort.
+		if m.focus != paneDetail {
+			m.newest[m.focus] = !m.newest[m.focus]
+		}
 	case "n":
 		s := ""
 		m.slug = &s

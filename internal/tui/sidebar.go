@@ -2,7 +2,6 @@ package tui
 
 import (
 	"slices"
-	"sort"
 
 	"github.com/iyay/acta/internal/board"
 )
@@ -184,8 +183,8 @@ func (m Model) searchRows() []row {
 }
 
 // activityRows gives Activities every task whose work has begun, of every
-// plan, in the order the board lists them. inProgress is the one rule that
-// decides.
+// plan, by the date in its file name, oldest first unless the pane was
+// flipped. inProgress is the one rule that decides.
 func (m Model) activityRows() []row {
 	if m.query != "" {
 		return m.searchRows()
@@ -196,19 +195,19 @@ func (m Model) activityRows() []row {
 			going = append(going, it)
 		}
 	}
-	return toRows(going, 0)
+	return toRows(ordered(going, m.newest[paneList]), 0)
 }
 
-// openRows gives the List box the items of the open tab that are not finished,
-// in the order the board lists them. Plans come as a tree. The files outside
-// the root folder have no tab of their own, so the Specs tab ends with a
-// single row that opens them.
+// openRows gives the List box the items of the open tab that are not
+// finished, by the date in the file name, oldest first unless the pane was
+// flipped. Plans come as a tree. The files outside the root folder have no
+// tab of their own, so the Specs tab ends with a single row that opens them.
 func (m Model) openRows() []row {
 	if m.query != "" {
 		return m.searchRows()
 	}
 	tab := topTabs[m.top]
-	items := m.board.List(tab.kind, false)
+	items := ordered(m.board.List(tab.kind, false), m.newest[paneList])
 	if tab.tree {
 		return m.treeRows(items)
 	}
@@ -261,9 +260,8 @@ func (m *Model) toggleExpand() {
 }
 
 // doneRows gives the Done box the finished items of the open tab's sub-tab,
-// the ones touched last at the top: the date of the last commit on the file
-// decides, and the date in the file name is the fallback. Plans come as a
-// tree.
+// by the date in the file name, oldest first unless the pane was flipped.
+// Plans come as a tree.
 func (m Model) doneRows() []row {
 	d, ok := m.doneTabOf()
 	if !ok {
@@ -276,9 +274,7 @@ func (m Model) doneRows() []row {
 			finished = append(finished, it)
 		}
 	}
-	sort.SliceStable(finished, func(i, j int) bool {
-		return finished[i].SortTime() > finished[j].SortTime()
-	})
+	finished = ordered(finished, m.newest[paneDone])
 	if tab.tree {
 		return m.treeRows(finished)
 	}
