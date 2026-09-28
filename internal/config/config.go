@@ -13,12 +13,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Dirs names the three folders inside the root folder.
+// Dirs names the folders inside the root folder.
 type Dirs struct {
-	Specs string `yaml:"specs"`
-	Plans string `yaml:"plans"`
-	Bugs  string `yaml:"bugs"`
-	Debt  string `yaml:"debt"`
+	Specs   string `yaml:"specs"`
+	Plans   string `yaml:"plans"`
+	Bugs    string `yaml:"bugs"`
+	Debt    string `yaml:"debt"`
+	Scratch string `yaml:"scratch"`
 }
 
 // Config says where the planning files of one repo live. Paths are absolute.
@@ -56,7 +57,7 @@ func Default(repoRoot string) Config {
 	return Config{
 		RepoRoot:   repoRoot,
 		Root:       filepath.Join(repoRoot, ".acta"),
-		Dirs:       Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt"},
+		Dirs:       Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt", Scratch: "scratch"},
 		Legacy:     []string{filepath.Join(repoRoot, "docs", "superpowers")},
 		AutoCommit: true,
 		Links:      Links{Feedback: "https://github.com/iyay/acta/issues"},
@@ -136,6 +137,9 @@ func Load(cwd, flagRoot string) (Config, error) {
 	}
 	if fc.Dirs.Debt != "" {
 		cfg.Dirs.Debt = fc.Dirs.Debt
+	}
+	if fc.Dirs.Scratch != "" {
+		cfg.Dirs.Scratch = fc.Dirs.Scratch
 	}
 	// A present but empty legacy list means "no legacy folders".
 	if fc.Legacy != nil {

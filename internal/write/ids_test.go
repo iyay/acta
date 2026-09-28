@@ -397,6 +397,43 @@ func TestAssignIDsGivesDebtFileANumber(t *testing.T) {
 	}
 }
 
+// Scratch numbers count on their own, so a new idea never pushes a spec or a
+// bug along.
+func TestAssignIDsNumbersScratchOnItsOwn(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
+		".acta/bugs/2026-09-23-c.md":         "---\nid: BUG-7\nhash: b7aa\n---\n# C\n",
+		".acta/scratch/2026-09-28-one.md":    "# One\n",
+		".acta/scratch/2026-09-28-two.md":    "# Two\n",
+	})
+	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || len(changes) != 2 {
+		t.Fatalf("changes=%v err=%v", changes, err)
+	}
+	b := mustLoad(t, cfg)
+	for _, c := range []struct{ id, short string }{
+		{"scratch/2026-09-28-one", "SCRATCH-1"},
+		{"scratch/2026-09-28-two", "SCRATCH-2"},
+	} {
+		it := b.Get(c.id)
+		if it == nil || it.Kind != board.KindScratch || it.ShortID != c.short {
+			t.Errorf("%s = %+v, want %s", c.id, it, c.short)
+		}
+		if b.Get(c.short) != it {
+			t.Errorf("Get(%q) does not answer to the scratch item", c.short)
+		}
+	}
+	for _, keep := range []string{"SPEC-4", "BUG-7"} {
+		it := b.Get(keep)
+		if it == nil || it.ShortID != keep {
+			t.Errorf("%s = %+v, want the number it already had", keep, it)
+		}
+	}
+	if b.Get("SPEC-5") != nil || b.Get("BUG-8") != nil {
+		t.Error("a new scratch file moved a spec or a bug number")
+	}
+}
+
 func readFile(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)

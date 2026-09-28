@@ -15,6 +15,8 @@ func Prefix(k Kind, plan bool) string {
 		return "BUG"
 	case k == KindDebt || k == KindDebtItem:
 		return "DEBT"
+	case k == KindScratch:
+		return "SCRATCH"
 	default:
 		return "SPEC"
 	}
