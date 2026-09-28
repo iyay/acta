@@ -5,7 +5,7 @@ import "testing"
 func TestSkillBrainstorm(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "brainstorm",
-		MaxLines: 393,
+		MaxLines: 395,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:plan", "CONTEXT.md", "docs/adr/",

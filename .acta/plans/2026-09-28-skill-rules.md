@@ -505,7 +505,7 @@ git commit -m "feat(plugin): first-run setup and saved build executor"
 **Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 // models_test.go
@@ -533,21 +533,21 @@ func TestModelsParagraphInSixSkills(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/plugincheck/ -run TestModelsParagraphInSixSkills -v`
 Expected: FAIL, found 0 times in all six.
 
-- [ ] **Step 3: Add the paragraph**
+- [x] **Step 3: Add the paragraph**
 
 Paste the paragraph once into each of the six files. If a skill already names a model for a subagent (for example `dispatch` or `review`), make that text defer to the paragraph instead of fixing a model on its own; keep the reviewer line consistent with "your own model alias". Raise each skill's `MaxLines` in its test by the lines added, no more.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ -v`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -565,7 +565,7 @@ git commit -m "feat(plugin): optional split subagent models in six skills"
 
 **verify:** The session text and its fallback copy cannot drift: every line of `default-rules.md` comes from `SessionStart` for an English adhd voice with no conflicts. The old "never edits your CLAUDE.md" promise cannot come back in the README in any form. List each surface checked: hook text, fallback file, README, omp fallback in `plugin/omp/index.ts` (reads the file, no change).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `hook_test.go`:
 - `SessionStart` output contains `- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`, the setup line `- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block`, and rule `8. One Architectural brainstorm per session; a second one becomes a scratch item and the user picks how to open it.`
@@ -575,12 +575,12 @@ git commit -m "feat(plugin): optional split subagent models in six skills"
 
 `plugin_test.go` (`TestNoticeAndReadme`): add `"## First run"`, `"acta doctor"`, `"/acta:setup"`, `"acta: "` (omp note), `"only between acta markers"` to the README list, and fail if the README contains `never edits your CLAUDE.md` in any case (`strings.Contains(strings.ToLower(readme), "never edits your claude.md")`).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/hook/ ./internal/plugincheck/ -v`
 Expected: FAIL on the new lines and README phrases.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 - `hook.Skills`: the `scratch` entry is already there from Task 4; change the `setup` entry to `first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block`.
 - `coreRules`: add rule 8 as above.
@@ -589,15 +589,40 @@ Expected: FAIL on the new lines and README phrases.
 - Regenerate `plugin/hooks/default-rules.md` from `SessionStart` for the default voice so the parity test holds.
 - README: replace line "It never edits your CLAUDE.md, AGENTS.md or settings." with "It edits CLAUDE.md or AGENTS.md only between acta markers, and only after your yes in /acta:setup. It never edits settings."; add a "## First run" section (install, then `/acta:setup`, which runs `acta doctor`; `acta doctor --fix` fixes repo items); add one omp line: skill names have no prefix in omp, and every description starts with `acta: `.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./...`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
 git add internal/hook plugin/hooks/default-rules.md plugin/README.md internal/plugincheck
 git commit -m "feat(hook): scratch skill, one brainstorm per session, first run via /acta:setup"
+```
+
+## Fix round 1
+
+### Task 8: Make `acta doctor --fix` commit and write like other acta write commands
+
+Review round 1 (range b7cc692..d5a0f60) found four BLOCKERs, all in doctor. One task, one commit.
+
+**Files:** `internal/cli/doctor.go`, `internal/doctor/doctor.go`, `internal/cli/doctor_test.go`, `internal/doctor/doctor_test.go`
+
+1. `internal/cli/doctor.go:44` commits with `gitc.CommitPaths` and no dirty-before check. A user's own uncommitted `.acta/.gitignore` lines get committed (probe: append `mysecret.txt`, run `--fix`, commit carries it). Take the dirty state before `Fix` and skip the commit when the file was dirty, the way `write/ops.go:298-315` does (`gitc.Commit(..., wasDirty)`).
+2. `internal/cli/doctor.go:41-46` ignores `auto_commit: false`. Carry `cfg.AutoCommit` in `doctor.Env` and do not commit when it is false (same rule as `write/ops.go:307`).
+3. `internal/doctor/doctor.go:70-73` runs `MkdirAll` and `EnsureGitignore` on `ActaRoot` even when `root:` in `.acta.yaml` or `ACTA_ROOT` points outside `RepoRoot` (`../x` or an absolute path). Global Constraint: doctor never writes outside the repo. When `ActaRoot` is not inside `RepoRoot`, `Fix` writes nothing and the repo check reports `fail` with a hint to fix `root`, not `acta doctor --fix`.
+4. `internal/cli/doctor.go:66-68` drops the `config.Load` error, so a broken `.acta.yaml` (for example `root: [`) prints `ok repo: not in a git repo, skipped`. Carry the error in `doctor.Env` and make the repo check report `fail repo:` with the parse error.
+
+- [ ] **Step 1: Write failing tests**, one per item above, each with the concrete probe input: dirty `.gitignore` is not committed; `auto_commit: false` gives no commit; `root: ../escaped` creates nothing outside the repo and reports `fail`; `root: [` reports `fail`, never `ok`. Also one test that a clean `--fix` does make the `acta: doctor fix` commit (the spec reviewer showed removing `CommitPaths` stays green today).
+- [ ] **Step 2: Run** `go test ./internal/cli/ ./internal/doctor/ -v`. Expected: FAIL on the new tests.
+- [ ] **Step 3: Implement** the minimum to pass.
+- [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [ ] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/cli internal/doctor .acta/plans/2026-09-28-skill-rules.md
+git commit -m "fix(doctor): respect dirty files, auto_commit and repo bounds in --fix"
 ```

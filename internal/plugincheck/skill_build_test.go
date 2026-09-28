@@ -10,7 +10,7 @@ import (
 func TestSkillBuild(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "build",
-		MaxLines: 680,
+		MaxLines: 682,
 		Must: []string{
 			"## Executors", "`subagent`", "`dispatch`", "`inline`",
 			`model: "sonnet"`, `agent="task"`, "Do not ask whether to create a worktree",

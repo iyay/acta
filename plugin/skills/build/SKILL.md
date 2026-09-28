@@ -13,7 +13,7 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 | Executor | Who writes the code | How |
 |---|---|---|
-| `subagent` (default) | a fresh subagent per task | Claude Code: the Agent tool with `model: "sonnet"`. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
+| `subagent` (default) | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 | `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr |
 | `inline` | you | only when the user says "inline" |
 
@@ -23,8 +23,10 @@ Before you pick one, run `acta voice show`. When it prints `build_executor: <nam
 
 ## Models
 
-- Implementers and other workers: `sonnet` in Claude Code, `agent="task"` in omp. Set it on every dispatch; a dispatch with no model is a mistake even when the default matches.
-- Reviewers (`acta:review`): the orchestrator's own model, never lower.
+**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+
+- Implementers and other workers: the model the paragraph above names, or none. On omp, `agent="task"` and its role config picks the model.
+- Reviewers (`acta:review`): your own model alias, never lower.
 - The first line of every subagent report names the model it ran on. Missing or wrong: discard the report and dispatch again.
 
 ## Worktree

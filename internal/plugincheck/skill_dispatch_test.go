@@ -10,7 +10,7 @@ import (
 func TestSkillDispatch(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "dispatch",
-		MaxLines: 620,
+		MaxLines: 622,
 		Must: []string{
 			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "acta:review", "acta:land", "acta:build",
 			"PROPERTY", "ultrathink orchestrate", "Never wait", ".acta/plans/", "herdr-delivery.md", ".acta/bugs",

@@ -5,7 +5,7 @@ import "testing"
 func TestSkillDebug(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "debug",
-		MaxLines: 720,
+		MaxLines: 722,
 		Must: []string{
 			"Phase 1", "Read only until the hypothesis is proven", "acta:bug", "acta:brainstorm",
 			"regression test", "Three failed fixes", "root-cause-tracing.md",
