@@ -53,6 +53,36 @@ stop, say so, and step up. Nothing downgrades mid-task.
 
 **Sensitive changes take the heavier path.** A change that touches a trust boundary, auth, money, or a data migration gets a written spec in `.acta/specs/` even when it is Bounded.
 
+## Architectural path: scratch item and one per session
+
+These rules are for the Architectural path only. Spike and Bounded need
+no scratch item and are free in number.
+
+**Step 0: scratch item.** Find the scratch item the request names. If
+there is none, file the user's words with `acta scratch new` and then
+run `acta set scratch/<stem> status brainstorming`. The brainstorm hangs
+off that item, so a dead session loses nothing.
+
+Append as you go. Every answer the user gives and every approved design
+section is appended as it happens with `acta scratch add SCRATCH-n`.
+
+**One Architectural brainstorm per session.** When a second one comes up
+in the same session, file it as a scratch item and ask the user to pick
+one of:
+
+- (a) **Background agent** — run `claude --bg 'brainstorm SCRATCH-n'`
+  from the repo, then tell the user to open the agents view (press ←, or
+  `claude agents`).
+- (b) **New herdr tab** — offer this only when `HERDR_ENV=1` is set. With
+  no herdr, do not mention it.
+- (c) **Manual new session** — copy the prompt `brainstorm SCRATCH-n` to
+  the clipboard (`pbcopy` on macOS, `wl-copy` or `xclip` on Linux, OSC 52
+  when none of those work) and also print the prompt, so the user can
+  type it when the clipboard failed.
+
+Plan, build, review and land for this brainstorm may continue in the
+same session. Only the brainstorm itself is one per session.
+
 ## Anti-Pattern: "Too Simple To Need Approval"
 
 Every path ends with your human partner approving your intent before
@@ -94,10 +124,11 @@ your path and complete them in order.
 5. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
 
 **Architectural:**
+0. **Scratch item** — find the item the request names, or file it with `acta scratch new`, then `acta set scratch/<stem> status brainstorming`
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria; append each answer with `acta scratch add`
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section
+4. **Present design** — in sections scaled to their complexity, get user approval after each section, append each approved section with `acta scratch add`
 5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPEC number and hash, and commit
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 7. **User reviews written spec** — ask user to review the spec file before proceeding
@@ -212,6 +243,8 @@ is the whole process.
 **Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Commit the spec on the branch the work will use: create its worktree now, the way `acta:build` describes, and commit the spec there as the first commit.
 
 **Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and names the DEBT ids it closes.
+
+**Scratch items.** A spec made from a scratch item sets `parent: scratch/<stem>` in its frontmatter. `specced` then follows from that link.
 
 **Shared language.** While refining the design, keep `CONTEXT.md` (one domain term per line, in English) and `docs/adr/` (one file per hard-to-explain decision: the decision, why, the alternatives rejected) up to date. Propose a new `CONTEXT.md` term to the user and wait for a yes. These files change only during brainstorming.
 
