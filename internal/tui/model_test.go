@@ -273,7 +273,7 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		keys []string
 		rows string
 	}{
-		{nil, "specs/2026-09-20-alpha \x00divider specs/2026-09-22-beta specs/2026-09-18-weird specs/2026-09-17-broken " + groupRowID},
+		{nil, "specs/2026-09-20-alpha \x00divider specs/2026-09-28-from-scratch-design specs/2026-09-22-beta specs/2026-09-18-weird specs/2026-09-17-broken " + groupRowID},
 		{[]string{"]"}, "plans/2026-09-21-alpha \x00divider plans/2026-09-23-lonely"},
 		{[]string{"]", "]"}, "plans/2026-09-21-alpha#task-2 \x00divider plans/2026-09-23-lonely#task-1"},
 		{[]string{"]", "]", "]"}, "bugs/2026-09-26-open specs/2026-09-15-really-bug"},
@@ -388,7 +388,7 @@ func TestMoveKeysInListPanes(t *testing.T) {
 		t.Fatalf("first selection %s", m.Selected().ID)
 	}
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("after j: %s", m.Selected().ID)
 	}
 	m = press(m, "k")
@@ -483,7 +483,7 @@ func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
 	g := m.geometry()
 	// A row takes one line, so the third line of the pane is the third row.
 	m = click(m, 2, g.open.y+1+2)
-	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.focus != paneOpen || m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 	// The same works in pane [2], where the second row is the orphan plan.
@@ -591,12 +591,12 @@ func TestKeysContinueFromAClickedRow(t *testing.T) {
 	g := m.geometry()
 	m = click(m, 2, g.open.y+1+2)
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-18-weird" {
+	if m.Selected().ID != "specs/2026-09-22-beta" {
 		t.Fatalf("j moved to %v", m.Selected())
 	}
 	m = click(m, 2, g.open.y+1)
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("j did not start from the clicked row: %v", m.Selected())
 	}
 }
@@ -638,7 +638,7 @@ func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
 		t.Fatal("? should close the help")
 	}
 	m = press(m, "?", "esc", "j")
-	if m.help || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.help || m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("the keys should work again once the help is closed: %+v", m)
 	}
 }
@@ -761,7 +761,7 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 
 func TestSelectionIsPerTab(t *testing.T) {
 	m := press(newModel(t), "j", "]", "]", "]", "[", "[", "[")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("the open tab lost its selection: %v", m.Selected())
 	}
 	m = press(newModel(t), "]", "2", "j", "]", "[")
@@ -889,10 +889,10 @@ func TestPopupEscAndOutcomes(t *testing.T) {
 
 func TestReloadKeepsSelection(t *testing.T) {
 	cfg, b := fixture(t)
-	m := press(newModel(t), "j") // beta
+	m := press(newModel(t), "j") // the newest not-started spec
 	next, _ := m.Update(reloadMsg{b: b})
 	m = next.(Model)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("selection moved on reload: %s", m.Selected().ID)
 	}
 
@@ -906,7 +906,7 @@ func TestReloadKeepsSelection(t *testing.T) {
 	smaller, _ := board.Load(cfg)
 	next, _ = m.Update(reloadMsg{b: smaller})
 	m = next.(Model)
-	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
 		t.Fatalf("after alpha vanished: %v", m.Selected())
 	}
 
@@ -1526,7 +1526,7 @@ func TestDividerAbsentWhenAGroupIsEmpty(t *testing.T) {
 		n    int
 	}{
 		{"only in-progress", func(it *board.Item) bool { return it.Status == "in-progress" }, 1},
-		{"only not-started", func(it *board.Item) bool { return it.Status != "in-progress" }, 3},
+		{"only not-started", func(it *board.Item) bool { return it.Status != "in-progress" }, 4},
 		{"neither", func(it *board.Item) bool { return false }, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

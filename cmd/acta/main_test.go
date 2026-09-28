@@ -139,7 +139,7 @@ func TestListJSON(t *testing.T) {
 	for _, it := range items {
 		got = append(got, it.ID)
 	}
-	want := "specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken"
+	want := "specs/2026-09-28-from-scratch-design specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("ids %v", got)
 	}
