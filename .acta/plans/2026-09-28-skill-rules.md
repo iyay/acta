@@ -615,14 +615,39 @@ Review round 1 (range b7cc692..d5a0f60) found four BLOCKERs, all in doctor. One 
 3. `internal/doctor/doctor.go:70-73` runs `MkdirAll` and `EnsureGitignore` on `ActaRoot` even when `root:` in `.acta.yaml` or `ACTA_ROOT` points outside `RepoRoot` (`../x` or an absolute path). Global Constraint: doctor never writes outside the repo. When `ActaRoot` is not inside `RepoRoot`, `Fix` writes nothing and the repo check reports `fail` with a hint to fix `root`, not `acta doctor --fix`.
 4. `internal/cli/doctor.go:66-68` drops the `config.Load` error, so a broken `.acta.yaml` (for example `root: [`) prints `ok repo: not in a git repo, skipped`. Carry the error in `doctor.Env` and make the repo check report `fail repo:` with the parse error.
 
-- [ ] **Step 1: Write failing tests**, one per item above, each with the concrete probe input: dirty `.gitignore` is not committed; `auto_commit: false` gives no commit; `root: ../escaped` creates nothing outside the repo and reports `fail`; `root: [` reports `fail`, never `ok`. Also one test that a clean `--fix` does make the `acta: doctor fix` commit (the spec reviewer showed removing `CommitPaths` stays green today).
-- [ ] **Step 2: Run** `go test ./internal/cli/ ./internal/doctor/ -v`. Expected: FAIL on the new tests.
+- [x] **Step 1: Write failing tests**, one per item above, each with the concrete probe input: dirty `.gitignore` is not committed; `auto_commit: false` gives no commit; `root: ../escaped` creates nothing outside the repo and reports `fail`; `root: [` reports `fail`, never `ok`. Also one test that a clean `--fix` does make the `acta: doctor fix` commit (the spec reviewer showed removing `CommitPaths` stays green today).
+- [x] **Step 2: Run** `go test ./internal/cli/ ./internal/doctor/ -v`. Expected: FAIL on the new tests.
+- [x] **Step 3: Implement** the minimum to pass.
+- [x] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [x] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/cli internal/doctor .acta/plans/2026-09-28-skill-rules.md
+git commit -m "fix(doctor): respect dirty files, auto_commit and repo bounds in --fix"
+```
+
+## Fix round 2
+
+### Task 9: Doctor repo bounds follow symlinks
+
+Review round 2 (range d5a0f60..a96a5cf) found one BLOCKER, from both reviewers. `insideRepo` (`internal/doctor/doctor.go:87-93`) compares path text only. `RepoRoot` comes from git with symlinks resolved; `ActaRoot` does not. Two wrong outputs:
+
+1. A symlink lets `--fix` write outside the repo and then print `ok repo`. Probes: `.acta -> ../outside`; `root: link` with `link -> ../outside`; a committed `.acta/.gitignore -> ../../outside/victim.conf` (plain `acta doctor` says run `--fix`, and `--fix` appends `.agents.json` to `victim.conf`).
+2. Regression from Task 8: a root that is inside the repo but reached through a symlink (macOS `/var` -> `/private/var`, for example `ACTA_ROOT=$REPO/.acta` under `$TMPDIR`) now reports `fail repo: ... is outside the repo` and exits 1. It worked at d5a0f60.
+
+Fix inside doctor only: resolve symlinks with `filepath.EvalSymlinks` on `RepoRoot` and on `ActaRoot` (or its deepest existing parent) before `filepath.Rel`. Treat a `.gitignore` that is itself a symlink as outside the repo: `Fix` writes nothing and the repo check reports `fail`. The same write-through-symlink in `hook.EnsureGitignore` callers (`internal/cli/hook.go:45`, `internal/cli/tick.go:115`) was already on the parent branch; it is a separate bug and is not part of this task.
+
+**Files:** `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`, `internal/cli/doctor_test.go`
+
+- [ ] **Step 1: Write failing tests** with the probe inputs above: `.acta` symlinked outside writes nothing and reports `fail`; `root:` pointing at an in-repo symlink to outside writes nothing and reports `fail`; `.acta/.gitignore` symlinked to an outside file leaves that file unchanged and reports `fail`; a root reached through a symlinked parent folder that really is inside the repo reports `ok` and `--fix` commits.
+- [ ] **Step 2: Run** `go test ./internal/doctor/ ./internal/cli/ -v`. Expected: FAIL on the new tests.
 - [ ] **Step 3: Implement** the minimum to pass.
 - [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
 - [ ] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
-git add internal/cli internal/doctor .acta/plans/2026-09-28-skill-rules.md
-git commit -m "fix(doctor): respect dirty files, auto_commit and repo bounds in --fix"
+git add internal/doctor internal/cli .acta/plans/2026-09-28-skill-rules.md
+git commit -m "fix(doctor): resolve symlinks before the repo bounds check"
 ```

@@ -33,6 +33,9 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	e := doctorEnv(*known)
 	if *fix {
+		// The file was dirty before --fix touched it, so its other lines
+		// are the user's own and are not ours to commit.
+		dirty, _ := gitc.IsDirty(e.RepoRoot, filepath.Join(e.ActaRoot, ".gitignore"))
 		paths, err := doctor.Fix(e)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
@@ -41,7 +44,9 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		if len(paths) > 0 {
 			// A commit that does not happen is worth saying, but the report
 			// below is the answer the user asked for.
-			if r := gitc.CommitPaths(e.RepoRoot, paths, "acta: doctor fix"); !r.Committed {
+			if reason := skipReason(e, dirty); reason != "" {
+				fmt.Fprintln(stderr, "fixed, not committed:", reason)
+			} else if r := gitc.CommitPaths(e.RepoRoot, paths, "acta: doctor fix"); !r.Committed {
 				fmt.Fprintln(stderr, "fixed, not committed:", r.Reason)
 			}
 			fmt.Fprintf(stdout, "fixed repo: %s\n", strings.Join(paths, ", "))
@@ -57,14 +62,20 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 
 // doctorEnv reads everything the checks need. A repo that cannot be read
 // leaves RepoRoot empty, which makes the repo check skip instead of guess.
+// A config that does not parse is carried as ConfigErr, so the repo check
+// can report it instead of hiding it behind a skip.
 func doctorEnv(known string) doctor.Env {
-	e := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), KnownFile: known}
+	e := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), KnownFile: known, AutoCommit: true}
 	if e.KnownFile == "" {
 		e.KnownFile = linkedKnownFile(e.Home)
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		if cfg, err := config.Load(cwd, ""); err == nil && cfg.IsGit {
-			e.RepoRoot, e.ActaRoot = cfg.RepoRoot, cfg.Root
+		cfg, err := config.Load(cwd, "")
+		switch {
+		case err != nil:
+			e.ConfigErr = err
+		case cfg.IsGit:
+			e.RepoRoot, e.ActaRoot, e.AutoCommit = cfg.RepoRoot, cfg.Root, cfg.AutoCommit
 		}
 	}
 	if p, err := os.Executable(); err == nil {
@@ -73,6 +84,20 @@ func doctorEnv(known string) doctor.Env {
 	v, exists, _ := voice.Resolve()
 	e.Voice, e.VoiceExists = v, exists
 	return e
+}
+
+// skipReason says why --fix will not commit, or "" when it will. The rules
+// are the ones the other write commands follow: auto_commit off means the
+// user wants nothing committed, and a file that was already dirty holds
+// their own changes, which are not ours to commit.
+func skipReason(e doctor.Env, dirty bool) string {
+	switch {
+	case !e.AutoCommit:
+		return "auto_commit is off"
+	case dirty:
+		return "file had other uncommitted changes"
+	}
+	return ""
 }
 
 // linkedKnownFile finds the list of clashing plugins inside the plugin folder

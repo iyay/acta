@@ -173,6 +173,172 @@ func TestDoctorCLIFixCommitsOnlyItsOwnPaths(t *testing.T) {
 	}
 }
 
+// commitCount is how many commits the branch holds, so a test can tell a
+// new commit from the ones that were already there.
+func commitCount(t *testing.T, dir string) int {
+	t.Helper()
+	out, err := exec.Command("git", "-C", dir, "rev-list", "--count", "HEAD").CombinedOutput()
+	if err != nil {
+		t.Fatalf("rev-list: %v %s", err, out)
+	}
+	n := 0
+	for _, c := range strings.TrimSpace(string(out)) {
+		n = n*10 + int(c-'0')
+	}
+	return n
+}
+
+// A dirty .acta/.gitignore holds the user's own uncommitted lines. --fix
+// still adds its own line on disk, but those lines must not ride along in a
+// commit, and the run has to say why it skipped the commit.
+func TestDoctorCLIFixDoesNotCommitADirtyGitignore(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	gi := filepath.Join(dir, ".acta", ".gitignore")
+	if err := os.MkdirAll(filepath.Dir(gi), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(gi, []byte("mysecret.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %d, want %d: the dirty file was committed", got, before)
+	}
+	if !strings.Contains(stderr.String(), "not committed") {
+		t.Fatalf("stderr %q does not say why the commit was skipped", stderr.String())
+	}
+	raw, err := os.ReadFile(gi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), ".agents.json") {
+		t.Fatalf("gitignore %q was not fixed on disk", raw)
+	}
+}
+
+// auto_commit: false in .acta.yaml means the user wants nothing committed
+// without asking. --fix still fixes the file, and says it did not commit.
+func TestDoctorCLIFixMakesNoCommitWhenAutoCommitIsOff(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("auto_commit: false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %d, want %d: auto_commit is off", got, before)
+	}
+	if !strings.Contains(stderr.String(), "auto_commit is off") {
+		t.Fatalf("stderr %q does not name auto_commit", stderr.String())
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, ".acta", ".gitignore"))
+	if err != nil {
+		t.Fatalf("the file was not fixed on disk: %v", err)
+	}
+	if !strings.Contains(string(raw), ".agents.json") {
+		t.Fatalf("gitignore %q was not fixed on disk", raw)
+	}
+}
+
+// root: in .acta.yaml can point out of the repo. --fix must write nothing
+// there, and the repo check has to point at root, not at --fix.
+func TestDoctorCLIFixWritesNothingWhenRootLeavesTheRepo(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("root: ../escaped\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	escaped := filepath.Join(filepath.Dir(dir), "escaped")
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if _, err := os.Stat(escaped); !os.IsNotExist(err) {
+		t.Fatalf("--fix wrote %s outside the repo", escaped)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta")); !os.IsNotExist(err) {
+		t.Fatal("--fix wrote .acta in the repo while root points out of it")
+	}
+	if !strings.Contains(stdout.String(), "fail repo:") {
+		t.Fatalf("stdout %q has no fail repo line", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "fix: acta doctor --fix") {
+		t.Fatalf("stdout %q sends the user to --fix, which cannot fix root", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "root") {
+		t.Fatalf("stdout %q does not name root", stdout.String())
+	}
+}
+
+// A broken .acta.yaml is a real problem, not a skipped check: the parse
+// error has to reach the report and the exit code.
+func TestDoctorCLIFailsOnBrokenActaYaml(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("root: [\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if !strings.Contains(stdout.String(), "fail repo:") {
+		t.Fatalf("stdout %q has no fail repo line", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), ".acta.yaml") {
+		t.Fatalf("stdout %q does not carry the parse error", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "skipped") {
+		t.Fatalf("stdout %q skipped the repo check", stdout.String())
+	}
+}
+
+// A clean repo has no reason to hold back, so --fix must leave one commit
+// behind with its own message. Without this, dropping the commit entirely
+// would still pass every other test.
+func TestDoctorCLIFixCommitsOnACleanRepo(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit %d want 0, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if got := commitCount(t, dir); got != before+1 {
+		t.Fatalf("commits %d, want %d: --fix made no commit", got, before+1)
+	}
+	out, err := exec.Command("git", "-C", dir, "log", "-1", "--pretty=%s").CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg := strings.TrimSpace(string(out)); msg != "acta: doctor fix" {
+		t.Fatalf("commit message %q want %q", msg, "acta: doctor fix")
+	}
+	if strings.Contains(stderr.String(), "not committed") {
+		t.Fatalf("stderr %q says the commit was skipped", stderr.String())
+	}
+}
+
 // A plugin folder linked into omp carries the clashes list, so the check
 // works without a flag. A dead link gives nothing, and the check skips.
 func TestDoctorCLIFindsKnownFileInLinkedPlugin(t *testing.T) {

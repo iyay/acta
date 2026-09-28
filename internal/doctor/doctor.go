@@ -40,6 +40,8 @@ type Env struct {
 	Binary      string // os.Executable()
 	Version     string // from runtime/debug build info
 	KnownFile   string // workflow-plugins.txt; "" skips the conflicts list
+	AutoCommit  bool   // false when .acta.yaml turns auto_commit off
+	ConfigErr   error  // the config.Load error, when the config does not parse
 	VoiceExists bool
 	Voice       voice.Voice
 }
@@ -62,7 +64,7 @@ func Run(e Env) []Result {
 // line. It returns the paths it changed, so the caller can commit them. It
 // never writes under Home: Claude Code and omp own those files.
 func Fix(e Env) ([]string, error) {
-	if e.RepoRoot == "" || e.ActaRoot == "" {
+	if e.RepoRoot == "" || e.ActaRoot == "" || !insideRepo(e.RepoRoot, e.ActaRoot) {
 		return nil, nil
 	}
 	gi := filepath.Join(e.ActaRoot, ".gitignore")
@@ -78,6 +80,17 @@ func Fix(e Env) ([]string, error) {
 		return nil, nil
 	}
 	return []string{gi}, nil
+}
+
+// insideRepo says whether a path sits under the repo root. It walks the
+// path relative to the root, so a sibling folder that merely starts with
+// the same name, like /repo-other next to /repo, counts as outside.
+func insideRepo(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
 }
 
 // Failed is true when a check is fail, which is what makes the command exit 1.
@@ -209,8 +222,21 @@ func checkConflicts(e Env) Result {
 // git repo there is nothing to check.
 func checkRepo(e Env) Result {
 	r := Result{Name: "repo"}
+	// A config that does not parse is a broken setup, not a folder to skip,
+	// so the parse error is the whole message.
+	if e.ConfigErr != nil {
+		r.Level, r.Msg = Fail, "cannot read the config: "+e.ConfigErr.Error()
+		return r
+	}
 	if e.RepoRoot == "" {
 		r.Level, r.Msg = OK, "not in a git repo, skipped"
+		return r
+	}
+	// A root outside the repo is the one problem --fix cannot touch, so the
+	// fix line names root instead of sending the user back to --fix.
+	if !insideRepo(e.RepoRoot, e.ActaRoot) {
+		r.Level, r.Msg = Fail, e.ActaRoot+" is outside the repo "+e.RepoRoot
+		r.Fix = "fix root in .acta.yaml so it points inside the repo"
 		return r
 	}
 	fi, err := os.Stat(e.ActaRoot)
