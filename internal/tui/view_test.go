@@ -856,6 +856,58 @@ func TestPopupChangesOnlyItsBox(t *testing.T) {
 	})
 }
 
+// TestPopupDimsTheBackground opens every popup the keys can open, at both
+// sizes, and reads the screen it covers. Every cell outside the box is the
+// dim style over its own plain text, every line of the box is the box the
+// model draws, and esc gives back the exact screen that was there before.
+func TestPopupDimsTheBackground(t *testing.T) {
+	withColors(func() {
+		// The brush the view paints the screen behind a popup with, spelled
+		// out here so this test checks the colors the plan names and not
+		// the ones the view happens to use today.
+		dim := lipgloss.NewStyle().Faint(true).
+			Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})
+
+		for _, open := range []string{"?", "t", "s", "n"} {
+			for _, size := range [][2]int{{80, 30}, {160, 50}} {
+				m := sized(newModel(t), size[0], size[1])
+				before := m.View()
+				pop := press(m, open)
+				rows := strings.Split(pop.popupBox(), "\n")
+				x0, y0, w, h := popupRect(rows, pop.width, pop.height)
+				if w == 0 {
+					t.Errorf("popup %q at %dx%d never opened", open, size[0], size[1])
+					continue
+				}
+				after := strings.Split(pop.View(), "\n")
+				for y, ln := range after {
+					parts := []string{ln}
+					if y >= y0 && y < y0+h && y < len(after)-1 {
+						i := strings.Index(ln, rows[y-y0])
+						if i < 0 {
+							t.Errorf("popup %q at %dx%d line %d: the box row is not drawn the way popupBox draws it", open, size[0], size[1], y)
+							continue
+						}
+						head, tail := ln[:i], ln[i+len(rows[y-y0]):]
+						if lipgloss.Width(head) != x0 || lipgloss.Width(rows[y-y0]) != w {
+							t.Errorf("popup %q at %dx%d line %d: the box sits at column %d and is %d cells wide, want %d and %d", open, size[0], size[1], y, lipgloss.Width(head), lipgloss.Width(rows[y-y0]), x0, w)
+						}
+						parts = []string{head, tail}
+					}
+					for _, seg := range parts {
+						if got, want := seg, dim.Render(plain(seg)); got != want {
+							t.Errorf("popup %q at %dx%d line %d: the background keeps its own color\n got %q\nwant %q", open, size[0], size[1], y, got, want)
+						}
+					}
+				}
+				if closed := press(pop, "esc").View(); closed != before {
+					t.Errorf("popup %q at %dx%d: the view is not byte-equal to the one before it opened", open, size[0], size[1])
+				}
+			}
+		}
+	})
+}
+
 // atCell gives the first n cells of a plain line, whole runes only, so a test
 // can say what a splice has to leave on either side of the box.
 func atCell(s string, n int) string {

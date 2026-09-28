@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	xansi "github.com/charmbracelet/x/ansi"
 
 	"github.com/iyay/acta/internal/board"
 )
@@ -62,6 +63,10 @@ var (
 	work = lipgloss.NewStyle().Foreground(accentColor).Faint(true)
 	// faint paints every row the cursor is not on.
 	faint = lipgloss.NewStyle().Faint(true)
+	// dim paints the screen behind a popup, so the box on top is the only
+	// thing left on the screen that carries a color of its own.
+	dim = lipgloss.NewStyle().Faint(true).
+		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})
 	// selected paints the row the cursor is on: a dark band across the whole
 	// row with bright text on it, never reversed video, so the words stay
 	// readable wherever the band falls.
@@ -115,7 +120,14 @@ func (m Model) View() string {
 	}
 	body = strings.Join(lines, "\n")
 	body = m.cover(body)
-	return body + "\n" + fit(m.statusLine(), m.width)
+	line := fit(m.statusLine(), m.width)
+	if m.popupBox() != "" {
+		// The status line is behind the popup as much as the panes are, so it
+		// goes grey too. The mouse is off while a popup is open, so the
+		// hyperlinks it carries go with the color.
+		line = dim.Render(xansi.Strip(line))
+	}
+	return body + "\n" + line
 }
 
 // box measures one pane at the given rectangle and works out which of its
@@ -357,12 +369,14 @@ func osc8(url, text string) string {
 // message on the left, and the project, the watch mode, the date and time,
 // the links and the version on the right.
 func (m Model) statusLine() string {
-	left, dim := hints, true
+	// faintLeft says whether the left of the line is only a hint, so it wears
+	// the faint brush while the words next to it keep their own color.
+	left, faintLeft := hints, true
 	switch {
 	case m.searching || m.query != "":
-		left, dim = "/"+m.query, false
+		left, faintLeft = "/"+m.query, false
 	case m.status != "":
-		left, dim = m.status, false
+		left, faintLeft = m.status, false
 	}
 	pieces := m.statusPieces()
 	right := statusText(pieces)
@@ -379,7 +393,7 @@ func (m Model) statusLine() string {
 			room = 0
 		}
 	}
-	if dim {
+	if faintLeft {
 		left = faint.Render(left)
 	}
 	gap := ""
@@ -534,6 +548,8 @@ func (m Model) boxView(title, content string) string {
 
 // cover puts the popup over the middle of the body and keeps the panes it
 // hides on either side of the box, so only the box itself changes on screen.
+// Every line behind the box goes grey and faint first, so the box is the only
+// thing left on the screen that carries a color of its own.
 func (m Model) cover(body string) string {
 	rows := strings.Split(m.popupBox(), "\n")
 	x0, y0, w, _ := popupRect(rows, m.width, m.height)
@@ -541,6 +557,9 @@ func (m Model) cover(body string) string {
 		return body
 	}
 	lines := strings.Split(body, "\n")
+	for i, ln := range lines {
+		lines[i] = dim.Render(xansi.Strip(ln))
+	}
 	for i, r := range rows {
 		if y0+i < len(lines) {
 			lines[y0+i] = splice(lines[y0+i], r, x0, w)
