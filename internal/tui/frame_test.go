@@ -35,6 +35,84 @@ func TestSplitAlwaysFillsTheHeight(t *testing.T) {
 	}
 }
 
+// TestLeftHeightsFillAndExpand walks every height from 3 to 60 and the three
+// widths a terminal reports, with each sidebar pane expanded in turn and with
+// none of them expanded. Four claims at once. The left column is exactly as
+// tall as the detail pane, a pane that is not expanded keeps room lines once
+// the screen is room*(len(sidebar)-1)+room = 15 lines tall and only its title
+// bar below that, the view draws the heights the model hands it, and no line
+// of the screen reaches past the right edge.
+func TestLeftHeightsFillAndExpand(t *testing.T) {
+	m := newModel(t)
+	others := len(sidebar) - 1
+	// room is how many lines a pane that is not expanded keeps. Below
+	// room*others+room lines of screen there is no such room, so it keeps
+	// its title bar alone.
+	const room = 3
+	threshold := room*others + room
+	for h := 3; h <= 60; h++ {
+		for _, w := range []int{40, 80, 160} {
+			for e := -1; e < len(sidebar); e++ {
+				s := sized(m, w, h)
+				s.expanded = e
+				hs := s.leftHeights(h - 1)
+				sum := 0
+				for _, x := range hs {
+					sum += x
+				}
+				if sum != h-1 {
+					t.Fatalf("%dx%d expanded %d: heights %v add up to %d, want %d", w, h, e, hs, sum, h-1)
+				}
+				// The boxes on screen are the ones the view draws. Below 60
+				// columns only the focused box reaches the screen, so the
+				// column has no boxes to read there.
+				g := s.geometry()
+				if g.wide {
+					left := 0
+					for p, b := range g.side {
+						left += b.h
+						if b.h != hs[p] {
+							t.Fatalf("%dx%d expanded %d: pane %d is %d lines, the heights say %d", w, h, e, p+1, b.h, hs[p])
+						}
+					}
+					if left != g.detail.h {
+						t.Fatalf("%dx%d expanded %d: the left column is %d lines, the detail %d", w, h, e, left, g.detail.h)
+					}
+				}
+				for i, x := range hs {
+					if e < 0 || i == e {
+						continue
+					}
+					want := room
+					if h-1 < threshold {
+						want = 1
+					}
+					if x != want {
+						t.Errorf("%dx%d expanded %d: pane %d keeps %d lines, want %d", w, h, e, i+1, x, want)
+					}
+				}
+				// A box with a single line is its title bar and nothing
+				// else, so a short screen still says which box is which.
+				for p, b := range g.side {
+					if b.h != 1 {
+						continue
+					}
+					view := s.paneView(pane(p), b)
+					drawn := strings.Split(view, "\n")
+					if len(drawn) != 1 || drawn[0] != s.paneTop(pane(p), b, s.edge(pane(p))) {
+						t.Errorf("%dx%d expanded %d: pane %d draws %d lines (%q), want its title bar alone", w, h, e, p+1, len(drawn), view)
+					}
+				}
+				for i, ln := range strings.Split(s.View(), "\n") {
+					if lipgloss.Width(ln) > w {
+						t.Fatalf("%dx%d expanded %d: line %d is %d cells wide", w, h, e, i, lipgloss.Width(ln))
+					}
+				}
+			}
+		}
+	}
+}
+
 // TestViewFitsEveryTerminalSize walks every size a terminal can report: each
 // height from 3 up to 60, each width from 1 to 200. Three claims at once. The
 // left column is exactly as tall as the detail pane, the screen has no more

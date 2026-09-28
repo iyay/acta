@@ -75,6 +75,7 @@ const hints = "? help"
 // helpLines is the key map the ? popup shows, grouped by box.
 const helpLines = `0 1 2 3 4 5 tab   move between the boxes
 ] [              next / previous tab
+z                expand the focused pane
 j k g G          move a list, scroll the detail
 ctrl+d ctrl+u    page down and up
 enter            focus the detail on the row
@@ -175,12 +176,19 @@ func (b box) rowAt(y int) int {
 
 // paneView draws one pane: its border with the title inside the top line, the
 // rows it holds, the scrollbar down the right wall when there is more content
-// than rows, and the bottom line, which carries the n/m of what is on screen.
+// than rows, and the bottom line, which a sidebar pane closes with the item
+// count of what it holds.
 func (m Model) paneView(p pane, b box) string {
-	if b.w < 2 || b.h < 2 {
+	if b.w < 2 || b.h < 1 {
 		return ""
 	}
 	edge := m.edge(p)
+	// A box with a single line has room for its title bar and nothing else,
+	// so a short screen still says which box is which. A box with no line at
+	// all draws nothing, so it takes no line either.
+	if b.h == 1 {
+		return m.paneTop(p, b, edge)
+	}
 	// The words of a pane that overflows get one cell less, because the
 	// scrollbar takes that cell. The model measures the content at this same
 	// width, so the line count on screen is the line count the offset counts.
@@ -191,13 +199,18 @@ func (m Model) paneView(p pane, b box) string {
 		first = firstOf(m.off[p], total, b.inner)
 	}
 	bar := scrollbar(total, b.inner, first, b.inner)
-	foot := ""
 	// A pane too narrow to spare a cell has nowhere to put the scrollbar, so
-	// it keeps that cell and writes no count either.
-	if len(bar) > 0 && inner < b.textW() {
-		foot = count(first, total)
-	} else {
+	// it keeps that cell.
+	if len(bar) == 0 || inner >= b.textW() {
 		bar = nil
+	}
+	// Every sidebar pane counts the items it holds and the one under the
+	// cursor. The detail box counts lines, not items, so it writes nothing
+	// and keeps its scrollbar.
+	foot := ""
+	if p != paneDetail {
+		rows, sel, idx := m.slotOf(p)
+		foot = itemCount(cursorOf(rows, *sel, *idx)+1, len(rows))
 	}
 	var content []string
 	if p == paneDetail {

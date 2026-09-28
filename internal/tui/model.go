@@ -70,6 +70,7 @@ type Model struct {
 	sel       []string
 	idx       []int // selected row number per pane, used when the id vanishes
 	query     string
+	expanded  int // the sidebar pane that takes the room, -1 when none does
 	searching bool
 	groupOpen bool
 	popup     *popup
@@ -94,12 +95,13 @@ type Model struct {
 func New(cfg config.Config, b *board.Board, dark bool) Model {
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
-		open: defaultOpen,
-		tab:  make([]int, len(sidebar)),
-		sel:  make([]string, len(sidebar)),
-		idx:  make([]int, len(sidebar)),
-		off:  make([]int, boxes),
-		load: func() (*board.Board, error) { return board.Load(cfg) },
+		open:     defaultOpen,
+		tab:      make([]int, len(sidebar)),
+		sel:      make([]string, len(sidebar)),
+		expanded: -1,
+		idx:      make([]int, len(sidebar)),
+		off:      make([]int, boxes),
+		load:     func() (*board.Board, error) { return board.Load(cfg) },
 		// Load fresh so the write never checks against a stale board.
 		setValue: func(id, field, value string) (write.Outcome, error) {
 			fresh, err := board.Load(cfg)
@@ -267,6 +269,9 @@ func (m *Model) focusPane(p pane) {
 	if m.focus == p {
 		return
 	}
+	// The room belongs to the box that has the focus, so a box that is no
+	// longer the one on top of the screen cannot keep it.
+	m.expanded = -1
 	m.focus = p
 	if p != paneDetail {
 		m.last = p
@@ -353,6 +358,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusPane(pane((int(m.focus) + 1) % boxes))
 	case "shift+tab":
 		m.focusPane(pane((int(m.focus) + boxes - 1) % boxes))
+	case "z":
+		m.toggleExpand()
 	case "]":
 		m.cycleTab(1)
 	case "[":

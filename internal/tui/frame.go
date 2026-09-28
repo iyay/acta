@@ -16,7 +16,7 @@ func (m Model) geometry() geom {
 	bodyH := max(0, m.height-1)
 	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(sidebar))}
 	y := 0
-	for p, h := range split(bodyH, len(sidebar)) {
+	for p, h := range m.leftHeights(bodyH) {
 		g.side[p] = m.box(pane(p), 0, y, g.leftW, h)
 		y += h
 	}
@@ -52,6 +52,36 @@ func split(h, n int) []int {
 	out[n-1] = h - each*(n-1)
 	return out
 }
+
+// leftHeights gives the sidebar column h lines, one height per pane. Nothing
+// expanded means an even share, the last pane taking what is left over, so
+// the column ends where the detail box ends. An expanded pane takes what the
+// others do not, and the others keep room lines each, or only their title bar
+// when the screen is too short for room lines. A pane can end up with no lines
+// at all on a screen that has almost none, which is what an expanded pane
+// leaves the others with, and it then draws nothing.
+func (m Model) leftHeights(h int) []int {
+	others := len(sidebar) - 1
+	if m.expanded < 0 {
+		return split(h, len(sidebar))
+	}
+	out := make([]int, len(sidebar))
+	each := expandedRoom
+	if h < expandedRoom*others+expandedRoom {
+		each = 1
+	}
+	for p := range out {
+		if p != m.expanded {
+			out[p] = each
+		}
+	}
+	out[m.expanded] = h - each*others
+	return out
+}
+
+// expandedRoom is how many lines a sidebar pane keeps while another one has
+// the room: its top border, one row and its bottom border.
+const expandedRoom = 3
 
 // paneTop draws the top line of a pane. The title sits inside the border,
 // lazygit style: the pane number, then the tabs. The tab that is on is bold in
@@ -114,8 +144,9 @@ func topLine(w int, edge lipgloss.Style, segs []segment) string {
 	return b.String()
 }
 
-// paneBottom draws the bottom line of a pane, with the line count of the
-// detail when there is one.
+// paneBottom draws the bottom line of a pane, with whatever the pane writes
+// there at the right end, next to the corner. A sidebar pane writes its
+// counter there, lazygit style.
 func paneBottom(b box, edge lipgloss.Style, foot string) string {
 	inner := b.w - 2
 	text := ""
@@ -123,7 +154,7 @@ func paneBottom(b box, edge lipgloss.Style, foot string) string {
 		text = fit(" "+foot+" ", inner)
 	}
 	fill := strings.Repeat("─", max(0, inner-lipgloss.Width(text)))
-	return edge.Render("└") + edge.Render(text) + edge.Render(fill) + edge.Render("┘")
+	return edge.Render("└") + edge.Render(fill) + edge.Render(text) + edge.Render("┘")
 }
 
 // popupRect says where a box of these rows is drawn on a screen of this size:

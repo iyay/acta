@@ -1013,3 +1013,118 @@ func TestViewHelpListsTheNewKeys(t *testing.T) {
 		t.Error("the old enter line is still there")
 	}
 }
+
+// TestZTogglesAndFocusRestores walks the whole life of the expand key: z gives
+// the focused pane the room, z takes it back, moving to another box takes it
+// back, and z on the detail box does nothing at all.
+func TestZTogglesAndFocusRestores(t *testing.T) {
+	m := sized(newModel(t), 120, 40)
+	if m.expanded != -1 {
+		t.Fatalf("a screen with nothing expanded reads %d", m.expanded)
+	}
+	// Pane [3] has the focus, z expands it and z puts the room back.
+	m = press(m, "3", "z")
+	if m.expanded != int(panePlans) {
+		t.Fatalf("z on pane [3] expanded %d, want %d", m.expanded, panePlans)
+	}
+	m = press(m, "z")
+	if m.expanded != -1 {
+		t.Fatalf("a second z should give the room back, it reads %d", m.expanded)
+	}
+	// A tab of the same pane is not another box, so the room stays.
+	m = press(m, "z", "]")
+	if m.expanded != int(panePlans) {
+		t.Fatalf("a tab change should keep the pane expanded, it reads %d", m.expanded)
+	}
+	// Moving the focus to another box gives the room back, by key and by tab.
+	for _, keys := range [][]string{{"4"}, {"tab"}, {"shift+tab"}, {"0"}, {"1"}} {
+		m = press(sized(newModel(t), 120, 40), append([]string{"3", "z"}, keys...)...)
+		if m.expanded != -1 {
+			t.Errorf("%v should give the room back, it reads %d", keys, m.expanded)
+		}
+	}
+	// The detail box has no room to give, so z there does nothing.
+	m = press(sized(newModel(t), 120, 40), "3", "z", "0", "z")
+	if m.expanded != -1 {
+		t.Fatalf("z on the detail box expanded %d, want nothing", m.expanded)
+	}
+	// The pane that has the room is the one that grew, and the others keep 3
+	// lines on a screen tall enough to give them.
+	wide := press(sized(newModel(t), 120, 40), "3", "z")
+	hs := wide.leftHeights(wide.height - 1)
+	if hs[panePlans] <= 3 {
+		t.Errorf("the expanded pane has %d lines, want more than the 3 of the others: %v", hs[panePlans], hs)
+	}
+	for p, h := range hs {
+		if p != int(panePlans) && h != 3 {
+			t.Errorf("pane %d has %d lines next to the expanded one, want 3", p+1, h)
+		}
+	}
+}
+
+// TestCounterShowsSelectedItemNotLine reads what every box writes in its
+// bottom border: the item under the cursor out of the items the pane holds,
+// never the line on screen, and nothing at all on the detail box.
+func TestCounterShowsSelectedItemNotLine(t *testing.T) {
+	withColors(func() {
+		// Forty open plans, more than the box can show. The cursor walks down
+		// while the list stays at its top, so a counter reading the line on
+		// screen would keep saying 1.
+		m := press(longModel(t), keyOf(panePlans))
+		for i, want := range []string{"1 of 40", "2 of 40", "3 of 40"} {
+			if i > 0 {
+				m = press(m, "j")
+			}
+			if m.off[panePlans] != 0 {
+				t.Fatalf("the list scrolled to line %d, the counter cannot be a line number", m.off[panePlans])
+			}
+			if got := footOf(t, m, panePlans); got != want {
+				t.Errorf("pane [3] with item %d writes %q, want %q", i+1, got, want)
+			}
+		}
+		// The counter sits at the right end of the border, the way lazygit
+		// puts it, with the corner as the last thing the line holds.
+		if line := bottomLine(t, m, panePlans); !strings.HasSuffix(line, " 3 of 40 ┘") {
+			t.Errorf("the bottom border of pane [3] reads %q, want the counter at its right end", line)
+		}
+		// Every sidebar pane of the plain fixture writes the item under the
+		// cursor out of the items it holds, on each of its tabs.
+		for p := pane(0); p < paneDetail; p++ {
+			for tab := range max(1, len(sidebar[p].tabs)) {
+				// A screen of its own for every box, because the keys write
+				// into the cursors the model shares.
+				one := press(sized(newModel(t), 160, 50), keyOf(p))
+				for range tab {
+					one = press(one, "]")
+				}
+				rows, _, _ := one.slotOf(p)
+				if len(rows) == 0 {
+					continue
+				}
+				stepped := press(one, "j")
+				rows, sel, idx := stepped.slotOf(p)
+				want := itemCount(cursorOf(rows, *sel, *idx)+1, len(rows))
+				if got := footOf(t, stepped, p); got != want {
+					t.Errorf("pane %d on tab %d writes %q, want %q", p+1, tab, got, want)
+				}
+			}
+		}
+		// A search that finds nothing empties every pane, and an empty pane
+		// still counts, as 0 of 0.
+		empty := sized(newModel(t), 160, 50)
+		empty.query = "nothing in the board matches this"
+		if rows, _, _ := empty.slotOf(panePlans); len(rows) != 0 {
+			t.Fatalf("the search left %d rows in pane [3]", len(rows))
+		}
+		if got := footOf(t, empty, panePlans); got != "0 of 0" {
+			t.Errorf("an empty pane writes %q, want %q", got, "0 of 0")
+		}
+		// The detail box keeps its scrollbar and writes no counter, with an
+		// item under it and with nothing under it.
+		for _, d := range []Model{press(sized(newModel(t), 160, 50), "3", "0"), empty} {
+			if got := footOf(t, d, paneDetail); strings.Contains(got, " of ") {
+				t.Errorf("the detail box writes a counter: %q", got)
+			}
+		}
+	})
+}
