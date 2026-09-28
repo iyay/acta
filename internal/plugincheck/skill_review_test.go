@@ -5,7 +5,7 @@ import "testing"
 func TestSkillReview(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "review",
-		MaxLines: 480,
+		MaxLines: 482,
 		Must: []string{
 			"Spec axis", "Standards axis", "BLOCKER", "NOTE", "three questions",
 			"deep lens", "never a round 4", "code-reviewer.md", "CLEAN or BLOCKED",

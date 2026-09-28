@@ -5,7 +5,7 @@ import "testing"
 func TestSkillPlan(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "plan",
-		MaxLines: 260,
+		MaxLines: 262,
 		Must: []string{
 			".acta/plans/", "acta:build", "verify:", "## Waves", "ponytail-lazy",
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",

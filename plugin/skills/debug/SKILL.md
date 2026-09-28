@@ -49,6 +49,8 @@ You MUST complete each phase before proceeding to the next.
 
 **A confirmed bug gets a file.** Once the root cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `acta:bug` before moving on.
 
+**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+
 ### Phase 1: Root Cause Investigation
 
 **BEFORE attempting ANY fix:**

@@ -11,6 +11,8 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 Dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
 
+**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.
 

@@ -188,3 +188,5 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 Save the plan, show it to the user, and wait for a yes. Approval of the design did not approve the plan.
 
 Then run it with `acta:build`. Ask which executor only if the user has not said: `subagent` (default), `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).
+
+**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
