@@ -65,9 +65,10 @@ func Run(e Env) []Result {
 // never writes under Home: Claude Code and omp own those files.
 func Fix(e Env) ([]string, error) {
 	gi := filepath.Join(e.ActaRoot, ".gitignore")
-	// The file --fix writes is the one bound, so the write and the report
-	// in checkRepo can never disagree.
-	if e.RepoRoot == "" || e.ActaRoot == "" || !inRepoPath(e.RepoRoot, gi) {
+	// Only a file the repo owns may be written: the root has to sit inside
+	// the repo, and the .gitignore has to be a real file. A link, missing
+	// target or not, carries the append somewhere else entirely.
+	if e.RepoRoot == "" || e.ActaRoot == "" || !inRepoPath(e.RepoRoot, e.ActaRoot) || isLink(gi) {
 		return nil, nil
 	}
 	before, _ := os.ReadFile(gi)
@@ -111,6 +112,16 @@ func realPath(p string) string {
 		return p
 	}
 	return filepath.Join(realPath(parent), filepath.Base(p))
+}
+
+// isLink says whether a path is a symlink. Lstat is the whole point: it
+// reads the link itself and never the file it points at, so a link whose
+// target is missing is still a link. A .gitignore that is one can carry the
+// write to a file this repo does not own, and checkRepo reads the same two
+// words, so the write and the report cannot disagree.
+func isLink(p string) bool {
+	fi, err := os.Lstat(p)
+	return err == nil && fi.Mode()&os.ModeSymlink != 0
 }
 
 // Failed is true when a check is fail, which is what makes the command exit 1.
@@ -263,7 +274,7 @@ func checkRepo(e Env) Result {
 	}
 	// A .gitignore that is a link can carry the write to a file the repo
 	// does not own, so --fix will not write it and the user replaces it.
-	if !inRepoPath(e.RepoRoot, gi) {
+	if isLink(gi) {
 		r.Level, r.Msg = Fail, ".gitignore in "+e.ActaRoot+" is a link, not a file of this repo"
 		r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
 		return r
