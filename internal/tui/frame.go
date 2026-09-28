@@ -11,22 +11,23 @@ import (
 // between 28 and 48 columns, and below 60 columns only the focused box is on
 // screen because two columns of a small terminal fit nothing.
 func (m Model) geometry() geom {
-	// The last line belongs to the status line, so the boxes share the rest.
-	// A terminal with fewer rows than that gets the rows it really has.
-	bodyH := max(0, m.height-1)
-	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(sidebar))}
-	y := 0
+	// The top line is the tab bar and the last line the status line, so the
+	// boxes share the rest. A terminal with fewer rows gets the rows it has.
+	bodyH := max(0, m.height-2)
+	panes := m.panes()
+	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(panes))}
+	y := 1
 	for p, h := range m.leftHeights(bodyH) {
 		g.side[p] = m.box(pane(p), 0, y, g.leftW, h)
 		y += h
 	}
 	// A box of zero width is not on screen, which is how a narrow terminal
 	// leaves all but the focused one out.
-	g.detail = m.box(paneDetail, g.leftW, 0, max(0, m.width-g.leftW), bodyH)
+	g.detail = m.box(paneDetail, g.leftW, 1, max(0, m.width-g.leftW), bodyH)
 	if g.wide {
 		return g
 	}
-	g.full = m.box(m.focus, 0, 0, m.width, bodyH)
+	g.full = m.box(m.focus, 0, 1, m.width, bodyH)
 	// Only the focused box is on screen now, so the others are zero boxes and
 	// neither the view nor the mouse finds them.
 	for p := range g.side {
@@ -53,19 +54,20 @@ func split(h, n int) []int {
 	return out
 }
 
-// leftHeights gives the sidebar column h lines, one height per pane. Nothing
-// expanded means an even share, the last pane taking what is left over, so
-// the column ends where the detail box ends. An expanded pane takes what the
-// others do not, and the others keep room lines each, or only their title bar
-// when the screen is too short for room lines. A pane can end up with no lines
-// at all on a screen that has almost none, which is what an expanded pane
-// leaves the others with, and it then draws nothing.
+// leftHeights gives the boxes of the open tab h lines, one height each.
+// Nothing expanded means an even share, the last box taking what is left
+// over, so the column ends where the detail box ends. An expanded box takes
+// what the others do not, and the others keep room lines each, or only their
+// title bar when the screen is too short for room lines. A box can end up with
+// no lines at all on a screen that has almost none, which is what an expanded
+// box leaves the others with, and it then draws nothing.
 func (m Model) leftHeights(h int) []int {
-	others := len(sidebar) - 1
-	if m.expanded < 0 {
-		return split(h, len(sidebar))
+	n := len(m.panes())
+	others := n - 1
+	if m.expanded < 0 || m.expanded >= n {
+		return split(h, n)
 	}
-	out := make([]int, len(sidebar))
+	out := make([]int, n)
 	each := expandedRoom
 	if h < expandedRoom*others+expandedRoom {
 		each = 1
@@ -79,8 +81,8 @@ func (m Model) leftHeights(h int) []int {
 	return out
 }
 
-// expandedRoom is how many lines a sidebar pane keeps while another one has
-// the room: its top border, one row and its bottom border.
+// expandedRoom is how many lines a box keeps while another one has the room:
+// its top border, one row and its bottom border.
 const expandedRoom = 3
 
 // paneTop draws the top line of a pane. The title sits inside the border,

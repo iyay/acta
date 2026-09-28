@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +16,7 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-// pane is which of the boxes on screen has the focus. The sidebar column and
+// pane is which of the boxes on screen has the focus. The boxes of a tab and
 // the pane numbers come from the table in sidebar.go, so no box is named twice.
 type pane int
 
@@ -65,14 +66,15 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 type Model struct {
 	cfg       config.Config
 	board     *board.Board
-	focus     pane  // the box with the focus
-	last      pane  // the list pane that had it last, for the detail box
-	follows   pane  // the sidebar pane the Done pane reads, never Done nor the detail
-	tab       []int // which tab each sidebar pane shows
+	focus     pane                   // the box with the focus
+	last      pane                   // the list pane that had it last, for the detail box
+	top       int                    // the open tab, an index into topTabs
+	tabs      [len(topTabs)]tabState // the saved place of each tab that is not open
+	done      int                    // the Done sub-tab the open tab shows
 	sel       []string
 	idx       []int // selected row number per pane, used when the id vanishes
 	query     string
-	expanded  int // the sidebar pane that takes the room, -1 when none does
+	expanded  int // the list pane that takes the room, -1 when none does
 	searching bool
 	groupOpen bool
 	openPlans map[string]bool // the plans the reader opened in a tree list
@@ -96,14 +98,17 @@ type Model struct {
 // New builds a model over b. dark picks the markdown style; ask the terminal
 // before the program starts, because asking later fights Bubble Tea for stdin.
 func New(cfg config.Config, b *board.Board, dark bool) Model {
+	s := freshTab()
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open:     defaultOpen,
-		tab:      make([]int, len(sidebar)),
-		sel:      make([]string, len(sidebar)),
+		top:      tabActivities,
+		focus:    s.focus,
+		last:     s.last,
+		sel:      s.sel,
+		idx:      s.idx,
+		off:      s.off,
 		expanded: -1,
-		idx:      make([]int, len(sidebar)),
-		off:      make([]int, boxes),
 		load:     func() (*board.Board, error) { return board.Load(cfg) },
 		// Load fresh so the write never checks against a stale board.
 		setValue: func(id, field, value string) (write.Outcome, error) {
@@ -265,11 +270,10 @@ func (m *Model) moveTo(i int) {
 
 func (m *Model) moveBy(lines int) { m.moveTo(m.cursor() + lines) }
 
-// focusPane moves the focus. The detail box shows the list pane that had it
-// last, and the Done pane reads the sidebar pane that had it last, so both
-// follow the reader without either of them ever becoming the source.
+// focusPane moves the focus. The detail box shows the list box that had it
+// last. A tab with no Done pane never gives it the focus.
 func (m *Model) focusPane(p pane) {
-	if m.focus == p {
+	if m.focus == p || !slices.Contains(append(m.panes(), paneDetail), p) {
 		return
 	}
 	// The room belongs to the box that has the focus, so a box that is no
@@ -279,31 +283,18 @@ func (m *Model) focusPane(p pane) {
 	if p != paneDetail {
 		m.last = p
 	}
-	if p != paneDone && p != paneDetail {
-		m.follows = p
-	}
 	m.keepVisible(p)
 }
 
-// cycleTab walks the focused box along its own tabs and wraps around. Active
-// and the detail box have no tabs, so nothing happens there.
+// cycleTab walks the Done pane along its sub-tabs and wraps around. The other
+// boxes have no sub-tabs, so [ and ] do nothing there.
 func (m *Model) cycleTab(step int) {
-	switch m.focus {
-	case paneDone:
-		n := len(m.doneTabNames())
-		if n == 0 {
-			return
-		}
-		m.tab[paneDone] = (m.tab[paneDone] + step + n) % n
-	case paneActive, paneDetail:
+	n := len(m.doneTabNames())
+	if m.focus != paneDone || n == 0 {
 		return
-	default:
-		n := len(sidebar[m.focus].tabs)
-		m.tab[m.focus] = (m.tab[m.focus] + step + n) % n
 	}
-	// Tasks have one finished tab, so coming from Bugs the second is gone.
-	m.tab[paneDone] = min(m.tab[paneDone], max(0, len(m.doneTabNames())-1))
-	m.keepVisible(m.focus)
+	m.done = (m.done + step + n) % n
+	m.keepVisible(paneDone)
 }
 
 // step moves the cursor in a list box and scrolls the body in the detail box,
@@ -316,7 +307,8 @@ func (m *Model) step(lines int) {
 	m.moveBy(lines)
 }
 
-func (m *Model) top() {
+// goTop goes to the first row, or to the top of the body in the detail box.
+func (m *Model) goTop() {
 	if m.focus == paneDetail {
 		m.off[paneDetail] = 0
 		return
@@ -355,12 +347,16 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "0":
 		m.focusPane(paneDetail)
-	case "1", "2", "3", "4", "5":
-		m.focusPane(pane(k.String()[0] - '1'))
+	case "1", "2", "3", "4", "5", "6":
+		m.openTab(int(k.String()[0] - '1'))
+	case "left":
+		m.openTab((m.top + len(topTabs) - 1) % len(topTabs))
+	case "right":
+		m.openTab((m.top + 1) % len(topTabs))
 	case "tab":
-		m.focusPane(pane((int(m.focus) + 1) % boxes))
+		m.cyclePane(1)
 	case "shift+tab":
-		m.focusPane(pane((int(m.focus) + boxes - 1) % boxes))
+		m.cyclePane(-1)
 	case "z":
 		m.toggleExpand()
 	case "]":
@@ -372,7 +368,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "k", "up":
 		m.step(-1)
 	case "g":
-		m.top()
+		m.goTop()
 	case "G":
 		m.end()
 	case "ctrl+d":
@@ -464,17 +460,12 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// clickTab switches the box the click landed in to the tab that was hit.
+// clickTab switches the Done box to the sub-tab the click landed on. The
+// other boxes hold one name, so a click there only takes the focus.
 func (m *Model) clickTab(p pane, idx int) {
-	switch p {
-	case paneDone:
-		m.tab[paneDone] = clamp(idx, 0, max(0, len(m.doneTabNames())-1))
-	case paneActive, paneDetail:
-	default:
-		m.tab[p] = clamp(idx, 0, len(sidebar[p].tabs)-1)
+	if p == paneDone {
+		m.done = clamp(idx, 0, max(0, len(m.doneTabNames())-1))
 	}
-	// The tab that is on now has its own rows, so the box has to find its
-	// cursor again.
 	m.keepVisible(p)
 }
 

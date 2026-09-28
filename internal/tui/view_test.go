@@ -83,23 +83,29 @@ func lineFor(t *testing.T, v, want string) ([]string, int) {
 	return nil, -1
 }
 
-func TestViewShowsTheSidebarAndTheDetail(t *testing.T) {
-	m := sized(clocked(press(newModel(t), "2", "j", "j"), 20, 46), 200, 40)
+func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
+	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans), "j")
 	v := m.View()
 	for _, want := range []string{
-		"[1]─Active", "[2]─Specs ─ Scratchpad", "[3]─Plans ─ Tasks",
-		"[4]─Bugs ─ Debt", "[5]─Done", "[0]─Detail",
+		" Scratches  Bugs  Debts  Specs  [Plans]  Activities",
+		"─List", "─Done ─ Dropped", "[0]─Detail",
 		"basic · live · 2026-09-27 20:46",
-		"specs/2026-09-20-alpha  Alpha story",
-		"ID        : specs/2026-09-20-alpha",
-		"FILE      : .acta/specs/2026-09-20-alpha.md",
-		"Some text.",
+		"plans/2026-09-21-alpha  Alpha plan",
+		"ID        : plans/2026-09-21-alpha",
+		"FILE      : .acta/plans/2026-09-21-alpha.md",
+		"Write the failing test",
 	} {
 		if !strings.Contains(v, want) {
 			t.Errorf("view is missing %q", want)
 		}
 	}
-	for _, line := range strings.Split(v, "\n") {
+	// The tab bar is the first line of the screen and the status line the
+	// last, so the boxes live between them.
+	lines := strings.Split(v, "\n")
+	if !strings.Contains(plain(lines[0]), "[Plans]") {
+		t.Errorf("the first line is %q, want the tab bar", plain(lines[0]))
+	}
+	for _, line := range lines {
 		if w := lipgloss.Width(line); w > 200 {
 			t.Fatalf("line wider than the terminal (%d): %q", w, line)
 		}
@@ -112,7 +118,7 @@ func TestViewNeverOverflowsAnyWindow(t *testing.T) {
 			base := sized(newModel(t), w, h)
 			for name, m := range map[string]Model{
 				"open":   base,
-				"detail": press(base, "3"),
+				"detail": press(base, tabKey(tabPlans)),
 				"help":   press(base, "?"),
 			} {
 				for _, line := range strings.Split(sized(m, w, h).View(), "\n") {
@@ -131,10 +137,10 @@ func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
 		want string
 		gone string
 	}{
-		{nil, "[1]─Active", "[2]─"},
-		{[]string{"2"}, "[2]─Specs", "[1]─"},
-		{[]string{"5"}, "[5]─Done", "[1]─"},
-		{[]string{"0"}, "[0]─Detail", "[1]─"},
+		{nil, "─List", "─Done"},
+		{[]string{tabKey(tabSpecs)}, "─List", "─Done"},
+		{[]string{tabKey(tabSpecs), "tab"}, "─Done ─ Dropped", "─List"},
+		{[]string{tabKey(tabSpecs), "0"}, "[0]─Detail", "─List"},
 	} {
 		m := sized(press(newModel(t), tc.keys...), 40, 20)
 		v := m.View()
@@ -230,7 +236,11 @@ func isRowLine(m Model, r row, line string, w int) bool {
 		if name == "" {
 			name = it.ID
 		}
-		head = strings.Repeat("  ", r.depth) + name + "  " + it.Title
+		head = strings.Repeat("  ", r.depth)
+		if r.tree {
+			head += m.treeMark(r, it) + " "
+		}
+		head += name + "  " + it.Title
 	}
 	// Work in progress keeps its count whole at the right end, and the rest
 	// of the line is the head cut to the cells the pane has left. The row is
@@ -273,38 +283,40 @@ func lineWith(t *testing.T, lines []string, word string) string {
 // pane's row at that position, the divider, or empty space below the last
 // row, so a row can never take two lines.
 func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
-	for tab := range 2 {
-		for _, p := range []pane{paneSpecs, paneDone} {
+	for i := range topTabs {
+		for _, p := range press(newModel(t), tabKey(i)).panes() {
 			for _, w := range []int{40, 60, 120, 200} {
-				m := sized(focused(newModel(t), p, tab), w, 40)
+				m := sized(press(newModel(t), tabKey(i)), w, 40)
+				m.focusPane(p)
+				tab := topTabs[i].name
 				b := paneBox(m, p)
 				inner := b.textW()
 				rows, _, _ := m.slotOf(p)
 				lines := innerLines(m, b)
 				if len(lines) < b.rows {
-					t.Fatalf("tab %d pane %d width %d: the pane drew %d of its %d rows", tab, p, w, len(lines), b.rows)
+					t.Fatalf("tab %s pane %d width %d: the pane drew %d of its %d rows", tab, p, w, len(lines), b.rows)
 				}
 				if b.inner > 0 && b.rows != b.inner {
-					t.Fatalf("tab %d pane %d width %d: the pane shows %d rows in %d lines, want one row per line", tab, p, w, b.rows, b.inner)
+					t.Fatalf("tab %s pane %d width %d: the pane shows %d rows in %d lines, want one row per line", tab, p, w, b.rows, b.inner)
 				}
 				if len(rows) == 0 {
 					if lines[0] != "nothing here" {
-						t.Errorf("tab %d pane %d width %d: an empty pane shows %q", tab, p, w, lines[0])
+						t.Errorf("tab %s pane %d width %d: an empty pane shows %q", tab, p, w, lines[0])
 					}
 					continue
 				}
 				// The words of a box fill every cell between the walls, so a
 				// row runs right up to the scrollbar on the right wall.
-				for i, ln := range lines {
-					n := b.first + i
-					if n >= len(rows) {
+				for n, ln := range lines {
+					row := b.first + n
+					if row >= len(rows) {
 						if strings.TrimSpace(ln) != "" {
-							t.Errorf("tab %d pane %d width %d: line %d below the last row holds %q", tab, p, w, i, ln)
+							t.Errorf("tab %s pane %d width %d: line %d below the last row holds %q", tab, p, w, n, ln)
 						}
 						continue
 					}
-					if !isRowLine(m, rows[n], cells(ln, inner), inner) {
-						t.Errorf("tab %d pane %d width %d: line %d is %q, which is not row %s", tab, p, w, i, ln, rows[n].id)
+					if !isRowLine(m, rows[row], cells(ln, inner), inner) {
+						t.Errorf("tab %s pane %d width %d: line %d is %q, which is not row %s", tab, p, w, n, ln, rows[row].id)
 					}
 				}
 			}
@@ -331,9 +343,9 @@ func TestAPaneWithOneKindOfWorkDrawsNoRule(t *testing.T) {
 					items = append(items, it)
 				}
 			}
-			m := sized(full, 200, 40)
+			m := press(sized(full, 200, 40), tabKey(tabSpecs))
 			m.board = &board.Board{Items: items}
-			for i, ln := range innerLines(m, paneBox(m, paneSpecs)) {
+			for i, ln := range innerLines(m, paneBox(m, paneList)) {
 				if ln != "" && strings.Trim(ln, "─") == "" {
 					t.Errorf("line %d draws a rule where a row belongs: %q", i, ln)
 				}
@@ -368,13 +380,14 @@ func boardSays(m Model, w string) bool {
 // every tab. A status word on screen has to come from a file name or a title
 // the board really holds, which leaves no room for the view painting one.
 func TestNoListPanePaintsAStatusWord(t *testing.T) {
-	for tab := range 2 {
-		for _, p := range []pane{paneSpecs, paneDone} {
-			m := sized(focused(newModel(t), p, tab), 200, 40)
-			for i, line := range innerLines(m, paneBox(m, p)) {
+	for i := range topTabs {
+		for _, p := range press(newModel(t), tabKey(i)).panes() {
+			m := sized(press(newModel(t), tabKey(i)), 200, 40)
+			m.focusPane(p)
+			for n, line := range innerLines(m, paneBox(m, p)) {
 				for _, w := range statusWords {
 					if saysWord(line, w) && !boardSays(m, w) {
-						t.Errorf("tab %d pane %d line %d paints the status %q: %q", tab, p, i, w, line)
+						t.Errorf("tab %s pane %d line %d paints the status %q: %q", topTabs[i].name, p, n, w, line)
 					}
 				}
 			}
@@ -390,8 +403,8 @@ func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
 	m := newModel(t)
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
-	m = press(sized(m, 200, 40), "2")
-	b := paneBox(m, paneSpecs)
+	m = press(sized(m, 200, 40), tabKey(tabSpecs))
+	b := paneBox(m, paneList)
 	lines := innerLines(m, b)
 	if got := cells(lineOfRow(t, lines, "specs/2026-09-20-alpha"), b.textW()); !strings.HasPrefix(strings.TrimSpace(got), "specs/2026-09-20-alpha  Alpha") ||
 		!strings.HasSuffix(strings.TrimSpace(got), "2/5 · claude") {
@@ -416,8 +429,8 @@ func TestALongTitleIsCutSoTheCountFits(t *testing.T) {
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
 	it.Title = strings.Repeat("x", 200)
-	m = press(sized(m, 60, 40), "2")
-	b := paneBox(m, paneSpecs)
+	m = press(sized(m, 60, 40), tabKey(tabSpecs))
+	b := paneBox(m, paneList)
 	row := cells(lineWith(t, innerLines(m, b), "2/5 · claude"), b.textW())
 	if !strings.HasSuffix(strings.TrimSpace(row), "2/5 · claude") {
 		t.Errorf("the count and the agent were cut: %q", row)
@@ -500,8 +513,8 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		// The rows are the board's own order, so the in-progress spec is the
 		// third one. One j puts the cursor on the row above it, and the
 		// in-progress row is then drawn unselected with its own brush.
-		m := sized(press(newModel(t), "2", "j"), 120, 40)
-		b := paneBox(m, paneSpecs)
+		m := sized(press(newModel(t), tabKey(tabSpecs), "j"), 120, 40)
+		b := paneBox(m, paneList)
 		v := m.View()
 
 		sel := paintedLine(v, b, 1)
@@ -580,14 +593,14 @@ func TestViewDebtDetail(t *testing.T) {
 	}
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
-	// 120 columns, the normal width, must still draw all five tab names.
-	m = sized(openTab(t, m, paneBugs, 1), 120, 40)
+	// The Debts tab of the bar lists the debt items of the board.
+	m = sized(press(m, tabKey(tabDebts)), 120, 40)
 
 	v := m.View()
-	// The gap between names can be the wide " ─ " or, once five names need
-	// to fit, a plain space, so look for the names themselves in order.
-	if i, j := strings.Index(v, "Bugs"), strings.Index(v, "Debt"); i < 0 || j < i {
-		t.Fatalf("Debt should come after Bugs in the tab title: %q", v)
+	// The tab bar names every tab in order, so Debts comes after Bugs and
+	// before the tab that is open.
+	if i, j := strings.Index(v, "Bugs"), strings.Index(v, "Debts"); i < 0 || j < i {
+		t.Fatalf("Debts should come after Bugs in the tab bar: %q", v)
 	}
 
 	g := m.geometry()
@@ -618,7 +631,7 @@ func TestViewDebtDetail(t *testing.T) {
 
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 	// The first plan of the list links no spec, so no SPEC line is drawn.
-	m := sized(press(newModel(t), "3"), 120, 40)
+	m := sized(press(newModel(t), tabKey(tabPlans)), 120, 40)
 	g := m.geometry()
 	detail := strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
 	if strings.Contains(detail, "SPEC") {
@@ -637,7 +650,9 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 }
 
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
-	m := sized(press(newModel(t), "3", "]", "j"), 120, 40)
+	// Activities lists the one task of the fixture that is under way, and
+	// the detail of a task holds its own section and nothing else.
+	m := sized(press(newModel(t), tabKey(tabActivities)), 120, 40)
 	v := plain(m.View())
 	if !strings.Contains(v, "plans/2026-09-21-alpha#task-2") {
 		t.Error("the task row is missing")
@@ -651,7 +666,7 @@ func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 }
 func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
 	// The rows are in board order, so three j steps reach the weird story.
-	m := sized(press(newModel(t), "2", "j", "j", "j"), 120, 60)
+	m := sized(press(newModel(t), tabKey(tabSpecs), "j", "j", "j"), 120, 60)
 	if !strings.Contains(plain(m.View()), "! ") {
 		t.Error("the problems of the selected item are missing")
 	}
@@ -770,38 +785,33 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
 		t.Error("the help popup is missing")
 	}
-	if !strings.Contains(v, "[1]─Active") || !strings.Contains(v, "[0]─Detail") {
+	if !strings.Contains(v, "─List") || !strings.Contains(v, "[0]─Detail") {
 		t.Error("the popup should cover the boxes, not replace them")
 	}
 	if !strings.HasSuffix(plain(lastLine(v)), "2026-09-27 20:46 | Feedback  dev") {
 		t.Error("the popup should not hide the status line")
+	}
+	// The help names every key of the new layout.
+	help := plain(v)
+	for _, want := range []string{"1-6", "←", "→", "tab shift+tab", "[ ]", "space enter"} {
+		if !strings.Contains(help, want) {
+			t.Errorf("the help shows no %q:\n%s", want, help)
+		}
 	}
 	if strings.Contains(press(m, "?").View(), "Keys") {
 		t.Error("? should close the help popup")
 	}
 }
 
-// focused puts the focus on a pane and picks the tab of pane [1], so a test
-// can walk every tab with the focus on either side of the screen.
-func focused(m Model, f pane, tab int) Model {
-	m.focus, m.last = f, paneSpecs
-	if f < paneDone {
-		m.tab[f] = tab % max(1, len(sidebar[f].tabs))
-	}
-	m.tab[paneSpecs] = tab % max(1, len(sidebar[paneSpecs].tabs))
-	m.tab[paneDone] = tab % max(1, len(m.doneTabNames()))
-	m.follows = paneSpecs
-	return m
-}
-
-// TestNoRoundedCorners walks every width from 1 to 200, every tab, and the
-// focus on each pane, with no popup and with each of the three popups, so no
-// frame the screen can draw still holds a rounded corner.
+// TestNoRoundedCorners walks every width from 1 to 200, every tab of the bar,
+// and the focus on each of its panes, with no popup and with each of the three
+// popups, so no frame the screen can draw still holds a rounded corner.
 func TestNoRoundedCorners(t *testing.T) {
 	for w := 1; w <= 200; w++ {
-		for tab := range len(sidebar[paneSpecs].tabs) {
-			for _, f := range []pane{paneSpecs, paneDone, paneDetail} {
-				m := sized(focused(newModel(t), f, tab), w, 40)
+		for i := range topTabs {
+			for _, f := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
+				m := press(sized(newModel(t), w, 40), tabKey(i))
+				m.focusPane(f)
 				for _, frame := range []struct {
 					what string
 					v    string
@@ -812,7 +822,7 @@ func TestNoRoundedCorners(t *testing.T) {
 					{"slug", press(m, "n").View()},
 				} {
 					if strings.ContainsAny(plain(frame.v), "╭╮╰╯") {
-						t.Fatalf("width %d, tab %d, focus %d, %s: rounded corner in the frame", w, tab, f, frame.what)
+						t.Fatalf("width %d, tab %s, focus %d, %s: rounded corner in the frame", w, topTabs[i].name, f, frame.what)
 					}
 				}
 			}
@@ -870,7 +880,7 @@ func TestPopupDimsTheBackground(t *testing.T) {
 
 		for _, open := range []string{"?", "t", "s", "n"} {
 			for _, size := range [][2]int{{80, 30}, {160, 50}} {
-				m := sized(newModel(t), size[0], size[1])
+				m := press(sized(newModel(t), size[0], size[1]), tabKey(tabBugs))
 				before := m.View()
 				pop := press(m, open)
 				rows := strings.Split(pop.popupBox(), "\n")
@@ -950,7 +960,7 @@ func TestSpliceKeepsWideRunesWhole(t *testing.T) {
 }
 
 func TestViewValuePopupAndSlug(t *testing.T) {
-	m := sized(press(newModel(t), "]", "]", "]", "s"), 100, 30)
+	m := sized(press(newModel(t), tabKey(tabBugs), "tab", "s"), 100, 30)
 	if !strings.Contains(m.View(), "wontfix") {
 		t.Error("the value popup options are not shown")
 	}
@@ -961,35 +971,47 @@ func TestViewValuePopupAndSlug(t *testing.T) {
 }
 
 func TestViewFocusedPaneWearsTheAccent(t *testing.T) {
-	m := newModel(t)
-	if m.edge(paneActive).GetForeground() != accentColor {
+	// A tab with both boxes, so the accent really moves from one to the other.
+	m := press(newModel(t), tabKey(tabBugs))
+	if m.edge(paneList).GetForeground() != accentColor {
 		t.Error("the box with the focus should draw its border in the accent color")
 	}
 	if m.edge(paneDone).GetForeground() == accentColor {
 		t.Error("a box without the focus should not wear the accent color")
 	}
-	m = press(m, "5")
+	m = press(m, "tab")
 	if m.edge(paneDone).GetForeground() != accentColor {
 		t.Error("the focus moved, so the accent color should move with it")
 	}
-	if m.edge(paneActive).GetForeground() == accentColor {
+	if m.edge(paneList).GetForeground() == accentColor {
 		t.Error("the box that lost the focus should be dim")
 	}
 }
 
-func TestViewFinishedTabsFollowTheLastSidebarPane(t *testing.T) {
-	for _, tc := range []struct {
-		keys []string
-		want string
-	}{
-		{[]string{"2", "5"}, "[5]─Done ─ Dropped"},
-		{[]string{"3", "5"}, "[5]─Done ─"},
-		{[]string{"4", "5"}, "[5]─Fixed ─ Wontfix"},
-		{[]string{"4", "]", "5"}, "[5]─Done ─ Wontfix"},
-	} {
-		v := sized(press(newModel(t), tc.keys...), 120, 40).View()
-		if !strings.Contains(v, tc.want) {
-			t.Errorf("after %v the Done box is missing %q", tc.keys, tc.want)
+// TestViewDonePanesShowTheirOwnSubTabs reads the title of the Done pane of
+// every tab of the bar, so no tab can ever draw the sub-tabs of another.
+func TestViewDonePanesShowTheirOwnSubTabs(t *testing.T) {
+	for i := range topTabs {
+		if len(topTabs[i].done) == 0 {
+			continue
+		}
+		var names []string
+		for _, sub := range topTabs[i].done {
+			names = append(names, sub.name)
+		}
+		title := "─" + strings.Join(names, " ─ ")
+		for d := range topTabs[i].done {
+			keys := []string{tabKey(i), "tab"}
+			if d > 0 {
+				keys = append(keys, "]")
+			}
+			v := sized(press(newModel(t), keys...), 120, 40).View()
+			if !strings.Contains(v, title) {
+				t.Errorf("tab %s is missing the Done title %q", topTabs[i].name, title)
+			}
+			if got := strings.Join(press(press(newModel(t), keys...), "j").tabsOf(paneDone), " "); got != strings.Join(names, " ") {
+				t.Errorf("tab %s draws the Done sub-tabs %q, want %q", topTabs[i].name, got, strings.Join(names, " "))
+			}
 		}
 	}
 }
@@ -1019,8 +1041,8 @@ func TestViewInProgressRowsWearTheAccent(t *testing.T) {
 func testViewInProgressRowsWearTheAccent(t *testing.T) {
 	// Step twice, so neither the in-progress row nor the not-started one
 	// shows the selected brush: both must show their own brush instead.
-	m := sized(press(splitModel(t), "2", "j"), 200, 40)
-	b := paneBox(m, paneSpecs)
+	m := sized(press(splitModel(t), tabKey(tabSpecs), "j"), 200, 40)
+	b := paneBox(m, paneList)
 	seenGoing, seenWaiting := false, false
 	for i, ln := range innerLines(m, b) {
 		cell := paintedLine(m.View(), b, i)
@@ -1066,88 +1088,87 @@ func TestViewHelpListsTheNewKeys(t *testing.T) {
 }
 
 // TestZTogglesAndFocusRestores walks the whole life of the expand key: z gives
-// the focused pane the room, z takes it back, moving to another box takes it
+// the focused box the room, z takes it back, moving to another box takes it
 // back, and z on the detail box does nothing at all.
 func TestZTogglesAndFocusRestores(t *testing.T) {
 	m := sized(newModel(t), 120, 40)
 	if m.expanded != -1 {
 		t.Fatalf("a screen with nothing expanded reads %d", m.expanded)
 	}
-	// Pane [3] has the focus, z expands it and z puts the room back.
-	m = press(m, "3", "z")
-	if m.expanded != int(panePlans) {
-		t.Fatalf("z on pane [3] expanded %d, want %d", m.expanded, panePlans)
+	// The List box of the Plans tab has the focus, z expands it and z puts
+	// the room back.
+	m = press(m, tabKey(tabPlans), "z")
+	if m.expanded != int(paneList) {
+		t.Fatalf("z on the List box expanded %d, want %d", m.expanded, paneList)
 	}
 	m = press(m, "z")
 	if m.expanded != -1 {
 		t.Fatalf("a second z should give the room back, it reads %d", m.expanded)
 	}
-	// A tab of the same pane is not another box, so the room stays.
-	m = press(m, "z", "]")
-	if m.expanded != int(panePlans) {
-		t.Fatalf("a tab change should keep the pane expanded, it reads %d", m.expanded)
+	// A Done sub-tab of the same box is not another box, so the room stays.
+	m = press(sized(newModel(t), 120, 40), tabKey(tabPlans), "tab", "z", "]")
+	if m.expanded != int(paneDone) {
+		t.Fatalf("a sub-tab change should keep the box expanded, it reads %d", m.expanded)
 	}
 	// Moving the focus to another box gives the room back, by key and by tab.
-	for _, keys := range [][]string{{"4"}, {"tab"}, {"shift+tab"}, {"0"}, {"1"}} {
-		m = press(sized(newModel(t), 120, 40), append([]string{"3", "z"}, keys...)...)
+	for _, keys := range [][]string{{tabKey(tabBugs)}, {"tab"}, {"shift+tab"}, {"0"}, {tabKey(tabScratches)}} {
+		m = press(sized(newModel(t), 120, 40), append([]string{tabKey(tabPlans), "z"}, keys...)...)
 		if m.expanded != -1 {
 			t.Errorf("%v should give the room back, it reads %d", keys, m.expanded)
 		}
 	}
 	// The detail box has no room to give, so z there does nothing.
-	m = press(sized(newModel(t), 120, 40), "3", "z", "0", "z")
+	m = press(sized(newModel(t), 120, 40), tabKey(tabPlans), "z", "0", "z")
 	if m.expanded != -1 {
 		t.Fatalf("z on the detail box expanded %d, want nothing", m.expanded)
 	}
-	// The pane that has the room is the one that grew, and the others keep 3
-	// lines on a screen tall enough to give them.
-	wide := press(sized(newModel(t), 120, 40), "3", "z")
-	hs := wide.leftHeights(wide.height - 1)
-	if hs[panePlans] <= 3 {
-		t.Errorf("the expanded pane has %d lines, want more than the 3 of the others: %v", hs[panePlans], hs)
+	// The box that has the room is the one that grew, and the other keeps 3
+	// lines on a screen tall enough to give it.
+	wide := press(sized(newModel(t), 120, 40), tabKey(tabPlans), "z")
+	hs := wide.leftHeights(wide.height - 2)
+	if hs[paneList] <= 3 {
+		t.Errorf("the expanded box has %d lines, want more than the 3 of the other: %v", hs[paneList], hs)
 	}
 	for p, h := range hs {
-		if p != int(panePlans) && h != 3 {
-			t.Errorf("pane %d has %d lines next to the expanded one, want 3", p+1, h)
+		if p != int(paneList) && h != 3 {
+			t.Errorf("box %d has %d lines next to the expanded one, want 3", p+1, h)
 		}
 	}
 }
 
 // TestCounterShowsSelectedItemNotLine reads what every box writes in its
-// bottom border: the item under the cursor out of the items the pane holds,
+// bottom border: the item under the cursor out of the items the box holds,
 // never the line on screen, and nothing at all on the detail box.
 func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 	withColors(func() {
 		// Forty open plans, more than the box can show. The cursor walks down
 		// while the list stays at its top, so a counter reading the line on
 		// screen would keep saying 1.
-		m := press(longModel(t), keyOf(panePlans))
+		m := press(longModel(t), tabKey(tabPlans))
 		for i, want := range []string{"1 of 40", "2 of 40", "3 of 40"} {
 			if i > 0 {
 				m = press(m, "j")
 			}
-			if m.off[panePlans] != 0 {
-				t.Fatalf("the list scrolled to line %d, the counter cannot be a line number", m.off[panePlans])
+			if m.off[paneList] != 0 {
+				t.Fatalf("the list scrolled to line %d, the counter cannot be a line number", m.off[paneList])
 			}
-			if got := footOf(t, m, panePlans); got != want {
-				t.Errorf("pane [3] with item %d writes %q, want %q", i+1, got, want)
+			if got := footOf(t, m, paneList); got != want {
+				t.Errorf("the List box with item %d writes %q, want %q", i+1, got, want)
 			}
 		}
 		// The counter sits at the right end of the border, the way lazygit
 		// puts it, with the corner as the last thing the line holds.
-		if line := bottomLine(t, m, panePlans); !strings.HasSuffix(line, " 3 of 40 ┘") {
-			t.Errorf("the bottom border of pane [3] reads %q, want the counter at its right end", line)
+		if line := bottomLine(t, m, paneList); !strings.HasSuffix(line, " 3 of 40 ┘") {
+			t.Errorf("the bottom border of the List box reads %q, want the counter at its right end", line)
 		}
-		// Every sidebar pane of the plain fixture writes the item under the
-		// cursor out of the items it holds, on each of its tabs.
-		for p := pane(0); p < paneDetail; p++ {
-			for tab := range max(1, len(sidebar[p].tabs)) {
+		// Every box of every tab of the plain fixture writes the item under
+		// the cursor out of the items it holds.
+		for i := range topTabs {
+			for _, p := range press(newModel(t), tabKey(i)).panes() {
 				// A screen of its own for every box, because the keys write
 				// into the cursors the model shares.
-				one := press(sized(newModel(t), 160, 50), keyOf(p))
-				for range tab {
-					one = press(one, "]")
-				}
+				one := press(sized(newModel(t), 160, 50), tabKey(i))
+				one.focusPane(p)
 				rows, _, _ := one.slotOf(p)
 				if len(rows) == 0 {
 					continue
@@ -1156,23 +1177,23 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 				rows, sel, idx := stepped.slotOf(p)
 				want := itemCount(cursorOf(rows, *sel, *idx)+1, len(rows))
 				if got := footOf(t, stepped, p); got != want {
-					t.Errorf("pane %d on tab %d writes %q, want %q", p+1, tab, got, want)
+					t.Errorf("tab %s box %d writes %q, want %q", topTabs[i].name, p+1, got, want)
 				}
 			}
 		}
-		// A search that finds nothing empties every pane, and an empty pane
+		// A search that finds nothing empties every box, and an empty box
 		// still counts, as 0 of 0.
-		empty := sized(newModel(t), 160, 50)
+		empty := press(sized(newModel(t), 160, 50), tabKey(tabPlans))
 		empty.query = "nothing in the board matches this"
-		if rows, _, _ := empty.slotOf(panePlans); len(rows) != 0 {
-			t.Fatalf("the search left %d rows in pane [3]", len(rows))
+		if rows, _, _ := empty.slotOf(paneList); len(rows) != 0 {
+			t.Fatalf("the search left %d rows in the List box", len(rows))
 		}
-		if got := footOf(t, empty, panePlans); got != "0 of 0" {
-			t.Errorf("an empty pane writes %q, want %q", got, "0 of 0")
+		if got := footOf(t, empty, paneList); got != "0 of 0" {
+			t.Errorf("an empty box writes %q, want %q", got, "0 of 0")
 		}
 		// The detail box keeps its scrollbar and writes no counter, with an
 		// item under it and with nothing under it.
-		for _, d := range []Model{press(sized(newModel(t), 160, 50), "3", "0"), empty} {
+		for _, d := range []Model{press(sized(newModel(t), 160, 50), tabKey(tabPlans), "0"), empty} {
 			if got := footOf(t, d, paneDetail); strings.Contains(got, " of ") {
 				t.Errorf("the detail box writes a counter: %q", got)
 			}
@@ -1180,22 +1201,27 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 	})
 }
 
-// thumbFixture gives every pane more rows than any of the two screens below
-// can show, and the detail body a whole screenful of lines, so all six boxes
-// have a thumb to draw: thirty of every kind, work under way for the Active
-// pane, and finished ones for the Done pane.
+// thumbFixture gives every box more rows than either screen below can show,
+// and the detail body a whole screenful of lines, so every box has a thumb to
+// draw: thirty of every kind, work under way for the Activities tab, and
+// finished ones for the Done boxes.
 func thumbFixture(t *testing.T) Model {
 	t.Helper()
 	body := "# Plan\n" + strings.Repeat("\nA line of the body.\n", 60) +
 		"\n### Task 1: First step\n\n- [ ] **Step 1: Do it**\n"
 	files := map[string]string{}
-	for i := range 30 {
+	// Sixty of every kind, so a list still has a window between its top and
+	// its end once the boxes of the tab bar layout are a whole screen tall.
+	for i := range 60 {
 		n := fmt.Sprint(i)
 		files[".acta/specs/2026-09-20-open-"+n+".md"] = "# Open spec\n"
 		files[".acta/specs/2026-09-19-done-"+n+".md"] = "---\nstatus: done\n---\n# Done spec\n"
 		files[".acta/specs/2026-09-18-going-"+n+".md"] = "---\nstatus: in-progress\n---\n# Going spec\n"
 		files[".acta/scratch/2026-09-20-idea-"+n+".md"] = "---\nstatus: brainstorming\n---\n# Idea\n"
 		files[".acta/plans/2026-09-20-open-"+n+".md"] = body
+		// A plan with a ticked box gives the Activities tab a task that is
+		// under way, which is the only kind of row that tab lists.
+		files[".acta/plans/2026-09-17-going-"+n+".md"] = "# Going plan\n\n### Task 1: Under way\n\n- [x] a step\n- [ ] another step\n"
 		files[".acta/plans/2026-09-19-done-"+n+".md"] = "---\nstatus: done\n---\n" + body
 		files[".acta/bugs/2026-09-20-open-"+n+".md"] = "# Open bug\n"
 		files[".acta/bugs/2026-09-19-fixed-"+n+".md"] = "---\nstatus: fixed\n---\n# Fixed bug\n"
@@ -1246,33 +1272,27 @@ func scrollTo(m Model, p pane, at string) Model {
 	case "top":
 		return press(m, "g")
 	case "middle":
-		return press(m, "ctrl+d", "ctrl+d")
+		// A list scrolls with its cursor, so the window lands inside the
+		// content once the cursor has walked back far enough from the end
+		// to leave the last window.
+		return press(m, "G", "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u")
 	default:
 		return press(m, "G")
 	}
 }
 
-// paneTabs is how many tabs a pane has to walk: the two kind boxes show two
-// each, the rest show one, and the detail box sits outside the table.
-func paneTabs(p pane) int {
-	if p >= paneDone {
-		return 1
-	}
-	return max(1, len(sidebar[p].tabs))
-}
-
-// TestThumbSitsOnTheBorderNotInside walks every pane, both screens and all
-// three places in the content, and reads the drawn cells. No pane spends a
-// cell of its own on a scrollbar: the line is as wide as the pane, the cell
-// left of the right wall is content, and the thumb is that wall and nothing
-// else.
+// TestThumbSitsOnTheBorderNotInside walks every box of every tab, both
+// screens and all three places in the content, and reads the drawn cells. No
+// box spends a cell of its own on a scrollbar: the line is as wide as the box,
+// the cell left of the right wall is content, and the thumb is that wall and
+// nothing else.
 func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 	withColors(func() {
 		for _, size := range [][2]int{{80, 30}, {160, 50}} {
-			for p := pane(0); p <= paneDetail; p++ {
-				for tab := range paneTabs(p) {
+			for i := range topTabs {
+				for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
 					for _, at := range []string{"top", "middle", "end"} {
-						checkThumbOnTheBorder(t, p, tab, at, size[0], size[1])
+						checkThumbOnTheBorder(t, i, p, at, size[0], size[1])
 					}
 				}
 			}
@@ -1280,29 +1300,36 @@ func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 	})
 }
 
-func checkThumbOnTheBorder(t *testing.T, p pane, tab int, at string, w, h int) {
+func checkThumbOnTheBorder(t *testing.T, tab int, p pane, at string, w, h int) {
 	t.Helper()
-	m := press(sized(thumbFixture(t), w, h), keyOf(p))
-	for range tab {
+	m := press(sized(thumbFixture(t), w, h), tabKey(tab))
+	// The detail box shows a plan body, the only content on this board long
+	// enough to scroll, so it is read from the Plans tab.
+	if p == paneDetail {
+		m = press(m, tabKey(tabPlans))
+	}
+	m.focusPane(p)
+	// A Done sub-tab no item of the board reaches has nothing to scroll, so
+	// the next one that holds rows is read instead.
+	for range len(m.doneTabNames()) {
+		if rows, _, _ := m.slotOf(paneDone); len(rows) > 0 {
+			break
+		}
 		m = press(m, "]")
 	}
+	// A Done pane that no sub-tab of the tab fills has nothing to scroll.
 	if p == paneDone {
-		// Done reads the pane that had the focus last, so it is read with a
-		// kind pane behind it and never with Active, which has none.
-		m = press(press(m, keyOf(paneSpecs)), keyOf(paneDone))
-	}
-	if p == paneDetail {
-		// The detail box shows the body of the item under the cursor, so a
-		// list pane picks one first.
-		m = press(press(m, keyOf(panePlans)), keyOf(paneDetail))
+		if rows, _, _ := m.slotOf(paneDone); len(rows) == 0 {
+			return
+		}
 	}
 	m = scrollTo(m, p, at)
 	if rows, _, _ := m.slotOf(m.listPane()); p != paneDetail && len(rows) == 0 {
-		t.Fatalf("pane %d tab %d holds no rows to scroll", p+1, tab)
+		t.Fatalf("tab %s box %d holds no rows to scroll", topTabs[tab].name, p+1)
 	}
 	b := paneBox(m, p)
 	if b.inner < 1 {
-		t.Fatalf("pane %d tab %d has no room to draw", p+1, tab)
+		t.Fatalf("tab %s box %d has no room to draw", topTabs[tab].name, p+1)
 	}
 	v := m.View()
 	// The thumb wears the brush the pane's own wall wears, so the accent on
@@ -1373,8 +1400,9 @@ func checkThumbOnTheBorder(t *testing.T, p pane, tab int, at string, w, h int) {
 		// A wall with room to move the thumb off both ends has to move it:
 		// half way down, the thumb cannot still sit on the first line. A
 		// wall three lines high with a one-line thumb rounds to the first
-		// line, because that is where the middle of the content lands.
-		if b.inner-thumbs < 3 {
+		// line, because that is where the middle of the content lands, and
+		// content one page long has no window between its two ends at all.
+		if b.inner-thumbs < 3 || m.lastOff(p) <= pageLines {
 			break
 		}
 		if firstThumb <= 0 || lastThumb >= b.inner-1 {
@@ -1389,14 +1417,14 @@ func checkThumbOnTheBorder(t *testing.T, p pane, tab int, at string, w, h int) {
 	}
 }
 
-// TestThumbOnlyWhenThereIsSomethingToScroll reads the plain fixture on a screen
-// tall enough to hold all of it. Nothing overflows, so no pane draws a thumb.
+// TestThumbOnlyWhenThereIsSomethingToScroll reads the plain fixture on a
+// screen tall enough to hold all of it. Nothing overflows, so no box draws a
+// thumb.
 func TestThumbOnlyWhenThereIsSomethingToScroll(t *testing.T) {
 	for _, size := range [][2]int{{80, 30}, {160, 50}, {200, 120}} {
-		m := press(sized(newModel(t), size[0], size[1]), keyOf(panePlans))
-		m = press(m, keyOf(paneDetail))
+		m := press(sized(newModel(t), size[0], size[1]), tabKey(tabPlans), "0")
 		v := m.View()
-		for p := pane(0); p < paneDetail; p++ {
+		for _, p := range m.panes() {
 			// A pane whose content fits has no window to point at, so it
 			// draws no thumb. One that overflows has to draw one, or the
 			// reader cannot tell how far down the pane is.

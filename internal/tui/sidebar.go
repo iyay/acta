@@ -1,206 +1,218 @@
 package tui
 
 import (
-	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/iyay/acta/internal/board"
 )
 
 // doneTab is one tab of the Done pane: the name in its title and the status it
-// lists. A kind with only one finished status has no second tab, and it never
-// shows.
+// lists.
 type doneTab struct {
 	name   string
 	status string
 }
 
-// sidebarTab is one tab of a sidebar pane: the name in its title, the kind of
-// item it lists, and the finished tabs the Done pane shows while this tab has
-// the focus.
-type sidebarTab struct {
+// topTab is one tab of the bar on the top line: its name, the kind it lists,
+// the finished sub-tabs of its Done pane, and tree for the one tab whose lists
+// fold plans open to show their tasks. Activities has no kind and no Done pane.
+type topTab struct {
 	name string
 	kind board.Kind
 	done []doneTab
+	tree bool
 }
 
-// sidebarPane is one stacked box on the left. Its tabs are the kinds it shows;
-// Active and Done have none, so their title is all they draw.
-type sidebarPane struct {
-	title string
-	tabs  []sidebarTab
+// topTabs is the bar, left to right. Index i is key i+1. It is an array, so
+// len(topTabs) is a constant the Model can size its saved tabs with.
+var topTabs = [...]topTab{
+	{name: "Scratches", kind: board.KindScratch, done: []doneTab{{"Specced", "specced"}, {"Dropped", "dropped"}}},
+	{name: "Bugs", kind: board.KindBug, done: []doneTab{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}}},
+	{name: "Debts", kind: board.KindDebtItem, done: []doneTab{{"Done", "done"}, {"Wontfix", "wontfix"}}},
+	{name: "Specs", kind: board.KindStory, done: []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}},
+	{name: "Plans", kind: board.KindPlan, done: []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}, tree: true},
+	{name: "Activities"},
 }
 
-// sidebar is the whole left column, top to bottom. Index i is key i+1. It is an
-// array, so len(sidebar) is a constant the pane numbers are built from.
-var sidebar = [...]sidebarPane{
-	{title: "Active"},
-	{title: "Specs ─ Scratchpad", tabs: []sidebarTab{
-		{"Specs", board.KindStory, []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}},
-		{"Scratchpad", board.KindScratch, []doneTab{{"Specced", "specced"}, {"Dropped", "dropped"}}},
-	}},
-	{title: "Plans ─ Tasks", tabs: []sidebarTab{
-		{"Plans", board.KindPlan, []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}},
-		{"Tasks", board.KindTask, []doneTab{{"Done", "done"}}},
-	}},
-	{title: "Bugs ─ Debt", tabs: []sidebarTab{
-		{"Bugs", board.KindBug, []doneTab{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}}},
-		{"Debt", board.KindDebtItem, []doneTab{{"Done", "done"}, {"Wontfix", "wontfix"}}},
-	}},
-	{title: "Done"},
-}
-
+// The tab numbers, in the order of topTabs, so code and tests name a tab
+// instead of counting.
 const (
-	// paneActive is the top box: every item whose work has begun.
-	paneActive = pane(0)
-	// paneSpecs, panePlans and paneBugs are the three kind boxes, which the
-	// tests read by name; TestSidebarTitles pins them to the table.
-	paneSpecs = pane(1)
-	panePlans = pane(2)
-	paneBugs  = pane(3)
-	// paneDone is the bottom box: the finished items of the box that had the
-	// focus last.
-	paneDone = pane(len(sidebar) - 1)
-	// paneDetail is the box on the right, which sits outside the table and is
-	// key 0.
-	paneDetail = pane(len(sidebar))
+	tabScratches = iota
+	tabBugs
+	tabDebts
+	tabSpecs
+	tabPlans
+	tabActivities
 )
 
-// boxes is every box on screen: the sidebar column and the detail box, so tab
-// walks the whole ring and the numbers are read from the table.
-const boxes = len(sidebar) + 1
+const (
+	// paneList is the top box of a tab: its open items.
+	paneList = pane(0)
+	// paneDone is the box under it: the finished items of the Done sub-tab.
+	paneDone = pane(1)
+	// paneDetail is the box on the right.
+	paneDetail = pane(2)
+)
 
-// paneKey is the number a box wears in its title: the sidebar boxes count from
-// 1 down the column, and the detail box is 0, so the reader always presses the
-// number the box shows.
+// sidePanes is how many list boxes a tab can have, and boxes adds the detail.
+const (
+	sidePanes = 2
+	boxes     = sidePanes + 1
+)
+
+// paneKey is what a box wears at the start of its title. The detail box keeps
+// its key, since 0 still focuses it; the list boxes have no key of their own.
 func paneKey(p pane) string {
 	if p == paneDetail {
 		return "─[0]─"
 	}
-	return fmt.Sprintf("─[%d]─", p+1)
+	return "─"
 }
 
-// tabOf gives the tab a pane has open, and false when it has no tabs at all:
-// Active, Done and the detail box have none.
-func (m Model) tabOf(p pane) (sidebarTab, bool) {
-	if p >= paneDone {
-		return sidebarTab{}, false
-	}
-	tabs := sidebar[p].tabs
-	if len(tabs) == 0 {
-		return sidebarTab{}, false
-	}
-	return tabs[clamp(m.tab[p], 0, len(tabs)-1)], true
+// tabState is what a tab keeps while another one is open: the focused pane,
+// the list the detail showed, the cursor and offset of each pane, and the
+// Done sub-tab. sel is nil until the first visit.
+type tabState struct {
+	focus, last pane
+	sel         []string
+	idx, off    []int
+	done        int
 }
 
-// doneTabOf gives the finished tab the Done pane has open for the pane the
-// Done pane follows, and false when that pane has no kind of its own.
+// freshTab is how a tab looks on its first visit: the List pane has the focus
+// and its top row is selected, because an empty cursor falls on row 0.
+func freshTab() tabState {
+	return tabState{
+		focus: paneList, last: paneList,
+		sel: make([]string, sidePanes), idx: make([]int, sidePanes), off: make([]int, boxes),
+	}
+}
+
+// openTab puts tab i on screen. The tab that was open keeps its place, so a
+// later visit finds the same pane, row and Done sub-tab. A row that went away
+// since is caught by cursorOf, which falls back to the last row that is left.
+func (m *Model) openTab(i int) {
+	if i == m.top || i < 0 || i >= len(topTabs) {
+		return
+	}
+	m.tabs[m.top] = tabState{m.focus, m.last, m.sel, m.idx, m.off, m.done}
+	s := m.tabs[i]
+	if s.sel == nil {
+		s = freshTab()
+	}
+	m.top = i
+	m.focus, m.last, m.sel, m.idx, m.off, m.done = s.focus, s.last, s.sel, s.idx, s.off, s.done
+	// The room and the detail place belonged to the tab that is gone now.
+	m.expanded = -1
+	m.off[paneDetail] = 0
+	m.keepVisible(m.listPane())
+}
+
+// panes gives the list boxes of the open tab, top to bottom. Activities has
+// no Done pane.
+func (m Model) panes() []pane {
+	if len(topTabs[m.top].done) == 0 {
+		return []pane{paneList}
+	}
+	return []pane{paneList, paneDone}
+}
+
+// cyclePane walks tab and shift+tab over the boxes of the open tab and the
+// detail box, and wraps around, so the focus never lands in another tab.
+func (m *Model) cyclePane(step int) {
+	ring := append(m.panes(), paneDetail)
+	at := slices.Index(ring, m.focus)
+	m.focusPane(ring[(at+step+len(ring))%len(ring)])
+}
+
+// doneTabOf gives the Done sub-tab the open tab shows, and false on a tab with
+// no Done pane.
 func (m Model) doneTabOf() (doneTab, bool) {
-	tab, ok := m.tabOf(m.follows)
-	if !ok {
+	done := topTabs[m.top].done
+	if len(done) == 0 {
 		return doneTab{}, false
 	}
-	return tab.done[clamp(m.tab[paneDone], 0, len(tab.done)-1)], true
+	return done[clamp(m.done, 0, len(done)-1)], true
 }
 
-// doneTabNames gives the tab names the Done pane shows for the tab the pane it
-// follows has open. Active has no kind, so after it Done shows no tabs.
+// doneTabNames gives the sub-tab names the Done pane of the open tab shows.
 func (m Model) doneTabNames() []string {
-	tab, ok := m.tabOf(m.follows)
-	if !ok {
-		return nil
-	}
 	var out []string
-	for _, d := range tab.done {
-		if d.name != "" {
-			out = append(out, d.name)
-		}
+	for _, d := range topTabs[m.top].done {
+		out = append(out, d.name)
 	}
 	return out
 }
 
-// tabsOf gives the names a pane draws in its title: the tabs it has, or the
-// title of the box itself when it has none.
+// tabsOf gives the names a box draws in its title.
 func (m Model) tabsOf(p pane) []string {
 	switch p {
-	case paneDetail:
-		return nil
-	case paneActive:
-		return []string{sidebar[p].title}
+	case paneList:
+		return []string{"List"}
 	case paneDone:
-		if names := m.doneTabNames(); len(names) > 0 {
-			return names
-		}
-		return []string{sidebar[p].title}
+		return m.doneTabNames()
 	}
-	out := make([]string, len(sidebar[p].tabs))
-	for i, tab := range sidebar[p].tabs {
-		out[i] = tab.name
-	}
-	return out
+	return nil
 }
 
-// onTab gives the tab a pane has open, so its title never drops that name even
-// when the pane is too narrow to draw every tab.
+// onTab gives the name a box has open, so its title never drops that name
+// even when the box is too narrow to draw every name.
 func (m Model) onTab(p pane) int {
 	if p == paneDone {
-		return clamp(m.tab[paneDone], 0, max(0, len(m.doneTabNames())-1))
+		return clamp(m.done, 0, max(0, len(m.doneTabNames())-1))
 	}
-	if p >= paneDone || len(sidebar[p].tabs) == 0 {
-		return 0
-	}
-	return clamp(m.tab[p], 0, len(sidebar[p].tabs)-1)
+	return 0
 }
 
-// rowsOf gives the rows a pane shows: the items in progress, the items of its
-// tab, or the finished items it follows.
+// rowsOf gives the rows a box shows: the finished items in Done, the tasks
+// under way on Activities, and the open items of the tab anywhere else.
 func (m Model) rowsOf(p pane) []row {
-	switch p {
-	case paneActive:
-		return m.activeRows()
-	case paneDone:
+	switch {
+	case p == paneDone:
 		return m.doneRows()
+	case topTabs[m.top].kind == "":
+		return m.activityRows()
 	}
-	return m.openRows(p)
+	return m.openRows()
 }
 
 // searchRows gives a searching reader every item whose text matches, whatever
-// pane asked, so one search never depends on which box the focus is in.
+// box asked, so one search never depends on which box has the focus.
 func (m Model) searchRows() []row {
 	return toRows(m.board.Search(m.query), 0)
 }
 
-// activeRows gives the Active pane every item whose work has begun, of every
-// kind, in the order the board lists them. inProgress is the one rule that
-// decides, so an item that is only open, raw or todo can never get in.
-func (m Model) activeRows() []row {
+// activityRows gives Activities every task whose work has begun, of every
+// plan, in the order the board lists them. inProgress is the one rule that
+// decides.
+func (m Model) activityRows() []row {
 	if m.query != "" {
 		return m.searchRows()
 	}
 	var going []*board.Item
-	for _, it := range m.board.Items {
-		if !it.Legacy && inProgress(it) {
+	for _, it := range m.board.List(board.KindTask, true) {
+		if inProgress(it) {
 			going = append(going, it)
 		}
 	}
 	return toRows(going, 0)
 }
 
-// openRows gives a pane the items of its tab that are not finished, in the
-// order the board lists them. The files outside the root folder have no tab of
-// their own, so the Specs tab ends with a single row that opens them.
-func (m Model) openRows(p pane) []row {
+// openRows gives the List box the items of the open tab that are not finished,
+// in the order the board lists them. Plans come as a tree. The files outside
+// the root folder have no tab of their own, so the Specs tab ends with a
+// single row that opens them.
+func (m Model) openRows() []row {
 	if m.query != "" {
 		return m.searchRows()
 	}
-	tab, ok := m.tabOf(p)
-	if !ok {
-		return nil
+	tab := topTabs[m.top]
+	items := m.board.List(tab.kind, false)
+	if tab.tree {
+		return m.treeRows(items)
 	}
-	if tab.kind == board.KindPlan {
-		return m.treeRows(m.board.List(board.KindPlan, false))
-	}
-	rows := toRows(m.board.List(tab.kind, false), 0)
+	rows := toRows(items, 0)
 	if tab.kind != board.KindStory {
 		return rows
 	}
@@ -232,10 +244,10 @@ func (m Model) treeRows(plans []*board.Item) []row {
 	return out
 }
 
-// toggleExpand gives the focused sidebar pane the room of the whole column,
-// or takes the room back when it already has it. The detail box sits outside
-// the column, so z there does nothing. The pane that grows shows more rows, so
-// its offset goes back inside what it can really show.
+// toggleExpand gives the focused list box the room of the whole column, or
+// takes the room back when it already has it. The detail box sits outside the
+// column, so z there does nothing. The box that grows shows more rows, so its
+// offset goes back inside what it can really show.
 func (m *Model) toggleExpand() {
 	if m.focus == paneDetail {
 		return
@@ -248,31 +260,26 @@ func (m *Model) toggleExpand() {
 	m.clampOff(m.focus)
 }
 
-// doneRows gives the Done pane the finished items of the tab the sidebar pane
-// that had the focus last has open, the ones touched last at the top: the date
-// of the last commit on the file decides, and the date in the file name is the
-// fallback for a file git has no commit for. After the Active pane, which has
-// no kind of its own, it lists every closed item in that same order.
+// doneRows gives the Done box the finished items of the open tab's sub-tab,
+// the ones touched last at the top: the date of the last commit on the file
+// decides, and the date in the file name is the fallback. Plans come as a
+// tree.
 func (m Model) doneRows() []row {
+	d, ok := m.doneTabOf()
+	if !ok {
+		return nil
+	}
+	tab := topTabs[m.top]
 	var finished []*board.Item
-	if tab, ok := m.tabOf(m.follows); ok {
-		d, _ := m.doneTabOf()
-		for _, it := range m.board.List(tab.kind, true) {
-			if it.Status == d.status {
-				finished = append(finished, it)
-			}
-		}
-	} else {
-		for _, it := range m.board.Items {
-			if !it.Legacy && board.Closed(it.Status) {
-				finished = append(finished, it)
-			}
+	for _, it := range m.board.List(tab.kind, true) {
+		if it.Status == d.status {
+			finished = append(finished, it)
 		}
 	}
 	sort.SliceStable(finished, func(i, j int) bool {
 		return finished[i].SortTime() > finished[j].SortTime()
 	})
-	if tab, ok := m.tabOf(m.follows); ok && tab.kind == board.KindPlan {
+	if tab.tree {
 		return m.treeRows(finished)
 	}
 	return toRows(finished, 0)

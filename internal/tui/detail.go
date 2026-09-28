@@ -28,6 +28,9 @@ func (m Model) detailLines(w int) []string {
 		if len(m.board.Items) == 0 {
 			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
 		}
+		if len(m.listOf()) == 0 {
+			return []string{faint.Render("No items")}
+		}
 		return []string{faint.Render("enter opens the group")}
 	}
 	fields := []struct{ label, value string }{
