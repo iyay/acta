@@ -9,7 +9,7 @@ import (
 	"github.com/iyay/acta/internal/voice"
 )
 
-const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L]"
+const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models]"
 
 func cmdVoice(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -39,12 +39,19 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 			return printJSON(stdout, stderr, map[string]any{
 				"path": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
+				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
 			})
 		}
 		fmt.Fprintf(stdout, "file: %s (exists: %v)\nchat_language: %s\nstyle: %s\nrepo_language: %s\n",
 			path, exists, v.ChatLanguage, v.Style, v.RepoLanguage)
 		if v.Tone != "" {
 			fmt.Fprintf(stdout, "tone: %s\n", v.Tone)
+		}
+		if v.BuildExecutor != "" {
+			fmt.Fprintf(stdout, "build_executor: %s\n", v.BuildExecutor)
+		}
+		if v.SubagentModels != "" {
+			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
 		}
 		return exitOK
 	case "set":
@@ -55,11 +62,14 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		tone := fs.String("tone", "", "how you want to be spoken to, in your own words")
 		clearTone := fs.Bool("clear-tone", false, "remove the tone")
 		repo := fs.String("repo-language", "", "language for files written to the repo")
+		executor := fs.String("executor", "", "which executor runs the plan: subagent, dispatch or inline")
+		models := fs.String("subagent-models", "", "how models are picked for subagents: split")
+		clearModels := fs.Bool("clear-subagent-models", false, "remove the subagent_models setting")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && !*clearTone {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *models == "" && !*clearTone && !*clearModels {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
@@ -83,6 +93,16 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		}
 		if *tone != "" {
 			v.Tone = *tone
+		}
+		if *executor != "" {
+			v.BuildExecutor = *executor
+		}
+		// Clear first, set second, so one call can replace the value.
+		if *clearModels {
+			v.SubagentModels = ""
+		}
+		if *models != "" {
+			v.SubagentModels = *models
 		}
 		if err := voice.SaveResolved(v); err != nil {
 			fmt.Fprintln(stderr, err)
