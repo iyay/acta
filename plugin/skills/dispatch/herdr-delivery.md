@@ -6,19 +6,23 @@ Every `acta:name` here is a skill from the `acta` plugin, same as SKILL.md. `mat
 
 Two independent channels. Use both; they cover each other's failure mode.
 
-**Channel 1 — the reply-back push (required in every brief).** The recipient's final action fires the review command straight into your session:
+**Channel 1 — the reply-back push (required in every brief).** The recipient's final action is one word, after the last commit:
 
 ```bash
-herdr agent prompt <your-pane-id> "/acta:review <base-sha>..<new-head-sha> — plan <path>, round <slug>, pane $HERDR_PANE_ID"
+acta reply-back
 ```
 
-Your pane id is `$HERDR_PANE_ID` — resolve it at dispatch time and embed it **literally** in the brief; the recipient cannot look it up.
+It reads the record you wrote with `acta dispatch init`, checks the plan, and fires the review command into your session. Nobody fills in a range or a pane: your pane id, the base, the head, the plan and the round all come from the worktree.
 
-**`$HERDR_PANE_ID` appears twice in that one line and means two different panes.** In the *address* it must arrive already expanded to **your** id (`wJ:p1`). In the *payload* it must arrive **unexpanded**, so it resolves in the recipient's shell to **its own** id. In a brief file on disk that is automatic. When you build the `/goal` in your own shell it is not: write the address expanded and escape the payload one (`\$HERDR_PANE_ID`). Verified 2026-08-06: this surfaces in the orchestrator's Claude Code session as a mid-turn message, and a slash command delivered this way executes, so the review is self-triggering.
+**The record comes first.** In the worktree, before every `/goal` — the first dispatch and each fix round:
 
-Payload rules: the range **first and bare**, then after an em-dash the plan path (the `{PLAN_OR_REQUIREMENTS}` slot of `requesting-code-review` — the Spec axis needs it) and the pane note. Nothing else — no test counts, no summary, no verdict. Still run the verify step when it lands.
+```bash
+acta dispatch init --pane $HERDR_PANE_ID --plan <plan> [--round <slug>]
+```
 
-Its failure mode: the reply-back line is the single most-skipped instruction in a dispatch. Its silence proves nothing.
+`base` is the HEAD at that moment, so each fix round reviews its own range. Without the record, `acta reply-back` exits 1 and sends nothing.
+
+Its failure mode: the reply-back line is the single most-skipped instruction in a dispatch. Its silence proves nothing. A blocker instead is `acta reply-back --blocked "<reason>"`, sent the same way.
 
 **Channel 2 — the lifecycle pull.** Read it once, on a later turn:
 
@@ -26,7 +30,7 @@ Its failure mode: the reply-back line is the single most-skipped instruction in 
 herdr agent get <slug>          # .result.agent.agent_status → working | idle | blocked
 ```
 
-**Do NOT use `herdr agent wait`.** It blocks the orchestrator's turn for as long as the recipient works. See "Never wait for the recipient" in SKILL.md.
+**Do NOT use `herdr agent wait` in the foreground.** It blocks the orchestrator's turn for as long as the recipient works. The one exception is the idle watcher below, which runs it as a background job. See "Never wait for the recipient" in SKILL.md.
 
 `idle` can also mean the recipient stopped early, and `unknown` never proves completion. Compare `git log` and `git diff --stat` against the brief's ticket list before reviewing. Because the lifecycle proves so little, **when you read it does not matter** — which is why waiting on it is wasted.
 
@@ -141,31 +145,24 @@ herdr agent read <slug> --source visible --lines 10
 herdr agent prompt <slug> "/new"
 herdr agent read <slug> --source visible --lines 10    # must show: New session started
 herdr agent rename <pane-id> <slug>
-# 3. /goal alone, then confirm 🎯 Goal in the status bar
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. You are the main agent here: write ZERO code yourself. Run acta:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving acta:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. When your last ticket is committed, run this VERBATIM: herdr agent …
+# 3. write the record, then /goal alone, then confirm 🎯 Goal in the status bar
+acta dispatch init --pane $HERDR_PANE_ID --plan <plan> [--round <slug>]   # run in the worktree
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read the hand-off at <abs-brief-path> and obey every line — it names the plan and ticket ids, the worktree, the gates. Load the acta build and tdd skills before your todo list and follow them for every task. You are the main agent here: write ZERO code yourself. Run acta:build with as MANY implementer subagents as the tickets allow: one per ticket MINIMUM, each driving acta:tdd — failing test first. Review happens on my side, not yours. Group tickets into waves by file ownership and dispatch every wave in ONE message, several subagents at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Do NOT move, park, close, or create any pane or tab. After your last commit the build skill runs: acta reply-back"
 herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
 ```
 
 `/new` and `/goal` are never in one prompt, and `/new` never goes to an omp that is still starting.
 
-**The very first action of every task, before the failing test:** `acta tick plans/<stem>#task-N --start --agent omp` (the brief names omp because the recipient harness sets no agent variable).
+**The build skill owns the ticks.** `acta:build` carries the tick commands and puts `--agent omp` on each one, because the recipient harness sets no agent variable. Do not restate them in the `/goal` or the brief: a second copy drifts from the first.
 
-**The brief's tick rule carries the name.** The recipient is an omp pane and its harness sets no agent variable, so every tick command in the brief names it:
+Step 4, fix round: `acta dispatch init` again, then `/goal` only, on the plan the agent already holds; still confirm 🎯 Goal:
 
 ```bash
-acta tick plans/<stem>#task-N --step <n> --agent omp
-acta tick plans/<stem>#task-N --all --agent omp   # right after the ticket's commit
-```
-
-`acta tick` writes that name into the worktree's git-ignored `.agents.json`, which is what the board reads to show who works on what. Without the flag the name is missing and the row stays blank.
-
-Step 4, fix round: `/goal` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:
-```bash
-herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (acta:build, acta:tdd inside), all independent ones in ONE message; declare waves first. When your last ticket is committed, run VERBATIM: herdr agent prompt $HERDR_PANE_ID \"/acta:review <fixed-from>..<new-head> — plan <path>, round <slug>, pane \$HERDR_PANE_ID\""
+herdr agent prompt <slug> "/goal ultrathink orchestrate <one-line summary>. FIRST read <abs-brief-path>. Fix the PROPERTY, not the reported case: enumerate every path that could break it. Tickets <ids> → one implementer subagent each (acta:build, acta:tdd inside), all independent ones in ONE message; declare waves first. After your last commit the build skill runs: acta reply-back"
 herdr agent read <slug> --source visible --lines 6     # status bar must show: 🎯 Goal
 ```
 
-**Quoting**: `$HERDR_PANE_ID` in the *address* expands in your shell (your literal pane id); `\$HERDR_PANE_ID` in the payload stays unexpanded for the recipient.
+**Quoting**: `$HERDR_PANE_ID` in `acta dispatch init` expands in your shell, so the record carries your literal pane id. Nothing else needs escaping — `acta reply-back` builds the payload.
 
 **Backticks in an unquoted heredoc are command substitution.** `MSG=$(cat <<EOF … EOF)` executes every backtick pair — markdown `` `code` `` in your prompt gets replaced by empty output. Symptom: `command not found: <word>` in the tool result while the prompt still delivers. Quote the delimiter (`<<'EOF'`) or use plain quotes in prose. Survivable because the brief is on disk.
 
@@ -200,6 +197,16 @@ herdr agent send-keys <slug> esc
 ```
 
 Re-dispatch with a corrective preamble ("there is NO `<X>`, NO `<Y>` — writing those = drift").
+
+## Idle watcher — the one background job, right after the checkpoint
+
+Right after the checkpoint read, start this as a background job (Claude Code: `run_in_background`):
+
+```bash
+herdr agent wait <slug> --until idle --until done
+```
+
+Its exit arrives as a notification, so it never blocks your turn. Background only — never a foreground wait, never a polling loop. The four reactions on that notification live in "Idle watcher" in SKILL.md.
 
 ## Failure handling
 
