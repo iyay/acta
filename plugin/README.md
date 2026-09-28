@@ -20,7 +20,21 @@ through `acta`, the acta CLI.
 The `pmb` command still runs as an alias of `acta` and prints `pmb is now acta; this name goes away in a later version` to stderr first.
 
 The plugin writes only inside its own folder, `~/.acta/`, and the repo's `.acta/`.
-It never edits your CLAUDE.md, AGENTS.md or settings.
+It edits CLAUDE.md or AGENTS.md only between acta markers, and only after your
+yes in `/acta:setup`. It never edits settings.
+
+## First run
+
+After the install steps above, run `/acta:setup` once. It runs `acta doctor`
+first, then asks for your chat language, style and, if you want, a tone, and
+saves them.
+
+`acta doctor` checks the install on its own and exits non-zero when something
+is missing. `acta doctor --fix` repairs the repo-side items it can, and
+re-running it changes nothing when there is nothing left to fix.
+
+In omp, skill names carry no prefix: the skill is `setup`, not `acta:setup`.
+Every acta skill description starts with `acta: ` so the index is readable.
 
 ## Voice
 

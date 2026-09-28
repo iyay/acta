@@ -29,7 +29,7 @@ var Skills = []Skill{
 	{"bug", "record a confirmed bug with acta bug new"},
 	{"scratch", "raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory"},
 	{"dispatch", "run build through an omp agent in its own herdr tab"},
-	{"setup", "change the chat language, style or tone"},
+	{"setup", "first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block"},
 	{"migrate", "move docs from another workflow plugin into .acta/"},
 }
 
@@ -50,6 +50,7 @@ Core rules:
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
+8. One Architectural brainstorm per session; a second one becomes a scratch item and the user picks how to open it.
 `
 
 // adhdRules is a short form of the i-have-adhd plugin's rules (MIT).
@@ -67,12 +68,8 @@ Style (ADHD reader):
 `
 
 const firstRun = `
-Voice: not set up yet. If the user's CLAUDE.md or AGENTS.md already names a chat language or style, do not ask the questions below: offer once to save those values with the acta voice set command below, and wait for a yes.
-Otherwise, before other work in this session, ask the user once, in English:
-1. Which language should chat use? (default English)
-2. Style: adhd (answer first, short steps) or plain? (default adhd)
-3. Anything about tone, in their own words? (optional)
-Then save it: acta voice set --language <full language name> --style <adhd|plain> [--tone "<text>"]
+Voice: not set up yet. If the user's CLAUDE.md or AGENTS.md already names a chat language or style, do not ask again: offer once to save those values with /acta:setup and wait for a yes.
+Otherwise, before other work in this session, run /acta:setup. It runs acta doctor, then asks for the chat language, the style and, if you want, a tone, and saves the answers.
 Until then, write in English (or the language CLAUDE.md names), adhd style.
 `
 
@@ -124,7 +121,7 @@ func SessionStart(in Input) string {
 func Prompt(in Input) string {
 	switch {
 	case !in.VoiceExists:
-		return "acta voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."
+		return "acta voice: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."
 	case in.VoiceErr != nil:
 		return "acta voice: the voice file could not be read; reply in English, adhd style."
 	default:

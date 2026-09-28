@@ -33,6 +33,9 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"(code, comments, commits, specs, plans) in English.",
 		"full, clear sentences",
 		"Style (ADHD reader):",
+		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
+		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
+		"8. One Architectural brainstorm per session; a second one becomes a scratch item and the user picks how to open it.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -58,11 +61,14 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 
 func TestSessionStartFirstRun(t *testing.T) {
 	out := SessionStart(Input{Voice: voice.Default()})
-	for _, want := range []string{"Voice: not set up yet.", "acta voice set --language", "Style (ADHD reader):",
+	for _, want := range []string{"Voice: not set up yet.", "/acta:setup", "acta doctor", "Style (ADHD reader):",
 		"already names a chat language or style", "or the language CLAUDE.md names"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("first run missing %q", want)
 		}
+	}
+	if strings.Contains(out, "1. Which language should chat use?") {
+		t.Error("first run still asks the three voice questions instead of pointing at /acta:setup")
 	}
 }
 
@@ -104,7 +110,7 @@ func TestPrompt(t *testing.T) {
 		want string
 	}{
 		"set":     {korean(), "acta voice: reply in Korean, adhd style."},
-		"missing": {Input{Voice: voice.Default()}, "acta voice: not set up yet; reply in English, adhd style, and ask the user once (see the session rules)."},
+		"missing": {Input{Voice: voice.Default()}, "acta voice: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."},
 		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta voice: the voice file could not be read; reply in English, adhd style."},
 	}
 	for name, c := range cases {
