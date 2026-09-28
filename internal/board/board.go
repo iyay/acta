@@ -21,6 +21,7 @@ const (
 	KindPlan     Kind = "plan"
 	KindDebt     Kind = "debt"
 	KindDebtItem Kind = "debt-item"
+	KindScratch  Kind = "scratch"
 )
 
 // Item is one story, task or bug.
@@ -61,6 +62,7 @@ type Item struct {
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
 	fmStatus string
+	fmParent string
 	plans    int
 	specFile bool
 	seq      int
@@ -74,11 +76,12 @@ type Board struct {
 }
 
 var (
-	storyStatuses = []string{"draft", "approved", "in-progress", "done", "dropped"}
-	bugStatuses   = []string{"open", "fixing", "fixed", "wontfix"}
-	taskStatuses  = []string{"todo", "in-progress", "done"}
-	debtStatuses  = []string{"open", "done", "wontfix"}
-	datedName     = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})-(.+)$`)
+	storyStatuses   = []string{"draft", "approved", "in-progress", "done", "dropped"}
+	bugStatuses     = []string{"open", "fixing", "fixed", "wontfix"}
+	taskStatuses    = []string{"todo", "in-progress", "done"}
+	debtStatuses    = []string{"open", "done", "wontfix"}
+	scratchStatuses = []string{"raw", "brainstorming", "dropped"}
+	datedName       = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})-(.+)$`)
 )
 
 // Allowed lists the status values the contract gives a kind.
@@ -90,6 +93,8 @@ func Allowed(k Kind) []string {
 		return append([]string(nil), bugStatuses...)
 	case KindDebt, KindDebtItem:
 		return append([]string(nil), debtStatuses...)
+	case KindScratch:
+		return append([]string(nil), scratchStatuses...)
 	default:
 		return append([]string(nil), taskStatuses...)
 	}
@@ -98,7 +103,7 @@ func Allowed(k Kind) []string {
 // Closed says whether a status takes an item off the active lists.
 func Closed(status string) bool {
 	switch status {
-	case "done", "fixed", "dropped", "wontfix":
+	case "done", "fixed", "dropped", "wontfix", "specced":
 		return true
 	}
 	return false
@@ -192,6 +197,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 	for _, d := range debts {
 		b.linkDebt(d)
 	}
+	b.linkScratch(main.Dirs.Scratch)
 	b.fillStarted(main, others)
 	b.derive()
 	b.fillAuthors(main.Root)
@@ -224,7 +230,7 @@ func collect(t Tree) ([]srcFile, error) {
 		parts := []struct {
 			dir  string
 			kind Kind
-		}{{s.dirs.Specs, KindStory}, {s.dirs.Bugs, KindBug}, {s.dirs.Debt, KindDebt}, {s.dirs.Plans, ""}}
+		}{{s.dirs.Specs, KindStory}, {s.dirs.Bugs, KindBug}, {s.dirs.Debt, KindDebt}, {s.dirs.Scratch, KindScratch}, {s.dirs.Plans, ""}}
 		for _, part := range parts {
 			// A legacy source has no debt folder, so an empty dir name is
 			// skipped instead of globbing the whole legacy root.
@@ -262,7 +268,7 @@ func collectFiles(t Tree) []srcFile {
 		return nil
 	}
 	rootRel = filepath.ToSlash(rootRel)
-	kinds := map[string]Kind{cfg.Dirs.Specs: KindStory, cfg.Dirs.Bugs: KindBug, cfg.Dirs.Debt: KindDebt, cfg.Dirs.Plans: ""}
+	kinds := map[string]Kind{cfg.Dirs.Specs: KindStory, cfg.Dirs.Bugs: KindBug, cfg.Dirs.Debt: KindDebt, cfg.Dirs.Scratch: KindScratch, cfg.Dirs.Plans: ""}
 	names := make([]string, 0, len(t.Files))
 	for name := range t.Files {
 		names = append(names, name)
@@ -377,6 +383,7 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
 	it.fmStatus = field(doc.Front, "status")
+	it.fmParent = field(doc.Front, "parent")
 	setIDs(it, Prefix(it.Kind, false), doc)
 	return it
 }
@@ -539,12 +546,15 @@ func (b *Board) derive() {
 			}
 		}
 		it.Done, it.Total = done, len(it.Children)
-		if it.fmStatus == "" {
+		switch {
+		case it.Kind == KindScratch:
+			it.Status, it.StatusSource = scratchStatus(it.fmStatus, len(it.Children) > 0)
+		case it.fmStatus == "":
 			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
-			continue
+		default:
+			it.Status, it.StatusSource = it.fmStatus, "frontmatter"
 		}
-		it.Status, it.StatusSource = it.fmStatus, "frontmatter"
-		if !contains(Allowed(it.Kind), it.fmStatus) {
+		if it.fmStatus != "" && !contains(Allowed(it.Kind), it.fmStatus) {
 			it.Problems = append(it.Problems, "unknown status "+it.fmStatus)
 		}
 	}

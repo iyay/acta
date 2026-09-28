@@ -290,7 +290,7 @@ func isPlanFile(it *board.Item) bool {
 }
 
 func scanIDs(b *board.Board) (map[string]int, map[string]bool) {
-	next := map[string]int{"SPEC": 1, "PLAN": 1, "BUG": 1, "DEBT": 1}
+	next := map[string]int{"SPEC": 1, "PLAN": 1, "BUG": 1, "DEBT": 1, "SCRATCH": 1}
 	taken := map[string]bool{}
 	note := func(prefix, id, hash string) {
 		if n, err := strconv.Atoi(strings.TrimPrefix(id, prefix+"-")); err == nil && !strings.Contains(id, ".") {

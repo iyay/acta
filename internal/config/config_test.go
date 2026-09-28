@@ -44,7 +44,7 @@ func TestLoadDefaults(t *testing.T) {
 	base := Default(repo)
 	if base.Root != filepath.Join(repo, ".acta") || !base.AutoCommit ||
 		!reflect.DeepEqual(base.Legacy, []string{filepath.Join(repo, "docs", "superpowers")}) ||
-		base.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt"}) ||
+		base.Dirs != (Dirs{Specs: "specs", Plans: "plans", Bugs: "bugs", Debt: "debt", Scratch: "scratch"}) ||
 		base.Links.Feedback != "https://github.com/iyay/acta/issues" || base.Links.Donate != "" {
 		t.Fatalf("bad defaults %+v", base)
 	}
@@ -101,7 +101,7 @@ func TestLoadFileOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Dirs != (Dirs{Specs: "s", Plans: "plans", Bugs: "bugs", Debt: "debt"}) {
+	if got.Dirs != (Dirs{Specs: "s", Plans: "plans", Bugs: "bugs", Debt: "debt", Scratch: "scratch"}) {
 		t.Fatalf("Dirs = %+v", got.Dirs)
 	}
 	if len(got.Legacy) != 0 {
@@ -122,6 +122,22 @@ func TestLoadDebtDirOverride(t *testing.T) {
 	}
 	if got.Dirs.Debt != "backlog" {
 		t.Fatalf("Dirs.Debt = %q, want backlog", got.Dirs.Debt)
+	}
+}
+
+func TestLoadScratchDirOverride(t *testing.T) {
+	if got := Default("/repo").Dirs.Scratch; got != "scratch" {
+		t.Fatalf("Default().Dirs.Scratch = %q, want scratch", got)
+	}
+	repo := gitInit(t)
+	t.Setenv("PM_ROOT", "")
+	write(t, filepath.Join(repo, ".acta.yaml"), "dirs:\n  scratch: ideas\n")
+	got, err := Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Dirs.Scratch != "ideas" {
+		t.Fatalf("Dirs.Scratch = %q, want ideas", got.Dirs.Scratch)
 	}
 }
 
