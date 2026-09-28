@@ -176,10 +176,10 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		rows string
 	}{
 		{tabScratches, nil, "scratch/2026-09-28-idea-brainstorm scratch/2026-09-28-idea-raw"},
-		{tabBugs, nil, "bugs/2026-09-28-lag bugs/2026-09-26-open specs/2026-09-15-really-bug"},
+		{tabBugs, nil, "specs/2026-09-15-really-bug bugs/2026-09-26-open bugs/2026-09-28-lag"},
 		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
-		{tabSpecs, nil, "specs/2026-09-28-from-scratch-design specs/2026-09-22-beta specs/2026-09-20-alpha specs/2026-09-18-weird specs/2026-09-17-broken " + groupRowID},
-		{tabPlans, nil, "plans/2026-09-23-lonely plans/2026-09-21-alpha"},
+		{tabSpecs, nil, "specs/2026-09-17-broken specs/2026-09-18-weird specs/2026-09-20-alpha specs/2026-09-22-beta specs/2026-09-28-from-scratch-design " + groupRowID},
+		{tabPlans, nil, "plans/2026-09-21-alpha plans/2026-09-23-lonely"},
 		{tabActivities, nil, "plans/2026-09-21-alpha#task-2"},
 	} {
 		m := press(newModel(t), append([]string{tabKey(tc.tab)}, tc.keys...)...)
@@ -194,7 +194,7 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 // the screen.
 func TestThePlansTabShowsTasksUnderAnOpenPlan(t *testing.T) {
 	m := press(newModel(t), tabKey(tabPlans), " ")
-	if got := strings.Join(rowIDs(m), " "); got != "plans/2026-09-23-lonely plans/2026-09-23-lonely#task-1 plans/2026-09-21-alpha" {
+	if got := strings.Join(rowIDs(m), " "); got != "plans/2026-09-21-alpha plans/2026-09-21-alpha#task-1 plans/2026-09-21-alpha#task-2 plans/2026-09-23-lonely" {
 		t.Fatalf("the opened Plans tree holds %q", got)
 	}
 }
@@ -280,7 +280,7 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 		{tabSpecs, 1, "specs/2026-09-19-dropped"},
 		{tabScratches, 0, "scratch/2026-09-28-idea-used"},
 		{tabScratches, 1, "scratch/2026-09-28-idea-dropped"},
-		{tabPlans, 0, "plans/2026-09-28-dotted-tasks plans/2026-09-27-orphan plans/2026-09-26-dash-tasks plans/2026-09-25-crash-fix plans/2026-09-16-finished"},
+		{tabPlans, 0, "plans/2026-09-16-finished plans/2026-09-25-crash-fix plans/2026-09-26-dash-tasks plans/2026-09-27-orphan plans/2026-09-28-dotted-tasks"},
 		{tabBugs, 0, "bugs/2026-09-24-crash"},
 		{tabBugs, 1, ""},
 		// The shared fixture's own debt file carries no finished line, so
@@ -316,19 +316,19 @@ func TestTheDonePlansTreeHoldsTheTasksOfAnOpenPlan(t *testing.T) {
 
 func TestMoveKeysInListPanes(t *testing.T) {
 	m := press(newModel(t), tabKey(tabSpecs))
-	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("first selection %s", m.Selected().ID)
 	}
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("after j: %s", m.Selected().ID)
 	}
 	m = press(m, "k")
-	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("after k: %s", m.Selected().ID)
 	}
 	m = press(m, "k")
-	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("k at the top should stay: %s", m.Selected().ID)
 	}
 	m = press(m, "ctrl+d")
@@ -336,7 +336,7 @@ func TestMoveKeysInListPanes(t *testing.T) {
 		t.Fatalf("ctrl+d should jump a page: %s", m.openRows()[m.cursor()].id)
 	}
 	m = press(m, "ctrl+u")
-	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("ctrl+u should step back a page: %s", m.Selected().ID)
 	}
 	// The same keys move the Done box.
@@ -357,7 +357,7 @@ func TestTopAndBottomKeysInListPanes(t *testing.T) {
 		t.Fatal("j past the end should stay on the last row")
 	}
 	m = press(m, "g", "k")
-	if m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatal("k at the top should stay on the first row")
 	}
 }
@@ -418,11 +418,11 @@ func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
 	if m.focus != paneList || m.Selected().ID != "specs/2026-09-20-alpha" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
-	// The same works in the Done box, where the second row is the orphan plan.
+	// The same works in the Done box, where the second row is the crash fix.
 	m = press(newModel(t), tabKey(tabPlans), "tab")
 	g = m.geometry()
 	m = click(m, 2, g.side[paneDone].y+1+1)
-	if m.focus != paneDone || m.Selected().ID != "plans/2026-09-27-orphan" {
+	if m.focus != paneDone || m.Selected().ID != "plans/2026-09-25-crash-fix" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 }
@@ -508,7 +508,7 @@ func TestClickInsideAPaneOnlyFocusesIt(t *testing.T) {
 		t.Fatalf("focus %d", m.focus)
 	}
 	m = click(m, 119, 5)
-	if m.focus != paneDetail || m.Selected().ID != "specs/2026-09-28-from-scratch-design" {
+	if m.focus != paneDetail || m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("focus %d selection %v", m.focus, m.Selected())
 	}
 	// A click on the status line does nothing at all.
@@ -523,7 +523,7 @@ func TestKeysContinueFromAClickedRow(t *testing.T) {
 	g := m.geometry()
 	m = click(m, 2, g.side[paneList].y+1)
 	m = press(m, "j")
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("j moved to %v", m.Selected())
 	}
 	m = click(m, 2, g.side[paneList].y+1+1)
@@ -573,7 +573,7 @@ func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
 		t.Fatal("? should close the help")
 	}
 	m = press(m, tabKey(tabSpecs), "?", "esc", "j")
-	if m.help || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.help || m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("the keys should work again once the help is closed: %+v", m)
 	}
 }
@@ -710,9 +710,9 @@ func TestSelectionIsPerTab(t *testing.T) {
 		keys []string
 		want string
 	}{
-		{tabSpecs, []string{"j"}, "specs/2026-09-22-beta"},
+		{tabSpecs, []string{"j"}, "specs/2026-09-18-weird"},
 		{tabBugs, []string{"j"}, "bugs/2026-09-26-open"},
-		{tabPlans, []string{"tab", "j"}, "plans/2026-09-27-orphan"},
+		{tabPlans, []string{"tab", "j"}, "plans/2026-09-25-crash-fix"},
 		{tabScratches, []string{"j"}, "scratch/2026-09-28-idea-raw"},
 		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
 		{tabActivities, nil, "plans/2026-09-21-alpha#task-2"},
@@ -733,7 +733,7 @@ func TestSelectionIsPerTab(t *testing.T) {
 
 func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
 	m := press(newModel(t), tabKey(tabPlans), "tab", "j", "0")
-	if m.Selected().ID != "plans/2026-09-27-orphan" {
+	if m.Selected().ID != "plans/2026-09-25-crash-fix" {
 		t.Fatalf("the detail should keep showing the Done box: %v", m.Selected())
 	}
 	// Moving the cursor inside the Done box keeps it the one on show.
@@ -743,7 +743,7 @@ func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
 	}
 	// The List box takes over as soon as it has the focus.
 	m = press(m, "tab")
-	if m.Selected().ID != "plans/2026-09-23-lonely" {
+	if m.Selected().ID != "plans/2026-09-21-alpha" {
 		t.Fatalf("the Plans box should show its own row: %v", m.Selected())
 	}
 }
@@ -852,10 +852,10 @@ func TestPopupEscAndOutcomes(t *testing.T) {
 
 func TestReloadKeepsSelection(t *testing.T) {
 	cfg, b := fixture(t)
-	m := press(newModel(t), tabKey(tabSpecs), "j") // the second spec of the newest date
+	m := press(newModel(t), tabKey(tabSpecs), "j") // the second spec of the oldest date
 	next, _ := m.Update(reloadMsg{b: b})
 	m = next.(Model)
-	if m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("selection moved on reload: %s", m.Selected().ID)
 	}
 
@@ -869,7 +869,7 @@ func TestReloadKeepsSelection(t *testing.T) {
 	smaller, _ := board.Load(cfg)
 	next, _ = m.Update(reloadMsg{b: smaller})
 	m = next.(Model)
-	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-22-beta" {
+	if m.Selected() == nil || m.Selected().ID != "specs/2026-09-18-weird" {
 		t.Fatalf("after alpha vanished: %v", m.Selected())
 	}
 
@@ -1075,61 +1075,6 @@ func TestTabTitleAlwaysShowsTheOpenTab(t *testing.T) {
 	}
 }
 
-// TestDonePaneShowsTheMostRecentlyCommittedFirst is the order of the Done
-// pane: the last commit on the file decides, and the file-name date is the
-// fallback when git has no commit for the file.
-func TestDonePaneShowsTheMostRecentlyCommittedFirst(t *testing.T) {
-	day := func(date string) int64 {
-		ts, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return ts.Unix()
-	}
-	item := func(id, date string, commit int64) *board.Item {
-		return &board.Item{ID: id, Kind: board.KindStory, Title: id, Date: date, Status: "done", CommitAt: commit}
-	}
-	for _, tc := range []struct {
-		name  string
-		items []*board.Item
-		want  []string
-	}{
-		{
-			// The repro from the plan: the file named 09-01 was committed
-			// today, the one named 09-20 last a week ago.
-			name:  "the last commit beats the file name",
-			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", day("2026-09-20")), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-27"))},
-			want:  []string{"specs/2026-09-01-early", "specs/2026-09-20-late"},
-		},
-		{
-			name:  "the file name decides when git has no commit",
-			items: []*board.Item{item("specs/2026-09-01-early", "2026-09-01", 0), item("specs/2026-09-20-late", "2026-09-20", 0)},
-			want:  []string{"specs/2026-09-20-late", "specs/2026-09-01-early"},
-		},
-		{
-			name:  "a commit and a file name compare on the same line",
-			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", 0), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-27"))},
-			want:  []string{"specs/2026-09-01-early", "specs/2026-09-20-late"},
-		},
-		{
-			name:  "an older commit loses to a newer file name",
-			items: []*board.Item{item("specs/2026-09-20-late", "2026-09-20", 0), item("specs/2026-09-01-early", "2026-09-01", day("2026-09-10"))},
-			want:  []string{"specs/2026-09-20-late", "specs/2026-09-01-early"},
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			m := newModel(t)
-			m.board = &board.Board{Items: tc.items}
-			m.openTab(tabSpecs)
-			m.focus = paneDone
-			got := strings.Join(doneRowIDs(m), " ")
-			if want := strings.Join(tc.want, " "); got != want {
-				t.Fatalf("the Done pane lists %q, want %q", got, want)
-			}
-		})
-	}
-}
-
 // statusY gives the screen row of the bottom line, read back from the view so
 // a click test cannot pass on a row the view never draws.
 func statusY(t *testing.T, m Model) int {
@@ -1315,21 +1260,24 @@ func openGroupIDs(m Model) (going, rest []string) {
 	return going, rest
 }
 
-// TestEveryTabHoldsItsOpenItemsInBoardOrder reads the rows of every tab of
-// the bar and the order the board lists them in, so no tab can ever reorder
-// or drop an item of its kind.
-func TestEveryTabHoldsItsOpenItemsInBoardOrder(t *testing.T) {
+// TestEveryTabHoldsItsOpenItemsInFileDateOrder checks each tab against the
+// board: the pane lists exactly the open items of its own kind, oldest file
+// date first.
+func TestEveryTabHoldsItsOpenItemsInFileDateOrder(t *testing.T) {
 	m := splitModel(t)
 	for i := range topTabs {
 		kind := topTabs[i].kind
 		if kind == "" {
-			// Activities lists the tasks under way, in the order the board
-			// lists them.
-			var want []string
+			// Activities lists the tasks under way, oldest file date first.
+			var going []*board.Item
 			for _, it := range m.board.List(board.KindTask, true) {
 				if inProgress(it) {
-					want = append(want, it.ID)
+					going = append(going, it)
 				}
+			}
+			var want []string
+			for _, it := range ordered(going, false) {
+				want = append(want, it.ID)
 			}
 			if got := strings.Join(ids(press(m, tabKey(i)).rowsOf(paneList)), " "); got != strings.Join(want, " ") {
 				t.Errorf("tab %s holds %q, want %q", topTabs[i].name, got, strings.Join(want, " "))
@@ -1337,7 +1285,7 @@ func TestEveryTabHoldsItsOpenItemsInBoardOrder(t *testing.T) {
 			continue
 		}
 		var want []string
-		for _, it := range m.board.List(kind, false) {
+		for _, it := range ordered(m.board.List(kind, false), false) {
 			want = append(want, it.ID)
 		}
 		if kind == board.KindStory {
@@ -1358,7 +1306,9 @@ func TestStartedTaskWithNoTicksCountsAsInProgress(t *testing.T) {
 	}
 	lonely.Started = true
 	lonely.Status = "in-progress"
-	m = press(m, tabKey(tabPlans), " ")
+	// Oldest first puts alpha before lonely, so step down to lonely before
+	// opening it.
+	m = press(m, tabKey(tabPlans), "j", " ")
 	rows := ids(m.openRows())
 	// Both tasks are under way, and neither one hides behind a rule row.
 	if len(rows) != 3 || !slices.Contains(rows, lonely.ID) {
@@ -1579,7 +1529,7 @@ func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
 	}
 	m := New(main, b, true)
 	m.render = func(md string, _ int) string { return md }
-	m = press(sized(m, 120, 40), tabKey(tabBugs))
+	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("enter"))
 	m = next.(Model)
 	if cmd != nil {
@@ -1627,7 +1577,7 @@ func TestEOnABranchItemWarns(t *testing.T) {
 	}
 	m := New(main, b, true)
 	m.render = func(md string, _ int) string { return md }
-	m = press(sized(m, 120, 40), tabKey(tabBugs))
+	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("e"))
 	m = next.(Model)
 	if cmd != nil {

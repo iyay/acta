@@ -21,11 +21,11 @@ func planModel(t *testing.T) Model {
 
 func TestPlanRowsStartShutAndSpaceOrEnterFlipThem(t *testing.T) {
 	m := toPlans(planModel(t))
-	shut := []string{"plans/2026-09-23-lonely", "plans/2026-09-21-alpha"}
+	shut := []string{"plans/2026-09-21-alpha", "plans/2026-09-23-lonely"}
 	if got := rowIDs(m); !slices.Equal(got, shut) {
 		t.Fatalf("plans list %q, want every plan shut %q", got, shut)
 	}
-	open := []string{"plans/2026-09-23-lonely", "plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha"}
+	open := []string{"plans/2026-09-21-alpha", "plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2", "plans/2026-09-23-lonely"}
 	for _, k := range []string{" ", "enter"} {
 		opened := press(m, k)
 		if got := rowIDs(opened); !slices.Equal(got, open) {
@@ -47,7 +47,7 @@ func TestTreeRowsSelectTheirOwnDetail(t *testing.T) {
 	}
 	m = press(m, "j")
 	it := m.Selected()
-	if it == nil || it.ID != "plans/2026-09-23-lonely#task-1" || it.Kind != board.KindTask {
+	if it == nil || it.ID != "plans/2026-09-21-alpha#task-1" || it.Kind != board.KindTask {
 		t.Fatalf("a task row selects %v, want the task", it)
 	}
 	before := rowIDs(m)
@@ -68,7 +68,7 @@ func TestTreeRowsWearTheirMarks(t *testing.T) {
 	if head := m.rowText(rows[1], m.board.Get(rows[1].id), 80); !strings.HasPrefix(head, "+ ") {
 		t.Errorf("a shut plan row reads %q, want it to start with +", head)
 	}
-	m = press(m, "j", " ")
+	m = press(m, "g", " ")
 	rows = m.rowsOf(m.listPane())
 	want := map[string]string{
 		"plans/2026-09-21-alpha":        "- ",
@@ -133,11 +133,11 @@ func TestOpeningAPlanLeavesOlderModelsAlone(t *testing.T) {
 	// Open a second plan from an already open model, so the older model holds
 	// a map of its own that a shared one would change behind its back.
 	first := press(m, " ")
-	shut := []string{"plans/2026-09-23-lonely", "plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha"}
+	shut := []string{"plans/2026-09-21-alpha", "plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2", "plans/2026-09-23-lonely"}
 	if got := rowIDs(first); !slices.Equal(got, shut) {
 		t.Fatalf("the first open plan gave %q, want %q", got, shut)
 	}
-	second := press(first, "j", "j", " ")
+	second := press(first, "j", "j", "j", " ")
 	if got := rowIDs(first); !slices.Equal(got, shut) {
 		t.Errorf("opening a second plan changed the older model to %q, want %q", got, shut)
 	}

@@ -84,7 +84,7 @@ func lineFor(t *testing.T, v, want string) ([]string, int) {
 }
 
 func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
-	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans), "j")
+	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans))
 	v := m.View()
 	for _, want := range []string{
 		" Scratches  Bugs  Debts  Specs  [Plans]  Activities",
@@ -722,22 +722,23 @@ func TestViewDebtDetail(t *testing.T) {
 }
 
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
-	// The first plan of the list links no spec, so no SPEC line is drawn.
+	// Oldest first, so the first plan of the list links a spec, and its SPEC
+	// line is drawn.
 	m := sized(press(newModel(t), tabKey(tabPlans)), 120, 40)
 	g := m.geometry()
 	detail := strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
-	if strings.Contains(detail, "SPEC") {
-		t.Error("a plan with no spec should not show a SPEC line")
+	if !strings.Contains(detail, "SPEC") {
+		t.Error("a plan with a spec should show its SPEC line")
 	}
 	if strings.Contains(detail, "WORKTREE") || strings.Contains(detail, "AGENT") {
 		t.Error("a line with no value should be left out")
 	}
-	// The plan below it does link a spec, so its line has to be there.
+	// The plan below it links no spec, so no SPEC line is drawn.
 	m = sized(press(m, "j"), 120, 40)
 	g = m.geometry()
 	detail = strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
-	if !strings.Contains(detail, "SPEC") {
-		t.Error("a plan with a spec should show its SPEC line")
+	if strings.Contains(detail, "SPEC") {
+		t.Error("a plan with no spec should not show a SPEC line")
 	}
 }
 
@@ -757,8 +758,9 @@ func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 	}
 }
 func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
-	// The rows are in board order, so three j steps reach the weird story.
-	m := sized(press(newModel(t), tabKey(tabSpecs), "j", "j", "j"), 120, 60)
+	// The rows run oldest file date first, so one j step reaches the weird
+	// story, the one with a bad status.
+	m := sized(press(newModel(t), tabKey(tabSpecs), "j"), 120, 60)
 	if !strings.Contains(plain(m.View()), "! ") {
 		t.Error("the problems of the selected item are missing")
 	}
@@ -1396,9 +1398,11 @@ func checkThumbOnTheBorder(t *testing.T, tab int, p pane, at string, w, h int) {
 	t.Helper()
 	m := press(sized(thumbFixture(t), w, h), tabKey(tab))
 	// The detail box shows a plan body, the only content on this board long
-	// enough to scroll, so it is read from the Plans tab.
+	// enough to scroll, so it is read from the Plans tab. Oldest first puts
+	// the short "going" plans ahead of the long "open" ones, so jump to the
+	// last row to land on one with a body worth scrolling.
 	if p == paneDetail {
-		m = press(m, tabKey(tabPlans))
+		m = press(m, tabKey(tabPlans), "G")
 	}
 	m.focusPane(p)
 	// A Done sub-tab no item of the board reaches has nothing to scroll, so
