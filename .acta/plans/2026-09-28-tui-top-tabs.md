@@ -1287,11 +1287,11 @@ Review round 1 (range da82e5b..b1b2c57) found one BLOCKER. `tabBar()` (`internal
 
 **verify:** At every width from 1 to 200 columns and for every open tab, the top line holds the open tab's name in brackets whole, or as much of it as the width allows when even the name alone does not fit, and it never shows a cut name of another tab. When the bar does not fit, names are dropped from the side farthest from the open tab first, the same way `dropOrder` in `internal/tui/title.go` drops pane-title parts. List every width band checked (fits, drops some names, only the open name, narrower than the open name) for each tab.
 
-- [ ] **Step 1: Write the failing test** in `internal/tui/view_test.go`: for each of the 6 tabs and each width 1..200, open the tab, set the width, render, take the first line with ANSI stripped, and assert it contains `[<name>]` when the width is at least len(name)+3, and that every other name on the line appears whole.
-- [ ] **Step 2: Run** `go test ./internal/tui/ -run TestTabBar -v`. Expected: FAIL at 40 columns on Activities.
-- [ ] **Step 3: Implement** in `tabBar(width int)`: start from all names; while the joined width is over the screen width, drop the name farthest from the open tab (ties: drop the right one); when only the open name is left and it still does not fit, let `fit` cut it. Pass `m.width` from the caller.
-- [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 1: Write the failing test** in `internal/tui/view_test.go`: for each of the 6 tabs and each width 1..200, open the tab, set the width, render, take the first line with ANSI stripped, and assert it contains `[<name>]` when the width is at least len(name)+3, and that every other name on the line appears whole.
+- [x] **Step 2: Run** `go test ./internal/tui/ -run TestTabBar -v`. Expected: FAIL at 40 columns on Activities.
+- [x] **Step 3: Implement** in `tabBar(width int)`: start from all names; while the joined width is over the screen width, drop the name farthest from the open tab (ties: drop the right one); when only the open name is left and it still does not fit, let `fit` cut it. Pass `m.width` from the caller.
+- [x] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
