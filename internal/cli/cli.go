@@ -97,6 +97,15 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 			return exitBadInput
 		}
 		return cmdDebtNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
+	case "scratch":
+		if len(args) < 2 || (args[1] != "new" && args[1] != "add") {
+			fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md | acta scratch add <SCRATCH-n> < text.md")
+			return exitBadInput
+		}
+		if args[1] == "new" {
+			return cmdScratchNew(args[2:], stdin, stdout, stderr)
+		}
+		return cmdScratchAdd(args[2:], stdin, stdout, stderr)
 	case "voice":
 		return cmdVoice(args[1:], stdout, stderr)
 	case "hook":
@@ -108,7 +117,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "migrate-root":
 		return cmdMigrateRoot(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root, bug new or debt new\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root, bug new, debt new, scratch new or scratch add\n", args[0])
 		return exitBadInput
 	}
 }
@@ -377,6 +386,47 @@ func cmdDebtNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr 
 	return report(o, err, stdout, stderr)
 }
 
+func cmdScratchNew(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	fs, root := flags("scratch new", stderr)
+	title := fs.String("title", "", "scratch title (default: the slug)")
+	pos, err := parseMixed(fs, args)
+	if err != nil || len(pos) != 1 {
+		fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md")
+		return exitBadInput
+	}
+	cfg, code := loadConfig(*root, stderr)
+	if code != exitOK {
+		return code
+	}
+	body, err := io.ReadAll(stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	o, err := write.NewScratch(cfg, pos[0], *title, body)
+	return report(o, err, stdout, stderr)
+}
+
+func cmdScratchAdd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	fs, root := flags("scratch add", stderr)
+	pos, err := parseMixed(fs, args)
+	if err != nil || len(pos) != 1 {
+		fmt.Fprintln(stderr, "usage: acta scratch add <SCRATCH-n> < text.md")
+		return exitBadInput
+	}
+	cfg, b, code := loadBoard(*root, stderr)
+	if code != exitOK {
+		return code
+	}
+	text, err := io.ReadAll(stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	o, err := write.AppendScratch(cfg, b, pos[0], text)
+	return report(o, err, stdout, stderr)
+}
+
 // report prints the written path and maps the outcome to an exit code.
 func report(o write.Outcome, err error, stdout, stderr io.Writer) int {
 	switch {
@@ -392,7 +442,13 @@ func report(o write.Outcome, err error, stdout, stderr io.Writer) int {
 			o.Path = rel
 		}
 	}
-	fmt.Fprintln(stdout, filepath.ToSlash(o.Path))
+	// A scratch write names the new number ID first, so the next command can
+	// use it as it stands.
+	line := filepath.ToSlash(o.Path)
+	if o.ShortID != "" {
+		line = o.ShortID + "  " + line
+	}
+	fmt.Fprintln(stdout, line)
 	if o.Skipped {
 		fmt.Fprintln(stderr, "written, not committed:", o.Reason)
 		return exitSkipped

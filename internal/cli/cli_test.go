@@ -114,3 +114,104 @@ func TestDebtNoSubcommandExitsUsage(t *testing.T) {
 		}
 	})
 }
+
+func TestScratchNewWritesFileAndCommits(t *testing.T) {
+	dir := debtRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		code := Run([]string{"scratch", "new", "newest-first"}, strings.NewReader("sort the list ✓\n"), false, &stdout, &stderr)
+		if code != exitOK {
+			t.Fatalf("exit %d stderr %q", code, stderr.String())
+		}
+	})
+	if !strings.Contains(stdout.String(), "SCRATCH-1") {
+		t.Fatalf("stdout %q lacks the short id", stdout.String())
+	}
+	files, err := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-newest-first.md"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("scratch files %v err %v", files, err)
+	}
+	if !strings.Contains(stdout.String(), "scratch/") {
+		t.Fatalf("stdout %q lacks the path", stdout.String())
+	}
+	body, _ := os.ReadFile(files[0])
+	if !strings.Contains(string(body), "status: raw") || !strings.HasSuffix(string(body), "sort the list ✓\n") {
+		t.Fatalf("file = %q", body)
+	}
+	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil ||
+		!strings.HasPrefix(strings.TrimSpace(string(out)), "acta: new scratch ") {
+		t.Fatalf("commit message %q err %v", out, err)
+	}
+}
+
+func TestScratchAddAppendsAndCommits(t *testing.T) {
+	dir := debtRepo(t)
+	var out, errOut strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"scratch", "new", "idea"}, strings.NewReader("first note\n"), false, &out, &errOut); code != exitOK {
+			t.Fatalf("scratch new exit %d stderr %q", code, errOut.String())
+		}
+		out.Reset()
+		code := Run([]string{"scratch", "add", "SCRATCH-1"}, strings.NewReader("answer ✓\n"), false, &out, &errOut)
+		if code != exitOK {
+			t.Fatalf("exit %d stderr %q", code, errOut.String())
+		}
+	})
+	if !strings.Contains(out.String(), "SCRATCH-1") {
+		t.Fatalf("stdout %q lacks the short id", out.String())
+	}
+	files, _ := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-idea.md"))
+	body, _ := os.ReadFile(files[0])
+	if !strings.HasSuffix(string(body), "first note\n\nanswer ✓\n") {
+		t.Fatalf("file = %q", body)
+	}
+	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "acta: add to scratch ") {
+		t.Fatalf("commit message %q", msg)
+	}
+}
+
+func TestScratchNewBadSlugExitsBadInput(t *testing.T) {
+	dir := debtRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		code := Run([]string{"scratch", "new", "Bad Slug"}, strings.NewReader("x\n"), false, &stdout, &stderr)
+		if code != exitBadInput {
+			t.Fatalf("exit %d stderr %q", code, stderr.String())
+		}
+	})
+	if _, err := os.Stat(filepath.Join(dir, ".pm", "scratch")); !os.IsNotExist(err) {
+		t.Fatal("the scratch folder must not exist after a bad slug")
+	}
+}
+
+func TestScratchNoSubcommandExitsUsage(t *testing.T) {
+	dir := debtRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		code := Run([]string{"scratch"}, strings.NewReader(""), false, &stdout, &stderr)
+		if code != exitBadInput {
+			t.Fatalf("exit %d stderr %q", code, stderr.String())
+		}
+		for _, want := range []string{"usage: acta scratch new", "scratch add"} {
+			if !strings.Contains(stderr.String(), want) {
+				t.Fatalf("stderr %q lacks %q", stderr.String(), want)
+			}
+		}
+	})
+}
+
+func TestScratchUnknownSubcommandNamesBothCommands(t *testing.T) {
+	dir := debtRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		code := Run([]string{"scratch", "drop"}, strings.NewReader(""), false, &stdout, &stderr)
+		if code != exitBadInput {
+			t.Fatalf("exit %d stderr %q", code, stderr.String())
+		}
+		for _, want := range []string{"scratch new", "scratch add"} {
+			if !strings.Contains(stderr.String(), want) {
+				t.Fatalf("stderr %q lacks %q", stderr.String(), want)
+			}
+		}
+	})
+}
