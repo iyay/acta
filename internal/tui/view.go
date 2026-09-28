@@ -85,6 +85,7 @@ tab shift+tab    move between the panes of the tab
 [ ]              switch the Done tab, on the Done pane
 space enter      open or shut a plan row
 z                expand the focused pane
+o                flip the sort: oldest / newest
 j k g G          move a list, scroll the detail
 ctrl+d ctrl+u    page down and up
 enter            focus the detail on the row
