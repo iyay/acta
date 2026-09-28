@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Use after a design is approved, before any code. Turns the spec into a task-by-task plan in .acta/plans/ - failing test first, exact files, a property-shaped verify line and a wave for every task - then waits for the user's yes.
+description: "acta: Use after a design is approved, before any code. Turns the spec into a task-by-task plan in .acta/plans/ - failing test first, exact files, a property-shaped verify line and a wave for every task - then waits for the user's yes."
 ---
 
 # Writing Plans

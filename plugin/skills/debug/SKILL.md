@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Use for any bug, error, failing test, stack trace, wrong output, slowness or hang - and whenever the user says something is broken - before reading code for a fix or editing anything. Four gated phases - root cause, pattern, hypothesis, then a fix with a regression test.
+description: "acta: Use for any bug, error, failing test, stack trace, wrong output, slowness or hang - and whenever the user says something is broken - before reading code for a fix or editing anything. Four gated phases - root cause, pattern, hypothesis, then a fix with a regression test."
 ---
 
 # Systematic Debugging

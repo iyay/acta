@@ -1,6 +1,6 @@
 ---
 name: migrate
-description: Use when the user wants docs from another workflow plugin (superpowers, gstack, a .scratch tracker, or any other format) moved into .acta/ so they can be classified and tracked. Optional - without it, acta already shows listed legacy folders read-only.
+description: "acta: Use when the user wants docs from another workflow plugin (superpowers, gstack, a .scratch tracker, or any other format) moved into .acta/ so they can be classified and tracked. Optional - without it, acta already shows listed legacy folders read-only."
 ---
 
 # Migrate

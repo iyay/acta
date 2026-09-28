@@ -1,6 +1,6 @@
 ---
 name: bug
-description: Use when a bug is confirmed (root cause proven with file:line and a repro, a defect found in code already on the parent branch, or a bug found while reading and reported to the user), when the user asks to note something as a bug, or when a recorded bug's fix has landed. Writes the bug file through acta.
+description: "acta: Use when a bug is confirmed (root cause proven with file:line and a repro, a defect found in code already on the parent branch, or a bug found while reading and reported to the user), when the user asks to note something as a bug, or when a recorded bug's fix has landed. Writes the bug file through acta."
 ---
 
 # Bug
