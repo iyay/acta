@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -127,9 +128,85 @@ func cmdDispatchInit(args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-// cmdReplyBack is a stub so the build compiles. Wave 2 of the plan replaces
-// it with the real command that messages the orchestrator pane.
+// cmdReplyBack tells the orchestrator pane that this round is done, or why it
+// is stuck. It sends nothing unless every check passes, so a refused
+// reply-back never looks like a finished round.
 func cmdReplyBack(args []string, stdout, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "usage: acta reply-back [--blocked \"<reason>\"]")
-	return exitBadInput
+	fs, root := flags("reply-back", stderr)
+	blocked := fs.String("blocked", "", "say the round is blocked and why")
+	if err := fs.Parse(args); err != nil {
+		return exitBadInput
+	}
+	// An empty --blocked is a typo, not a reason, so the flag's own presence
+	// decides this branch and not the value.
+	asked := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "blocked" {
+			asked = true
+		}
+	})
+	cfg, b, code := loadBoard(*root, stderr)
+	if code != exitOK {
+		return code
+	}
+	data, err := os.ReadFile(recordPath(cfg))
+	if err != nil {
+		fmt.Fprintln(stderr, "no dispatch record, so there is no pane to answer:", err)
+		return exitBadInput
+	}
+	var r dispatchRecord
+	if err := json.Unmarshal(data, &r); err != nil {
+		fmt.Fprintln(stderr, "broken dispatch record:", err)
+		return exitBadInput
+	}
+	plan, err := checkRecord(cfg, b, r)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitBadInput
+	}
+	// The own pane goes into a message a human reads, so a missing or odd
+	// value says "unknown" instead of passing junk on.
+	own := os.Getenv("HERDR_PANE_ID")
+	if !panePattern.MatchString(own) {
+		own = "unknown"
+	}
+	var text string
+	if asked {
+		if *blocked == "" {
+			fmt.Fprintln(stderr, "--blocked needs a reason")
+			return exitBadInput
+		}
+		text = fmt.Sprintf("%s blocked: %s - pane %s", r.Round, *blocked, own)
+	} else {
+		var open []string
+		for _, id := range plan.Children {
+			if c := b.Get(id); c == nil || c.Status != "done" {
+				open = append(open, id)
+			}
+		}
+		if len(open) > 0 {
+			fmt.Fprintln(stderr, "open tasks:")
+			for _, id := range open {
+				fmt.Fprintln(stderr, id)
+			}
+			return exitBadInput
+		}
+		head, err := gitIn(cfg.RepoRoot, "rev-parse", "HEAD")
+		if err != nil {
+			fmt.Fprintln(stderr, "cannot read the head commit:", err)
+			return exitOther
+		}
+		text = fmt.Sprintf("/acta:review %s..%s - plan %s, round %s, pane %s", r.Base, head, r.Plan, r.Round, own)
+	}
+	// Arguments stay separate, so a value from the record file can never
+	// become shell text.
+	cmd := exec.Command("herdr", "agent", "prompt", r.Pane, text)
+	var herdrErr strings.Builder
+	cmd.Stderr = &herdrErr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(stderr, "herdr: %v %s\n", err, herdrErr.String())
+		return exitOther
+	}
+	fmt.Fprintf(stdout, "sent to %s: %s\n", r.Pane, text)
+	return exitOK
 }
