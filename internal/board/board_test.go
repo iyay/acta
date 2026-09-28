@@ -71,6 +71,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 		"scratch/2026-09-28-idea-raw":            {KindScratch, "raw", "frontmatter", 0, 0},
 		"scratch/2026-09-28-idea-used":           {KindScratch, "specced", "derived", 0, 1},
 		"scratch/2026-09-28-idea-dropped":        {KindScratch, "dropped", "frontmatter", 0, 0},
+		"scratch/2026-09-28-idea-brainstorm":     {KindScratch, "brainstorming", "frontmatter", 0, 0},
+		"bugs/2026-09-28-lag":                    {KindBug, "fixing", "frontmatter", 0, 0},
 	}
 	for id, w := range cases {
 		it := b.Get(id)
@@ -82,8 +84,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 			t.Errorf("%s = kind %s status %s (%s) %d/%d, want %+v", id, it.Kind, it.Status, it.StatusSource, it.Done, it.Total, w)
 		}
 	}
-	if len(b.Items) != 35 {
-		t.Errorf("got %d items, want 35: %v", len(b.Items), ids(b.Items))
+	if len(b.Items) != 37 {
+		t.Errorf("got %d items, want 37: %v", len(b.Items), ids(b.Items))
 	}
 }
 
@@ -252,7 +254,7 @@ func TestLists(t *testing.T) {
 	check("active plans", ids(b.List(KindPlan, false)), []string{
 		"plans/2026-09-23-lonely", "plans/2026-09-21-alpha",
 	})
-	check("active bugs", ids(b.List(KindBug, false)), []string{"bugs/2026-09-26-open", "specs/2026-09-15-really-bug"})
+	check("active bugs", ids(b.List(KindBug, false)), []string{"bugs/2026-09-28-lag", "bugs/2026-09-26-open", "specs/2026-09-15-really-bug"})
 	check("active tasks", ids(b.List(KindTask, false)), []string{"plans/2026-09-23-lonely#task-1", "plans/2026-09-21-alpha#task-2"})
 	check("untyped", ids(b.Untyped(false)), []string{"docs/superpowers/specs/2026-01-01-old"})
 	if got := len(b.List(KindStory, true)); got != 7 {

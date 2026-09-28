@@ -30,7 +30,7 @@ func boardFiles() map[string]string {
 	}
 }
 
-// detailLines gives the lines pane [3] draws for one item of the board built
+// detailLines gives the lines the detail box draws for one item of the board built
 // from cfg, with the color codes still on them.
 func detailLines(t *testing.T, cfg config.Config, id string) []string {
 	t.Helper()
@@ -44,18 +44,27 @@ func detailLines(t *testing.T, cfg config.Config, id string) []string {
 	}
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
-	// A finished item sits in pane [2] instead of pane [1], and the detail
-	// shows what the list with the focus has selected.
-	for m.tab = 0; m.tab < len(tabNames); m.tab++ {
-		for done := 0; done < 2; done++ {
-			m.doneTab = done
-			for _, p := range []pane{paneOpen, paneDone} {
-				m.focus = p
-				rows, sel, idx := m.slotOf(p)
-				for _, r := range rows {
-					if r.id == it.ID {
-						*sel, *idx = it.ID, 0
-						return m.detailLines(100)
+	// A finished item sits in the Done box instead of a kind pane, and the
+	// detail shows what the list with the focus has selected. Every pane and
+	// every tab of the sidebar is walked, so no kind of board is missed.
+	for p := pane(0); p < paneDone; p++ {
+		m.follows = p
+		for tab := range max(1, len(sidebar[p].tabs)) {
+			if len(sidebar[p].tabs) > 0 {
+				m.tab[p] = tab
+			}
+			for done := range 2 {
+				m.tab[paneDone] = done
+				// The item is on the list of the pane itself, or on the
+				// Done box that follows it.
+				for _, q := range []pane{p, paneDone} {
+					m.focus = q
+					rows, sel, idx := m.slotOf(q)
+					for _, r := range rows {
+						if r.id == it.ID {
+							*sel, *idx = it.ID, 0
+							return m.detailLines(100)
+						}
 					}
 				}
 			}

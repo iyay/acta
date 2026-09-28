@@ -2,7 +2,6 @@
 package tui
 
 import (
-	"fmt"
 	"os/exec"
 	"runtime"
 
@@ -26,7 +25,7 @@ type titlePiece struct {
 // no click box.
 func namedPieces(p pane, names []string, keep []bool, sep string) []titlePiece {
 	out := make([]titlePiece, 0, 2*len(names)+1)
-	out = append(out, titlePiece{text: fmt.Sprintf("─[%d]─", p+1), tab: -1})
+	out = append(out, titlePiece{text: paneKey(p), tab: -1})
 	first := true
 	for i, name := range names {
 		if keep != nil && !keep[i] {

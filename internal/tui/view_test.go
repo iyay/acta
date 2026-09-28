@@ -83,13 +83,12 @@ func lineFor(t *testing.T, v, want string) ([]string, int) {
 	return nil, -1
 }
 
-func TestViewShowsTheThreePanes(t *testing.T) {
-	m := sized(clocked(newModel(t), 20, 46), 200, 40)
+func TestViewShowsTheSidebarAndTheDetail(t *testing.T) {
+	m := sized(clocked(press(newModel(t), "2", "j", "j"), 20, 46), 200, 40)
 	v := m.View()
 	for _, want := range []string{
-		"[1]─Specs", "─ Plans", "─ Tasks", "─ Bugs", "─ Debt",
-		"[2]─Done", "─ Dropped",
-		"[3]─Detail",
+		"[1]─Active", "[2]─Specs ─ Scratchpad", "[3]─Plans ─ Tasks",
+		"[4]─Bugs ─ Debt", "[5]─Done", "[0]─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"specs/2026-09-20-alpha  Alpha story",
 		"ID        : specs/2026-09-20-alpha",
@@ -132,9 +131,10 @@ func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
 		want string
 		gone string
 	}{
-		{nil, "[1]─Specs", "[2]─"},
-		{[]string{"2"}, "[2]─Done", "[1]─"},
-		{[]string{"3"}, "[3]─Detail", "[1]─"},
+		{nil, "[1]─Active", "[2]─"},
+		{[]string{"2"}, "[2]─Specs", "[1]─"},
+		{[]string{"5"}, "[5]─Done", "[1]─"},
+		{[]string{"0"}, "[0]─Detail", "[1]─"},
 	} {
 		m := sized(press(newModel(t), tc.keys...), 40, 20)
 		v := m.View()
@@ -155,10 +155,7 @@ func paneBox(m Model, p pane) box {
 	if !g.wide {
 		return g.full
 	}
-	if p == paneDone {
-		return g.done
-	}
-	return g.open
+	return g.at(p)
 }
 
 // innerLines gives the lines drawn inside a pane, one per screen row, with
@@ -190,6 +187,18 @@ func cutTo(text string, w int) string {
 		r = r[:len(r)-1]
 	}
 	return string(r) + "…"
+}
+
+// cells keeps the first w cells of a drawn line, so the scrollbar cell on the
+// right wall is left out of what the row itself says.
+func cells(text string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	for len(text) > 0 && lipgloss.Width(text) > w {
+		text = text[:len(text)-1]
+	}
+	return text
 }
 
 // rowCount gives the words a row ends with when its work is in progress: the
@@ -238,10 +247,24 @@ func isRowLine(m Model, r row, line string, w int) bool {
 	return rest == cutTo(head, lipgloss.Width(rest))
 }
 
-// isDivider says whether a drawn line is the rule between the two groups of a
-// list pane, which is a full row of dashes and nothing else.
-func isDivider(line string) bool {
-	return line != "" && strings.Trim(line, "─") == ""
+// lineOfRow gives the drawn line that holds an item, so a test reads the row
+// it means and not the line number it guessed.
+func lineOfRow(t *testing.T, lines []string, id string) string {
+	t.Helper()
+	return lineWith(t, lines, id)
+}
+
+// lineWith gives the drawn line that holds word, the same way lineOfRow finds
+// a row by its id, so a test can look for the tail of a row as well.
+func lineWith(t *testing.T, lines []string, word string) string {
+	t.Helper()
+	for _, ln := range lines {
+		if strings.Contains(ln, word) {
+			return ln
+		}
+	}
+	t.Fatalf("no drawn row holds %s: %q", word, lines)
+	return ""
 }
 
 // TestEveryRowIsOneLineOnEveryTab walks every tab, both list panes and four
@@ -250,8 +273,8 @@ func isDivider(line string) bool {
 // pane's row at that position, the divider, or empty space below the last
 // row, so a row can never take two lines.
 func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
-	for tab := range tabNames {
-		for _, p := range []pane{paneOpen, paneDone} {
+	for tab := range 2 {
+		for _, p := range []pane{paneSpecs, paneDone} {
 			for _, w := range []int{40, 60, 120, 200} {
 				m := sized(focused(newModel(t), p, tab), w, 40)
 				b := paneBox(m, p)
@@ -270,21 +293,18 @@ func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
 					}
 					continue
 				}
+				// The words of a box that scrolls give one cell to the
+				// scrollbar, so the row ends before the wall.
+				inner = m.textOf(p, b)
 				for i, ln := range lines {
 					n := b.first + i
 					if n >= len(rows) {
-						if ln != "" {
+						if strings.TrimSpace(ln) != "" {
 							t.Errorf("tab %d pane %d width %d: line %d below the last row holds %q", tab, p, w, i, ln)
 						}
 						continue
 					}
-					if rows[n].divider {
-						if want := strings.Repeat("─", inner); ln != want {
-							t.Errorf("tab %d pane %d width %d: the divider line is %q", tab, p, w, ln)
-						}
-						continue
-					}
-					if !isRowLine(m, rows[n], ln, inner) {
+					if !isRowLine(m, rows[n], cells(ln, inner), inner) {
 						t.Errorf("tab %d pane %d width %d: line %d is %q, which is not row %s", tab, p, w, i, ln, rows[n].id)
 					}
 				}
@@ -293,10 +313,10 @@ func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
 	}
 }
 
-// TestTheDividerHidesWhenAGroupIsEmpty keeps only the stories of one kind of
-// work, so the split between the two groups has nothing to separate and the
-// rule has to go with it.
-func TestTheDividerHidesWhenAGroupIsEmpty(t *testing.T) {
+// TestAPaneWithOneKindOfWorkDrawsNoRule keeps only the stories of one kind of
+// work, so whatever else the pane drew between its rows, every line left is a
+// row of that work.
+func TestAPaneWithOneKindOfWorkDrawsNoRule(t *testing.T) {
 	full := newModel(t)
 	for _, tc := range []struct {
 		name string
@@ -314,9 +334,9 @@ func TestTheDividerHidesWhenAGroupIsEmpty(t *testing.T) {
 			}
 			m := sized(full, 200, 40)
 			m.board = &board.Board{Items: items}
-			for i, ln := range innerLines(m, paneBox(m, paneOpen)) {
-				if isDivider(ln) {
-					t.Errorf("line %d draws a divider with one group empty: %q", i, ln)
+			for i, ln := range innerLines(m, paneBox(m, paneSpecs)) {
+				if ln != "" && strings.Trim(ln, "─") == "" {
+					t.Errorf("line %d draws a rule where a row belongs: %q", i, ln)
 				}
 			}
 		})
@@ -349,8 +369,8 @@ func boardSays(m Model, w string) bool {
 // every tab. A status word on screen has to come from a file name or a title
 // the board really holds, which leaves no room for the view painting one.
 func TestNoListPanePaintsAStatusWord(t *testing.T) {
-	for tab := range tabNames {
-		for _, p := range []pane{paneOpen, paneDone} {
+	for tab := range 2 {
+		for _, p := range []pane{paneSpecs, paneDone} {
 			m := sized(focused(newModel(t), p, tab), 200, 40)
 			for i, line := range innerLines(m, paneBox(m, p)) {
 				for _, w := range statusWords {
@@ -371,17 +391,21 @@ func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
 	m := newModel(t)
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
-	m = sized(m, 200, 40)
-	b := paneBox(m, paneOpen)
+	m = press(sized(m, 200, 40), "2")
+	b := paneBox(m, paneSpecs)
 	lines := innerLines(m, b)
-	if got := lines[0]; !strings.HasPrefix(got, "specs/2026-09-20-alpha  Alpha") || !strings.HasSuffix(got, " 2/5 · claude") {
+	if got := cells(lineOfRow(t, lines, "specs/2026-09-20-alpha"), m.textOf(paneSpecs, b)); !strings.HasPrefix(strings.TrimSpace(got), "specs/2026-09-20-alpha  Alpha") ||
+		!strings.HasSuffix(strings.TrimSpace(got), "2/5 · claude") {
 		t.Errorf("the in-progress row is %q, want the name and the title then 2/5 · claude", got)
 	}
-	if got := lines[1]; got != strings.Repeat("─", b.w-2) {
-		t.Errorf("the divider is %q", got)
-	}
-	if got := lines[2]; got != "specs/2026-09-28-from-scratch-design  Themes …" {
+	if got := lineOfRow(t, lines, "specs/2026-09-28-from-scratch-design"); strings.Contains(got, "claude") {
 		t.Errorf("the not-started row is %q, want only the name and the title", got)
+	}
+	// No line between the two rows is a rule, because there is no rule left.
+	for i, ln := range lines {
+		if ln != "" && strings.Trim(ln, "─ ") == "" {
+			t.Errorf("line %d is a rule: %q", i, ln)
+		}
 	}
 }
 
@@ -393,17 +417,17 @@ func TestALongTitleIsCutSoTheCountFits(t *testing.T) {
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
 	it.Title = strings.Repeat("x", 200)
-	m = sized(m, 60, 40)
-	b := paneBox(m, paneOpen)
-	row := innerLines(m, b)[0]
-	if !strings.HasSuffix(row, " 2/5 · claude") {
+	m = press(sized(m, 60, 40), "2")
+	b := paneBox(m, paneSpecs)
+	row := cells(lineWith(t, innerLines(m, b), "2/5 · claude"), m.textOf(paneSpecs, b))
+	if !strings.HasSuffix(strings.TrimSpace(row), "2/5 · claude") {
 		t.Errorf("the count and the agent were cut: %q", row)
 	}
 	if !strings.Contains(row, "…") {
 		t.Errorf("a 200-character title should be cut with …: %q", row)
 	}
-	if got := lipgloss.Width(row); got != b.w-2 {
-		t.Errorf("the row is %d cells wide, the pane holds %d", got, b.w-2)
+	if got := lipgloss.Width(row); got != m.textOf(paneSpecs, b) {
+		t.Errorf("the row is %d cells wide, the pane holds %d", got, m.textOf(paneSpecs, b))
 	}
 }
 
@@ -474,13 +498,14 @@ func paintedLine(v string, b box, i int) string {
 // no background, and the in-progress one keeps the accent.
 func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 	withColors(func() {
-		// One j steps past the first row, so the in-progress row is drawn
-		// unselected and shows its own brush.
-		m := sized(press(newModel(t), "j"), 120, 40)
-		b := paneBox(m, paneOpen)
+		// The rows are the board's own order, so the in-progress spec is the
+		// third one. One j puts the cursor on the row above it, and the
+		// in-progress row is then drawn unselected with its own brush.
+		m := sized(press(newModel(t), "2", "j"), 120, 40)
+		b := paneBox(m, paneSpecs)
 		v := m.View()
 
-		sel := paintedLine(v, b, 2)
+		sel := paintedLine(v, b, 1)
 		if wears(sel, 7) {
 			t.Errorf("the selected row is reverse video: %q", sel)
 		}
@@ -491,13 +516,13 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 			t.Errorf("the selected row has no background 236: %q", sel)
 		}
 		reset := strings.LastIndex(sel, "\x1b[0m")
-		if reset < 0 || lipgloss.Width(plain(sel[:reset])) != b.w-2 {
-			t.Errorf("the band stops short of the row width %d: %q", b.w-2, sel)
+		if want := m.textOf(paneSpecs, b); reset < 0 || lipgloss.Width(plain(sel[:reset])) != want {
+			t.Errorf("the band stops short of the row width %d: %q", want, sel)
 		}
 
-		// Row 0 is in progress and not selected, so it keeps the accent and
+		// The in-progress row is not selected, so it keeps the accent and
 		// is dim.
-		going := paintedLine(v, b, 0)
+		going := paintedLine(v, b, 2)
 		if !wears(going, 2) || !wears(going, 38, 5, 39) {
 			t.Errorf("an unselected in-progress row should be dim and keep the accent: %q", going)
 		}
@@ -557,7 +582,7 @@ func TestViewDebtDetail(t *testing.T) {
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
 	// 120 columns, the normal width, must still draw all five tab names.
-	m = sized(openTab(t, m, tabDebt), 120, 40)
+	m = sized(openTab(t, m, paneBugs, 1), 120, 40)
 
 	v := m.View()
 	// The gap between names can be the wide " ─ " or, once five names need
@@ -593,7 +618,8 @@ func TestViewDebtDetail(t *testing.T) {
 }
 
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
-	m := sized(press(newModel(t), "]", "j"), 120, 40)
+	// The first plan of the list links no spec, so no SPEC line is drawn.
+	m := sized(press(newModel(t), "3"), 120, 40)
 	g := m.geometry()
 	detail := strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
 	if strings.Contains(detail, "SPEC") {
@@ -602,8 +628,8 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 	if strings.Contains(detail, "WORKTREE") || strings.Contains(detail, "AGENT") {
 		t.Error("a line with no value should be left out")
 	}
-	// The plan above it does link a spec, so its line has to be there.
-	m = sized(press(m, "k"), 120, 40)
+	// The plan below it does link a spec, so its line has to be there.
+	m = sized(press(m, "j"), 120, 40)
 	g = m.geometry()
 	detail = strings.Join(column(m.View(), g.detail.x, g.detail.w), "\n")
 	if !strings.Contains(detail, "SPEC") {
@@ -612,7 +638,7 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 }
 
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
-	m := sized(press(newModel(t), "]", "]"), 120, 40)
+	m := sized(press(newModel(t), "3", "]", "j"), 120, 40)
 	v := plain(m.View())
 	if !strings.Contains(v, "plans/2026-09-21-alpha#task-2") {
 		t.Error("the task row is missing")
@@ -625,8 +651,8 @@ func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 	}
 }
 func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
-	// With in-progress rows first, three j steps reach the weird story.
-	m := sized(press(newModel(t), "j", "j", "j"), 120, 60)
+	// The rows are in board order, so three j steps reach the weird story.
+	m := sized(press(newModel(t), "2", "j", "j", "j"), 120, 60)
 	if !strings.Contains(plain(m.View()), "! ") {
 		t.Error("the problems of the selected item are missing")
 	}
@@ -745,8 +771,8 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
 		t.Error("the help popup is missing")
 	}
-	if !strings.Contains(v, "[1]─Specs") || !strings.Contains(v, "[3]─Detail") {
-		t.Error("the popup should cover the panes, not replace them")
+	if !strings.Contains(v, "[1]─Active") || !strings.Contains(v, "[0]─Detail") {
+		t.Error("the popup should cover the boxes, not replace them")
 	}
 	if !strings.HasSuffix(plain(lastLine(v)), "2026-09-27 20:46 | Feedback  dev") {
 		t.Error("the popup should not hide the status line")
@@ -759,8 +785,13 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 // focused puts the focus on a pane and picks the tab of pane [1], so a test
 // can walk every tab with the focus on either side of the screen.
 func focused(m Model, f pane, tab int) Model {
-	m.focus, m.last, m.tab = f, paneOpen, tab
-	m.doneTab = tab % len(m.doneTabNames())
+	m.focus, m.last = f, paneSpecs
+	if f < paneDone {
+		m.tab[f] = tab % max(1, len(sidebar[f].tabs))
+	}
+	m.tab[paneSpecs] = tab % max(1, len(sidebar[paneSpecs].tabs))
+	m.tab[paneDone] = tab % max(1, len(m.doneTabNames()))
+	m.follows = paneSpecs
 	return m
 }
 
@@ -769,8 +800,8 @@ func focused(m Model, f pane, tab int) Model {
 // frame the screen can draw still holds a rounded corner.
 func TestNoRoundedCorners(t *testing.T) {
 	for w := 1; w <= 200; w++ {
-		for tab := range tabNames {
-			for _, f := range []pane{paneOpen, paneDone, paneDetail} {
+		for tab := range len(sidebar[paneSpecs].tabs) {
+			for _, f := range []pane{paneSpecs, paneDone, paneDetail} {
 				m := sized(focused(newModel(t), f, tab), w, 40)
 				for _, frame := range []struct {
 					what string
@@ -880,34 +911,34 @@ func TestViewValuePopupAndSlug(t *testing.T) {
 
 func TestViewFocusedPaneWearsTheAccent(t *testing.T) {
 	m := newModel(t)
-	if m.edge(paneOpen).GetForeground() != accentColor {
-		t.Error("the pane with the focus should draw its border in the accent color")
+	if m.edge(paneActive).GetForeground() != accentColor {
+		t.Error("the box with the focus should draw its border in the accent color")
 	}
 	if m.edge(paneDone).GetForeground() == accentColor {
-		t.Error("a pane without the focus should not wear the accent color")
+		t.Error("a box without the focus should not wear the accent color")
 	}
-	m = press(m, "2")
+	m = press(m, "5")
 	if m.edge(paneDone).GetForeground() != accentColor {
 		t.Error("the focus moved, so the accent color should move with it")
 	}
-	if m.edge(paneOpen).GetForeground() == accentColor {
-		t.Error("the pane that lost the focus should be dim")
+	if m.edge(paneActive).GetForeground() == accentColor {
+		t.Error("the box that lost the focus should be dim")
 	}
 }
 
-func TestViewFinishedTabsFollowTheOpenTab(t *testing.T) {
+func TestViewFinishedTabsFollowTheLastSidebarPane(t *testing.T) {
 	for _, tc := range []struct {
 		keys []string
 		want string
 	}{
-		{nil, "[2]─Done ─ Dropped"},
-		{[]string{"]", "]", "2"}, "[2]─Done──"},
-		{[]string{"]", "]", "]", "2"}, "[2]─Fixed ─ Wontfix"},
-		{[]string{"]", "]", "]", "]", "2"}, "[2]─Done ─ Wontfix"},
+		{[]string{"2", "5"}, "[5]─Done ─ Dropped"},
+		{[]string{"3", "5"}, "[5]─Done ─"},
+		{[]string{"4", "5"}, "[5]─Fixed ─ Wontfix"},
+		{[]string{"4", "]", "5"}, "[5]─Done ─ Wontfix"},
 	} {
 		v := sized(press(newModel(t), tc.keys...), 120, 40).View()
 		if !strings.Contains(v, tc.want) {
-			t.Errorf("after %v pane [2] is missing %q", tc.keys, tc.want)
+			t.Errorf("after %v the Done box is missing %q", tc.keys, tc.want)
 		}
 	}
 }
@@ -937,63 +968,26 @@ func TestViewInProgressRowsWearTheAccent(t *testing.T) {
 func testViewInProgressRowsWearTheAccent(t *testing.T) {
 	// Step twice, so neither the in-progress row nor the not-started one
 	// shows the selected brush: both must show their own brush instead.
-	m := sized(press(splitModel(t), "j", "j"), 200, 40)
-	b := paneBox(m, paneOpen)
-	above, below, seen := true, false, false
+	m := sized(press(splitModel(t), "2", "j"), 200, 40)
+	b := paneBox(m, paneSpecs)
+	seenGoing, seenWaiting := false, false
 	for i, ln := range innerLines(m, b) {
-		if isDivider(ln) {
-			above = false
-			continue
-		}
 		cell := paintedLine(m.View(), b, i)
 		switch {
 		case strings.Contains(ln, "specs/2026-09-20-alpha"):
-			seen = true
-			if !above {
-				t.Errorf("the in-progress row sits below the divider: %q", ln)
-			}
+			seenGoing = true
 			if !wears(cell, 38, 5, 39) {
 				t.Errorf("the in-progress row wears no accent color: %q", cell)
 			}
 		case strings.Contains(ln, "specs/2026-09-22-beta"):
-			below = true
-			if above {
-				t.Errorf("the not-started row sits above the divider: %q", ln)
-			}
+			seenWaiting = true
 			if wears(cell, 38, 5, 39) {
 				t.Errorf("the not-started row wears the accent color: %q", cell)
 			}
 		}
 	}
-	if !seen || !below {
+	if !seenGoing || !seenWaiting {
 		t.Error("both rows should show")
-	}
-}
-
-func TestViewDividerIsDim(t *testing.T) {
-	withColors(func() {
-		testViewDividerIsDim(t)
-	})
-}
-
-func testViewDividerIsDim(t *testing.T) {
-	m := sized(splitModel(t), 200, 40)
-	b := paneBox(m, paneOpen)
-	found := false
-	for i, ln := range innerLines(m, b) {
-		if !isDivider(ln) {
-			continue
-		}
-		found = true
-		if want := strings.Repeat("─", b.w-2); ln != want {
-			t.Errorf("the divider is %d cells, the pane holds %d: %q", lipgloss.Width(ln), b.w-2, ln)
-		}
-		if !wears(paintedLine(m.View(), b, i), 2) {
-			t.Errorf("the divider wears no dim brush: %q", paintedLine(m.View(), b, i))
-		}
-	}
-	if !found {
-		t.Error("no divider drawn")
 	}
 }
 

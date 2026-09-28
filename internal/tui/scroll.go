@@ -9,9 +9,9 @@ import (
 	"github.com/iyay/acta/internal/board"
 )
 
-// Every pane keeps its own offset: the first line it shows. A list scrolls
-// the same way the detail does, so one rule, one column of numbers and one
-// scrollbar serve all three panes.
+// Every box keeps its own offset: the first line it shows. A list scrolls the
+// same way the detail does, so one rule, one column of numbers and one
+// scrollbar serve every box.
 
 // firstOf is the first line a pane shows: its offset pulled back inside the
 // range the pane can really show, so an offset from before a resize, or from
@@ -51,12 +51,11 @@ func count(first, total int) string {
 	return fmt.Sprintf("%d/%d", first+1, total)
 }
 
-// boxOf measures one pane the way geometry lays the panes out, also on a
-// narrow terminal that shows only one of them: the model needs a height to
-// clamp an offset with, whether or not the pane is on screen.
+// boxOf measures one box the way geometry lays them out, also on a narrow
+// terminal that shows only one of them: the model needs a height to clamp an
+// offset with, whether or not the box is on screen.
 func (m Model) boxOf(p pane) box {
-	g := m.geometry()
-	b := []box{g.open, g.done, g.detail}[p]
+	b := m.geometry().at(p)
 	if b.h == 0 {
 		return m.box(p, 0, 0, m.width, max(0, m.height-1))
 	}
@@ -111,7 +110,7 @@ func (m *Model) scrollPane(p pane, lines int) {
 }
 
 // keepVisible slides a list pane so the row under the cursor is on screen,
-// and leaves the offset where it is when that row already is. Pane [3] has
+// and leaves the offset where it is when that row already is. The detail box has
 // no cursor of its own, so it keeps whatever place it was left in.
 func (m *Model) keepVisible(p pane) {
 	if p == paneDetail {
@@ -137,7 +136,7 @@ func (m *Model) clampOff(p pane) {
 	m.keepVisible(p)
 }
 
-// listView draws the rows of a list pane. Every row takes one line, so a click
+// listView draws the rows of a list box. Every row takes one line, so a click
 // on any cell of a row lands on that row.
 func (m Model) listView(p pane, w int, b box) []string {
 	rows, sel, idx := m.slotOf(p)
@@ -151,16 +150,12 @@ func (m Model) listView(p pane, w int, b box) []string {
 		if n >= len(rows) {
 			break
 		}
-		if rows[n].divider {
-			out = append(out, faint.Render(strings.Repeat("─", w)))
-			continue
-		}
 		it := m.board.Get(rows[n].id)
 		brush := faint
 		switch {
 		case n == cur:
 			brush = selected
-		case p == paneOpen && inProgress(it):
+		case inProgress(it):
 			// Work in progress wears the accent, dimmed; the rest stay plain.
 			brush = work
 		}
@@ -191,10 +186,10 @@ func (m Model) rowText(r row, it *board.Item, w int) string {
 		name = it.ID
 	}
 	head := strings.Repeat("  ", r.depth) + name + "  " + it.Title
-	if !inProgress(it) {
+	tally := progressText(it)
+	if !inProgress(it) || tally == "" {
 		return truncate(head, w)
 	}
-	tally := fmt.Sprintf("%d/%d", it.Done, it.Total)
 	if it.Agent != "" {
 		tally += " · " + it.Agent
 	}

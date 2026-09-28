@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -73,7 +74,13 @@ func wrapModel(t *testing.T) Model {
 // where all three panes have rows to show.
 func paneModel(t *testing.T, p pane) Model {
 	t.Helper()
-	return press(longModel(t), "]", fmt.Sprint(p+1))
+	// The plans list has rows to walk; the detail box needs one of them
+	// selected before it has a body to scroll.
+	m := press(longModel(t), keyOf(panePlans))
+	if p == paneDetail {
+		return press(m, "0")
+	}
+	return press(m, keyOf(p))
 }
 
 // scrollBox is the box pane p is drawn in, the detail pane included; the
@@ -84,7 +91,7 @@ func scrollBox(m Model, p pane) box {
 	if !g.wide {
 		return g.full
 	}
-	return []box{g.open, g.done, g.detail}[p]
+	return g.at(p)
 }
 
 // paneRows gives the lines pane p draws between its walls, padding included,
@@ -159,10 +166,10 @@ func countOf(t *testing.T, m Model, p pane) (at, total int) {
 // screenCounts gives the n/m every pane writes in its bottom border, so a test
 // can say what the screen shows and not only what the model holds. A pane
 // that draws no count reads as zeroes.
-func screenCounts(m Model) [3][2]int {
-	var out [3][2]int
+func screenCounts(m Model) [][2]int {
+	out := make([][2]int, boxes)
 	view := m.View()
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for p := pane(0); int(p) < boxes; p++ {
 		b := scrollBox(m, p)
 		if b.w < 2 || b.h < 2 {
 			continue
@@ -278,33 +285,42 @@ func TestScrollbarSurvivesOddNumbers(t *testing.T) {
 }
 
 func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
-	// The fixture fits in every pane, so no pane draws a scrollbar.
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
-		if at := thumbAt(paneRows(newModel(t), p)); at != -1 {
+	// The fixture fits in every box of a tall enough screen, so none of them
+	// draws a scrollbar.
+	tall := press(sized(newModel(t), 120, 80), "3")
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+		if at := thumbAt(paneRows(tall, p)); at != -1 {
 			t.Errorf("pane %d draws a scrollbar for content that fits, thumb on line %d", p, at)
 		}
 	}
-	// The long board overflows in all three panes, and each one says so with
-	// a scrollbar sitting at the top of the column.
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
-		if at := thumbAt(paneRows(paneModel(t, p), p)); at != 0 {
+	// The long board overflows in all three, and each one says so with a
+	// scrollbar sitting at the top of the column.
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+		// The detail box needs an item under it before it has a body to
+		// scroll, so it is read from the same board with one selected.
+		m := paneModel(t, p)
+		if p == paneDetail {
+			m = press(paneModel(t, panePlans), "0")
+		}
+		if at := thumbAt(paneRows(m, p)); at != 0 {
 			t.Errorf("pane %d draws no scrollbar at the top, thumb on line %d", p, at)
 		}
 	}
 }
 
 func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		before := m.Selected()
+		shown := screenCounts(m)
 		b := scrollBox(m, p)
 		m = wheel(m, b.x+1, b.y+2, false)
 		if m.off[p] != 1 {
 			t.Errorf("pane %d: one notch should scroll it by one, off is %d", p, m.off[p])
 		}
-		for _, q := range []pane{paneOpen, paneDone, paneDetail} {
-			if c := screenCounts(m)[q]; q != p && c[0] != 1 {
-				t.Errorf("the wheel over pane %d moved pane %d to line %d on screen", p, q, c[0])
+		for q := range boxes {
+			if c := screenCounts(m)[pane(q)]; q != int(p) && c != shown[pane(q)] {
+				t.Errorf("the wheel over pane %d moved pane %d on screen to %v, was %v", p, q, c, shown[pane(q)])
 			}
 		}
 		// The wheel scrolls a pane, it never picks another item.
@@ -353,7 +369,7 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 // from a line that does not exist.
 func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 	m := sized(newModel(t), 120, 40)
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		if m.lastOff(p) != 0 {
 			t.Errorf("pane %d: content that fits should not scroll, lastOff is %d", p, m.lastOff(p))
 		}
@@ -395,16 +411,16 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 // any other pane it does nothing at all: no scroll, no focus change, so a
 // wheel can never move a pane the user is not looking at.
 func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
-		for _, q := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+		for _, q := range []pane{panePlans, paneDone, paneDetail} {
 			if q == p {
 				continue
 			}
 			// The pane under the pointer is scrolled away from the top first,
 			// so a wheel that ignored the focus would show on screen instead of
 			// hiding behind a clamp at zero.
-			m := press(paneModel(t, p), fmt.Sprint(p+1), "G")
-			m = press(m, fmt.Sprint(q+1))
+			m := press(paneModel(t, p), keyOf(p), "G")
+			m = press(m, keyOf(q))
 			sel := m.Selected()
 			before := m.off
 			shown := screenCounts(m)
@@ -412,7 +428,7 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 				t.Fatalf("pane %d did not scroll before the wheel over it", p)
 			}
 			g := m.geometry()
-			target := []box{g.open, g.done, g.detail}[p]
+			target := g.at(p)
 			if target.w < 2 || target.h < 2 {
 				continue
 			}
@@ -422,10 +438,10 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 				if m.focus != q {
 					t.Errorf("a wheel over pane %d took the focus off pane %d", p, q)
 				}
-				if m.off != before {
+				if !slices.Equal(m.off, before) {
 					t.Errorf("a wheel over unfocused pane %d moved something: %v, want %v", p, m.off, before)
 				}
-				if screenCounts(m) != shown {
+				if !slices.Equal(screenCounts(m), shown) {
 					t.Errorf("a wheel over unfocused pane %d moved the screen: %v, want %v", p, screenCounts(m), shown)
 				}
 				if got := m.Selected(); got == nil || sel == nil || got.ID != sel.ID {
@@ -439,8 +455,8 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 // A click takes the focus, so the wheel over the same pane scrolls it right
 // after, with no key in between.
 func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
-		m := paneModel(t, paneOpen)
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+		m := paneModel(t, panePlans)
 		b := scrollBox(m, p)
 		m = click(m, b.x+1, b.y+2)
 		m = wheel(m, b.x+1, b.y+2, false)
@@ -454,30 +470,30 @@ func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
 }
 
 func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
-	// The keys of pane [3] scroll pane [3] and leave both lists where they
+	// The keys of the detail box scroll it and leave both lists where they
 	// were, selection and offset.
-	m := press(longModel(t), "]", "1", "G")
+	m := press(longModel(t), "3", "G")
 	before := screenCounts(m)
-	m = press(m, "3", "ctrl+d", "ctrl+d")
+	m = press(m, "0", "ctrl+d", "ctrl+d")
 	if m.off[paneDetail] != 2*pageLines {
 		t.Fatalf("two pages should scroll the detail to %d, off is %d", 2*pageLines, m.off[paneDetail])
 	}
-	// The screen says the same: pane [3] moved, the two lists did not.
+	// The screen says the same: the detail box moved, the two lists did not.
 	after := screenCounts(m)
 	if after[paneDetail][0] != before[paneDetail][0]+2*pageLines {
-		t.Errorf("pane [3] reads %d, it read %d before the keys", after[paneDetail][0], before[paneDetail][0])
+		t.Errorf("the detail box reads %d, it read %d before the keys", after[paneDetail][0], before[paneDetail][0])
 	}
-	if after[paneOpen] != before[paneOpen] || after[paneDone] != before[paneDone] {
-		t.Errorf("the keys in pane [3] moved a list on screen: %v, want %v", after, before)
+	if after[panePlans] != before[panePlans] || after[paneDone] != before[paneDone] {
+		t.Errorf("the keys in the detail box moved a list on screen: %v, want %v", after, before)
 	}
 	// Coming back to a list finds it exactly where it was left.
-	m = press(m, "1")
-	if m.off[paneOpen] != before[paneOpen][0]-1 {
-		t.Errorf("pane [1] lost its place: the screen reads %d, was %d", screenCounts(m)[paneOpen][0], before[paneOpen][0])
+	m = press(m, "3")
+	if m.off[panePlans] != before[panePlans][0]-1 {
+		t.Errorf("the list lost its place: the screen reads %d, was %d", screenCounts(m)[panePlans][0], before[panePlans][0])
 	}
 	// A key in pane [1] moves pane [1] and no other pane. Another item
 	// starts the detail at its own top, which is the one place a key in a
-	// list reaches into pane [3].
+	// list reaches into the detail box.
 	m = press(m, "k")
 	after = screenCounts(m)
 	if after[paneDone] != before[paneDone] {
@@ -490,8 +506,8 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 	// pane moves.
 	m = press(m, "g")
 	after = screenCounts(m)
-	if after[paneOpen][0] != 1 {
-		t.Errorf("g should take pane [1] back to its first row, the screen reads %d", after[paneOpen][0])
+	if after[panePlans][0] != 1 {
+		t.Errorf("g should take the list back to its first row, the screen reads %d", after[panePlans][0])
 	}
 	if after[paneDone] != before[paneDone] || after[paneDetail][0] != 1 {
 		t.Errorf("g in pane [1] moved another pane on screen: %v", after)
@@ -499,11 +515,11 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 }
 
 func TestListKeepsTheSelectedRowVisible(t *testing.T) {
-	m := press(longModel(t), "]", "1")
-	rows, _, _ := m.slotOf(paneOpen)
+	m := press(longModel(t), "3")
+	rows, _, _ := m.slotOf(panePlans)
 	// Walk down until the cursor sits below the fold, then keep walking: the
 	// pane has to follow the cursor, not the other way round.
-	for m.cursor() < scrollBox(m, paneOpen).rows {
+	for m.cursor() < scrollBox(m, panePlans).rows {
 		m = press(m, "j")
 	}
 	below := m.cursor()
@@ -511,17 +527,17 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 	if m.cursor() == below {
 		t.Fatal("the list should still move down")
 	}
-	b := scrollBox(m, paneOpen)
+	b := scrollBox(m, panePlans)
 	cur := m.cursor()
 	if cur < b.first || cur >= b.first+b.rows {
 		t.Fatalf("row %d is off screen: the pane shows rows %d to %d", cur, b.first, b.first+b.rows-1)
 	}
 	// The row the count says is on screen is the row that is on screen.
-	at, total := countOf(t, m, paneOpen)
+	at, total := countOf(t, m, panePlans)
 	if at != b.first+1 || total != len(rows) {
 		t.Fatalf("the count reads %d/%d, the pane starts at row %d of %d", at, total, b.first, len(rows))
 	}
-	drawn := paneRows(m, paneOpen)
+	drawn := paneRows(m, panePlans)
 	if !isThatRow(m, rows[b.first], drawn[0]) {
 		t.Errorf("the top line holds %q, the first row is %q", drawn[0], headOf(m, rows[b.first]))
 	}
@@ -533,13 +549,13 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 	if m.cursor() != below {
 		t.Errorf("k should step back to row %d, is %d", below, m.cursor())
 	}
-	if m.cursor() < scrollBox(m, paneOpen).first {
+	if m.cursor() < scrollBox(m, panePlans).first {
 		t.Error("k moved the cursor off the top of the pane")
 	}
 }
 
 func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
-	m := press(longModel(t), "]", "3")
+	m := press(longModel(t), "3", "0")
 	for screenCounts(m)[paneDetail][0] < 6 {
 		m = press(m, "j")
 	}
@@ -549,7 +565,7 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 	if at, _ := countOf(t, m, paneDetail); at != m.off[paneDetail]+1 {
 		t.Errorf("the detail count reads %d at offset %d", at, m.off[paneDetail])
 	}
-	m = press(m, "1", "j")
+	m = press(m, "3", "j")
 	if m.off[paneDetail] != 0 {
 		t.Errorf("another item should start the detail at the top, off is %d", m.off[paneDetail])
 	}
@@ -567,7 +583,7 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 }
 
 func TestThumbAndCountFollowTheOffsetOnScreen(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		// Top: the thumb is on the first line and the count reads 1.
 		at, total := countOf(t, m, p)
@@ -623,14 +639,16 @@ func TestThumbAndCountFollowTheOffsetOnScreen(t *testing.T) {
 }
 
 func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		m := press(paneModel(t, p), "G")
 		if m.off[p] == 0 {
 			t.Fatalf("pane %d never scrolled", p)
 		}
-		// A window so tall that the pane holds all of its content: the place
-		// the pane was at is gone, so the offset goes with it.
-		m = sized(m, 120, 200)
+		// A window so tall that the box holds all of its content: the place
+		// the box was at is gone, so the offset goes with it. The five boxes
+		// of the left column share the height, so the terminal has to be
+		// five times as tall as the content it holds.
+		m = sized(m, 120, 300)
 		if m.off[p] != 0 {
 			t.Errorf("pane %d kept the place %d with room for all of it", p, m.off[p])
 		}
@@ -643,9 +661,11 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 		if at := thumbAt(paneRows(m, p)); at != -1 {
 			t.Errorf("pane %d draws a thumb on line %d for content that fits", p, at)
 		}
-		// A window so short that the pane shows a handful of lines still
-		// draws its content, never a blank screen.
-		m = sized(m, 120, 14)
+		// A window so short that the box shows a handful of lines still
+		// draws its content, never a blank screen. The five boxes of the
+		// left column share the height, so the terminal still has to be tall
+		// enough to give each of them a border and a few rows.
+		m = sized(m, 120, 40)
 		if m.off[p] > m.lastOff(p) || m.off[p] < 0 {
 			t.Errorf("pane %d sits at %d, the pane shows %d of %d", p, m.off[p], m.fitOf(p), m.linesOf(p))
 		}
@@ -671,9 +691,11 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 		if at, _ := countOf(t, m, p); at != 1 {
 			t.Errorf("pane %d reads %d after scrolling back to the top, want 1", p, at)
 		}
-		// And growing the window again takes the pane back to the top.
+		// And growing the window again takes the box back to the top. The
+		// five boxes of the left column share the height, so the terminal
+		// has to be five times as tall as the content it holds.
 		m = press(m, "G")
-		m = sized(m, 120, 200)
+		m = sized(m, 120, 300)
 		if m.off[p] != 0 {
 			t.Errorf("pane %d kept the place %d after a window that fits it all", p, m.off[p])
 		}
@@ -688,8 +710,11 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 // G stops a line short of the end the screen can show and the n/m on screen
 // reads a line that never arrives.
 func TestCountReachesTheLastWindowWithAWrappingBody(t *testing.T) {
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
-		m := press(wrapModel(t), "]", fmt.Sprint(p+1), "G")
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+		// The detail box needs an item under it before it has a body, so the
+		// list is opened on the plans first.
+		m := press(wrapModel(t), "3")
+		m = press(m, keyOf(p), "G")
 		b := scrollBox(m, p)
 		at, total := countOf(t, m, p)
 		if at != total-b.inner+1 {
@@ -714,35 +739,35 @@ func isFirstLine(m Model, p pane, line string) bool {
 }
 
 func TestPanesKeepTheirOwnPlace(t *testing.T) {
-	m := press(longModel(t), "]", "1", "G")
-	open := screenCounts(m)[paneOpen]
-	m = press(m, "2", "G")
+	m := press(longModel(t), "3", "G")
+	open := screenCounts(m)[paneSpecs]
+	m = press(m, "5", "G")
 	done := screenCounts(m)[paneDone]
 	if done[0] == 1 {
 		t.Fatal("pane [2] did not scroll")
 	}
-	if screenCounts(m)[paneOpen] != open {
-		t.Errorf("pane [1] moved to %v while pane [2] scrolled, was %v", screenCounts(m)[paneOpen], open)
+	if screenCounts(m)[paneSpecs] != open {
+		t.Errorf("pane [1] moved to %v while pane [2] scrolled, was %v", screenCounts(m)[paneSpecs], open)
 	}
-	m = press(m, "3", "G")
+	m = press(m, "0", "G")
 	after := screenCounts(m)
-	if after[paneOpen] != open || after[paneDone] != done {
-		t.Errorf("pane [3] moved the lists: %v, want %v and %v", after, open, done)
+	if after[paneSpecs] != open || after[paneDone] != done {
+		t.Errorf("the detail box moved the lists: %v, want %v and %v", after, open, done)
 	}
 	if after[paneDetail][0] == 1 {
-		t.Error("pane [3] did not scroll")
+		t.Error("the detail box did not scroll")
 	}
 	// Each pane has to end on the last line its own content allows, not on a
 	// line that belongs to some other pane's body.
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		c := screenCounts(m)[p]
 		if c[0] != c[1]-scrollBox(m, p).inner+1 {
 			t.Errorf("pane %d ends on line %d of %d, the last window starts at %d", p, c[0], c[1], c[1]-scrollBox(m, p).inner+1)
 		}
 	}
-	m = press(m, "1")
-	if screenCounts(m)[paneOpen] != open {
-		t.Errorf("coming back to pane [1] lost its place: %v, want %v", screenCounts(m)[paneOpen], open)
+	m = press(m, "2")
+	if screenCounts(m)[paneSpecs] != open {
+		t.Errorf("coming back to pane [1] lost its place: %v, want %v", screenCounts(m)[paneSpecs], open)
 	}
 }
 
@@ -756,7 +781,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 	// task covers on its own; what the scrollbar adds is a cell inside a pane.
 	for _, w := range []int{1, 2, 3, 4, 5, 6, 8, 12, 20, 40} {
 		for _, h := range []int{3, 4, 5, 8, 20, 40} {
-			m := press(longModel(t), "]", "3", "G")
+			m := press(longModel(t), "3", "0", "G")
 			v := sized(m, w, h).View()
 			lines := strings.Split(v, "\n")
 			if len(lines) > h {
@@ -769,7 +794,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 			}
 		}
 	}
-	for _, p := range []pane{paneOpen, paneDone, paneDetail} {
+	for _, p := range []pane{panePlans, paneDone, paneDetail} {
 		// A window with no room for any row at all still leaves the offset
 		// somewhere the pane can hold, so the keys never break it.
 		m := press(paneModel(t, p), "G")
@@ -788,7 +813,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 		"# Plan\n\n### Task 1: One\n\n- [ ] **Step 1: Do it**\n\n" + strings.Repeat("\nA line of the body.\n", 60) + strings.Repeat("y", 82) + "\n",
 	} {
 		m := boardModel(t, body)
-		m = press(m, "]", "3", "G")
+		m = press(m, "3", "0", "G")
 		b := scrollBox(m, paneDetail)
 		at, total := countOf(t, m, paneDetail)
 		if at != total-b.inner+1 {
@@ -831,24 +856,24 @@ func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 	}
 	m := sized(New(cfg, b, true), 120, 40)
 	m.render = func(md string, _ int) string { return md }
-	m = press(m, "1", "G")
-	if m.off[paneOpen] == 0 {
+	m = press(m, "2", "G")
+	if m.off[paneSpecs] == 0 {
 		t.Fatal("the list did not overflow")
 	}
 	for _, open := range []bool{true, false, true} {
 		m.groupOpen = open
-		rows, _, _ := m.slotOf(paneOpen)
-		at, total := countOf(t, m, paneOpen)
+		rows, _, _ := m.slotOf(paneSpecs)
+		at, total := countOf(t, m, paneSpecs)
 		if at < 1 || at > total || total != len(rows) {
 			t.Errorf("groupOpen %v: the count reads %d/%d, the list holds %d rows", open, at, total, len(rows))
 		}
-		if at != m.off[paneOpen]+1 {
-			t.Errorf("groupOpen %v: the count reads %d, the pane sits at %d", open, at, m.off[paneOpen])
+		if at != m.off[paneSpecs]+1 {
+			t.Errorf("groupOpen %v: the count reads %d, the pane sits at %d", open, at, m.off[paneSpecs])
 		}
-		if top := thumbAt(paneRows(m, paneOpen)); top < 0 {
+		if top := thumbAt(paneRows(m, paneSpecs)); top < 0 {
 			t.Errorf("groupOpen %v: a long list draws no scrollbar", open)
 		}
-		if strings.TrimSpace(paneRows(m, paneOpen)[0]) == "" {
+		if strings.TrimSpace(paneRows(m, paneSpecs)[0]) == "" {
 			t.Errorf("groupOpen %v: the first line on screen is blank", open)
 		}
 	}

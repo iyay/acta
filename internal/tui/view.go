@@ -16,7 +16,7 @@ import (
 type tabBox struct{ x, w int }
 
 // box is where one pane sits on the screen and what it holds. first and rows
-// belong to the two list panes; pane [3] scrolls by lines and counts its own.
+// belong to the list panes; the detail box scrolls by lines and counts its own.
 type box struct {
 	x, y, w, h  int // the border rectangle
 	inner       int
@@ -31,12 +31,23 @@ func (b box) textW() int { return max(0, b.w-2) }
 // geom is the whole screen measured in cells from its top left corner. The
 // view and the mouse both read it, so a click lands where it looks.
 type geom struct {
-	wide   bool // false below 60 columns, where only the focused pane shows
+	wide   bool // false below 60 columns, where only the focused box shows
 	leftW  int  // width of the left column
-	open   box
-	done   box
+	side   []box
 	detail box
-	full   box // the focused pane stretched over the whole screen when not wide
+	full   box // the focused box stretched over the whole screen when not wide
+}
+
+// at gives the box a pane is drawn in. Below 60 columns only the focused pane
+// reaches the screen, so the others answer an empty box.
+func (g geom) at(p pane) box {
+	if p == paneDetail {
+		return g.detail
+	}
+	if int(p) < len(g.side) {
+		return g.side[p]
+	}
+	return box{}
 }
 
 // One small palette, readable on a dark and on a light terminal. The accent
@@ -61,27 +72,35 @@ var (
 // hints is what the left of the status line says when nothing else is going on.
 const hints = "? help"
 
-// helpLines is the key map the ? popup shows, grouped by pane.
-const helpLines = `1 2 3 tab       move between the panes
-] [             next / previous tab
-j k g G         move a list, scroll the detail
-ctrl+d ctrl+u   page down and up
-enter           focus the detail on the row
-e               open the row in the editor
-t s n           set a value, new bug
-esc             back to the list, close this help
-/ r q           search, reload, quit
-?               close this help`
+// helpLines is the key map the ? popup shows, grouped by box.
+const helpLines = `0 1 2 3 4 5 tab   move between the boxes
+] [              next / previous tab
+j k g G          move a list, scroll the detail
+ctrl+d ctrl+u    page down and up
+enter            focus the detail on the row
+e                open the row in the editor
+t s n            set a value, new bug
+esc              back to the list, close this help
+/ r q            search, reload, quit
+?                close this help`
 
-// View draws the whole screen: the panes, the status line, and any popup on
+// View draws the whole screen: the boxes, the status line, and any popup on
 // top of them.
 func (m Model) View() string {
 	g := m.geometry()
 	h := max(3, m.height-1)
 	var body string
 	if g.wide {
-		left := lipgloss.JoinVertical(lipgloss.Left, m.paneView(paneOpen, g.open), m.paneView(paneDone, g.done))
-		body = lipgloss.JoinHorizontal(lipgloss.Top, left, m.paneView(paneDetail, g.detail))
+		// A box with no room draws nothing, so it takes no line either and
+		// the boxes below it keep the place the geometry gave them.
+		var column []string
+		for p := range g.side {
+			if drawn := m.paneView(pane(p), g.side[p]); drawn != "" {
+				column = append(column, drawn)
+			}
+		}
+		body = lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.JoinVertical(lipgloss.Left, column...), m.paneView(paneDetail, g.detail))
 	} else {
 		body = m.paneView(m.focus, g.full)
 	}
@@ -110,41 +129,23 @@ func (m Model) box(p pane, x, y, w, h int) box {
 	return b
 }
 
-// tabsOf gives the tab names a pane shows in its title.
-func (m Model) tabsOf(p pane) []string {
-	switch p {
-	case paneDone:
-		return m.doneTabNames()
-	case paneDetail:
-		return nil
-	}
-	return tabNames[:]
-}
-
-// rowAt gives the row under a screen line, or -1 for the border, the title and
-// the space below the last row.
-func (b box) rowAt(y int) int {
-	off := y - b.y - 1
-	if off < 0 || off >= b.rows {
-		return -1
-	}
-	return b.first + off
-}
-
 // hit says what sits under a mouse cell: the pane, the row of it and the tab
 // in its title. A cell on none of them answers the focused pane with no row
 // and no tab, which leaves the screen where it was.
 func (m Model) hit(x, y int) (pane, int, int) {
 	g := m.geometry()
-	boxes := []struct {
+	type target struct {
 		p pane
 		b box
-	}{{paneOpen, g.open}, {paneDone, g.done}, {paneDetail, g.detail}}
-	if !g.wide {
-		boxes = []struct {
-			p pane
-			b box
-		}{{m.focus, g.full}}
+	}
+	var boxes []target
+	if g.wide {
+		for p := range g.side {
+			boxes = append(boxes, target{pane(p), g.side[p]})
+		}
+		boxes = append(boxes, target{paneDetail, g.detail})
+	} else {
+		boxes = []target{{m.focus, g.full}}
 	}
 	for _, e := range boxes {
 		if x < e.b.x || x >= e.b.x+e.b.w || y < e.b.y || y >= e.b.y+e.b.h {
@@ -160,6 +161,16 @@ func (m Model) hit(x, y int) (pane, int, int) {
 		return e.p, e.b.rowAt(y), -1
 	}
 	return m.focus, -1, -1
+}
+
+// rowAt gives the row under a screen line, or -1 for the border, the title and
+// the space below the last row.
+func (b box) rowAt(y int) int {
+	off := y - b.y - 1
+	if off < 0 || off >= b.rows {
+		return -1
+	}
+	return b.first + off
 }
 
 // paneView draws one pane: its border with the title inside the top line, the
@@ -236,7 +247,7 @@ func plainSegs(segs []segment) string {
 	return b.String()
 }
 
-// detailView gives the lines of pane [3] from the one its offset points at,
+// detailView gives the lines of the detail box from the one its offset points at,
 // so the body scrolls and the model never needs to know how long it is.
 func (m Model) detailView(w, first, h int) []string {
 	lines := m.detailLines(w)

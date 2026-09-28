@@ -79,8 +79,23 @@ func (m Model) workLines(it *board.Item, w int) []string {
 		return m.debtLines(it, w)
 	case board.KindPlan:
 		return m.taskLines(it, w)
+	case board.KindScratch:
+		return m.scratchLines(it, w)
 	}
 	return m.planLines(it, w)
+}
+
+// scratchLines are the specs that came out of an idea, one line each. An
+// idea is where a spec starts, so its detail names the specs it produced the
+// way a plan names the spec it carries.
+func (m Model) scratchLines(it *board.Item, w int) []string {
+	var out []string
+	for _, id := range it.Children {
+		if s := m.board.Get(id); s != nil {
+			out = append(out, workLine(s, false, w))
+		}
+	}
+	return out
 }
 
 // taskLines are the tasks of a plan, in file order.

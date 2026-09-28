@@ -8,39 +8,49 @@ import (
 )
 
 // geometry measures the screen. The left column is 30% of the width, held
-// between 28 and 48 columns, and below 60 columns only the focused pane is on
+// between 28 and 48 columns, and below 60 columns only the focused box is on
 // screen because two columns of a small terminal fit nothing.
 func (m Model) geometry() geom {
-	// The last line belongs to the status line, so the panes share the rest.
+	// The last line belongs to the status line, so the boxes share the rest.
 	// A terminal with fewer rows than that gets the rows it really has.
 	bodyH := max(0, m.height-1)
-	top, bottom := split(bodyH)
-	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48)}
-	rest := max(0, m.width-g.leftW)
-	g.open = m.box(paneOpen, 0, 0, g.leftW, top)
-	g.done = m.box(paneDone, 0, top, g.leftW, bottom)
-	// A pane of zero width is not on screen, which is how a narrow terminal
-	// leaves two of the three out.
-	g.detail = m.box(paneDetail, g.leftW, 0, rest, bodyH)
+	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(sidebar))}
+	y := 0
+	for p, h := range split(bodyH, len(sidebar)) {
+		g.side[p] = m.box(pane(p), 0, y, g.leftW, h)
+		y += h
+	}
+	// A box of zero width is not on screen, which is how a narrow terminal
+	// leaves all but the focused one out.
+	g.detail = m.box(paneDetail, g.leftW, 0, max(0, m.width-g.leftW), bodyH)
 	if g.wide {
 		return g
 	}
 	g.full = m.box(m.focus, 0, 0, m.width, bodyH)
-	// Only the focused pane is on screen now, so the other two are zero boxes
-	// and neither the view nor the mouse finds them.
-	g.open, g.done, g.detail = box{}, box{}, box{}
+	// Only the focused box is on screen now, so the others are zero boxes and
+	// neither the view nor the mouse finds them.
+	for p := range g.side {
+		g.side[p] = box{}
+	}
+	g.detail = box{}
 	return g
 }
 
-// split divides the height between the two left panes: about two thirds for
-// the open one, and never fewer than one row each. Both rows always add up to
-// h, so the left column ends exactly where the detail pane does.
-func split(h int) (int, int) {
-	if h < 2 {
-		return h, 0
+// split gives n boxes a share of h lines: the same number each, and the last
+// box whatever is left, so the column always ends exactly where the detail box
+// does. A screen too short to give a box its two border lines still splits
+// without losing a line.
+func split(h, n int) []int {
+	out := make([]int, n)
+	if h < 0 || n < 1 {
+		return out
 	}
-	top := clamp(h*2/3, 1, h-1)
-	return top, h - top
+	each := h / n
+	for p := range out[:n-1] {
+		out[p] = each
+	}
+	out[n-1] = h - each*(n-1)
+	return out
 }
 
 // paneTop draws the top line of a pane. The title sits inside the border,

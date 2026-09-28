@@ -9,18 +9,28 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// TestSplitAlwaysFillsTheHeight checks the two left panes never leave a gap
-// and never push each other off screen. Every height the terminal can hand us
-// goes through, including the tiny ones that have no room to divide.
+// TestSplitAlwaysFillsTheHeight checks the sidebar boxes never leave a gap and
+// never push each other off screen. Every height the terminal can hand us goes
+// through, including the tiny ones that have no room to divide.
 func TestSplitAlwaysFillsTheHeight(t *testing.T) {
 	for h := range 2 {
 		// A terminal with no room yet must not panic, only split badly.
-		split(h)
+		split(h, len(sidebar))
 	}
 	for h := 2; h <= 80; h++ {
-		top, bottom := split(h)
-		if top+bottom != h || top < 1 || bottom < 1 {
-			t.Errorf("split(%d) = %d, %d", h, top, bottom)
+		heights := split(h, len(sidebar))
+		sum := 0
+		for i, v := range heights {
+			if v < 0 {
+				t.Errorf("split(%d) box %d is %d", h, i, v)
+			}
+			if h >= 2*len(sidebar) && v < 2 {
+				t.Errorf("split(%d) box %d is %d, too short for its two walls", h, i, v)
+			}
+			sum += v
+		}
+		if sum != h {
+			t.Errorf("split(%d) = %v, which adds up to %d", h, heights, sum)
 		}
 	}
 }
@@ -44,8 +54,12 @@ func TestViewFitsEveryTerminalSize(t *testing.T) {
 				}
 			}
 			g := s.geometry()
-			if g.wide && g.open.h+g.done.h != g.detail.h {
-				t.Fatalf("%dx%d: left %d+%d, detail %d", w, h, g.open.h, g.done.h, g.detail.h)
+			left := 0
+			for _, b := range g.side {
+				left += b.h
+			}
+			if g.wide && left != g.detail.h {
+				t.Fatalf("%dx%d: left %d, detail %d", w, h, left, g.detail.h)
 			}
 		}
 	}
