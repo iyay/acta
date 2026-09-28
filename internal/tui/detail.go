@@ -54,14 +54,14 @@ func (m Model) detailLines(w int) []string {
 		if f.value == "" {
 			continue
 		}
-		lines = append(lines, truncate(fmt.Sprintf("%-*s: %s", width, f.label, f.value), w))
+		lines = append(lines, truncate(expandTabs(fmt.Sprintf("%-*s: %s", width, f.label, f.value)), w))
 	}
 	for _, p := range it.Problems {
-		lines = append(lines, truncate("! "+p, w))
+		lines = append(lines, truncate(expandTabs("! "+p), w))
 	}
 	lines = append(lines, faint.Render(strings.Repeat("─", max(1, w))))
 	lines = append(lines, m.workLines(it, w)...)
-	for _, ln := range strings.Split(m.render(it.Body, w), "\n") {
+	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
 		lines = append(lines, fit(ln, w))
 	}
 	return lines
@@ -103,7 +103,7 @@ func (m Model) planLines(parent *board.Item, w int) []string {
 		if it.Kind != board.KindPlan || it.SpecID != parent.ID {
 			continue
 		}
-		out = append(out, truncate(shortRef(it)+"  "+it.Title, w))
+		out = append(out, truncate(expandTabs(shortRef(it)+"  "+it.Title), w))
 		out = append(out, m.taskLines(it, w)...)
 	}
 	return out
@@ -144,7 +144,7 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 			case going:
 				mark, brush, going = dotGoing, accent, false
 			}
-			out = append(out, brush.Render(truncate(mark+" "+s.Text, w)))
+			out = append(out, brush.Render(truncate(expandTabs(mark+" "+s.Text), w)))
 		}
 	}
 	return out
@@ -171,7 +171,7 @@ func workLine(it *board.Item, on bool, w int) string {
 			text += " · " + it.Agent
 		}
 	}
-	return brush.Render(truncate(mark+" "+text, w))
+	return brush.Render(truncate(expandTabs(mark+" "+text), w))
 }
 
 // tasksLabel names the line that counts the work: a task counts its steps, so
@@ -217,4 +217,32 @@ func (m Model) fromText(it *board.Item) string {
 		return shortRef(p) + " · " + p.Title
 	}
 	return planID
+}
+
+// expandTabs turns every tab into spaces, so a line is as wide as the screen
+// will draw it. lipgloss counts a tab as nothing while the terminal draws it
+// up to the next stop of eight, and a line that comes out shorter than it
+// looks spills over the wall of its pane.
+func expandTabs(s string) string {
+	if !strings.Contains(s, "\t") {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	col := 0
+	for _, r := range s {
+		switch {
+		case r == '\n':
+			col = 0
+		case r == '\t':
+			spaces := 8 - col%8
+			b.WriteString(strings.Repeat(" ", spaces))
+			col += spaces
+			continue
+		default:
+			col += lipgloss.Width(string(r))
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
