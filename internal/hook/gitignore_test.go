@@ -59,7 +59,7 @@ func TestEnsureGitignoreOutsideGitWritesNothing(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if inGit, _ := gitTop(root); inGit {
+	if inGit, _ := repoTop(root); inGit {
 		t.Skipf("%s sits inside a git repo", root)
 	}
 	if err := EnsureGitignore(root, ".agents.json"); err != nil {
@@ -84,7 +84,7 @@ func gitRoot(t *testing.T) string {
 	return root
 }
 
-func gitTop(dir string) (bool, string) {
+func repoTop(dir string) (bool, string) {
 	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
 	return err == nil, strings.TrimSpace(string(out))
 }
@@ -141,5 +141,72 @@ func TestEnsureGitignoreRefusesALinkedGitignore(t *testing.T) {
 				t.Fatalf("link target changed: before %q (%v), after %q (%v)", before, beforeErr, after, afterErr)
 			}
 		})
+	}
+}
+
+func TestEnsureGitignoreRefusesARootLinkedOutTheRepo(t *testing.T) {
+	cases := map[string]func(t *testing.T) string{
+		"plain folder outside":   func(t *testing.T) string { return t.TempDir() },
+		"folder in another repo": func(t *testing.T) string { return gitRoot(t) },
+	}
+	for name, outside := range cases {
+		t.Run(name, func(t *testing.T) {
+			repo := gitRoot(t)
+			out := outside(t)
+			root := filepath.Join(repo, ".acta")
+			if err := os.Symlink(out, root); err != nil {
+				t.Fatal(err)
+			}
+			// Both checks report, so one run shows the two ways the write
+			// escapes: no error, and a file created outside the repo.
+			if err := EnsureGitignore(root, ".agents.json"); err == nil {
+				t.Error("want an error for a root linked out of the repo, got nil")
+			}
+			if _, err := os.Stat(filepath.Join(out, ".gitignore")); !os.IsNotExist(err) {
+				t.Errorf("wrote a .gitignore outside the repo (stat err %v)", err)
+			}
+		})
+	}
+}
+
+func TestEnsureGitignoreFollowsARootLinkedInsideTheRepo(t *testing.T) {
+	repo := gitRoot(t)
+	real := filepath.Join(repo, "docs", "planning")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(repo, ".acta")
+	if err := os.Symlink(real, root); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, filepath.Join(real, ".gitignore")); got != ".agents.json\n" {
+		t.Fatalf("gitignore = %q, want %q", got, ".agents.json\n")
+	}
+}
+
+func TestEnsureGitignoreWorksThroughALinkedParentFolder(t *testing.T) {
+	folder := gitRoot(t)
+	// gitRoot hands back the root folder, but the link has to point at the
+	// folder that holds .git, or the walk above it finds no repo at all.
+	inGit, top := repoTop(folder)
+	if !inGit {
+		t.Fatalf("no git repo above %s", folder)
+	}
+	link := filepath.Join(t.TempDir(), "via")
+	if err := os.Symlink(top, link); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(link, ".pm")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureGitignore(root, ".agents.json"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, filepath.Join(folder, ".gitignore")); got != ".agents.json\n" {
+		t.Fatalf("gitignore = %q, want %q", got, ".agents.json\n")
 	}
 }

@@ -15,13 +15,39 @@ import (
 // It writes nothing when the root folder is gone or when the folder is not in
 // a git repo, because an ignore line outside a repo means nothing.
 //
+// It also writes nothing when the root folder, after links are followed, is
+// outside the repo.
+//
 // It also writes nothing when .gitignore is a link.
 func EnsureGitignore(root, line string) error {
 	if fi, err := os.Stat(root); err != nil || !fi.IsDir() {
 		return nil
 	}
-	if !inGitRepo(root) {
+	// A root that is itself a link would lead the walk into the folder it
+	// points at, which may hold another repo's .git. Start from its parent
+	// so the repo found is the one the link sits in.
+	start := root
+	if fi, err := os.Lstat(root); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		start = filepath.Dir(root)
+	}
+	top, ok := gitTop(start)
+	if !ok {
 		return nil
+	}
+	// The walk above reads the path as written, so a root that is a link to
+	// a folder somewhere else still looks like it sits in this repo. Follow
+	// the links on both sides and make sure the real root is under the real
+	// repo folder, so the write can never land outside it.
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return err
+	}
+	realTop, err := filepath.EvalSymlinks(top)
+	if err != nil {
+		return err
+	}
+	if rel, err := filepath.Rel(realTop, realRoot); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("%s is outside the repo %s", root, top)
 	}
 	path := filepath.Join(root, ".gitignore")
 
@@ -55,16 +81,17 @@ func hasLine(text, line string) bool {
 	return false
 }
 
-// inGitRepo walks up from dir looking for .git. It is a file in a linked
-// worktree, so only its presence is checked, not that it is a folder.
-func inGitRepo(dir string) bool {
+// gitTop walks up from dir looking for .git and returns the folder that
+// holds it. .git is a file in a linked worktree, so only its presence is
+// checked, not that it is a folder.
+func gitTop(dir string) (string, bool) {
 	for {
 		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return true
+			return dir, true
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return false
+			return "", false
 		}
 		dir = parent
 	}

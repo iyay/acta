@@ -48,7 +48,7 @@ hash: vb12
 - Consumes: nothing new.
 - Produces: `EnsureGitignore(root, line string) error` keeps its signature. `gitTop(dir string) (string, bool)` replaces `inGitRepo` inside package `hook` (unexported, no other users).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/hook/gitignore_test.go` (reuse the file's `gitRoot` and `readFile` helpers):
 
@@ -113,12 +113,12 @@ func TestEnsureGitignoreWorksThroughALinkedParentFolder(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/hook/ -run 'TestEnsureGitignore(RefusesARootLinkedOutTheRepo|FollowsARootLinkedInsideTheRepo|WorksThroughALinkedParentFolder)' -v`
 Expected: `TestEnsureGitignoreRefusesARootLinkedOutTheRepo` FAILs in both sub-tests ("want an error ... got nil" and a `.gitignore` written outside). The other two already pass; they guard the in-repo shapes against the fix.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/hook/gitignore.go`, replace `inGitRepo` with `gitTop`:
 
@@ -173,12 +173,12 @@ In `EnsureGitignore`, replace the `if !inGitRepo(root) { return nil }` block wit
 
 Add one sentence to the doc comment above `EnsureGitignore`: "It also writes nothing when the root folder, after links are followed, is outside the repo."
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./...`
 Expected: PASS, including the old `TestEnsureGitignore*` tests and the doctor tests.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
