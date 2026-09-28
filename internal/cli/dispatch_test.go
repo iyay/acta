@@ -2,10 +2,12 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -237,5 +239,243 @@ func TestDispatchInitOutsideGitFails(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".acta", ".dispatch.json")); !os.IsNotExist(err) {
 		t.Fatalf("a record was written anyway: %v", err)
+	}
+}
+
+// fakeHerdr writes a stand-in herdr into a fresh temp folder and points PATH
+// at it, so a test can read back exactly what the command wanted to send.
+func fakeHerdr(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	script := "#!/bin/sh\n" +
+		"printf '%s\\n' \"$@\" >> \"$HERDR_LOG\"\n" +
+		"if [ \"${HERDR_EXIT:-0}\" != 0 ]; then echo \"herdr says no\" >&2; fi\n" +
+		"exit ${HERDR_EXIT:-0}\n"
+	if err := os.WriteFile(filepath.Join(dir, "herdr"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("HERDR_LOG", filepath.Join(dir, "herdr.log"))
+	t.Setenv("HERDR_EXIT", "0")
+	t.Setenv("HERDR_PANE_ID", "wM:p9")
+	return filepath.Join(dir, "herdr.log")
+}
+
+func runReplyBack(t *testing.T, dir string, args ...string) (int, string, string) {
+	t.Helper()
+	t.Chdir(dir)
+	var stdout, stderr strings.Builder
+	code := Run(append([]string{"reply-back"}, args...), nil, false, &stdout, &stderr)
+	return code, stdout.String(), stderr.String()
+}
+
+// initRecord runs dispatch init, so reply-back starts from a record the
+// orchestrator really wrote.
+func initRecord(t *testing.T, dir string) storedRecord {
+	t.Helper()
+	code, _, stderr := runDispatchInit(t, dir, "--pane", "wM:pH", "--plan", ".acta/plans/2026-09-29-p.md")
+	if code != exitOK {
+		t.Fatalf("dispatch init exit %d, stderr %q", code, stderr)
+	}
+	return readRecord(t, dir)
+}
+
+// tickAllTasks ticks both boxes in the plan file and commits, so the board
+// reads the plan as done and head moves past base. It returns the new head.
+func tickAllTasks(t *testing.T, dir string) string {
+	t.Helper()
+	plan := filepath.Join(dir, ".acta", "plans", "2026-09-29-p.md")
+	if err := os.WriteFile(plan, []byte(strings.ReplaceAll(dispatchPlan, "- [ ]", "- [x]")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "done"}} {
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	return dispatchGitOut(t, dir, "rev-parse", "HEAD")
+}
+
+// wantNoSend fails when the herdr log exists, because every refusing path must
+// leave the orchestrator pane alone.
+func wantNoSend(t *testing.T, log string) {
+	t.Helper()
+	if _, err := os.Stat(log); !os.IsNotExist(err) {
+		t.Fatalf("herdr was called anyway: %v, log %q", err, read(t, log))
+	}
+}
+
+func herdrLog(t *testing.T, log string) []string {
+	t.Helper()
+	return strings.Split(strings.TrimRight(read(t, log), "\n"), "\n")
+}
+
+func TestReplyBackRefusesOpenTasks(t *testing.T) {
+	dir := dispatchRepo(t)
+	log := fakeHerdr(t)
+	initRecord(t, dir)
+	code, _, stderr := runReplyBack(t, dir)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	for _, want := range []string{"plans/2026-09-29-p#task-1", "#task-2"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr %q does not name %s", stderr, want)
+		}
+	}
+	wantNoSend(t, log)
+}
+
+func TestReplyBackSendsReviewWhenDone(t *testing.T) {
+	dir := dispatchRepo(t)
+	log := fakeHerdr(t)
+	r := initRecord(t, dir)
+	head := tickAllTasks(t, dir)
+	code, stdout, stderr := runReplyBack(t, dir)
+	if code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	want := []string{"agent", "prompt", "wM:pH", fmt.Sprintf(
+		"/acta:review %s..%s - plan .acta/plans/2026-09-29-p.md, round main, pane wM:p9", r.Base, head)}
+	if got := herdrLog(t, log); !slices.Equal(got, want) {
+		t.Fatalf("herdr got %q, want %q", got, want)
+	}
+	if !strings.Contains(stdout, "sent to wM:pH") {
+		t.Errorf("stdout %q does not say what was sent", stdout)
+	}
+}
+
+func TestReplyBackBlockedSendsProse(t *testing.T) {
+	dir := dispatchRepo(t)
+	log := fakeHerdr(t)
+	initRecord(t, dir)
+	code, _, stderr := runReplyBack(t, dir, "--blocked", "tests need a db")
+	if code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	got := herdrLog(t, log)
+	if len(got) != 4 || got[3] != "main blocked: tests need a db - pane wM:p9" {
+		t.Fatalf("herdr got %q, want the blocked prose", got)
+	}
+}
+
+// replyRecordJSON builds a record body by hand, so a test can hand reply-back
+// a record the orchestrator would never write.
+func replyRecordJSON(pane, base, plan string) string {
+	return fmt.Sprintf(`{"pane":%q,"base":%q,"plan":%q,"round":"main"}`, pane, base, plan)
+}
+
+func TestReplyBackRejectsBadRecords(t *testing.T) {
+	full := strings.Repeat("a", 40)
+	cases := []struct {
+		name string
+		gone bool
+		body string
+	}{
+		{"no record", true, ""},
+		{"broken json", false, "{"},
+		{"pane with shell text", false, replyRecordJSON("wM:pH; rm", full, ".acta/plans/2026-09-29-p.md")},
+		{"base too short", false, replyRecordJSON("wM:pH", "1234567", ".acta/plans/2026-09-29-p.md")},
+		{"plan outside the root", false, replyRecordJSON("wM:pH", full, "../x.md")},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := dispatchRepo(t)
+			log := fakeHerdr(t)
+			initRecord(t, dir)
+			path := filepath.Join(dir, ".acta", ".dispatch.json")
+			if c.gone {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.WriteFile(path, []byte(c.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			code, _, stderr := runReplyBack(t, dir)
+			if code != exitBadInput {
+				t.Fatalf("exit %d, want %d", code, exitBadInput)
+			}
+			if strings.TrimSpace(stderr) == "" {
+				t.Error("no line on stderr")
+			}
+			wantNoSend(t, log)
+		})
+	}
+}
+
+func TestReplyBackEmptyBlockedFails(t *testing.T) {
+	dir := dispatchRepo(t)
+	log := fakeHerdr(t)
+	initRecord(t, dir)
+	tickAllTasks(t, dir)
+	code, _, stderr := runReplyBack(t, dir, "--blocked", "")
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	if strings.TrimSpace(stderr) == "" {
+		t.Error("no line on stderr")
+	}
+	wantNoSend(t, log)
+}
+
+func TestReplyBackHerdrFailureExits3(t *testing.T) {
+	t.Run("herdr exits non-zero", func(t *testing.T) {
+		dir := dispatchRepo(t)
+		fakeHerdr(t)
+		initRecord(t, dir)
+		tickAllTasks(t, dir)
+		t.Setenv("HERDR_EXIT", "2")
+		code, _, stderr := runReplyBack(t, dir)
+		if code != exitOther {
+			t.Fatalf("exit %d, want %d", code, exitOther)
+		}
+		if !strings.Contains(stderr, "herdr says no") {
+			t.Errorf("stderr %q does not show what herdr said", stderr)
+		}
+	})
+	t.Run("herdr missing from PATH", func(t *testing.T) {
+		dir := dispatchRepo(t)
+		fakeHerdr(t)
+		initRecord(t, dir)
+		tickAllTasks(t, dir)
+		t.Setenv("PATH", t.TempDir())
+		if code, _, _ := runReplyBack(t, dir); code != exitOther {
+			t.Fatalf("exit %d, want %d", code, exitOther)
+		}
+	})
+}
+
+// TestReplyBackOwnPaneFallsBackToUnknown covers the two pane values that are
+// not a pane at all: a missing one and one carrying shell text.
+func TestReplyBackOwnPaneFallsBackToUnknown(t *testing.T) {
+	cases := []struct {
+		name string
+		pane string
+		none bool
+	}{
+		{"pane not set", "", true},
+		{"pane with shell text", "wM:pH; rm", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := dispatchRepo(t)
+			log := fakeHerdr(t)
+			initRecord(t, dir)
+			tickAllTasks(t, dir)
+			// t.Setenv first, so the test cleanup still restores the real value.
+			t.Setenv("HERDR_PANE_ID", c.pane)
+			if c.none {
+				if err := os.Unsetenv("HERDR_PANE_ID"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if code, _, stderr := runReplyBack(t, dir); code != exitOK {
+				t.Fatalf("exit %d, stderr %q", code, stderr)
+			}
+			got := herdrLog(t, log)
+			if len(got) != 4 || !strings.HasSuffix(got[3], "pane unknown") {
+				t.Fatalf("herdr got %q, want the last line to end in pane unknown", got)
+			}
+		})
 	}
 }
