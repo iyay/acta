@@ -410,6 +410,29 @@ func TestDoctorFixWritesNothingWhenRootLeavesTheRepo(t *testing.T) {
 	}
 }
 
+// A .acta folder that is a link out of the repo is a way to write anywhere
+// on the disk, so --fix must write nothing and the check must say so.
+func TestDoctorFixWritesNothingWhenActaRootIsALinkOut(t *testing.T) {
+	e := env(t)
+	outside := filepath.Join(filepath.Dir(e.RepoRoot), "outside")
+	if err := os.MkdirAll(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link(t, e.ActaRoot, filepath.Join("..", "outside"))
+	paths, err := Fix(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("paths %v", paths)
+	}
+	// snapshot lists the folder itself as ./, so any other entry is a write.
+	if got := snapshot(t, outside); len(got) > 1 {
+		t.Fatalf("Fix wrote outside the repo: %v", got)
+	}
+	wantLevel(t, byName(Run(e), "repo"), Fail, "root")
+}
+
 // A config file that does not parse is a broken setup, not a skipped
 // check, so the repo line has to carry the error and fail.
 func TestDoctorRepoFailsOnBrokenConfig(t *testing.T) {

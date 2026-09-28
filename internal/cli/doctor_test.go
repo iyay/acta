@@ -386,3 +386,108 @@ func TestDoctorCLIKnownFileMissingSkipsConflicts(t *testing.T) {
 		t.Fatalf("stdout %q does not skip the conflicts check", stdout.String())
 	}
 }
+
+// root: in .acta.yaml can name a link that points out of the repo. --fix
+// must write nothing through it, and the report must fail.
+func TestDoctorCLIFixWritesNothingWhenRootIsALinkOut(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	outside := filepath.Join(filepath.Dir(dir), "outside")
+	if err := os.MkdirAll(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "outside"), filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("root: link\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if got, err := os.ReadDir(outside); err != nil {
+		t.Fatal(err)
+	} else if len(got) != 0 {
+		t.Fatalf("--fix wrote %v outside the repo", got)
+	}
+	if !strings.Contains(stdout.String(), "fail repo:") {
+		t.Fatalf("stdout %q has no fail repo line", stdout.String())
+	}
+}
+
+// A .acta/.gitignore that is a link to a file outside the repo must not be
+// read as the repo's own ignore file, and --fix must leave that file with the
+// bytes it had.
+func TestDoctorCLIFixLeavesAGitignoreLinkAlone(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	victim := filepath.Join(t.TempDir(), "victim.conf")
+	if err := os.WriteFile(victim, []byte("notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".acta"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(victim, filepath.Join(dir, ".acta", ".gitignore")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if !strings.Contains(stdout.String(), "fail repo:") {
+		t.Fatalf("stdout %q has no fail repo line", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "fix: acta doctor --fix") {
+		t.Fatalf("stdout %q sends the user to --fix, which cannot follow the link", stdout.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	inDir(t, dir, func() {
+		if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+			t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	raw, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "notes\n" {
+		t.Fatalf("--fix wrote through the link: %q", raw)
+	}
+}
+
+// A repo reached through a symlinked path is still the same repo, so the
+// root spelled with the link must pass the check and --fix must commit.
+func TestDoctorCLIFixWorksThroughASymlinkedRepoPath(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	via := filepath.Join(t.TempDir(), "repo-link")
+	if err := os.Symlink(dir, via); err != nil {
+		t.Fatal(err)
+	}
+	// git answers with the real path, the root keeps the link, so the two
+	// spell the same folder in two ways.
+	t.Setenv("ACTA_ROOT", filepath.Join(via, ".acta"))
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, via, func() {
+		if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit %d want 0, stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if !strings.Contains(stdout.String(), "ok repo:") {
+		t.Fatalf("stdout %q does not pass the repo check", stdout.String())
+	}
+	if got := commitCount(t, dir); got != before+1 {
+		t.Fatalf("commits %d, want %d: --fix made no commit", got, before+1)
+	}
+}
