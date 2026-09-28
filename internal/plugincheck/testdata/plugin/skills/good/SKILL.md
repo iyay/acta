@@ -1,6 +1,6 @@
 ---
 name: good
-description: A fixture skill that passes every check.
+description: "acta: A fixture skill that passes every check."
 ---
 # Good
 

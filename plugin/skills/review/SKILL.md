@@ -1,6 +1,6 @@
 ---
 name: review
-description: Use once, when every task of a plan is committed, and on each fix round after that. Dispatches two read-only reviewers in parallel (Spec axis and Standards axis) over an explicit git range, sorts every finding into BLOCKER or NOTE, and stops after three rounds. Also covers how to receive findings.
+description: "acta: Use once, when every task of a plan is committed, and on each fix round after that. Dispatches two read-only reviewers in parallel (Spec axis and Standards axis) over an explicit git range, sorts every finding into BLOCKER or NOTE, and stops after three rounds. Also covers how to receive findings."
 ---
 
 # Review

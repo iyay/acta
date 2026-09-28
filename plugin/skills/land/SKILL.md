@@ -1,6 +1,6 @@
 ---
 name: land
-description: Use when the review is CLEAN and every task is committed, and before claiming any work is done, fixed or passing. Runs the full gates with the output shown, checks the branch for stray files, merges --no-ff into the recorded parent without asking, removes the worktree and branch, and never pushes.
+description: "acta: Use when the review is CLEAN and every task is committed, and before claiming any work is done, fixed or passing. Runs the full gates with the output shown, checks the branch for stray files, merges --no-ff into the recorded parent without asking, removes the worktree and branch, and never pushes."
 ---
 
 # Land

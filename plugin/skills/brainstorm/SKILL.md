@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Use before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .acta/specs/. No code until the user says yes.
+description: "acta: Use before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .acta/specs/. No code until the user says yes."
 ---
 
 # Brainstorming Ideas Into Designs

@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Use for every code change - feature, bug fix, refactor, config - before writing implementation code. Red, green, refactor - a failing test first, watched failing, then the minimum code, watched passing.
+description: "acta: Use for every code change - feature, bug fix, refactor, config - before writing implementation code. Red, green, refactor - a failing test first, watched failing, then the minimum code, watched passing."
 ---
 
 # Test-Driven Development (TDD)

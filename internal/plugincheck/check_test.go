@@ -1,6 +1,8 @@
 package plugincheck
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -37,5 +39,38 @@ func TestSkillProblemsNestedAndMissing(t *testing.T) {
 	}
 	if p := joined(SkillProblems("testdata/plugin", SkillRule{Name: "absent", MaxLines: 100})); !strings.Contains(p, "missing skills/absent/SKILL.md") {
 		t.Errorf("missing skill not caught:\n%s", p)
+	}
+}
+
+func TestSkillDescriptionPrefix(t *testing.T) {
+	for _, c := range []struct {
+		name, frontmatter, want string
+	}{
+		{"no prefix", "---\nname: x\ndescription: Use when...\n---\n", `description must start with "acta: "`},
+		{"no space", "---\nname: x\ndescription: \"acta:Use when...\"\n---\n", `description must start with "acta: "`},
+		{"capital", "---\nname: x\ndescription: \"Acta: Use when...\"\n---\n", `description must start with "acta: "`},
+		{"middle", "---\nname: x\ndescription: \"Use acta: when...\"\n---\n", `description must start with "acta: "`},
+		{"good", "---\nname: x\ndescription: \"acta: Use when...\"\n---\n", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, "skills", "x")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(c.frontmatter+"\n# x\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p := joined(SkillProblems(root, SkillRule{Name: "x", MaxLines: 100}))
+			if c.want == "" {
+				if p != "" {
+					t.Errorf("want no problem, got:\n%s", p)
+				}
+				return
+			}
+			if p != c.want {
+				t.Errorf("want problem %q, got %q", c.want, p)
+			}
+		})
 	}
 }

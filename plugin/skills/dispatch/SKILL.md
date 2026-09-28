@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Use when acta:build runs with the dispatch executor, or the user asks to hand an approved plan to omp in another tab. Provisions the worktree and a dedicated herdr tab, hands off the plan's tasks through a short brief and /goal, then verifies from git, reviews with acta:review, routes BLOCKERs back as one fix task per round (three rounds at most), lands with acta:land, and closes the tab. Refuses without herdr or without an approved plan.
+description: "acta: Use when acta:build runs with the dispatch executor, or the user asks to hand an approved plan to omp in another tab. Provisions the worktree and a dedicated herdr tab, hands off the plan's tasks through a short brief and /goal, then verifies from git, reviews with acta:review, routes BLOCKERs back as one fix task per round (three rounds at most), lands with acta:land, and closes the tab. Refuses without herdr or without an approved plan."
 ---
 
 # dispatch — approved work in another pane

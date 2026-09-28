@@ -45,6 +45,9 @@ func SkillProblems(root string, r SkillRule) []string {
 	if strings.TrimSpace(desc) == "" {
 		probs = append(probs, "description is empty")
 	}
+	if !strings.HasPrefix(desc, "acta: ") {
+		probs = append(probs, `description must start with "acta: "`)
+	}
 	if len(desc) > 1024 {
 		probs = append(probs, "description is longer than 1024 characters")
 	}

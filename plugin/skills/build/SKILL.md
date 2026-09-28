@@ -1,6 +1,6 @@
 ---
 name: build
-description: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land.
+description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build

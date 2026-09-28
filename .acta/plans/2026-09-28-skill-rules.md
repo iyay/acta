@@ -61,7 +61,7 @@ hash: hsni
 **Interfaces:**
 - Produces: `voice.Voice.BuildExecutor string` (yaml `build_executor,omitempty`), `voice.Voice.SubagentModels string` (yaml `subagent_models,omitempty`). Flags `--executor`, `--subagent-models`, `--clear-subagent-models`. `voice show` prints `build_executor: <x>` and `subagent_models: <x>` lines only when set; `--json` always has both keys.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // internal/voice/voice_test.go
@@ -134,12 +134,12 @@ func TestVoiceSetBadExecutor(t *testing.T) {
 
 If `cli_test.go` has no `mustRun` / `runCode` helpers, add them at the top of the test file, calling `Run(args, strings.NewReader(""), false, &out, &errb)`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/voice/ ./internal/cli/ -run 'Executor|Models' -v`
 Expected: FAIL (unknown field `BuildExecutor`, unknown flag `-executor`).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```go
 // voice.go, in Voice
@@ -163,12 +163,12 @@ Expected: FAIL (unknown field `BuildExecutor`, unknown flag `-executor`).
 
 In `internal/cli/voice.go`: add the three flags to `set`, include them in the "nothing to set" guard, apply them after the tone lines (`--clear-subagent-models` before `--subagent-models`), print the two lines in `show` when non-empty, add both keys to the JSON map, and extend `voiceUsage` with `[--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models]`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/voice/ ./internal/cli/ -v`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -190,7 +190,7 @@ git commit -m "feat(voice): add build_executor and subagent_models"
 **Interfaces:**
 - Produces: problem text exactly `description must start with "acta: "`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add cases to the existing table in `check_test.go` (it builds skill folders in a temp dir). One case per form:
 
@@ -204,12 +204,12 @@ Add cases to the existing table in `check_test.go` (it builds skill folders in a
 
 Match the table's real field names when adding them.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/plugincheck/ -run TestSkillProblems -v` (use the real test name in `check_test.go`)
 Expected: FAIL, the four bad cases report no problem.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```go
 	if !strings.HasPrefix(desc, "acta: ") {
@@ -219,12 +219,12 @@ Expected: FAIL, the four bad cases report no problem.
 
 Run `go test ./internal/plugincheck/` now: every `skill_*_test.go` fails on the real skills. Then edit each of the 11 `SKILL.md` descriptions to start with `acta: ` (quote the value when it holds `: `). Change nothing else in those files.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ -v`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...

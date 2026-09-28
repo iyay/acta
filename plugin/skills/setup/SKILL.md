@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Use when the session rules say the voice is not set up yet, or when the user asks to change the chat language, the style (adhd or plain), the tone, or the language used for files in the repo.
+description: "acta: Use when the session rules say the voice is not set up yet, or when the user asks to change the chat language, the style (adhd or plain), the tone, or the language used for files in the repo."
 ---
 
 # Setup
