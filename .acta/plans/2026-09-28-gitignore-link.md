@@ -46,7 +46,7 @@ hash: y7ij
 - Consumes: nothing new.
 - Produces: `EnsureGitignore(root, line string) error` keeps its signature. When `<root>/.gitignore` is a symlink it writes nothing and returns a non-nil error whose text names the path and says it is a link.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/hook/gitignore_test.go` (reuse the file's `gitRoot` and `readFile` helpers):
 
@@ -92,12 +92,12 @@ func TestEnsureGitignoreRefusesALinkedGitignore(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/hook/ -run TestEnsureGitignoreRefusesALinkedGitignore -v`
 Expected: FAIL, "want an error for a linked .gitignore, got nil" or "link target changed" in each sub-test.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/hook/gitignore.go`, right after `path := filepath.Join(root, ".gitignore")`, add (and add `"fmt"` to the imports):
 
@@ -112,12 +112,12 @@ In `internal/hook/gitignore.go`, right after `path := filepath.Join(root, ".giti
 
 Also add one sentence to the doc comment above `EnsureGitignore`: "It also writes nothing when .gitignore is a link."
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./...`
 Expected: PASS, including the four existing `TestEnsureGitignore*` tests and the doctor tests.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...

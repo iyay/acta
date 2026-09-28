@@ -127,8 +127,14 @@ func TestEnsureGitignoreRefusesALinkedGitignore(t *testing.T) {
 			if err := os.Symlink(dst, filepath.Join(root, ".gitignore")); err != nil {
 				t.Fatal(err)
 			}
-			if err := EnsureGitignore(root, ".agents.json"); err == nil {
+			err := EnsureGitignore(root, ".agents.json")
+			if err == nil {
 				t.Fatal("want an error for a linked .gitignore, got nil")
+			}
+			// The message is the only thing the user ever sees here, so it has
+			// to name the file and say it is a link.
+			if !strings.Contains(err.Error(), "is a link") || !strings.Contains(err.Error(), filepath.Join(root, ".gitignore")) {
+				t.Fatalf("error does not name the linked path: %v", err)
 			}
 			after, afterErr := os.ReadFile(dst)
 			if os.IsNotExist(beforeErr) != os.IsNotExist(afterErr) || string(before) != string(after) {
