@@ -177,9 +177,14 @@ func TestNoticeAndReadme(t *testing.T) {
 		}
 	}
 	readme := readFile(t, "README.md")
-	for _, want := range []string{"## Install", "## Voice", "## Other workflow plugins", "## Moving rules out of CLAUDE.md", "acta voice set"} {
+	for _, want := range []string{"## Install", "## First run", "## Voice", "## Other workflow plugins",
+		"## Moving rules out of CLAUDE.md", "acta voice set", "acta doctor", "acta doctor --fix", "/acta:setup",
+		"acta: ", "only between acta markers"} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("README.md missing %q", want)
 		}
+	}
+	if strings.Contains(strings.ToLower(readme), "never edits your claude.md") {
+		t.Error("README.md still promises it never edits CLAUDE.md")
 	}
 }
