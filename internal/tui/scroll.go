@@ -45,10 +45,14 @@ func scrollbar(total, visible, first, h int) []string {
 	return bar
 }
 
-// count is what a pane writes in its bottom border: the line on screen now
-// out of all the lines the pane holds.
-func count(first, total int) string {
-	return fmt.Sprintf("%d/%d", first+1, total)
+// itemCount is what a sidebar pane writes in its bottom border: the item the
+// cursor is on, counting from one, out of all the items the pane holds. A
+// pane that holds nothing has no item to count, so it reads 0 of 0.
+func itemCount(selected, total int) string {
+	if total == 0 {
+		return "0 of 0"
+	}
+	return fmt.Sprintf("%d of %d", selected, total)
 }
 
 // boxOf measures one box the way geometry lays them out, also on a narrow

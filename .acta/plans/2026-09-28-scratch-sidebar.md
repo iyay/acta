@@ -65,7 +65,7 @@ hash: qgef
 **Interfaces:**
 - Produces: `board.KindScratch Kind = "scratch"`; `board.Allowed(board.KindScratch)` returns `[]string{"raw", "brainstorming", "dropped"}` (the settable ones; `specced` is left out on purpose so no UI or CLI offers it); `board.Closed("specced") == true`; `board.Prefix(board.KindScratch, false) == "SCRATCH"`; `config.Dirs.Scratch string` (yaml `scratch`); a scratch `*Item` has `Children` holding the linked spec IDs.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // internal/board/scratch_test.go
@@ -138,12 +138,12 @@ func TestScratchStatusesAndPrefix(t *testing.T) {
 
 Write the two stub tests in full: each builds its own temp root with files (copy the pattern the board tests use for one-off roots) and asserts the stated result. Add in `config_test.go` a test that `.acta.yaml` with `dirs: {scratch: ideas}` gives `cfg.Dirs.Scratch == "ideas"` and the default is `"scratch"`. Add in `write/ids_test.go` a test that `acta id` over a root with two new scratch files gives them `SCRATCH-1` and `SCRATCH-2`, and leaves existing SPEC/BUG numbers alone.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/board/ ./internal/config/ ./internal/write/ -run 'Scratch|Dropped|ParentNotFound' -v`
 Expected: FAIL, `undefined: KindScratch` and missing `Dirs.Scratch`.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 ```go
 // board.go
@@ -212,12 +212,12 @@ func scratchStatus(written string, linked bool) (status, source string) {
 
 In `derive`, handle `KindScratch` before the generic `parentStatus` path (the way the debt block is special-cased), calling `scratchStatus(it.fmStatus, len(it.Children) > 0)`. Call `b.linkScratch()` right after the debt link step and before `derive`. Match the real names of the frontmatter holder and the configured scratch dir; the snippet shows intent. A written status outside the scratch list gets the same problem other kinds get for a bad status.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/board/ ./internal/config/ ./internal/write/ -v`
 Expected: PASS, including every existing test.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -240,7 +240,7 @@ git commit -m "feat(board): scratch kind with specced derived from a spec's pare
 - Consumes: `board.KindScratch`, `config.Dirs.Scratch`, `scanIDs` seed `SCRATCH` (Task 1); `finish`, `dirtyBefore`, `Outcome`, `bad` in `ops.go`.
 - Produces: `write.NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, error)`; `write.AppendScratch(cfg config.Config, b *board.Board, id string, text []byte) (Outcome, error)`; CLI `acta scratch new <slug> [--title T] < body.md` and `acta scratch add <SCRATCH-n> < text.md`, both printing the item's short ID and path on success, exit code `exitBadInput` on bad input.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // internal/write/scratch_test.go
@@ -316,12 +316,12 @@ func TestSetValueRefusesSpecced(t *testing.T) {
 
 Write every stub test in full. In `internal/cli/cli_test.go`, add one test per command that runs the CLI entry point with stdin, in a temp repo, and checks the exit code, the printed ID and one bad-input case (`acta scratch` with no subcommand prints a usage line naming `scratch new` and `scratch add`).
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/write/ ./internal/cli/ -run 'Scratch|Specced' -v`
 Expected: FAIL, `undefined: NewScratch`.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 `NewScratch` follows `NewBug`: build `cfg.Root/<acta root>/<Dirs.Scratch>/<date>-<slug>.md` with the same slug check and exists check as `bugPath` (share the check, do not copy it), refuse `strings.TrimSpace(body) == ""` with `bad("scratch body is empty")` before touching disk, write frontmatter `id`, `hash`, `title` (slug when empty), `status: raw`, `created: <date>`, then the body exactly, then `finish(cfg, path, "acta: new scratch "+stem, dirty)`.
 
@@ -351,12 +351,12 @@ case "scratch":
 
 and add `scratch new` and `scratch add` to the unknown-command message. Both commands read stdin only; no editor path.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/write/ ./internal/cli/ -v`
 Expected: PASS.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -420,7 +420,7 @@ const (
 
   `pane` stays an `int` type; `paneDetail` becomes `pane(len(sidebar))`. Per-pane state (selected ID, index, tab, scroll offset) becomes slices sized from `sidebar`, with the detail offset last. Keys: `"1"`..`"5"` focus `pane(k-'1')`, `"0"` focuses `paneDetail`, `tab`/`shift+tab` cycle `len(sidebar)+1` boxes. The Done pane follows `m.last` (the last sidebar pane with focus, never Done or detail) and that pane's current tab; when `m.last == paneActive`, Done lists every closed item with no tabs, in today's closed order. Active rows are every non-legacy item where `inProgress(it)` holds, in today's in-progress order, no tabs. `inProgress` also returns true for `it.Kind == board.KindScratch && it.Status == "brainstorming"`. The in-progress divider row (`dividerRowID`) and its code are removed. Pane titles are `[n] <title>` with the tab names drawn the way `tabsOf` draws them today. `helpLines` lists `1-5 panes · 0 detail`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // internal/tui/sidebar_test.go
@@ -487,21 +487,21 @@ func TestNoDividerRow(t *testing.T) {
 
 Write every stub test in full against the real fixture IDs.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'Number|TabCycles|Sidebar|Active|DoneFollows|NoDivider' -v`
 Expected: FAIL (focus for key `4` does not move; `[1]─Active` missing).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 Move the tab tables into `sidebar.go` as shown in Interfaces. Replace every `[5]`/`[3]` array and every `%3` with values sized from `sidebar`. Make `geometry` stack `len(sidebar)` boxes of equal height in the left column (the last box takes the leftover lines so the column always fills the height), keep detail on the right, and keep the narrow-terminal path showing only the focused box. `boxOf` indexes the new box slice. Remove the divider row code. Update `helpLines`. A scratch item's detail shows its linked specs through the same children list the detail pane already draws; add a test that the used fixture item's detail names `SPEC-` of the linked spec. Then run `grep -nE '%3|\[3\]|\[5\]' internal/tui/*.go` and clear every hit that counts panes or tabs.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS, including every existing tui test after its key updates.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -524,7 +524,7 @@ git commit -m "feat(tui): five-pane sidebar with Active and Scratchpad"
 - Consumes: `sidebar`, `paneDetail`, per-pane state from Task 3.
 - Produces: `func itemCount(selected, total int) string` returning `"<selected> of <total>"` with `selected` 1-based, and `"0 of 0"` when `total == 0`; Model field `expanded int` (`-1` when none); `func (m Model) leftHeights(h int) []int` returning one height per sidebar pane.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestItemCount(t *testing.T) {
@@ -586,21 +586,21 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 
 The title-only fallback below `3*others+3` lines is how "shrink to their title bar" reads in code; if the frame needs 2 lines for a title-only box on this layout, use that value and state it in the test name.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'ItemCount|LeftHeights|ZToggles|Counter' -v`
 Expected: FAIL, `undefined: itemCount`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 Add `expanded` to Model, starting at `-1`. `z` on a sidebar pane toggles `m.expanded` between that pane and `-1`; `z` on detail does nothing; `focusPane` sets `m.expanded = -1` whenever the focus moves to another box. `leftHeights` gives equal shares when `expanded < 0` (the last pane takes the leftover), else 3 lines for each other pane and the rest for the expanded one, or 1 line each below the threshold. `geometry` uses `leftHeights`. Delete `count` and its call; sidebar panes pass `itemCount(selectedIndex+1, len(rows))` (or `0, 0`) as the foot, and `paneBottom` draws it at the right end of the bottom border. Detail passes no foot. Add `z expand` to `helpLines`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -623,12 +623,12 @@ git commit -m "feat(tui): z expands a sidebar pane, counter shows selected of to
 
 The orchestrator puts six body files in the brief (they come from agent memory, outside the repo). Slugs, in this order: `newest-first-sort`, `themes`, `drag-select-copy`, `jev-routing-spike`, `skill-rules-spec`, `harness-spec`.
 
-- [ ] **Step 1: Build the CLI from the worktree**
+- [x] **Step 1: Build the CLI from the worktree**
 
 Run: `go build -o /tmp/acta-scratch-sidebar ./cmd/acta`
 Expected: exit 0.
 
-- [ ] **Step 2: File each idea**
+- [x] **Step 2: File each idea**
 
 ```bash
 for s in newest-first-sort themes drag-select-copy jev-routing-spike skill-rules-spec harness-spec; do
@@ -638,11 +638,11 @@ done
 
 Expected: six lines, each with a SCRATCH id; `git log --oneline -6` shows six `acta: new scratch ...` commits.
 
-- [ ] **Step 3: Check**
+- [x] **Step 3: Check**
 
 Run: `/tmp/acta-scratch-sidebar list --json` and confirm six scratch items with status `raw`; `git status --porcelain` prints nothing; `go test ./...` passes.
 
-- [ ] **Step 4: Report the IDs**
+- [x] **Step 4: Report the IDs**
 
 Reply with the slug to SCRATCH id list, so the orchestrator can point the memory note at them.
 
@@ -661,7 +661,7 @@ Fixes `.acta/bugs/2026-09-28-detail-tabs-break-frame.md`. When this plan lands, 
 **Interfaces:**
 - Produces: `func expandTabs(s string) string` in `detail.go`: each `\t` becomes spaces up to the next column that is a multiple of 8, counting columns with `lipgloss.Width` of the text before it on the same line.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestExpandTabsToNextStop(t *testing.T) {
@@ -692,14 +692,97 @@ func TestDetailWithTabsFitsThePane(t *testing.T) {
 
 Write the second test in full with a temp fixture holding a plan with tab-indented code.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'ExpandTabs|DetailWithTabs' -v`
 Expected: FAIL, `undefined: expandTabs`.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 Write `expandTabs` and call it once on the raw body text (and any other detail text path the verify list finds) before it is rendered and wrapped, so every later width count sees spaces.
+
+- [x] **Step 4: Run the tests to see them pass**
+
+Run: `go test ./internal/tui/ -v`
+Expected: PASS.
+
+- [x] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/tui/detail.go internal/tui/detail_test.go
+git commit -m "fix(tui): expand tabs in the detail pane so lines fit"
+```
+
+---
+
+## Added tasks (approved by the user in chat on 2026-09-28, Bounded)
+
+Waves: wave 5 = Task 7, wave 6 = Task 8 (both touch `internal/tui/view.go`).
+
+### Task 7: Scrollbar thumb on the right border
+
+**Files:**
+- Modify: `internal/tui/scroll.go` (`scrollbar`), `internal/tui/view.go` (`paneView`, where `scrollbar(total, b.inner, first, b.inner)` is called), `internal/tui/frame.go` (right border drawing)
+- Test: `internal/tui/scroll_test.go`, `internal/tui/view_test.go`
+
+**verify:** No pane ever spends an inner column on a scrollbar, and the thumb is only ever drawn on the pane's own right border line. For every pane (all five sidebar panes and detail), at sizes 80x30 and 160x50, scrolled to top, middle and end, and with content that fits (no thumb at all): the last cell of every body row is the border cell; rows where the thumb sits show `┃` in the pane's border color (active color when focused, dim border color when not); every other border row shows the normal `│`; no `░` or `█` appears anywhere; the inner width equals the full pane width minus the two border columns. List every pane × size × position checked and what it gave.
+
+**Interfaces:**
+- Consumes: `scrollbar(total, visible, first, h int) []string` (today it returns `░`/`█` cells for an inner column).
+- Produces: `scrollbar` returns, per row, whether the thumb covers that row (`[]bool`, length `h`; all false when `total <= visible`); the thumb stays proportional to `visible/total` with a minimum of 1 row, placed the way the current code places it. The right border is drawn from that list: `┃` where true, `│` where false, both in the border style the pane already uses.
+
+- [ ] **Step 1: Write the failing tests**
+
+```go
+func TestScrollbarRowsAreThumbOnly(t *testing.T) {
+	cases := []struct {
+		total, visible, first, h int
+		want                     string // one char per row: T thumb, . border
+	}{
+		{10, 10, 0, 10, ".........."}, // fits: no thumb
+		{0, 10, 0, 10, ".........."},
+		{100, 10, 0, 10, "T........."},
+		{100, 10, 90, 10, ".........T"},
+		{20, 10, 5, 10, ".....TTTTT"},
+		{1000, 5, 500, 5, "..T.."},
+	}
+	for _, c := range cases {
+		rows := scrollbar(c.total, c.visible, c.first, c.h)
+		got := ""
+		for _, on := range rows {
+			if on {
+				got += "T"
+			} else {
+				got += "."
+			}
+		}
+		if got != c.want {
+			t.Errorf("scrollbar(%d,%d,%d,%d) = %s, want %s", c.total, c.visible, c.first, c.h, got, c.want)
+		}
+	}
+}
+
+func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
+	// For every pane, at 80x30 and 160x50, scrolled top/middle/end: strip ANSI
+	// from View(), take the pane's rows, and check the right border column holds
+	// only "│" or "┃", the column left of it is pane content (never "░", "█",
+	// "┃"), and at least one "┃" shows when the pane's content is taller than
+	// the pane. Check the thumb's style matches the pane's border style
+	// (focused vs not) by rendering the thumb cell with the same style helper.
+}
+```
+
+Adjust the exact rows in the table to the current proportional placement if one case differs by one row, and say so in the reply; the rule under test is: no thumb when content fits, thumb touches the top at the start and the bottom at the end, at least 1 row.
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `go test ./internal/tui/ -run 'ScrollbarRows|ThumbSits' -v`
+Expected: FAIL (scrollbar returns strings; thumb drawn inside the pane).
+
+- [ ] **Step 3: Write the code**
+
+Change `scrollbar` to return `[]bool`. In `paneView`, stop reserving the inner column for the bar, so the content gets that column back. Draw the right border row by row: `┃` where the thumb is, `│` elsewhere, in the pane's border style. Remove the `░`/`█` glyphs.
 
 - [ ] **Step 4: Run the tests to see them pass**
 
@@ -710,6 +793,65 @@ Expected: PASS.
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
-git add internal/tui/detail.go internal/tui/detail_test.go
-git commit -m "fix(tui): expand tabs in the detail pane so lines fit"
+git add internal/tui
+git commit -m "feat(tui): scrollbar thumb on the right border, no track"
+```
+
+### Task 8: Dim everything behind a popup
+
+**Files:**
+- Modify: `internal/tui/view.go` (`cover`, `View`)
+- Test: `internal/tui/view_test.go`
+
+**verify:** While any popup is open (the `?` help, the `t` and `s` pickers, the new-bug slug prompt), no cell outside the popup box keeps its own color, and no cell inside the box is dimmed. List every popup kind checked, at 80x30 and 160x50. Closing the popup gives a `View()` byte-equal to the one before it opened.
+
+**Interfaces:**
+- Consumes: `cover(body string) string`, `popupBox() string`.
+- Produces: `cover` draws the body behind the box with ANSI styling stripped and one faint grey style applied (`lipgloss.NewStyle().Faint(true).Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})`), and draws the box as today. No new Model state.
+
+- [ ] **Step 1: Write the failing tests**
+
+```go
+func TestPopupDimsTheBackground(t *testing.T) {
+	for _, open := range []string{"?", "t", "s", "n"} {
+		for _, size := range [][2]int{{80, 30}, {160, 50}} {
+			m := sized(newModel(t), size[0], size[1])
+			before := m.View()
+			withPopup := key(m, open)
+			v := withPopup.View()
+			// Every line outside the popup box's rows and columns renders in the
+			// dim style only: re-render its plain text with the dim style and
+			// compare. Every popup box line matches popupBox() output.
+			_ = v
+			closed := key(withPopup, "esc")
+			if closed.View() != before {
+				t.Errorf("popup %q at %v: view not restored after esc", open, size)
+			}
+		}
+	}
+}
+```
+
+Write the dim check in full: use `ansi.Strip` from the ANSI package already in go.mod (or lipgloss's own helper) to get plain text, then compare each background segment to `dim.Render(plain)`. Pick the key that opens each popup from the real key switch; skip a popup kind only if it cannot open on the fixture, and say which.
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `go test ./internal/tui/ -run PopupDims -v`
+Expected: FAIL (background keeps its colors).
+
+- [ ] **Step 3: Write the code**
+
+In `cover`, before placing the box, strip the styling from each body segment that sits outside the box and render it with the dim style. Keep the box exactly as today.
+
+- [ ] **Step 4: Run the tests to see them pass**
+
+Run: `go test ./internal/tui/ -v`
+Expected: PASS.
+
+- [ ] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/tui
+git commit -m "feat(tui): dim the screen behind a popup"
 ```

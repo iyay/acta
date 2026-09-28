@@ -212,6 +212,22 @@ func (m Model) openRows(p pane) []row {
 	return rows
 }
 
+// toggleExpand gives the focused sidebar pane the room of the whole column,
+// or takes the room back when it already has it. The detail box sits outside
+// the column, so z there does nothing. The pane that grows shows more rows, so
+// its offset goes back inside what it can really show.
+func (m *Model) toggleExpand() {
+	if m.focus == paneDetail {
+		return
+	}
+	if m.expanded == int(m.focus) {
+		m.expanded = -1
+	} else {
+		m.expanded = int(m.focus)
+	}
+	m.clampOff(m.focus)
+}
+
 // doneRows gives the Done pane the finished items of the tab the sidebar pane
 // that had the focus last has open, the ones touched last at the top: the date
 // of the last commit on the file decides, and the date in the file name is the
