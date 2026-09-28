@@ -4,7 +4,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,67 +14,24 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-// pane is which of the three boxes has the focus.
+// pane is which of the boxes on screen has the focus. The sidebar column and
+// the pane numbers come from the table in sidebar.go, so no box is named twice.
 type pane int
-
-const (
-	paneOpen pane = iota
-	paneDone
-	paneDetail
-)
-
-// The tabs of pane [1]. Every kind of file is its own tab, because a plan is
-// an item of its own even when it carries the tasks of a spec.
-const (
-	tabSpecs = iota
-	tabPlans
-	tabTasks
-	tabBugs
-	tabDebt
-)
-
-var (
-	tabKinds = [5]board.Kind{board.KindStory, board.KindPlan, board.KindTask, board.KindBug, board.KindDebtItem}
-	tabNames = [5]string{"Specs", "Plans", "Tasks", "Bugs", "Debt"}
-)
-
-// doneTab is one tab of pane [2]: the name in its title and the status it
-// lists. The second entry of a kind with only one finished status is empty
-// and never shows.
-type doneTab struct {
-	name   string
-	status string
-}
-
-// Pane [2] follows the tab of pane [1]. A task is only ever done, so it has
-// no second finished tab.
-var doneTabs = [5][2]doneTab{
-	{{"Done", "done"}, {"Dropped", "dropped"}},
-	{{"Done", "done"}, {"Dropped", "dropped"}},
-	{{"Done", "done"}, {}},
-	{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}},
-	{{"Done", "done"}, {"Wontfix", "wontfix"}},
-}
 
 // rowLines is how many screen lines one row takes. A row is one line, so the
 // screen line of a row and the row itself are the same number.
 const rowLines = 1
 
-// pageLines is how far ctrl+d, ctrl+u and the wheel jump in pane [3].
+// pageLines is how far ctrl+d, ctrl+u and the wheel jump in the detail box.
 const pageLines = 10
 
 // groupRowID marks the folded row that holds the legacy items.
 const groupRowID = "\x00untyped"
 
-// dividerRowID marks the full-width rule between the in-progress rows and the
-// not-started ones. It is never a real item, so the cursor skips it.
-const dividerRowID = "\x00divider"
-
 type row struct {
-	id      string
-	group   bool
-	divider bool
-	depth   int
+	id    string
+	group bool
+	depth int
 }
 
 type popup struct {
@@ -107,14 +63,12 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 type Model struct {
 	cfg       config.Config
 	board     *board.Board
-	focus     pane // the pane with the focus
-	last      pane // the list pane that had it last, for pane [3]
-	tab       int  // which tab pane [1] shows
-	doneTab   int  // which tab pane [2] shows
-	sel       [5]string
-	idx       [5]int // selected row number per tab, used when the id vanishes
-	doneSel   [5][2]string
-	doneIdx   [5][2]int
+	focus     pane  // the box with the focus
+	last      pane  // the list pane that had it last, for the detail box
+	follows   pane  // the sidebar pane the Done pane reads, never Done nor the detail
+	tab       []int // which tab each sidebar pane shows
+	sel       []string
+	idx       []int // selected row number per pane, used when the id vanishes
 	query     string
 	searching bool
 	groupOpen bool
@@ -125,7 +79,7 @@ type Model struct {
 	manual    bool
 	width     int
 	height    int
-	off       [3]int // the first line each pane shows, one offset per pane
+	off       []int // the first line each box shows, the detail box last
 	now       time.Time
 	version   string                 // build version shown on the bottom line
 	open      func(url string) error // opens a link in the browser
@@ -141,6 +95,10 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open: defaultOpen,
+		tab:  make([]int, len(sidebar)),
+		sel:  make([]string, len(sidebar)),
+		idx:  make([]int, len(sidebar)),
+		off:  make([]int, boxes),
 		load: func() (*board.Board, error) { return board.Load(cfg) },
 		// Load fresh so the write never checks against a stale board.
 		setValue: func(id, field, value string) (write.Outcome, error) {
@@ -177,10 +135,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		m.width, m.height = msg.Width, msg.Height
-		// A pane that just got shorter cannot keep the place it had.
-		m.clampOff(paneOpen)
-		m.clampOff(paneDone)
-		m.clampOff(paneDetail)
+		// A box that just got shorter cannot keep the place it had.
+		for p := pane(0); int(p) < boxes; p++ {
+			m.clampOff(p)
+		}
 		// The renderer only paints the cells the new frame uses, so a window
 		// that shrinks leaves the rest of the old frame on screen. Wiping it
 		// is the only way to take those rows back.
@@ -208,8 +166,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// inProgress says the item's work has begun: one of the going statuses, or
-// a task someone ran tick --start on before ticking a box.
+// inProgress says the item's work has begun: one of the going statuses, a
+// task someone ran tick --start on before ticking a box, or a scratch idea
+// someone is still thinking about.
 func inProgress(it *board.Item) bool {
 	if it == nil {
 		return false
@@ -221,79 +180,7 @@ func inProgress(it *board.Item) bool {
 	case "in-progress", "fixing":
 		return true
 	}
-	return false
-}
-
-// openRows gives pane [1] the items of its tab that are not finished, the
-// in-progress ones first, then one dim divider, then the not-started ones.
-// The files outside .pm/ have no tab of their own, so the Specs tab ends with
-// a single row that opens them.
-func (m Model) openRows() []row {
-	if m.query != "" {
-		return toRows(m.board.Search(m.query), 0)
-	}
-	var going, rest []*board.Item
-	for _, it := range m.board.List(tabKinds[m.tab], false) {
-		if inProgress(it) {
-			going = append(going, it)
-		} else {
-			rest = append(rest, it)
-		}
-	}
-	rows := toRows(going, 0)
-	if len(going) > 0 && len(rest) > 0 {
-		rows = append(rows, row{id: dividerRowID, divider: true})
-	}
-	rows = append(rows, toRows(rest, 0)...)
-	if m.tab == tabSpecs {
-		if legacy := m.board.Untyped(false); len(legacy) > 0 {
-			rows = append(rows, row{id: groupRowID, group: true})
-			if m.groupOpen {
-				rows = append(rows, toRows(legacy, 1)...)
-			}
-		}
-	}
-	return rows
-}
-
-// doneRows gives pane [2] the finished items of the tab it follows, the ones
-// touched last at the top: the date of the last commit on the file decides, and
-// the date in the file name is the fallback for a file git has no commit for.
-func (m Model) doneRows() []row {
-	d := doneTabs[m.tab][m.doneTab]
-	if d.name == "" {
-		return nil
-	}
-	var finished []*board.Item
-	for _, it := range m.board.List(tabKinds[m.tab], true) {
-		if it.Status == d.status {
-			finished = append(finished, it)
-		}
-	}
-	sort.SliceStable(finished, func(i, j int) bool {
-		return finished[i].SortTime() > finished[j].SortTime()
-	})
-	return toRows(finished, 0)
-}
-
-// onTab gives the tab of pane p that is open, so its title never drops that
-// name even when the pane is too narrow to draw every tab.
-func (m Model) onTab(p pane) int {
-	if p == paneDone {
-		return m.doneTab
-	}
-	return m.tab
-}
-
-// doneTabNames gives the tab names pane [2] shows for the tab of pane [1].
-func (m Model) doneTabNames() []string {
-	var out []string
-	for _, d := range doneTabs[m.tab] {
-		if d.name != "" {
-			out = append(out, d.name)
-		}
-	}
-	return out
+	return it.Kind == board.KindScratch && it.Status == "brainstorming"
 }
 
 func toRows(items []*board.Item, depth int) []row {
@@ -304,22 +191,19 @@ func toRows(items []*board.Item, depth int) []row {
 	return rows
 }
 
+// slotOf hands back a pane's rows and the two places its cursor is kept, so
+// every caller moves the same memory.
+func (m *Model) slotOf(p pane) ([]row, *string, *int) {
+	return m.rowsOf(p), &m.sel[p], &m.idx[p]
+}
+
 // listPane is the pane whose selection the screen shows: the focused list
-// pane, or the one that had the focus last when pane [3] has it.
+// pane, or the one that had the focus last when the detail box has it.
 func (m Model) listPane() pane {
 	if m.focus == paneDetail {
 		return m.last
 	}
 	return m.focus
-}
-
-// slotOf hands back a pane's rows and the two places its cursor is kept, so
-// every caller moves the same memory.
-func (m *Model) slotOf(p pane) ([]row, *string, *int) {
-	if p == paneDone {
-		return m.doneRows(), &m.doneSel[m.tab][m.doneTab], &m.doneIdx[m.tab][m.doneTab]
-	}
-	return m.openRows(), &m.sel[m.tab], &m.idx[m.tab]
 }
 
 func (m *Model) slot() ([]row, *string, *int) { return m.slotOf(m.listPane()) }
@@ -334,39 +218,24 @@ func (m Model) listOf() []row {
 func (m Model) Selected() *board.Item {
 	rows, sel, idx := m.slot()
 	i := cursorOf(rows, *sel, *idx)
-	if i < 0 || rows[i].group || rows[i].divider {
+	if i < 0 || rows[i].group {
 		return nil
 	}
 	return m.board.Get(rows[i].id)
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old
-// row number. The divider is never a landing spot, so a stale cursor on it
-// slides to the next item row, else the one above.
+// row number.
 func cursorOf(rows []row, sel string, idx int) int {
-	if len(rows) == 0 {
-		return -1
-	}
 	for i, r := range rows {
-		if r.id == sel && !r.divider {
+		if r.id == sel {
 			return i
 		}
 	}
-	i := clamp(idx, 0, len(rows)-1)
-	if !rows[i].divider {
-		return i
+	if len(rows) == 0 {
+		return -1
 	}
-	for j := i + 1; j < len(rows); j++ {
-		if !rows[j].divider {
-			return j
-		}
-	}
-	for j := i - 1; j >= 0; j-- {
-		if !rows[j].divider {
-			return j
-		}
-	}
-	return -1
+	return clamp(idx, 0, len(rows)-1)
 }
 
 func (m Model) cursor() int {
@@ -381,24 +250,8 @@ func (m *Model) moveTo(i int) {
 		return
 	}
 	i = clamp(i, 0, len(rows)-1)
-	// Steps land past the divider: walking down slides below it, walking up
-	// slides above it, so j k g G never stop on the dim line.
-	if rows[i].divider {
-		if i >= m.cursor() {
-			for i < len(rows)-1 && rows[i].divider {
-				i++
-			}
-		} else {
-			for i > 0 && rows[i].divider {
-				i--
-			}
-		}
-	}
-	if rows[i].divider {
-		return
-	}
 	if rows[i].id != *sel {
-		// Another item in pane [3] starts at its own top.
+		// Another item starts the detail body at its own top.
 		m.off[paneDetail] = 0
 	}
 	*sel, *idx = rows[i].id, i
@@ -407,8 +260,9 @@ func (m *Model) moveTo(i int) {
 
 func (m *Model) moveBy(lines int) { m.moveTo(m.cursor() + lines) }
 
-// focusPane moves the focus and remembers which list pane had it, so pane [3]
-// keeps showing that one.
+// focusPane moves the focus. The detail box shows the list pane that had it
+// last, and the Done pane reads the sidebar pane that had it last, so both
+// follow the reader without either of them ever becoming the source.
 func (m *Model) focusPane(p pane) {
 	if m.focus == p {
 		return
@@ -417,28 +271,35 @@ func (m *Model) focusPane(p pane) {
 	if p != paneDetail {
 		m.last = p
 	}
+	if p != paneDone && p != paneDetail {
+		m.follows = p
+	}
 	m.keepVisible(p)
 }
 
-// cycleTab walks the focused pane along its own tabs and wraps around. Pane
-// [3] has no tabs, so nothing happens there.
+// cycleTab walks the focused box along its own tabs and wraps around. Active
+// and the detail box have no tabs, so nothing happens there.
 func (m *Model) cycleTab(step int) {
 	switch m.focus {
-	case paneOpen:
-		m.tab = (m.tab + step + len(tabNames)) % len(tabNames)
 	case paneDone:
 		n := len(m.doneTabNames())
-		m.doneTab = (m.doneTab + step + n) % n
-	default:
+		if n == 0 {
+			return
+		}
+		m.tab[paneDone] = (m.tab[paneDone] + step + n) % n
+	case paneActive, paneDetail:
 		return
+	default:
+		n := len(sidebar[m.focus].tabs)
+		m.tab[m.focus] = (m.tab[m.focus] + step + n) % n
 	}
 	// Tasks have one finished tab, so coming from Bugs the second is gone.
-	m.doneTab = min(m.doneTab, len(m.doneTabNames())-1)
+	m.tab[paneDone] = min(m.tab[paneDone], max(0, len(m.doneTabNames())-1))
 	m.keepVisible(m.focus)
 }
 
-// step moves the cursor in a list pane and scrolls the body in pane [3], so
-// one set of keys works wherever the focus is.
+// step moves the cursor in a list box and scrolls the body in the detail box,
+// so one set of keys works wherever the focus is.
 func (m *Model) step(lines int) {
 	if m.focus == paneDetail {
 		m.scrollPane(m.focus, lines)
@@ -455,8 +316,8 @@ func (m *Model) top() {
 	m.moveTo(0)
 }
 
-// end goes to the last row, or to the bottom of the body in pane [3], which
-// is the last line that pane has room for.
+// end goes to the last row, or to the bottom of the body in the detail box,
+// which is the last line that box has room for.
 func (m *Model) end() {
 	if m.focus == paneDetail {
 		m.off[paneDetail] = m.lastOff(paneDetail)
@@ -484,12 +345,14 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch k.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "1", "2", "3":
+	case "0":
+		m.focusPane(paneDetail)
+	case "1", "2", "3", "4", "5":
 		m.focusPane(pane(k.String()[0] - '1'))
 	case "tab":
-		m.focusPane(pane((int(m.focus) + 1) % 3))
+		m.focusPane(pane((int(m.focus) + 1) % boxes))
 	case "shift+tab":
-		m.focusPane(pane((int(m.focus) + 2) % 3))
+		m.focusPane(pane((int(m.focus) + boxes - 1) % boxes))
 	case "]":
 		m.cycleTab(1)
 	case "[":
@@ -534,7 +397,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // mouse follows a click or a wheel turn. A click on a row selects it, a click
-// on a tab name switches tab, and the wheel works on the pane under the
+// on a tab name switches tab, and the wheel works on the box under the
 // pointer, so the mouse and the keys always leave the same cursor.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
@@ -575,11 +438,10 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	case tabIdx >= 0:
 		m.clickTab(p, tabIdx)
 	case rowIdx >= 0:
-		// A click on the divider, or on the space below the last row, only
-		// takes the focus: neither holds an item, so the selection stays
-		// where it was.
+		// A click on the space below the last row only takes the focus: it
+		// holds no item, so the selection stays where it was.
 		rows, _, _ := m.slotOf(p)
-		if rowIdx >= len(rows) || rows[rowIdx].divider {
+		if rowIdx >= len(rows) {
 			return m, nil
 		}
 		m.moveTo(rowIdx)
@@ -587,15 +449,16 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// clickTab switches the pane the click landed in to the tab that was hit.
+// clickTab switches the box the click landed in to the tab that was hit.
 func (m *Model) clickTab(p pane, idx int) {
 	switch p {
 	case paneDone:
-		m.doneTab = clamp(idx, 0, len(m.doneTabNames())-1)
-	case paneOpen:
-		m.tab = clamp(idx, 0, len(tabNames)-1)
+		m.tab[paneDone] = clamp(idx, 0, max(0, len(m.doneTabNames())-1))
+	case paneActive, paneDetail:
+	default:
+		m.tab[p] = clamp(idx, 0, len(sidebar[p].tabs)-1)
 	}
-	// The tab that is on now has its own rows, so the pane has to find its
+	// The tab that is on now has its own rows, so the box has to find its
 	// cursor again.
 	m.keepVisible(p)
 }
@@ -717,9 +580,6 @@ func (m Model) enter() (tea.Model, tea.Cmd) {
 	}
 	if rows[i].group {
 		m.groupOpen = !m.groupOpen
-		return m, nil
-	}
-	if rows[i].divider {
 		return m, nil
 	}
 	it := m.board.Get(rows[i].id)
