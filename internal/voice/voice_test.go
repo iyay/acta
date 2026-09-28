@@ -106,3 +106,53 @@ func TestSaveRefusesBad(t *testing.T) {
 		t.Fatal("a bad voice was written")
 	}
 }
+
+func TestValidateExecutorAndModels(t *testing.T) {
+	for _, tc := range []struct {
+		exec, models string
+		ok           bool
+	}{
+		{"", "", true},
+		{"subagent", "", true},
+		{"dispatch", "split", true},
+		{"inline", "", true},
+		{"Subagent", "", false},
+		{"omp", "", false},
+		{"", "all", false},
+		{"", "split ", true}, // fill trims
+	} {
+		v := Default()
+		v.BuildExecutor, v.SubagentModels = tc.exec, tc.models
+		err := fill(v).Validate()
+		if (err == nil) != tc.ok {
+			t.Errorf("exec %q models %q: err %v, want ok=%v", tc.exec, tc.models, err, tc.ok)
+		}
+		if err != nil && !errors.Is(err, ErrBad) {
+			t.Errorf("exec %q models %q: err %v is not ErrBad", tc.exec, tc.models, err)
+		}
+	}
+}
+
+func TestLoadRejectsBadExecutor(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "voice.yaml")
+	os.WriteFile(p, []byte("chat_language: English\nstyle: adhd\nbuild_executor: robot\n"), 0o644)
+	if _, exists, err := Load(p); !exists || err == nil {
+		t.Fatalf("got exists %v err %v, want a bad-value error", exists, err)
+	}
+}
+
+// A bad value must never reach the file, so a set is refused whole.
+func TestSaveRefusesBadExecutorAndModels(t *testing.T) {
+	for name, v := range map[string]Voice{
+		"executor": {ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", BuildExecutor: "omp"},
+		"models":   {ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", SubagentModels: "all"},
+	} {
+		p := filepath.Join(t.TempDir(), "voice.yaml")
+		if err := Save(p, v); !errors.Is(err, ErrBad) {
+			t.Errorf("%s: err = %v, want ErrBad", name, err)
+		}
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("%s: a bad voice was written", name)
+		}
+	}
+}

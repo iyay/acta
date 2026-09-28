@@ -51,6 +51,24 @@ func inDir(t *testing.T, dir string, fn func()) {
 	fn()
 }
 
+// runCode runs the CLI and returns its exit code, ignoring the output.
+// The voice command needs no repo, so no inDir here.
+func runCode(t *testing.T, args ...string) int {
+	t.Helper()
+	var stdout, stderr strings.Builder
+	return Run(args, strings.NewReader(""), false, &stdout, &stderr)
+}
+
+// mustRun runs the CLI, fails unless it exits OK, and returns stdout.
+func mustRun(t *testing.T, args ...string) string {
+	t.Helper()
+	var stdout, stderr strings.Builder
+	if code := Run(args, strings.NewReader(""), false, &stdout, &stderr); code != exitOK {
+		t.Fatalf("%v: exit %d stderr %q", args, code, stderr.String())
+	}
+	return stdout.String()
+}
+
 func TestDebtNewWritesFileAndCommits(t *testing.T) {
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder
@@ -214,4 +232,60 @@ func TestScratchUnknownSubcommandNamesBothCommands(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
+	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
+	mustRun(t, "voice", "set", "--language", "Korean", "--tone", "short")
+	if out := mustRun(t, "voice", "show"); strings.Contains(out, "build_executor") {
+		t.Errorf("show printed an unset build_executor:\n%s", out)
+	}
+	mustRun(t, "voice", "set", "--executor", "dispatch")
+	mustRun(t, "voice", "set", "--subagent-models", "split")
+	out := mustRun(t, "voice", "show")
+	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch", "subagent_models: split"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("show missing %q:\n%s", want, out)
+		}
+	}
+	// The JSON is indented, so compare without spaces.
+	asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", "")
+	for _, key := range []string{`"build_executor":"dispatch"`, `"subagent_models":"split"`} {
+		if !strings.Contains(asJSON, key) {
+			t.Errorf("json missing %q:\n%s", key, asJSON)
+		}
+	}
+	// Clearing the models must leave every other field alone.
+	mustRun(t, "voice", "set", "--clear-subagent-models")
+	after := mustRun(t, "voice", "show")
+	if strings.Contains(after, "subagent_models") {
+		t.Errorf("clear left subagent_models:\n%s", after)
+	}
+	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch"} {
+		if !strings.Contains(after, want) {
+			t.Errorf("clear dropped %q:\n%s", want, after)
+		}
+	}
+	// Clear then set in one call: the set wins, so the user ends up with split.
+	mustRun(t, "voice", "set", "--clear-subagent-models", "--subagent-models", "split")
+	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "subagent_models: split") {
+		t.Errorf("clear-then-set did not keep split:\n%s", out)
+	}
+}
+
+func TestVoiceSetBadExecutor(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "voice.yaml")
+	t.Setenv("PM_VOICE_FILE", path)
+	for _, args := range [][]string{
+		{"voice", "set", "--executor", "robot"},
+		{"voice", "set", "--subagent-models", "all"},
+		{"voice", "set", "--language", "Korean", "--executor", "omp"},
+	} {
+		if code := runCode(t, args...); code != exitBadInput {
+			t.Errorf("%v: exit %d, want %d", args, code, exitBadInput)
+		}
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("%v: a bad value was written to the voice file", args)
+		}
+	}
 }

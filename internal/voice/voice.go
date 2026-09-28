@@ -15,10 +15,12 @@ import (
 // Voice is one user's setting. It now lives in ~/.acta/voice.yaml; the old
 // ~/.pm/voice.yaml is only read when the new file is missing.
 type Voice struct {
-	ChatLanguage string `yaml:"chat_language"`
-	Style        string `yaml:"style"`
-	Tone         string `yaml:"tone,omitempty"`
-	RepoLanguage string `yaml:"repo_language"`
+	ChatLanguage   string `yaml:"chat_language"`
+	Style          string `yaml:"style"`
+	Tone           string `yaml:"tone,omitempty"`
+	RepoLanguage   string `yaml:"repo_language"`
+	BuildExecutor  string `yaml:"build_executor,omitempty"`
+	SubagentModels string `yaml:"subagent_models,omitempty"`
 }
 
 // ErrBad marks a setting the rules do not allow.
@@ -138,6 +140,14 @@ func (v Voice) Validate() error {
 	if len(v.Tone) > 600 || strings.Count(v.Tone, "\n") > 7 {
 		return fmt.Errorf("%w: tone must be at most 8 lines and 600 characters", ErrBad)
 	}
+	switch v.BuildExecutor {
+	case "", "subagent", "dispatch", "inline":
+	default:
+		return fmt.Errorf("%w: build_executor must be subagent, dispatch or inline, not %q", ErrBad, v.BuildExecutor)
+	}
+	if v.SubagentModels != "" && v.SubagentModels != "split" {
+		return fmt.Errorf("%w: subagent_models must be split or empty, not %q", ErrBad, v.SubagentModels)
+	}
 	return nil
 }
 
@@ -148,6 +158,8 @@ func fill(v Voice) Voice {
 	v.RepoLanguage = strings.TrimSpace(v.RepoLanguage)
 	v.Style = strings.TrimSpace(v.Style)
 	v.Tone = strings.TrimSpace(v.Tone)
+	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
+	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	if v.ChatLanguage == "" {
 		v.ChatLanguage = d.ChatLanguage
 	}
