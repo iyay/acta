@@ -9,10 +9,10 @@ import (
 )
 
 // toPlans puts the focus on the open plans list, the way a reader gets there.
-func toPlans(m Model) Model { return press(m, "3") }
+func toPlans(m Model) Model { return press(m, tabKey(tabPlans)) }
 
 // toPlansDone puts the focus on the finished plans list.
-func toPlansDone(m Model) Model { return press(toPlans(m), "5") }
+func toPlansDone(m Model) Model { return press(toPlans(m), "tab") }
 
 func planModel(t *testing.T) Model {
 	t.Helper()

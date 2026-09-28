@@ -78,9 +78,12 @@ var (
 // hints is what the left of the status line says when nothing else is going on.
 const hints = "? help"
 
-// helpLines is the key map the ? popup shows, grouped by box.
-const helpLines = `0 1 2 3 4 5 tab   move between the boxes
-] [              next / previous tab
+// helpLines is the key map the ? popup shows, grouped by what the keys do.
+const helpLines = `1-6 ← →          open a tab, previous / next tab
+tab shift+tab    move between the panes of the tab
+0                focus the detail
+[ ]              switch the Done tab, on the Done pane
+space enter      open or shut a plan row
 z                expand the focused pane
 j k g G          move a list, scroll the detail
 ctrl+d ctrl+u    page down and up
@@ -111,7 +114,7 @@ func (m Model) View() string {
 	} else {
 		body = m.paneView(m.focus, g.full)
 	}
-	lines := strings.Split(body, "\n")
+	lines := append([]string{pad(m.tabBar(), m.width)}, strings.Split(body, "\n")...)
 	if len(lines) > h {
 		lines = lines[:h]
 	}
@@ -128,6 +131,19 @@ func (m Model) View() string {
 		line = dim.Render(xansi.Strip(line))
 	}
 	return body + "\n" + line
+}
+
+// tabBar draws the top line: every tab name in order, the open one in
+// brackets and the accent, so the reader always sees where they are.
+func (m Model) tabBar() string {
+	names := make([]string, len(topTabs))
+	for i, t := range topTabs {
+		names[i] = faint.Render(t.name)
+		if i == m.top {
+			names[i] = accent.Bold(true).Render("[" + t.name + "]")
+		}
+	}
+	return " " + strings.Join(names, "  ")
 }
 
 // box measures one pane at the given rectangle and works out which of its

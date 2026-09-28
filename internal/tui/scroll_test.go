@@ -70,17 +70,46 @@ func wrapModel(t *testing.T) Model {
 	return m
 }
 
-// paneModel is the long board with pane p focused and the Plans tab open,
-// where all three panes have rows to show.
+// keyTo focuses a box of the open tab, the way a reader gets there.
+func keyTo(p pane) string {
+	switch p {
+	case paneDetail:
+		return "0"
+	case paneDone:
+		return "tab"
+	}
+	return tabKey(tabPlans)
+}
+
+// focusKeyFrom gives the key that moves the focus from one box of the open
+// tab to another, so a test never has to count the ring itself.
+func focusKeyFrom(from, to pane) string {
+	if to == paneDetail {
+		return "0"
+	}
+	// The ring is List, Done, Detail, so walking forward from the List
+	// reaches Done in one step and the detail box in two.
+	steps := 1
+	if to == paneDone {
+		steps = 2
+	}
+	if from == paneDetail {
+		steps = 3 - steps
+	}
+	if steps%2 == 1 {
+		return "shift+tab"
+	}
+	return "tab"
+}
+
+// paneModel is the long board with box p focused and the Plans tab open,
+// where both list boxes have rows to show.
 func paneModel(t *testing.T, p pane) Model {
 	t.Helper()
 	// The plans list has rows to walk; the detail box needs one of them
 	// selected before it has a body to scroll.
-	m := press(longModel(t), keyOf(panePlans))
-	if p == paneDetail {
-		return press(m, "0")
-	}
-	return press(m, keyOf(p))
+	m := press(longModel(t), tabKey(tabPlans))
+	return press(m, keyTo(p))
 }
 
 // scrollBox is the box pane p is drawn in, the detail pane included; the
@@ -381,20 +410,20 @@ func TestScrollbarSurvivesOddNumbers(t *testing.T) {
 func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 	// The fixture fits in every box of a tall enough screen, so none of them
 	// draws a thumb.
-	tall := press(sized(newModel(t), 120, 80), "3")
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	tall := press(sized(newModel(t), 120, 80), tabKey(tabPlans))
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		if at := thumbAt(tall, p); at != -1 {
 			t.Errorf("pane %d draws a thumb for content that fits, on line %d", p, at)
 		}
 	}
 	// The long board overflows in all three, and each one says so with a
 	// thumb sitting at the top of its own wall.
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		// The detail box needs an item under it before it has a body to
 		// scroll, so it is read from the same board with one selected.
 		m := paneModel(t, p)
 		if p == paneDetail {
-			m = press(paneModel(t, panePlans), "0")
+			m = press(paneModel(t, paneList), "0")
 		}
 		if at := thumbAt(m, p); at != 0 {
 			t.Errorf("pane %d draws no thumb at the top, thumb on line %d", p, at)
@@ -403,7 +432,7 @@ func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 }
 
 func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		before := m.Selected()
 		shown := screenTops(m)
@@ -470,8 +499,10 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 // key and every notch leaves it at the top. An offset below zero would count
 // from a line that does not exist.
 func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
-	m := sized(newModel(t), 120, 40)
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	// The Plans tab has both list boxes, so the walk covers a tab with a
+	// Done pane as well as the detail box.
+	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		if m.lastOff(p) != 0 {
 			t.Errorf("pane %d: content that fits should not scroll, lastOff is %d", p, m.lastOff(p))
 		}
@@ -519,16 +550,18 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 // any other pane it does nothing at all: no scroll, no focus change, so a
 // wheel can never move a pane the user is not looking at.
 func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
-		for _, q := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		for _, q := range []pane{paneList, paneDone, paneDetail} {
 			if q == p {
 				continue
 			}
 			// The pane under the pointer is scrolled away from the top first,
 			// so a wheel that ignored the focus would show on screen instead of
 			// hiding behind a clamp at zero.
-			m := press(paneModel(t, p), keyOf(p), "G")
-			m = press(m, keyOf(q))
+			m := press(paneModel(t, p), "G")
+			if k := focusKeyFrom(p, q); k != "" {
+				m = press(m, k)
+			}
 			sel := m.Selected()
 			before := m.off
 			shown := screenTops(m)
@@ -563,8 +596,8 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 // A click takes the focus, so the wheel over the same pane scrolls it right
 // after, with no key in between.
 func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
-		m := paneModel(t, panePlans)
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, paneList)
 		b := scrollBox(m, p)
 		m = click(m, b.x+1, b.y+2)
 		m = wheel(m, b.x+1, b.y+2, false)
@@ -580,7 +613,7 @@ func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
 func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 	// The keys of the detail box scroll it and leave both lists where they
 	// were, selection and offset.
-	m := press(longModel(t), "3", "G")
+	m := press(longModel(t), tabKey(tabPlans), "G")
 	before := screenTops(m)
 	m = press(m, "0", "ctrl+d", "ctrl+d")
 	if m.off[paneDetail] != 2*pageLines {
@@ -592,24 +625,24 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 	if !shows(m, paneDetail, 2*pageLines) {
 		t.Errorf("the detail box shows %q, it should show its line %d", after[paneDetail], 2*pageLines)
 	}
-	if after[panePlans] != before[panePlans] || after[paneDone] != before[paneDone] {
+	if after[paneList] != before[paneList] || after[paneDone] != before[paneDone] {
 		t.Errorf("the keys in the detail box moved a list on screen: %v, want %v", after, before)
 	}
 	// Coming back to a list finds it exactly where it was left.
-	m = press(m, "3")
-	if want := m.lastOff(panePlans); m.off[panePlans] != want {
-		t.Errorf("the list scrolled to %d, want %d", m.off[panePlans], want)
+	m = press(m, "esc")
+	if want := m.lastOff(paneList); m.off[paneList] != want {
+		t.Errorf("the list scrolled to %d, want %d", m.off[paneList], want)
 	}
-	if got := screenTops(m)[panePlans]; got != before[panePlans] {
-		t.Errorf("the list shows %q, it showed %q before the keys", got, before[panePlans])
+	if got := screenTops(m)[paneList]; got != before[paneList] {
+		t.Errorf("the list shows %q, it showed %q before the keys", got, before[paneList])
 	}
-	// A key in pane [1] moves pane [1] and no other pane. Another item
-	// starts the detail at its own top, which is the one place a key in a
-	// list reaches into the detail box.
+	// A key in the list moves the list and no other box. Another item starts
+	// the detail at its own top, which is the one place a key in a list
+	// reaches into the detail box.
 	m = press(m, "k")
 	after = screenTops(m)
 	if after[paneDone] != before[paneDone] {
-		t.Errorf("k in pane [1] moved pane [2] on screen: %v, want %v", after[paneDone], before[paneDone])
+		t.Errorf("k in the list moved the Done box on screen: %v, want %v", after[paneDone], before[paneDone])
 	}
 	if !shows(m, paneDetail, 0) {
 		t.Errorf("another item should start the detail at its top, the screen shows %q", drawnFirst(m, paneDetail))
@@ -618,20 +651,20 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 	// pane moves.
 	m = press(m, "g")
 	after = screenTops(m)
-	if !shows(m, panePlans, 0) {
-		t.Errorf("g should take the list back to its first row, the screen shows %q", after[panePlans])
+	if !shows(m, paneList, 0) {
+		t.Errorf("g should take the list back to its first row, the screen shows %q", after[paneList])
 	}
 	if after[paneDone] != before[paneDone] || !shows(m, paneDetail, 0) {
-		t.Errorf("g in pane [1] moved another pane on screen: %v", after)
+		t.Errorf("g in the list moved another box on screen: %v", after)
 	}
 }
 
 func TestListKeepsTheSelectedRowVisible(t *testing.T) {
-	m := press(longModel(t), "3")
-	rows, _, _ := m.slotOf(panePlans)
+	m := press(longModel(t), tabKey(tabPlans))
+	rows, _, _ := m.slotOf(paneList)
 	// Walk down until the cursor sits below the fold, then keep walking: the
 	// pane has to follow the cursor, not the other way round.
-	for m.cursor() < scrollBox(m, panePlans).rows {
+	for m.cursor() < scrollBox(m, paneList).rows {
 		m = press(m, "j")
 	}
 	below := m.cursor()
@@ -639,16 +672,16 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 	if m.cursor() == below {
 		t.Fatal("the list should still move down")
 	}
-	b := scrollBox(m, panePlans)
+	b := scrollBox(m, paneList)
 	cur := m.cursor()
 	if cur < b.first || cur >= b.first+b.rows {
 		t.Fatalf("row %d is off screen: the pane shows rows %d to %d", cur, b.first, b.first+b.rows-1)
 	}
 	// The row the pane says is on top is the row that is drawn on top.
-	if !shows(m, panePlans, b.first) {
-		t.Fatalf("the top of the pane shows %q, the pane starts at row %d of %d", drawnFirst(m, panePlans), b.first, len(rows))
+	if !shows(m, paneList, b.first) {
+		t.Fatalf("the top of the pane shows %q, the pane starts at row %d of %d", drawnFirst(m, paneList), b.first, len(rows))
 	}
-	drawn := paneRows(m, panePlans)
+	drawn := paneRows(m, paneList)
 	if !isThatRow(m, rows[b.first], drawn[0]) {
 		t.Errorf("the top line holds %q, the first row is %q", drawn[0], headOf(m, rows[b.first]))
 	}
@@ -660,13 +693,13 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 	if m.cursor() != below {
 		t.Errorf("k should step back to row %d, is %d", below, m.cursor())
 	}
-	if m.cursor() < scrollBox(m, panePlans).first {
+	if m.cursor() < scrollBox(m, paneList).first {
 		t.Error("k moved the cursor off the top of the pane")
 	}
 }
 
 func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
-	m := press(longModel(t), "3", "0")
+	m := press(longModel(t), tabKey(tabPlans), "0")
 	for m.off[paneDetail] < 5 {
 		m = press(m, "j")
 	}
@@ -676,7 +709,7 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 	if !shows(m, paneDetail, m.off[paneDetail]) {
 		t.Errorf("the detail shows %q at offset %d", drawnFirst(m, paneDetail), m.off[paneDetail])
 	}
-	m = press(m, "3", "j")
+	m = press(m, "esc", "j")
 	if m.off[paneDetail] != 0 {
 		t.Errorf("another item should start the detail at the top, off is %d", m.off[paneDetail])
 	}
@@ -694,7 +727,7 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 }
 
 func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		// Top: the thumb is on the first line and so is the content.
 		if !shows(m, p, 0) {
@@ -748,7 +781,7 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 }
 
 func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := press(paneModel(t, p), "G")
 		if m.off[p] == 0 {
 			t.Fatalf("pane %d never scrolled", p)
@@ -824,11 +857,11 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 // G stops a line short of the end the screen can show and the last line on
 // screen is a line that never arrives.
 func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		// The detail box needs an item under it before it has a body, so the
 		// list is opened on the plans first.
-		m := press(wrapModel(t), "3")
-		m = press(m, keyOf(p), "G")
+		m := press(wrapModel(t), tabKey(tabPlans))
+		m = press(m, keyTo(p), "G")
 		b := scrollBox(m, p)
 		if !shows(m, p, m.lastOff(p)) {
 			t.Errorf("pane %d: after G the box shows %q, want the window at %d", p, drawnFirst(m, p), m.lastOff(p))
@@ -865,34 +898,36 @@ func isFirstLine(m Model, p pane, line string) bool {
 }
 
 func TestPanesKeepTheirOwnPlace(t *testing.T) {
-	m := press(longModel(t), "3", "G")
-	open := screenTops(m)[paneSpecs]
-	m = press(m, "5", "G")
+	m := press(longModel(t), tabKey(tabPlans), "G")
+	open := screenTops(m)[paneList]
+	m = press(m, "tab", "G")
 	done := screenTops(m)[paneDone]
 	if shows(m, paneDone, 0) {
-		t.Fatalf("pane [2] did not scroll, it shows %q", drawnFirst(m, paneDone))
+		t.Fatalf("the Done box did not scroll, it shows %q", drawnFirst(m, paneDone))
 	}
-	if got := screenTops(m)[paneSpecs]; got != open {
-		t.Errorf("pane [1] moved to %q while pane [2] scrolled, was %q", got, open)
+	if got := screenTops(m)[paneList]; got != open {
+		t.Errorf("the list moved to %q while the Done box scrolled, was %q", got, open)
 	}
 	m = press(m, "0", "G")
 	after := screenTops(m)
-	if after[paneSpecs] != open || after[paneDone] != done {
+	if after[paneList] != open || after[paneDone] != done {
 		t.Errorf("the detail box moved the lists: %v, want %v and %v", after, open, done)
 	}
 	if shows(m, paneDetail, 0) {
 		t.Error("the detail box did not scroll")
 	}
-	// Each pane has to end on the last line its own content allows, not on a
-	// line that belongs to some other pane's body.
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	// Each box has to end on the last line its own content allows, not on a
+	// line that belongs to some other box's body.
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		if !shows(m, p, m.lastOff(p)) {
-			t.Errorf("pane %d ends on %q, its own content allows the window at %d", p, drawnFirst(m, p), m.lastOff(p))
+			t.Errorf("box %d ends on %q, its own content allows the window at %d", p+1, drawnFirst(m, p), m.lastOff(p))
 		}
 	}
-	m = press(m, "2")
-	if got := screenTops(m)[paneSpecs]; got != open {
-		t.Errorf("coming back to pane [1] lost its place: %q, want %q", got, open)
+	// Walking out of the detail box and back to the list finds the list
+	// exactly where it was left.
+	m = press(m, "esc", "shift+tab")
+	if got := screenTops(m)[paneList]; got != open {
+		t.Errorf("coming back to the list lost its place: %q, want %q", got, open)
 	}
 }
 
@@ -906,7 +941,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 	// task covers on its own; what the scrollbar adds is a cell inside a pane.
 	for _, w := range []int{1, 2, 3, 4, 5, 6, 8, 12, 20, 40} {
 		for _, h := range []int{3, 4, 5, 8, 20, 40} {
-			m := press(longModel(t), "3", "0", "G")
+			m := press(longModel(t), tabKey(tabPlans), "0", "G")
 			v := sized(m, w, h).View()
 			lines := strings.Split(v, "\n")
 			if len(lines) > h {
@@ -919,7 +954,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 			}
 		}
 	}
-	for _, p := range []pane{panePlans, paneDone, paneDetail} {
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		// A window with no room for any row at all still leaves the offset
 		// somewhere the pane can hold, so the keys never break it.
 		m := press(paneModel(t, p), "G")
@@ -938,7 +973,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 		"# Plan\n\n### Task 1: One\n\n- [ ] **Step 1: Do it**\n\n" + strings.Repeat("\nA line of the body.\n", 60) + strings.Repeat("y", 82) + "\n",
 	} {
 		m := boardModel(t, body)
-		m = press(m, "3", "0", "G")
+		m = press(m, tabKey(tabPlans), "0", "G")
 		b := scrollBox(m, paneDetail)
 		if !shows(m, paneDetail, m.lastOff(paneDetail)) {
 			t.Errorf("a body ending %s shows %q after G, want the last window", tail(body), drawnFirst(m, paneDetail))
@@ -964,8 +999,8 @@ func tail(body string) string {
 }
 
 // A long list of specs with a group of untyped files under it. Folding that
-// group open and shut changes the rows of pane [1] under the cursor, so the
-// pane has to land on a window its new rows can fill and the screen has to
+// group open and shut changes the rows of the list under the cursor, so the
+// box has to land on a window its new rows can fill and the screen has to
 // show that window.
 func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 	files := map[string]string{}
@@ -980,23 +1015,23 @@ func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 	}
 	m := sized(New(cfg, b, true), 120, 40)
 	m.render = func(md string, _ int) string { return md }
-	m = press(m, "2", "G")
-	if m.off[paneSpecs] == 0 {
+	m = press(m, tabKey(tabSpecs), "G")
+	if m.off[paneList] == 0 {
 		t.Fatal("the list did not overflow")
 	}
 	for _, open := range []bool{true, false, true} {
 		m.groupOpen = open
-		rows, sel, idx := m.slotOf(paneSpecs)
-		if want := itemCount(cursorOf(rows, *sel, *idx)+1, len(rows)); footOf(t, m, paneSpecs) != want {
-			t.Errorf("groupOpen %v: the pane writes %q, want %q", open, footOf(t, m, paneSpecs), want)
+		rows, sel, idx := m.slotOf(paneList)
+		if want := itemCount(cursorOf(rows, *sel, *idx)+1, len(rows)); footOf(t, m, paneList) != want {
+			t.Errorf("groupOpen %v: the box writes %q, want %q", open, footOf(t, m, paneList), want)
 		}
-		if !shows(m, paneSpecs, m.off[paneSpecs]) {
-			t.Errorf("groupOpen %v: the pane shows %q, it sits at %d", open, drawnFirst(m, paneSpecs), m.off[paneSpecs])
+		if !shows(m, paneList, m.off[paneList]) {
+			t.Errorf("groupOpen %v: the box shows %q, it sits at %d", open, drawnFirst(m, paneList), m.off[paneList])
 		}
-		if top := thumbAt(m, paneSpecs); top < 0 {
+		if top := thumbAt(m, paneList); top < 0 {
 			t.Errorf("groupOpen %v: a long list draws no thumb", open)
 		}
-		if strings.TrimSpace(paneRows(m, paneSpecs)[0]) == "" {
+		if strings.TrimSpace(paneRows(m, paneList)[0]) == "" {
 			t.Errorf("groupOpen %v: the first line on screen is blank", open)
 		}
 	}

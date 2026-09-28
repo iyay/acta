@@ -9,22 +9,22 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// TestSplitAlwaysFillsTheHeight checks the sidebar boxes never leave a gap and
-// never push each other off screen. Every height the terminal can hand us goes
+// TestSplitAlwaysFillsTheHeight checks the boxes never leave a gap and never
+// push each other off screen. Every height the terminal can hand us goes
 // through, including the tiny ones that have no room to divide.
 func TestSplitAlwaysFillsTheHeight(t *testing.T) {
 	for h := range 2 {
 		// A terminal with no room yet must not panic, only split badly.
-		split(h, len(sidebar))
+		split(h, sidePanes)
 	}
 	for h := 2; h <= 80; h++ {
-		heights := split(h, len(sidebar))
+		heights := split(h, sidePanes)
 		sum := 0
 		for i, v := range heights {
 			if v < 0 {
 				t.Errorf("split(%d) box %d is %d", h, i, v)
 			}
-			if h >= 2*len(sidebar) && v < 2 {
+			if h >= 2*sidePanes && v < 2 {
 				t.Errorf("split(%d) box %d is %d, too short for its two walls", h, i, v)
 			}
 			sum += v
@@ -36,15 +36,18 @@ func TestSplitAlwaysFillsTheHeight(t *testing.T) {
 }
 
 // TestLeftHeightsFillAndExpand walks every height from 3 to 60 and the three
-// widths a terminal reports, with each sidebar pane expanded in turn and with
-// none of them expanded. Four claims at once. The left column is exactly as
-// tall as the detail pane, a pane that is not expanded keeps room lines once
-// the screen is room*(len(sidebar)-1)+room = 15 lines tall and only its title
-// bar below that, the view draws the heights the model hands it, and no line
-// of the screen reaches past the right edge.
+// widths a terminal reports, with each box of the open tab expanded in turn
+// and with none of them expanded. Four claims at once. The left column is
+// exactly as tall as the detail pane, a box that is not expanded keeps room
+// lines once the screen is room*2+room = 9 lines tall and only its title bar
+// below that, the view draws the heights the model hands it, and no line of
+// the screen reaches past the right edge.
 func TestLeftHeightsFillAndExpand(t *testing.T) {
-	m := newModel(t)
-	others := len(sidebar) - 1
+	// The Plans tab has both boxes, so the walk covers the two box column and
+	// not the single box of Activities.
+	m := press(newModel(t), tabKey(tabPlans))
+	n := len(m.panes())
+	others := n - 1
 	// room is how many lines a pane that is not expanded keeps. Below
 	// room*others+room lines of screen there is no such room, so it keeps
 	// its title bar alone.
@@ -52,16 +55,16 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 	threshold := room*others + room
 	for h := 3; h <= 60; h++ {
 		for _, w := range []int{40, 80, 160} {
-			for e := -1; e < len(sidebar); e++ {
+			for e := -1; e < n; e++ {
 				s := sized(m, w, h)
 				s.expanded = e
-				hs := s.leftHeights(h - 1)
+				hs := s.leftHeights(h - 2)
 				sum := 0
 				for _, x := range hs {
 					sum += x
 				}
-				if sum != h-1 {
-					t.Fatalf("%dx%d expanded %d: heights %v add up to %d, want %d", w, h, e, hs, sum, h-1)
+				if sum != h-2 {
+					t.Fatalf("%dx%d expanded %d: heights %v add up to %d, want %d", w, h, e, hs, sum, h-2)
 				}
 				// The boxes on screen are the ones the view draws. Below 60
 				// columns only the focused box reaches the screen, so the
@@ -84,7 +87,7 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 						continue
 					}
 					want := room
-					if h-1 < threshold {
+					if h-2 < threshold {
 						want = 1
 					}
 					if x != want {

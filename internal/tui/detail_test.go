@@ -44,27 +44,20 @@ func detailLines(t *testing.T, cfg config.Config, id string) []string {
 	}
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
-	// A finished item sits in the Done box instead of a kind pane, and the
-	// detail shows what the list with the focus has selected. Every pane and
-	// every tab of the sidebar is walked, so no kind of board is missed.
-	for p := pane(0); p < paneDone; p++ {
-		m.follows = p
-		for tab := range max(1, len(sidebar[p].tabs)) {
-			if len(sidebar[p].tabs) > 0 {
-				m.tab[p] = tab
-			}
-			for done := range 2 {
-				m.tab[paneDone] = done
-				// The item is on the list of the pane itself, or on the
-				// Done box that follows it.
-				for _, q := range []pane{p, paneDone} {
-					m.focus = q
-					rows, sel, idx := m.slotOf(q)
-					for _, r := range rows {
-						if r.id == it.ID {
-							*sel, *idx = it.ID, 0
-							return m.detailLines(100)
-						}
+	// A finished item sits in a Done pane and a task sits under its plan, so
+	// every tab, both panes, every Done sub-tab and every open plan is walked.
+	m.openPlans = everyPlanOpen(b)
+	for i := range topTabs {
+		m.openTab(i)
+		for _, p := range m.panes() {
+			for d := range max(1, len(topTabs[i].done)) {
+				m.done = d
+				m.focus = p
+				rows, sel, idx := m.slotOf(p)
+				for _, r := range rows {
+					if r.id == it.ID {
+						*sel, *idx = it.ID, 0
+						return m.detailLines(100)
 					}
 				}
 			}
@@ -398,26 +391,30 @@ func detailModel(t *testing.T, cfg config.Config) Model {
 	return New(cfg, b, false)
 }
 
-// onItem walks every pane key, every tab and every row until the item is the
-// one the screen has selected, so the walk holds whatever shape the sidebar
-// has, and leaves the detail pane on that item.
+// onItem walks every tab, every pane and every row until the item is the one
+// the screen has selected, so the walk holds whatever shape the bar has, and
+// leaves the detail box on that item.
 func onItem(t *testing.T, m Model, id string) Model {
 	t.Helper()
 	it := m.board.Get(id)
 	if it == nil {
 		t.Fatalf("the board holds no %s", id)
 	}
-	for _, k := range []string{"1", "2", "3", "4", "5"} {
-		m = press(m, k)
-		for range 5 {
-			for range 10 {
-				if at := m.Selected(); at != nil && at.ID == it.ID {
-					m.focus = paneDetail
-					return press(m, "g")
+	for i := range topTabs {
+		m = press(m, tabKey(i))
+		m.openPlans = everyPlanOpen(m.board)
+		for _, p := range m.panes() {
+			m.focusPane(p)
+			for d := range max(1, len(topTabs[i].done)) {
+				m.done = d
+				for n, r := range m.rowsOf(p) {
+					if r.id == it.ID {
+						m.moveTo(n)
+						m.focus = paneDetail
+						return press(m, "g")
+					}
 				}
-				m = press(m, "j")
 			}
-			m = press(m, "g", "]")
 		}
 	}
 	t.Fatalf("no pane of the board lists %s", id)

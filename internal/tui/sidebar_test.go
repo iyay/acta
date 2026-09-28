@@ -9,214 +9,248 @@ import (
 	"github.com/iyay/acta/internal/board"
 )
 
-// paneKeys is every key that focuses a box: 1 to 5 the sidebar, 0 the detail.
-var paneKeys = []string{"1", "2", "3", "4", "5", "0"}
+// tabKey is the key that opens tab i of the bar.
+func tabKey(i int) string { return strconv.Itoa(i + 1) }
 
-// paneOfKey is the box a key focuses, so a test can walk the ring without
-// repeating the arithmetic.
-func paneOfKey(k string) pane {
-	if k == "0" {
-		return paneDetail
+// everyPlanOpen opens every plan of a board, so a walk over the lists also
+// meets every task.
+func everyPlanOpen(b *board.Board) map[string]bool {
+	open := map[string]bool{}
+	for _, p := range b.List(board.KindPlan, true) {
+		open[p.ID] = true
 	}
-	return pane(k[0] - '1')
+	return open
 }
 
-// keyOf is the key that focuses a box, the way a reader presses it.
-func keyOf(p pane) string {
-	if p == paneDetail {
-		return "0"
+func TestTopTabsTable(t *testing.T) {
+	want := []struct {
+		name string
+		kind board.Kind
+		done string
+		tree bool
+	}{
+		{"Scratches", board.KindScratch, "Specced Dropped", false},
+		{"Bugs", board.KindBug, "Fixed Wontfix", false},
+		{"Debts", board.KindDebtItem, "Done Wontfix", false},
+		{"Specs", board.KindStory, "Done Dropped", false},
+		{"Plans", board.KindPlan, "Done Dropped", true},
+		{"Activities", "", "", false},
 	}
-	return strconv.Itoa(int(p) + 1)
-}
-
-// onTab is a model with the box p open on its tab, the way a reader gets there.
-func onTab(t *testing.T, m Model, p pane, tab int) Model {
-	t.Helper()
-	m = press(m, keyOf(p))
-	for range len(sidebar[p].tabs) {
-		if m.tab[p] == tab {
-			return m
+	if len(topTabs) != len(want) {
+		t.Fatalf("%d tabs, want %d", len(topTabs), len(want))
+	}
+	for i, w := range want {
+		tab := topTabs[i]
+		var done []string
+		for _, d := range tab.done {
+			done = append(done, d.name)
+			// The status a sub-tab lists is its own name in lower case.
+			if d.status != strings.ToLower(d.name) {
+				t.Errorf("%s sub-tab %s lists status %q", tab.name, d.name, d.status)
+			}
 		}
-		m = press(m, "]")
+		if tab.name != w.name || tab.kind != w.kind || strings.Join(done, " ") != w.done || tab.tree != w.tree {
+			t.Errorf("tab %d is %+v, want %+v", i, tab, w)
+		}
 	}
-	t.Fatalf("pane %d has no tab %d", p, tab)
-	return m
+	if topTabs[tabScratches].name != "Scratches" || topTabs[tabPlans].name != "Plans" || topTabs[tabActivities].name != "Activities" {
+		t.Error("the tab constants do not match the table")
+	}
 }
 
-// TestNumberKeysFocusTheirBox walks every key from every starting box, so no
-// key lands anywhere but its own box, from anywhere on the screen.
-func TestNumberKeysFocusTheirBox(t *testing.T) {
+func TestTUIOpensOnActivities(t *testing.T) {
 	m := sized(newModel(t), 160, 50)
-	for _, k := range paneKeys {
-		for _, start := range paneKeys {
-			if got := press(press(m, start), k).focus; got != paneOfKey(k) {
-				t.Errorf("from %s press %s: focus %d, want %d", start, k, got, paneOfKey(k))
-			}
-		}
+	if m.top != tabActivities || m.focus != paneList {
+		t.Fatalf("opens on tab %d pane %d, want Activities and its List", m.top, m.focus)
+	}
+	if it := m.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha#task-2" {
+		t.Errorf("opens on %v, want the one task in progress", it)
+	}
+	bar := plain(strings.Split(m.View(), "\n")[0])
+	if !strings.HasPrefix(bar, " Scratches  Bugs  Debts  Specs  Plans  [Activities]") {
+		t.Errorf("the top line is %q, want the tab bar with Activities marked", bar)
 	}
 }
 
-// TestTabCyclesSixBoxes walks the ring both ways from every box: tab moves on
-// to the next box and comes back after a full turn, shift+tab walks the same
-// ring the other way.
-func TestTabCyclesSixBoxes(t *testing.T) {
+func TestNumberKeysOpenTheirTab(t *testing.T) {
 	m := sized(newModel(t), 160, 50)
-	for _, k := range paneKeys {
-		for _, key := range []string{"tab", "shift+tab"} {
-			step := 1
-			if key == "shift+tab" {
-				step = -1
-			}
-			at := paneOfKey(k)
-			walked := press(m, k)
-			for i := 1; i <= len(paneKeys); i++ {
-				walked = press(walked, key)
-				at = pane((int(at) + step + len(paneKeys)) % len(paneKeys))
-				if walked.focus != at {
-					t.Errorf("from %s press %s %d times: focus %d, want %d", k, key, i, walked.focus, at)
-					break
-				}
+	for from := range topTabs {
+		for to := range topTabs {
+			got := press(m, tabKey(from), tabKey(to))
+			if got.top != to || got.focus != paneList {
+				t.Errorf("from %d press %s: tab %d pane %d, want tab %d on its List", from, tabKey(to), got.top, got.focus, to)
 			}
 		}
 	}
-}
-
-// TestSidebarTitles reads the titles off the drawn screen and pins the table to
-// the keys: the box the reader focuses with a number is the box that number
-// names.
-func TestSidebarTitles(t *testing.T) {
-	v := sized(newModel(t), 160, 50).View()
-	for _, want := range []string{
-		"[1]─Active",
-		"[2]─Specs ─ Scratchpad",
-		"[3]─Plans ─ Tasks",
-		"[4]─Bugs ─ Debt",
-		"[5]─Done",
-		"[0]─Detail",
-	} {
-		if !strings.Contains(v, want) {
-			t.Errorf("the view lacks the title %q", want)
-		}
-	}
-	// The number a box wears is the key that focuses it.
-	for p := pane(0); int(p) < boxes; p++ {
-		if got, want := paneKey(p), "─["+keyOf(p)+"]─"; got != want {
-			t.Errorf("box %d wears %q, want %q", p, got, want)
-		}
-	}
-	// Every kind pane draws the two tab names its title names, so the reader
-	// can see both kinds without pressing anything.
-	for p := 1; p < int(paneDone); p++ {
-		names := sidebar[p].tabs
-		if got := sidebar[p].title; got != names[0].name+" ─ "+names[1].name {
-			t.Errorf("pane %d draws %q, want the title of its own tabs %q", p, got, names[0].name+" ─ "+names[1].name)
-		}
+	if got := press(m, "7").top; got != tabActivities {
+		t.Errorf("7 is no tab but moved to tab %d", got)
 	}
 }
 
-// TestActiveHoldsOnlyWorkInProgress reads the Active pane of the real fixture
-// and checks it holds every item whose work has begun, of every kind, and
-// nothing that is only open, raw, todo or finished.
-func TestActiveHoldsOnlyWorkInProgress(t *testing.T) {
+func TestLeftRightWalkTheTabs(t *testing.T) {
 	m := sized(newModel(t), 160, 50)
-	_, b := fixture(t)
-	var want []string
-	for _, it := range b.Items {
-		if !it.Legacy && inProgress(it) {
-			want = append(want, it.ID)
+	if got := press(m, "right").top; got != tabScratches {
+		t.Errorf("right from Activities opens tab %d, want Scratches", got)
+	}
+	if got := press(m, "left").top; got != tabPlans {
+		t.Errorf("left from Activities opens tab %d, want Plans", got)
+	}
+	walked := m
+	for i := range topTabs {
+		walked = press(walked, "right")
+		if want := (tabActivities + 1 + i) % len(topTabs); walked.top != want {
+			t.Fatalf("right %d times: tab %d, want %d", i+1, walked.top, want)
 		}
 	}
-	got := ids(m.activeRows())
-	if strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Errorf("Active holds %q\nwant %q", strings.Join(got, " "), strings.Join(want, " "))
-	}
-	if len(got) == 0 {
-		t.Fatal("the fixture holds no work in progress, so this test proves nothing")
-	}
-	// Every kind that has work under way is on show, so the pane never reads
-	// as one kind of work only.
-	kinds := map[board.Kind]bool{}
-	for _, id := range got {
-		kinds[b.Get(id).Kind] = true
-	}
-	for _, want := range []board.Kind{board.KindStory, board.KindPlan, board.KindTask, board.KindBug, board.KindScratch} {
-		if !kinds[want] {
-			t.Errorf("Active holds no %s, so it hides a kind of work in progress", want)
-		}
-	}
-	// Nothing that is only waiting may sneak in.
-	for _, r := range m.activeRows() {
-		it := b.Get(r.id)
-		if it == nil {
-			t.Fatalf("Active holds the row %q, which is no item", r.id)
-		}
-		if !inProgress(it) {
-			t.Errorf("Active holds %s with status %s, which is not work in progress", r.id, it.Status)
-		}
-		if it.Legacy {
-			t.Errorf("Active holds the legacy item %s", r.id)
+	for i := range topTabs {
+		walked = press(walked, "left")
+		if want := (tabActivities - 1 - i + 2*len(topTabs)) % len(topTabs); walked.top != want {
+			t.Fatalf("left %d times: tab %d, want %d", i+1, walked.top, want)
 		}
 	}
 }
 
-// TestDoneFollowsLastSidebarPane checks the Done pane reads the sidebar pane
-// and tab that had the focus last: the Scratchpad tab brings Specced and
-// Dropped, Bugs brings Fixed and Wontfix, and Active brings no tabs at all and
-// every closed item of every kind.
-func TestDoneFollowsLastSidebarPane(t *testing.T) {
-	t.Run("Scratchpad", func(t *testing.T) {
-		m := sized(press(newModel(t), "2", "]"), 160, 50)
-		if m.tab[1] != 1 {
-			t.Fatalf("the Scratchpad tab is not open: tab %d", m.tab[1])
+func TestTabCyclesOnlyTheOpenTabsPanes(t *testing.T) {
+	m := press(sized(newModel(t), 160, 50), tabKey(tabPlans))
+	for i, want := range []pane{paneDone, paneDetail, paneList} {
+		m = press(m, "tab")
+		if m.focus != want || m.top != tabPlans {
+			t.Fatalf("tab %d times: tab %d pane %d, want Plans pane %d", i+1, m.top, m.focus, want)
 		}
-		m = press(m, "5")
-		if got := strings.Join(m.doneTabNames(), " "); got != "Specced Dropped" {
-			t.Errorf("after Scratchpad the finished tabs are %q, want Specced and Dropped", got)
+	}
+	for i, want := range []pane{paneDetail, paneDone, paneList} {
+		m = press(m, "shift+tab")
+		if m.focus != want || m.top != tabPlans {
+			t.Fatalf("shift+tab %d times: tab %d pane %d, want Plans pane %d", i+1, m.top, m.focus, want)
 		}
-		if got := strings.Join(ids(m.doneRows()), " "); got != "scratch/2026-09-28-idea-used" {
-			t.Errorf("Specced rows %q", got)
+	}
+	a := sized(newModel(t), 160, 50)
+	for i := range 4 {
+		a = press(a, "tab")
+		if a.focus == paneDone {
+			t.Fatalf("tab %d times on Activities focused a Done pane", i+1)
 		}
-		if got := strings.Join(ids(press(m, "]").doneRows()), " "); got != "scratch/2026-09-28-idea-dropped" {
-			t.Errorf("Dropped rows %q", got)
+	}
+	a.focusPane(paneDone)
+	if a.focus == paneDone {
+		t.Error("Activities took the focus into a Done pane it does not have")
+	}
+	if got := len(a.geometry().side); got != 1 {
+		t.Errorf("Activities draws %d list panes, want 1", got)
+	}
+}
+
+func TestDoneSubTabKeysOnlyActOnTheDonePane(t *testing.T) {
+	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs))
+	if got := press(m, "]").done; got != 0 {
+		t.Errorf("] on the List pane moved the Done sub-tab to %d", got)
+	}
+	m = press(m, "tab")
+	if got := strings.Join(m.tabsOf(paneDone), " "); got != "Fixed Wontfix" {
+		t.Errorf("the Bugs Done pane shows %q", got)
+	}
+	if got := strings.Join(doneRowIDs(m), " "); got != "bugs/2026-09-24-crash" {
+		t.Errorf("Fixed holds %q", got)
+	}
+	m = press(m, "]")
+	if m.done != 1 || len(doneRowIDs(m)) != 0 {
+		t.Errorf("] on Done: sub-tab %d rows %q, want Wontfix and no rows", m.done, doneRowIDs(m))
+	}
+	if m = press(m, "["); m.done != 0 {
+		t.Errorf("[ on Done left sub-tab %d, want Fixed", m.done)
+	}
+	if got := press(m, "0", "]").done; got != 0 {
+		t.Errorf("] on the detail moved the Done sub-tab to %d", got)
+	}
+}
+
+func TestFirstVisitSelectsTheTopRowAndShowsIt(t *testing.T) {
+	for i := range topTabs {
+		m := press(sized(newModel(t), 160, 50), tabKey(i))
+		rows := m.rowsOf(paneList)
+		if len(rows) == 0 {
+			t.Fatalf("tab %s has no rows in the fixture, so this test proves nothing", topTabs[i].name)
 		}
+		it := m.Selected()
+		if it == nil || it.ID != rows[0].id {
+			t.Errorf("tab %s first visit selects %v, want %s", topTabs[i].name, it, rows[0].id)
+			continue
+		}
+		if detail := strings.Join(plainLines(m.detailLines(100)), "\n"); !strings.Contains(detail, idText(it)) {
+			t.Errorf("tab %s detail does not show %s:\n%s", topTabs[i].name, idText(it), detail)
+		}
+	}
+}
+
+func TestReturnVisitKeepsPaneRowAndTree(t *testing.T) {
+	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "j", "tab")
+	m = press(m, tabKey(tabPlans), " ", tabKey(tabBugs))
+	if m.focus != paneDone {
+		t.Errorf("back on Bugs the focus is on pane %d, want Done", m.focus)
+	}
+	if got := cursorOf(m.rowsOf(paneList), m.sel[paneList], m.idx[paneList]); got != 1 {
+		t.Errorf("back on Bugs the List cursor is on row %d, want 1", got)
+	}
+	m = press(m, tabKey(tabPlans))
+	if got := len(m.rowsOf(paneList)); got != 3 {
+		t.Errorf("back on Plans the list has %d rows, want the opened plan still open (3)", got)
+	}
+}
+
+func TestAShrunkListClampsTheCursor(t *testing.T) {
+	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "G", tabKey(tabSpecs))
+	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-only.md": "# Only bug\n\n## Symptom\nx\n"})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, _ := m.Update(reloadMsg{b: b})
+	m = press(next.(Model), tabKey(tabBugs))
+	if it := m.Selected(); it == nil || it.ID != "bugs/2026-09-20-only" {
+		t.Errorf("after the list shrank the cursor is on %v, want the last row left", it)
+	}
+}
+
+func TestAnEmptyListShowsNoItems(t *testing.T) {
+	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-only.md": "# Only bug\n\n## Symptom\nx\n"})
+	m := sized(detailModel(t, cfg), 160, 50)
+	for _, i := range []int{tabActivities, tabScratches} {
+		m = press(m, tabKey(i))
+		if got := plainLines(m.detailLines(80)); len(got) != 1 || got[0] != "No items" {
+			t.Errorf("tab %s with no rows shows %q, want No items", topTabs[i].name, got)
+		}
+	}
+}
+
+func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
+	cfg := treeCfg(t, map[string]string{
+		".acta/plans/2026-09-20-one.md": "# One\n\n### Task 1: A\n\n- [x] a\n- [ ] b\n",
+		".acta/plans/2026-09-21-two.md": "# Two\n\n### Task 1: B\n\n- [x] a\n- [ ] b\n\n### Task 2: C\n\n- [ ] c\n",
+		".acta/bugs/2026-09-22-lag.md":  "---\nstatus: fixing\n---\n# Lag\n\n## Symptom\nx\n",
 	})
-	t.Run("Bugs", func(t *testing.T) {
-		m := press(sized(newModel(t), 160, 50), "4", "5")
-		if got := strings.Join(m.doneTabNames(), " "); got != "Fixed Wontfix" {
-			t.Errorf("after Bugs the finished tabs are %q, want Fixed and Wontfix", got)
+	m := sized(detailModel(t, cfg), 160, 50)
+	got := ids(m.rowsOf(paneList))
+	slices.Sort(got)
+	want := []string{"plans/2026-09-20-one#task-1", "plans/2026-09-21-two#task-1"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Activities holds %q, want the in-progress task of each plan %q", got, want)
+	}
+	// Every task in progress of the real fixture is on show, and nothing that
+	// is only open, raw, todo or finished sneaks in.
+	full := sized(newModel(t), 160, 50)
+	var ids_ []string
+	for _, it := range full.board.Items {
+		if it.Kind == board.KindTask && inProgress(it) {
+			ids_ = append(ids_, it.ID)
 		}
-		if got := strings.Join(ids(m.doneRows()), " "); got != "bugs/2026-09-24-crash" {
-			t.Errorf("Fixed rows %q", got)
-		}
-		if got := ids(press(m, "]").doneRows()); len(got) != 0 {
-			t.Errorf("no bug is wontfix, got %v", got)
-		}
-	})
-	t.Run("Debt", func(t *testing.T) {
-		m := press(sized(newModel(t), 160, 50), "4", "]", "5")
-		if got := strings.Join(m.doneTabNames(), " "); got != "Done Wontfix" {
-			t.Errorf("after Debt the finished tabs are %q, want Done and Wontfix", got)
-		}
-	})
-	t.Run("Active", func(t *testing.T) {
-		m := press(sized(newModel(t), 160, 50), "1", "5")
-		if got := m.doneTabNames(); len(got) != 0 {
-			t.Errorf("after Active the Done pane shows tabs %q, want none", got)
-		}
-		_, b := fixture(t)
-		got := ids(m.doneRows())
-		for _, it := range b.Items {
-			if it.Legacy || !board.Closed(it.Status) {
-				continue
-			}
-			if !slices.Contains(got, it.ID) {
-				t.Errorf("Done after Active leaves out the finished item %s (%s)", it.ID, it.Status)
-			}
-		}
-		if len(got) == 0 {
-			t.Error("Done after Active holds no finished item at all")
-		}
-	})
+	}
+	if len(ids_) == 0 {
+		t.Fatal("the fixture holds no task in progress, so this test proves nothing")
+	}
+	listed := ids(full.rowsOf(paneList))
+	if !slices.Equal(listed, ids_) {
+		t.Errorf("Activities holds %q, want %q", listed, ids_)
+	}
 }
 
 // TestNoDividerRow walks every pane of every tab and checks no row is a rule:
@@ -225,30 +259,26 @@ func TestDoneFollowsLastSidebarPane(t *testing.T) {
 // next to each other.
 func TestNoDividerRow(t *testing.T) {
 	m := sized(newModel(t), 160, 50)
+	m.openPlans = everyPlanOpen(m.board)
 	_, b := fixture(t)
 	checked := 0
-	for p := pane(1); p < paneDone; p++ {
-		for tab := range sidebar[p].tabs {
-			mm := onTab(t, m, p, tab)
+	for i := range topTabs {
+		mm := press(m, tabKey(i))
+		for _, p := range mm.panes() {
+			mm.focusPane(p)
 			rows := mm.rowsOf(p)
 			if len(rows) == 0 {
 				continue
 			}
 			checked++
+			var going, waiting bool
 			for _, r := range rows {
 				if r.id == groupRowID {
 					continue
 				}
-				if b.Get(r.id) == nil {
-					t.Errorf("pane %d tab %d holds a row %q that is no item", p, tab, r.id)
-				}
-			}
-			// A pane that holds work begun and work not begun is where the old
-			// rule sat, so that is the one to look at.
-			var going, waiting bool
-			for _, r := range rows {
 				it := b.Get(r.id)
 				if it == nil {
+					t.Errorf("tab %s pane %d holds a row %q that is no item", topTabs[i].name, p, r.id)
 					continue
 				}
 				if inProgress(it) {
@@ -262,7 +292,7 @@ func TestNoDividerRow(t *testing.T) {
 			}
 			for _, line := range innerLines(mm, paneBox(mm, p)) {
 				if strings.Trim(strings.TrimSpace(line), "─") == "" && strings.TrimSpace(line) != "" {
-					t.Errorf("pane %d tab %d draws the divider row %q", p, tab, line)
+					t.Errorf("tab %s pane %d draws the divider row %q", topTabs[i].name, p, line)
 				}
 			}
 		}
