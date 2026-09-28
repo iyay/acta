@@ -97,3 +97,43 @@ func readFile(t *testing.T, path string) string {
 	}
 	return string(b)
 }
+
+func TestEnsureGitignoreRefusesALinkedGitignore(t *testing.T) {
+	cases := map[string]func(t *testing.T, root, outside string) string{
+		"dangling target outside": func(t *testing.T, root, outside string) string {
+			return filepath.Join(outside, "new.conf")
+		},
+		"existing target outside": func(t *testing.T, root, outside string) string {
+			p := filepath.Join(outside, "victim.conf")
+			if err := os.WriteFile(p, []byte("precious=1\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		},
+		"target inside the repo": func(t *testing.T, root, outside string) string {
+			p := filepath.Join(root, "notes.txt")
+			if err := os.WriteFile(p, []byte("keep me\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		},
+	}
+	for name, target := range cases {
+		t.Run(name, func(t *testing.T) {
+			root := gitRoot(t)
+			outside := t.TempDir()
+			dst := target(t, root, outside)
+			before, beforeErr := os.ReadFile(dst)
+			if err := os.Symlink(dst, filepath.Join(root, ".gitignore")); err != nil {
+				t.Fatal(err)
+			}
+			if err := EnsureGitignore(root, ".agents.json"); err == nil {
+				t.Fatal("want an error for a linked .gitignore, got nil")
+			}
+			after, afterErr := os.ReadFile(dst)
+			if os.IsNotExist(beforeErr) != os.IsNotExist(afterErr) || string(before) != string(after) {
+				t.Fatalf("link target changed: before %q (%v), after %q (%v)", before, beforeErr, after, afterErr)
+			}
+		})
+	}
+}

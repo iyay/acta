@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,8 @@ import (
 //
 // It writes nothing when the root folder is gone or when the folder is not in
 // a git repo, because an ignore line outside a repo means nothing.
+//
+// It also writes nothing when .gitignore is a link.
 func EnsureGitignore(root, line string) error {
 	if fi, err := os.Stat(root); err != nil || !fi.IsDir() {
 		return nil
@@ -21,6 +24,13 @@ func EnsureGitignore(root, line string) error {
 		return nil
 	}
 	path := filepath.Join(root, ".gitignore")
+
+	// A .gitignore that is a link would send the write to whatever file it
+	// points at, even one outside the repo. Git does not read a linked
+	// .gitignore either, so there is nothing to gain by following it.
+	if fi, err := os.Lstat(path); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s is a link, not a file", path)
+	}
 	old, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
