@@ -113,6 +113,14 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 		}
 		segs = append(segs, segment{text: piece.text, style: style})
 	}
+	// The sort word goes last, so a narrow title drops it before any tab name.
+	if p != paneDetail {
+		word := "oldest"
+		if m.newest[p] {
+			word = "newest"
+		}
+		segs = append(segs, segment{text: " " + word + " ", style: faint})
+	}
 	return topLine(b.w, edge, segs)
 }
 

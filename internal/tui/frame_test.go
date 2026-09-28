@@ -171,3 +171,28 @@ func TestResizeClearsTheScreen(t *testing.T) {
 		t.Fatalf("the model kept %dx%d, want 100x30", got.width, got.height)
 	}
 }
+
+func TestTitleShowsTheSortOfEachPane(t *testing.T) {
+	m := newModel(t)
+	view := m.View()
+	if got := strings.Count(view, "oldest"); got != len(sidebar) {
+		t.Fatalf("start: %d panes say oldest, want %d", got, len(sidebar))
+	}
+	if strings.Contains(view, "newest") {
+		t.Fatalf("start: a pane says newest before any o")
+	}
+	m = press(m, "2", "o")
+	view = m.View()
+	if got := strings.Count(view, "newest"); got != 1 {
+		t.Fatalf("after o: %d panes say newest, want 1", got)
+	}
+	if got := strings.Count(view, "oldest"); got != len(sidebar)-1 {
+		t.Fatalf("after o: %d panes say oldest, want %d", got, len(sidebar)-1)
+	}
+}
+
+func TestHelpListsTheSortKey(t *testing.T) {
+	if !strings.Contains(helpLines, "oldest / newest") {
+		t.Fatalf("help does not list o: %q", helpLines)
+	}
+}
