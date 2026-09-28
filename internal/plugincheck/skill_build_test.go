@@ -20,6 +20,7 @@ func TestSkillBuild(t *testing.T) {
 			"acta tick plans/<stem>#task-N --all",
 			"acta show <plan id> --json", "progress.done",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
+			"acta voice show", "build_executor",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees",

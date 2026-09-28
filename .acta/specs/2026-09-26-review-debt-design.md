@@ -1,7 +1,7 @@
 ---
 id: SPEC-6
 hash: cwpp
-status: approved
+status: done
 ---
 # Review NOTEs become tracked tech debt
 
