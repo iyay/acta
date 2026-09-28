@@ -293,7 +293,7 @@ Check rules (from spec section 1):
 | `agents-view` | Read `Home/.claude.json`. Missing file or key missing: `ok`. Key `leftArrowOpensAgents` is `false`: `warn`, fix `Open /config, turn on '← opens agents'`. Broken JSON: `warn`, message holds the parse error. |
 | `setup` | `!VoiceExists` or `Voice.BuildExecutor == ""`: `warn`, fix `/acta:setup`. |
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `internal/doctor/doctor_test.go`, table-driven. A helper builds a temp `Env`:
 
@@ -334,12 +334,12 @@ Cases, each its own `t.Run` asserting `Level`, and `Fix` text where the table ab
 
 `internal/cli/doctor_test.go`: `acta doctor` in a temp repo with `HOME` set to a temp dir exits 1 (repo check fails) and prints `fail repo:`; `acta doctor --fix` exits 0 on the next plain run for the repo line; `acta doctor extra` exits `exitBadInput`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/doctor/ ./internal/cli/ -run Doctor -v`
 Expected: FAIL, package `doctor` does not exist.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `internal/doctor/doctor.go`: one small function per check (`checkBinary`, `checkHarness`, `checkStaleLinks`, `checkConflicts`, `checkRepo`, `checkAgentsView`, `checkSetup`), `Run` calls them in order. Links: `os.Lstat` for `ModeSymlink`, then `os.Stat` for the target. JSON: `json.Unmarshal` into `struct{ LeftArrowOpensAgents *bool }` with tag `json:"leftArrowOpensAgents"`, so unset and false differ. `Fix`: `os.MkdirAll(ActaRoot, 0o755)` when missing, then `hook.EnsureGitignore(ActaRoot, ".agents.json")`; return `ActaRoot/.gitignore` only when its bytes changed.
 
@@ -380,12 +380,12 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 
 `doctorEnv` fills `Env` from `os.UserHomeDir`, `hook.ClaudeDir()`, `config.Load(cwd, "")` (on error `RepoRoot` stays `""`), `os.Executable`, `debug.ReadBuildInfo` (`Main.Version` plus the `vcs.revision` setting when present), and `voice.Resolve()`. Check the real `gitc.CommitPaths` return type and handle its failure the way `cmdScratchNew` does.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/doctor/ ./internal/cli/ -v`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -404,7 +404,7 @@ git commit -m "feat(cli): add acta doctor with repo-only --fix"
 
 **verify:** No reading of either skill lets an agent put a raw idea in agent memory, start an Architectural brainstorm without a scratch item, run a second Architectural brainstorm in the same session, or offer the herdr choice without `HERDR_ENV=1`. List each rule from spec 4.1 and 4.2 and the sentence that carries it.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // skill_scratch_test.go
@@ -424,23 +424,23 @@ func TestSkillScratch(t *testing.T) {
 
 In `skill_brainstorm_test.go`, add to `Must`: `"acta scratch new"`, `"acta scratch add"`, `"status brainstorming"`, `"parent: scratch/"`, `"One Architectural brainstorm per session"`, `"claude --bg 'brainstorm SCRATCH-"`, `"HERDR_ENV=1"`, `"pbcopy"`, `"wl-copy"`, `"xclip"`, `"OSC 52"`, `"press ←"`, `"Spike and Bounded"`. Raise `MaxLines` by the lines you add, no more.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/plugincheck/ -run 'SkillScratch|SkillBrainstorm' -v`
 Expected: FAIL, `missing skills/scratch/SKILL.md` and missing brainstorm phrases.
 
-- [ ] **Step 3: Write the skill text**
+- [x] **Step 3: Write the skill text**
 
 `plugin/skills/scratch/SKILL.md`, frontmatter `name: scratch`, `description: "acta: Use when the user drops a raw idea (catet, nanti, kepikiran, note this, later) or a side idea shows up during other work. Files it in Scratchpad with acta scratch new; never in agent memory."`. Body carries spec section 4.1 as written, in short plain sentences, plus the exact commands `acta scratch new <slug> [--title T] < body.md`, `acta scratch add SCRATCH-n < text.md`, `acta set scratch/<stem> status dropped`.
 
 `plugin/skills/brainstorm/SKILL.md`: add a section "Architectural path: scratch item and one per session" right after "Three Paths", carrying spec section 4.2 as written, the three choices listed (a), (b), (c) with the exact commands. Add "Step 0: scratch item" as the first item of the Architectural checklist and "append with acta scratch add" to the questions and design steps. The spec frontmatter line `parent: scratch/<stem>` goes in "Documentation".
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ -v`
 Expected: PASS, including `final_test.go` and any hook parity test, after adding `{"scratch", "raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory"}` after `bug` in `hook.Skills` and the same line `- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory` after the `acta:bug` line in `default-rules.md`.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...
@@ -458,29 +458,29 @@ git commit -m "feat(plugin): add acta:scratch and brainstorm scratch rules"
 
 **verify:** No reading of setup lets an agent write CLAUDE.md or AGENTS.md without first showing the exact block and hearing a yes, write outside the markers, create a CLAUDE.md or AGENTS.md that did not exist, offer dispatch without herdr, or ask the model question outside Claude Code. No reading of build asks for an executor when one is saved. List each rule and its sentence.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `skill_setup_test.go`: replace `"It never edits CLAUDE.md"` with, and add: `"acta doctor"`, `"acta doctor --fix"`, `"--executor"`, `"HERDR_ENV=1"`, `"herdr"`, `"--subagent-models split"`, `"Claude Code only"`, `"<!-- acta:begin -->"`, `"<!-- acta:end -->"`, `"only after a yes"`, `"only to files that already exist"`, `"never edits settings"`, `"which part to change"`. Add `MustNot: "It never edits CLAUDE.md"`. Raise `MaxLines` to fit, no more.
 
 `skill_build_test.go`: add `"acta voice show"` and `"build_executor"` to its `Must`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/plugincheck/ -run 'SkillSetup|SkillBuild' -v`
 Expected: FAIL on the new phrases.
 
-- [ ] **Step 3: Write the skill text**
+- [x] **Step 3: Write the skill text**
 
 `setup/SKILL.md`: description `acta: Use on first run and whenever the user asks to change setup: runs acta doctor, then the chat language, style and tone, the default build executor, split subagent models, and the optional acta block in CLAUDE.md or AGENTS.md.` Body follows spec section 4.3 as written, including the exact block. Keep the existing "Change later" flags and add the new ones.
 
 `build/SKILL.md`: where it asks for the executor, add: read `build_executor` from `acta voice show`; when set, use it without asking; when unset, ask as today.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ -v`
 Expected: PASS
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...

@@ -116,8 +116,10 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdID(args[1:], stdout, stderr)
 	case "migrate-root":
 		return cmdMigrateRoot(args[1:], stdout, stderr)
+	case "doctor":
+		return cmdDoctor(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use id, list, show, set, tick, migrate-root, bug new, debt new, scratch new or scratch add\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new or scratch add\n", args[0])
 		return exitBadInput
 	}
 }
