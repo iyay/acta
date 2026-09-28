@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 )
@@ -337,4 +339,144 @@ func gitTree(t *testing.T, name string, files map[string]string) config.Config {
 	run("add", ".")
 	run("commit", "-q", "-m", "add the board")
 	return config.Default(dir)
+}
+
+// A tab fills the room up to the next stop of eight, counted with the width
+// of the words before it on the same line.
+func TestExpandTabsToNextStop(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"\tx", "        x"},
+		{"ab\tx", "ab      x"},
+		{"\t\tx", "                x"},
+		{"12345678\tx", "12345678        x"},
+		{"a\nb\tc", "a\nb       c"},
+		{"界\tx", "界      x"},
+		{"no tabs", "no tabs"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := expandTabs(c.in); got != c.want {
+			t.Errorf("expandTabs(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// One board whose files carry a tab in every place the detail pane draws its
+// own words: a plan body with Go code indented by tabs, the steps of a task,
+// the line of a debt file, and the prose around it. The titles on the lists
+// the panes are showing keep their tabs out, because a row is drawn by
+// another pane.
+func tabFiles() map[string]string {
+	return map[string]string{
+		".acta/specs/2026-09-28-t.md": "---\nid: SPEC-1\n---\n# Spec T\n\nWhy the tabs matter.\n",
+		".acta/plans/2026-09-28-p.md": "---\nid: PLAN-1\n---\n# Plan P\n\n**Spec:** `.acta/specs/2026-09-28-t.md`\n\n## Code\n\n```go\nfunc main() {\n\tif true {\n\t\tfmt.Println(\"hi\")\n\t}\n}\n```\n\n" +
+			strings.Repeat("A line of prose long enough to wrap on its own, so the body has more lines than the pane has rows.\n\n", 20) +
+			"### Task 1: Fix the frame\n\n- [x] a step\tthat runs on and on to the edge of the pane\n- [ ] step\ttwo\n",
+		// The line runs on, so cutting it to the width of a narrow pane
+		// leaves the tab in the line that is drawn.
+		".acta/debt/2026-09-28-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] a note\tthat runs on to the edge of the pane\n\nProse\twith a tab around the list.\n",
+	}
+}
+
+// detailModel is a model over the board of cfg with the real markdown
+// renderer, because that is the path a body with tabs really takes.
+func detailModel(t *testing.T, cfg config.Config) Model {
+	t.Helper()
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(cfg, b, false)
+}
+
+// onItem walks every pane key, every tab and every row until the item is the
+// one the screen has selected, so the walk holds whatever shape the sidebar
+// has, and leaves the detail pane on that item.
+func onItem(t *testing.T, m Model, id string) Model {
+	t.Helper()
+	it := m.board.Get(id)
+	if it == nil {
+		t.Fatalf("the board holds no %s", id)
+	}
+	for _, k := range []string{"1", "2", "3", "4", "5"} {
+		m = press(m, k)
+		for range 5 {
+			for range 10 {
+				if at := m.Selected(); at != nil && at.ID == it.ID {
+					m.focus = paneDetail
+					return press(m, "g")
+				}
+				m = press(m, "j")
+			}
+			m = press(m, "g", "]")
+		}
+	}
+	t.Fatalf("no pane of the board lists %s", id)
+	return m
+}
+
+// frameBreak is the first line of a screen that holds a tab or outgrows the
+// terminal, or -1 when the screen is whole. lipgloss counts a tab as nothing
+// while the terminal draws it up to the next stop, so a line holding one is a
+// line the pane and the screen disagree about.
+func frameBreak(view string, w int) int {
+	for i, ln := range strings.Split(view, "\n") {
+		if strings.Contains(ln, "\t") || lipgloss.Width(ln) > w {
+			return i
+		}
+	}
+	return -1
+}
+
+// A plan read in the detail pane and scrolled down line by line to the end
+// draws no tab and no line wider than the terminal, at both sizes. The frame
+// breaks otherwise: the screen counts the cells the pane never drew, and the
+// old words stay under the new ones.
+func TestDetailWithTabsFitsThePane(t *testing.T) {
+	cfg := treeCfg(t, tabFiles())
+	for _, size := range [][2]int{{80, 30}, {160, 50}} {
+		w, h := size[0], size[1]
+		for _, id := range []string{"PLAN-1", "PLAN-1.1"} {
+			m := onItem(t, sized(detailModel(t, cfg), w, h), id)
+			for range 400 {
+				view := m.View()
+				if at := frameBreak(view, w); at >= 0 {
+					t.Errorf("%s at %dx%d, scrolled to line %d: the frame breaks at line %d:\n%s",
+						id, w, h, m.off[paneDetail], at, view)
+					break
+				}
+				off := m.off[paneDetail]
+				m = press(m, "j")
+				if m.off[paneDetail] == off {
+					break
+				}
+			}
+		}
+	}
+}
+
+// Every item of that board, at every width, not only the ones a view happened
+// to show: the header, the work list and the body all end in the same lines,
+// and none of them may hold a tab or outgrow the pane it is measured for.
+func TestEveryDetailItemHoldsNoTabAndFitsItsWidth(t *testing.T) {
+	files := tabFiles()
+	// A second plan whose own title holds a tab and whose frontmatter names a
+	// kind that does not exist, so the line a spec draws above the tasks of a
+	// plan and the warning under the header both carry one. It sits under no
+	// pane this test renders, because a row is drawn by the list panes.
+	files[".acta/plans/2026-09-28-q.md"] = "---\nid: PLAN-2\ntype: \"a\tb\"\n---\n# a plan\twhose title runs to the edge of the pane\n\n**Spec:** `.acta/specs/2026-09-28-t.md`\n"
+	cfg := treeCfg(t, files)
+	for _, id := range []string{"SPEC-1", "PLAN-1", "PLAN-1.1", "PLAN-2", "DEBT-1.1"} {
+		m := onItem(t, detailModel(t, cfg), id)
+		for _, w := range []int{40, 60, 80, 120, 160} {
+			for i, ln := range m.detailLines(w) {
+				if strings.Contains(plain(ln), "\t") {
+					t.Errorf("%s at %d wide: line %d holds a tab: %q", id, w, i, plain(ln))
+				}
+				if got := lipgloss.Width(ln); got > w {
+					t.Errorf("%s at %d wide: line %d is %d cells wide: %q", id, w, i, got, plain(ln))
+				}
+			}
+		}
+	}
 }
