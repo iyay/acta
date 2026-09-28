@@ -380,7 +380,7 @@ func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
 	if got := lines[1]; got != strings.Repeat("─", b.w-2) {
 		t.Errorf("the divider is %q", got)
 	}
-	if got := lines[2]; got != "specs/2026-09-22-beta  Beta story" {
+	if got := lines[2]; got != "specs/2026-09-28-from-scratch-design  Themes …" {
 		t.Errorf("the not-started row is %q, want only the name and the title", got)
 	}
 }
