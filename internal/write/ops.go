@@ -31,6 +31,7 @@ var (
 // Outcome says what happened to the file after a write.
 type Outcome struct {
 	Path      string
+	ShortID   string // number ID like SCRATCH-1, empty when the write has none
 	Committed bool
 	Skipped   bool // auto-commit was on but the commit did not happen
 	Reason    string
@@ -58,6 +59,10 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 			return Outcome{}, bad("type must be story or bug, not %q", value)
 		}
 	case "status":
+		// specced is not written anywhere: a spec's parent link gives it.
+		if it.Kind == board.KindScratch && value == "specced" {
+			return Outcome{}, bad("specced comes from a spec's parent link")
+		}
 		if !allowed(board.Allowed(it.Kind), value) {
 			return Outcome{}, bad("%q is not a %s status (%s)", value, it.Kind, strings.Join(board.Allowed(it.Kind), ", "))
 		}
@@ -274,10 +279,16 @@ func splitNotes(notes []byte) []string {
 }
 
 func bugPath(cfg config.Config, slug string) (string, error) {
+	return datedPath(cfg, cfg.Dirs.Bugs, slug)
+}
+
+// datedPath gives a new planning file its date and slug name, and refuses a
+// slug the contract does not allow or a name the folder already holds.
+func datedPath(cfg config.Config, dir, slug string) (string, error) {
 	if !slugRe.MatchString(slug) {
 		return "", bad("slug %q must be lower case words joined by -", slug)
 	}
-	path := filepath.Join(cfg.Root, cfg.Dirs.Bugs, Now().Format("2006-01-02")+"-"+slug+".md")
+	path := filepath.Join(cfg.Root, dir, Now().Format("2006-01-02")+"-"+slug+".md")
 	if _, err := os.Stat(path); err == nil {
 		return "", bad("%s already exists", path)
 	}
