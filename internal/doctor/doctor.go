@@ -64,10 +64,12 @@ func Run(e Env) []Result {
 // line. It returns the paths it changed, so the caller can commit them. It
 // never writes under Home: Claude Code and omp own those files.
 func Fix(e Env) ([]string, error) {
-	if e.RepoRoot == "" || e.ActaRoot == "" || !insideRepo(e.RepoRoot, e.ActaRoot) {
+	gi := filepath.Join(e.ActaRoot, ".gitignore")
+	// The file --fix writes is the one bound, so the write and the report
+	// in checkRepo can never disagree.
+	if e.RepoRoot == "" || e.ActaRoot == "" || !inRepoPath(e.RepoRoot, gi) {
 		return nil, nil
 	}
-	gi := filepath.Join(e.ActaRoot, ".gitignore")
 	before, _ := os.ReadFile(gi)
 	if err := os.MkdirAll(e.ActaRoot, 0o755); err != nil {
 		return nil, err
@@ -82,15 +84,33 @@ func Fix(e Env) ([]string, error) {
 	return []string{gi}, nil
 }
 
-// insideRepo says whether a path sits under the repo root. It walks the
-// path relative to the root, so a sibling folder that merely starts with
-// the same name, like /repo-other next to /repo, counts as outside.
-func insideRepo(root, path string) bool {
-	rel, err := filepath.Rel(root, path)
+// inRepoPath says whether a path is a place this repo owns. Both sides are
+// followed through their symlinks first, so a link that points out of the
+// repo counts as outside, and a root that is really inside the repo still
+// counts when a symlinked parent spells it a different way.
+func inRepoPath(root, path string) bool {
+	rel, err := filepath.Rel(realPath(root), realPath(path))
 	if err != nil {
 		return false
 	}
+	// A sibling folder that merely starts with the repo name, like
+	// /repo-other next to /repo, must not pass.
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
+}
+
+// realPath follows symlinks in a path. A path that is not there yet, like a
+// .acta folder --fix has to create, is resolved through the deepest parent
+// that exists, which is where the new folder will land.
+func realPath(p string) string {
+	p = filepath.Clean(p)
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	parent := filepath.Dir(p)
+	if parent == p {
+		return p
+	}
+	return filepath.Join(realPath(parent), filepath.Base(p))
 }
 
 // Failed is true when a check is fail, which is what makes the command exit 1.
@@ -232,11 +252,20 @@ func checkRepo(e Env) Result {
 		r.Level, r.Msg = OK, "not in a git repo, skipped"
 		return r
 	}
-	// A root outside the repo is the one problem --fix cannot touch, so the
-	// fix line names root instead of sending the user back to --fix.
-	if !insideRepo(e.RepoRoot, e.ActaRoot) {
+	gi := filepath.Join(e.ActaRoot, ".gitignore")
+	// A root outside the repo, or one that is a link out of it, is the one
+	// problem --fix cannot touch, so the fix line names root instead of
+	// sending the user back to --fix.
+	if !inRepoPath(e.RepoRoot, e.ActaRoot) {
 		r.Level, r.Msg = Fail, e.ActaRoot+" is outside the repo "+e.RepoRoot
 		r.Fix = "fix root in .acta.yaml so it points inside the repo"
+		return r
+	}
+	// A .gitignore that is a link can carry the write to a file the repo
+	// does not own, so --fix will not write it and the user replaces it.
+	if !inRepoPath(e.RepoRoot, gi) {
+		r.Level, r.Msg = Fail, ".gitignore in "+e.ActaRoot+" is a link, not a file of this repo"
+		r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
 		return r
 	}
 	fi, err := os.Stat(e.ActaRoot)

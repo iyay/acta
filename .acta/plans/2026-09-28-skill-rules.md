@@ -640,7 +640,32 @@ Fix inside doctor only: resolve symlinks with `filepath.EvalSymlinks` on `RepoRo
 
 **Files:** `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`, `internal/cli/doctor_test.go`
 
-- [ ] **Step 1: Write failing tests** with the probe inputs above: `.acta` symlinked outside writes nothing and reports `fail`; `root:` pointing at an in-repo symlink to outside writes nothing and reports `fail`; `.acta/.gitignore` symlinked to an outside file leaves that file unchanged and reports `fail`; a root reached through a symlinked parent folder that really is inside the repo reports `ok` and `--fix` commits.
+- [x] **Step 1: Write failing tests** with the probe inputs above: `.acta` symlinked outside writes nothing and reports `fail`; `root:` pointing at an in-repo symlink to outside writes nothing and reports `fail`; `.acta/.gitignore` symlinked to an outside file leaves that file unchanged and reports `fail`; a root reached through a symlinked parent folder that really is inside the repo reports `ok` and `--fix` commits.
+- [x] **Step 2: Run** `go test ./internal/doctor/ ./internal/cli/ -v`. Expected: FAIL on the new tests.
+- [x] **Step 3: Implement** the minimum to pass.
+- [x] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [x] **Step 5: Gates and commit**
+
+```bash
+gofmt -l . && go vet ./... && go test ./...
+git add internal/doctor internal/cli .acta/plans/2026-09-28-skill-rules.md
+git commit -m "fix(doctor): resolve symlinks before the repo bounds check"
+```
+
+## Fix round 3
+
+### Task 10: Refuse a `.gitignore` that is a symlink
+
+Review round 3 (range a96a5cf..f8d49d3) found that Task 9's rule "a `.gitignore` that is itself a symlink counts as outside the repo" was not built. `realPath` (`internal/doctor/doctor.go:103-113`) falls back to the parent folder when `EvalSymlinks` fails, and the `.gitignore` path is never checked with `os.Lstat`. The user ruled on 2026-09-28 to fix this past the three-round budget.
+
+1. Dangling link: a committed `.acta/.gitignore -> ../../outside/new.conf` (`outside/` exists, `new.conf` does not). `--fix` creates `outside/new.conf`.
+2. In-repo link: `.acta/.gitignore -> ../.git/config` (or `../docs/notes.txt`). `--fix` appends `.agents.json` to that file and then reports `ok repo`, while git ignores nothing.
+
+Fix: in both `Fix` (`doctor.go:70`) and `checkRepo` (`doctor.go:266`), call `os.Lstat` on the `.gitignore` path. Any symlink, dangling or not, inside or outside the repo, means `Fix` writes nothing and the repo check reports `fail`.
+
+**Files:** `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`, `internal/cli/doctor_test.go`
+
+- [ ] **Step 1: Write failing tests** for both inputs above: the dangling link target is still missing after `--fix` and the report is `fail`; the in-repo target file is unchanged after `--fix` and the report is `fail`, never `ok`.
 - [ ] **Step 2: Run** `go test ./internal/doctor/ ./internal/cli/ -v`. Expected: FAIL on the new tests.
 - [ ] **Step 3: Implement** the minimum to pass.
 - [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
@@ -649,5 +674,5 @@ Fix inside doctor only: resolve symlinks with `filepath.EvalSymlinks` on `RepoRo
 ```bash
 gofmt -l . && go vet ./... && go test ./...
 git add internal/doctor internal/cli .acta/plans/2026-09-28-skill-rules.md
-git commit -m "fix(doctor): resolve symlinks before the repo bounds check"
+git commit -m "fix(doctor): refuse a .gitignore that is a symlink"
 ```
