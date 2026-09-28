@@ -665,11 +665,11 @@ Fix: in both `Fix` (`doctor.go:70`) and `checkRepo` (`doctor.go:266`), call `os.
 
 **Files:** `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`, `internal/cli/doctor_test.go`
 
-- [ ] **Step 1: Write failing tests** for both inputs above: the dangling link target is still missing after `--fix` and the report is `fail`; the in-repo target file is unchanged after `--fix` and the report is `fail`, never `ok`.
-- [ ] **Step 2: Run** `go test ./internal/doctor/ ./internal/cli/ -v`. Expected: FAIL on the new tests.
-- [ ] **Step 3: Implement** the minimum to pass.
-- [ ] **Step 4: Run** `go test ./...`. Expected: PASS.
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 1: Write failing tests** for both inputs above: the dangling link target is still missing after `--fix` and the report is `fail`; the in-repo target file is unchanged after `--fix` and the report is `fail`, never `ok`.
+- [x] **Step 2: Run** `go test ./internal/doctor/ ./internal/cli/ -v`. Expected: FAIL on the new tests.
+- [x] **Step 3: Implement** the minimum to pass.
+- [x] **Step 4: Run** `go test ./...`. Expected: PASS.
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...

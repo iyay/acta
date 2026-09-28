@@ -433,6 +433,65 @@ func TestDoctorFixWritesNothingWhenActaRootIsALinkOut(t *testing.T) {
 	wantLevel(t, byName(Run(e), "repo"), Fail, "root")
 }
 
+// A .gitignore that is a link to a file that is not there yet still makes
+// the append land on the target, creating a file outside the repo. So --fix
+// must write nothing, the target must stay missing, and the check must say
+// the link is the problem instead of sending the user back to --fix.
+func TestDoctorFixWritesNothingWhenGitignoreIsADanglingLink(t *testing.T) {
+	e := env(t)
+	outside := filepath.Join(filepath.Dir(e.RepoRoot), "outside")
+	if err := os.MkdirAll(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	victim := filepath.Join(outside, "new.conf")
+	if err := os.MkdirAll(e.ActaRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link(t, filepath.Join(e.ActaRoot, ".gitignore"), filepath.Join("..", "..", "outside", "new.conf"))
+	paths, err := Fix(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("paths %v", paths)
+	}
+	if _, err := os.Stat(victim); !os.IsNotExist(err) {
+		t.Fatalf("Fix created the link target %s", victim)
+	}
+	r := byName(Run(e), "repo")
+	wantLevel(t, r, Fail, "replace the .gitignore link")
+	if strings.Contains(r.Fix, "acta doctor --fix") {
+		t.Fatalf("fix %q sends the user to --fix, which would write through the link", r.Fix)
+	}
+}
+
+// A .gitignore that is a link to a file of the same repo looks fine to a
+// bounds check, because the target really is in the repo. But the append
+// lands on that other file, and the check then reads the line back through
+// the link and says ok. So the target must keep its bytes and the check
+// must fail.
+func TestDoctorFixWritesNothingWhenGitignoreLinksInsideTheRepo(t *testing.T) {
+	e := env(t)
+	victim := filepath.Join(e.RepoRoot, "docs", "notes.txt")
+	write(t, victim, "release notes\n")
+	link(t, filepath.Join(e.ActaRoot, ".gitignore"), filepath.Join("..", "docs", "notes.txt"))
+	paths, err := Fix(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("paths %v", paths)
+	}
+	raw, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "release notes\n" {
+		t.Fatalf("Fix wrote through the link: %q", raw)
+	}
+	wantLevel(t, byName(Run(e), "repo"), Fail, "replace the .gitignore link")
+}
+
 // A config file that does not parse is a broken setup, not a skipped
 // check, so the repo line has to carry the error and fail.
 func TestDoctorRepoFailsOnBrokenConfig(t *testing.T) {

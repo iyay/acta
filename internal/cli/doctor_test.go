@@ -58,6 +58,20 @@ func ompActa(t *testing.T, home string) {
 	}
 }
 
+// readOrMissing gives a file's bytes and whether it is there at all, so a
+// file that was never made is not confused with an empty one.
+func readOrMissing(t *testing.T, path string) (string, bool) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw), true
+}
+
 func TestDoctorCLIFailsWhenRepoIsBroken(t *testing.T) {
 	home := doctorHome(t)
 	dir := doctorRepo(t)
@@ -461,6 +475,76 @@ func TestDoctorCLIFixLeavesAGitignoreLinkAlone(t *testing.T) {
 	}
 	if string(raw) != "notes\n" {
 		t.Fatalf("--fix wrote through the link: %q", raw)
+	}
+}
+
+// A .acta/.gitignore that is a link must not be written through, whichever
+// way it points: a target that is not there yet would be created outside the
+// repo, and a target inside the repo would still be someone else's file. The
+// report has to say fail and exit 1, never ok, and --fix must commit nothing.
+func TestDoctorCLIFixRefusesAGitignoreLink(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, dir string) string
+	}{
+		{"link to a file that is not there yet", func(t *testing.T, dir string) string {
+			outside := filepath.Join(filepath.Dir(dir), "outside")
+			if err := os.MkdirAll(outside, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(dir, ".acta"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(filepath.Join("..", "..", "outside", "new.conf"), filepath.Join(dir, ".acta", ".gitignore")); err != nil {
+				t.Fatal(err)
+			}
+			return filepath.Join(outside, "new.conf")
+		}},
+		{"link to a file of the same repo", func(t *testing.T, dir string) string {
+			victim := filepath.Join(dir, "docs", "notes.txt")
+			if err := os.MkdirAll(filepath.Join(dir, "docs"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(victim, []byte("release notes\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(dir, ".acta"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(filepath.Join("..", "docs", "notes.txt"), filepath.Join(dir, ".acta", ".gitignore")); err != nil {
+				t.Fatal(err)
+			}
+			return victim
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			home := doctorHome(t)
+			dir := doctorRepo(t)
+			ompActa(t, home)
+			victim := c.setup(t, dir)
+			before, existed := readOrMissing(t, victim)
+			commits := commitCount(t, dir)
+			var stdout, stderr strings.Builder
+			inDir(t, dir, func() {
+				if code := Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != 1 {
+					t.Fatalf("exit %d want 1, stdout %q stderr %q", code, stdout.String(), stderr.String())
+				}
+			})
+			out := stdout.String()
+			if !strings.Contains(out, "fail repo:") {
+				t.Fatalf("stdout %q has no fail repo line", out)
+			}
+			if strings.Contains(out, "ok repo:") {
+				t.Fatalf("stdout %q calls a linked .gitignore ok", out)
+			}
+			if got := commitCount(t, dir); got != commits {
+				t.Fatalf("commits %d, want %d: --fix made a commit", got, commits)
+			}
+			if got, now := readOrMissing(t, victim); now != existed || got != before {
+				t.Fatalf("%s went from %q (%t) to %q (%t)", victim, before, existed, got, now)
+			}
+		})
 	}
 }
 
