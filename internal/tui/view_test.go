@@ -278,7 +278,7 @@ func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
 			for _, w := range []int{40, 60, 120, 200} {
 				m := sized(focused(newModel(t), p, tab), w, 40)
 				b := paneBox(m, p)
-				inner := b.w - 2
+				inner := b.textW()
 				rows, _, _ := m.slotOf(p)
 				lines := innerLines(m, b)
 				if len(lines) < b.rows {
@@ -293,9 +293,8 @@ func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
 					}
 					continue
 				}
-				// The words of a box that scrolls give one cell to the
-				// scrollbar, so the row ends before the wall.
-				inner = m.textOf(p, b)
+				// The words of a box fill every cell between the walls, so a
+				// row runs right up to the scrollbar on the right wall.
 				for i, ln := range lines {
 					n := b.first + i
 					if n >= len(rows) {
@@ -394,7 +393,7 @@ func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
 	m = press(sized(m, 200, 40), "2")
 	b := paneBox(m, paneSpecs)
 	lines := innerLines(m, b)
-	if got := cells(lineOfRow(t, lines, "specs/2026-09-20-alpha"), m.textOf(paneSpecs, b)); !strings.HasPrefix(strings.TrimSpace(got), "specs/2026-09-20-alpha  Alpha") ||
+	if got := cells(lineOfRow(t, lines, "specs/2026-09-20-alpha"), b.textW()); !strings.HasPrefix(strings.TrimSpace(got), "specs/2026-09-20-alpha  Alpha") ||
 		!strings.HasSuffix(strings.TrimSpace(got), "2/5 · claude") {
 		t.Errorf("the in-progress row is %q, want the name and the title then 2/5 · claude", got)
 	}
@@ -419,15 +418,15 @@ func TestALongTitleIsCutSoTheCountFits(t *testing.T) {
 	it.Title = strings.Repeat("x", 200)
 	m = press(sized(m, 60, 40), "2")
 	b := paneBox(m, paneSpecs)
-	row := cells(lineWith(t, innerLines(m, b), "2/5 · claude"), m.textOf(paneSpecs, b))
+	row := cells(lineWith(t, innerLines(m, b), "2/5 · claude"), b.textW())
 	if !strings.HasSuffix(strings.TrimSpace(row), "2/5 · claude") {
 		t.Errorf("the count and the agent were cut: %q", row)
 	}
 	if !strings.Contains(row, "…") {
 		t.Errorf("a 200-character title should be cut with …: %q", row)
 	}
-	if got := lipgloss.Width(row); got != m.textOf(paneSpecs, b) {
-		t.Errorf("the row is %d cells wide, the pane holds %d", got, m.textOf(paneSpecs, b))
+	if got := lipgloss.Width(row); got != b.textW() {
+		t.Errorf("the row is %d cells wide, the pane holds %d", got, b.textW())
 	}
 }
 
@@ -516,7 +515,7 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 			t.Errorf("the selected row has no background 236: %q", sel)
 		}
 		reset := strings.LastIndex(sel, "\x1b[0m")
-		if want := m.textOf(paneSpecs, b); reset < 0 || lipgloss.Width(plain(sel[:reset])) != want {
+		if want := b.textW(); reset < 0 || lipgloss.Width(plain(sel[:reset])) != want {
 			t.Errorf("the band stops short of the row width %d: %q", want, sel)
 		}
 
@@ -1127,4 +1126,241 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 			}
 		}
 	})
+}
+
+// thumbFixture gives every pane more rows than any of the two screens below
+// can show, and the detail body a whole screenful of lines, so all six boxes
+// have a thumb to draw: thirty of every kind, work under way for the Active
+// pane, and finished ones for the Done pane.
+func thumbFixture(t *testing.T) Model {
+	t.Helper()
+	body := "# Plan\n" + strings.Repeat("\nA line of the body.\n", 60) +
+		"\n### Task 1: First step\n\n- [ ] **Step 1: Do it**\n"
+	files := map[string]string{}
+	for i := range 30 {
+		n := fmt.Sprint(i)
+		files[".acta/specs/2026-09-20-open-"+n+".md"] = "# Open spec\n"
+		files[".acta/specs/2026-09-19-done-"+n+".md"] = "---\nstatus: done\n---\n# Done spec\n"
+		files[".acta/specs/2026-09-18-going-"+n+".md"] = "---\nstatus: in-progress\n---\n# Going spec\n"
+		files[".acta/scratch/2026-09-20-idea-"+n+".md"] = "---\nstatus: brainstorming\n---\n# Idea\n"
+		files[".acta/plans/2026-09-20-open-"+n+".md"] = body
+		files[".acta/plans/2026-09-19-done-"+n+".md"] = "---\nstatus: done\n---\n" + body
+		files[".acta/bugs/2026-09-20-open-"+n+".md"] = "# Open bug\n"
+		files[".acta/bugs/2026-09-19-fixed-"+n+".md"] = "---\nstatus: fixed\n---\n# Fixed bug\n"
+		files[".acta/debt/2026-09-20-debt-"+n+".md"] = "# Review NOTEs: debt\n\n- [ ] a thing to do\n"
+		files[".acta/debt/2026-09-19-debt-"+n+".md"] = "---\nstatus: done\n---\n# Review NOTEs: debt\n\n- [x] a thing done\n"
+	}
+	cfg := treeCfg(t, files)
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return m
+}
+
+// paneLine gives the drawn line of pane p at the body line i, as plain text.
+func paneLine(v string, b box, i int) string {
+	lines := strings.Split(v, "\n")
+	y := b.y + 1 + i
+	if y < 0 || y >= len(lines) {
+		return ""
+	}
+	r := []rune(plain(lines[y]))
+	if b.x >= len(r) {
+		return ""
+	}
+	return string(r[b.x:min(len(r), b.x+b.w)])
+}
+
+// rawPaneLine gives the drawn line of pane p at the body line i with its
+// colors, so a test can ask which brush a cell wears.
+func rawPaneLine(v string, b box, i int) string {
+	lines := strings.Split(v, "\n")
+	y := b.y + 1 + i
+	if y < 0 || y >= len(lines) {
+		return ""
+	}
+	return xansi.TruncateLeft(xansi.Truncate(lines[y], b.x+b.w, ""), b.x, "")
+}
+
+// scrollTo puts pane p at the top, in the middle or at the end of its content.
+func scrollTo(m Model, p pane, at string) Model {
+	if p == paneDetail {
+		m = press(m, "0")
+	}
+	switch at {
+	case "top":
+		return press(m, "g")
+	case "middle":
+		return press(m, "ctrl+d", "ctrl+d")
+	default:
+		return press(m, "G")
+	}
+}
+
+// paneTabs is how many tabs a pane has to walk: the two kind boxes show two
+// each, the rest show one, and the detail box sits outside the table.
+func paneTabs(p pane) int {
+	if p >= paneDone {
+		return 1
+	}
+	return max(1, len(sidebar[p].tabs))
+}
+
+// TestThumbSitsOnTheBorderNotInside walks every pane, both screens and all
+// three places in the content, and reads the drawn cells. No pane spends a
+// cell of its own on a scrollbar: the line is as wide as the pane, the cell
+// left of the right wall is content, and the thumb is that wall and nothing
+// else.
+func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
+	withColors(func() {
+		for _, size := range [][2]int{{80, 30}, {160, 50}} {
+			for p := pane(0); p <= paneDetail; p++ {
+				for tab := range paneTabs(p) {
+					for _, at := range []string{"top", "middle", "end"} {
+						checkThumbOnTheBorder(t, p, tab, at, size[0], size[1])
+					}
+				}
+			}
+		}
+	})
+}
+
+func checkThumbOnTheBorder(t *testing.T, p pane, tab int, at string, w, h int) {
+	t.Helper()
+	m := press(sized(thumbFixture(t), w, h), keyOf(p))
+	for range tab {
+		m = press(m, "]")
+	}
+	if p == paneDone {
+		// Done reads the pane that had the focus last, so it is read with a
+		// kind pane behind it and never with Active, which has none.
+		m = press(press(m, keyOf(paneSpecs)), keyOf(paneDone))
+	}
+	if p == paneDetail {
+		// The detail box shows the body of the item under the cursor, so a
+		// list pane picks one first.
+		m = press(press(m, keyOf(panePlans)), keyOf(paneDetail))
+	}
+	m = scrollTo(m, p, at)
+	if rows, _, _ := m.slotOf(m.listPane()); p != paneDetail && len(rows) == 0 {
+		t.Fatalf("pane %d tab %d holds no rows to scroll", p+1, tab)
+	}
+	b := paneBox(m, p)
+	if b.inner < 1 {
+		t.Fatalf("pane %d tab %d has no room to draw", p+1, tab)
+	}
+	v := m.View()
+	// The thumb wears the brush the pane's own wall wears, so the accent on
+	// the pane with the focus and the dim brush on the others.
+	wall := m.edge(p)
+	other := accent
+	if m.focus == p {
+		other = faint
+	}
+	thumbs := 0
+	firstThumb, lastThumb := -1, -1
+	for i := range b.inner {
+		ln := paneLine(v, b, i)
+		r := []rune(ln)
+		if len(r) != b.w {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d is %d cells, the pane is %d: %q",
+				p+1, tab, w, h, at, i, len(r), b.w, ln)
+			continue
+		}
+		if string(r[0]) != "│" {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d starts with %q, want the left wall",
+				p+1, tab, w, h, at, i, string(r[0]))
+		}
+		last := string(r[len(r)-1])
+		if last != "│" && last != "┃" {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d ends on %q, want a wall cell",
+				p+1, tab, w, h, at, i, last)
+		}
+		// The cell left of the right wall is the last cell of the pane's own
+		// content, never a bar of its own.
+		if inner := string(r[len(r)-2]); strings.ContainsAny(inner, "░█┃") {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d spends an inner cell on %q",
+				p+1, tab, w, h, at, i, inner)
+		}
+		raw := rawPaneLine(v, b, i)
+		if !strings.Contains(raw, wall.Render(last)) {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d draws its wall cell %q in another brush: %q",
+				p+1, tab, w, h, at, i, last, raw)
+		}
+		if strings.Contains(raw, other.Render(last)) {
+			t.Errorf("pane %d tab %d %dx%d at the %s: line %d draws its wall cell %q in the other pane's brush: %q",
+				p+1, tab, w, h, at, i, last, raw)
+		}
+		if last != "┃" {
+			continue
+		}
+		thumbs++
+		if firstThumb < 0 {
+			firstThumb = i
+		}
+		lastThumb = i
+	}
+	if strings.ContainsAny(plain(v), "░█") {
+		t.Errorf("pane %d tab %d %dx%d at the %s: the view still draws a track or a block",
+			p+1, tab, w, h, at)
+	}
+	if thumbs < 1 {
+		t.Errorf("pane %d tab %d %dx%d at the %s: %d lines of content, no thumb on the wall",
+			p+1, tab, w, h, at, m.linesOf(p))
+		return
+	}
+	switch at {
+	case "top":
+		if firstThumb != 0 {
+			t.Errorf("pane %d tab %d %dx%d: the thumb starts on line %d, want the first", p+1, tab, w, h, firstThumb)
+		}
+	case "middle":
+		// A wall with room to move the thumb off both ends has to move it:
+		// half way down, the thumb cannot still sit on the first line. A
+		// wall three lines high with a one-line thumb rounds to the first
+		// line, because that is where the middle of the content lands.
+		if b.inner-thumbs < 3 {
+			break
+		}
+		if firstThumb <= 0 || lastThumb >= b.inner-1 {
+			t.Errorf("pane %d tab %d %dx%d: the thumb sits on lines %d to %d of %d, want it inside",
+				p+1, tab, w, h, firstThumb, lastThumb, b.inner)
+		}
+	default:
+		if lastThumb != b.inner-1 {
+			t.Errorf("pane %d tab %d %dx%d: the thumb ends on line %d, want the last of %d",
+				p+1, tab, w, h, lastThumb, b.inner)
+		}
+	}
+}
+
+// TestThumbOnlyWhenThereIsSomethingToScroll reads the plain fixture on a screen
+// tall enough to hold all of it. Nothing overflows, so no pane draws a thumb.
+func TestThumbOnlyWhenThereIsSomethingToScroll(t *testing.T) {
+	for _, size := range [][2]int{{80, 30}, {160, 50}, {200, 120}} {
+		m := press(sized(newModel(t), size[0], size[1]), keyOf(panePlans))
+		m = press(m, keyOf(paneDetail))
+		v := m.View()
+		for p := pane(0); p < paneDetail; p++ {
+			// A pane whose content fits has no window to point at, so it
+			// draws no thumb. One that overflows has to draw one, or the
+			// reader cannot tell how far down the pane is.
+			overflows := m.linesOf(p) > m.fitOf(p)
+			thumb := slices.Contains(wallCells(m, p), "┃")
+			if thumb != overflows {
+				t.Errorf("%dx%d pane %d: %d lines of content in %d rows draws a thumb: %v",
+					size[0], size[1], p+1, m.linesOf(p), m.fitOf(p), thumb)
+			}
+		}
+		if m.linesOf(paneDetail) <= m.fitOf(paneDetail) && slices.Contains(wallCells(m, paneDetail), "┃") {
+			t.Errorf("%dx%d: the detail box draws a thumb for a body of %d lines in %d rows",
+				size[0], size[1], m.linesOf(paneDetail), m.fitOf(paneDetail))
+		}
+		if strings.ContainsAny(plain(v), "░█") {
+			t.Errorf("%dx%d: the view still draws a track or a block", size[0], size[1])
+		}
+	}
 }
