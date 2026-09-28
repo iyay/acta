@@ -27,6 +27,7 @@ var Skills = []Skill{
 	{"review", "when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most"},
 	{"land", "after a clean review; gates, merge --no-ff, clean up, never push"},
 	{"bug", "record a confirmed bug with acta bug new"},
+	{"scratch", "raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory"},
 	{"dispatch", "run build through an omp agent in its own herdr tab"},
 	{"setup", "change the chat language, style or tone"},
 	{"migrate", "move docs from another workflow plugin into .acta/"},

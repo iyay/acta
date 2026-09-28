@@ -38,8 +38,8 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if len(Skills) != 11 {
-		t.Fatalf("%d skills, want 11", len(Skills))
+	if len(Skills) != 12 {
+		t.Fatalf("%d skills, want 12", len(Skills))
 	}
 }
 
