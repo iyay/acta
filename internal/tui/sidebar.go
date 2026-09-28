@@ -197,6 +197,9 @@ func (m Model) openRows(p pane) []row {
 	if !ok {
 		return nil
 	}
+	if tab.kind == board.KindPlan {
+		return m.treeRows(m.board.List(board.KindPlan, false))
+	}
 	rows := toRows(m.board.List(tab.kind, false), 0)
 	if tab.kind != board.KindStory {
 		return rows
@@ -210,6 +213,23 @@ func (m Model) openRows(p pane) []row {
 		rows = append(rows, toRows(legacy, 1)...)
 	}
 	return rows
+}
+
+// treeRows lays plans out as a tree: one row per plan, and under a plan the
+// reader opened, one row per task in file order, whatever its status. Each
+// row's id is the item it selects, so the detail box needs nothing else.
+func (m Model) treeRows(plans []*board.Item) []row {
+	out := make([]row, 0, len(plans))
+	for _, p := range plans {
+		out = append(out, row{id: p.ID, tree: true})
+		if !m.openPlans[p.ID] {
+			continue
+		}
+		for _, id := range p.Children {
+			out = append(out, row{id: id, depth: 1, tree: true})
+		}
+	}
+	return out
 }
 
 // toggleExpand gives the focused sidebar pane the room of the whole column,
@@ -252,5 +272,8 @@ func (m Model) doneRows() []row {
 	sort.SliceStable(finished, func(i, j int) bool {
 		return finished[i].SortTime() > finished[j].SortTime()
 	})
+	if tab, ok := m.tabOf(m.follows); ok && tab.kind == board.KindPlan {
+		return m.treeRows(finished)
+	}
 	return toRows(finished, 0)
 }

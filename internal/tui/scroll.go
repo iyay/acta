@@ -173,7 +173,11 @@ func (m Model) rowText(r row, it *board.Item, w int) string {
 	if name == "" {
 		name = it.ID
 	}
-	head := strings.Repeat("  ", r.depth) + name + "  " + it.Title
+	lead := strings.Repeat("  ", r.depth)
+	if r.tree {
+		lead += m.treeMark(r, it) + " "
+	}
+	head := lead + name + "  " + it.Title
 	tally := progressText(it)
 	if !inProgress(it) || tally == "" {
 		return truncate(head, w)
@@ -188,4 +192,17 @@ func (m Model) rowText(r row, it *board.Item, w int) string {
 		return truncate(head, w)
 	}
 	return truncate(head, room) + strings.Repeat(" ", w-lipgloss.Width(truncate(head, room))-lipgloss.Width(tally)) + tally
+}
+
+// treeMark is what a tree row starts with: + on a shut plan, - on an open
+// one, and the status dot on a task, so the reader sees what opens and what
+// is done without reading the detail.
+func (m Model) treeMark(r row, it *board.Item) string {
+	if r.depth > 0 {
+		return dotOf(it)
+	}
+	if m.openPlans[it.ID] {
+		return "-"
+	}
+	return "+"
 }

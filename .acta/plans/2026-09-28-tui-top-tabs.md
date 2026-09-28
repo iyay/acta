@@ -63,7 +63,7 @@ Built on today's layout, where key `3` focuses the Plans ─ Tasks pane with the
 **Interfaces:**
 - Produces: `row.tree bool` (set on every row a tree builds); `Model.openPlans map[string]bool` (plan ID to open; never mutated in place, always replaced); `func (m Model) treeRows(plans []*board.Item) []row`; `func (m *Model) toggleRow() bool` (true on any tree row, so the caller stops there); `func (m Model) treeMark(r row, it *board.Item) string`; `func dotOf(it *board.Item) string`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // internal/tui/plantree_test.go
@@ -216,12 +216,12 @@ In `internal/tui/model_test.go`, `TestEnterFocusesDetailFromBothListPanes` walks
 
 and change `m := press(newModel(t), "3", "5")` to `m := press(newModel(t), "4", "5")`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'Plan|Tree|Enter' -v`
 Expected: FAIL to build with `m.openPlans undefined` and `m.treeMark undefined`, or once stubbed, FAIL with the plans list holding no task rows.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 `internal/tui/detail.go`, add `dotOf` above `workLine` and use it there:
 
@@ -374,12 +374,12 @@ func (m Model) treeMark(r row, it *board.Item) string {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -v`
 Expected: PASS, the whole package. A test outside this task that pressed enter on a plan row to reach the detail is changed to press `0`, since enter on a plan row now opens the plan.
 
-- [ ] **Step 5: Gates and commit**
+- [x] **Step 5: Gates and commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./...

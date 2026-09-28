@@ -4,6 +4,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,6 +33,7 @@ type row struct {
 	id    string
 	group bool
 	depth int
+	tree  bool // a row of a plans tree, which space and enter act on
 }
 
 type popup struct {
@@ -73,6 +75,7 @@ type Model struct {
 	expanded  int // the sidebar pane that takes the room, -1 when none does
 	searching bool
 	groupOpen bool
+	openPlans map[string]bool // the plans the reader opened in a tree list
 	popup     *popup
 	slug      *string // non-nil while typing the slug of a new bug
 	help      bool
@@ -397,7 +400,12 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.slug = &s
 	case "e":
 		return m.edit()
+	case " ":
+		m.toggleRow()
 	case "enter":
+		if m.toggleRow() {
+			return m, nil
+		}
 		return m.enter()
 	}
 	return m, nil
@@ -574,6 +582,31 @@ func (m Model) searchKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	m.moveTo(0)
 	return m, nil
+}
+
+// toggleRow opens or shuts the plan under the cursor of a tree list. It says
+// true on any tree row, so space and enter leave a task row alone and never
+// jump to the detail from a tree.
+func (m *Model) toggleRow() bool {
+	if m.focus == paneDetail {
+		return false
+	}
+	rows := m.listOf()
+	i := m.cursor()
+	if i < 0 || !rows[i].tree {
+		return false
+	}
+	if rows[i].depth > 0 {
+		return true
+	}
+	// A new map each time, so an older copy of the model keeps the tree it
+	// drew.
+	open := make(map[string]bool, len(m.openPlans)+1)
+	maps.Copy(open, m.openPlans)
+	open[rows[i].id] = !open[rows[i].id]
+	m.openPlans = open
+	m.keepVisible(m.listPane())
+	return true
 }
 
 // enter moves the focus to the detail pane with the row's item, so it can

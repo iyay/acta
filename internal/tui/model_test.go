@@ -1622,6 +1622,11 @@ func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
 	// Every kind box, every tab.
 	for p := pane(1); p < paneDone; p++ {
 		for tab := range sidebar[p].tabs {
+			// Enter on a plan row opens the plan instead, which the tree tests
+			// in plantree_test.go pin.
+			if sidebar[p].tabs[tab].kind == board.KindPlan {
+				continue
+			}
 			m := openTab(t, newModel(t), p, tab)
 			id := m.Selected().ID
 			next, cmd := m.Update(key("enter"))
@@ -1638,7 +1643,7 @@ func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
 		}
 	}
 	// The Done box.
-	m := press(newModel(t), "3", "5")
+	m := press(newModel(t), "4", "5")
 	id := m.Selected().ID
 	next, cmd := m.Update(key("enter"))
 	m = next.(Model)
