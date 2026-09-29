@@ -291,11 +291,11 @@ func (m Model) Selected() *board.Item {
 
 // mark is the screen as it stands: the open tab, its Done sub-tab, the search
 // and the row under the cursor. A wheel frame compares it with the one it
-// gathered its notches on, so the notches follow the reader and not the
-// screen he has already left.
+// gathered its notches on, so the notches follow the reader and not the screen
+// he has already left. It reads the cursor the model keeps rather than the rows
+// on show, so a notch costs no more than the frame it is part of.
 func (m Model) mark() wheelMark {
-	_, sel, _ := m.slot()
-	return wheelMark{top: m.top, done: m.done, query: m.query, sel: *sel}
+	return wheelMark{top: m.top, done: m.done, query: m.query, sel: m.sel[m.listPane()]}
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old

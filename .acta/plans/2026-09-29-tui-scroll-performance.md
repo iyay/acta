@@ -502,8 +502,41 @@ Review round 1 (d943290..037572f) found two BLOCKERs. Both reviewers found the s
 - Fix direction: do not use the cache when the selected item is nil. That branch has no markdown and costs nothing.
 - Mutation that proves the fix: put the cache back for the nil item, and the new test goes red.
 
-- [ ] **Step 1: Write the failing tests** for both BLOCKERs, using the repros above: one for the click, one for `openTab`, one for the reload that moves the selection, and one for the empty search.
-- [ ] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run 'Wheel|Detail'`.
-- [ ] **Step 3: Write the minimal fix** for both BLOCKERs. Also fix the comment above the wheel case in `mouse`. It says the wheel "can never move a pane the user is not looking at", and that is no longer true.
+- [x] **Step 1: Write the failing tests** for both BLOCKERs, using the repros above: one for the click, one for `openTab`, one for the reload that moves the selection, and one for the empty search.
+- [x] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run 'Wheel|Detail'`.
+- [x] **Step 3: Write the minimal fix** for both BLOCKERs. Also fix the comment above the wheel case in `mouse`. It says the wheel "can never move a pane the user is not looking at", and that is no longer true.
+- [x] **Step 4: Run the whole suite and watch it pass** with `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
+- [x] **Step 5: Commit both fixes as one commit** with the message `tui: drop stale wheel notches and skip the cache for the empty detail box`.
+
+## Fix round 2
+
+Review round 2 (037572f..041a5d1) found one BLOCKER, with two holes. Both reviewers found it, and both proved it with probe tests.
+
+### Task 4: Drop pending notches as soon as the screen they belong to is gone
+
+**Files:**
+- Modify: `internal/tui/model.go` (the wheel case in `mouse`, and its comment)
+- Test: `internal/tui/scroll_test.go`
+
+**verify:** A notch is only ever applied on the screen where it came in: the same `mark()` it was gathered under. This holds when all the notches of a frame come before the change, when some come before it and some after, and when the next notch lands on another pane. Show that each of these gives the base d943290 result: the reload, tab and click repros below; a Done sub-tab switch between two notches; and the plain cases where nothing changes (list pane, detail pane, and a reload that keeps the same item), which must still scroll the full total.
+
+**BLOCKER:** `internal/tui/model.go:512-518`.
+- Hole 1: every notch overwrites `wheelMark` with the current screen (`:518`). So one notch after the change makes the older notches look like they belong to the new screen, and the tick at `:220` applies all of them.
+- Hole 2: the flush for another pane (`:512-515`) scrolls `wheelPane` by `wheelDelta` without checking the mark.
+- Repro reload: `paneModel(t, paneDetail)`, 1 `wheelOnly` on detail, `reloadedWithout(m, m.Selected().ID)`, 1 more `wheelOnly` on detail, `wheelTick`. Wrong: off 6. Expected: 3.
+- Repro tab: `longTabs`, press `2 0 5 0` so both tabs save focus on the detail box, 1 notch, press `2`, 1 notch, tick. Wrong: the Bugs detail is at off 6. Expected: 3.
+- Repro click: detail focus, 2 notches on detail, `click` the second list row, 1 notch over the list, tick. Wrong: the new item opens at detail off 6. Expected: 0.
+- Fix: first thing in the wheel case, before the flush, drop the old delta when the screen changed:
+  ```go
+  if m.wheelDelta != 0 && m.wheelMark != m.mark() {
+      m.wheelDelta = 0
+  }
+  ```
+  Then write `wheelMark` only when `wheelDelta == 0`, which is when a new frame starts. Rewrite the comments at `model.go:295-296` and `:516-517` in plain words. Say "the reader", not "he".
+- Mutation: take out the drop line, and the reload, tab and click tests must each go red.
+
+- [ ] **Step 1: Write the failing tests** for the reload, tab, click and Done sub-tab repros, plus one test where nothing changes and the full total still scrolls.
+- [ ] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run Wheel`.
+- [ ] **Step 3: Write the minimal fix**, and rewrite the comments.
 - [ ] **Step 4: Run the whole suite and watch it pass** with `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
-- [ ] **Step 5: Commit both fixes as one commit** with the message `tui: drop stale wheel notches and skip the cache for the empty detail box`.
+- [ ] **Step 5: Commit it as ONE commit** with the message `tui: apply wheel notches only on the screen they came from`.
