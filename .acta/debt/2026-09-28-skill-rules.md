@@ -29,7 +29,7 @@ parent: plans/2026-09-28-skill-rules
 - [ ] internal/doctor/doctor.go on macOS a root spelled in different letter case than git reports gives a false "outside the repo" fail.
 - [ ] internal/doctor/doctor.go realPath falls back to the parent on any EvalSymlinks error (ELOOP, EACCES), so a self-loop .gitignore gets a --fix hint that then fails.
 - [ ] A dangling .acta link or a .acta/.gitignore folder makes doctor suggest --fix, which then exits 3 with a raw error and no report.
-- [ ] Commit failure reason from gitc is empty; git stderr is lost (older code).
+- [x] Commit failure reason from gitc is empty; git stderr is lost (older code).
 - [ ] internal/doctor/doctor.go isLink comment says "the same two words", which is unclear.
 - [ ] internal/doctor/doctor.go link fail message says "not a file of this repo" even when the link points inside the repo.
 - [ ] internal/doctor/doctor.go checkRepo joins ActaRoot/.gitignore again though gi is already set.

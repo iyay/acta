@@ -6,7 +6,7 @@ parent: plans/2026-09-27-tui-polish
 # Review NOTEs: TUI Polish Implementation Plan
 
 - [ ] A selected in-progress row loses its accent color (selected foreground overrides it, scroll.go:160, view.go:55); spec 1 says the accent still shows; user ruling said bright text; ask the user which.
-- [ ] At about 4 rows tall split can give a pane height 1 and paneView draws no border for h<2 (view.go:194); frame still fits.
+- [x] At about 4 rows tall split can give a pane height 1 and paneView draws no border for h<2 (view.go:194); frame still fits.
 - [ ] Selecting the debt file row itself (KindDebt) shows the checklist list and then the full body, so the checklist can appear twice.
 - [ ] Wheel-scrolling a list moves only the offset; the selection can go off screen and the next j/k snaps back.
 - [ ] No revert-red check was run for PLAN-16's tests.
