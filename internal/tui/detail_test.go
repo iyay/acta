@@ -541,3 +541,91 @@ func TestDetailShowsClosesAndClosedBy(t *testing.T) {
 		}
 	}
 }
+
+// Six scratch items: one with all three dates, one with none, one with each
+// date on its own, and one whose three values are all junk. A good date comes
+// in both forms yaml gives: bare, which decodes to a time, and quoted, which
+// decodes to a string.
+func datedFiles() map[string]string {
+	return map[string]string{
+		".acta/scratch/2026-09-01-all.md":      "---\nid: SCRATCH-1\ntitle: all\nstatus: raw\ncreated: 2026-09-01\nstarted: \"2026-09-02\"\nfinished: 2026-09-03\n---\n# All\n",
+		".acta/scratch/2026-09-01-none.md":     "---\nid: SCRATCH-2\ntitle: none\nstatus: raw\n---\n# None\n",
+		".acta/scratch/2026-09-01-created.md":  "---\nid: SCRATCH-3\ntitle: created\nstatus: raw\ncreated: 2026-09-01\n---\n# Created\n",
+		".acta/scratch/2026-09-01-started.md":  "---\nid: SCRATCH-4\ntitle: started\nstatus: raw\nstarted: \"2026-09-02\"\n---\n# Started\n",
+		".acta/scratch/2026-09-01-finished.md": "---\nid: SCRATCH-5\ntitle: finished\nstatus: raw\nfinished: \"2026-09-03\"\n---\n# Finished\n",
+		".acta/scratch/2026-09-01-bad.md":      "---\nid: SCRATCH-6\ntitle: bad\nstatus: raw\ncreated: \"\"\nstarted: 12\nfinished: soon\n---\n# Bad\n",
+	}
+}
+
+// The board keeps a date only when the frontmatter holds a real YYYY-MM-DD,
+// in the string form or the time form, and nothing at all when the value is
+// missing, empty, a number or a word.
+func TestItemDatesFromFrontmatter(t *testing.T) {
+	b, err := board.Load(treeCfg(t, datedFiles()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct{ id, created, started, finished string }{
+		{"SCRATCH-1", "2026-09-01", "2026-09-02", "2026-09-03"},
+		{"SCRATCH-2", "", "", ""},
+		{"SCRATCH-3", "2026-09-01", "", ""},
+		{"SCRATCH-4", "", "2026-09-02", ""},
+		{"SCRATCH-5", "", "", "2026-09-03"},
+		{"SCRATCH-6", "", "", ""},
+	} {
+		it := b.Get(c.id)
+		if it == nil {
+			t.Fatalf("the board holds no %s", c.id)
+		}
+		if it.Created != c.created || it.StartedOn != c.started || it.Finished != c.finished {
+			t.Errorf("%s: got %q %q %q, want %q %q %q",
+				c.id, it.Created, it.StartedOn, it.Finished, c.created, c.started, c.finished)
+		}
+	}
+}
+
+// Each date draws its own line with the date on it, and an item with no date
+// draws no line at all, so the header keeps its column for the items that do.
+func TestDetailShowsTheDates(t *testing.T) {
+	cfg := treeCfg(t, datedFiles())
+	drawn := func(id string) map[string]bool {
+		got := map[string]bool{}
+		for _, l := range labelsOf(detailLines(t, cfg, id)) {
+			got[l] = true
+		}
+		return got
+	}
+	for _, c := range []struct {
+		id      string
+		yes, no []string
+	}{
+		{"SCRATCH-1", []string{"CREATED", "STARTED", "FINISHED"}, nil},
+		{"SCRATCH-2", nil, []string{"CREATED", "STARTED", "FINISHED"}},
+		{"SCRATCH-3", []string{"CREATED"}, []string{"STARTED", "FINISHED"}},
+		{"SCRATCH-4", []string{"STARTED"}, []string{"CREATED", "FINISHED"}},
+		{"SCRATCH-5", []string{"FINISHED"}, []string{"CREATED", "STARTED"}},
+		{"SCRATCH-6", nil, []string{"CREATED", "STARTED", "FINISHED"}},
+	} {
+		got := drawn(c.id)
+		for _, l := range c.yes {
+			if !got[l] {
+				t.Errorf("%s drew no %s line", c.id, l)
+			}
+		}
+		for _, l := range c.no {
+			if got[l] {
+				t.Errorf("%s drew a %s line with no date", c.id, l)
+			}
+		}
+	}
+	lines := detailLines(t, cfg, "SCRATCH-1")
+	for _, c := range []struct{ label, want string }{
+		{"CREATED", "2026-09-01"},
+		{"STARTED", "2026-09-02"},
+		{"FINISHED", "2026-09-03"},
+	} {
+		if got := valueOf(t, lines, c.label); got != c.want {
+			t.Errorf("SCRATCH-1 %s says %q, want %q", c.label, got, c.want)
+		}
+	}
+}

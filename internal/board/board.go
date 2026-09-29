@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/iyay/acta/internal/config"
 )
@@ -59,6 +60,9 @@ type Item struct {
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
 	Started      bool   // tasks only: someone ran tick --start on it
+	Created      string // YYYY-MM-DD from the frontmatter, or ""
+	StartedOn    string // YYYY-MM-DD, the day work on it began
+	Finished     string // YYYY-MM-DD, the day it was finished
 
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
@@ -387,6 +391,9 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	}
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
+	it.Created = dateField(doc.Front, "created")
+	it.StartedOn = dateField(doc.Front, "started")
+	it.Finished = dateField(doc.Front, "finished")
 	it.fmStatus = field(doc.Front, "status")
 	it.fmParent = field(doc.Front, "parent")
 	it.fmCloses = listField(doc.Front, "closes")
@@ -698,6 +705,28 @@ func field(front map[string]any, key string) string {
 		return ""
 	}
 	return strings.TrimSpace(fmt.Sprint(v))
+}
+
+// dateField is a YYYY-MM-DD value from the frontmatter, or "". A bare date
+// comes back from yaml as a time and a quoted one as a string, so both are
+// read; anything that is not a real day is dropped.
+func dateField(front map[string]any, key string) string {
+	switch v := front[key].(type) {
+	case string:
+		if s := strings.TrimSpace(v); isDate(s) {
+			return s
+		}
+	case time.Time:
+		return v.Format("2006-01-02")
+	}
+	return ""
+}
+
+// isDate says whether the text is a real day, so a day that does not exist
+// never reaches the reader.
+func isDate(s string) bool {
+	_, err := time.Parse("2006-01-02", s)
+	return err == nil
 }
 
 func contains(list []string, s string) bool {
