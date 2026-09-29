@@ -195,9 +195,42 @@ func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []by
 	return createDebt(cfg, b, path, fileStem, title, it, texts)
 }
 
-// appendDebt adds only the lines a file does not already hold. Nothing new
-// means nothing written and nothing committed.
+// appendDebt adds only the lines the debt file does not already hold.
+// Nothing new means nothing written and nothing committed. The caller's src
+// is not used: the file is read again under the lock, so a tick that landed
+// after the caller read it is not thrown away.
 func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []string) (Outcome, error) {
+	dirty, added, err := addDebtLines(cfg, path, texts)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if !added {
+		return Outcome{Path: path}, nil
+	}
+	return finish(cfg, path, "acta: new debt "+fileStem, dirty), nil
+}
+
+// addDebtLines writes the new lines onto the debt file at path, under that
+// file's lock, through a temp file and a rename, the way TickLine does it.
+// TickLine locks the same file, so the two can never read each other half
+// written or throw away each other's change. It says whether the file was
+// already dirty in git before we wrote, and whether it wrote anything.
+func addDebtLines(cfg config.Config, path string, texts []string) (bool, bool, error) {
+	unlock, err := lock(path)
+	if err != nil {
+		return false, false, err
+	}
+	defer unlock()
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return false, false, err
+	}
+	// The git status has to be read before we write, otherwise our own write
+	// is the one that makes the file look dirty and the commit is skipped.
+	dirty, err := dirtyBefore(cfg, path)
+	if err != nil {
+		return false, false, err
+	}
 	have := map[string]bool{}
 	for _, line := range board.Parse(src).Items {
 		have[line.Text] = true
@@ -210,11 +243,7 @@ func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []st
 		}
 	}
 	if len(add) == 0 {
-		return Outcome{Path: path}, nil
-	}
-	dirty, err := dirtyBefore(cfg, path)
-	if err != nil {
-		return Outcome{}, err
+		return false, false, nil
 	}
 	out := string(src)
 	if !strings.HasSuffix(out, "\n") {
@@ -223,10 +252,11 @@ func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []st
 	for _, t := range add {
 		out += "- [ ] " + t + "\n"
 	}
-	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
-		return Outcome{}, err
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(out), 0o644); err != nil {
+		return false, false, err
 	}
-	return finish(cfg, path, "acta: new debt "+fileStem, dirty), nil
+	return dirty, true, os.Rename(tmp, path)
 }
 
 // createDebt writes a fresh debt file with its own id, hash and parent link
