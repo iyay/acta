@@ -36,7 +36,12 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Debt items
 
-A plan that works a debt item sets `parent: debt/<stem>` in its header and names the DEBT ids it closes; `acta:land` ticks those items after the merge.
+A plan that works a debt item sets `parent: debt/<stem>` in its header and
+lists every DEBT id it closes in `closes:`, for example
+`closes: [DEBT-17.1, DEBT-17.2]`. One piece of work can close more than what
+it came from, so a plan that also finishes a scratch item or another spec
+lists those in the same `closes:` list. One place, so nothing is missed:
+`acta:land` ticks the debt items from that list after the merge.
 
 ## Task Right-Sizing
 

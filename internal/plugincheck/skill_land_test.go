@@ -14,7 +14,9 @@ func TestSkillLand(t *testing.T) {
 			"acta tick <DEBT-n.m> --all", "debt file",
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
+			"in the plan's `closes:`",
 		},
-		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work"},
+		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
+			"each DEBT id the plan names as closed"},
 	})
 }
