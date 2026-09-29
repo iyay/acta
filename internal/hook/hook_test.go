@@ -33,7 +33,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"(code, comments, commits, specs, plans) in English.",
 		"full, clear sentences",
 		"Style (ADHD reader):",
-		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
+		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with one acta scratch new call, body on stdin, no skill load, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
 	} {
 		if !strings.Contains(out, want) {
@@ -124,6 +124,15 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			"file the scratch item first",
 			"one acta scratch new call",
 			"written, not committed",
+			"whose body is stdin",
+			"acta scratch new <slug> --title <title> < body.md",
+			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
+			"never offer to load acta:brainstorm in this session",
+			"never send the user to another terminal or tab",
+			"never call the Skill tool for it",
+			"never run a second call such as acta scratch add",
+			"never only describe the filing",
+			"never ask the user to say file it",
 			"new session",
 		} {
 			if !strings.Contains(out, want) {
