@@ -71,7 +71,7 @@ Two tasks in one wave never touch the same file, test files included.
 - Consumes: `topLine(w int, edge lipgloss.Style, segs []segment) string` (frame.go).
 - Produces: `const barRows = 3`; `func (m Model) tabRows(width int) []string`. `tabBar(width int) string` now takes the inner width of the box.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/view_test.go`:
 
@@ -144,12 +144,12 @@ func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestTabsSitInABoxOfTheirOwn|TestTheOpenTabIsTheOnlyBrightName' -v`
 Expected: FAIL, `undefined: barRows`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/frame.go`, above `geometry`:
 
@@ -231,18 +231,18 @@ Change the doc comment of `tabBar` to say it draws the names line of the tab box
 	return " " + strings.Join(names, "  ")
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui -run 'TestTabsSitInABoxOfTheirOwn|TestTheOpenTabIsTheOnlyBrightName' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Run the whole package and update tests that pin the one-line bar**
+- [x] **Step 5: Run the whole package and update tests that pin the one-line bar**
 
 Run: `go test ./internal/tui`
 The geometry tests in `model_test.go` (the `g.side`, `g.detail`, `a.side[0]`, `n.full` checks near :684, :688, :707, :724) pin `y 1` and heights for a one-line bar. Change them to `y barRows` and heights two lines shorter. The bar width tests in `view_test.go` (`widthOfBar` and the tests that call `tabBar`) pin `[name]` and the full width; change them to `N name` and the inner width `w-2`. Keep what each test checks.
 Expected after the updates: `ok  github.com/iyay/acta/internal/tui`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui

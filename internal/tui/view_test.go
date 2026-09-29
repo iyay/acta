@@ -1189,14 +1189,9 @@ func TestAPopupNeverCoversTheTabBox(t *testing.T) {
 	for _, w := range []int{60, 120} {
 		for h := 4; h <= 24; h++ {
 			for _, open := range []string{"?", "t", "s", "n"} {
-				lines := strings.Split(plain(press(sized(newModel(t), w, h), open).View()), "\n")
-				for k, want := range []string{"┌", "│", "└"} {
-					if k >= len(lines) {
-						t.Fatalf("%dx%d popup %q: the screen has %d lines, want the box of %d", w, h, open, len(lines), barRows)
-					}
-					if !strings.HasPrefix(lines[k], want) {
-						t.Errorf("%dx%d popup %q: line %d is %q, want the tab box", w, h, open, k, lines[k])
-					}
+				lines := strings.Split(press(sized(newModel(t), w, h), open).View(), "\n")
+				if err := closedBox(lines, w); err != nil {
+					t.Errorf("%dx%d popup %q: %v", w, h, open, err)
 				}
 			}
 		}

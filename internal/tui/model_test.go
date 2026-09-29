@@ -758,6 +758,56 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	}
 }
 
+// The model measures a pane to clamp an offset with, also on a narrow screen
+// where only the focused pane is drawn. That measurement has to be the box
+// under the tab box and no taller, or the list scrolls past the lines the
+// screen has and the reader cannot see the row the cursor is on.
+func TestNarrowScreenMeasuresTheBoxUnderTheTabBox(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		for _, size := range [][2]int{{20, 5}, {40, 8}, {40, 20}, {59, 40}, {59, 12}} {
+			w, h := size[0], size[1]
+			m := press(sized(newModel(t), w, h), tabKey(i))
+			g := m.geometry()
+			if g.wide {
+				t.Fatalf("%d columns is wide, this test is about the narrow screen", w)
+			}
+			for _, p := range m.panes() {
+				b := m.boxOf(p)
+				if b.y != barRows {
+					t.Errorf("tab %s at %dx%d: the model measures pane %d on line %d, want %d", topTabs[i].name, w, h, p, b.y, barRows)
+				}
+				if b.h != g.full.h {
+					t.Errorf("tab %s at %dx%d: the model measures pane %d %d lines, the drawn box has %d", topTabs[i].name, w, h, p, b.h, g.full.h)
+				}
+				if got := m.fitOf(p); got != g.full.rows {
+					t.Errorf("tab %s at %dx%d: the model gives pane %d %d rows, the drawn box has %d", topTabs[i].name, w, h, p, got, g.full.rows)
+				}
+			}
+			// Walking to the end of a long list has to leave the last row on
+			// screen, because the pane says that many rows fit.
+			full := press(sized(longModel(t), w, h), tabKey(i), "G")
+			drawn := paneRows(full, full.focus)
+			if len(drawn) != full.fitOf(full.focus) {
+				t.Fatalf("tab %s at %dx%d: the pane draws %d rows and says %d fit", topTabs[i].name, w, h, len(drawn), full.fitOf(full.focus))
+			}
+			if len(drawn) == 0 {
+				// A box one line high is its title bar and no rows at all, so
+				// there is no last line to read.
+				continue
+			}
+			rows, _, _ := full.slotOf(full.focus)
+			if len(rows) == 0 {
+				continue
+			}
+			if last := rows[len(rows)-1]; !isThatRow(full, last, drawn[len(drawn)-1]) {
+				t.Errorf("tab %s at %dx%d: the last line holds %q, want %q", topTabs[i].name, w, h, drawn[len(drawn)-1], headOf(full, last))
+			}
+		}
+	}
+}
+
 // TestSelectionIsPerTab walks every tab of the bar with its own cursor, so
 // opening another tab can never move the row one tab had selected.
 func TestSelectionIsPerTab(t *testing.T) {
