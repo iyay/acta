@@ -206,6 +206,8 @@ type outItem struct {
 	StatusSource string       `json:"status_source"`
 	Ref          string       `json:"ref"`
 	Parent       string       `json:"parent"`
+	Closes       []string     `json:"closes"`
+	ClosedBy     []string     `json:"closed_by"`
 	Children     []string     `json:"children"`
 	Progress     jsonProgress `json:"progress"`
 	Path         string       `json:"path"`
@@ -230,6 +232,7 @@ func toJSON(cfg config.Config, it *board.Item) outItem {
 	j := outItem{ID: it.ID, ShortID: it.ShortID, Hash: it.Hash, Type: string(it.Kind), Title: it.Title, Status: it.Status,
 		StatusSource: it.StatusSource, Ref: it.Ref, Parent: it.Parent,
 		Children: append([]string{}, it.Children...), Progress: jsonProgress{it.Done, it.Total},
+		Closes: append([]string{}, it.Closes...), ClosedBy: append([]string{}, it.ClosedBy...),
 		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Worktree: it.Worktree, OnDisk: it.OnDisk,
 		Problems: append([]string{}, it.Problems...)}
 	return j
@@ -307,6 +310,12 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	if j.Parent != "" {
 		fmt.Fprintf(stdout, "parent: %s\n", j.Parent)
 	}
+	if len(j.Closes) > 0 {
+		fmt.Fprintf(stdout, "closes: %s\n", strings.Join(shortRefs(b, j.Closes), ", "))
+	}
+	if len(j.ClosedBy) > 0 {
+		fmt.Fprintf(stdout, "closed by: %s\n", strings.Join(shortRefs(b, j.ClosedBy), ", "))
+	}
 	for _, c := range j.Children {
 		ch := b.Get(c)
 		fmt.Fprintf(stdout, "  %-6s %s  %s\n", ch.Status, c, ch.Title)
@@ -315,6 +324,19 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "! %s\n", p)
 	}
 	return exitOK
+}
+
+// shortRefs names linked items the way a reader says them out: the short id
+// when the file carries one, else the path id it goes by.
+func shortRefs(b *board.Board, ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if it := b.Get(id); it != nil && it.ShortID != "" {
+			id = it.ShortID
+		}
+		out = append(out, id)
+	}
+	return out
 }
 
 func cmdSet(args []string, stdout, stderr io.Writer) int {

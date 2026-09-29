@@ -1,5 +1,4 @@
 ---
-status: done
 id: SPEC-2
 hash: i2b1
 ---

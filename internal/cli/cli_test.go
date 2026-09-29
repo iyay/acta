@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -287,5 +289,156 @@ func TestVoiceSetBadExecutor(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("%v: a bad value was written to the voice file", args)
 		}
+	}
+}
+
+// closesRepo makes a repo with a spec that closes a scratch item, that scratch
+// item, and a spec that closes nothing, so a test can look at an item with
+// closes, one with closed by and one with neither.
+func closesRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		".acta/specs/2026-09-29-a.md":   "---\nid: SPEC-1\ncloses: [SCRATCH-1, scratch/2026-09-28-j]\n---\n# Spec A\n",
+		".acta/scratch/2026-09-28-i.md": "---\nid: SCRATCH-1\n---\n# Idea\n",
+		// No short id in the frontmatter, so a reader sees this one by its
+		// path, the same way it is named in the closes list.
+		".acta/scratch/2026-09-28-j.md": "# Another idea\n",
+		".acta/specs/2026-09-29-b.md":   "---\nid: SPEC-2\n---\n# Spec B\n",
+	}
+	for p, body := range files {
+		full := filepath.Join(dir, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// showLine returns the line of a show that begins with the prefix, so a test
+// can name the exact line a reader sees.
+func showLine(t *testing.T, out, prefix string) (string, bool) {
+	t.Helper()
+	for _, ln := range strings.Split(out, "\n") {
+		if strings.HasPrefix(ln, prefix) {
+			return ln, true
+		}
+	}
+	return "", false
+}
+
+func TestShowPrintsClosesAndClosedBy(t *testing.T) {
+	dir := closesRepo(t)
+	t.Chdir(dir)
+	for _, c := range []struct {
+		id, line string
+		absent   []string
+	}{
+		{"SPEC-1", "closes: SCRATCH-1, scratch/2026-09-28-j", []string{"closed by:"}},
+		{"SCRATCH-1", "closed by: SPEC-1", []string{"closes:"}},
+		// This scratch file carries no short id, so the line names it by its
+		// path, the same way the closes list wrote it.
+		{"scratch/2026-09-28-j", "closed by: SPEC-1", []string{"closes:"}},
+		{"SPEC-2", "", []string{"closes:", "closed by:"}},
+	} {
+		out := mustRun(t, "show", c.id)
+		if c.line == "" {
+			for _, a := range c.absent {
+				if got, ok := showLine(t, out, a); ok {
+					t.Errorf("show %s printed %q, want no such line:\n%s", c.id, got, out)
+				}
+			}
+			continue
+		}
+		got, ok := showLine(t, out, c.line)
+		if !ok {
+			t.Errorf("show %s printed no %q:\n%s", c.id, c.line, out)
+			continue
+		}
+		if got != c.line {
+			t.Errorf("show %s printed %q, want %q", c.id, got, c.line)
+		}
+		for _, a := range c.absent {
+			if _, ok := showLine(t, out, a); ok {
+				t.Errorf("show %s printed a %q line it has no link for:\n%s", c.id, a, out)
+			}
+		}
+	}
+}
+
+// The JSON always carries a list, so a reader never has to tell an empty link
+// from a field that is missing.
+func TestShowJSONCarriesClosesAndClosedByAsLists(t *testing.T) {
+	dir := closesRepo(t)
+	t.Chdir(dir)
+	for _, c := range []struct {
+		id      string
+		closes  []string
+		closedB []string
+	}{
+		{"SPEC-1", []string{"scratch/2026-09-28-i", "scratch/2026-09-28-j"}, []string{}},
+		{"SCRATCH-1", []string{}, []string{"specs/2026-09-29-a"}},
+		{"scratch/2026-09-28-j", []string{}, []string{"specs/2026-09-29-a"}},
+		{"SPEC-2", []string{}, []string{}},
+	} {
+		var j struct {
+			Closes   []string `json:"closes"`
+			ClosedBy []string `json:"closed_by"`
+		}
+		if err := json.Unmarshal([]byte(mustRun(t, "show", c.id, "--json")), &j); err != nil {
+			t.Fatalf("show %s --json: %v", c.id, err)
+		}
+		if j.Closes == nil || j.ClosedBy == nil {
+			t.Errorf("show %s --json wrote a null link: closes %v closed_by %v", c.id, j.Closes, j.ClosedBy)
+			continue
+		}
+		if !slices.Equal(j.Closes, c.closes) {
+			t.Errorf("show %s --json closes = %v, want %v", c.id, j.Closes, c.closes)
+		}
+		if !slices.Equal(j.ClosedBy, c.closedB) {
+			t.Errorf("show %s --json closed_by = %v, want %v", c.id, j.ClosedBy, c.closedB)
+		}
+	}
+}
+
+// list --json draws the same items through the same struct, so a link that
+// show prints has to be there too.
+func TestListJSONCarriesClosesAndClosedBy(t *testing.T) {
+	dir := closesRepo(t)
+	t.Chdir(dir)
+	var items []struct {
+		ID       string   `json:"id"`
+		Closes   []string `json:"closes"`
+		ClosedBy []string `json:"closed_by"`
+	}
+	if err := json.Unmarshal([]byte(mustRun(t, "list", "--json", "--all")), &items); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][2][]string{
+		"specs/2026-09-29-a":   {[]string{"scratch/2026-09-28-i", "scratch/2026-09-28-j"}, []string{}},
+		"scratch/2026-09-28-i": {[]string{}, []string{"specs/2026-09-29-a"}},
+		"scratch/2026-09-28-j": {[]string{}, []string{"specs/2026-09-29-a"}},
+		"specs/2026-09-29-b":   {[]string{}, []string{}},
+	}
+	seen := 0
+	for _, it := range items {
+		w, ok := want[it.ID]
+		if !ok {
+			continue
+		}
+		seen++
+		if it.Closes == nil || it.ClosedBy == nil {
+			t.Errorf("%s in list --json wrote a null link: closes %v closed_by %v", it.ID, it.Closes, it.ClosedBy)
+			continue
+		}
+		if !slices.Equal(it.Closes, w[0]) || !slices.Equal(it.ClosedBy, w[1]) {
+			t.Errorf("%s in list --json: closes %v closed_by %v, want closes %v closed_by %v", it.ID, it.Closes, it.ClosedBy, w[0], w[1])
+		}
+	}
+	if seen != len(want) {
+		t.Errorf("list --json showed %d of the %d items under test", seen, len(want))
 	}
 }

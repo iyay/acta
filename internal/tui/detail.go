@@ -41,6 +41,8 @@ func (m Model) detailLines(w int) []string {
 		{"FROM", m.fromText(it)},
 		{"REF", it.Ref},
 		{"SPEC", m.specText(it)},
+		linkField("CLOSES", m.closesText(it.Closes)),
+		linkField("CLOSED BY", m.closesText(it.ClosedBy)),
 		{"WORKTREE", worktreeText(it)},
 		{"AGENT", it.Agent},
 		{"FILE", m.fileText(it)},
@@ -68,6 +70,33 @@ func (m Model) detailLines(w int) []string {
 		lines = append(lines, fit(ln, w))
 	}
 	return lines
+}
+
+// linkField is a header line for a link the item may not have. An item with
+// no link carries no label either, so the colons of the lines that are drawn
+// stay in the column the other labels give them.
+func linkField(label, value string) struct{ label, value string } {
+	if value == "" {
+		label = ""
+	}
+	return struct{ label, value string }{label, value}
+}
+
+// closesText names the items this one closes, or the ones that close it, each
+// by its short id when the file carries one and by its path when it does not.
+// No link gives no text, so the field drops out of the header.
+func (m Model) closesText(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if it := m.board.Get(id); it != nil && it.ShortID != "" {
+			id = it.ShortID
+		}
+		out = append(out, id)
+	}
+	return strings.Join(out, ", ")
 }
 
 // workLines are the lines of work an item holds, one line each. What a kind

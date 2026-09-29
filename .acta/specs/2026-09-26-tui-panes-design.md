@@ -1,5 +1,4 @@
 ---
-status: done
 id: SPEC-5
 hash: jtlx
 ---
