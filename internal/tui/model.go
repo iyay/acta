@@ -291,9 +291,9 @@ func (m Model) Selected() *board.Item {
 
 // mark is the screen as it stands: the open tab, its Done sub-tab, the search
 // and the row under the cursor. A wheel frame compares it with the one it
-// gathered its notches on, so the notches follow the reader and not the screen
-// he has already left. It reads the cursor the model keeps rather than the rows
-// on show, so a notch costs no more than the frame it is part of.
+// gathered its notches on, so the notches follow the reader and never land on
+// a screen they did not come from. It reads the cursor the model keeps rather
+// than the rows on show, so a notch costs no more than the frame it is part of.
 func (m Model) mark() wheelMark {
 	return wheelMark{top: m.top, done: m.done, query: m.query, sel: m.sel[m.listPane()]}
 }
@@ -507,15 +507,23 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		if msg.Button == tea.MouseButtonWheelUp {
 			step = -wheelStep
 		}
+		// The notches belong to the screen they were gathered on. A screen
+		// that is gone drops the delta it was given, so the next notch starts
+		// a new frame for the screen the reader is on now.
+		if m.wheelDelta != 0 && m.wheelMark != m.mark() {
+			m.wheelDelta = 0
+		}
 		// Notches for another pane cannot share one delta. Scroll the old
 		// pane now so its notches are not lost.
 		if m.wheelDelta != 0 && m.wheelPane != p {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 			m.wheelDelta = 0
 		}
-		// The notches belong to the screen they were gathered on, so the last
-		// notch of a frame writes it down and the tick checks it.
-		m.wheelMark = m.mark()
+		// The first notch of a frame writes the screen down. The notches
+		// after it share that screen and must not write over it.
+		if m.wheelDelta == 0 {
+			m.wheelMark = m.mark()
+		}
 		m.wheelPane = p
 		m.wheelDelta += step
 		if m.wheelArmed {

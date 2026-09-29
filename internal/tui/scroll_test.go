@@ -781,6 +781,162 @@ func TestWheelNotchesBelongToTheScreenTheyWereGatheredOn(t *testing.T) {
 	}
 }
 
+// Notches that come in after the screen changed belong to the new screen, and
+// the ones that came before it are dropped. A frame that gathers on both sides
+// of a change scrolls what the new screen earned, no more.
+func TestWheelNotchesAfterTheChangeBelongToTheNewScreen(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		box   pane
+		leave func(m Model) Model
+	}{
+		{
+			name: "a reload that took the item away",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box: paneDetail,
+			leave: func(m Model) Model {
+				return reloadedWithout(m, m.Selected().ID)
+			},
+		},
+		{
+			name: "another tab",
+			start: func(t *testing.T) Model {
+				// Both tabs remember the detail box as the focused one, so
+				// the notch after the switch still lands on a detail box.
+				return press(longTabs(t), tabKey(tabBugs), keyTo(paneDetail),
+					tabKey(tabPlans), keyTo(paneDetail))
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, tabKey(tabBugs)) },
+		},
+		{
+			name: "another Done sub-tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), keyTo(paneDone))
+			},
+			box:   paneDone,
+			leave: func(m Model) Model { return press(m, "]") },
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[c.box] != 0 {
+				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
+			}
+			m = c.leave(m)
+			// The pane on screen is where the next notch lands, which the
+			// change may have moved.
+			b = scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelTick(m)
+			want := min(wheelStep, m.lastOff(c.box))
+			if m.off[c.box] != want {
+				t.Errorf("one notch after the change scrolled %d, want %d", m.off[c.box], want)
+			}
+			if !shows(m, c.box, int(want)) {
+				t.Errorf("the box shows %q, want line %d of what is on show", drawnFirst(m, c.box), want)
+			}
+		})
+	}
+}
+
+// The next notch lands on the box under the pointer, so it belongs to that
+// pane alone. The notches the reader gave the box they have already left are
+// not scrolled there on the way out.
+func TestWheelNotchOnAnotherPaneLeavesTheOldBoxWhereTheChangePutIt(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	first := m.Selected().ID
+	lb := scrollBox(m, paneList)
+	m = click(m, lb.x+1, lb.y+2)
+	if m.Selected().ID == first {
+		t.Fatalf("the click stayed on %q, the test needs another item on show", first)
+	}
+	lb = scrollBox(m, paneList)
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	m = wheelTick(m)
+	if m.off[paneDetail] != 0 {
+		t.Errorf("the notches of the old item scrolled the new one to line %d, want 0", m.off[paneDetail])
+	}
+	if !shows(m, paneDetail, 0) {
+		t.Errorf("the detail box shows %q, want the first line of the item on show", drawnFirst(m, paneDetail))
+	}
+	if want := min(wheelStep, m.lastOff(paneList)); m.off[paneList] != want {
+		t.Errorf("the notch over the list scrolled it to %d, want %d", m.off[paneList], want)
+	}
+}
+
+// A screen that never moved keeps its notches: the whole frame scrolls, or
+// the wheel would swallow the turn the reader gave it.
+func TestWheelNotchesScrollTheWholeFrameWhenNothingChanged(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name    string
+		start   func(t *testing.T) Model
+		box     pane
+		notches int
+		leave   func(m Model) Model
+	}{
+		{
+			name:    "the list pane",
+			start:   func(t *testing.T) Model { return paneModel(t, paneList) },
+			box:     paneList,
+			notches: 3,
+		},
+		{
+			name:    "the detail pane",
+			start:   func(t *testing.T) Model { return paneModel(t, paneDetail) },
+			box:     paneDetail,
+			notches: 2,
+		},
+		{
+			name: "a reload that kept the item",
+			start: func(t *testing.T) Model {
+				m := paneModel(t, paneDetail)
+				// The reader clicks the row they are on, so the cursor is
+				// written down and the reload finds the same one again.
+				lb := scrollBox(m, paneList)
+				m = click(m, lb.x+1, lb.y+1)
+				return press(m, keyTo(paneDetail))
+			},
+			box:     paneDetail,
+			notches: 2,
+			leave:   reloaded,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			for range c.notches {
+				m = wheelOnly(m, b.x+1, b.y+2, false)
+			}
+			if c.leave != nil {
+				m = c.leave(m)
+			}
+			m = wheelTick(m)
+			want := min(c.notches*wheelStep, m.lastOff(c.box))
+			if m.off[c.box] != want {
+				t.Errorf("the frame scrolled %d, want the whole total %d", m.off[c.box], want)
+			}
+			if !shows(m, c.box, int(want)) {
+				t.Errorf("the box shows %q, want line %d of what is on show", drawnFirst(m, c.box), want)
+			}
+		})
+	}
+}
+
 // reloadedWithout is the reload message of a board the item id is gone from, so
 // the cursor lands on another row the way a live reload lands it.
 func reloadedWithout(m Model, id string) Model {
@@ -789,6 +945,17 @@ func reloadedWithout(m Model, id string) Model {
 		return m
 	}
 	fresh.Items = slices.DeleteFunc(fresh.Items, func(it *board.Item) bool { return it.ID == id })
+	next, _ := m.Update(reloadMsg{b: fresh})
+	return next.(Model)
+}
+
+// reloaded is a reload message carrying the board as it stands, so the screen
+// is rebuilt under the reader and the item on show stays the one they are on.
+func reloaded(m Model) Model {
+	fresh, err := m.load()
+	if err != nil {
+		return m
+	}
 	next, _ := m.Update(reloadMsg{b: fresh})
 	return next.(Model)
 }

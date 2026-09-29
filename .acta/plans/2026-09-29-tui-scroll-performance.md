@@ -535,8 +535,8 @@ Review round 2 (037572f..041a5d1) found one BLOCKER, with two holes. Both review
   Then write `wheelMark` only when `wheelDelta == 0`, which is when a new frame starts. Rewrite the comments at `model.go:295-296` and `:516-517` in plain words. Say "the reader", not "he".
 - Mutation: take out the drop line, and the reload, tab and click tests must each go red.
 
-- [ ] **Step 1: Write the failing tests** for the reload, tab, click and Done sub-tab repros, plus one test where nothing changes and the full total still scrolls.
-- [ ] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run Wheel`.
-- [ ] **Step 3: Write the minimal fix**, and rewrite the comments.
-- [ ] **Step 4: Run the whole suite and watch it pass** with `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
-- [ ] **Step 5: Commit it as ONE commit** with the message `tui: apply wheel notches only on the screen they came from`.
+- [x] **Step 1: Write the failing tests** for the reload, tab, click and Done sub-tab repros, plus one test where nothing changes and the full total still scrolls.
+- [x] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run Wheel`.
+- [x] **Step 3: Write the minimal fix**, and rewrite the comments.
+- [x] **Step 4: Run the whole suite and watch it pass** with `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
+- [x] **Step 5: Commit it as ONE commit** with the message `tui: apply wheel notches only on the screen they came from`.
