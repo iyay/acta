@@ -474,3 +474,6 @@ claude plugin eval --eval-dir evals --model sonnet --ablation none \
 - Only cases 3 and 4 use an `llm` grader. The judge defaults to `haiku`; pin it
   with `--judge-model haiku` so a judge change does not look like a plugin
   regression.
+
+- Case 3 grants `allowed_tools: [Skill]` so the child can load the brainstorm
+  skill and answer from it; with no tools it never reads the rule it is graded on.

@@ -4,7 +4,7 @@ description: A second Architectural brainstorm in one session is filed and the u
 tags: [brainstorm]
 runs: 1
 max_turns: 3
-timeout_seconds: 120
+timeout_seconds: 240
 allowed_tools: [Skill]
 ---
 
@@ -14,7 +14,6 @@ page, and that design is still open.
 Now, in this same session, I want a search box for the whole app. It will
 change how every page fetches its data, so it is a big change.
 
-Before you answer, check what the acta workflow says about a second brainstorm
-in one session. Follow the acta workflow for a change like this.
+Follow the acta workflow for a change like this.
 
 Tell me what happens next and stop there. Do not start designing it.
