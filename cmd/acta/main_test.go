@@ -89,6 +89,11 @@ func runBin(t *testing.T, bin, dir, stdin string, args ...string) (string, strin
 	t.Helper()
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir
+	// The child must never put a lock in the real cache folder of whoever
+	// runs the suite, so it gets a home of its own. macOS reads HOME for the
+	// cache folder, Linux reads XDG_CACHE_HOME, so we move both.
+	home := t.TempDir()
+	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CACHE_HOME="+home)
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errOut strings.Builder
 	cmd.Stdout, cmd.Stderr = &out, &errOut

@@ -5,7 +5,7 @@ parent: plans/2026-09-27-review-debt
 ---
 # Review NOTEs: Review Debt Implementation Plan
 
-- [ ] appendDebt writes the file with no lock and no tmp+rename, so an append racing acta tick on the same debt file can lose one edit.
+- [x] appendDebt writes the file with no lock and no tmp+rename, so an append racing acta tick on the same debt file can lose one edit.
 - [ ] TickLine trusts the line number from board load; a hand edit before the tick can mark the wrong box (it only checks the line is some box).
 - [ ] acta set on a debt file status writes a value the board then ignores, because derive always recomputes it from the lines.
 - [ ] tui fromText reads and parses the debt file on every detail render because the board drops the parent link; keep parent on the Item.
