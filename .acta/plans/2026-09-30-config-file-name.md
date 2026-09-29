@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: PLN-0041
 hash: ndygdhp
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Config File Name Implementation Plan
 
@@ -57,7 +59,7 @@ hash: ndygdhp
 - Consumes: `Load(path string) (Voice, bool, error)`, `Default() Voice`, `oldPath()`, the test helpers `withHome(t)` and `writeVoice(t, path, body)` in `voice_acta_test.go`.
 - Produces: `Path() (string, error)` returns `PM_VOICE_FILE` or `~/.acta/config.yaml`. `Resolve() (Voice, bool, error)` keeps its signature. New unexported `voicePath() (string, error)` returns `~/.acta/voice.yaml`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/voice/voice_test.go`, inside `TestPath`, change the default-path line to:
 
@@ -171,12 +173,12 @@ func TestResolveReadsVoiceFileWhenMoveFails(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/voice/`
 Expected: FAIL. `TestPath`, `TestPathIsActaDefault`, `TestResolveMovesVoiceFile`, `TestResolvePrefersNewFile` and `TestSaveWritesNewFileOnly` fail, because `Path` still returns `voice.yaml`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/voice/voice.go`, change the `Voice` comment to say the setting lives in `~/.acta/config.yaml`, that an old `~/.acta/voice.yaml` is moved there on the first read, and that `~/.pm/voice.yaml` is only read when both are missing. Replace `Path` and add `voicePath` below it:
 
@@ -243,7 +245,7 @@ func Resolve() (Voice, bool, error) {
 
 In `plugin/README.md`, change both `~/.acta/voice.yaml` to `~/.acta/config.yaml`. In the four `plugin/evals/*/scaffold.sh` files, change `$HOME/.acta/voice.yaml` to `$HOME/.acta/config.yaml` (two places per file).
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/voice/ && go test ./...`
 Expected: PASS, no failures in any package.
@@ -251,7 +253,7 @@ Expected: PASS, no failures in any package.
 Run: `grep -rn '\.acta/voice\.yaml' --exclude-dir=.git --exclude-dir=.acta .`
 Expected: only lines in `internal/voice/voice_acta_test.go` that set up the old file on purpose.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal && go vet ./... && go test ./...
@@ -273,7 +275,7 @@ git commit -m "Move the user config to ~/.acta/config.yaml; an old voice.yaml mo
 - Consumes: `CheckSkill(t, SkillRule{Name, MaxLines, Must, MustNot})` from `internal/plugincheck`.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Replace `internal/plugincheck/skill_setup_test.go` with:
 
@@ -306,12 +308,12 @@ func TestSkillSetup(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `go test ./internal/plugincheck/ -run TestSkillSetup`
 Expected: FAIL, naming the missing `config.yaml`, `/init` and AGENTS.md phrases and the banned `~/.acta/voice.yaml` and "never create" phrases.
 
-- [ ] **Step 3: Change the skill text**
+- [x] **Step 3: Change the skill text**
 
 In `plugin/skills/setup/SKILL.md`, line 8 becomes:
 
@@ -337,12 +339,12 @@ The last "Limits" line becomes:
 - This skill edits CLAUDE.md or AGENTS.md only between the acta markers, and only after a yes; the one exception is the new CLAUDE.md that `/init` writes. It never edits settings.
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/plugincheck/ && go test ./...`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal && go vet ./... && go test ./...
@@ -366,7 +368,7 @@ git commit -m "Setup names config.yaml and makes a CLAUDE.md when the repo has n
 - Consumes: `SessionStart(Input) string`, `korean()` test helper, `Skills` in `internal/hook/hook.go`; `CheckSkill` in `internal/plugincheck`.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/plugincheck/skill_plan_test.go`, add to `Must`:
 
@@ -395,12 +397,12 @@ and after the `want` loop add:
 	}
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/hook/ ./internal/plugincheck/ -run 'TestSessionStartListsSkillsAndRules|TestSkillPlan'`
 Expected: FAIL, naming the missing build line, the old "(default)" text, and the missing plan skill phrases.
 
-- [ ] **Step 3: Change the text**
+- [x] **Step 3: Change the text**
 
 In `internal/hook/hook.go`, the `build` entry becomes:
 
@@ -418,7 +420,7 @@ Regenerate the default rules file:
 
 Run: `go test ./internal/hook -run TestDefaultRulesFile -update`
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/hook/ ./internal/plugincheck/ && go test ./...`
 Expected: PASS.
@@ -426,7 +428,7 @@ Expected: PASS.
 Run: `grep -rn 'executor subagent (default)' --exclude-dir=.git --exclude-dir=.acta .`
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal && go vet ./... && go test ./...

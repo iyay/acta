@@ -4,6 +4,8 @@ closes: [SCR-0026]
 created: "2026-09-30"
 id: SPC-0032
 hash: wevgkfg
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Config file name, setup init, plan reads executor
 
