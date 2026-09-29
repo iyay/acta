@@ -626,7 +626,7 @@ git commit -m "docs(plugin): skills and evals use the 3-letter id format, plan c
 
 **verify:** Every test PLAN-31 added still checks its own rule after the merge, with fixtures in the new id format where the rule is not about the old format. No test is deleted, skipped or loosened. Name each of the four tests and say whether it was a stale fixture or a real bug.
 
-- [ ] **Step 1: Reproduce** `go test ./internal/write/ -run 'TestAssignIDsLeavesAFileThatHasAnIDAlone|TestAssignIDsSkipsASchemaFileThatFails|TestAssignIDsFinishesTheScratchParent|TestAppendScratchOldItem' -v` fails.
-- [ ] **Step 2: Fix** stale fixtures by moving them to the new format; fix code only where a test shows wrong behaviour.
-- [ ] **Step 3: Run** `go test ./internal/write/ ./internal/board/`, `gofmt -l .`, `go vet ./...`.
-- [ ] **Step 4: Commit** `fix(write): PLAN-31 tests follow the 3-letter id format after merge`.
+- [x] **Step 1: Reproduce** `go test ./internal/write/ -run 'TestAssignIDsLeavesAFileThatHasAnIDAlone|TestAssignIDsSkipsASchemaFileThatFails|TestAssignIDsFinishesTheScratchParent|TestAppendScratchOldItem' -v` fails.
+- [x] **Step 2: Fix** stale fixtures by moving them to the new format; fix code only where a test shows wrong behaviour.
+- [x] **Step 3: Run** `go test ./internal/write/ ./internal/board/`, `gofmt -l .`, `go vet ./...`.
+- [x] **Step 4: Commit** `fix(write): PLAN-31 tests follow the 3-letter id format after merge`.

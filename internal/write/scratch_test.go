@@ -275,7 +275,7 @@ func TestAppendScratchAddsTheNewlineTheBodyLacks(t *testing.T) {
 	// A new item's body always ends with a newline, so this is the old
 	// append path that has to add the missing one.
 	cfg := repoWith(t, map[string]string{
-		".acta/scratch/2026-09-01-old.md": "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nno newline at the end",
+		".acta/scratch/2026-09-01-old.md": "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nno newline at the end",
 	})
 	o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("next line\n"))
 	if err != nil {
@@ -428,7 +428,7 @@ func TestAppendScratchOldItem(t *testing.T) {
 	// keeps today's append; a flag is refused.
 	fixNow(t)
 	cfg := repoWith(t, map[string]string{
-		".acta/scratch/2026-09-01-old.md": "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n",
+		".acta/scratch/2026-09-01-old.md": "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n",
 	})
 	path := filepath.Join(cfg.Root, "scratch", "2026-09-01-old.md")
 	o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("more\n"))
@@ -439,11 +439,11 @@ func TestAppendScratchOldItem(t *testing.T) {
 		t.Errorf("path %s want %s", o.Path, path)
 	}
 	src, _ := os.ReadFile(path)
-	want := "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n\nmore\n"
+	want := "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n\nmore\n"
 	if string(src) != want {
 		t.Errorf("the old item was reshaped:\ngot  %q\nwant %q", src, want)
 	}
-	refuse(t, cfg, "SCRATCH-1 is an old item with no sections", func() error {
+	refuse(t, cfg, "SCR-0001 is an old item with no sections", func() error {
 		_, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "context", []byte("y\n"))
 		return err
 	})

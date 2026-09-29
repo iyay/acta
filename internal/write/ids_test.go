@@ -481,7 +481,7 @@ func TestAssignIDsFirstIDWritesSchemaOnScratch(t *testing.T) {
 // and no schema flag lands on an old file.
 func TestAssignIDsLeavesAFileThatHasAnIDAlone(t *testing.T) {
 	fixNow(t)
-	in := "---\nid: SPEC-1\nhash: abcd\n---\n# X\n"
+	in := "---\nid: SPC-0001\nhash: abcd123\n---\n# X\n"
 	cfg := repoWith(t, map[string]string{".acta/specs/2026-09-01-x-design.md": in})
 	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
 		t.Fatal(err)
@@ -556,7 +556,7 @@ func TestAssignIDsSkipsASchemaFileThatFails(t *testing.T) {
 	if bad := readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-26-bad.md")); strings.Contains(bad, "id:") {
 		t.Errorf("a file that fails the check got an id:\n%s", bad)
 	}
-	if ok := readFile(t, filepath.Join(cfg.Root, "specs/2026-09-26-ok-design.md")); !strings.Contains(ok, "id: SPEC-") {
+	if ok := readFile(t, filepath.Join(cfg.Root, "specs/2026-09-26-ok-design.md")); !strings.Contains(ok, "id: SPC-") {
 		t.Errorf("the good file next to it got no id:\n%s", ok)
 	}
 }
@@ -566,7 +566,7 @@ func TestAssignIDsSkipsASchemaFileThatFails(t *testing.T) {
 func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
 	fixNow(t)
 	cfg := repoWith(t, map[string]string{
-		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\n---\nx\n",
+		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCR-0001\nhash: aaaaaaa\nstatus: brainstorming\n---\nx\n",
 		".acta/specs/2026-09-26-idea-design.md": "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
 	})
 	_, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
@@ -587,7 +587,7 @@ func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
 func TestAssignIDsKeepsTheScratchParentCloseDay(t *testing.T) {
 	fixNow(t)
 	cfg := repoWith(t, map[string]string{
-		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\nfinished: \"2026-09-01\"\n---\nx\n",
+		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCR-0001\nhash: aaaaaaa\nstatus: brainstorming\nfinished: \"2026-09-01\"\n---\nx\n",
 		".acta/specs/2026-09-26-idea-design.md": "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
 	})
 	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
@@ -620,7 +620,7 @@ func TestAssignIDsClosesOnlyAScratchParentOfASpec(t *testing.T) {
 		{
 			name: "a plan on an idea",
 			files: map[string]string{
-				".acta/scratch/2026-09-20-idea.md": "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\n---\nx\n",
+				".acta/scratch/2026-09-20-idea.md": "---\nid: SCR-0001\nhash: aaaaaaa\nstatus: brainstorming\n---\nx\n",
 				".acta/plans/2026-09-26-idea.md":   "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
 			},
 			keep: "scratch/2026-09-20-idea.md",
