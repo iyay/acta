@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -51,14 +52,46 @@ func newStyles(t theme.Theme, dark bool) styles {
 		// faint paints every row the cursor is not on.
 		faint: lipgloss.NewStyle().Faint(true),
 		// dim paints the screen behind a popup, so the box on top is the only
-		// thing left with a color of its own.
-		dim: lipgloss.NewStyle().Faint(true).Foreground(slot(slotDim)),
+		// thing left with a color of its own. The rows behind are already
+		// faint, so dim has to fade further: halfway to the background.
+		dim: lipgloss.NewStyle().Faint(true).Foreground(dimColor(t, slot(slotDim))),
 		// selected is a band across the row with bright text on it, never
 		// reversed video, so the words stay readable wherever it falls.
 		selected: lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
 		bg:       t.BG,
 		fg:       t.FG,
 	}
+}
+
+// dimColor is the color behind a popup. A theme with its own colors mixes
+// slot 8 halfway toward its background. The terminal theme has no hex, so
+// mixHex gives slot 8 straight back and the terminal keeps picking the color.
+func dimColor(t theme.Theme, grey lipgloss.Color) lipgloss.Color {
+	return lipgloss.Color(mixHex(t.BG, string(grey)))
+}
+
+// mixHex gives the color halfway between two #rrggbb colors. When either one
+// is not a #rrggbb color there is nothing to mix, so b comes back as it is.
+func mixHex(a, b string) string {
+	ca, okA := hexRGB(a)
+	cb, okB := hexRGB(b)
+	if !okA || !okB {
+		return b
+	}
+	return fmt.Sprintf("#%02x%02x%02x", (ca[0]+cb[0])/2, (ca[1]+cb[1])/2, (ca[2]+cb[2])/2)
+}
+
+// hexRGB reads #rrggbb into its red, green and blue parts.
+func hexRGB(s string) ([3]int, bool) {
+	s, ok := strings.CutPrefix(s, "#")
+	if !ok || len(s) != 6 {
+		return [3]int{}, false
+	}
+	n, err := strconv.ParseUint(s, 16, 32)
+	if err != nil {
+		return [3]int{}, false
+	}
+	return [3]int{int(n >> 16 & 0xff), int(n >> 8 & 0xff), int(n & 0xff)}, true
 }
 
 // paintFrame lays the theme background under the whole screen. Every style
