@@ -66,7 +66,7 @@ The existing brainstorm and scratch guards stay as they are. New guards:
 `plugin/evals/`, one case per scenario (`case.yaml` plus `graders/`):
 
 1. A side idea during a build goes to scratch, not memory.
-2. "catet aja" goes to scratch.
+2. A raw idea dropped in plain words ("note this for later") goes to scratch. The case uses no language or phrase of one user.
 3. A second brainstorm in the same session offers the three choices.
 4. An obvious one-file fix does not get an Architectural brainstorm.
 5. A brainstorm start files a scratch item first, then sets

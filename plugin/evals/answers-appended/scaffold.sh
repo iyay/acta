@@ -7,6 +7,11 @@
 # The scratch item is seeded here under a fixed name, so a grader can read
 # that one file and see whether the answer reached the body.
 set -euo pipefail
+# A first run with no voice file makes the session rules tell the agent to run
+# /acta:setup before any other work, which spends a turn this case needs. A
+# real machine is already set up; say so, or the case measures setup.
+mkdir -p "$HOME/.acta"
+printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/voice.yaml"
 mkdir -p bin .acta/scratch
 cp "$(command -v acta)" bin/acta
 cat > .acta/scratch/eval-answer.md <<'ITEM'

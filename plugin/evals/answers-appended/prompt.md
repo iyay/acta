@@ -3,7 +3,12 @@ name: answers-appended
 description: An answer the user gives lands in the scratch item body, not only in the chat.
 tags: [brainstorm]
 runs: 1
-max_turns: 3
+# The work is three steps: read the scratch skill, run the acta command, then
+# answer the user. The command comes back with a git error in the sandbox, and
+# the child may spend one or two more turns on it. Four kept runs of this case
+# used 4, 5, 5 and 6 counted turns, so three is a coin flip. Seven is the most
+# any run needed, plus one spare.
+max_turns: 7
 timeout_seconds: 240
 allowed_tools: []
 ---

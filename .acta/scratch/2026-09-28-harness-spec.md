@@ -36,3 +36,5 @@ Design section 3 approved 2026-09-29 (eval suite): plugin/evals/ with six cases 
 Cost ruling 2026-09-29: user is on a subscription, so no --max-cost-usd; each case caps max_turns and timeout_seconds.
 
 Land gate ruling 2026-09-29: gate also needs scripts/eval in the repo, since the land skill is shared by every project. Hooks ship to every user; evals stay in the acta repo.
+
+Ruling 2026-09-29: eval case 2 must not use 'catet' or any one user's words; renamed to note-to-scratch with plain English (Task 8 in fix round 1).
