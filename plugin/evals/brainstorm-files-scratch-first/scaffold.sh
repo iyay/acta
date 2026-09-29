@@ -5,10 +5,14 @@
 # sandbox, so it can still find the CLI on PATH.
 set -euo pipefail
 # A first run with no voice file makes the session rules send the agent to
-# /acta:setup before any other work, so it never reaches this case. A real
-# machine is already set up; say so, or the case measures setup instead.
+# /acta:setup before any other work, so it never reaches this case.
+# The eval home is a sealed throwaway, but a hand run in a normal shell would
+# overwrite the voice file on a real machine, so only write it when it is
+# missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
-printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/voice.yaml"
+if [ ! -f "$HOME/.acta/voice.yaml" ]; then
+  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/voice.yaml"
+fi
 mkdir -p bin .acta/scratch
 cp "$(command -v acta)" bin/acta
 git init -q .
