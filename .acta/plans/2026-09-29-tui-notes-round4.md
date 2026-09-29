@@ -3,6 +3,7 @@ parent: specs/2026-09-29-tui-notes-round4-design
 id: PLN-0036
 created: "2026-09-29"
 hash: q5y8n99
+started: "2026-09-29"
 ---
 # TUI Notes Round 4 Implementation Plan
 
@@ -263,7 +264,7 @@ git commit -m "feat(tui): draw the tabs in a box of their own"
 - Consumes: nothing new.
 - Produces: `tabsOf(paneList)` returns `[]string{"Open"}` or `[]string{"Tasks"}`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/sidebar_test.go` (add `strings` to its imports if it is not there):
 
@@ -290,12 +291,12 @@ func TestListPaneTitleSaysOpenOrTasks(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `go test ./internal/tui -run TestListPaneTitleSaysOpenOrTasks -v`
 Expected: FAIL, `title ["List"], want "Open"`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/sidebar.go` `tabsOf`:
 
@@ -308,7 +309,7 @@ In `internal/tui/sidebar.go` `tabsOf`:
 		return []string{"Open"}
 ```
 
-- [ ] **Step 4: Run the test to see it pass, then the package**
+- [x] **Step 4: Run the test to see it pass, then the package**
 
 Run: `go test ./internal/tui -run TestListPaneTitleSaysOpenOrTasks -v`
 Expected: PASS.
@@ -316,7 +317,7 @@ Run: `go test ./internal/tui`
 The click test in `model_test.go` that calls `drawnLetter(m, paneList, "List", "first")` (near :1067) pins the old word. Change `"List"` to `m.tabsOf(paneList)[0]`.
 Expected after the update: `ok`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -935,7 +936,7 @@ git commit -m "feat(tui): keep the detail header and date line in place"
 - Consumes: `board.Item.ShortID`, `board.Item.Date`, `fileOf(id string) string`.
 - Produces: `func idNum(it *board.Item) (int, bool)`. `ordered(items []*board.Item, newest bool) []*board.Item` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/order_test.go`:
 
@@ -1040,12 +1041,12 @@ func TestIDNumReadsTheNumber(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestOrdered|TestIDNum' -v`
 Expected: FAIL, `undefined: idNum`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Replace `ordered` in `internal/tui/order.go` and add `idNum` (add `strconv` to the imports):
 
@@ -1099,14 +1100,14 @@ func idNum(it *board.Item) (int, bool) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestOrdered|TestIDNum|TestOFlips' -v`
 Expected: PASS.
 Run: `go test ./internal/tui`
 Expected: `ok`. A list test whose fixture items carry ids and that expected date order is updated to id order.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -1736,7 +1737,7 @@ git commit -m "feat(tui): copy the row id with y"
 - Consumes: `theme.Names()`, `theme.Builtin(name)`, `withTrueColor` (styles_test.go), `withColors` (view_test.go).
 - Produces: `func mixHex(a, b string) string`; `func hexRGB(s string) ([3]int, bool)`.
 
-- [ ] **Step 1: Find the cause with acta:debug**
+- [x] **Step 1: Find the cause with acta:debug**
 
 Load `acta:debug` and run its root-cause phase before any test. Nobody has proven why the dim text looks unchanged. Check at least these, with the output shown:
 - Dump the raw bytes of one background line with the help popup open, under `termenv.TrueColor` and the default theme, in a scratch test that is not committed. Confirm the SGR codes are `2` (faint) and `38;2;65;72;104` (`#414868`) and nothing resets them mid-line.
@@ -1745,7 +1746,7 @@ Load `acta:debug` and run its root-cause phase before any test. Nobody has prove
 
 Write the proven cause in one line in the task report. The fix below is the likely one: the dim color moves halfway from slot 8 to the theme background. If the debug step proves a different cause, fix that cause instead, keep the tests of Step 2 as the proof, and say so in the report.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 In `internal/tui/styles_test.go`, change the dim check in `TestHexThemeRoles` to the new color (tokyo-night: halfway from `#1a1b26` to `#414868`, worked out by hand):
 
@@ -1868,12 +1869,12 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 
 This is the old loop body word for word, moved into the helper.
 
-- [ ] **Step 3: Run the tests to see them fail**
+- [x] **Step 3: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestHexThemeRoles|TestDimFadesTowardTheBackground|TestMixHex|TestPopupDimsTheBackground' -v`
 Expected: FAIL, `undefined: mixHex`.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 In `internal/tui/styles.go` (add `"fmt"` to the imports), in `newStyles`:
 
@@ -1922,14 +1923,14 @@ func hexRGB(s string) ([3]int, bool) {
 }
 ```
 
-- [ ] **Step 5: Run the tests to see them pass, then the package**
+- [x] **Step 5: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestHexThemeRoles|TestDimFadesTowardTheBackground|TestMixHex|TestPopupDimsTheBackground' -v`
 Expected: PASS.
 Run: `go test ./internal/tui`
 Expected: `ok`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
