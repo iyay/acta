@@ -5,7 +5,7 @@ description: "acta: Use on first run and whenever the user asks to change setup:
 
 # Setup
 
-The chat language, style and tone live in `~/.acta/voice.yaml` (or the file `PM_VOICE_FILE` names). `acta` reads it at the start of every session and before every message.
+The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM_VOICE_FILE` names). An old `voice.yaml` in the same folder moves there on its own. `acta` reads it at the start of every session and before every message.
 
 ## First run
 
@@ -38,7 +38,7 @@ Ask this one in Claude Code only. Default no. A yes saves `acta voice set --suba
 
 ### The acta block
 
-Ask: add the acta block to CLAUDE.md / AGENTS.md? Show this exact block first, before any yes:
+Ask: add the acta block to CLAUDE.md / AGENTS.md? When the repo has neither, ask to create a CLAUDE.md for it. Show this exact block first, before any yes:
 
 ```markdown
 <!-- acta:begin -->
@@ -49,7 +49,7 @@ Raw ideas go to Scratchpad with `acta scratch new`, not to agent memory.
 <!-- acta:end -->
 ```
 
-Write only after a yes, and only to files that already exist: never create a CLAUDE.md or AGENTS.md that is not there. When both exist, ask which one. Write only between the two markers; a re-run replaces the text inside them and leaves the rest of the file alone.
+Write only after a yes. When both files exist, ask which one. When only CLAUDE.md exists, write the block there. When only AGENTS.md exists, write the block there and make no CLAUDE.md. When neither exists: in Claude Code, run `/init` first, then add the block to the CLAUDE.md it made; in any other harness, create a CLAUDE.md that holds only the block. Write only between the two markers; a re-run replaces the text inside them and leaves the rest of the file alone.
 
 ## Change later
 
@@ -61,4 +61,4 @@ Pass only the flags that change: `acta voice set --style plain`, `acta voice set
 
 - The user's own CLAUDE.md or AGENTS.md wins when it names a language or style.
 - Tone is at most 8 lines and 600 characters.
-- This skill edits CLAUDE.md or AGENTS.md only between the acta markers, and only after a yes. It never edits settings.
+- This skill edits CLAUDE.md or AGENTS.md only between the acta markers, and only after a yes; the one exception is the new CLAUDE.md that `/init` writes. It never edits settings.

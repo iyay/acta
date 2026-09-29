@@ -2,8 +2,12 @@
 package tui
 
 import (
+	"encoding/base64"
+	"errors"
+	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -130,6 +134,31 @@ func defaultOpen(url string) error {
 		return exec.Command("open", url).Run()
 	}
 	return exec.Command("xdg-open", url).Run()
+}
+
+// osc52 asks the terminal to put text on the clipboard. It travels with the
+// screen output, so it works over SSH, and tmux passes it on.
+func osc52(text string) string {
+	return "\x1b]52;c;" + base64.StdEncoding.EncodeToString([]byte(text)) + "\a"
+}
+
+// copyText puts text on the clipboard. pbcopy goes first, because OSC 52
+// is written straight to the terminal while Bubble Tea draws and can smear
+// the screen for a moment. OSC 52 is only the fallback when pbcopy is
+// missing or fails.
+func copyText(text string) error {
+	path, err := exec.LookPath("pbcopy")
+	if err == nil {
+		cmd := exec.Command(path)
+		cmd.Stdin = strings.NewReader(text)
+		if err = cmd.Run(); err == nil {
+			return nil
+		}
+	}
+	if _, oscErr := os.Stdout.WriteString(osc52(text)); oscErr != nil {
+		return errors.Join(err, oscErr)
+	}
+	return nil
 }
 
 // linkAt gives the url under a bottom-line cell, reading the boxes off the

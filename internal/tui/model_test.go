@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/base64"
 	"errors"
 	"io/fs"
 	"os"
@@ -196,7 +197,7 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
 		{tabSpecs, nil, "specs/2026-09-17-broken specs/2026-09-18-weird specs/2026-09-20-alpha specs/2026-09-22-beta specs/2026-09-28-from-scratch-design " + groupRowID},
 		{tabPlans, nil, "plans/2026-09-21-alpha plans/2026-09-23-lonely"},
-		{tabActivities, nil, "plans/2026-09-21-alpha#task-2"},
+		{tabActivities, nil, "plans/2026-09-21-alpha plans/2026-09-21-alpha#task-2"},
 	} {
 		m := press(newModel(t), append([]string{tabKey(tc.tab)}, tc.keys...)...)
 		if got := strings.Join(rowIDs(m), " "); got != tc.rows {
@@ -397,7 +398,7 @@ func TestTopAndBottomKeysInListPanes(t *testing.T) {
 func TestScrollKeysInPaneDetail(t *testing.T) {
 	t.Parallel()
 
-	m := press(longModel(t), tabKey(tabPlans), "0")
+	m := press(longModel(t), tabKey(tabPlans), "shift+tab")
 	if m.off[paneDetail] != 0 {
 		t.Fatalf("the detail starts at the top: %d", m.off[paneDetail])
 	}
@@ -426,7 +427,7 @@ func TestScrollKeysInPaneDetail(t *testing.T) {
 func TestScrollKeysDoNothingInListPanes(t *testing.T) {
 	t.Parallel()
 
-	m := press(longModel(t), tabKey(tabPlans), "0", "ctrl+d", "esc")
+	m := press(longModel(t), tabKey(tabPlans), "shift+tab", "ctrl+d", "esc")
 	if m.off[paneDetail] != pageLines {
 		t.Fatalf("leaving the detail box should keep the body where it was: %d", m.off[paneDetail])
 	}
@@ -823,7 +824,7 @@ func TestSelectionIsPerTab(t *testing.T) {
 		{tabPlans, []string{"tab", "j"}, "plans/2026-09-25-crash-fix"},
 		{tabScratches, []string{"j"}, "scratch/2026-09-28-idea-raw"},
 		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
-		{tabActivities, nil, "plans/2026-09-21-alpha#task-2"},
+		{tabActivities, []string{"j"}, "plans/2026-09-21-alpha#task-2"},
 	} {
 		m := press(newModel(t), append([]string{tabKey(tc.tab)}, tc.keys...)...)
 		// A walk over every other tab must not move this one.
@@ -842,12 +843,12 @@ func TestSelectionIsPerTab(t *testing.T) {
 func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
 	t.Parallel()
 
-	m := press(newModel(t), tabKey(tabPlans), "tab", "j", "0")
+	m := press(newModel(t), tabKey(tabPlans), "tab", "j", "tab")
 	if m.Selected().ID != "plans/2026-09-25-crash-fix" {
 		t.Fatalf("the detail should keep showing the Done box: %v", m.Selected())
 	}
 	// Moving the cursor inside the Done box keeps it the one on show.
-	m = press(m, "shift+tab", "j", "0")
+	m = press(m, "shift+tab", "j", "tab")
 	if m.Selected().ID != "plans/2026-09-26-dash-tasks" {
 		t.Fatalf("the detail should keep showing the Done box: %v", m.Selected())
 	}
@@ -1409,19 +1410,24 @@ func TestEveryTabHoldsItsOpenItemsInFileDateOrder(t *testing.T) {
 	for i := range topTabs {
 		kind := topTabs[i].kind
 		if kind == "" {
-			// Activities lists the tasks under way, oldest file date first.
-			var going []*board.Item
+			// Activities lists the tasks under way under a head, so the rows
+			// that are a task or stand on their own are the ones to check.
+			var want []string
 			for _, it := range m.board.List(board.KindTask, true) {
 				if inProgress(it) {
-					going = append(going, it)
+					want = append(want, it.ID)
 				}
 			}
-			var want []string
-			for _, it := range ordered(going, false) {
-				want = append(want, it.ID)
+			slices.Sort(want)
+			var got []string
+			for _, r := range press(m, tabKey(i)).rowsOf(paneList) {
+				if r.depth == 1 || !r.tree {
+					got = append(got, r.id)
+				}
 			}
-			if got := strings.Join(ids(press(m, tabKey(i)).rowsOf(paneList)), " "); got != strings.Join(want, " ") {
-				t.Errorf("tab %s holds %q, want %q", topTabs[i].name, got, strings.Join(want, " "))
+			slices.Sort(got)
+			if strings.Join(got, " ") != strings.Join(want, " ") {
+				t.Errorf("tab %s holds %q, want %q", topTabs[i].name, got, want)
 			}
 			continue
 		}
@@ -1719,7 +1725,7 @@ func TestEOpensTheEditorFromEveryPane(t *testing.T) {
 			}
 		}
 		// The detail box of this tab, from a list pane that has the focus.
-		if _, cmd := press(newModel(t), tabKey(i), "0").Update(key("e")); cmd == nil {
+		if _, cmd := press(newModel(t), tabKey(i), "shift+tab").Update(key("e")); cmd == nil {
 			t.Errorf("tab %s: e in the detail box opened no editor", topTabs[i].name)
 		}
 	}
@@ -1777,5 +1783,589 @@ func TestEscInDetailKeepsTheSelection(t *testing.T) {
 	m = press(m, "esc")
 	if m.Selected() == nil || m.Selected().ID != id {
 		t.Fatalf("esc moved from %s to %v", id, m.Selected())
+	}
+}
+
+// TestZeroChangesNothing walks every tab of the bar and every box of every
+// tab, and checks the 0 key leaves the screen exactly as it found it, so no
+// reader can wander into a dead key.
+func TestZeroChangesNothing(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
+			m := press(newModel(t), tabKey(i))
+			m.focusPane(p)
+			before := sized(m, 160, 40).View()
+			got := press(m, "0")
+			if got.focus != m.focus || got.top != m.top {
+				t.Errorf("tab %s box %d: 0 moved the focus to %d", topTabs[i].name, p, got.focus)
+			}
+			if after := sized(got, 160, 40).View(); after != before {
+				t.Errorf("tab %s box %d: 0 redrew the screen", topTabs[i].name, p)
+			}
+		}
+	}
+}
+
+// TestTabRingStillReachesTheDetailFromEveryListBox walks the ring from every
+// list box of every tab, so dropping the 0 key never strands a reader who
+// wants the detail.
+func TestTabRingStillReachesTheDetailFromEveryListBox(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		for _, p := range press(newModel(t), tabKey(i)).panes() {
+			m := press(newModel(t), tabKey(i))
+			m.focusPane(p)
+			reached := false
+			for _, k := range []string{"tab", "shift+tab"} {
+				if press(m, k).focus == paneDetail {
+					reached = true
+				}
+			}
+			if !reached {
+				t.Errorf("tab %s box %d: neither tab nor shift+tab reaches the detail", topTabs[i].name, p)
+			}
+		}
+	}
+}
+
+// TestEnterOpensTheDetailOnAPlainRow checks the second way into the detail
+// still works: on a row that is not a tree row, enter leaves the list alone
+// and moves the focus to the detail.
+func TestEnterOpensTheDetailOnAPlainRow(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		for _, p := range press(newModel(t), tabKey(i)).panes() {
+			m := press(newModel(t), tabKey(i))
+			m.focusPane(p)
+			rows := m.rowsOf(p)
+			row := -1
+			for k, r := range rows {
+				if !r.tree && !r.group && m.board.Get(r.id) != nil {
+					row = k
+					break
+				}
+			}
+			if row < 0 {
+				continue
+			}
+			m.moveTo(row)
+			before := rowIDs(m)
+			m = press(m, "enter")
+			if m.focus != paneDetail || m.last != p {
+				t.Errorf("tab %s box %d: enter on a plain row gave focus %d last %d", topTabs[i].name, p, m.focus, m.last)
+			}
+			if after := rowIDs(m); !slices.Equal(after, before) {
+				t.Errorf("tab %s box %d: enter on a plain row changed the list to %v", topTabs[i].name, p, after)
+			}
+		}
+	}
+}
+
+// TestNoTitleOrHelpNamesKeyZero reads every tab's screen and the help text, so
+// no key map or box title sends a reader after a key that is gone.
+func TestNoTitleOrHelpNamesKeyZero(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		if v := plain(press(sized(newModel(t), 160, 40), tabKey(i)).View()); strings.Contains(v, "[0]") {
+			t.Errorf("tab %s still draws [0]", topTabs[i].name)
+		}
+	}
+	for _, ln := range strings.Split(helpLines, "\n") {
+		if strings.HasPrefix(ln, "0 ") {
+			t.Errorf("help still lists 0: %q", ln)
+		}
+	}
+}
+
+// activityFiles is a board with work under a spec plan, under a bug plan,
+// and a plan with no work begun.
+func activityFiles() map[string]string {
+	return map[string]string{
+		".acta/specs/2026-09-20-s.md": "---\nid: SPC-0001\n---\n# Spec S\n",
+		".acta/bugs/2026-09-21-b.md":  "---\nid: BUG-0002\n---\n# Bug B\n",
+		".acta/plans/2026-09-22-p.md": "---\nid: PLN-0003\nparent: specs/2026-09-20-s\n---\n# Plan P\n\n### Task 1: Going\n- [x] a\n- [ ] b\n\n### Task 2: Waiting\n- [ ] c\n\n### Task 3: Also going\n- [x] d\n- [ ] e\n",
+		".acta/plans/2026-09-23-q.md": "---\nid: PLN-0004\nparent: bugs/2026-09-21-b\n---\n# Plan Q\n\n### Task 1: Fixing\n- [x] f\n- [ ] g\n",
+		".acta/plans/2026-09-24-r.md": "---\nid: PLN-0005\n---\n# Plan R\n\n### Task 1: Not begun\n- [ ] h\n",
+	}
+}
+
+// actModel opens Activities over activityFiles.
+func actModel(t *testing.T) Model {
+	t.Helper()
+	cfg := treeCfg(t, activityFiles())
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return press(sized(m, 160, 40), tabKey(tabActivities))
+}
+
+// A task under way sits under the plan it belongs to, or under the bug that
+// plan fixes, one level up only, and every other task is left out.
+func TestActivitiesGroupsTasksUnderTheirParent(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	want := []string{
+		"bugs/2026-09-21-b",
+		"plans/2026-09-23-q#task-1",
+		"plans/2026-09-22-p",
+		"plans/2026-09-22-p#task-1",
+		"plans/2026-09-22-p#task-3",
+	}
+	rows := m.rowsOf(paneList)
+	if got := ids(rows); !slices.Equal(got, want) {
+		t.Fatalf("rows %q, want %q", got, want)
+	}
+	for _, r := range rows {
+		it := m.board.Get(r.id)
+		switch {
+		case !r.tree:
+			t.Errorf("%s is not a tree row", r.id)
+		case r.depth == 0 && it.Kind == board.KindTask:
+			t.Errorf("task %s sits at the top level", r.id)
+		case r.depth == 1 && !inProgress(it):
+			t.Errorf("%s is listed but not in progress", r.id)
+		case r.depth > 1:
+			t.Errorf("%s goes deeper than one level", r.id)
+		}
+	}
+	// The heads keep the order of the pane, and the task of the bug stays
+	// under the bug, so the plan under the spec lands on top when the pane is
+	// flipped.
+	flipped := []string{
+		"plans/2026-09-22-p",
+		"plans/2026-09-22-p#task-1",
+		"plans/2026-09-22-p#task-3",
+		"bugs/2026-09-21-b",
+		"plans/2026-09-23-q#task-1",
+	}
+	if got := ids(press(m, "o").rowsOf(paneList)); !slices.Equal(got, flipped) {
+		t.Errorf("newest first holds %q, want %q", got, flipped)
+	}
+}
+
+// enter shuts one Activities group and opens it again, and leaves the other
+// groups and the Plans tab as they were.
+func TestEnterShutsOneActivitiesGroup(t *testing.T) {
+	t.Parallel()
+
+	m := press(actModel(t), "enter")
+	want := []string{"bugs/2026-09-21-b", "plans/2026-09-22-p", "plans/2026-09-22-p#task-1", "plans/2026-09-22-p#task-3"}
+	if got := ids(m.rowsOf(paneList)); !slices.Equal(got, want) {
+		t.Fatalf("after enter on the bug: %q, want %q", got, want)
+	}
+	if m.focus == paneDetail {
+		t.Error("enter on a head moved the focus to the detail")
+	}
+	if got := len(press(m, "enter").rowsOf(paneList)); got != 5 {
+		t.Errorf("a second enter left %d rows, want 5", got)
+	}
+	// A task row is not a head: enter opens it in the detail. The last row of
+	// the board is a task, not a head.
+	if got := press(actModel(t), "G", "enter"); got.focus != paneDetail {
+		t.Error("enter on a task row did not open the detail")
+	}
+	// A group the reader shut on Activities leaves the Plans tab alone: no
+	// plan opens there on its own.
+	for _, r := range press(press(m, "j", "enter"), tabKey(tabPlans)).rowsOf(paneList) {
+		if r.depth > 0 {
+			t.Errorf("the Plans tab opened %s on its own", r.id)
+		}
+	}
+}
+
+// A task whose plan is not on the board has no head, so it stands on its own
+// row at the end instead of going missing.
+func TestATaskWithNoPlanStandsOnItsOwnRow(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.board.Get("plans/2026-09-22-p#task-1").PlanID = ""
+	rows := m.rowsOf(paneList)
+	last := rows[len(rows)-1]
+	if last.id != "plans/2026-09-22-p#task-1" {
+		t.Fatalf("the last row is %q, want the task with no plan", last.id)
+	}
+	if last.depth != 0 || last.tree {
+		t.Errorf("the task with no plan is a row of depth %d tree %v, want a plain row at the top level", last.depth, last.tree)
+	}
+}
+
+func TestHAndLFoldActivitiesGroups(t *testing.T) {
+	t.Parallel()
+
+	m := press(actModel(t), "j") // the task under the bug
+	back := press(m, "h")
+	want := []string{"bugs/2026-09-21-b", "plans/2026-09-22-p", "plans/2026-09-22-p#task-1", "plans/2026-09-22-p#task-3"}
+	if got := ids(back.rowsOf(paneList)); !slices.Equal(got, want) {
+		t.Fatalf("h on a task row: %q, want %q", got, want)
+	}
+	if it := back.Selected(); it == nil || it.ID != "bugs/2026-09-21-b" {
+		t.Errorf("h left the cursor on %v, want the bug", it)
+	}
+	if got := len(press(back, "l").rowsOf(paneList)); got != 5 {
+		t.Errorf("l on the shut bug left %d rows, want 5", got)
+	}
+	// l on a task row under a head does not open anything, and the group it
+	// sits under keeps its tasks.
+	open := press(actModel(t), "j", "j", "j", "j")
+	if got := rowIDs(press(open, "l")); len(got) != 5 {
+		t.Errorf("l on a task row left %q, want all 5 rows", got)
+	}
+	// h on a task row shuts the head right above it, not the first head of
+	// the list: the last task row sits under the plan, not under the bug.
+	shut := press(open, "h")
+	if got, want := ids(shut.rowsOf(paneList)), []string{"bugs/2026-09-21-b", "plans/2026-09-23-q#task-1", "plans/2026-09-22-p"}; !slices.Equal(got, want) {
+		t.Errorf("h on the last task row: %q, want %q", got, want)
+	}
+	if it := shut.Selected(); it == nil || it.ID != "plans/2026-09-22-p" {
+		t.Errorf("h on the last task row left the cursor on %v, want the plan above it", it)
+	}
+	if !strings.Contains(helpLines, "h l") {
+		t.Errorf("help does not list h l: %q", helpLines)
+	}
+}
+
+// A list that is not a tree has no head to fold, so h and l leave both the
+// rows and the cursor alone on it.
+func TestHAndLLeaveAFlatListAlone(t *testing.T) {
+	t.Parallel()
+
+	bugs := press(newModel(t), tabKey(tabBugs))
+	if len(rowIDs(bugs)) == 0 {
+		t.Fatal("the fixture has no open bug, so this test proves nothing")
+	}
+	for _, k := range []string{"h", "l"} {
+		got := press(bugs, k)
+		if !slices.Equal(rowIDs(got), rowIDs(bugs)) || got.cursor() != bugs.cursor() {
+			t.Errorf("%s changed the Bugs list: %q cursor %d, want %q cursor %d", k, rowIDs(got), got.cursor(), rowIDs(bugs), bugs.cursor())
+		}
+		if s, want := foldState(got), foldState(bugs); s != want {
+			t.Errorf("%s on a flat list folded a head: %s, want %s", k, s, want)
+		}
+	}
+	// The same list after moving off the first row, so the cursor is not
+	// already sitting on the row the key would pick.
+	second := press(bugs, "j")
+	for _, k := range []string{"h", "l"} {
+		if got := press(second, k); got.cursor() != second.cursor() {
+			t.Errorf("%s moved the cursor on the second bug row to %d, want %d", k, got.cursor(), second.cursor())
+		}
+	}
+}
+
+// y hands the clipboard the id the design names for the row under the cursor,
+// and the status line says what was copied.
+func TestYCopiesTheIDOfTheRow(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name string
+		keys []string
+		want string
+	}{
+		{"bug head", nil, "BUG-0002"},
+		{"task", []string{"j"}, "PLN-0004.01"},
+		{"plan head", []string{"j", "j"}, "PLN-0003"},
+		{"spec head", []string{tabKey(tabSpecs)}, "SPC-0001"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			var got []string
+			m := actModel(t)
+			m.clip = func(s string) error { got = append(got, s); return nil }
+			after := press(press(m, c.keys...), "y")
+			if len(got) != 1 || got[0] != c.want {
+				t.Fatalf("clipboard got %q, want %q", got, c.want)
+			}
+			if after.status != "copied "+c.want {
+				t.Errorf("status %q, want %q", after.status, "copied "+c.want)
+			}
+			if !strings.Contains(plain(after.View()), "copied "+c.want) {
+				t.Errorf("the status line does not show %q", "copied "+c.want)
+			}
+		})
+	}
+}
+
+// A row with no number of its own copies the id the file does have: the path
+// for a file written without an id line, the hash when it carries one.
+func TestYCopiesTheIDOfARowWithNoNumber(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct{ file, body, want string }{
+		{".acta/plans/2026-09-30-noid.md", "# Plan N\n\n### Task 1: Work\n- [ ] a\n", "plans/2026-09-30-noid"},
+		{".acta/plans/2026-09-30-hash.md", "---\nhash: k3f2\n---\n# Plan H\n\n### Task 1: Work\n- [ ] a\n", "PLN-k3f2"},
+	} {
+		cfg := treeCfg(t, map[string]string{c.file: c.body})
+		b, err := board.Load(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := press(sized(New(cfg, b, true), 160, 40), tabKey(tabPlans))
+		if m.Selected() == nil {
+			t.Fatalf("%s: the Plans list has no row under the cursor: %q", c.file, rowIDs(m))
+		}
+		var got []string
+		m.clip = func(s string) error { got = append(got, s); return nil }
+		after := press(m, "y")
+		if len(got) != 1 || got[0] != c.want || after.status != "copied "+c.want {
+			t.Errorf("%s: copied %q, status %q, want %q", c.file, got, after.status, c.want)
+		}
+	}
+}
+
+// The status line always tells how the copy went: the error when it failed,
+// and "nothing selected" when the cursor sits on a row with no item, where the
+// clipboard is never touched at all.
+func TestYSaysWhyTheCopyFailed(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.clip = func(string) error { return errors.New("no clipboard") }
+	if got := press(m, "y").status; got != "copy failed: no clipboard" {
+		t.Errorf("failed copy: status %q", got)
+	}
+
+	called := false
+	stub := func(string) error { called = true; return nil }
+	// The group row of the Specs list holds legacy files, not one item, so
+	// there is no id to copy from it.
+	group := press(newModel(t), tabKey(tabSpecs), "G")
+	if group.Selected() != nil {
+		t.Fatalf("the last Specs row is an item, so this proves nothing: %v", group.Selected())
+	}
+	group.clip = stub
+	if got := press(group, "y").status; got != "nothing selected" || called {
+		t.Errorf("group row: status %q, clip called %v", got, called)
+	}
+
+	called = false
+	empty := press(newModel(t), "/", "zzzz-no-such-item", "enter")
+	if len(rowIDs(empty)) != 0 {
+		t.Fatalf("the search matched rows %q, so this proves nothing", rowIDs(empty))
+	}
+	empty.clip = stub
+	if got := press(empty, "y").status; got != "nothing selected" || called {
+		t.Errorf("empty list: status %q, clip called %v", got, called)
+	}
+}
+
+// The id y copies has to be one acta takes back: the copied text goes into
+// the board and has to come out as the very item the row stands for. Every
+// kind of row is walked, on boards with short ids and on boards without, plus
+// the rows that stand for no item at all.
+func TestYCopiesAnIDTheBoardTakesBack(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		what string
+		m    Model
+	}{
+		{"scratches", press(newModel(t), tabKey(tabScratches))},
+		{"bugs", press(newModel(t), tabKey(tabBugs))},
+		{"debts", press(newModel(t), tabKey(tabDebts))},
+		{"specs", press(newModel(t), tabKey(tabSpecs))},
+		{"the Specs group row", press(newModel(t), tabKey(tabSpecs), "G")},
+		{"plans", press(newModel(t), tabKey(tabPlans))},
+		{"a plan with its tasks open", press(newModel(t), tabKey(tabPlans), " ")},
+		{"activities", actModel(t)},
+		{"a plan file with no id", planOf(t, "2026-09-30-noid", "# Plan N\n\n### Task 1: Work\n- [ ] a\n")},
+		{"a plan file with only a hash", planOf(t, "2026-09-30-hash", "---\nhash: k3f2\n---\n# Plan H\n\n### Task 1: Work\n- [ ] a\n")},
+		{"a list with no rows", press(newModel(t), "/", "zzzz-no-such-item", "enter")},
+	} {
+		checkCopiedID(t, c.what, c.m)
+	}
+}
+
+// checkCopiedID puts the cursor on every row a list shows and checks that the
+// id y copies is one the board finds again, and that a row standing for no
+// item copies nothing at all.
+func checkCopiedID(t *testing.T, what string, m Model) {
+	t.Helper()
+
+	rows := m.rowsOf(m.listPane())
+	if len(rows) == 0 {
+		called := false
+		m.clip = func(string) error { called = true; return nil }
+		if got := press(m, "y").status; got != "nothing selected" || called {
+			t.Errorf("%s: a list with no rows gave %q, clip called %v", what, got, called)
+		}
+		return
+	}
+	for i, r := range rows {
+		at := m
+		at.moveTo(i)
+		it := at.Selected()
+		var got []string
+		at.clip = func(s string) error { got = append(got, s); return nil }
+		after := press(at, "y")
+		if it == nil {
+			if len(got) != 0 || after.status != "nothing selected" {
+				t.Errorf("%s row %d %q stands for no item, but copied %q, status %q", what, i, r.id, got, after.status)
+			}
+			continue
+		}
+		if len(got) != 1 {
+			t.Errorf("%s row %d %q: the clipboard got %q", what, i, r.id, got)
+			continue
+		}
+		back := at.board.Get(got[0])
+		if back == nil {
+			t.Errorf("%s row %d %q: the board does not know the copied id %q", what, i, r.id, got[0])
+			continue
+		}
+		if back.ID != it.ID {
+			t.Errorf("%s row %d %q: copied %q, which the board reads back as %s", what, i, r.id, got[0], back.ID)
+		}
+	}
+}
+
+// planOf is the Plans list of a board with one plan file of the given body,
+// with that plan opened, so its task rows are on the screen too.
+func planOf(t *testing.T, name, body string) Model {
+	t.Helper()
+
+	cfg := treeCfg(t, map[string]string{".acta/plans/" + name + ".md": body})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return press(sized(m, 160, 40), tabKey(tabPlans), " ")
+}
+
+// The terminal reads the id back out of the OSC 52 code, so the code has to
+// decode to the text it was given, whole and for every text.
+func TestOSC52CarriesTheTextWhole(t *testing.T) {
+	t.Parallel()
+
+	for _, text := range []string{"PLN-0003#task-1", "", "SPC-ünïcode", strings.Repeat("x", 500)} {
+		s := osc52(text)
+		inner, ok := strings.CutPrefix(s, "\x1b]52;c;")
+		inner, ok2 := strings.CutSuffix(inner, "\a")
+		if !ok || !ok2 {
+			t.Fatalf("%q: not an OSC 52 code: %q", text, s)
+		}
+		raw, err := base64.StdEncoding.DecodeString(inner)
+		if err != nil || string(raw) != text {
+			t.Errorf("%q: decodes to %q, %v", text, raw, err)
+		}
+	}
+}
+
+// grabStdout runs f with the screen output written to a file, so a test can
+// read what the program sent to the terminal.
+func grabStdout(t *testing.T, f func() error) (string, error) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "out")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = file
+	ferr := f()
+	os.Stdout = old
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out), ferr
+}
+
+// pbcopy takes the text when the machine has it, and OSC 52 is the way out
+// when it is missing or fails, so a copy still lands over SSH and tmux. The
+// pbcopy here is a shim writing to a file, so the test never touches the
+// clipboard of the machine it runs on. It is not parallel because it moves
+// PATH and the screen output of the whole test run.
+func TestCopyTextUsesPBCopyAndFallsBackToOSC52(t *testing.T) {
+	dir := t.TempDir()
+	empty := t.TempDir()
+	landed := filepath.Join(dir, "landed")
+	// The shim runs with PATH holding the shim folder alone, so the shell
+	// finds cat by its full path.
+	shim := "#!/bin/sh\n/bin/cat > " + landed + "\n"
+	put := func(body string) {
+		if err := os.WriteFile(filepath.Join(dir, "pbcopy"), []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func() string {
+		b, err := os.ReadFile(landed)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return ""
+			}
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+
+	put(shim)
+	t.Setenv("PATH", dir)
+	out, err := grabStdout(t, func() error { return copyText("PLN-0003#task-1") })
+	if err != nil {
+		t.Fatalf("pbcopy copy failed: %v", err)
+	}
+	if read() != "PLN-0003#task-1" {
+		t.Errorf("pbcopy got %q, want the id", read())
+	}
+	if out != "" {
+		t.Errorf("pbcopy took the copy, yet the screen got %q too", out)
+	}
+
+	// pbcopy there but broken: the terminal takes over.
+	put("#!/bin/sh\nexit 1\n")
+	out, err = grabStdout(t, func() error { return copyText("BUG-0002") })
+	if err != nil {
+		t.Fatalf("broken pbcopy: %v", err)
+	}
+	if out != osc52("BUG-0002") {
+		t.Errorf("broken pbcopy: screen got %q, want the OSC 52 code", out)
+	}
+
+	// No pbcopy at all, on a machine like a Linux box over SSH.
+	t.Setenv("PATH", empty)
+	out, err = grabStdout(t, func() error { return copyText("SPC-0001") })
+	if err != nil {
+		t.Fatalf("no pbcopy: %v", err)
+	}
+	if out != osc52("SPC-0001") {
+		t.Errorf("no pbcopy: screen got %q, want the OSC 52 code", out)
+	}
+
+	// No pbcopy and a screen that will not take the code: the error names
+	// both ways that failed, so nothing is swallowed.
+	closed, err := os.Create(filepath.Join(empty, "closed"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = closed
+	cerr := copyText("SPC-0001")
+	os.Stdout = old
+	if cerr == nil {
+		t.Fatal("a copy that reached nothing must say so")
+	}
+	for _, want := range []string{"pbcopy", "closed"} {
+		if !strings.Contains(cerr.Error(), want) {
+			t.Errorf("error %q does not name %q", cerr, want)
+		}
 	}
 }

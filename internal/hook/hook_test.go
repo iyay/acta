@@ -35,10 +35,14 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Style (ADHD reader):",
 		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
+		"- acta:build: run an approved plan in a worktree; executor from `acta voice show`, else ask: subagent, dispatch or inline",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
 		}
+	}
+	if strings.Contains(out, "executor subagent (default)") {
+		t.Error("the build line must not call subagent the default; the config picks the executor")
 	}
 	if len(Skills) != 12 {
 		t.Fatalf("%d skills, want 12", len(Skills))

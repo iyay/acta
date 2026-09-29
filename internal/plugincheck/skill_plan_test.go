@@ -15,10 +15,13 @@ func TestSkillPlan(t *testing.T) {
 			"closes:", "parent: debt/<stem>",
 			"Commit the plan on main", "only after the plan is approved",
 			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
+			"run `acta voice show`", "When it prints `build_executor: <name>`, that executor is chosen",
+			"do not ask",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",
 			"If working in an isolated worktree",
+			"Ask which executor only if the user has not said",
 		},
 	})
 }

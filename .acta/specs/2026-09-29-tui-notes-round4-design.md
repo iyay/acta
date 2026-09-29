@@ -4,6 +4,7 @@ id: SPC-0027
 created: "2026-09-29"
 hash: tumjl17
 started: "2026-09-29"
+finished: "2026-09-29"
 ---
 # TUI notes round 4
 

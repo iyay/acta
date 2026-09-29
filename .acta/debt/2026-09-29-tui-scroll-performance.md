@@ -1,5 +1,5 @@
 ---
-id: DBT-0028
+id: DBT-0029
 hash: jpyauw3
 parent: plans/2026-09-29-tui-scroll-performance
 ---

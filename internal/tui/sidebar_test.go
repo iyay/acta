@@ -67,8 +67,13 @@ func TestTUIOpensOnActivities(t *testing.T) {
 	if m.top != tabActivities || m.focus != paneList {
 		t.Fatalf("opens on tab %d pane %d, want Activities and its List", m.top, m.focus)
 	}
-	if it := m.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha#task-2" {
-		t.Errorf("opens on %v, want the one task in progress", it)
+	// Activities opens on the head of the group, and the task under way sits
+	// one row below it.
+	if it := m.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha" || it.Kind != board.KindPlan {
+		t.Errorf("opens on %v, want the plan the task under way belongs to", it)
+	}
+	if it := press(m, "j").Selected(); it == nil || it.ID != "plans/2026-09-21-alpha#task-2" || it.Kind != board.KindTask {
+		t.Errorf("one row down is %v, want the one task in progress", it)
 	}
 	bar := plain(strings.Split(m.View(), "\n")[1])
 	if !strings.HasPrefix(bar, "│ 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities") {
@@ -171,7 +176,7 @@ func TestDoneSubTabKeysOnlyActOnTheDonePane(t *testing.T) {
 	if m = press(m, "["); m.done != 0 {
 		t.Errorf("[ on Done left sub-tab %d, want Fixed", m.done)
 	}
-	if got := press(m, "0", "]").done; got != 0 {
+	if got := press(m, "tab", "]").done; got != 0 {
 		t.Errorf("] on the detail moved the Done sub-tab to %d", got)
 	}
 }
@@ -283,6 +288,18 @@ func TestAnEmptyListShowsNoItems(t *testing.T) {
 	}
 }
 
+// activityTaskIDs gives the ids of the Activities rows that are tasks, so a
+// test reads the work under way and leaves the group heads out.
+func activityTaskIDs(m Model) []string {
+	var out []string
+	for _, r := range m.rowsOf(paneList) {
+		if m.board.Get(r.id).Kind == board.KindTask {
+			out = append(out, r.id)
+		}
+	}
+	return out
+}
+
 func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 	t.Parallel()
 
@@ -292,31 +309,36 @@ func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 		".acta/bugs/2026-09-22-lag.md":  "---\nstatus: fixing\n---\n# Lag\n\n## Symptom\nx\n",
 	})
 	m := sized(detailModel(t, cfg), 160, 50)
-	got := ids(m.rowsOf(paneList))
+	got := activityTaskIDs(m)
 	slices.Sort(got)
 	want := []string{"plans/2026-09-20-one#task-1", "plans/2026-09-21-two#task-1"}
 	if !slices.Equal(got, want) {
 		t.Errorf("Activities holds %q, want the in-progress task of each plan %q", got, want)
 	}
-	// Every task in progress of the real fixture is on show, oldest file date
-	// first, and nothing that is only open, raw, todo or finished sneaks in.
-	full := sized(newModel(t), 160, 50)
-	var going []*board.Item
-	for _, it := range full.board.Items {
-		if it.Kind == board.KindTask && inProgress(it) {
-			going = append(going, it)
+	// Every top level row of the list is a head the tasks hang under, so a
+	// task never stands on its own here.
+	for _, r := range m.rowsOf(paneList) {
+		if r.depth == 0 && m.board.Get(r.id).Kind == board.KindTask {
+			t.Errorf("the task %s stands at the top level, want a head", r.id)
 		}
 	}
-	if len(going) == 0 {
+	// Every task in progress of the real fixture is on show and nothing that
+	// is only open, raw, todo or finished sneaks in.
+	full := sized(newModel(t), 160, 50)
+	var wantAll []string
+	for _, it := range full.board.Items {
+		if it.Kind == board.KindTask && inProgress(it) {
+			wantAll = append(wantAll, it.ID)
+		}
+	}
+	if len(wantAll) == 0 {
 		t.Fatal("the fixture holds no task in progress, so this test proves nothing")
 	}
-	var ids_ []string
-	for _, it := range ordered(going, false) {
-		ids_ = append(ids_, it.ID)
-	}
-	listed := ids(full.rowsOf(paneList))
-	if !slices.Equal(listed, ids_) {
-		t.Errorf("Activities holds %q, want %q", listed, ids_)
+	slices.Sort(wantAll)
+	listed := activityTaskIDs(full)
+	slices.Sort(listed)
+	if !slices.Equal(listed, wantAll) {
+		t.Errorf("Activities holds %q, want %q", listed, wantAll)
 	}
 }
 

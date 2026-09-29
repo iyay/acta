@@ -4,7 +4,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"time"
 
@@ -65,6 +64,13 @@ const wheelFrame = 16 * time.Millisecond
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
 
+// frameCache keeps the last frame View drew. A trackpad sends hundreds of
+// notches a second, and most of them only add to the pending delta, so the
+// screen stays the same. Drawing it again each time kept the TUI busy. The
+// model is copied on every update, so the frame sits behind a pointer that
+// all the copies share.
+type frameCache struct{ s string }
+
 // wheelMark is the screen a frame of notches was gathered on: the open tab, its
 // Done sub-tab, the search and the row under the cursor. A tick scrolls only
 // while all of it still stands, so notches meant for one item never land on
@@ -101,6 +107,7 @@ type Model struct {
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
+	shutActs   map[string]bool // the groups the reader shut on Activities; every group starts open
 	popup      *popup
 	slug       *string // non-nil while typing the slug of a new bug
 	help       bool
@@ -114,13 +121,16 @@ type Model struct {
 	wheelArmed bool  // true while a frame tick is on its way
 	wheelMark  wheelMark
 	now        time.Time
-	version    string                 // build version shown on the bottom line
-	open       func(url string) error // opens a link in the browser
+	version    string                  // build version shown on the bottom line
+	open       func(url string) error  // opens a link in the browser
+	clip       func(text string) error // puts text on the clipboard
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
+	frame    *frameCache  // the last frame View drew, shared by every copy
+	same     bool         // true when the last message changed nothing on screen
 	styles   styles       // the brushes every screen is painted with
 }
 
@@ -132,6 +142,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open:     defaultOpen,
+		clip:     copyText,
 		top:      tabActivities,
 		focus:    s.focus,
 		last:     s.last,
@@ -152,6 +163,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
 		dcache: &detailCache{},
+		frame:  &frameCache{},
 	}
 }
 
@@ -166,6 +178,7 @@ func (m Model) WithTheme(name string, dark bool) Model {
 	m.styles = newStyles(t, dark)
 	m.render = newRenderer(t.Dark(dark))
 	m.dcache = &detailCache{}
+	m.frame = &frameCache{}
 	return m
 }
 
@@ -186,6 +199,9 @@ func nextMinute() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Every message may change the screen. The few that surely do not set
+	// this back below, so a path nobody thought about always draws again.
+	m.same = false
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		if msg.Width == m.width && msg.Height == m.height {
@@ -219,6 +235,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ended never sees them land on the new one.
 		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
+		} else {
+			m.same = true
 		}
 		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
@@ -409,8 +427,6 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch k.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "0":
-		m.focusPane(paneDetail)
 	case "1", "2", "3", "4", "5", "6":
 		m.openTab(int(k.String()[0] - '1'))
 	case "left":
@@ -465,8 +481,14 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.slug = &s
 	case "e":
 		return m.edit()
+	case "y":
+		m.copyID()
 	case " ":
 		m.toggleRow()
+	case "h":
+		m.foldRow(false)
+	case "l":
+		m.foldRow(true)
 	case "enter":
 		if m.toggleRow() {
 			return m, nil
@@ -481,6 +503,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // pointer, so the mouse and the keys always leave the same cursor.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
+		m.same = true
 		return m, nil
 	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
@@ -501,6 +524,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// never takes the focus. A wheel over another pane is ignored, so the
 		// notches only ever gather for the box the reader is looking at.
 		if p != m.focus {
+			m.same = true
 			return m, nil
 		}
 		step := wheelStep
@@ -515,9 +539,11 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		// Notches for another pane cannot share one delta. Scroll the old
 		// pane now so its notches are not lost.
+		flushed := false
 		if m.wheelDelta != 0 && m.wheelPane != p {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 			m.wheelDelta = 0
+			flushed = true
 		}
 		// The first notch of a frame writes the screen down. The notches
 		// after it share that screen and must not write over it.
@@ -526,6 +552,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		m.wheelPane = p
 		m.wheelDelta += step
+		// A flush to another pane moved that pane, so only a plain gather
+		// keeps the old frame.
+		m.same = !flushed
 		if m.wheelArmed {
 			return m, nil
 		}
@@ -533,6 +562,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
+		m.same = true
 		return m, nil
 	}
 	m.focusPane(p)
@@ -588,6 +618,22 @@ func (m *Model) openPopup(key string) {
 		}
 	}
 	m.popup = &p
+}
+
+// copyID puts the id of the row under the cursor on the clipboard, and the
+// status line says what was copied or why it could not be.
+func (m *Model) copyID() {
+	it := m.Selected()
+	if it == nil {
+		m.status = "nothing selected"
+		return
+	}
+	id := shortRef(it)
+	if err := m.clip(id); err != nil {
+		m.status = "copy failed: " + err.Error()
+		return
+	}
+	m.status = "copied " + id
 }
 
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -666,9 +712,8 @@ func (m Model) searchKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// toggleRow opens or shuts the plan under the cursor of a tree list. It says
-// true on any tree row, so space and enter leave a task row alone and never
-// jump to the detail from a tree.
+// toggleRow opens or shuts the head under the cursor of a tree list. It says
+// false on a task row, so enter goes on to open the detail of the task.
 func (m *Model) toggleRow() bool {
 	if m.focus == paneDetail {
 		return false
@@ -679,16 +724,37 @@ func (m *Model) toggleRow() bool {
 		return false
 	}
 	if rows[i].depth > 0 {
-		return true
+		return false
 	}
-	// A new map each time, so an older copy of the model keeps the tree it
-	// drew.
-	open := make(map[string]bool, len(m.openPlans)+1)
-	maps.Copy(open, m.openPlans)
-	open[rows[i].id] = !open[rows[i].id]
-	m.openPlans = open
-	m.keepVisible(m.listPane())
+	m.setOpen(rows[i].id, !m.isOpen(rows[i].id))
 	return true
+}
+
+// foldRow is h and l on a tree list. h on a task row shuts its head and puts
+// the cursor on the head, h on a head shuts it, and l on a head opens it. l
+// on a task row, and any row that is not a tree row, stay as they are.
+func (m *Model) foldRow(open bool) {
+	if m.focus == paneDetail {
+		// The detail box has no tree of its own, so the list behind it must
+		// not move while the reader reads there.
+		return
+	}
+	rows := m.listOf()
+	i := m.cursor()
+	if i < 0 || i >= len(rows) || !rows[i].tree {
+		return
+	}
+	if rows[i].depth > 0 {
+		if open {
+			return
+		}
+		// The head sits above its tasks, so walk up to it.
+		for i > 0 && rows[i].depth > 0 {
+			i--
+		}
+	}
+	m.setOpen(rows[i].id, open)
+	m.moveTo(i)
 }
 
 // enter moves the focus to the detail pane with the row's item, so it can

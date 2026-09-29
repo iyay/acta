@@ -4,6 +4,7 @@ hash: uehvwoo
 title: Rename ~/.acta/voice.yaml to config.yaml
 status: raw
 created: "2026-09-29"
+finished: "2026-09-30"
 ---
 User: "kenapa file config kita voice.yml ya. kok aneh. gabisa pake config.yml aja?" then "catet" (2026-09-29)
 

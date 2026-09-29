@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -602,48 +603,185 @@ func TestItemDatesFromFrontmatter(t *testing.T) {
 	}
 }
 
-// Each date draws its own line with the date on it, and an item with no date
-// draws no line at all, so the header keeps its column for the items that do.
+// Every item ends with one date line that names all three dates, a dash for
+// each one not set, and the header holds no date label at all.
 func TestDetailShowsTheDates(t *testing.T) {
 	cfg := treeCfg(t, datedFiles())
-	drawn := func(id string) map[string]bool {
-		got := map[string]bool{}
-		for _, l := range labelsOf(detailLines(t, cfg, id)) {
-			got[l] = true
-		}
-		return got
-	}
-	for _, c := range []struct {
-		id      string
-		yes, no []string
-	}{
-		{"SCRATCH-1", []string{"CREATED", "STARTED", "FINISHED"}, nil},
-		{"SCRATCH-2", nil, []string{"CREATED", "STARTED", "FINISHED"}},
-		{"SCRATCH-3", []string{"CREATED"}, []string{"STARTED", "FINISHED"}},
-		{"SCRATCH-4", []string{"STARTED"}, []string{"CREATED", "FINISHED"}},
-		{"SCRATCH-5", []string{"FINISHED"}, []string{"CREATED", "STARTED"}},
-		{"SCRATCH-6", nil, []string{"CREATED", "STARTED", "FINISHED"}},
+	for _, c := range []struct{ id, foot string }{
+		{"SCRATCH-1", "created 2026-09-01 · started 2026-09-02 · finished 2026-09-03"},
+		{"SCRATCH-2", "created - · started - · finished -"},
+		{"SCRATCH-3", "created 2026-09-01 · started - · finished -"},
+		{"SCRATCH-4", "created - · started 2026-09-02 · finished -"},
+		{"SCRATCH-5", "created - · started - · finished 2026-09-03"},
+		{"SCRATCH-6", "created - · started - · finished -"},
 	} {
-		got := drawn(c.id)
-		for _, l := range c.yes {
-			if !got[l] {
-				t.Errorf("%s drew no %s line", c.id, l)
-			}
+		lines := detailLines(t, cfg, c.id)
+		if got := plain(lines[len(lines)-1]); got != c.foot {
+			t.Errorf("%s footer %q, want %q", c.id, got, c.foot)
 		}
-		for _, l := range c.no {
-			if got[l] {
-				t.Errorf("%s drew a %s line with no date", c.id, l)
+		for _, l := range labelsOf(lines) {
+			if l == "CREATED" || l == "STARTED" || l == "FINISHED" {
+				t.Errorf("%s header still holds %s", c.id, l)
 			}
 		}
 	}
-	lines := detailLines(t, cfg, "SCRATCH-1")
-	for _, c := range []struct{ label, want string }{
-		{"CREATED", "2026-09-01"},
-		{"STARTED", "2026-09-02"},
-		{"FINISHED", "2026-09-03"},
+}
+
+// The footer always names all three dates: the long form when the box is wide
+// enough for it, the short one when it is not, and a cut line only when even
+// the short one does not fit. Every width from 5 up to 130 is read, for every
+// shape the three dates can have, so no width is left to chance.
+func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
+	t.Parallel()
+
+	cfg := treeCfg(t, datedFiles())
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := New(cfg, b, true)
+	base.render = func(md string, _ int) string { return md }
+	for _, c := range []struct{ id, long, short string }{
+		{"SCRATCH-1", "created 2026-09-01 · started 2026-09-02 · finished 2026-09-03", "c 2026-09-01 · s 2026-09-02 · f 2026-09-03"},
+		{"SCRATCH-2", "created - · started - · finished -", "c - · s - · f -"},
+		{"SCRATCH-3", "created 2026-09-01 · started - · finished -", "c 2026-09-01 · s - · f -"},
+		{"SCRATCH-4", "created - · started 2026-09-02 · finished -", "c - · s 2026-09-02 · f -"},
+		{"SCRATCH-5", "created - · started - · finished 2026-09-03", "c - · s - · f 2026-09-03"},
+		{"SCRATCH-6", "created - · started - · finished -", "c - · s - · f -"},
 	} {
-		if got := valueOf(t, lines, c.label); got != c.want {
-			t.Errorf("SCRATCH-1 %s says %q, want %q", c.label, got, c.want)
+		m := onItem(t, sized(base, 120, 40), c.id)
+		for w := 5; w <= 130; w++ {
+			want := c.long
+			if lipgloss.Width(want) > w {
+				want = c.short
+				if lipgloss.Width(want) > w {
+					want = truncate(c.short, w)
+				}
+			}
+			if got := plain(footAt(m, w)); got != want {
+				t.Errorf("%s at width %d: footer %q, want %q", c.id, w, got, want)
+			}
+		}
+		// Every width the short form fits in, all three dates are there whole.
+		for w := lipgloss.Width(c.short); w <= 130; w++ {
+			if got := plain(footAt(m, w)); strings.Contains(got, "…") {
+				t.Errorf("%s at width %d: the short form fits but the footer is cut: %q", c.id, w, got)
+			}
+		}
+	}
+}
+
+// footAt is the footer the detail draws in a box w cells wide.
+func footAt(m Model, w int) string {
+	_, _, foot := m.detailParts(w)
+	return foot
+}
+
+// said is what a drawn line of a box holds, with the scrollbar thumb cut off
+// and the padding on the right dropped, because a line that fills its box
+// ends on the thumb and not on the plain wall.
+func said(line string) string {
+	return strings.TrimRight(cutWalls(line), " ")
+}
+
+// stickyModel is a spec with a long body, shown in a detail box of a screen
+// h lines tall, with the focus on the detail.
+func stickyModel(t *testing.T, h int) Model {
+	t.Helper()
+	var body strings.Builder
+	for i := range 60 {
+		fmt.Fprintf(&body, "line %02d\n\n", i)
+	}
+	cfg := treeCfg(t, map[string]string{
+		".acta/specs/2026-09-20-long.md": "---\nid: SPC-0001\ncreated: \"2026-09-20\"\nstarted: \"2026-09-21\"\n---\n# Long spec\n\n" + body.String(),
+	})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return onItem(t, sized(m, 120, h), "specs/2026-09-20-long")
+}
+
+func TestDetailHeaderAndFooterStayWhileTheMiddleScrolls(t *testing.T) {
+	t.Parallel()
+
+	m := stickyModel(t, 40)
+	b := m.geometry().detail
+	head, mid, foot := m.detailParts(b.textW())
+	want := "created 2026-09-20 · started 2026-09-21 · finished -"
+	if plain(foot) != want {
+		t.Fatalf("footer %q, want %q", plain(foot), want)
+	}
+	for _, l := range labelsOf(head) {
+		if l == "CREATED" || l == "STARTED" || l == "FINISHED" {
+			t.Errorf("the header still holds %s", l)
+		}
+	}
+	n := stickyMid(len(head), b.inner)
+	if n < 3 {
+		t.Fatalf("a 40 line screen should stick, got %d middle lines", n)
+	}
+	// The box counts the lines that move: it scrolls over the middle and shows
+	// n of them at a time, so an offset can never leave the middle behind.
+	if total, fit := m.detailScroll(b.textW(), b.inner); total != len(mid) || fit != n {
+		t.Errorf("the detail scrolls over %d lines and shows %d at a time, want %d and %d",
+			total, fit, len(mid), n)
+	}
+	for _, off := range []int{0, 1, 5, len(mid) - n, 1000} {
+		s := m
+		s.off[paneDetail] = 0
+		s.scrollPane(paneDetail, off)
+		lines := innerLines(s, b)
+		for i, h := range head {
+			if got := said(lines[i]); got != strings.TrimRight(plain(h), " ") {
+				t.Errorf("off=%d header line %d: %q, want %q", off, i, got, plain(h))
+			}
+		}
+		if got := said(lines[len(lines)-1]); got != want {
+			t.Errorf("off=%d last line %q, want the footer", off, got)
+		}
+		first := min(off, max(0, len(mid)-n))
+		for i := range n {
+			if got, want := said(lines[len(head)+i]), strings.TrimRight(plain(mid[first+i]), " "); got != want {
+				t.Errorf("off=%d middle line %d: %q, want %q", off, i, got, want)
+			}
+		}
+	}
+}
+
+func TestShortDetailScrollsAsOneBlock(t *testing.T) {
+	t.Parallel()
+
+	checked := 0
+	for h := 8; h < 40; h++ {
+		m := stickyModel(t, h)
+		b := m.geometry().detail
+		head, _, _ := m.detailParts(b.textW())
+		if b.inner < 1 || stickyMid(len(head), b.inner) > 0 {
+			continue
+		}
+		checked++
+		all := m.detailLines(b.textW())
+		m.scrollPane(paneDetail, 1)
+		if got := innerLines(m, b); len(got) == 0 || said(got[0]) != strings.TrimRight(plain(all[1]), " ") {
+			t.Errorf("h=%d: after one line the box starts %q, want %q", h, got, plain(all[1]))
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no screen height was too short to stick")
+	}
+}
+
+func TestStickyMidNeedsThreeMiddleLines(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct{ head, h, want int }{
+		{5, 9, 3}, {5, 8, 0}, {0, 4, 3}, {0, 3, 0}, {5, 0, 0}, {5, 30, 24},
+	} {
+		if got := stickyMid(c.head, c.h); got != c.want {
+			t.Errorf("stickyMid(%d, %d) = %d, want %d", c.head, c.h, got, c.want)
 		}
 	}
 }

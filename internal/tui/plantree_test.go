@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -55,14 +56,15 @@ func TestTreeRowsSelectTheirOwnDetail(t *testing.T) {
 		t.Fatalf("a task row selects %v, want the task", it)
 	}
 	before := rowIDs(m)
-	for _, k := range []string{" ", "enter"} {
-		after := press(m, k)
-		if got := rowIDs(after); !slices.Equal(got, before) {
-			t.Errorf("%q on a task row changed the list to %q", k, got)
-		}
-		if after.focus == paneDetail {
-			t.Errorf("%q on a task row moved the focus to the detail", k)
-		}
+	// space leaves a task row alone, and enter opens its own detail, because
+	// only a head folds.
+	if got := rowIDs(press(m, " ")); !slices.Equal(got, before) {
+		t.Errorf("space on a task row changed the list to %q", got)
+	}
+	if after := press(m, "enter"); after.focus != paneDetail {
+		t.Error("enter on a task row did not move the focus to the detail")
+	} else if got := after.Selected(); got == nil || got.ID != "plans/2026-09-21-alpha#task-1" {
+		t.Errorf("the detail shows %v, want the task the cursor was on", got)
 	}
 }
 
@@ -155,5 +157,89 @@ func TestOpeningAPlanLeavesOlderModelsAlone(t *testing.T) {
 	}
 	if got := rowIDs(second); len(got) != 5 {
 		t.Errorf("two open plans gave %q, want 5 rows", got)
+	}
+}
+
+// foldState says which heads the model holds open and shut, so a test can see
+// a fold that the list of rows does not show.
+func foldState(m Model) string { return fmt.Sprint(m.openPlans, m.shutActs) }
+
+func TestHAndLFoldThePlanTree(t *testing.T) {
+	t.Parallel()
+
+	shut := []string{"plans/2026-09-21-alpha", "plans/2026-09-23-lonely"}
+	open := []string{"plans/2026-09-21-alpha", "plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2", "plans/2026-09-23-lonely"}
+	m := press(toPlans(planModel(t)), "l")
+	if got := rowIDs(m); !slices.Equal(got, open) {
+		t.Fatalf("l on a shut plan: %q, want %q", got, open)
+	}
+	if got := rowIDs(press(m, "l")); !slices.Equal(got, open) {
+		t.Errorf("l on an open plan changed the list: %q", got)
+	}
+	onTask := press(m, "j", "j")
+	if got := rowIDs(press(onTask, "l")); !slices.Equal(got, open) {
+		t.Errorf("l on a task row changed the list: %q", got)
+	}
+	if got, want := foldState(press(onTask, "l")), foldState(onTask); got != want {
+		t.Errorf("l on a task row folded a head: %s, want %s", got, want)
+	}
+	back := press(onTask, "h")
+	if got := rowIDs(back); !slices.Equal(got, shut) {
+		t.Errorf("h on a task row: %q, want %q", got, shut)
+	}
+	if it := back.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha" {
+		t.Errorf("h on a task row left the cursor on %v, want the plan", it)
+	}
+	if got := rowIDs(press(m, "h")); !slices.Equal(got, shut) {
+		t.Errorf("h on an open plan: %q, want %q", got, shut)
+	}
+	if got := rowIDs(press(m, "h", "h")); !slices.Equal(got, shut) {
+		t.Errorf("h on a shut plan opened it: %q", got)
+	}
+	if got := press(m, "right").top; got != (tabPlans+1)%len(topTabs) {
+		t.Errorf("right no longer switches tabs, top %d", got)
+	}
+}
+
+// The Done box of a tree tab lists a tree too, so h and l fold it the same
+// way as the List box above it.
+func TestHAndLFoldTheDoneTree(t *testing.T) {
+	t.Parallel()
+
+	m := toPlansDone(planModel(t))
+	rows := doneRowIDs(m)
+	if len(rows) == 0 {
+		t.Fatal("the fixture has no finished plan, so this test proves nothing")
+	}
+	first := m.board.Get(rows[0])
+	opened := append(append([]string{rows[0]}, first.Children...), rows[1:]...)
+	if got := doneRowIDs(press(m, "l")); !slices.Equal(got, opened) {
+		t.Errorf("l on a shut Done plan: %q, want %q", got, opened)
+	}
+	shut := append([]string{rows[0]}, opened[1+len(first.Children):]...)
+	if got := doneRowIDs(press(m, "l", "h")); !slices.Equal(got, shut) {
+		t.Errorf("l then h on a Done plan: %q, want %q", got, shut)
+	}
+}
+
+// The detail box has no tree of its own, so h and l do nothing while it has
+// the focus.
+func TestHAndLDoNothingWhileTheDetailHasTheFocus(t *testing.T) {
+	t.Parallel()
+
+	open := []string{"plans/2026-09-21-alpha", "plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2", "plans/2026-09-23-lonely"}
+	m := press(toPlans(planModel(t)), " ", "j", "enter")
+	if m.focus != paneDetail {
+		t.Fatalf("enter on a task row left the focus on pane %d, want the detail", m.focus)
+	}
+	// Each key is tried on its own, so one cannot undo what the other did.
+	for _, k := range []string{"h", "l"} {
+		after := press(m, k)
+		if got, want := foldState(after), foldState(m); got != want {
+			t.Errorf("%s in the detail folded a head: %s, want %s", k, got, want)
+		}
+		if got := rowIDs(press(after, "esc")); !slices.Equal(got, open) {
+			t.Errorf("the list behind the detail is now %q, want %q", got, open)
+		}
 	}
 }

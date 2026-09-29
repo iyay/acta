@@ -16,8 +16,8 @@ fi
 # overwrite the voice file on a real machine, so only write it when it is
 # missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
-if [ ! -f "$HOME/.acta/voice.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/voice.yaml"
+if [ ! -f "$HOME/.acta/config.yaml" ]; then
+  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/config.yaml"
 fi
 mkdir -p bin .acta/scratch
 cp "$(command -v acta)" bin/acta

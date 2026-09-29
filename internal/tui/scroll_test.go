@@ -75,7 +75,7 @@ func wrapModel(t *testing.T) Model {
 func keyTo(p pane) string {
 	switch p {
 	case paneDetail:
-		return "0"
+		return "shift+tab"
 	case paneDone:
 		return "tab"
 	}
@@ -86,7 +86,12 @@ func keyTo(p pane) string {
 // tab to another, so a test never has to count the ring itself.
 func focusKeyFrom(from, to pane) string {
 	if to == paneDetail {
-		return "0"
+		// The ring is List, Done, Detail: the detail is one step back from
+		// the list and one step on from Done.
+		if from == paneDone {
+			return "tab"
+		}
+		return "shift+tab"
 	}
 	// The ring is List, Done, Detail, so walking forward from the List
 	// reaches Done in one step and the detail box in two.
@@ -238,10 +243,20 @@ func drawnFirst(m Model, p pane) string {
 // shows says whether the screen has the content line at index i on top of
 // pane p: the item of a list, or the line of a body in the detail box. The
 // answer comes from the drawn line, never from the offset, so a pane that
-// claims a place it has not drawn is caught here.
+// claims a place it has not drawn is caught here. The detail box keeps its
+// header on top and its date line at the bottom when it has the room, so
+// there the line of the index is drawn under the header, not on the top.
 func shows(m Model, p pane, i int) bool {
 	if p == paneDetail {
-		lines := m.detailLines(scrollBox(m, p).textW())
+		b := scrollBox(m, p)
+		head, mid, foot := m.detailParts(b.textW())
+		if n := stickyMid(len(head), b.inner); n > 0 && foot != "" {
+			first := min(max(i, 0), max(0, len(mid)-n))
+			rows := paneRows(m, p)
+			return i >= 0 && i < len(mid) && len(head) < len(rows) &&
+				strings.TrimSpace(rows[len(head)]) == strings.TrimSpace(mid[first])
+		}
+		lines := m.detailLines(b.textW())
 		return i >= 0 && i < len(lines) && drawnFirst(m, p) == strings.TrimSpace(lines[i])
 	}
 	drawn := paneRows(m, p)
@@ -440,7 +455,7 @@ func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 		// scroll, so it is read from the same board with one selected.
 		m := paneModel(t, p)
 		if p == paneDetail {
-			m = press(paneModel(t, paneList), "0")
+			m = press(paneModel(t, paneList), "shift+tab")
 		}
 		if at := thumbAt(m, p); at != 0 {
 			t.Errorf("pane %d draws no thumb at the top, thumb on line %d", p, at)
@@ -1113,7 +1128,7 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 	// were, selection and offset.
 	m := press(longModel(t), tabKey(tabPlans), "G")
 	before := screenTops(m)
-	m = press(m, "0", "ctrl+d", "ctrl+d")
+	m = press(m, "shift+tab", "ctrl+d", "ctrl+d")
 	if m.off[paneDetail] != 2*pageLines {
 		t.Fatalf("two pages should scroll the detail to %d, off is %d", 2*pageLines, m.off[paneDetail])
 	}
@@ -1201,7 +1216,7 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 	t.Parallel()
 
-	m := press(longModel(t), tabKey(tabPlans), "0")
+	m := press(longModel(t), tabKey(tabPlans), "shift+tab")
 	for m.off[paneDetail] < 5 {
 		m = press(m, "j")
 	}
@@ -1418,7 +1433,7 @@ func TestPanesKeepTheirOwnPlace(t *testing.T) {
 	if got := screenTops(m)[paneList]; got != open {
 		t.Errorf("the list moved to %q while the Done box scrolled, was %q", got, open)
 	}
-	m = press(m, "0", "G")
+	m = press(m, "tab", "G")
 	after := screenTops(m)
 	if after[paneList] != open || after[paneDone] != done {
 		t.Errorf("the detail box moved the lists: %v, want %v and %v", after, open, done)
@@ -1453,7 +1468,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 	// task covers on its own; what the scrollbar adds is a cell inside a pane.
 	for _, w := range []int{1, 2, 3, 4, 5, 6, 8, 12, 20, 40} {
 		for _, h := range []int{3, 4, 5, 8, 20, 40} {
-			m := press(longModel(t), tabKey(tabPlans), "0", "G")
+			m := press(longModel(t), tabKey(tabPlans), "shift+tab", "G")
 			v := sized(m, w, h).View()
 			lines := strings.Split(v, "\n")
 			if len(lines) > h {
@@ -1485,7 +1500,7 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 		"# Plan\n\n### Task 1: One\n\n- [ ] **Step 1: Do it**\n\n" + strings.Repeat("\nA line of the body.\n", 60) + strings.Repeat("y", 82) + "\n",
 	} {
 		m := boardModel(t, body)
-		m = press(m, tabKey(tabPlans), "0", "G")
+		m = press(m, tabKey(tabPlans), "shift+tab", "G")
 		b := scrollBox(m, paneDetail)
 		if !shows(m, paneDetail, m.lastOff(paneDetail)) {
 			t.Errorf("a body ending %s shows %q after G, want the last window", tail(body), drawnFirst(m, paneDetail))

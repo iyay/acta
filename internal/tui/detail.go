@@ -19,7 +19,7 @@ const (
 	dotDone    = "✓"
 )
 
-// detailCache keeps the last lines of the detail box. The box is asked for its
+// detailCache keeps the last parts of the detail box. The box is asked for its
 // lines several times on every key and wheel notch, and building them renders
 // the whole markdown body each time. The model is copied on every update, so
 // the cache sits behind a pointer that all the copies share.
@@ -27,51 +27,54 @@ type detailCache struct {
 	board *board.Board
 	item  *board.Item
 	width int
-	lines []string
+	head  []string
+	mid   []string
+	foot  string
 }
 
-// detailLines gives the lines of the detail box, built again only when the
-// item, the width or the board changed. A reload makes a new board, so its
-// items are new too and the old lines are never shown for them.
+// detailParts gives the header, the scrolling part and the date line of the
+// detail box, built again only when the item, the width or the board changed.
+// A reload makes a new board, so its items are new too and the old lines are
+// never shown for them.
 //
-// With no item under the cursor the lines come from the list instead, and the
-// key above cannot see the list, so that box is built every time. It is one
-// short line with no markdown in it, so it costs nothing to build again.
-func (m Model) detailLines(w int) []string {
+// With no item under the cursor the message comes from the list instead, and
+// the key above cannot see the list, so that box is built every time. It is
+// one short line with no markdown in it, so it costs nothing to build again.
+func (m Model) detailParts(w int) (head, mid []string, foot string) {
 	c := m.dcache
 	it := m.Selected()
 	if c == nil || it == nil {
-		return m.buildDetailLines(w)
+		return m.buildDetailParts(w)
 	}
-	if c.lines != nil && c.board == m.board && c.item == it && c.width == w {
-		return c.lines
+	if c.mid != nil && c.board == m.board && c.item == it && c.width == w {
+		return c.head, c.mid, c.foot
 	}
-	*c = detailCache{board: m.board, item: it, width: w, lines: m.buildDetailLines(w)}
-	return c.lines
+	head, mid, foot = m.buildDetailParts(w)
+	*c = detailCache{board: m.board, item: it, width: w, head: head, mid: mid, foot: foot}
+	return head, mid, foot
 }
 
-// buildDetailLines draws the header, the list of work and the body of the item
-// on show. Labels are upper case, padded to one width, with the colons in one
-// column, and a line with no value is left out.
-func (m Model) buildDetailLines(w int) []string {
+// buildDetailParts splits the detail in three: the header that stays on top,
+// the part that scrolls, and the date line that stays at the bottom. Labels are
+// upper case, padded to one width, with the colons in one column, and a line
+// with no value is left out. With no item on show there is only a message,
+// so there is no header and no footer.
+func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 	it := m.Selected()
 	if it == nil {
 		if len(m.board.Items) == 0 {
-			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
+			return nil, cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w), ""
 		}
 		if len(m.listOf()) == 0 {
-			return []string{m.styles.faint.Render("No items")}
+			return nil, []string{m.styles.faint.Render("No items")}, ""
 		}
-		return []string{m.styles.faint.Render("enter opens the group")}
+		return nil, []string{m.styles.faint.Render("enter opens the group")}, ""
 	}
 	fields := []struct{ label, value string }{
 		{"ID", idText(it)},
 		{kindLabel(it.Kind), it.Title},
 		{"STATUS", it.Status},
 		{"AUTHOR", it.Author},
-		{"CREATED", it.Created},
-		{"STARTED", it.StartedOn},
-		{"FINISHED", it.Finished},
 		{"FROM", m.fromText(it)},
 		{"REF", it.Ref},
 		{"SPEC", m.specText(it)},
@@ -88,22 +91,77 @@ func (m Model) buildDetailLines(w int) []string {
 		width = max(width, len(f.label))
 	}
 	width += 2
-	var lines []string
 	for _, f := range fields {
 		if f.value == "" {
 			continue
 		}
-		lines = append(lines, truncate(expandTabs(fmt.Sprintf("%-*s: %s", width, f.label, f.value)), w))
+		head = append(head, truncate(expandTabs(fmt.Sprintf("%-*s: %s", width, f.label, f.value)), w))
 	}
+	head = append(head, m.styles.faint.Render(strings.Repeat("─", max(1, w))))
 	for _, p := range it.Problems {
-		lines = append(lines, truncate(expandTabs("! "+p), w))
+		mid = append(mid, truncate(expandTabs("! "+p), w))
 	}
-	lines = append(lines, m.styles.faint.Render(strings.Repeat("─", max(1, w))))
-	lines = append(lines, m.workLines(it, w)...)
+	mid = append(mid, m.workLines(it, w)...)
 	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
-		lines = append(lines, fit(ln, w))
+		mid = append(mid, fit(ln, w))
 	}
-	return lines
+	return head, mid, dateLine(it, w)
+}
+
+// detailLines is the whole detail as one block: the header, the middle and
+// the date line. A box too short to keep the header on top scrolls this.
+func (m Model) detailLines(w int) []string {
+	head, mid, foot := m.detailParts(w)
+	out := append(append([]string(nil), head...), mid...)
+	if foot != "" {
+		out = append(out, foot)
+	}
+	return out
+}
+
+// dateLine is the footer of the detail. It names all three dates, and a dash
+// stands in for a date that is not set, so the line keeps one shape. A box
+// too narrow for the long names takes the short ones, so every date stays
+// readable, and only a box too narrow for those gets a cut line.
+func dateLine(it *board.Item, w int) string {
+	or := func(s string) string {
+		if s == "" {
+			return "-"
+		}
+		return s
+	}
+	c, s, f := or(it.Created), or(it.StartedOn), or(it.Finished)
+	long := "created " + c + " · started " + s + " · finished " + f
+	if lipgloss.Width(long) <= w {
+		return long
+	}
+	short := "c " + c + " · s " + s + " · f " + f
+	if lipgloss.Width(short) <= w {
+		return short
+	}
+	return truncate(short, w)
+}
+
+// stickyMid is how many middle lines a detail box h lines tall shows under a
+// header of head lines and over the footer. It is 0 when the box has no room
+// for the header, the footer and 3 middle lines: then the whole detail
+// scrolls as one block, so a short box still shows everything.
+func stickyMid(head, h int) int {
+	if n := h - head - 1; n >= 3 {
+		return n
+	}
+	return 0
+}
+
+// detailScroll says how many lines the detail scrolls over and how many of
+// them the box shows at once: the middle alone when the header and the
+// footer stick, the whole block when they do not.
+func (m Model) detailScroll(w, h int) (total, fit int) {
+	head, mid, foot := m.detailParts(w)
+	if n := stickyMid(len(head), h); n > 0 && foot != "" {
+		return len(mid), n
+	}
+	return len(m.detailLines(w)), h
 }
 
 // linkField is a header line for a link the item may not have. An item with

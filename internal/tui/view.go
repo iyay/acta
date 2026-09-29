@@ -58,23 +58,38 @@ const hints = "? help"
 // helpLines is the key map the ? popup shows, grouped by what the keys do.
 const helpLines = `1-6 ← →          open a tab, previous / next tab
 tab shift+tab    move between the panes of the tab
-0                focus the detail
 [ ]              switch the Done tab, on the Done pane
 space enter      open or shut a plan row
+h l              shut or open a plan row, h on a task too
 z                expand the focused pane
 o                flip the sort: oldest / newest
 j k g G          move a list, scroll the detail
 ctrl+d ctrl+u    page down and up
 enter            focus the detail on the row
 e                open the row in the editor
+y                copy the id of the row
 t s n            set a value, new bug
 esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
-// View draws the whole screen: the boxes, the status line, and any popup on
-// top of them.
+// View gives the frame Bubble Tea puts on screen. When the last message
+// changed nothing, it hands back the frame it drew last time instead of
+// drawing the same screen again.
 func (m Model) View() string {
+	if m.same && m.frame != nil && m.frame.s != "" {
+		return m.frame.s
+	}
+	s := m.draw()
+	if m.frame != nil {
+		m.frame.s = s
+	}
+	return s
+}
+
+// draw paints the whole screen: the boxes, the status line, and any popup on
+// top of them.
+func (m Model) draw() string {
 	g := m.geometry()
 	// The status line always has a row of its own, so the tab box and the
 	// panes below it share the rest, and a terminal with fewer rows than the
@@ -103,13 +118,12 @@ func (m Model) View() string {
 		lines[i] = fit(ln, m.width)
 	}
 	body = strings.Join(lines, "\n")
-	body = m.cover(body)
 	line := fit(m.statusLine(), m.width)
 	if m.popupBox() != "" {
-		// The status line is behind the popup as much as the panes are, so it
-		// goes grey too. The mouse is off while a popup is open, so the
-		// hyperlinks it carries go with the color.
-		line = m.styles.dim.Render(xansi.Strip(line))
+		// The box can be as tall as the screen, so it is laid over the body
+		// and the status line together. Cover greys every line it gets and
+		// strips the hyperlinks, which are off while a popup is open.
+		return m.styles.paintFrame(m.cover(body + "\n" + line))
 	}
 	return m.styles.paintFrame(body + "\n" + line)
 }
@@ -253,14 +267,15 @@ func (m Model) paneView(p pane, b box) string {
 		return m.paneTop(p, b, edge)
 	}
 	inner := b.textW()
-	total := m.linesAt(p, inner)
+	total, fit := m.linesAt(p, inner), b.inner
 	first := b.first
 	if p == paneDetail {
-		first = firstOf(m.off[p], total, b.inner)
+		total, fit = m.detailScroll(inner, b.inner)
+		first = firstOf(m.off[p], total, fit)
 	}
 	// A thumb marks the window on the right wall, in the brush the wall
 	// already wears, so the focus reads the same on the border as inside.
-	bar := scrollbar(total, b.inner, first, b.inner)
+	bar := scrollbar(total, fit, first, b.inner)
 	// Every sidebar pane closes its bottom border with the sort it lists in and
 	// the items it holds. The detail box counts lines, not items, so it writes
 	// nothing.
@@ -317,10 +332,24 @@ func plainSegs(segs []segment) string {
 	return b.String()
 }
 
-// detailView gives the lines of the detail box from the one its offset points at,
-// so the body scrolls and the model never needs to know how long it is.
+// detailView gives the lines of the detail box. With room to spare the
+// header stays on top and the date line at the bottom, and only the middle
+// scrolls from first. Without that room the whole block scrolls from first.
 func (m Model) detailView(w, first, h int) []string {
-	lines := m.detailLines(w)
+	head, mid, foot := m.detailParts(w)
+	n := stickyMid(len(head), h)
+	if n == 0 || foot == "" {
+		return window(m.detailLines(w), first, h)
+	}
+	out := append(append([]string(nil), head...), window(mid, first, n)...)
+	for len(out) < h-1 {
+		out = append(out, "")
+	}
+	return append(out, foot)
+}
+
+// window gives at most h lines of lines, from first on.
+func window(lines []string, first, h int) []string {
 	if first >= len(lines) {
 		return nil
 	}
