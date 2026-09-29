@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 	"strings"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/gitc"
@@ -77,6 +79,7 @@ func doctorEnv(known string) doctor.Env {
 			e.ConfigErr = err
 		case cfg.IsGit:
 			e.RepoRoot, e.ActaRoot, e.AutoCommit = cfg.RepoRoot, cfg.Root, cfg.AutoCommit
+			e.SchemaProblems = schemaProblems(cfg)
 		}
 	}
 	if p, err := os.Executable(); err == nil {
@@ -88,6 +91,40 @@ func doctorEnv(known string) doctor.Env {
 	// error the TUI will hit.
 	_, e.ThemeErr = theme.Load(e.Voice.Theme)
 	return e
+}
+
+// schemaProblems names every board file that opted in to the body schema and
+// lost a section. Doctor only prints the list, so the reading lives here. A
+// board that cannot load adds nothing, because the repo check already covers
+// a broken repo.
+func schemaProblems(cfg config.Config) []string {
+	b, err := board.Load(cfg)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, it := range b.Items {
+		switch it.Kind {
+		case board.KindTask, board.KindDebtItem:
+			continue // a task and a debt line have no sections of their own
+		}
+		if it.Legacy {
+			continue
+		}
+		raw, err := os.ReadFile(it.Path)
+		if err != nil {
+			continue // an item read from a branch that is not checked out
+		}
+		d := board.Parse(raw)
+		if !board.HasSchema(d.Front) {
+			continue // an old file, left as it is
+		}
+		for _, p := range board.CheckBody(it.Kind, d.Body) {
+			out = append(out, string(it.Kind)+" "+filepath.Base(it.Path)+": "+p)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // skipReason says why --fix will not commit, or "" when it will. The rules

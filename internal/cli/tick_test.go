@@ -210,6 +210,29 @@ func TestCmdTickFinishesPlanOnlyWhenAllTasksDone(t *testing.T) {
 	}
 }
 
+// The day a plan and its spec closed is the day people read, so a later tick
+// on another day must not move it.
+func TestCmdTickKeepsTheCloseDay(t *testing.T) {
+	dir := datesRepo(t, 1)
+	onDay(t, 26)
+	runTick(t, dir, "plans/2026-09-21-a#task-1", "--all")
+	runTick(t, dir, "plans/2026-09-21-a#task-2", "--all")
+	for _, p := range []string{planA(dir), specOf(dir)} {
+		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26"`) {
+			t.Fatalf("%s lacks finished on day 26: %q", p, s)
+		}
+	}
+	onDay(t, 27)
+	if code, _, errs := runTick(t, dir, "plans/2026-09-21-a#task-1", "--start"); code != exitOK {
+		t.Fatalf("exit %d: %s", code, errs)
+	}
+	for _, p := range []string{planA(dir), specOf(dir)} {
+		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26"`) {
+			t.Errorf("%s lost the day it closed: %q", p, s)
+		}
+	}
+}
+
 func TestCmdTickSpecWaitsForEveryPlan(t *testing.T) {
 	dir := datesRepo(t, 2)
 	onDay(t, 26)

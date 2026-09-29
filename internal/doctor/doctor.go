@@ -34,18 +34,19 @@ type Result struct {
 
 // Env is everything the checks read, so tests can point it at temp folders.
 type Env struct {
-	Home        string // user home; ~/.claude.json and ~/.omp live here
-	ClaudeDir   string // hook.ClaudeDir()
-	RepoRoot    string // "" outside a git repo
-	ActaRoot    string // the .acta folder for RepoRoot
-	Binary      string // os.Executable()
-	Version     string // from runtime/debug build info
-	KnownFile   string // workflow-plugins.txt; "" skips the conflicts list
-	AutoCommit  bool   // false when .acta.yaml turns auto_commit off
-	ConfigErr   error  // the config.Load error, when the config does not parse
-	VoiceExists bool
-	Voice       voice.Voice
-	ThemeErr    error // the theme.Load error for Voice.Theme
+	Home           string // user home; ~/.claude.json and ~/.omp live here
+	ClaudeDir      string // hook.ClaudeDir()
+	RepoRoot       string // "" outside a git repo
+	ActaRoot       string // the .acta folder for RepoRoot
+	Binary         string // os.Executable()
+	Version        string // from runtime/debug build info
+	KnownFile      string // workflow-plugins.txt; "" skips the conflicts list
+	AutoCommit     bool   // false when .acta.yaml turns auto_commit off
+	ConfigErr      error  // the config.Load error, when the config does not parse
+	VoiceExists    bool
+	Voice          voice.Voice
+	ThemeErr       error    // the theme.Load error for Voice.Theme
+	SchemaProblems []string // board files with schema: 1 that lost a section
 }
 
 // Run does every check in a fixed order, so two runs print the same lines in
@@ -57,10 +58,21 @@ func Run(e Env) []Result {
 		checkStaleLinks(e),
 		checkConflicts(e),
 		checkRepo(e),
+		checkSchema(e),
 		checkAgentsView(e),
 		checkSetup(e),
 		checkTheme(e),
 	}
+}
+
+// checkSchema reports files that opted in to the body schema but lost a
+// section. The CLI does the reading, so this stays a pure check.
+func checkSchema(e Env) Result {
+	if len(e.SchemaProblems) == 0 {
+		return Result{Name: "schema", Level: OK, Msg: "every schema file has its sections"}
+	}
+	return Result{Name: "schema", Level: Warn, Msg: strings.Join(e.SchemaProblems, "; "),
+		Fix: "add the missing sections, or run acta scratch add --section"}
 }
 
 // Fix writes what only the repo can fix: the .acta folder and its .gitignore

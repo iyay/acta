@@ -29,6 +29,16 @@ func MarkFinished(src []byte) ([]byte, error) {
 	return SetField(src, "finished", Now().Format("2006-01-02"))
 }
 
+// MarkFinishedOnce writes today as the day the work closed, but only the
+// first time. An automatic close, like a tick or a spec closing the idea it
+// came from, must not move the day a person already read.
+func MarkFinishedOnce(src []byte) ([]byte, error) {
+	if hasField(src, "finished") {
+		return src, nil
+	}
+	return MarkFinished(src)
+}
+
 // ClearFinished takes the close day away when the work opens again.
 func ClearFinished(src []byte) ([]byte, error) { return RemoveField(src, "finished") }
 

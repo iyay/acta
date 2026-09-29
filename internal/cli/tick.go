@@ -144,7 +144,7 @@ func markTaskDates(cfg config.Config, it *board.Item) error {
 		return err
 	}
 	if plan.Done == plan.Total {
-		if err := markDate(plan.Path, write.MarkFinished); err != nil {
+		if err := markDate(plan.Path, write.MarkFinishedOnce); err != nil {
 			return err
 		}
 	}
@@ -156,7 +156,7 @@ func markTaskDates(cfg config.Config, it *board.Item) error {
 		return err
 	}
 	if spec.Status == "done" {
-		return markDate(spec.Path, write.MarkFinished)
+		return markDate(spec.Path, write.MarkFinishedOnce)
 	}
 	return nil
 }

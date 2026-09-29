@@ -80,7 +80,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 				if err != nil {
 					return nil, Outcome{Skips: skips}, err
 				}
-				pout, err := MarkFinished(psrc)
+				pout, err := MarkFinishedOnce(psrc)
 				if err != nil {
 					return nil, Outcome{Skips: skips}, err
 				}

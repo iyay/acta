@@ -132,7 +132,7 @@ func TestBrokenThemeDoesNotFailTheRun(t *testing.T) {
 }
 
 func TestDoctorChecksRunInFixedOrder(t *testing.T) {
-	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "agents-view", "setup", "theme"}
+	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "schema", "agents-view", "setup", "theme"}
 	if got := names(Run(env(t))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
 	}
@@ -303,6 +303,39 @@ func TestDoctorRepo(t *testing.T) {
 		e := env(t)
 		write(t, e.ActaRoot, "not a folder")
 		wantLevel(t, byName(Run(e), "repo"), Fail, "acta doctor --fix")
+	})
+}
+
+// The schema check is pure: the CLI hands it the problems it already found,
+// so the doctor package reads no board file itself.
+func TestCheckSchema(t *testing.T) {
+	t.Run("no problem", func(t *testing.T) {
+		r := checkSchema(Env{})
+		wantLevel(t, r, OK, "")
+		if r.Msg != "every schema file has its sections" {
+			t.Fatalf("msg %q", r.Msg)
+		}
+	})
+	t.Run("two problems, one line, sorted by the caller", func(t *testing.T) {
+		r := checkSchema(Env{SchemaProblems: []string{
+			"scratch a.md: missing ## Words",
+			"scratch b.md: missing ## Words",
+		}})
+		wantLevel(t, r, Warn, "acta scratch add --section")
+		if r.Msg != "scratch a.md: missing ## Words; scratch b.md: missing ## Words" {
+			t.Fatalf("msg %q", r.Msg)
+		}
+		if !strings.Contains(Format([]Result{r}), "warn schema: ") {
+			t.Fatal("the report line has no level and name")
+		}
+	})
+	t.Run("a file without schema: 1 is never named", func(t *testing.T) {
+		// Env carries only what the CLI found, so a file the CLI skipped
+		// cannot appear here.
+		r := checkSchema(Env{SchemaProblems: []string{"scratch old.md: missing ## Words"}})
+		if strings.Contains(r.Msg, "no-schema.md") {
+			t.Fatalf("msg %q", r.Msg)
+		}
 	})
 }
 

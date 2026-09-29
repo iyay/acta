@@ -1120,19 +1120,19 @@ Found in review round 1:
   - Expected: `finished: "2026-09-01"` is kept in both files.
 - The same shape sits in `internal/write/ids.go` `closeScratchParent`. When a second spec with the same scratch parent gets its first id, the parent's `finished` moves.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   1. `dates_test.go`: `MarkFinishedOnce` on a file that already has `finished: 2026-01-01` returns the bytes unchanged. On a file with no `finished`, it writes today.
   2. `tick_test.go`: use `datesRepo(t, 1)` with every task ticked on day 26, so the plan and spec show `finished: 2026-09-26`. Then run `onDay(t, 27)` and `tick --start` on task 1. Both files must still say `2026-09-26`.
   3. `ids_test.go`: a scratch parent with `finished: 2026-09-01`. A new spec under it gets its first id on day 26. The parent must keep `2026-09-01`.
-- [ ] **Step 2: Run them and watch them fail.**
+- [x] **Step 2: Run them and watch them fail.**
   `go test ./internal/write ./internal/cli -run 'Finished|Once|Parent'`
-- [ ] **Step 3: Write the code.**
+- [x] **Step 3: Write the code.**
   - In `dates.go`, add `MarkFinishedOnce(src []byte) ([]byte, error)`. It returns `src` unchanged when `hasField(src, "finished")`, and otherwise calls `MarkFinished`. Its comment says why: an automatic close must not move the day a person already saw.
   - Use `MarkFinishedOnce` in both `markTaskDates` branches and in `closeScratchParent`.
   - Leave `SetValue` and `DatesFor` on `MarkFinished`, because an explicit close by the user counts from today.
-- [ ] **Step 4: Run them and watch them pass.**
+- [x] **Step 4: Run them and watch them pass.**
   `go test ./...`, then `gofmt -l .` (must print nothing), then `go vet ./...`.
-- [ ] **Step 5: Commit.**
+- [x] **Step 5: Commit.**
   ```bash
   git add internal/write/dates.go internal/write/dates_test.go internal/cli/tick.go internal/cli/tick_test.go internal/write/ids.go internal/write/ids_test.go
   git commit -m "dates: keep an existing finished on automatic closes"

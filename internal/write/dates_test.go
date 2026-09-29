@@ -55,6 +55,28 @@ func TestReCloseGetsTheNewDay(t *testing.T) {
 	}
 }
 
+func TestMarkFinishedOnce(t *testing.T) {
+	fixNow(t)
+	// The close day a person already read stays the day they read.
+	old := "---\nfinished: \"2026-01-01\"\n---\n# T\n"
+	out, err := MarkFinishedOnce([]byte(old))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != old {
+		t.Errorf("the close day moved:\n got %q\nwant %q", out, old)
+	}
+	// A file with no close day gets today.
+	open := "---\nstatus: raw\n---\n# T\n"
+	out, err = MarkFinishedOnce([]byte(open))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "---\nstatus: raw\nfinished: \"2026-09-26\"\n---\n# T\n"; string(out) != want {
+		t.Errorf("\n got %q\nwant %q", out, want)
+	}
+}
+
 func TestReopenClearsFinished(t *testing.T) {
 	fixNow(t)
 	in := "---\nstarted: 2026-01-01\nfinished: 2026-02-01\n---\n# T\n"

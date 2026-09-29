@@ -577,6 +577,23 @@ func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
 	}
 }
 
+// A parent that already closed on an earlier day keeps that day, so a second
+// spec grown from the same idea does not rewrite what people read.
+func TestAssignIDsKeepsTheScratchParentCloseDay(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\nfinished: \"2026-09-01\"\n---\nx\n",
+		".acta/specs/2026-09-26-idea-design.md": "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
+	})
+	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+		t.Fatalf("outcome %+v err %v", out, err)
+	}
+	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-20-idea.md"))))
+	if doc.Front["finished"] != "2026-09-01" {
+		t.Errorf("the scratch parent lost the day it closed = %v", doc.Front["finished"])
+	}
+}
+
 // Only a spec closes a scratch parent here. A bug the spec hangs under keeps
 // the day it closes, and a plan built on an idea does not close it either:
 // both are a command of their own.
