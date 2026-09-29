@@ -1060,18 +1060,18 @@ git commit -m "tui: show created, started and finished in the detail"
 **Interfaces:**
 - Consumes: the CLI usage from Task 3
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `skill_scratch_test.go`, add these to `Must`: `"--section context"`, `"--section questions"`, `"right after"`, `"what work was going on"`, `"what already exists"`, `"file:line"`, `"where the facts came from"`. Add these to `MustNot`: `"You may add your own lines"`, `"below theirs"`. Add one more test that fails when the skill text says to write `---` or `Agent notes` by hand in any form other than the ban line: the only line allowed to hold either one is the ban line itself.
 
 In `skill_brainstorm_test.go`, add this to `Must`: `"acta scratch add SCRATCH-n --section log"`.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/plugincheck -run 'TestSkillScratch|TestSkillBrainstorm'`
 Expected: FAIL, missing `--section context`
 
-- [ ] **Step 3: Write the skill text**
+- [x] **Step 3: Write the skill text**
 
 In the scratch skill, replace the "What goes in" bullets with:
 
@@ -1090,15 +1090,50 @@ Update the `How to file` add line to the new usage. Keep the file under 60 lines
 
 In the brainstorm skill, change the two "append with `acta scratch add SCRATCH-n`" spots (Step 0 "Append as you go" and checklist items 2 and 4) to `acta scratch add SCRATCH-n --section log`.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/plugincheck`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
 git add plugin/skills/scratch/SKILL.md plugin/skills/brainstorm/SKILL.md internal/plugincheck/skill_scratch_test.go internal/plugincheck/skill_brainstorm_test.go
 git commit -m "skills: scratch context and brainstorm log use --section"
 ```
+
+## Fix round 1
+
+### Task 9: finished is written once per close, never moved by a later event
+
+**Files:**
+- Modify: `internal/write/dates.go`, `internal/cli/tick.go` (`markTaskDates`), `internal/write/ids.go` (`closeScratchParent`)
+- Test: `internal/write/dates_test.go`, `internal/cli/tick_test.go`, `internal/write/ids_test.go`
+
+**verify:** Once a file holds `finished`, no later event moves it unless the item was reopened first. Reopening means a working status through `acta set`, which already clears it with `ClearFinished`. List every path that writes `finished`, and what each one does when the field is already there: `markTaskDates` on the plan, `markTaskDates` on the spec, `closeScratchParent`, `SetValue` for status, `SetValue` for fixed_in. The explicit `acta set <id> status <closed status>` may still write today's date, because the user asked for that close. Every automatic path (tick and id) keeps an existing `finished`.
+
+Found in review round 1:
+- `internal/cli/tick.go` (`markTaskDates`, the `plan.Done == plan.Total` branch and the `spec.Status == "done"` branch) calls `write.MarkFinished`, and `internal/write/dates.go` `MarkFinished` always calls `SetField`.
+  - Input: a plan with every box `[x]` and `finished: "2026-09-01"`. Then run `acta tick plans/<stem>#task-1 --start`.
+  - Wrong: the plan and its spec both get `finished: <today>`.
+  - Expected: `finished: "2026-09-01"` is kept in both files.
+- The same shape sits in `internal/write/ids.go` `closeScratchParent`. When a second spec with the same scratch parent gets its first id, the parent's `finished` moves.
+
+- [ ] **Step 1: Write the failing tests.**
+  1. `dates_test.go`: `MarkFinishedOnce` on a file that already has `finished: 2026-01-01` returns the bytes unchanged. On a file with no `finished`, it writes today.
+  2. `tick_test.go`: use `datesRepo(t, 1)` with every task ticked on day 26, so the plan and spec show `finished: 2026-09-26`. Then run `onDay(t, 27)` and `tick --start` on task 1. Both files must still say `2026-09-26`.
+  3. `ids_test.go`: a scratch parent with `finished: 2026-09-01`. A new spec under it gets its first id on day 26. The parent must keep `2026-09-01`.
+- [ ] **Step 2: Run them and watch them fail.**
+  `go test ./internal/write ./internal/cli -run 'Finished|Once|Parent'`
+- [ ] **Step 3: Write the code.**
+  - In `dates.go`, add `MarkFinishedOnce(src []byte) ([]byte, error)`. It returns `src` unchanged when `hasField(src, "finished")`, and otherwise calls `MarkFinished`. Its comment says why: an automatic close must not move the day a person already saw.
+  - Use `MarkFinishedOnce` in both `markTaskDates` branches and in `closeScratchParent`.
+  - Leave `SetValue` and `DatesFor` on `MarkFinished`, because an explicit close by the user counts from today.
+- [ ] **Step 4: Run them and watch them pass.**
+  `go test ./...`, then `gofmt -l .` (must print nothing), then `go vet ./...`.
+- [ ] **Step 5: Commit.**
+  ```bash
+  git add internal/write/dates.go internal/write/dates_test.go internal/cli/tick.go internal/cli/tick_test.go internal/write/ids.go internal/write/ids_test.go
+  git commit -m "dates: keep an existing finished on automatic closes"
+  ```

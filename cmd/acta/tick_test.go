@@ -222,8 +222,13 @@ func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 		t.Fatalf("--start: exit %d err %q, want 0", code, errOut)
 	}
 	after, _ := os.ReadFile(plan)
-	if string(after) != string(before) {
+	// The plan gains the started date, but no box moves: count the ticked
+	// boxes before and after, the same way the plain tick test does.
+	if strings.Count(string(after), "- [x]") != strings.Count(string(before), "- [x]") {
 		t.Fatal("--start must tick no box")
+	}
+	if !strings.Contains(string(after), `started: "`+time.Now().Format("2006-01-02")+`"`) {
+		t.Fatalf("--start wrote no started date: %q", after)
 	}
 	recs := readRecords(t, agentsFile(t, dir))
 	if !recs[id].Started || recs[id].Agent != "omp" {
@@ -241,9 +246,9 @@ func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 		if string(same) != string(record) {
 			t.Errorf("%v wrote a record, want none", args)
 		}
-		box, _ := os.ReadFile(plan)
-		if string(box) != string(before) {
-			t.Errorf("%v ticked a box", args)
+		refused, _ := os.ReadFile(plan)
+		if string(refused) != string(after) {
+			t.Errorf("%v changed the plan", args)
 		}
 	}
 }
