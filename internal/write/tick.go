@@ -133,15 +133,22 @@ var lockRoot string
 // first, and it is the same for every process whatever their TMPDIR says.
 // There is no /tmp fallback: a shared folder there can be taken over by
 // someone else, and a lock nobody can trust blocks every tick forever.
+// A cache folder that is not an absolute path is refused too, because a
+// relative one is read against the working folder, and anyone who can write
+// there could put their own folder in the way first.
 func lockDir() (string, error) {
-	if lockRoot != "" {
-		return lockRoot, nil
+	dir := lockRoot
+	if dir == "" {
+		cache, err := os.UserCacheDir()
+		if err != nil {
+			return "", fmt.Errorf("cannot find a cache folder for the lock: %w", err)
+		}
+		dir = filepath.Join(cache, "acta", "locks")
 	}
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot find a cache folder for the lock: %w", err)
+	if !filepath.IsAbs(dir) {
+		return "", fmt.Errorf("cannot find a cache folder for the lock: %s is not an absolute path", dir)
 	}
-	return filepath.Join(cache, "acta", "locks"), nil
+	return dir, nil
 }
 
 // lockPath gives the lock file for a plan, named from the plan's real path
@@ -224,7 +231,7 @@ func lock(plan string) (func(), error) {
 		}
 		if time.Now().After(deadline) {
 			f.Close()
-			return nil, fmt.Errorf("plan %s is locked by another acta tick", plan)
+			return nil, fmt.Errorf("%s is locked by another acta command", plan)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

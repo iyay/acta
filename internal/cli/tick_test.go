@@ -33,6 +33,11 @@ func tickRepo(t *testing.T) string {
 
 func runTick(t *testing.T, dir string, args ...string) (int, string, string) {
 	t.Helper()
+	// A temp cache folder, so a cli test never writes a lock into the
+	// real cache folder of whoever runs the tests.
+	cache := t.TempDir()
+	t.Setenv("HOME", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
 	t.Chdir(dir)
 	var stdout, stderr strings.Builder
 	code := Run(append([]string{"tick"}, args...), nil, false, &stdout, &stderr)
