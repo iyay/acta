@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Runs the behaviour evals for the acta plugin. Costs quota, not dollars, so
 # each case caps its own turns and time. --no-publish keeps the report local.
+# --scaffold builds the scratch repo the four bash cases work in.
+# The report goes to a temp folder, not into plugin/: it embeds absolute user
+# paths, a test in this repo rejects those, and the land gate runs this script.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash "$@" plugin
+out="$(mktemp -d)"
+echo "Results will be written to $out"
+exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash \
+  --scaffold --judge-model haiku --output-dir "$out" "$@" plugin

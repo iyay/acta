@@ -69,6 +69,9 @@ func TestEvalLLMGradersAreOnlyTheTwoJudgementCalls(t *testing.T) {
 
 // TestEvalScriptFlags keeps the run cheap and local. The user pays quota, so a
 // cost ceiling would abort the suite and publishing would leak the report.
+// --scaffold gives the four bash cases the scratch repo they work in, and
+// --output-dir keeps the report out of the plugin tree, where a test here fails
+// on the absolute user paths inside it.
 func TestEvalScriptFlags(t *testing.T) {
 	p := filepath.Join("..", "..", "scripts", "eval")
 	st, err := os.Stat(p)
@@ -83,7 +86,7 @@ func TestEvalScriptFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	for _, want := range []string{"--model sonnet", "--ablation none", "--no-publish", "--allow-tools Bash"} {
+	for _, want := range []string{"--model sonnet", "--ablation none", "--no-publish", "--allow-tools Bash", "--scaffold", "--output-dir", "--judge-model haiku"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("scripts/eval must pass %s", want)
 		}
