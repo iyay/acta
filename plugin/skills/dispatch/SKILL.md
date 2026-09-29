@@ -34,7 +34,7 @@ Plan approval is the one yes you need. From then on the loop runs itself, end to
 
 1. **Reply-back lands → review starts in that same turn.** The notification IS the trigger. Do not report "the agent is done" and wait for the user to say "review it". Do not ask "shall I review?". Verify from git, then invoke `acta:review` immediately.
 2. **Review not clean → route fixes back in that same turn.** BLOCKERs → ONE fix ticket via `acta:plan` → prompt the same agent by slug → yield. Rounds 1 and 2 only; a BLOCKER after round 3 stops the loop (see Autonomy). No "here are the findings, want me to send them back?". The user sees findings only as a one-line status while the fix round is already dispatched.
-3. **Review clean + every ticket done → land in that same turn.** Merge `--no-ff`, re-gate, remove worktree, delete branch, close tab. No "ready to merge, shall I?". The approved plan already covers landing (`acta:land`).
+3. **Review clean + every ticket done → run `acta:land` in that same turn, then close the tab.** No "ready to merge, shall I?".
 
 Asking the user for any of these three is a violation, same class as skipping `acta:review`. The user reads the turn's report after the fact.
 
@@ -89,7 +89,7 @@ The recipient is the main agent in its pane: writes zero code itself, **fans eve
 8. Tab: nothing to do. A stray pane split beside you → move it to its own tab once.
 9. **Review** via `acta:review` + plan ref — every round, no exceptions, Spec axis + Standards axis. Range per round: round 1 `<base>..<head>`; round 2 `<ROUND1_HEAD>..<head>` plus the direct callers of every function the fix touched; round 3 `<ROUND2_HEAD>..<head>` only.
 10. BLOCKERs or unfinished tickets → ONE fix ticket via `acta:plan` that holds all of them, route it to the same agent by slug, **stop and yield**. One turn per round. Round 3 still BLOCKED → stop, ask the user (see Autonomy).
-11. **Clean AND complete → land** (merge `--no-ff`, re-gate, remove worktree, close tab). Never leave a reviewed branch parked.
+11. **Clean AND complete → `acta:land`, then close the tab.** Never leave a reviewed branch parked.
 
 ## One tab per dispatch — HARD RULE
 
@@ -407,24 +407,14 @@ Escalate before the cap only when a finding needs a human decision. New findings
 
 ## Landing — from the main checkout
 
-Clean and complete → you merge and tear down **in the same turn the clean verdict arrives**. Never ask; never report "ready to merge". The approved plan covers it (`acta:land`: "land without asking" — the options menu is overridden, its test gate and cleanup steps still apply).
+Clean and complete → you land **in the same turn the clean verdict arrives**. Never ask; never report "ready to merge". The approved plan covers it.
 
-1. **Preconditions, all:** every ticket done · nothing uncommitted in the worktree · typecheck + full suite green, output shown · verdict explicitly clean. Any missing → report blocker, no merge.
-2. **Contamination check:**
-   ```bash
-   git diff --name-only <base>..<head> | grep -E 'node_modules|\.venv|\.env'   # must be empty
-   git ls-tree -r <head> | awk '$1=="120000"{print $4}'                        # symlinks: must be empty
-   ```
-   Non-empty → do not merge; strip from the branch first.
-3. **Parent** = branch recorded at worktree creation (or `git rev-parse --abbrev-ref <branch>@{u}` / merge-base). Unsure → STOP, ask. Main checkout: `git status --porcelain` empty, `git rev-parse --abbrev-ref HEAD` = parent.
-4. **Merge:** `git -C <main-checkout> merge --no-ff <slug> -m "<what landed>. Verified at merge: <gate numbers>"`. Conflict → resolve hunk by hunk, by intent from each side's primary source, finish the merge (no acta skill for this). Never `--abort`, never discard a side. Unresolvable → STOP, worktree intact, report.
-5. **Re-run the gates on the merge result.** A merge can break what both sides passed alone. Red → say so plainly, leave the merge for the user.
-6. **Tear down:** `git worktree remove <path>`; `git branch -d <slug>` (plain `-d`: refusal = not fully merged = STOP). Then `herdr pane close <pane-id>` (resolve from slug, not memory). The one place a dispatch tab is closed.
-7. **NEVER `git push`.**
+1. **Run `acta:land` for the whole landing.** It holds the preconditions, the stray-file and symlink check, the parent branch, the merge, `acta id --fix-duplicates`, the gates on the merge result, and the worktree and branch cleanup. Never `git push`. Two copies of those steps drift apart, and the drift is how duplicate ids reach the parent branch.
+2. **Then close the pane, and only then:** `herdr pane close <pane-id>`, resolved from the slug and never from memory, after `acta:land` removed the worktree. `acta:land` has no pane step, so this is the one step a dispatch adds.
 
 The only cases that stop landing and go to the user: a finding needing a human decision; the parent is one the user has called protected; the merge conflict cannot be finished by intent; post-merge gates red. An open BLOCKER after round 1 or 2 is not one of these — it goes back to the agent as the fix ticket. After round 3 it goes to the user (see "After a review").
 
-Report after landing, ADHD shape: merge SHA first, post-merge gate numbers you ran, what was cleaned up, bugs recorded from the recipient, out-of-scope follow-ups the review surfaced, one next action last.
+Report after landing, ADHD shape: merge SHA first, post-merge gate numbers, what was cleaned up, then two lines you owe the reader: `Bugs found by recipient:` naming every bug the recipient recorded under `.acta/bugs` in the diff, or `none`; and `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` (see "Memory sweep before done"). Then out-of-scope follow-ups the review surfaced, one next action last.
 
 ## Memory sweep before "done"
 

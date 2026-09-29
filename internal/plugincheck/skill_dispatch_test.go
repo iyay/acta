@@ -10,7 +10,7 @@ import (
 func TestSkillDispatch(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "dispatch",
-		MaxLines: 660,
+		MaxLines: 650,
 		Must: []string{
 			"HERDR_ENV", "/goal", "REPLY-BACK", "references/house-rules.md", "acta:review", "acta:land", "acta:build",
 			"PROPERTY", "ultrathink orchestrate", "Never wait", ".acta/plans/", "herdr-delivery.md", ".acta/bugs",
@@ -19,7 +19,7 @@ func TestSkillDispatch(t *testing.T) {
 		},
 		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
 			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-",
-			"until herdr agent read", "read it again"},
+			"until herdr agent read", "read it again", "--no-ff", "Contamination check", "git branch -d"},
 	})
 }
 
@@ -77,5 +77,28 @@ func TestDispatchAgentFlag(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "--agent omp") {
 		t.Error("herdr-delivery.md missing \"--agent omp\"")
+	}
+}
+
+// TestDispatchLandsThroughLand reads SKILL.md on its own. Dispatch once kept
+// its own merge steps, missed acta id --fix-duplicates, and landed duplicate ids.
+func TestDispatchLandsThroughLand(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "dispatch", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	i := strings.Index(txt, "## Landing")
+	if i < 0 {
+		t.Fatal("dispatch/SKILL.md has no Landing section")
+	}
+	landing := txt[i:]
+	if j := strings.Index(landing[3:], "\n## "); j >= 0 {
+		landing = landing[:j+3]
+	}
+	for _, want := range []string{"acta:land", "herdr pane close", "Bugs found by recipient"} {
+		if !strings.Contains(landing, want) {
+			t.Errorf("dispatch Landing section missing %q", want)
+		}
 	}
 }
