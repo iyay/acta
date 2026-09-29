@@ -54,6 +54,17 @@ type watchFailedMsg struct{ err error }
 // clockMsg carries the time once a minute, for the clock in the status line.
 type clockMsg time.Time
 
+// wheelStep is how many lines one wheel notch moves, the usual terminal step.
+const wheelStep = 3
+
+// wheelFrame is how long wheel notches are gathered before one scroll. A
+// trackpad sends hundreds of notches a second, and drawing the screen after
+// each one left the TUI far behind the wheel.
+const wheelFrame = 16 * time.Millisecond
+
+// wheelTickMsg says the frame is over: scroll by what the wheel gathered.
+type wheelTickMsg struct{}
+
 type editorDoneMsg struct {
 	newBug string // path of a new bug file; "" after a plain edit
 	tmpl   []byte
@@ -65,32 +76,35 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 
 // Model is the whole screen state. Bubble Tea copies it on every update.
 type Model struct {
-	cfg       config.Config
-	board     *board.Board
-	focus     pane                   // the box with the focus
-	last      pane                   // the list pane that had it last, for the detail box
-	top       int                    // the open tab, an index into topTabs
-	tabs      [len(topTabs)]tabState // the saved place of each tab that is not open
-	done      int                    // the Done sub-tab the open tab shows
-	newest    []bool                 // per list box: true shows the newest file date first
-	sel       []string
-	idx       []int // selected row number per pane, used when the id vanishes
-	query     string
-	expanded  int // the list pane that takes the room, -1 when none does
-	searching bool
-	groupOpen bool
-	openPlans map[string]bool // the plans the reader opened in a tree list
-	popup     *popup
-	slug      *string // non-nil while typing the slug of a new bug
-	help      bool
-	status    string
-	manual    bool
-	width     int
-	height    int
-	off       []int // the first line each box shows, the detail box last
-	now       time.Time
-	version   string                 // build version shown on the bottom line
-	open      func(url string) error // opens a link in the browser
+	cfg        config.Config
+	board      *board.Board
+	focus      pane                   // the box with the focus
+	last       pane                   // the list pane that had it last, for the detail box
+	top        int                    // the open tab, an index into topTabs
+	tabs       [len(topTabs)]tabState // the saved place of each tab that is not open
+	done       int                    // the Done sub-tab the open tab shows
+	newest     []bool                 // per list box: true shows the newest file date first
+	sel        []string
+	idx        []int // selected row number per pane, used when the id vanishes
+	query      string
+	expanded   int // the list pane that takes the room, -1 when none does
+	searching  bool
+	groupOpen  bool
+	openPlans  map[string]bool // the plans the reader opened in a tree list
+	popup      *popup
+	slug       *string // non-nil while typing the slug of a new bug
+	help       bool
+	status     string
+	manual     bool
+	width      int
+	height     int
+	off        []int // the first line each box shows, the detail box last
+	wheelPane  pane  // the pane the gathered notches scroll
+	wheelDelta int   // lines gathered from the wheel, not yet scrolled
+	wheelArmed bool  // true while a frame tick is on its way
+	now        time.Time
+	version    string                 // build version shown on the bottom line
+	open       func(url string) error // opens a link in the browser
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
@@ -185,6 +199,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clockMsg:
 		m.now = time.Time(msg)
 		return m, nextMinute()
+	case wheelTickMsg:
+		if m.wheelDelta != 0 {
+			m.scrollPane(m.wheelPane, m.wheelDelta)
+		}
+		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
 		return m.afterEditor(msg)
 	case tea.KeyMsg:
@@ -451,19 +470,30 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
 		// The wheel belongs to the focused pane, the way the keys do, and it
 		// never takes the focus. A wheel over another pane is ignored, so
 		// scrolling can never move a pane the user is not looking at.
-		if p == m.focus {
-			m.scrollPane(p, -1)
+		if p != m.focus {
+			return m, nil
 		}
-		return m, nil
-	case tea.MouseButtonWheelDown:
-		if p == m.focus {
-			m.scrollPane(p, 1)
+		step := wheelStep
+		if msg.Button == tea.MouseButtonWheelUp {
+			step = -wheelStep
 		}
-		return m, nil
+		// Notches for another pane cannot share one delta. Scroll the old
+		// pane now so its notches are not lost.
+		if m.wheelDelta != 0 && m.wheelPane != p {
+			m.scrollPane(m.wheelPane, m.wheelDelta)
+			m.wheelDelta = 0
+		}
+		m.wheelPane = p
+		m.wheelDelta += step
+		if m.wheelArmed {
+			return m, nil
+		}
+		m.wheelArmed = true
+		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
 		return m, nil

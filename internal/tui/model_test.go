@@ -143,13 +143,26 @@ func click(m Model, x, y int) Model {
 }
 
 // wheel turns the scroll wheel over a cell of the screen. up is true for a
-// notch away from the user.
+// notch away from the user. The real program scrolls on the next frame tick,
+// so the helper hands that tick over at once.
 func wheel(m Model, x, y int, up bool) Model {
+	return wheelTick(wheelOnly(m, x, y, up))
+}
+
+// wheelOnly turns the wheel one notch and does not send the frame tick, so a
+// test can stack several notches into one frame.
+func wheelOnly(m Model, x, y int, up bool) Model {
 	button := tea.MouseButtonWheelDown
 	if up {
 		button = tea.MouseButtonWheelUp
 	}
 	next, _ := m.Update(tea.MouseMsg{X: x, Y: y, Action: tea.MouseActionPress, Button: button})
+	return next.(Model)
+}
+
+// wheelTick is the frame tick that applies the notches gathered so far.
+func wheelTick(m Model) Model {
+	next, _ := m.Update(wheelTickMsg{})
 	return next.(Model)
 }
 

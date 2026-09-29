@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/iyay/acta/internal/board"
@@ -452,8 +453,9 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 		shown := screenTops(m)
 		b := scrollBox(m, p)
 		m = wheel(m, b.x+1, b.y+2, false)
-		if m.off[p] != 1 {
-			t.Errorf("pane %d: one notch should scroll it by one, off is %d", p, m.off[p])
+		step := min(wheelStep, m.lastOff(p))
+		if m.off[p] != step {
+			t.Errorf("pane %d: one notch should scroll it by %d, off is %d", p, step, m.off[p])
 		}
 		for q := range boxes {
 			if q != int(p) && drawnFirst(m, pane(q)) != shown[q] {
@@ -467,8 +469,8 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 			}
 		}
 		// What the screen has on top follows the wheel.
-		if !shows(m, p, 1) {
-			t.Errorf("pane %d: after one notch the top of the box should be its second line, it shows %q", p, drawnFirst(m, p))
+		if !shows(m, p, step) {
+			t.Errorf("pane %d: after one notch the top of the box should be line %d, it shows %q", p, step, drawnFirst(m, p))
 		}
 		m = wheel(m, b.x+1, b.y+2, true)
 		if m.off[p] != 0 {
@@ -506,6 +508,106 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 		if blank == len(paneRows(m, p)) || (p != paneDetail && blank > 0) {
 			t.Errorf("pane %d: the wheel left %d of %d lines blank", p, blank, len(paneRows(m, p)))
 		}
+	}
+}
+
+// A trackpad sends hundreds of notches a second. Drawing the screen after
+// each one left the TUI far behind the wheel, so the notches of one frame are
+// gathered and scrolled once. A tick with nothing gathered must move nothing.
+func TestWheelNotchesInOneFrameScrollOnce(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, p)
+		b := scrollBox(m, p)
+		m = wheelOnly(m, b.x+1, b.y+2, false)
+		m = wheelOnly(m, b.x+1, b.y+2, false)
+		if m.off[p] != 0 {
+			t.Errorf("pane %d: notches must wait for the frame tick, off is %d", p, m.off[p])
+		}
+		m = wheelTick(m)
+		if want := min(2*wheelStep, m.lastOff(p)); m.off[p] != want {
+			t.Errorf("pane %d: two notches in one frame should scroll %d, off is %d", p, want, m.off[p])
+		}
+		// A second tick with nothing gathered must not move the pane again.
+		before := m.off[p]
+		m = wheelTick(m)
+		if m.off[p] != before {
+			t.Errorf("pane %d: an empty tick moved the pane from %d to %d", p, before, m.off[p])
+		}
+	}
+}
+
+// A wheel turned back and forth inside one frame ends where it started, so a
+// reader who changes their mind leaves the pane where it was.
+func TestWheelUpAndDownInOneFrameCancel(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m = wheel(m, b.x+1, b.y+2, false)
+	start := m.off[paneDetail]
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, true)
+	m = wheelTick(m)
+	if m.off[paneDetail] != start {
+		t.Errorf("down then up in one frame should leave the pane at %d, it is at %d", start, m.off[paneDetail])
+	}
+}
+
+// Only the first notch of a frame starts a tick, so a fast wheel does not
+// leave a queue of ticks behind that scroll the pane after the wheel stopped.
+func TestWheelArmsOneTickPerFrame(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	next, first := m.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if first == nil {
+		t.Fatal("the first notch of a frame must start the frame tick")
+	}
+	_, second := next.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if second != nil {
+		t.Error("a notch in a frame that already has a tick must not start another one")
+	}
+}
+
+// Whatever the wheel gathers, the scroll lands inside the content. A delta
+// that runs past the end of the pane stops at the last line it has.
+func TestWheelOverclampStaysInsideContent(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, p)
+		b := scrollBox(m, p)
+		for range 500 {
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+		}
+		m = wheelTick(m)
+		if want := m.lastOff(p); m.off[p] != want {
+			t.Errorf("pane %d: 500 notches in one frame scrolled to %d, the content allows %d", p, m.off[p], want)
+		}
+		for range 500 {
+			m = wheelOnly(m, b.x+1, b.y+2, true)
+		}
+		m = wheelTick(m)
+		if m.off[p] != 0 {
+			t.Errorf("pane %d: 500 notches up in one frame scrolled to %d, the top is 0", p, m.off[p])
+		}
+	}
+}
+
+// The wheel is off while the help sits over the panes, so a notch there
+// gathers nothing and the pane underneath stays where the reader left it.
+func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m.help = true
+	m = wheel(m, b.x+1, b.y+2, false)
+	if m.off[paneDetail] != 0 || m.wheelDelta != 0 {
+		t.Errorf("the wheel under the help popup moved the pane: off %d, pending %d", m.off[paneDetail], m.wheelDelta)
 	}
 }
 
@@ -624,8 +726,8 @@ func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
 		if m.focus != p {
 			t.Errorf("pane %d: the click should have taken the focus, focus is %d", p, m.focus)
 		}
-		if m.off[p] != 1 {
-			t.Errorf("pane %d: the wheel after the click should scroll it by one, off is %d", p, m.off[p])
+		if step := min(wheelStep, m.lastOff(p)); m.off[p] != step {
+			t.Errorf("pane %d: the wheel after the click should scroll it by %d, off is %d", p, step, m.off[p])
 		}
 	}
 }
