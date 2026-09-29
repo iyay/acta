@@ -441,7 +441,7 @@ git commit -m "feat(write): write new ids as 3-letter prefix, 4 digits, 7-char h
 - Consumes: `Item.OldForm`, `board.Canon`, `board.FormatID`, `board.IsHash` from Tasks 1 to 3.
 - Produces: nothing new for other tasks. `AssignIDs` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestAssignIDsRewritesOldFiles(t *testing.T) {
@@ -489,24 +489,24 @@ func TestAssignIDsLeavesNewFilesAlone(t *testing.T) {
 
 Add one more case: a `closes:` entry that finds no item stays as written, and the run still rewrites the rest.
 
-- [ ] **Step 2: Run the tests and watch them fail**
+- [x] **Step 2: Run the tests and watch them fail**
 
 Run: `go test ./internal/write/ -run 'TestAssignIDsRewritesOldFiles|TestAssignIDsLeavesNewFilesAlone' -v`
 Expected: FAIL (old id and hash are kept today, since a value already written is never changed).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 - `candidates`: a file whose item has `OldForm` true, or whose `closes:` holds an entry where `board.Canon(entry)` resolves to an item whose `ShortID` differs from the entry, is a candidate even when it has both an id and a hash.
 - `AssignIDs`: for an old id, write `it.ShortID` (already new form). For a 4-char hash, write the old hash plus 3 random characters, and loop until `taken` does not hold it, the same way `freeHash` does. For `closes:`, map each entry through `b.Get(entry)` and write that item's `ShortID`; an entry with no match or no `ShortID` stays as written. Write the list back with `SetField` in the same `[a, b]` shape it was read in.
 - The commit message stays `acta: assign short ids` when only new ids are written, and becomes `acta: migrate ids to 3-letter prefix` when any old field was rewritten.
 - Update the `AssignIDs` doc comment: it now rewrites old ids, and still never replaces a value in the new format.
 
-- [ ] **Step 4: Run the package tests**
+- [x] **Step 4: Run the package tests**
 
 Run: `go test ./internal/write/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./internal/write/
@@ -527,7 +527,7 @@ git commit -m "feat(write): acta id rewrites old ids, hashes and closes lists"
 - Consumes: new `ShortID` form from Task 1; new writers from Tasks 3 and 4.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 func TestListRowsLineUp(t *testing.T) {
@@ -553,22 +553,22 @@ func TestListRowsLineUp(t *testing.T) {
 
 Run the same check for plans, specs, bugs and debt. Use the existing model helper from `internal/tui` tests if it is named differently from `modelWith`.
 
-- [ ] **Step 2: Run the test**
+- [x] **Step 2: Run the test**
 
 Run: `go test ./internal/tui/ -run TestListRowsLineUp -v`
 Expected: PASS once Tasks 1 to 4 have landed on this branch. To see it red first, run it on the commit before Task 1 (`git stash; git checkout <base>`) or trust the old output: `SCRATCH-3  Three` and `SCRATCH-13  Thirteen` put the title at different columns. Record which you did.
 
-- [ ] **Step 3: Fix every failing test in the suite**
+- [x] **Step 3: Fix every failing test in the suite**
 
 Run: `go test ./...`
 For each failure that expects an old shown id, an old written id or a 4-char hash, change the expected value to the new form. Keep old-format input files where they already exist, so the alias path stays tested. Never delete, skip or loosen a test. A failure that is not about the id format is a real bug: stop and report it.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `gofmt -l . && go vet ./... && go test ./...`
 Expected: all PASS. Paste the package summary.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal
@@ -615,3 +615,18 @@ Expected: PASS.
 git add plugin
 git commit -m "docs(plugin): skills and evals use the 3-letter id format, plan caps 99 tasks"
 ```
+
+## Fix round 1
+
+### Task F1: Merge with PLAN-31 turns four write tests red
+
+**Files:**
+- Modify: `internal/write/ids.go`, `internal/write/scratch.go` only if a test proves a real bug
+- Test: `internal/write/ids_test.go`, `internal/write/scratch_test.go`
+
+**verify:** Every test PLAN-31 added still checks its own rule after the merge, with fixtures in the new id format where the rule is not about the old format. No test is deleted, skipped or loosened. Name each of the four tests and say whether it was a stale fixture or a real bug.
+
+- [ ] **Step 1: Reproduce** `go test ./internal/write/ -run 'TestAssignIDsLeavesAFileThatHasAnIDAlone|TestAssignIDsSkipsASchemaFileThatFails|TestAssignIDsFinishesTheScratchParent|TestAppendScratchOldItem' -v` fails.
+- [ ] **Step 2: Fix** stale fixtures by moving them to the new format; fix code only where a test shows wrong behaviour.
+- [ ] **Step 3: Run** `go test ./internal/write/ ./internal/board/`, `gofmt -l .`, `go vet ./...`.
+- [ ] **Step 4: Commit** `fix(write): PLAN-31 tests follow the 3-letter id format after merge`.

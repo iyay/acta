@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 )
 
@@ -38,13 +39,28 @@ func TestNewDebtWritesChecklist(t *testing.T) {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}
 	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
-	for _, want := range []string{"id: DEBT-1\n", "parent: plans/2026-09-26-short-ids\n", "# Review NOTEs: Short IDs\n", "- [ ] first note\n", "- [ ] second note\n"} {
+	for _, want := range []string{"id: DBT-0001\n", "parent: plans/2026-09-26-short-ids\n", "# Review NOTEs: Short IDs\n", "- [ ] first note\n", "- [ ] second note\n"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
 	}
 	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "acta: new debt 2026-09-27-short-ids"); n != 1 {
 		t.Fatalf("commits = %d, want 1", n)
+	}
+}
+
+func TestNewDebtWritesNewFormatIDAndHash(t *testing.T) {
+	fixNowAt(t, "2026-09-27")
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("- one\n")); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
+	if got := frontField(t, file, "id"); got != "DBT-0001" {
+		t.Errorf("debt id = %q, want DBT-0001", got)
+	}
+	if h := frontField(t, file, "hash"); !board.IsHash(h) {
+		t.Errorf("debt hash = %q, want 7 characters", h)
 	}
 }
 

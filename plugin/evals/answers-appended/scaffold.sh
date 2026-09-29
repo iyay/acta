@@ -26,7 +26,7 @@ mkdir -p bin .acta/scratch
 cp "$(command -v acta)" bin/acta
 cat > .acta/scratch/eval-answer.md <<'ITEM'
 ---
-id: SCRATCH-1
+id: SCR-0001
 hash: evalanswer
 title: Download button fires twice
 status: raw

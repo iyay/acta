@@ -150,7 +150,7 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 			t.Fatalf("exit %d stderr %q", code, stderr.String())
 		}
 	})
-	if !strings.Contains(stdout.String(), "SCRATCH-1") {
+	if !strings.Contains(stdout.String(), "SCR-0001") {
 		t.Fatalf("stdout %q lacks the short id", stdout.String())
 	}
 	files, err := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-newest-first.md"))
@@ -188,7 +188,7 @@ func TestScratchAddAppendsAndCommits(t *testing.T) {
 			t.Fatalf("exit %d stderr %q", code, errOut.String())
 		}
 	})
-	if !strings.Contains(out.String(), "SCRATCH-1") {
+	if !strings.Contains(out.String(), "SCR-0001") {
 		t.Fatalf("stdout %q lacks the short id", out.String())
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-idea.md"))
@@ -588,11 +588,11 @@ func TestShowPrintsClosesAndClosedBy(t *testing.T) {
 		id, line string
 		absent   []string
 	}{
-		{"SPEC-1", "closes: SCRATCH-1, scratch/2026-09-28-j", []string{"closed by:"}},
-		{"SCRATCH-1", "closed by: SPEC-1", []string{"closes:"}},
+		{"SPEC-1", "closes: SCR-0001, scratch/2026-09-28-j", []string{"closed by:"}},
+		{"SCRATCH-1", "closed by: SPC-0001", []string{"closes:"}},
 		// This scratch file carries no short id, so the line names it by its
 		// path, the same way the closes list wrote it.
-		{"scratch/2026-09-28-j", "closed by: SPEC-1", []string{"closes:"}},
+		{"scratch/2026-09-28-j", "closed by: SPC-0001", []string{"closes:"}},
 		{"SPEC-2", "", []string{"closes:", "closed by:"}},
 	} {
 		out := mustRun(t, "show", c.id)

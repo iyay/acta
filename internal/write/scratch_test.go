@@ -55,14 +55,14 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	if !o.Committed || o.Skipped {
 		t.Fatalf("outcome %+v", o)
 	}
-	if o.ShortID != "SCRATCH-1" {
-		t.Errorf("short id %q want SCRATCH-1", o.ShortID)
+	if o.ShortID != "SCR-0001" {
+		t.Errorf("short id %q want SCR-0001", o.ShortID)
 	}
 	got, err := os.ReadFile(want)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"id: SCRATCH-1", "status: raw", "title: newest-first", `created: "2026-09-26"`, `schema: "1"`} {
+	for _, field := range []string{"id: SCR-0001", "status: raw", "title: newest-first", `created: "2026-09-26"`, `schema: "1"`} {
 		if !strings.Contains(string(got), field) {
 			t.Errorf("file lacks %q:\n%s", field, got)
 		}
@@ -83,6 +83,21 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	}
 	if s := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); s != "" {
 		t.Errorf("tree dirty after a commit: %s", s)
+	}
+}
+
+func TestNewScratchWritesNewFormatIDAndHash(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "short-id", "", []byte("note\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := frontField(t, o.Path, "id"); got != "SCR-0001" {
+		t.Errorf("scratch id = %q, want SCR-0001", got)
+	}
+	if h := frontField(t, o.Path, "hash"); !board.IsHash(h) {
+		t.Errorf("scratch hash = %q, want 7 characters", h)
 	}
 }
 
@@ -222,7 +237,7 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.Committed || got.Skipped || got.ShortID != "SCRATCH-1" {
+	if !got.Committed || got.Skipped || got.ShortID != "SCR-0001" {
 		t.Fatalf("outcome %+v", got)
 	}
 	body, _ := os.ReadFile(o.Path)

@@ -13,7 +13,7 @@ import (
 
 func TestAssignIDsGivesMissingOnly(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
-		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
+		".acta/specs/2026-09-20-a-design.md": "---\nid: SPC-0004\nhash: m2x9abc\n---\n# A\n",
 		".acta/specs/2026-09-21-b-design.md": "# B\n",
 		".acta/plans/2026-09-22-p.md":        "# P\n\n### Task 1: One\n- [ ] x\n",
 		".acta/bugs/2026-09-23-c.md":         "# C\n",
@@ -32,7 +32,7 @@ func TestAssignIDsGivesMissingOnly(t *testing.T) {
 		t.Fatal("an existing id was rewritten")
 	}
 	for _, it := range b.Items {
-		if it.Kind != "task" && !board.IsHash(strings.TrimPrefix(it.Hash, board.Prefix(it.Kind, strings.Contains(it.Path, "/plans/"))+"-")) {
+		if it.Kind != "task" && !it.OldForm && !board.IsHash(strings.TrimPrefix(it.Hash, board.Prefix(it.Kind, strings.Contains(it.Path, "/plans/"))+"-")) {
 			t.Errorf("%s hash %q", it.ID, it.Hash)
 		}
 	}
@@ -68,8 +68,8 @@ func TestAssignIDsCountsOtherTrees(t *testing.T) {
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("changes=%v err=%v", changes, err)
 	}
-	if b2 := mustLoad(t, cfg); b2.Get("PLAN-10") == nil {
-		t.Fatal("new plan is not PLAN-10")
+	if b2 := mustLoad(t, cfg); b2.Get("PLN-0010") == nil {
+		t.Fatal("new plan is not PLN-0010")
 	}
 }
 
@@ -110,20 +110,21 @@ func TestAssignIDsHashClash(t *testing.T) {
 	randHash = func() string {
 		calls++
 		if calls == 1 {
-			return "m2x9"
+			return "m2x9abc"
 		}
-		return "zz00"
+		return "zz00000"
 	}
 	defer func() { randHash = old }()
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
+		".acta/scratch/2026-09-20-x.md":      "---\nid: SCR-1\nhash: m2x9abc\n---\nx\n",
 		".acta/bugs/2026-09-23-c.md":         "# C\n",
 	})
 	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := mustLoad(t, cfg).Get("BUG-1"); got == nil || got.Hash != "BUG-zz00" {
-		t.Fatalf("bug hash = %+v, want BUG-zz00", got)
+	if got := mustLoad(t, cfg).Get("BUG-1"); got == nil || got.Hash != "BUG-zz00000" {
+		t.Fatalf("bug hash = %+v, want BUG-zz00000", got)
 	}
 }
 
@@ -142,15 +143,15 @@ func TestFixDuplicates(t *testing.T) {
 	if err != nil || !out.Committed {
 		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
 	}
-	if len(changes) != 1 || changes[0] != "BUG-7 -> BUG-8 (bugs/2026-09-21-second.md)" {
+	if len(changes) != 1 || changes[0] != "BUG-7 -> BUG-0008 (bugs/2026-09-21-second.md)" {
 		t.Fatalf("changes=%v", changes)
 	}
 	b := mustLoad(t, cfg)
-	if b.Get("BUG-7") == nil || b.Get("BUG-8") == nil {
+	if b.Get("BUG-0007") == nil || b.Get("BUG-0008") == nil {
 		t.Fatal("renumber did not resolve")
 	}
-	if b.Get("BUG-7").Hash != "BUG-aaaa" || b.Get("BUG-8").Hash != "BUG-bbbb" {
-		t.Fatalf("hashes moved: %q %q", b.Get("BUG-7").Hash, b.Get("BUG-8").Hash)
+	if b.Get("BUG-0007").Hash != "BUG-aaaa" || b.Get("BUG-0008").Hash != "BUG-bbbb" {
+		t.Fatalf("hashes moved: %q %q", b.Get("BUG-0007").Hash, b.Get("BUG-0008").Hash)
 	}
 }
 
@@ -236,7 +237,7 @@ func TestAssignIDsPrefixFollowsTheKindTheFileIs(t *testing.T) {
 func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\n---\n# A\n",
-		".acta/bugs/2026-09-23-c.md":         "---\nhash: toolong\n---\n# C\n",
+		".acta/bugs/2026-09-23-c.md":         "---\nhash: toolongg\n---\n# C\n",
 	})
 	_, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
 	if err != nil {
@@ -246,7 +247,7 @@ func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 	if !strings.Contains(skips, "skip specs/2026-09-20-a-design: bad id SPEC-zz") {
 		t.Fatalf("skip lines = %q", skips)
 	}
-	if !strings.Contains(skips, "skip bugs/2026-09-23-c: bad hash toolong") {
+	if !strings.Contains(skips, "skip bugs/2026-09-23-c: bad hash toolongg") {
 		t.Fatalf("skip lines = %q", skips)
 	}
 	spec := readFile(t, filepath.Join(cfg.Root, "specs/2026-09-20-a-design.md"))
@@ -257,7 +258,7 @@ func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 		t.Fatalf("missing hash not filled in: %q", spec)
 	}
 	bug := readFile(t, filepath.Join(cfg.Root, "bugs/2026-09-23-c.md"))
-	if !strings.Contains(bug, "hash: toolong") || strings.Count(bug, "hash:") != 1 {
+	if !strings.Contains(bug, "hash: toolongg") || strings.Count(bug, "hash:") != 1 {
 		t.Fatalf("bad hash rewritten: %q", bug)
 	}
 	if !strings.Contains(bug, "id: BUG-") {
@@ -286,7 +287,7 @@ func TestAssignIDsAutoCommitOff(t *testing.T) {
 	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after != before {
 		t.Fatalf("commits went from %s to %s, want none", before, after)
 	}
-	if body := readFile(t, filepath.Join(cfg.Root, "bugs/2026-09-23-c.md")); !strings.Contains(body, "id: BUG-1") {
+	if body := readFile(t, filepath.Join(cfg.Root, "bugs/2026-09-23-c.md")); !strings.Contains(body, "id: BUG-0001") {
 		t.Fatalf("file not written: %q", body)
 	}
 }
@@ -321,7 +322,7 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 	if err != nil || !out.Committed {
 		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
 	}
-	if len(changes) != 1 || changes[0] != "BUG-7 -> BUG-8 (bugs/2026-09-22-side.md)" {
+	if len(changes) != 1 || changes[0] != "BUG-7 -> BUG-0008 (bugs/2026-09-22-side.md)" {
 		t.Fatalf("changes=%v", changes)
 	}
 	main := readFile(t, filepath.Join(cfg.Root, "bugs/2026-09-21-main.md"))
@@ -348,7 +349,7 @@ func TestFixDuplicatesRepairsPlansHeldBySpecs(t *testing.T) {
 	if err != nil || !out.Committed {
 		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
 	}
-	if len(changes) != 1 || changes[0] != "PLAN-13 -> PLAN-14 (plans/2026-09-26-b.md)" {
+	if len(changes) != 1 || changes[0] != "PLN-13 -> PLN-0014 (plans/2026-09-26-b.md)" {
 		t.Fatalf("changes=%v", changes)
 	}
 	first := readFile(t, filepath.Join(cfg.Root, "plans/2026-09-25-a.md"))
@@ -372,13 +373,13 @@ func TestAssignIDsGivesHeldPlanWithoutTasksAnID(t *testing.T) {
 		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
 	}
 	plan := readFile(t, filepath.Join(cfg.Root, "plans/2026-09-25-a.md"))
-	if !strings.Contains(plan, "id: PLAN-1") || !strings.Contains(plan, "hash: ") {
+	if !strings.Contains(plan, "id: PLN-0001") || !strings.Contains(plan, "hash: ") {
 		t.Fatalf("held plan without tasks has no ids: %q", plan)
 	}
 	if len(changes) != 2 {
 		t.Fatalf("changes=%v", changes)
 	}
-	if b := mustLoad(t, cfg); b.Get("PLAN-1") == nil {
+	if b := mustLoad(t, cfg); b.Get("PLN-0001") == nil {
 		t.Fatal("the new plan id does not resolve")
 	}
 }
@@ -407,13 +408,14 @@ func TestAssignIDsNumbersScratchOnItsOwn(t *testing.T) {
 		".acta/scratch/2026-09-28-two.md":    "# Two\n",
 	})
 	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
-	if err != nil || len(changes) != 2 {
+	// Two new scratch files, plus the spec and the bug moved to the new form.
+	if err != nil || len(changes) != 4 {
 		t.Fatalf("changes=%v err=%v", changes, err)
 	}
 	b := mustLoad(t, cfg)
 	for _, c := range []struct{ id, short string }{
-		{"scratch/2026-09-28-one", "SCRATCH-1"},
-		{"scratch/2026-09-28-two", "SCRATCH-2"},
+		{"scratch/2026-09-28-one", "SCR-0001"},
+		{"scratch/2026-09-28-two", "SCR-0002"},
 	} {
 		it := b.Get(c.id)
 		if it == nil || it.Kind != board.KindScratch || it.ShortID != c.short {
@@ -423,13 +425,16 @@ func TestAssignIDsNumbersScratchOnItsOwn(t *testing.T) {
 			t.Errorf("Get(%q) does not answer to the scratch item", c.short)
 		}
 	}
-	for _, keep := range []string{"SPEC-4", "BUG-7"} {
-		it := b.Get(keep)
-		if it == nil || it.ShortID != keep {
-			t.Errorf("%s = %+v, want the number it already had", keep, it)
+	for _, c := range []struct{ id, short string }{
+		{"SPEC-4", "SPC-0004"},
+		{"BUG-7", "BUG-0007"},
+	} {
+		it := b.Get(c.id)
+		if it == nil || it.ShortID != c.short {
+			t.Errorf("%s = %+v, want the number it already had as %s", c.id, it, c.short)
 		}
 	}
-	if b.Get("SPEC-5") != nil || b.Get("BUG-8") != nil {
+	if b.Get("SPC-0005") != nil || b.Get("BUG-0008") != nil {
 		t.Error("a new scratch file moved a spec or a bug number")
 	}
 }
@@ -642,6 +647,216 @@ func containsLine(lines []string, text string) bool {
 		}
 	}
 	return false
+}
+
+func TestRandHashIsSevenChars(t *testing.T) {
+	for range 200 {
+		if h := randHash(); !board.IsHash(h) {
+			t.Fatalf("randHash() = %q", h)
+		}
+	}
+}
+
+// A plan still holding an old id keeps its number, so a new plan lands past
+// it and not on top of it, and it lands in the new shape.
+func TestAssignIDsWritesNewFormat(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/plans/2026-09-21-a.md": "---\nid: PLAN-12\nhash: k3f2\n---\n# A\n\n### Task 1: One\n- [ ] x\n",
+		".acta/plans/2026-09-22-b.md": "# B\n\n### Task 1: One\n- [ ] x\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	plan := filepath.Join(cfg.Root, "plans/2026-09-22-b.md")
+	if got := frontField(t, plan, "id"); got != "PLN-0013" {
+		t.Errorf("new plan id = %q, want PLN-0013", got)
+	}
+	if h := frontField(t, plan, "hash"); !board.IsHash(h) {
+		t.Errorf("new plan hash = %q, want 7 characters", h)
+	}
+}
+
+// An old id, an old 4-character hash and the old ids in a closes list are
+// written in the new form. The parent, the status, the other keys and the
+// body come out byte for byte the same, and a second run finds nothing old
+// and changes no byte at all.
+func TestAssignIDsRewritesOldFiles(t *testing.T) {
+	const body = "# A\n\nSee PLAN-12 and SCRATCH-14.\n\n**Spec:** none (Bounded, approved in chat on 2026-09-21)\n"
+	cfg := repoWith(t, map[string]string{
+		".acta/plans/2026-09-21-a.md":   "---\nparent: scratch/2026-09-20-x\nid: PLAN-12\nhash: k3f2\ncloses: [DEBT-17.1, SCRATCH-14]\nstatus: approved\n---\n" + body,
+		".acta/scratch/2026-09-20-x.md": "---\nid: SCRATCH-14\nhash: m2x9abc\ntitle: X\nstatus: raw\n---\nx\n",
+		".acta/debt/2026-09-19-d.md":    "---\nid: DBT-0017\nhash: d4d4abc\n---\n# D\n\n- [ ] one\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	plan := filepath.Join(cfg.Root, "plans/2026-09-21-a.md")
+	got := readFile(t, plan)
+	hash := frontField(t, plan, "hash")
+	if !board.IsHash(hash) || !strings.HasPrefix(hash, "k3f2") {
+		t.Errorf("hash = %q, want the old k3f2 and 7 characters", hash)
+	}
+	// Every line around the three rewritten ones, and the body, byte for byte.
+	want := "---\nparent: scratch/2026-09-20-x\nid: PLN-0012\nhash: " + hash + "\ncloses: [DBT-0017.01, SCR-0014]\nstatus: approved\n---\n" + body
+	if got != want {
+		t.Errorf("plan came out as:\n%swant:\n%s", got, want)
+	}
+	// A file that already holds both values in the new form is not touched.
+	debt := filepath.Join(cfg.Root, "debt/2026-09-19-d.md")
+	if s := readFile(t, debt); s != "---\nid: DBT-0017\nhash: d4d4abc\n---\n# D\n\n- [ ] one\n" {
+		t.Errorf("debt file touched: %q", s)
+	}
+	// An old id on a file that already has a new hash is still rewritten.
+	if v := frontField(t, filepath.Join(cfg.Root, "scratch/2026-09-20-x.md"), "id"); v != "SCR-0014" {
+		t.Errorf("scratch id = %q, want SCR-0014", v)
+	}
+	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || len(changes) != 0 || readFile(t, plan) != got {
+		t.Errorf("second run changed files: %v %v", changes, err)
+	}
+}
+
+// A file already in the new form is left exactly as it is, closes list and
+// all, so a run over a migrated tree writes nothing.
+func TestAssignIDsLeavesNewFilesAlone(t *testing.T) {
+	src := "---\nid: PLN-0012\nhash: k3f2abc\ncloses: [SCR-0014]\n---\n# A\n\n**Spec:** none (Bounded, approved in chat on 2026-09-21)\n"
+	cfg := repoWith(t, map[string]string{
+		".acta/plans/2026-09-21-a.md":   src,
+		".acta/scratch/2026-09-20-x.md": "---\nid: SCR-0014\nhash: m2x9abc\ntitle: X\nstatus: raw\n---\nx\n",
+	})
+	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || len(changes) != 0 || readFile(t, filepath.Join(cfg.Root, "plans/2026-09-21-a.md")) != src {
+		t.Errorf("new file touched: %v %v", changes, err)
+	}
+}
+
+// A closes: entry that names nothing stays as written, a file whose id and
+// hash are already new is still rewritten for its list, and the rest of the
+// run goes on past the entry it could not resolve.
+func TestAssignIDsKeepsAClosesEntryItCannotResolve(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/plans/2026-09-21-a.md":   "---\nid: PLN-0012\nhash: k3f2abc\ncloses: [SCRATCH-14, DEBT-99]\n---\n# A\n",
+		".acta/scratch/2026-09-20-x.md": "---\nid: SCRATCH-14\nhash: m2x9abc\n---\nx\n",
+		".acta/bugs/2026-09-23-c.md":    "---\nid: BUG-7\n---\n# C\n",
+	})
+	changes, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := filepath.Join(cfg.Root, "plans/2026-09-21-a.md")
+	got := readFile(t, plan)
+	if !strings.Contains(got, "closes: [SCR-0014, DEBT-99]") {
+		t.Errorf("the entry that names nothing must stay as written:\n%s", got)
+	}
+	for _, keep := range []string{"id: PLN-0012\n", "hash: k3f2abc\n"} {
+		if !strings.Contains(got, keep) {
+			t.Errorf("lost %q", keep)
+		}
+	}
+	// The rest of the run still rewrote the bug's old id and gave it a hash.
+	bug := filepath.Join(cfg.Root, "bugs/2026-09-23-c.md")
+	if v := frontField(t, bug, "id"); v != "BUG-0007" {
+		t.Errorf("bug id = %q, want BUG-0007", v)
+	}
+	if h := frontField(t, bug, "hash"); !board.IsHash(h) {
+		t.Errorf("bug hash = %q, want 7 characters", h)
+	}
+	if len(changes) != 3 {
+		t.Errorf("changes = %v, want the plan, the scratch and the bug", changes)
+	}
+	again, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || len(again) != 0 {
+		t.Errorf("second run changes = %v err = %v", again, err)
+	}
+}
+
+// An old 4-character hash keeps its 4 characters and takes 3 more, and a
+// clash is drawn again until one is free.
+func TestAssignIDsExtendsAnOldHashAndAvoidsAClash(t *testing.T) {
+	old := randHash
+	calls := 0
+	randHash = func() string {
+		calls++
+		if calls < 3 {
+			return "aaaaaa0"
+		}
+		return "aaaaaa1"
+	}
+	defer func() { randHash = old }()
+	cfg := repoWith(t, map[string]string{
+		".acta/bugs/2026-09-20-a.md": "---\nid: BUG-3\nhash: k3f2\n---\n# A\n",
+		".acta/bugs/2026-09-21-b.md": "---\nid: BUG-4\nhash: k3f2\n---\n# B\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{
+		"bugs/2026-09-20-a.md": "k3f2aa0",
+		"bugs/2026-09-21-b.md": "k3f2aa1",
+	} {
+		if v := frontField(t, filepath.Join(cfg.Root, path), "hash"); v != want {
+			t.Errorf("%s hash = %q, want %q", path, v, want)
+		}
+	}
+	if calls < 3 {
+		t.Errorf("the clash was not drawn again: %d calls", calls)
+	}
+}
+
+// A run that only fills in a missing value commits as an assignment, and a
+// run that moved an old value commits as a migration, so the history says
+// which of the two happened.
+func TestAssignIDsCommitMessageSaysWhatChanged(t *testing.T) {
+	for _, c := range []struct {
+		name, body, msg string
+	}{
+		{"new", "# C\n", "acta: assign short ids"},
+		{"old", "---\nid: BUG-7\n---\n# C\n", "acta: migrate ids to 3-letter prefix"},
+	} {
+		cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-23-c.md": c.body})
+		if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+			t.Fatalf("%s: out=%+v err=%v", c.name, out, err)
+		}
+		if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != c.msg {
+			t.Errorf("%s run committed as %q, want %q", c.name, msg, c.msg)
+		}
+	}
+}
+
+// One number written two ways is still one number, so the file that came
+// second is the one that moves, and it moves to the new shape.
+func TestFixDuplicatesCountsOldAndNewAsOneNumber(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/bugs/2026-09-20-first.md": "---\nid: BUG-5\nhash: aaaa\n---\n# First\n",
+	})
+	second := filepath.Join(cfg.Root, "bugs/2026-09-21-second.md")
+	if err := os.WriteFile(second, []byte("---\nid: BUG-0005\nhash: b7b7b7c\n---\n# Second\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, cfg.RepoRoot, "add", ".")
+	gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", "second")
+	changes, out, err := FixDuplicates(cfg, mustLoad(t, cfg))
+	if err != nil || !out.Committed {
+		t.Fatalf("changes=%v out=%+v err=%v", changes, out, err)
+	}
+	if len(changes) != 1 || changes[0] != "BUG-5 -> BUG-0006 (bugs/2026-09-21-second.md)" {
+		t.Fatalf("changes=%v", changes)
+	}
+	if got := frontField(t, second, "id"); got != "BUG-0006" {
+		t.Errorf("renumbered id = %q, want BUG-0006", got)
+	}
+}
+
+// frontField reads one value out of a file's own frontmatter, so a test sees
+// what was written down and not what the board makes of it.
+func frontField(t *testing.T, path, key string) string {
+	t.Helper()
+	for _, line := range strings.Split(readFile(t, path), "\n") {
+		if v, ok := strings.CutPrefix(line, key+": "); ok {
+			return strings.Trim(strings.TrimSpace(v), `"`)
+		}
+	}
+	return ""
 }
 
 func readFile(t *testing.T, path string) string {

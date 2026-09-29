@@ -329,15 +329,15 @@ func TestNoDividerRow(t *testing.T) {
 // TestScratchDetailNamesTheLinkedSpec checks the detail of a scratch item
 // names the spec that came out of it, the way a plan names the spec it
 // carries. The first board gives the spec a number ID, so the line reads
-// SPEC-9; the shared fixture's linked spec has none, so the same line names it
-// by path there.
+// SPC-0009; the shared fixture's linked spec has none, so the same line names
+// it by path there.
 func TestScratchDetailNamesTheLinkedSpec(t *testing.T) {
 	cfg := treeCfg(t, map[string]string{
 		".acta/scratch/2026-09-28-idea.md":        "# Themes\n\nCatet aja dulu.\n",
 		".acta/specs/2026-09-28-themes-design.md": "---\nid: SPEC-9\nparent: scratch/2026-09-28-idea\n---\n# Themes design\n\nThe spec the idea became.\n",
 	})
 	lines := plainLines(detailLines(t, cfg, "scratch/2026-09-28-idea"))
-	if !strings.Contains(strings.Join(lines, "\n"), "SPEC-9") {
+	if !strings.Contains(strings.Join(lines, "\n"), "SPC-0009") {
 		t.Errorf("the detail of a scratch item does not name the spec it produced:\n%s", strings.Join(lines, "\n"))
 	}
 	fixtureCfg, _ := fixture(t)

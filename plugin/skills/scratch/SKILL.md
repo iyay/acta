@@ -21,11 +21,11 @@ Write the user's words to a file, then run:
 acta scratch new <slug> [--title T] < body.md
 ```
 
-Then send one line and nothing else: `Filed SCRATCH-n <title>`
+Then send one line and nothing else: `Filed SCR-0001 <title>`
 To add to an item you already work on:
 
 ```bash
-acta scratch add SCRATCH-n [--section words|context|log|questions] < text.md
+acta scratch add SCR-0001 [--section words|context|log|questions] < text.md
 ```
 
 ## What goes in

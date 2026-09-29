@@ -231,6 +231,21 @@ func TestNewBug(t *testing.T) {
 	}
 }
 
+func TestNewBugWritesNewFormatIDAndHash(t *testing.T) {
+	cfg := repoWith(t, baseFiles)
+	fixNow(t)
+	o, err := NewBug(cfg, "short-id", "", "New-9", []byte("## Symptom\nx\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := frontField(t, o.Path, "id"); got != "BUG-0001" {
+		t.Errorf("bug id = %q, want BUG-0001", got)
+	}
+	if h := frontField(t, o.Path, "hash"); !board.IsHash(h) {
+		t.Errorf("bug hash = %q, want 7 characters", h)
+	}
+}
+
 func TestNewBugBadInput(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
