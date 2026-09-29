@@ -90,6 +90,11 @@ func TestSessionStartConflicts(t *testing.T) {
 
 func TestSessionStartStaysShort(t *testing.T) {
 	worst := korean()
+	// The worst case is everything at once: a long tone, three clashing
+	// plugins and the herdr line. Leave one out and the cap stops proving
+	// the cap.
+	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
+	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
 	worst.Herdr = true // the herdr line counts against the cap too
 	for name, in := range map[string]Input{
 		"worst":     worst,
