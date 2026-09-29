@@ -13,6 +13,7 @@ import (
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/theme"
 	"github.com/iyay/acta/internal/voice"
 )
 
@@ -83,6 +84,9 @@ func doctorEnv(known string) doctor.Env {
 	}
 	v, exists, _ := voice.Resolve()
 	e.Voice, e.VoiceExists = v, exists
+	// Load the theme the voice file names, so the check reports the same
+	// error the TUI will hit.
+	_, e.ThemeErr = theme.Load(e.Voice.Theme)
 	return e
 }
 

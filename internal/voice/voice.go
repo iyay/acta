@@ -21,6 +21,10 @@ type Voice struct {
 	RepoLanguage   string `yaml:"repo_language"`
 	BuildExecutor  string `yaml:"build_executor,omitempty"`
 	SubagentModels string `yaml:"subagent_models,omitempty"`
+	// Theme names the TUI colors. Empty means the default theme. It is not
+	// checked here: a theme file can be deleted or edited at any time, and
+	// the hooks read this file on every call, so they must keep working.
+	Theme string `yaml:"theme,omitempty"`
 }
 
 // ErrBad marks a setting the rules do not allow.

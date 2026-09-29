@@ -80,8 +80,59 @@ func wantLevel(t *testing.T, r Result, level Level, fix string) {
 	}
 }
 
+// TestCheckTheme covers every level the check can report. A theme that does
+// not load is a warning, never a failure: the TUI still opens on the default,
+// so a broken name must not cost the user their board.
+func TestCheckTheme(t *testing.T) {
+	cases := []struct {
+		name  string
+		env   Env
+		level Level
+		msg   string
+	}{
+		{"empty", Env{}, OK, "tokyo-night"},
+		{"chosen", Env{Voice: voice.Voice{Theme: "dracula"}}, OK, "dracula"},
+		{"broken", Env{Voice: voice.Voice{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
+		{"bad name", Env{Voice: voice.Voice{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},
+		{"broken file", Env{Voice: voice.Voice{Theme: "mine"}, ThemeErr: errors.New(`theme "mine": ansi needs 16 colors, has 3`)}, Warn, "mine"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := checkTheme(c.env)
+			fix := ""
+			if c.level != OK {
+				fix = "acta voice set --theme"
+			}
+			wantLevel(t, r, c.level, fix)
+			if !strings.Contains(r.Msg, c.msg) {
+				t.Fatalf("msg %q does not hold %q", r.Msg, c.msg)
+			}
+			if c.level == OK && r.Fix != "" {
+				t.Fatalf("a good theme has the fix %q", r.Fix)
+			}
+		})
+	}
+}
+
+func TestRunIncludesTheme(t *testing.T) {
+	if byName(Run(env(t)), "theme").Name != "theme" {
+		t.Fatal("Run has no theme check")
+	}
+}
+
+// A broken theme must not change the exit code, because the TUI opens
+// anyway.
+func TestBrokenThemeDoesNotFailTheRun(t *testing.T) {
+	good := env(t)
+	broken := env(t)
+	broken.Voice.Theme, broken.ThemeErr = "nope", errors.New(`theme "nope": unknown theme`)
+	if Failed(Run(broken)) != Failed(Run(good)) {
+		t.Fatal("a broken theme failed a run that was not failing before")
+	}
+}
+
 func TestDoctorChecksRunInFixedOrder(t *testing.T) {
-	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "agents-view", "setup"}
+	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "agents-view", "setup", "theme"}
 	if got := names(Run(env(t))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
 	}

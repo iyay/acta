@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/theme"
 	"github.com/iyay/acta/internal/voice"
 )
 
@@ -44,6 +45,7 @@ type Env struct {
 	ConfigErr   error  // the config.Load error, when the config does not parse
 	VoiceExists bool
 	Voice       voice.Voice
+	ThemeErr    error // the theme.Load error for Voice.Theme
 }
 
 // Run does every check in a fixed order, so two runs print the same lines in
@@ -57,6 +59,7 @@ func Run(e Env) []Result {
 		checkRepo(e),
 		checkAgentsView(e),
 		checkSetup(e),
+		checkTheme(e),
 	}
 }
 
@@ -352,5 +355,23 @@ func checkSetup(e Env) Result {
 	if r.Level != OK {
 		r.Fix = "/acta:setup"
 	}
+	return r
+}
+
+// checkTheme warns when the chosen theme does not load. The TUI opens with
+// the default instead, so a bad name costs colors and not the board: that
+// makes this a warning, never a failure.
+func checkTheme(e Env) Result {
+	r := Result{Name: "theme"}
+	name := e.Voice.Theme
+	if name == "" {
+		name = theme.Default
+	}
+	if e.ThemeErr != nil {
+		r.Level, r.Msg = Warn, e.ThemeErr.Error()
+		r.Fix = "acta voice set --theme " + theme.Default
+		return r
+	}
+	r.Level, r.Msg = OK, "theme "+name+" loads"
 	return r
 }

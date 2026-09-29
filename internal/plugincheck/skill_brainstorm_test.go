@@ -21,9 +21,12 @@ func TestSkillBrainstorm(t *testing.T) {
 			"claude --bg 'brainstorm SCRATCH-", "HERDR_ENV=1",
 			"pbcopy", "wl-copy", "xclip", "OSC 52", "press ←", "Spike and Bounded",
 			"closes:",
+			"commit it on the branch that is checked out (usually main)",
+			"`acta:build` makes the worktree",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
-			"names the DEBT ids it closes"},
+			"names the DEBT ids it closes",
+			"in the worktree", "create its worktree now", "as the first commit"},
 	})
 }
 

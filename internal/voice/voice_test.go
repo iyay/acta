@@ -156,3 +156,54 @@ func TestSaveRefusesBadExecutorAndModels(t *testing.T) {
 		}
 	}
 }
+
+// A saved theme must come back on the next read, or the TUI forgets it on
+// every restart.
+func TestThemeRoundTrips(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "voice.yaml")
+	v := Default()
+	v.Theme = "dracula"
+	if err := Save(p, v); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := Load(p)
+	if err != nil || got.Theme != "dracula" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}
+
+// An empty theme is not written at all, so a voice file stays as short as it
+// was before themes existed.
+func TestThemeLeftOutWhenEmpty(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "voice.yaml")
+	if err := Save(p, Default()); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "theme") {
+		t.Fatalf("an empty theme was written:\n%s", raw)
+	}
+}
+
+// The voice file feeds every hook, and a theme file can be deleted or edited
+// at any time. So a theme that no longer loads must not break the read; only
+// the TUI and the doctor care.
+func TestThemeThatDoesNotLoadStillReads(t *testing.T) {
+	for _, name := range []string{"gone", "../x", "not a theme", ""} {
+		p := filepath.Join(t.TempDir(), "voice.yaml")
+		body := "chat_language: English\nstyle: adhd\nrepo_language: English\n"
+		if name != "" {
+			body += "theme: " + name + "\n"
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got, _, err := Load(p)
+		if err != nil || got.Theme != name {
+			t.Fatalf("theme %q: got %+v, %v", name, got, err)
+		}
+	}
+}

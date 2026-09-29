@@ -52,29 +52,6 @@ func (g geom) at(p pane) box {
 	return box{}
 }
 
-// One small palette, readable on a dark and on a light terminal. The accent
-// marks the pane with the focus and the tab that is on; the dim brush paints
-// what is secondary. The plain text color is left to the terminal.
-var (
-	accentColor = lipgloss.AdaptiveColor{Light: "25", Dark: "39"}
-	accent      = lipgloss.NewStyle().Foreground(accentColor)
-	// work marks a row whose work has begun. Dimmed, because the selected
-	// row is the one that should catch the eye.
-	work = lipgloss.NewStyle().Foreground(accentColor).Faint(true)
-	// faint paints every row the cursor is not on.
-	faint = lipgloss.NewStyle().Faint(true)
-	// dim paints the screen behind a popup, so the box on top is the only
-	// thing left on the screen that carries a color of its own.
-	dim = lipgloss.NewStyle().Faint(true).
-		Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})
-	// selected paints the row the cursor is on: a dark band across the whole
-	// row with bright text on it, never reversed video, so the words stay
-	// readable wherever the band falls.
-	selected = lipgloss.NewStyle().Bold(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "255"}).
-			Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"})
-)
-
 // hints is what the left of the status line says when nothing else is going on.
 const hints = "? help"
 
@@ -129,9 +106,9 @@ func (m Model) View() string {
 		// The status line is behind the popup as much as the panes are, so it
 		// goes grey too. The mouse is off while a popup is open, so the
 		// hyperlinks it carries go with the color.
-		line = dim.Render(xansi.Strip(line))
+		line = m.styles.dim.Render(xansi.Strip(line))
 	}
-	return body + "\n" + line
+	return m.styles.paintFrame(body + "\n" + line)
 }
 
 // tabBar draws the top line: the tab names that fit the window, in order, the
@@ -171,10 +148,10 @@ func (m Model) barLine(drop []bool) string {
 			continue
 		}
 		if i == m.top {
-			names = append(names, accent.Bold(true).Render("["+t.name+"]"))
+			names = append(names, m.styles.accent.Bold(true).Render("["+t.name+"]"))
 			continue
 		}
-		names = append(names, faint.Render(t.name))
+		names = append(names, m.styles.faint.Render(t.name))
 	}
 	return " " + strings.Join(names, "  ")
 }
@@ -443,13 +420,13 @@ func (m Model) statusLine() string {
 		}
 	}
 	if faintLeft {
-		left = faint.Render(left)
+		left = m.styles.faint.Render(left)
 	}
 	gap := ""
 	if room > 0 {
 		gap = strings.Repeat(" ", room)
 	}
-	return left + gap + faint.Render(right)
+	return left + gap + m.styles.faint.Render(right)
 }
 
 // statusLineBoxes gives the click boxes of the bottom line by reading the
@@ -547,9 +524,9 @@ func (m Model) mode() string {
 // dim on the others, so the focus is plain to see.
 func (m Model) edge(p pane) lipgloss.Style {
 	if m.focus == p {
-		return accent
+		return m.styles.accent
 	}
-	return faint
+	return m.styles.faint
 }
 
 // popupBox draws what sits on top of the panes: the help screen, the picker
@@ -563,16 +540,16 @@ func (m Model) popupBox() string {
 		var b strings.Builder
 		for i, o := range m.popup.options {
 			if i == m.popup.idx {
-				b.WriteString(selected.Render("> "+o) + "\n")
+				b.WriteString(m.styles.selected.Render("> "+o) + "\n")
 			} else {
 				b.WriteString("  " + o + "\n")
 			}
 		}
-		b.WriteString("\n" + faint.Render("j k to move, enter to save, esc to cancel"))
+		b.WriteString("\n" + m.styles.faint.Render("j k to move, enter to save, esc to cancel"))
 		return m.boxView("Set "+m.popup.field, b.String())
 	case m.slug != nil:
 		return m.boxView("New bug", "new bug slug: "+*m.slug+"▌\n\n"+
-			faint.Render("lower case words joined by -, enter to open the editor, esc to cancel"))
+			m.styles.faint.Render("lower case words joined by -, enter to open the editor, esc to cancel"))
 	}
 	return ""
 }
@@ -587,11 +564,11 @@ func (m Model) boxView(title, content string) string {
 		return ""
 	}
 	inner := w - 2
-	rows := []string{topLine(w, accent, []segment{{text: "─", style: accent}, {text: title, style: accent.Bold(true)}})}
+	rows := []string{topLine(w, m.styles.accent, []segment{{text: "─", style: m.styles.accent}, {text: title, style: m.styles.accent.Bold(true)}})}
 	for _, ln := range strings.Split(content, "\n") {
-		rows = append(rows, accent.Render("│")+pad(fit(ln, inner), inner)+accent.Render("│"))
+		rows = append(rows, m.styles.accent.Render("│")+pad(fit(ln, inner), inner)+m.styles.accent.Render("│"))
 	}
-	rows = append(rows, accent.Render("└"+strings.Repeat("─", inner)+"┘"))
+	rows = append(rows, m.styles.accent.Render("└"+strings.Repeat("─", inner)+"┘"))
 	return strings.Join(rows, "\n")
 }
 
@@ -607,7 +584,7 @@ func (m Model) cover(body string) string {
 	}
 	lines := strings.Split(body, "\n")
 	for i, ln := range lines {
-		lines[i] = dim.Render(xansi.Strip(ln))
+		lines[i] = m.styles.dim.Render(xansi.Strip(ln))
 	}
 	for i, r := range rows {
 		if y0+i < len(lines) {

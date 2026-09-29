@@ -42,7 +42,7 @@ can override it:
   starts only after your human partner says yes to that design — a
   bounded task's approval is as hard a gate as an architectural one.
   On that yes, write a short spec (about half a page) to
-  `.acta/specs/YYYY-MM-DD-<topic>-design.md` in the worktree, run
+  `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run
   `acta id`, commit, ask the user to review the file, and on
   approval invoke the acta:plan skill. No 2-3 approaches, no
   per-section approval, no one-per-session limit.
@@ -127,7 +127,7 @@ your path and complete them in order.
 2. **Ask clarifying questions** — one at a time, the ones that matter
 3. **Present short design in chat** — approach, files touched, testing
 4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
-5. **Write short spec** — about half a page in `.acta/specs/`, run `acta id`, commit in the worktree
+5. **Write short spec** — about half a page in `.acta/specs/`, run `acta id`, commit on main
 6. **User reviews spec** — ask them to read the file, then wait for the yes
 7. **Transition to implementation** — invoke acta:plan skill
 
@@ -251,7 +251,7 @@ plus a short spec is the whole process.
 - Write plainly and briefly; short words, short sentences
 - Commit the design document to git
 
-**Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Commit the spec on the branch the work will use: create its worktree now, the way `acta:build` describes, and commit the spec there as the first commit.
+**Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Write the spec and commit it on the branch that is checked out (usually main). No worktree yet: `acta:build` makes the worktree once the plan is approved.
 
 **Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DEBT id it closes in `closes:`.
 

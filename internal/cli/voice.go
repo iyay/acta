@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/iyay/acta/internal/theme"
 	"github.com/iyay/acta/internal/voice"
 )
 
-const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models]"
+const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
 
 func cmdVoice(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -40,6 +41,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 				"path": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
+				"theme": v.Theme,
 			})
 		}
 		fmt.Fprintf(stdout, "file: %s (exists: %v)\nchat_language: %s\nstyle: %s\nrepo_language: %s\n",
@@ -53,6 +55,9 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		if v.SubagentModels != "" {
 			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
 		}
+		if v.Theme != "" {
+			fmt.Fprintf(stdout, "theme: %s\n", v.Theme)
+		}
 		return exitOK
 	case "set":
 		fs := flag.NewFlagSet("voice set", flag.ContinueOnError)
@@ -65,11 +70,13 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		executor := fs.String("executor", "", "which executor runs the plan: subagent, dispatch or inline")
 		models := fs.String("subagent-models", "", "how models are picked for subagents: split")
 		clearModels := fs.Bool("clear-subagent-models", false, "remove the subagent_models setting")
+		themeName := fs.String("theme", "", "the TUI color theme")
+		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *models == "" && !*clearTone && !*clearModels {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
 			fmt.Fprintln(stderr, voiceUsage)
 			return exitBadInput
 		}
@@ -103,6 +110,22 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		}
 		if *models != "" {
 			v.SubagentModels = *models
+		}
+		// Clear first, set second, so one call can replace the value.
+		if *clearTheme {
+			v.Theme = ""
+		}
+		if *themeName != "" {
+			// Check the name here, so a typo is answered now and not as a
+			// silent fallback the next time the TUI opens.
+			if _, err := theme.Load(*themeName); err != nil {
+				// The whole run stops before the save, so the file keeps the
+				// theme it had and the other flags in this call change
+				// nothing either.
+				fmt.Fprintln(stderr, err)
+				return exitBadInput
+			}
+			v.Theme = *themeName
 		}
 		if err := voice.SaveResolved(v); err != nil {
 			fmt.Fprintln(stderr, err)

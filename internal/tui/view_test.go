@@ -555,9 +555,13 @@ func sgrParams(line string) [][]int {
 }
 
 // wears reports whether one color code of a drawn line holds every number in
-// want, which is how a test names a brush.
+// want, which is how a test names a brush. A 24-bit color is skipped: its
+// middle number is the word "truecolor", not a brush anyone asked for.
 func wears(line string, want ...int) bool {
 	for _, ps := range sgrParams(line) {
+		if truecolor(ps) {
+			continue
+		}
 		all := true
 		for _, n := range want {
 			if !slices.Contains(ps, n) {
@@ -570,6 +574,12 @@ func wears(line string, want ...int) bool {
 		}
 	}
 	return false
+}
+
+// truecolor says whether a color code carries 24-bit color: 38 or 48, then
+// the number 2, then red, green and blue.
+func truecolor(ps []int) bool {
+	return len(ps) == 5 && (ps[0] == 38 || ps[0] == 48) && ps[1] == 2
 }
 
 // paintedLine cuts the row of a pane out of a raw screen line. The cuts go by
@@ -616,8 +626,8 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		if wears(sel, 2) {
 			t.Errorf("the selected row is faint: %q", sel)
 		}
-		if !wears(sel, 48, 5, 236) {
-			t.Errorf("the selected row has no background 236: %q", sel)
+		if !wears(sel, 48, 5, 23) {
+			t.Errorf("the selected row has no background 23: %q", sel)
 		}
 		reset := strings.LastIndex(sel, "\x1b[0m")
 		if want := b.textW(); reset < 0 || lipgloss.Width(plain(sel[:reset])) != want {
@@ -627,10 +637,10 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		// The in-progress row is not selected, so it keeps the accent and
 		// is dim.
 		going := paintedLine(v, b, 2)
-		if !wears(going, 2) || !wears(going, 38, 5, 39) {
+		if !wears(going, 2) || !wears(going, 38, 5, 111) {
 			t.Errorf("an unselected in-progress row should be dim and keep the accent: %q", going)
 		}
-		if wears(going, 48, 5, 236) {
+		if wears(going, 48, 5, 23) {
 			t.Errorf("an unselected row wears a background: %q", going)
 		}
 		for _, i := range []int{3, 4} {
@@ -638,7 +648,7 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 			if !wears(row, 2) {
 				t.Errorf("row %d is not dim: %q", i, row)
 			}
-			if wears(row, 48, 5, 236) {
+			if wears(row, 48, 5, 23) {
 				t.Errorf("row %d wears a background: %q", i, row)
 			}
 		}
@@ -969,8 +979,7 @@ func TestPopupDimsTheBackground(t *testing.T) {
 		// The brush the view paints the screen behind a popup with, spelled
 		// out here so this test checks the colors the plan names and not
 		// the ones the view happens to use today.
-		dim := lipgloss.NewStyle().Faint(true).
-			Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "240"})
+		dim := lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#414868"))
 
 		for _, open := range []string{"?", "t", "s", "n"} {
 			for _, size := range [][2]int{{80, 30}, {160, 50}} {
@@ -983,8 +992,13 @@ func TestPopupDimsTheBackground(t *testing.T) {
 					t.Errorf("popup %q at %dx%d never opened", open, size[0], size[1])
 					continue
 				}
+				// The theme background is under every line and after every
+				// reset. Take it off again, because what this test reads is
+				// the brush on the text and the frame has its own test.
+				frame := strings.TrimSuffix(pop.styles.paintFrame(""), "\x1b[K")
 				after := strings.Split(pop.View(), "\n")
-				for y, ln := range after {
+				for y, drawn := range after {
+					ln := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(drawn, frame), "\x1b[K"), frame, "")
 					parts := []string{ln}
 					if y >= y0 && y < y0+h && y < len(after)-1 {
 						i := strings.Index(ln, rows[y-y0])
@@ -1067,6 +1081,7 @@ func TestViewValuePopupAndSlug(t *testing.T) {
 func TestViewFocusedPaneWearsTheAccent(t *testing.T) {
 	// A tab with both boxes, so the accent really moves from one to the other.
 	m := press(newModel(t), tabKey(tabBugs))
+	accentColor := m.styles.accentColor
 	if m.edge(paneList).GetForeground() != accentColor {
 		t.Error("the box with the focus should draw its border in the accent color")
 	}
@@ -1143,12 +1158,12 @@ func testViewInProgressRowsWearTheAccent(t *testing.T) {
 		switch {
 		case strings.Contains(ln, "specs/2026-09-20-alpha"):
 			seenGoing = true
-			if !wears(cell, 38, 5, 39) {
+			if !wears(cell, 38, 5, 111) {
 				t.Errorf("the in-progress row wears no accent color: %q", cell)
 			}
 		case strings.Contains(ln, "specs/2026-09-22-beta"):
 			seenWaiting = true
-			if wears(cell, 38, 5, 39) {
+			if wears(cell, 38, 5, 111) {
 				t.Errorf("the not-started row wears the accent color: %q", cell)
 			}
 		}
@@ -1431,9 +1446,9 @@ func checkThumbOnTheBorder(t *testing.T, tab int, p pane, at string, w, h int) {
 	// The thumb wears the brush the pane's own wall wears, so the accent on
 	// the pane with the focus and the dim brush on the others.
 	wall := m.edge(p)
-	other := accent
+	other := m.styles.accent
 	if m.focus == p {
-		other = faint
+		other = m.styles.faint
 	}
 	thumbs := 0
 	firstThumb, lastThumb := -1, -1

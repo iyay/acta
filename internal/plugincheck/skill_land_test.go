@@ -16,6 +16,7 @@ func TestSkillLand(t *testing.T) {
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
+			"acta: tick <plan>", "before the merge, so the ticks reach main",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
 			"each DEBT id the plan names as closed"},

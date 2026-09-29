@@ -165,6 +165,81 @@ func TestDoctorCLIOutsideGitRepo(t *testing.T) {
 	}
 }
 
+// writeTheme puts a voice file and, when a theme file is given, a user theme
+// in the temp home, so one doctor run sees the whole setup.
+func writeTheme(t *testing.T, home, name, themeFile string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(home, ".acta", "themes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if themeFile != "" {
+		if err := os.WriteFile(filepath.Join(home, ".acta", "themes", name+".yaml"), []byte(themeFile), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := ""
+	if name != "" {
+		body = "theme: " + name + "\n"
+	}
+	if err := os.WriteFile(filepath.Join(home, ".acta", "voice.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// themeLine runs acta doctor over a temp home and returns the theme line it
+// printed, plus the exit code.
+func themeLine(t *testing.T, name, themeFile string) (string, int) {
+	t.Helper()
+	home := doctorHome(t)
+	ompActa(t, home)
+	writeTheme(t, home, name, themeFile)
+	var stdout, stderr strings.Builder
+	code := 0
+	inDir(t, t.TempDir(), func() {
+		code = Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		if strings.HasPrefix(line, "ok theme:") || strings.HasPrefix(line, "warn theme:") || strings.HasPrefix(line, "fail theme:") {
+			return line, code
+		}
+	}
+	t.Fatalf("no theme line in %q (stderr %q)", stdout.String(), stderr.String())
+	return "", code
+}
+
+// A theme must never make the command fail: the TUI falls back to the
+// default, so the user keeps their board. This walks every way a theme can go
+// wrong, from no theme at all to a user file that does not parse.
+func TestDoctorCLIPrintsTheme(t *testing.T) {
+	ansi := "ansi:\n"
+	for range 16 {
+		ansi += "  - '#0a0a0a'\n"
+	}
+	cases := []struct {
+		name, theme, file, want string
+	}{
+		{"no theme set", "", "", "ok theme: theme tokyo-night loads"},
+		{"built in", "dracula", "", "ok theme: theme dracula loads"},
+		{"user file", "mine", "bg: '#111111'\nfg: '#eeeeee'\n" + ansi, "ok theme: theme mine loads"},
+		{"unknown name", "nope", "", `warn theme: theme "nope": unknown theme`},
+		{"bad name", "Mine!", "", "name may only use a-z, 0-9 and -"},
+		{"file does not parse", "mine", "bg: [oops\n", "yaml"},
+		{"bad hex", "mine", "bg: 'red'\nfg: '#eeeeee'\n" + ansi, `bg "red" is not #rrggbb`},
+		{"wrong color count", "mine", "bg: '#111111'\nfg: '#eeeeee'\nansi: ['#0a0a0a']\n", "ansi needs 16 colors, has 1"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			line, code := themeLine(t, c.theme, c.file)
+			if code != 0 {
+				t.Fatalf("exit %d, want 0: %s", code, line)
+			}
+			if !strings.Contains(line, c.want) {
+				t.Fatalf("line %q does not hold %q", line, c.want)
+			}
+		})
+	}
+}
+
 // --fix must not commit anything it did not write, so a dirty file stays.
 func TestDoctorCLIFixCommitsOnlyItsOwnPaths(t *testing.T) {
 	home := doctorHome(t)

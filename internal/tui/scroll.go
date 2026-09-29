@@ -129,7 +129,7 @@ func (m *Model) clampOff(p pane) {
 func (m Model) listView(p pane, w int, b box) []string {
 	rows, sel, idx := m.slotOf(p)
 	if len(rows) == 0 {
-		return []string{faint.Render("nothing here")}
+		return []string{m.styles.faint.Render("nothing here")}
 	}
 	cur := cursorOf(rows, *sel, *idx)
 	out := make([]string, 0, b.rows*rowLines)
@@ -139,13 +139,13 @@ func (m Model) listView(p pane, w int, b box) []string {
 			break
 		}
 		it := m.board.Get(rows[n].id)
-		brush := faint
+		brush := m.styles.faint
 		switch {
 		case n == cur:
-			brush = selected
+			brush = m.styles.selected
 		case inProgress(it):
 			// Work in progress wears the accent, dimmed; the rest stay plain.
-			brush = work
+			brush = m.styles.work
 		}
 		out = append(out, brush.Render(pad(m.rowText(rows[n], it, w), w)))
 	}
