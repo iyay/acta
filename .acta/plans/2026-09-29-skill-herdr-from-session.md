@@ -147,28 +147,28 @@ BLOCKER 2, `internal/hook/hook.go:54`: rule 8 says "they run it there: never off
 
 BLOCKER 3, `internal/hook/hook.go:30`: the global acta:scratch index line now says "one acta scratch new call, body on stdin, no skill load". That reaches every scratch filing, so a side idea skips the scratch skill's "File this in Scratchpad?" ask and auto-commits on main without a yes. Expected: restore the 2adf240 text: `raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`.
 
-Rule 8 target text (short plain English, one idea per sentence):
+Rule 8 target text (short plain English, one idea per sentence). Amended by the user on 2026-09-29: the text below was measured at 0/6 in the eval, because it dropped the command form (the agent guessed the `acta scratch new` shape and spent all three turns) and the id shape (it wrote `SCRATCH-1` where the grader wants `SCR-0001`). Both clauses are shapes, not prohibitions, so the property in (a) still holds; measured 10 runs at 1.00 and the four scratch cases at 1.00.
 
-`8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere, with the id the command printed: a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:brainstorm for that way. Do not design it here.`
+`8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call whose body is stdin: acta scratch new <slug> --title <title> < body.md: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. A background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:brainstorm for that way. Do not design it here.`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/hook/hook_test.go`: drop pinned strings for the removed clauses; add to `TestSessionStartNamesSecondBrainstormChoices` the wanted strings `"load acta:brainstorm for that way"` and `"one acta scratch new call"`; add a check, for `Herdr: true` and false, that the output does not contain `"another terminal or tab"` or `"never offer to load acta:brainstorm"`; add a check that the output contains `file with acta scratch new, never memory`.
 
-- [ ] **Step 2: Run to see them fail**
+- [x] **Step 2: Run to see them fail**
 
 Run: `go test ./internal/hook/`
 Expected: FAIL on the new checks.
 
-- [ ] **Step 3: Change the texts**
+- [x] **Step 3: Change the texts**
 
 Set rule 8 to the target text above and restore the scratch index line. Regenerate default-rules.md.
 
-- [ ] **Step 4: Gates**
+- [x] **Step 4: Gates**
 
 Run: `go test ./... && go vet ./... && gofmt -l .` then `for i in 1 2 3 4 5 6; do env -u HERDR_ENV scripts/eval --case second-brainstorm-choices 2>&1 | grep -E '^second-brainstorm-choices '; done`. Expected: six at 1.00. If a run fails, report its reply text and trace; do not add clauses that forbid choices another text offers. Never change `max_turns`, the grader or the prompt.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/hook/hook.go internal/hook/hook_test.go plugin/hooks/default-rules.md

@@ -123,6 +123,8 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			"claude --bg 'brainstorm SCRATCH-n'",
 			"File the scratch item first",
 			"one acta scratch new call",
+			"whose body is stdin: acta scratch new <slug> --title <title> < body.md",
+			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
 			"written, not committed",
 			"new session",
 			"load acta:brainstorm for that way",
