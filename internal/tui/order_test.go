@@ -263,7 +263,7 @@ func TestOInTheDetailBoxChangesNoPane(t *testing.T) {
 	t.Parallel()
 
 	m := newModel(t)
-	m = press(m, "0", "o")
+	m = press(m, "shift+tab", "o")
 	for p := range sidePanes {
 		if m.newest[p] {
 			t.Fatalf("o in the detail box flipped pane %d", p)

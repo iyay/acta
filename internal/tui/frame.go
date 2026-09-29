@@ -198,7 +198,16 @@ func popupRect(rows []string, width, height int) (x, y, w, h int) {
 	// so it starts under the box and is centered in what is left of the
 	// screen.
 	body := max(0, height-barRows-1)
-	return max(0, (width-w)/2), barRows + max(0, (body-len(rows))/2), w, len(rows)
+	y = barRows + max(0, (body-len(rows))/2)
+	// A box taller than the space under the tab box moves up, so its bottom
+	// border still lands on the screen instead of running off the bottom of
+	// it. A box exactly as tall as the screen starts on line 0 and takes the
+	// status line too. A screen too short to hold the whole box keeps the tab
+	// box, since half a box over the tab bar helps nobody.
+	if len(rows) > body && len(rows) <= height {
+		y = max(0, height-1-len(rows))
+	}
+	return max(0, (width-w)/2), y, w, len(rows)
 }
 
 // splice puts one row of a box over the cells from x0 to x0+w of a line and

@@ -62,12 +62,15 @@ func (m Model) boxOf(p pane) box {
 	return b
 }
 
-// fitOf is how many lines pane p has room for right now.
+// fitOf is how many lines pane p has room for right now. The detail box
+// counts only its middle when its header and footer stick.
 func (m Model) fitOf(p pane) int {
+	b := m.boxOf(p)
 	if p == paneDetail {
-		return m.boxOf(p).inner
+		_, fit := m.detailScroll(b.textW(), b.inner)
+		return fit
 	}
-	return m.boxOf(p).rows
+	return b.rows
 }
 
 // linesOf is how many lines pane p holds in all, as wide as it is now.
@@ -79,7 +82,8 @@ func (m Model) linesOf(p pane) int {
 // rows of a list, or the body of the detail.
 func (m Model) linesAt(p pane, w int) int {
 	if p == paneDetail {
-		return len(m.detailLines(w))
+		total, _ := m.detailScroll(w, m.boxOf(p).inner)
+		return total
 	}
 	rows, _, _ := m.slotOf(p)
 	return len(rows)
@@ -201,7 +205,7 @@ func (m Model) treeMark(r row, it *board.Item) string {
 	if r.depth > 0 {
 		return dotOf(it)
 	}
-	if m.openPlans[it.ID] {
+	if m.isOpen(it.ID) {
 		return "-"
 	}
 	return "+"

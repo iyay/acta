@@ -4,6 +4,7 @@ id: PLN-0036
 created: "2026-09-29"
 hash: q5y8n99
 started: "2026-09-29"
+finished: "2026-09-29"
 ---
 # TUI Notes Round 4 Implementation Plan
 
@@ -475,7 +476,7 @@ git commit -m "feat(tui): move the sort word next to the count"
 - Consumes: `cyclePane(step int)` (sidebar.go).
 - Produces: `paneKey` returns `"─"` for every pane.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/model_test.go`:
 
@@ -523,12 +524,12 @@ func TestNoTitleOrHelpNamesKeyZero(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestZeroNoLongerFocusesTheDetail|TestNoTitleOrHelpNamesKeyZero' -v`
 Expected: FAIL, `0 moved the focus to 2` and `still draws [0]`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/sidebar.go`:
 
@@ -547,12 +548,12 @@ In `internal/tui/model.go` `key`, delete:
 
 In `internal/tui/view.go` `helpLines`, delete the line `0                focus the detail`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui -run 'TestZeroNoLongerFocusesTheDetail|TestNoTitleOrHelpNamesKeyZero' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Move the old tests off the 0 key**
+- [x] **Step 5: Move the old tests off the 0 key**
 
 In `internal/tui/scroll_test.go`, `keyTo(paneDetail)` returns `"shift+tab"` (from the list pane, the ring goes back to the detail). In `focusKeyFrom`, the detail case becomes:
 
@@ -571,7 +572,7 @@ Run: `go test ./internal/tui`
 Each test that still presses `"0"` to reach the detail (in `model_test.go` near :386, :415, :781, :786, :1657, and the ones in `view_test.go`, `order_test.go`, `sidebar_test.go`) now fails. Replace each `"0"` press with the key that reaches the detail from the pane that has the focus there: `"shift+tab"` from the list pane, `"tab"` from the Done pane. Leave any `"0"` that is not a key press alone.
 Expected after the updates: `ok`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -595,7 +596,7 @@ git commit -m "feat(tui): drop the 0 key and the [0] mark on Detail"
 - Consumes: `truncate`, `expandTabs`, `m.workLines`, `m.render` (existing).
 - Produces: `func (m Model) detailParts(w int) (head, mid []string, foot string)`; `func dateLine(it *board.Item) string`; `func stickyMid(head, h int) int`; `func (m Model) detailScroll(w, h int) (total, fit int)`; `func window(lines []string, first, h int) []string`. `detailLines(w int) []string` keeps its signature and returns head, middle and footer as one block.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/detail_test.go`:
 
@@ -723,12 +724,12 @@ func TestDetailShowsTheDates(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestDetailHeaderAndFooterStayWhileTheMiddleScrolls|TestShortDetailScrollsAsOneBlock|TestStickyMidNeedsThreeMiddleLines|TestDetailShowsTheDates' -v`
 Expected: FAIL, `m.detailParts undefined`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/detail.go`, `detailLines` becomes `detailParts`, and a new `detailLines` joins the parts:
 
@@ -906,7 +907,7 @@ and in `linesAt`:
 	}
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestDetailHeaderAndFooterStayWhileTheMiddleScrolls|TestShortDetailScrollsAsOneBlock|TestStickyMidNeedsThreeMiddleLines|TestDetailShowsTheDates' -v`
 Expected: PASS.
@@ -914,7 +915,7 @@ Run: `go test ./internal/tui`
 A detail test that expected the problems above the rule line, or a date label in the header, is updated to the new order: header, rule, problems, work lines, body, date line.
 Expected after the updates: `ok`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -1131,7 +1132,7 @@ git commit -m "feat(tui): sort lists by the number in the short id"
 - Consumes: `ordered`, `idNum` (Task 6); `board.Item.PlanID`, `board.Item.SpecID`.
 - Produces: `Model.shutActs map[string]bool`; `func (m Model) headOf(t *board.Item) *board.Item`; `func (m Model) isOpen(id string) bool`; `func (m *Model) setOpen(id string, open bool)`; test helpers `activityFiles() map[string]string` and `actModel(t *testing.T) Model` in `model_test.go`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/model_test.go`:
 
@@ -1221,12 +1222,12 @@ func TestEnterShutsOneActivitiesGroup(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestActivitiesGroupsTasksUnderTheirParent|TestEnterShutsOneActivitiesGroup' -v`
 Expected: FAIL, the rows are a flat list of tasks.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/model.go`, add a field under `openPlans`:
 
@@ -1345,7 +1346,7 @@ In `internal/tui/scroll.go` `treeMark`, read the open state through the tab:
 	return "+"
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestActivitiesGroupsTasksUnderTheirParent|TestEnterShutsOneActivitiesGroup|TestPlanRows' -v`
 Expected: PASS.
@@ -1353,7 +1354,7 @@ Run: `go test ./internal/tui`
 The Activities branch of `TestEveryTabHoldsItsOpenItemsInFileDateOrder` (near :1347) expects a flat list. Change it to collect the rows with `r.depth == 1 || !r.tree` and compare them, sorted, with the in-progress task ids, sorted.
 Expected after the update: `ok`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -1376,7 +1377,7 @@ git commit -m "feat(tui): group Activities tasks under their plan or bug"
 - Consumes: `isOpen`, `setOpen`, `actModel` (Task 7).
 - Produces: `func (m *Model) foldRow(open bool)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/plantree_test.go`:
 
@@ -1447,12 +1448,12 @@ func TestHAndLFoldActivitiesGroups(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestHAndLFold' -v`
 Expected: FAIL, `l on a shut plan` leaves the list shut.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/model.go` `key`, next to `case " ":`:
 
@@ -1498,14 +1499,14 @@ In `internal/tui/view.go` `helpLines`, under the `space enter` line add:
 h l              shut / open a plan row, h on a task too
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestHAndLFold' -v`
 Expected: PASS.
 Run: `go test ./internal/tui`
 Expected: `ok`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -1529,7 +1530,7 @@ git commit -m "feat(tui): fold tree rows with h and l"
 - Consumes: `actModel` (Task 7); `shortRef(it *board.Item) string` (view.go).
 - Produces: `Model.clip func(text string) error`; `func (m *Model) copyID()`; `func copyRef(b *board.Board, it *board.Item) string`; `func osc52(text string) string`; `func copyText(text string) error`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/model_test.go` (add `"encoding/base64"` to the imports):
 
@@ -1615,12 +1616,12 @@ func TestOSC52CarriesTheTextWhole(t *testing.T) {
 
 If `board.Board` cannot be built from `Items` alone for `Get`, build `b` with `board.Load(treeCfg(t, ...))` over a plan file that has no `id:` line instead; the check stays the same.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestYCopies|TestYSays|TestCopyRef|TestOSC52' -v`
 Expected: FAIL, `m.clip undefined`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/model.go`, add a field under `open`:
 
@@ -1708,14 +1709,14 @@ In `internal/tui/view.go` `helpLines`, under the `e` line add:
 y                copy the id of the row
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestYCopies|TestYSays|TestCopyRef|TestOSC52' -v`
 Expected: PASS.
 Run: `go test ./internal/tui`
 Expected: `ok`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
@@ -1936,4 +1937,63 @@ Expected: `ok`.
 gofmt -l internal/tui && go vet ./internal/tui
 git add internal/tui/styles.go internal/tui/styles_test.go internal/tui/view_test.go
 git commit -m "fix(tui): fade the screen behind a popup toward the background"
+```
+
+## Fix round 1
+
+Review round 1 over `4446448..2c386bd` found three BLOCKERs. One task holds all three and lands as one commit.
+
+### Task 11: Fix round 1 - popup fits, footer names all dates, copied task id resolves
+
+**Files:**
+- Modify: `internal/tui/frame.go` (`popupRect`)
+- Modify: `internal/tui/detail.go` (`detailParts`, `dateLine`)
+- Modify: `internal/tui/model.go` (`copyRef` and its comment)
+- Test: `internal/tui/view_test.go`, `internal/tui/detail_test.go`, `internal/tui/model_test.go`
+
+**BLOCKER 1 - help popup cut off on short screens.** `popupRect` always adds `barRows` to the start line, so on an 80x18 to 80x21 screen the `?` help box runs past the last body line: its last help line and bottom border are missing. At base it fit. Expected: the popup box is always whole on screen when the screen is tall enough to hold it. Keep it under the tab box when it fits there; when it does not, move it up (never above line 0) so the bottom border stays on screen. Mutation that proves it: remove the new limit and a test at heights 18 to 23 goes red.
+verify: For every popup (help and every other popup the TUI draws), at every height from the popup's own height up to 50 and widths 50, 80 and 160, the box's top and bottom borders are both drawn on screen and no row of the box is lost. List every popup and size checked.
+
+**BLOCKER 2 - date footer cut at normal widths.** `detailParts` truncates `dateLine` to the text width, so at 80 columns (text width 50) the footer reads `created 2026-09-20 · started 2026-09-21 · finishe…`. The spec says the footer always names all three dates. Ruling (orchestrator, 2026-09-29): when the full line does not fit, use the short form `c <date> · s <date> · f <date>` (a dash for a date not set); only when even the short form does not fit, truncate it.
+verify: At every text width where the short form fits (42 cells or more), the footer shows all three dates in full, in the long form when it fits and in the short form otherwise; it is never cut while a form fits. List the widths checked (at least 30, 41, 42, 50, 60, 70 and 120) and both forms.
+
+**BLOCKER 3 - `y` on a task copies an id acta rejects.** `copyRef` returns `PLN-0036#task-1`, and `acta tick PLN-0036#task-1` / `acta show` say `unknown id` (`Board.Get` only knows the `.NN` short id suffix and path ids). Ruling (orchestrator, 2026-09-29): a task copies its own `ShortID` (for example `PLN-0036.01`) when it has one, else its path id (`plans/<stem>#task-N`). Fix the comment too. Update `TestYCopiesTheIDOfTheRow` to the new value; do not delete it. Keep this inside `internal/tui`; do not touch `internal/board`.
+verify: For every row kind (spec, bug, plan head, task with a short id, task whose plan has no short id, item with no short id, group row, empty list), the text `y` copies is either nothing or an id that `board.Board.Get` resolves back to that same item. Add one test that feeds each copied id to `Get` and checks it returns the row's item. List every row kind checked.
+
+- [x] **Step 1: Write the failing tests** for all three BLOCKERs.
+- [x] **Step 2: Run them and see them fail** for the reasons above.
+- [x] **Step 3: Write the fixes.**
+- [x] **Step 4: Run the tests to see them pass, then `go test ./...`.**
+- [x] **Step 5: Commit** (gofmt and vet first):
+
+```bash
+gofmt -l internal/tui && go vet ./internal/tui
+git add internal/tui/frame.go internal/tui/detail.go internal/tui/model.go internal/tui/view_test.go internal/tui/detail_test.go internal/tui/model_test.go
+git commit -m "fix(tui): keep popups on screen, name all dates, copy an id acta takes"
+```
+
+## Fix round 2
+
+Review round 2 over `1911b71..970f5ab` found one BLOCKER.
+
+### Task 12: Fix round 2 - a popup as tall as the screen is still whole
+
+**Files:**
+- Modify: `internal/tui/frame.go` (`popupRect`)
+- Modify: `internal/tui/view.go` (`View`: run `cover` over the body and the status line together)
+- Test: `internal/tui/view_test.go` (`TestAPopupIsWholeOnTheScreen`)
+
+**BLOCKER - popup cut when the screen is exactly as tall as the popup.** At 80x18 the `?` help box has 18 rows, but `popupRect` only moves it up when `len(rows) < height`, so the box stays under the tab box and loses its last 4 rows and bottom border. The test starts at `len(rows)+1`, so it misses this. Ruling (orchestrator, 2026-09-29): when the popup has as many rows as the screen, it starts at line 0 and may cover the status line, which is already dimmed behind a popup. Start the test loop at `len(rows)`. Because `cover` only splices over the lines it is given, and `View` hands it the body without the status line, `View` must build the status line first and pass `body + "\n" + line` to `cover` when a popup is open (`cover` already dims every line it gets, so the status line goes grey the same way). Found by the first implementer, who stopped BLOCKED on this.
+verify: For every popup the TUI draws (help, slug, type, every status picker), at every height from the popup's own row count up to 50 and widths 50, 80 and 160, the box's top and bottom borders are both on screen and no row of the box is lost. List every popup and size checked.
+
+- [x] **Step 1: Change the test loop to start at the popup's own height.**
+- [x] **Step 2: Run it and see it fail** at height n.
+- [x] **Step 3: Fix `popupRect`.**
+- [x] **Step 4: Run the test, then `go test ./...`.**
+- [x] **Step 5: Commit** (gofmt and vet first):
+
+```bash
+gofmt -l internal/tui && go vet ./internal/tui
+git add internal/tui/frame.go internal/tui/view.go internal/tui/view_test.go
+git commit -m "fix(tui): keep a popup whole when it is as tall as the screen"
 ```

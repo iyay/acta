@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/iyay/acta/internal/board"
@@ -60,14 +61,9 @@ const (
 	boxes     = sidePanes + 1
 )
 
-// paneKey is what a box wears at the start of its title. The detail box keeps
-// its key, since 0 still focuses it; the list boxes have no key of their own.
-func paneKey(p pane) string {
-	if p == paneDetail {
-		return "─[0]─"
-	}
-	return "─"
-}
+// paneKey is what a box wears at the start of its title. No box has a key of
+// its own any more: tab and enter reach the detail.
+func paneKey(pane) string { return "─" }
 
 // tabState is what a tab keeps while another one is open: the focused pane,
 // the list the detail showed, the cursor and offset of each pane, and the
@@ -187,20 +183,86 @@ func (m Model) searchRows() []row {
 	return toRows(m.board.Search(m.query), 0)
 }
 
-// activityRows gives Activities every task whose work has begun, of every
-// plan, by the date in its file name, oldest first unless the pane was
-// flipped. inProgress is the one rule that decides.
+// activityRows gives Activities the tasks under way, each under its head: the
+// plan it belongs to, or the bug that plan fixes. Heads and the tasks under
+// a head keep the order of the pane. A task whose plan is gone has no head,
+// so it stands on its own row at the end.
 func (m Model) activityRows() []row {
 	if m.query != "" {
 		return m.searchRows()
 	}
-	var going []*board.Item
-	for _, it := range m.board.List(board.KindTask, true) {
-		if inProgress(it) {
-			going = append(going, it)
+	newest := m.newest[paneList]
+	under := map[string][]*board.Item{}
+	var heads, loose []*board.Item
+	for _, t := range m.board.List(board.KindTask, true) {
+		if !inProgress(t) {
+			continue
+		}
+		h := m.headOf(t)
+		if h == nil {
+			loose = append(loose, t)
+			continue
+		}
+		if _, seen := under[h.ID]; !seen {
+			heads = append(heads, h)
+		}
+		under[h.ID] = append(under[h.ID], t)
+	}
+	var out []row
+	for _, h := range ordered(heads, newest) {
+		out = append(out, row{id: h.ID, tree: true})
+		if !m.isOpen(h.ID) {
+			continue
+		}
+		for _, t := range ordered(under[h.ID], newest) {
+			out = append(out, row{id: t.ID, depth: 1, tree: true})
 		}
 	}
-	return toRows(ordered(going, m.newest[paneList]), 0)
+	return append(out, toRows(ordered(loose, newest), 0)...)
+}
+
+// headOf is the row a task under way sits under on Activities: its plan, or
+// the bug that plan fixes. It goes one level up only, so a spec above a plan
+// never becomes a head.
+func (m Model) headOf(t *board.Item) *board.Item {
+	plan := m.board.Get(t.PlanID)
+	if plan == nil {
+		return nil
+	}
+	if p := m.board.Get(plan.SpecID); p != nil && p.Kind == board.KindBug {
+		return p
+	}
+	return plan
+}
+
+// isOpen says whether a tree head shows its tasks. Plans start shut and
+// Activities groups start open, so each tab keeps the set that differs from
+// how it starts.
+func (m Model) isOpen(id string) bool {
+	if topTabs[m.top].kind == "" {
+		return !m.shutActs[id]
+	}
+	return m.openPlans[id]
+}
+
+// setOpen opens or shuts a tree head. It builds a new map each time, so an
+// older copy of the model keeps the tree it drew.
+func (m *Model) setOpen(id string, open bool) {
+	acts := topTabs[m.top].kind == ""
+	src := m.openPlans
+	if acts {
+		src = m.shutActs
+	}
+	next := make(map[string]bool, len(src)+1)
+	maps.Copy(next, src)
+	if acts {
+		next[id] = !open
+		m.shutActs = next
+	} else {
+		next[id] = open
+		m.openPlans = next
+	}
+	m.keepVisible(m.listPane())
 }
 
 // openRows gives the List box the items of the open tab that are not

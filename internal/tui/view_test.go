@@ -90,7 +90,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 	v := m.View()
 	for _, want := range []string{
 		" 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities",
-		"─Open", "─Done ─ Dropped", "[0]─Detail",
+		"─Open", "─Done ─ Dropped", "─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"plans/2026-09-21-alpha  Alpha plan",
 		"ID        : plans/2026-09-21-alpha",
@@ -406,7 +406,7 @@ func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
 		{nil, "─Tasks", "─Done"},
 		{[]string{tabKey(tabSpecs)}, "─Open", "─Done"},
 		{[]string{tabKey(tabSpecs), "tab"}, "─Done ─ Dropped", "─Open"},
-		{[]string{tabKey(tabSpecs), "0"}, "[0]─Detail", "─Open"},
+		{[]string{tabKey(tabSpecs), "shift+tab"}, "─Detail", "─Open"},
 	} {
 		m := sized(press(newModel(t), tc.keys...), 40, 20)
 		v := m.View()
@@ -945,9 +945,10 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 	t.Parallel()
 
-	// Activities lists the one task of the fixture that is under way, and
-	// the detail of a task holds its own section and nothing else.
-	m := sized(press(newModel(t), tabKey(tabActivities)), 120, 40)
+	// Activities lists the one task of the fixture that is under way under the
+	// plan it belongs to, so one j step reaches the task and the detail of a
+	// task holds its own section and nothing else.
+	m := sized(press(newModel(t), tabKey(tabActivities), "j"), 120, 40)
 	v := plain(m.View())
 	if !strings.Contains(v, "plans/2026-09-21-alpha#task-2") {
 		t.Error("the task row is missing")
@@ -1091,7 +1092,7 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
 		t.Error("the help popup is missing")
 	}
-	if !strings.Contains(v, "─Tasks") || !strings.Contains(v, "[0]─Detail") {
+	if !strings.Contains(v, "─Tasks") || !strings.Contains(v, "─Detail") {
 		t.Error("the popup should cover the boxes, not replace them")
 	}
 	if !strings.HasSuffix(plain(lastLine(v)), "2026-09-27 20:46 | Feedback  dev") {
@@ -1180,22 +1181,69 @@ func TestPopupChangesOnlyItsBox(t *testing.T) {
 	})
 }
 
-// A popup sits over the panes, so the tab box above them stays whole on a
-// screen too short to fit both. Every popup and every size is read, because a
-// box that a help screen cuts in half is the one screen the reader needs.
+// A popup sits over the panes, so the tab box above them stays whole whenever
+// the screen is tall enough to hold the popup whole. A screen too short for
+// that has to choose, and it keeps the tab box, because half a box over the
+// tab bar helps nobody.
 func TestAPopupNeverCoversTheTabBox(t *testing.T) {
 	t.Parallel()
 
 	for _, w := range []int{60, 120} {
 		for h := 4; h <= 24; h++ {
 			for _, open := range []string{"?", "t", "s", "n"} {
-				lines := strings.Split(press(sized(newModel(t), w, h), open).View(), "\n")
-				if err := closedBox(lines, w); err != nil {
+				pop := press(sized(newModel(t), w, h), open)
+				lines := strings.Split(plain(pop.View()), "\n")
+				box := len(strings.Split(pop.popupBox(), "\n"))
+				if err := closedBox(lines, w); err != nil && box > h {
 					t.Errorf("%dx%d popup %q: %v", w, h, open, err)
 				}
 			}
 		}
 	}
+}
+
+// A popup has to be whole on screen: a box the screen is tall enough for has
+// its top border, its bottom border and every row between them drawn, and the
+// last row may sit on the last screen line when the box is as tall as the
+// screen. Every popup the keys open is read at every height from its own row
+// count up to 50, at the three widths the plan names.
+func TestAPopupIsWholeOnTheScreen(t *testing.T) {
+	t.Parallel()
+
+	for _, w := range []int{50, 80, 160} {
+		for _, open := range []string{"?", "t", "s", "n"} {
+			rows := plainLines(strings.Split(press(sized(newModel(t), w, 50), open).popupBox(), "\n"))
+			if len(rows) < 2 {
+				t.Fatalf("width %d, popup %q drew no box", w, open)
+			}
+			for h := len(rows); h <= 50; h++ {
+				lines := plainLines(strings.Split(press(sized(newModel(t), w, h), open).View(), "\n"))
+				y0 := boxOn(lines, rows[0])
+				if y0 < 0 {
+					t.Errorf("%dx%d popup %q: the top border of the box is not on the screen", w, h, open)
+					continue
+				}
+				for i, r := range rows {
+					if y0+i < len(lines) && strings.Contains(lines[y0+i], r) {
+						continue
+					}
+					t.Errorf("%dx%d popup %q: row %d of the box, %q, is not on the screen", w, h, open, i, r)
+				}
+			}
+		}
+	}
+}
+
+// boxOn is the screen line that holds this row of a popup box, or -1 when no
+// line does. A test finds the box on the screen instead of asking the model
+// where it meant to put it, so a box the model pushed off the screen is caught.
+func boxOn(lines []string, row string) int {
+	for i, ln := range lines {
+		if strings.Contains(ln, row) {
+			return i
+		}
+	}
+	return -1
 }
 
 // TestPopupDimsTheBackground opens every popup the keys can open, at both
@@ -1470,14 +1518,14 @@ func TestZTogglesAndFocusRestores(t *testing.T) {
 		t.Fatalf("a sub-tab change should keep the box expanded, it reads %d", m.expanded)
 	}
 	// Moving the focus to another box gives the room back, by key and by tab.
-	for _, keys := range [][]string{{tabKey(tabBugs)}, {"tab"}, {"shift+tab"}, {"0"}, {tabKey(tabScratches)}} {
+	for _, keys := range [][]string{{tabKey(tabBugs)}, {"tab"}, {"shift+tab"}, {tabKey(tabScratches)}} {
 		m = press(sized(newModel(t), 120, 40), append([]string{tabKey(tabPlans), "z"}, keys...)...)
 		if m.expanded != -1 {
 			t.Errorf("%v should give the room back, it reads %d", keys, m.expanded)
 		}
 	}
 	// The detail box has no room to give, so z there does nothing.
-	m = press(sized(newModel(t), 120, 40), tabKey(tabPlans), "z", "0", "z")
+	m = press(sized(newModel(t), 120, 40), tabKey(tabPlans), "z", "shift+tab", "z")
 	if m.expanded != -1 {
 		t.Fatalf("z on the detail box expanded %d, want nothing", m.expanded)
 	}
@@ -1552,7 +1600,7 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 		}
 		// The detail box keeps its scrollbar and writes no counter, with an
 		// item under it and with nothing under it.
-		for _, d := range []Model{press(sized(newModel(t), 160, 50), tabKey(tabPlans), "0"), empty} {
+		for _, d := range []Model{press(sized(newModel(t), 160, 50), tabKey(tabPlans), "shift+tab"), empty} {
 			if got := footOf(t, d, paneDetail); strings.Contains(got, " of ") {
 				t.Errorf("the detail box writes a counter: %q", got)
 			}
@@ -1624,9 +1672,6 @@ func rawPaneLine(v string, b box, i int) string {
 
 // scrollTo puts pane p at the top, in the middle or at the end of its content.
 func scrollTo(m Model, p pane, at string) Model {
-	if p == paneDetail {
-		m = press(m, "0")
-	}
 	switch at {
 	case "top":
 		return press(m, "g")
@@ -1790,7 +1835,7 @@ func TestThumbOnlyWhenThereIsSomethingToScroll(t *testing.T) {
 	t.Parallel()
 
 	for _, size := range [][2]int{{80, 30}, {160, 50}, {200, 120}} {
-		m := press(sized(newModel(t), size[0], size[1]), tabKey(tabPlans), "0")
+		m := press(sized(newModel(t), size[0], size[1]), tabKey(tabPlans), "shift+tab")
 		v := m.View()
 		for _, p := range m.panes() {
 			// A pane whose content fits has no window to point at, so it

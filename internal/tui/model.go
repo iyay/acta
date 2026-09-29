@@ -4,7 +4,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"time"
 
@@ -101,6 +100,7 @@ type Model struct {
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
+	shutActs   map[string]bool // the groups the reader shut on Activities; every group starts open
 	popup      *popup
 	slug       *string // non-nil while typing the slug of a new bug
 	help       bool
@@ -114,8 +114,9 @@ type Model struct {
 	wheelArmed bool  // true while a frame tick is on its way
 	wheelMark  wheelMark
 	now        time.Time
-	version    string                 // build version shown on the bottom line
-	open       func(url string) error // opens a link in the browser
+	version    string                  // build version shown on the bottom line
+	open       func(url string) error  // opens a link in the browser
+	clip       func(text string) error // puts text on the clipboard
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
@@ -132,6 +133,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open:     defaultOpen,
+		clip:     copyText,
 		top:      tabActivities,
 		focus:    s.focus,
 		last:     s.last,
@@ -409,8 +411,6 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch k.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "0":
-		m.focusPane(paneDetail)
 	case "1", "2", "3", "4", "5", "6":
 		m.openTab(int(k.String()[0] - '1'))
 	case "left":
@@ -465,8 +465,14 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.slug = &s
 	case "e":
 		return m.edit()
+	case "y":
+		m.copyID()
 	case " ":
 		m.toggleRow()
+	case "h":
+		m.foldRow(false)
+	case "l":
+		m.foldRow(true)
 	case "enter":
 		if m.toggleRow() {
 			return m, nil
@@ -590,6 +596,22 @@ func (m *Model) openPopup(key string) {
 	m.popup = &p
 }
 
+// copyID puts the id of the row under the cursor on the clipboard, and the
+// status line says what was copied or why it could not be.
+func (m *Model) copyID() {
+	it := m.Selected()
+	if it == nil {
+		m.status = "nothing selected"
+		return
+	}
+	id := shortRef(it)
+	if err := m.clip(id); err != nil {
+		m.status = "copy failed: " + err.Error()
+		return
+	}
+	m.status = "copied " + id
+}
+
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	p := *m.popup
 	switch k.String() {
@@ -666,9 +688,8 @@ func (m Model) searchKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// toggleRow opens or shuts the plan under the cursor of a tree list. It says
-// true on any tree row, so space and enter leave a task row alone and never
-// jump to the detail from a tree.
+// toggleRow opens or shuts the head under the cursor of a tree list. It says
+// false on a task row, so enter goes on to open the detail of the task.
 func (m *Model) toggleRow() bool {
 	if m.focus == paneDetail {
 		return false
@@ -679,16 +700,37 @@ func (m *Model) toggleRow() bool {
 		return false
 	}
 	if rows[i].depth > 0 {
-		return true
+		return false
 	}
-	// A new map each time, so an older copy of the model keeps the tree it
-	// drew.
-	open := make(map[string]bool, len(m.openPlans)+1)
-	maps.Copy(open, m.openPlans)
-	open[rows[i].id] = !open[rows[i].id]
-	m.openPlans = open
-	m.keepVisible(m.listPane())
+	m.setOpen(rows[i].id, !m.isOpen(rows[i].id))
 	return true
+}
+
+// foldRow is h and l on a tree list. h on a task row shuts its head and puts
+// the cursor on the head, h on a head shuts it, and l on a head opens it. l
+// on a task row, and any row that is not a tree row, stay as they are.
+func (m *Model) foldRow(open bool) {
+	if m.focus == paneDetail {
+		// The detail box has no tree of its own, so the list behind it must
+		// not move while the reader reads there.
+		return
+	}
+	rows := m.listOf()
+	i := m.cursor()
+	if i < 0 || i >= len(rows) || !rows[i].tree {
+		return
+	}
+	if rows[i].depth > 0 {
+		if open {
+			return
+		}
+		// The head sits above its tasks, so walk up to it.
+		for i > 0 && rows[i].depth > 0 {
+			i--
+		}
+	}
+	m.setOpen(rows[i].id, open)
+	m.moveTo(i)
 }
 
 // enter moves the focus to the detail pane with the row's item, so it can
