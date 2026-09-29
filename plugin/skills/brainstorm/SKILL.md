@@ -68,18 +68,18 @@ run `acta set scratch/<stem> status brainstorming`. The brainstorm hangs
 off that item, so a dead session loses nothing.
 
 Append as you go. Every answer the user gives and every approved design
-section is appended as it happens with `acta scratch add SCRATCH-n --section log`.
+section is appended as it happens with `acta scratch add SCR-0001 --section log`.
 
 **One Architectural brainstorm per session.** When a second one comes up
 in the same session, file it as a scratch item and ask the user to pick
 one of:
 
-- (a) **Background agent** — run `claude --bg 'brainstorm SCRATCH-n'`
+- (a) **Background agent** — run `claude --bg 'brainstorm SCR-0001'`
   from the repo, then tell the user to open the agents view (press ←, or
   `claude agents`).
 - (b) **New herdr tab** — offer this only when `HERDR_ENV=1` is set. With
   no herdr, do not mention it.
-- (c) **Manual new session** — copy the prompt `brainstorm SCRATCH-n` to
+- (c) **Manual new session** — copy the prompt `brainstorm SCR-0001` to
   the clipboard (`pbcopy` on macOS, `wl-copy` or `xclip` on Linux, OSC 52
   when none of those work) and also print the prompt, so the user can
   type it when the clipboard failed.
@@ -136,8 +136,8 @@ your path and complete them in order.
 1. **Explore project context** — check files, docs, recent commits
 2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria; append each answer with `acta scratch add SCRATCH-n --section log`
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section, append each approved section with `acta scratch add SCRATCH-n --section log`
-5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPEC number and hash, and commit
+4. **Present design** — in sections scaled to their complexity, get user approval after each section, append each approved section with `acta scratch add SCR-0001 --section log`
+5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPC number and hash, and commit
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 7. **User reviews written spec** — ask user to review the spec file before proceeding
 8. **Transition to implementation** — invoke acta:plan skill to create implementation plan
@@ -253,7 +253,7 @@ plus a short spec is the whole process.
 
 **Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Write the spec and commit it on the branch that is checked out (usually main). No worktree yet: `acta:build` makes the worktree once the plan is approved.
 
-**Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DEBT id it closes in `closes:`.
+**Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DBT id it closes in `closes:`.
 
 **Scratch items.** A spec made from one scratch item sets `parent: scratch/<stem>` in its frontmatter. A spec made from several sets the first one as `parent:` and lists the rest in `closes:`, so no item is left dangling. `specced` then follows from either the parent link or the `closes:` list.
 

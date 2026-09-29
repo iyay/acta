@@ -124,7 +124,8 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 		return Outcome{}, err
 	}
 	next, taken := scanIDs(b)
-	content, err = SetField(content, "id", fmt.Sprintf("BUG-%d", next["BUG"]))
+	bugPrefix := board.Prefix(board.KindBug, false)
+	content, err = SetField(content, "id", board.FormatID(bugPrefix, next[bugPrefix]))
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -283,7 +284,8 @@ func createDebt(cfg config.Config, b *board.Board, path, fileStem, title string,
 	content := []byte(body.String())
 	next, taken := scanIDs(b)
 	var err error
-	if content, err = SetField(content, "id", fmt.Sprintf("DEBT-%d", next["DEBT"])); err != nil {
+	debtPrefix := board.Prefix(board.KindDebt, false)
+	if content, err = SetField(content, "id", board.FormatID(debtPrefix, next[debtPrefix])); err != nil {
 		return Outcome{}, err
 	}
 	if content, err = SetField(content, "hash", freeHash(taken)); err != nil {

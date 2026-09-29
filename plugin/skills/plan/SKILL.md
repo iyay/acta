@@ -17,7 +17,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Save plans to:** `.acta/plans/YYYY-MM-DD-<feature-name>.md` (`.acta/` is the default root; `.acta.yaml`, `ACTA_ROOT` or `acta --root` can move it).
 - (User preferences for plan location override this default)
-- Right after saving, run `acta id` right after so the plan gets its PLAN number and hash before anyone refers to it.
+- Right after saving, run `acta id` right after so the plan gets its PLN number and hash before anyone refers to it.
 - Commit the plan on main. The worktree branch starts from that commit, so it carries the plan.
 - A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.
 
@@ -39,8 +39,8 @@ This structure informs the task decomposition. Each task should produce self-con
 ## Debt items
 
 A plan that works a debt item sets `parent: debt/<stem>` in its header and
-lists every DEBT id it closes in `closes:`, for example
-`closes: [DEBT-17.1, DEBT-17.2]`. One piece of work can close more than what
+lists every DBT id it closes in `closes:`, for example
+`closes: [DBT-0017.01, DBT-0017.02]`. One piece of work can close more than what
 it came from, so a plan that also finishes a scratch item or another spec
 lists those in the same `closes:` list. One place, so nothing is missed:
 `acta:land` ticks the debt items from that list after the merge.
@@ -56,6 +56,9 @@ independently testable deliverable.
 
 A plan never holds a step that can only happen after landing; that work goes
 in the landing report as the next action.
+
+A plan holds 99 tasks at most, so task ids stay two digits wide. Work bigger
+than that is several plans.
 
 ## Verify lines are properties
 

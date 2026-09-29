@@ -18,7 +18,7 @@ import (
 var randHash = func() string {
 	const letters = "abcdefghijklmnopqrstuvwxyz"
 	const chars = letters + "0123456789"
-	var b [4]byte
+	var b [7]byte
 	rand.Read(b[:])
 	out := []byte{letters[int(b[0])%len(letters)]}
 	for _, c := range b[1:] {
@@ -27,18 +27,19 @@ var randHash = func() string {
 	return string(out)
 }
 
-// AssignIDs gives every non-legacy spec, plan and bug in the root folder that
-// lacks an id or hash a number past the highest of its prefix and a hash no
-// other item has. A value already written in a file is never changed, so a
-// run writes a field only when the file has none, and a file it cannot read
-// is skipped with its reason instead of ending the run. A first id also
-// writes the day the file was made, and a spec that grew out of a scratch
-// idea closes that idea. A file that asked for the schema check and fails it
-// takes no id at all. One commit holds the run.
+// AssignIDs gives every non-legacy spec, plan and bug in the root folder the
+// id and hash it lacks, and moves the ones written the old way to the new
+// form. A value already in the new format is never replaced, and a value in
+// the wrong shape is a person's typo, so that is left alone with its reason
+// instead of ending the run. A first id also writes the day the file was
+// made, and a spec that grew out of a scratch idea closes that idea. A file
+// that asked for the schema check and fails it takes no id at all. One commit
+// holds the run.
 func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outcome, error) {
 	next, taken := scanIDs(b)
 	cands, skips := candidates(cfg, b, only)
 	var changes, paths []string
+	migrated := false
 	for _, c := range cands {
 		orig, err := os.ReadFile(c.file)
 		if err != nil {
@@ -59,8 +60,9 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		}
 		src := orig
 		id, hash := c.id, c.hash
-		if id == "" {
-			id = fmt.Sprintf("%s-%d", c.prefix, next[c.prefix])
+		switch {
+		case id == "":
+			id = board.FormatID(c.prefix, next[c.prefix])
 			next[c.prefix]++
 			writes := [][2]string{{"id", id}, {"created", Now().Format("2006-01-02")}}
 			if board.SchemaOn(c.it.Kind) && !hasField(orig, "schema") {
@@ -89,14 +91,34 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 				}
 				paths = append(paths, parent)
 			}
+		case c.oldID():
+			id = c.it.ShortID
+			migrated = true
+			out, err := SetField(src, "id", id)
+			if err != nil {
+				return nil, Outcome{Skips: skips}, err
+			}
+			src = out
 		}
-		if hash == "" {
+		switch {
+		case hash == "":
 			hash = freeHash(taken)
+		case c.oldHash():
+			hash = longHash(hash, taken)
+			migrated = true
+		}
+		if hash != c.hash {
 			out, err := SetField(src, "hash", hash)
 			if err != nil {
 				return nil, Outcome{Skips: skips}, err
 			}
 			src = out
+		}
+		if list, changed := migratedCloses(b, c.closes); changed {
+			// The line is copied straight, because SetField would write the
+			// list as one quoted string and the reader would see one entry.
+			src = setCloses(src, c.closesList, list)
+			migrated = true
 		}
 		if string(src) == string(orig) {
 			continue
@@ -116,7 +138,11 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 	if !cfg.AutoCommit {
 		return changes, Outcome{Reason: "auto_commit is off", Skips: skips}, nil
 	}
-	r := gitc.CommitPaths(cfg.RepoRoot, paths, "acta: assign short ids")
+	msg := "acta: assign short ids"
+	if migrated {
+		msg = "acta: migrate ids to 3-letter prefix"
+	}
+	r := gitc.CommitPaths(cfg.RepoRoot, paths, msg)
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
 }
 
@@ -147,7 +173,8 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 		if f.id == "" || badReason(f) != "" {
 			continue
 		}
-		groups[f.id] = append(groups[f.id], f)
+		k := strings.ToUpper(board.Canon(f.id))
+		groups[k] = append(groups[k], f)
 	}
 	var keys []string
 	for k, g := range groups {
@@ -169,7 +196,7 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 		})
 		prefix := strings.TrimSuffix(k, "-"+numPart(k))
 		for _, f := range g[1:] {
-			id := fmt.Sprintf("%s-%d", prefix, next[prefix])
+			id := board.FormatID(prefix, next[prefix])
 			next[prefix]++
 			src, err := os.ReadFile(f.file)
 			if err != nil {
@@ -198,7 +225,7 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 // idFile is one plan, spec or bug file with the values its own frontmatter
 // holds, so a tool works on the files and not on the board's reading of them.
 type idFile struct {
-	file, id, hash, prefix, frontErr string
+	file, id, hash, frontErr, bad string
 }
 
 // idFiles lists every plan, spec and bug file on disk. A plan file is its own
@@ -215,25 +242,21 @@ func idFiles(b *board.Board) []idFile {
 		if it.PlanPath != "" {
 			file = it.PlanPath
 		}
-		why := ""
+		// The board has already read the frontmatter, so its own complaint is
+		// the reason to leave a file alone. An old id or a 4 character hash
+		// draws no complaint: `acta id` rewrites those, not this tool.
+		why, bad := "", ""
 		for _, p := range it.Problems {
-			if strings.HasPrefix(p, "frontmatter: ") {
+			switch {
+			case why == "" && strings.HasPrefix(p, "frontmatter: "):
 				why = p
-				break
+			case bad == "" && (strings.HasPrefix(p, "bad id ") || strings.HasPrefix(p, "bad hash ")):
+				bad = p
 			}
 		}
-		out = append(out, idFile{file, it.RawID, it.RawHash, filePrefix(it, file), why})
+		out = append(out, idFile{file, it.RawID, it.RawHash, why, bad})
 	}
 	return out
-}
-
-// filePrefix is the prefix a file's own id must carry: PLAN for a plan file,
-// and for anything else the kind the file ends up as.
-func filePrefix(it *board.Item, file string) string {
-	if strings.Contains(filepath.ToSlash(file), "/plans/") {
-		return "PLAN"
-	}
-	return string(board.Prefix(it.Kind, false))
 }
 
 // badReason says why a file must be left alone: frontmatter that will not
@@ -243,26 +266,120 @@ func badReason(f idFile) string {
 	if f.frontErr != "" {
 		return f.frontErr
 	}
-	if f.id != "" && !board.IsID(f.id, f.prefix) {
-		return "bad id " + f.id
-	}
-	if f.hash != "" && !board.IsHash(f.hash) {
-		return "bad hash " + f.hash
-	}
-	return ""
+	return f.bad
 }
 
 type cand struct {
-	it     *board.Item
-	file   string
-	prefix string
-	id     string
-	hash   string
+	it         *board.Item
+	file       string
+	prefix     string
+	id, hash   string
+	closes     []string
+	closesList bool
+}
+
+// oldID says the id in the file is not the new form the board already reads
+// it as, so it is written the way the rest of the tree spells it.
+func (c cand) oldID() bool { return c.id != "" && c.it.ShortID != "" && c.id != c.it.ShortID }
+
+// oldHash says the hash is the old 4 characters. A hash of any other wrong
+// shape is a problem on the file, so the file never gets here with one.
+func (c cand) oldHash() bool { return len(c.hash) == 4 }
+
+// migratedCloses gives the closes: list the way the board reads every entry,
+// and says whether any of them moved. An entry that names nothing keeps the
+// words it was written with, so a typo is never lost.
+func migratedCloses(b *board.Board, entries []string) ([]string, bool) {
+	out := make([]string, len(entries))
+	moved := false
+	for i, e := range entries {
+		out[i] = e
+		if it := b.Get(e); it != nil && it.ShortID != "" && it.ShortID != e {
+			out[i] = it.ShortID
+			moved = true
+		}
+	}
+	return out, moved
+}
+
+// readCloses gives the closes: entries as the file writes them, and whether
+// the file holds a list. A file that will not read is left to the writer,
+// which stops the run and says why.
+func readCloses(path string) ([]string, bool) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
+	}
+	for i, line := range strings.Split(string(raw), "\n") {
+		if i > 0 && strings.TrimSpace(line) == "---" {
+			break
+		}
+		v, ok := strings.CutPrefix(line, "closes:")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		// A comment after the list rides along inside the last entry, so a
+		// rewritten line ends with that comment. Rare here, and no entry is
+		// ever dropped.
+		if list, ok := strings.CutPrefix(v, "["); ok {
+			return splitList(strings.TrimSuffix(strings.TrimSpace(list), "]")), true
+		}
+		return splitList(v), v != ""
+	}
+	return nil, false
+}
+
+func splitList(v string) []string {
+	var out []string
+	for _, e := range strings.Split(v, ",") {
+		if e = strings.TrimSpace(e); e != "" {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// setCloses rewrites the closes: line and copies every other byte, because a
+// list has to stay a list: written as one quoted string the reader would see
+// a single entry naming nothing.
+func setCloses(src []byte, list bool, entries []string) []byte {
+	value := strings.Join(entries, ", ")
+	if list {
+		value = "[" + value + "]"
+	}
+	lines := strings.SplitAfter(string(src), "\n")
+	for i, line := range lines {
+		if i > 0 && strings.TrimSpace(line) == "---" {
+			break
+		}
+		if !strings.HasPrefix(line, "closes:") {
+			continue
+		}
+		// Keep the line's own ending, so a CRLF file does not grow a second
+		// style in one block.
+		head := strings.TrimRight(line, "\r\n")
+		lines[i] = "closes: " + value + strings.TrimPrefix(line, head)
+		return []byte(strings.Join(lines, ""))
+	}
+	return src
+}
+
+// longHash keeps the 4 characters a file already has and adds 3 more, so an
+// old hash still names the same item, and draws again until it clashes with
+// nothing.
+func longHash(old string, taken map[string]bool) string {
+	for {
+		if h := old + randHash()[4:]; !taken[h] {
+			return h
+		}
+	}
 }
 
 // candidates lists the files to write, and the files to leave alone with the
 // reason. What a file already holds comes from the file, so a value is
-// written only where the file has none.
+// written only where the file has none, and a file still holding the old form
+// is a candidate even though it is not empty.
 func candidates(cfg config.Config, b *board.Board, only []string) ([]cand, []string) {
 	present := map[string]idFile{}
 	for _, f := range idFiles(b) {
@@ -287,10 +404,14 @@ func candidates(cfg config.Config, b *board.Board, only []string) ([]cand, []str
 				return
 			}
 		}
-		if f.id != "" && f.hash != "" {
-			return
+		c := cand{it: it, file: file, prefix: prefix, id: f.id, hash: f.hash}
+		c.closes, c.closesList = readCloses(file)
+		if c.id != "" && c.hash != "" && !c.oldID() && !c.oldHash() {
+			if _, moved := migratedCloses(b, c.closes); !moved {
+				return
+			}
 		}
-		out = append(out, cand{it: it, file: file, prefix: prefix, id: f.id, hash: f.hash})
+		out = append(out, c)
 	}
 	for _, it := range b.Items {
 		if it.Kind == board.KindTask || it.Kind == board.KindDebtItem || it.Legacy || it.Worktree != "" || !it.OnDisk {
@@ -318,7 +439,7 @@ func named(only []string, it *board.Item) bool {
 
 func prefixOf(it *board.Item) string {
 	if isPlanFile(it) {
-		return "PLAN"
+		return "PLN"
 	}
 	if it.ShortID != "" {
 		return strings.TrimSuffix(it.ShortID, "-"+numPart(it.ShortID))
@@ -329,7 +450,7 @@ func prefixOf(it *board.Item) string {
 		}
 	}
 	if it.PlanPath != "" {
-		return "PLAN"
+		return "PLN"
 	}
 	return string(board.Prefix(it.Kind, false))
 }
@@ -344,7 +465,7 @@ func isPlanFile(it *board.Item) bool {
 }
 
 func scanIDs(b *board.Board) (map[string]int, map[string]bool) {
-	next := map[string]int{"SPEC": 1, "PLAN": 1, "BUG": 1, "DEBT": 1, "SCRATCH": 1}
+	next := map[string]int{"SPC": 1, "PLN": 1, "BUG": 1, "DBT": 1, "SCR": 1}
 	taken := map[string]bool{}
 	note := func(prefix, id, hash string) {
 		if n, err := strconv.Atoi(strings.TrimPrefix(id, prefix+"-")); err == nil && !strings.Contains(id, ".") {

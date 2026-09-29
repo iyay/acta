@@ -188,13 +188,13 @@ func TestDetailPlanListsItsTasksWithDots(t *testing.T) {
 	withColors(func() {
 		lines := detailOf(t, "PLAN-1")
 		wantInOrder(t, lines,
-			"✓ PLAN-1.1  First",
-			"● PLAN-1.2  Second  1/2 · omp",
-			"○ PLAN-1.3  Third")
-		if got := plainLines(lines)[lineOf(t, lines, "PLAN-1.2")]; !strings.HasSuffix(got, "1/2 · omp") {
+			"✓ PLN-0001.01  First",
+			"● PLN-0001.02  Second  1/2 · omp",
+			"○ PLN-0001.03  Third")
+		if got := plainLines(lines)[lineOf(t, lines, "PLN-0001.02")]; !strings.HasSuffix(got, "1/2 · omp") {
 			t.Errorf("the task under way ends on %q, want its 1/2 and its agent", got)
 		}
-		for _, id := range []string{"PLAN-1.1", "PLAN-1.3"} {
+		for _, id := range []string{"PLN-0001.01", "PLN-0001.03"} {
 			ln := lines[lineOf(t, lines, id)]
 			if !wears(ln, 2) {
 				t.Errorf("the line of %s is not dim: %q", id, plain(ln))
@@ -203,7 +203,7 @@ func TestDetailPlanListsItsTasksWithDots(t *testing.T) {
 				t.Errorf("the line of %s carries a count or an agent: %q", id, plain(ln))
 			}
 		}
-		if i := lineOf(t, lines, "PLAN-1.2"); !wears(lines[i], 38, 5, 111) {
+		if i := lineOf(t, lines, "PLN-0001.02"); !wears(lines[i], 38, 5, 111) {
 			t.Errorf("the line of the work under way wears no accent: %q", lines[i])
 		}
 	})
@@ -234,13 +234,13 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 // plan, and a bug the tasks of the plans that name it as their parent.
 func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 	wantInOrder(t, detailOf(t, "SPEC-1"),
-		"PLAN-1  Plan A",
-		"✓ PLAN-1.1  First",
-		"● PLAN-1.2  Second  1/2 · omp",
-		"○ PLAN-1.3  Third")
+		"PLN-0001  Plan A",
+		"✓ PLN-0001.01  First",
+		"● PLN-0001.02  Second  1/2 · omp",
+		"○ PLN-0001.03  Third")
 	wantInOrder(t, detailOf(t, "BUG-1"),
-		"PLAN-2  Plan C",
-		"○ PLAN-2.1  Fix one")
+		"PLN-0002  Plan C",
+		"○ PLN-0002.01  Fix one")
 	// A spec with no plan shows its header and no list, not an empty line.
 	lines := detailOf(t, "SPEC-2")
 	if len(plainLines(lines)) < 3 || !strings.HasPrefix(plainLines(lines)[0], "ID") {
@@ -256,8 +256,8 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
 	withColors(func() {
 		lines := detailOf(t, "DEBT-1.1")
-		wantInOrder(t, lines, "○ DEBT-1.1  first note", "✓ DEBT-1.2  second note")
-		mine, other := lineOf(t, lines, "DEBT-1.1  first note"), lineOf(t, lines, "DEBT-1.2  second note")
+		wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
+		mine, other := lineOf(t, lines, "DBT-0001.01  first note"), lineOf(t, lines, "DBT-0001.02  second note")
 		if wears(lines[mine], 2) {
 			t.Errorf("the line on show is dim: %q", lines[mine])
 		}
@@ -517,9 +517,9 @@ func closesFiles() map[string]string {
 func TestDetailShowsClosesAndClosedBy(t *testing.T) {
 	cfg := treeCfg(t, closesFiles())
 	for _, c := range []struct{ id, label, value, absent string }{
-		{"SPEC-1", "CLOSES", "SCRATCH-1, scratch/2026-09-28-j", "CLOSED BY"},
-		{"SCRATCH-1", "CLOSED BY", "SPEC-1", "CLOSES"},
-		{"scratch/2026-09-28-j", "CLOSED BY", "SPEC-1", "CLOSES"},
+		{"SPEC-1", "CLOSES", "SCR-0001, scratch/2026-09-28-j", "CLOSED BY"},
+		{"SCRATCH-1", "CLOSED BY", "SPC-0001", "CLOSES"},
+		{"scratch/2026-09-28-j", "CLOSED BY", "SPC-0001", "CLOSES"},
 	} {
 		lines := detailLines(t, cfg, c.id)
 		got, ok := metaOf(t, lines, c.label)

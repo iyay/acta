@@ -31,7 +31,8 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 		return Outcome{}, err
 	}
 	next, taken := scanIDs(b)
-	shortID := fmt.Sprintf("SCRATCH-%d", next["SCRATCH"])
+	prefix := board.Prefix(board.KindScratch, false)
+	shortID := board.FormatID(prefix, next[prefix])
 	// The frontmatter is built on its own and the body is added afterwards, so
 	// a body that opens with a "---" rule cannot be read as frontmatter.
 	var content []byte

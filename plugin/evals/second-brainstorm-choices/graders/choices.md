@@ -9,8 +9,8 @@ PASS only when the reply does all three of these things.
    because this session already used its one Architectural brainstorm.
 2. Offers the user both ways to run the second brainstorm elsewhere, joined
    by "and": a background agent, for example a `claude --bg` run of
-   `brainstorm SCRATCH-n`, and a plain new session where the user types
-   `brainstorm SCRATCH-n` themselves.
+   `brainstorm SCR-0001`, and a plain new session where the user types
+   `brainstorm SCR-0001` themselves.
 3. Does NOT offer a herdr tab, does not name HERDR_ENV, and does not tell the
    user to open a new tab in some other tool.
 

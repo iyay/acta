@@ -723,7 +723,7 @@ func TestViewDebtDetail(t *testing.T) {
 		}
 	}
 	detail := strings.Join(labels, "\n")
-	for _, want := range []string{`DEBT\s+: a$`, `STATUS\s+: open$`, `FROM\s+: PLAN-3 . Short IDs$`} {
+	for _, want := range []string{`DEBT\s+: a$`, `STATUS\s+: open$`, `FROM\s+: PLN-0003 . Short IDs$`} {
 		if ok, _ := regexp.MatchString("(?m)"+want, detail); !ok {
 			t.Errorf("detail header is missing %q, got:\n%s", want, detail)
 		}
@@ -1552,6 +1552,71 @@ func TestThumbOnlyWhenThereIsSomethingToScroll(t *testing.T) {
 		}
 		if strings.ContainsAny(plain(v), "░█") {
 			t.Errorf("%dx%d: the view still draws a track or a block", size[0], size[1])
+		}
+	}
+}
+
+// Every list row puts its title at the same column, whatever number the id
+// carries. A row that is one digit wider pushes its title one cell right, so
+// the eye has to find the title again on every line. The old format let that
+// happen: SCRATCH-3 and SCRATCH-13 were two widths. The new one pads every
+// number to four digits, so the column holds for one digit and for four.
+func TestListRowsLineUp(t *testing.T) {
+	m := detailModel(t, treeCfg(t, map[string]string{
+		// Old ids on the left, new on the right: both forms have to land on
+		// the same width, so an unmigrated file still lines up.
+		".acta/scratch/2026-09-20-a.md": "---\nid: SCRATCH-3\nhash: aa1b\nstatus: raw\n---\n# One\n",
+		".acta/scratch/2026-09-21-b.md": "---\nid: SCR-1234\nhash: bb2c3d4\nstatus: raw\n---\n# Two\n",
+		".acta/plans/2026-09-22-c.md":   "---\nid: PLAN-3\nhash: cc5d\n---\n# Three\n",
+		".acta/plans/2026-09-23-d.md":   "---\nid: PLN-1234\nhash: dd6e7f80\n---\n# Four\n",
+		".acta/specs/2026-09-24-e.md":   "---\nid: SPEC-3\nhash: ee9a\n---\n# Five\n",
+		".acta/specs/2026-09-25-f.md":   "---\nid: SPC-1234\nhash: ffb0c1d2e\n---\n# Six\n",
+		".acta/bugs/2026-09-26-g.md":    "---\nid: BUG-3\nhash: gg2e\n---\n# Seven\n\n## Symptom\nx\n",
+		".acta/bugs/2026-09-27-h.md":    "---\nid: BUG-1234\nhash: hh3f4a5b6\n---\n# Eight\n\n## Symptom\ny\n",
+		".acta/debt/2026-09-28-i.md":    "---\nid: DEBT-3\nhash: ii7c8\n---\n# Nine\n\n- [ ] first note\n",
+		".acta/debt/2026-09-29-j.md":    "---\nid: DBT-1234\nhash: jj9d0e1f2a\n---\n# Ten\n\n- [ ] second note\n",
+	}))
+	for _, c := range []struct {
+		kind, short string
+		ids         []string
+	}{
+		{"scratch", "SCR", []string{"scratch/2026-09-20-a", "scratch/2026-09-21-b"}},
+		{"plan", "PLN", []string{"plans/2026-09-22-c", "plans/2026-09-23-d"}},
+		{"spec", "SPC", []string{"specs/2026-09-24-e", "specs/2026-09-25-f"}},
+		{"bug", "BUG", []string{"bugs/2026-09-26-g", "bugs/2026-09-27-h"}},
+		{"debt item", "DBT", []string{"debt/2026-09-28-i#item-1", "debt/2026-09-29-j#item-1"}},
+	} {
+		col, idCol := -1, -1
+		for _, id := range c.ids {
+			it := m.board.Get(id)
+			if it == nil {
+				t.Fatalf("the board holds no %s", id)
+			}
+			// The row shows the id in the new form, so a wide old number
+			// still takes the same room as a new one.
+			if want := c.short + "-"; !strings.HasPrefix(it.ShortID, want) {
+				t.Errorf("%s %s: short id %q does not start with %q", c.kind, id, it.ShortID, want)
+			}
+			// Every id of a kind is one width: the number is padded, and a
+			// debt item adds its own 2-digit number on top of that.
+			if idCol == -1 {
+				idCol = lipgloss.Width(it.ShortID)
+			}
+			if got := lipgloss.Width(it.ShortID); got != idCol {
+				t.Errorf("%s %s: short id %q is %d cells, want %d like the rest of the kind",
+					c.kind, id, it.ShortID, got, idCol)
+			}
+			row := m.rowText(row{id: id}, it, 80)
+			if !strings.HasPrefix(row, it.ShortID+"  ") {
+				t.Errorf("%s %s: row %q does not start with %q", c.kind, id, row, it.ShortID+"  ")
+			}
+			at := strings.Index(row, it.Title)
+			if col == -1 {
+				col = at
+			}
+			if at != col {
+				t.Errorf("%s %s: row %q puts its title at %d, want %d", c.kind, id, row, at, col)
+			}
 		}
 	}
 }

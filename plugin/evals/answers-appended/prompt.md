@@ -14,7 +14,7 @@ allowed_tools: []
 ---
 
 The idea "the download button fires twice when it is clicked fast" is already
-filed in this repo as SCRATCH-1, in .acta/scratch/eval-answer.md.
+filed in this repo as SCR-0001, in .acta/scratch/eval-answer.md.
 
 My answer to the question in that item: it only happens in Safari, and only
 when the click lands while the first request is still running.

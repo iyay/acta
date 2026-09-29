@@ -26,7 +26,7 @@ func TestIDGivesAndIsIdempotent(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
-	for _, want := range []string{"BUG-1", "PLAN-1", "SPEC-1"} {
+	for _, want := range []string{"BUG-0001", "PLN-0001", "SPC-0001"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("change lines lack %s: %q", want, out)
 		}
@@ -56,7 +56,7 @@ func TestIDResolvesInShowTickSet(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("show exit %d: %s", code, errOut)
 	}
-	if !strings.HasPrefix(out, "PLAN-3 ") || !strings.Contains(out, "plans/2026-09-23-lonely") {
+	if !strings.HasPrefix(out, "PLN-0003 ") || !strings.Contains(out, "plans/2026-09-23-lonely") {
 		t.Fatalf("show does not lead with short id: %q", out)
 	}
 	for _, args := range [][]string{
@@ -94,7 +94,7 @@ func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
-	if !strings.Contains(out, "SPEC-") {
+	if !strings.Contains(out, "SPC-") {
 		t.Fatalf("no change lines: %q", out)
 	}
 	if got := commitCount(t, dir); got != before {
@@ -145,9 +145,9 @@ func TestListShowsShortIDFirst(t *testing.T) {
 	}
 	withoutID := 0
 	for _, line := range lines {
-		i := strings.Index(line, "SPEC-")
+		i := strings.Index(line, "SPC-")
 		if i < 0 {
-			i = strings.Index(line, "PLAN-")
+			i = strings.Index(line, "PLN-")
 		}
 		j := strings.Index(line, "specs/")
 		if j < 0 {
