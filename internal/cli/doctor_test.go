@@ -650,3 +650,82 @@ func TestDoctorCLIFixWorksThroughASymlinkedRepoPath(t *testing.T) {
 		t.Fatalf("commits %d, want %d: --fix made no commit", got, before+1)
 	}
 }
+
+// scratchFile writes one scratch file under .acta/scratch, so the schema
+// check has a board to read. opt is the "schema: 1" line, or "" for an old
+// file the check has to skip. sections is what follows the title.
+func scratchFile(t *testing.T, dir, name, opt, sections string) {
+	t.Helper()
+	slug := strings.ToUpper(strings.TrimSuffix(strings.TrimPrefix(name, "2026-09-29-"), ".md"))
+	body := "---\nid: SCRATCH-" + slug + "\ntitle: " + slug + "\nstatus: raw\n" + opt +
+		"---\n# " + slug + "\n" + sections
+	path := filepath.Join(dir, ".acta", "scratch", name)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// badScratch is a schema file that lost its required "## Words" section.
+func badScratch(t *testing.T, dir, name string) {
+	t.Helper()
+	scratchFile(t, dir, name, "schema: 1\n", "")
+}
+
+// doctorRun runs the doctor in dir and gives back the report.
+func doctorRun(t *testing.T, dir string) string {
+	t.Helper()
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	return stdout.String()
+}
+
+func TestDoctorCLISchemaCheck(t *testing.T) {
+	t.Run("no acta folder", func(t *testing.T) {
+		home := doctorHome(t)
+		dir := doctorRepo(t)
+		ompActa(t, home)
+		if got := doctorRun(t, dir); !strings.Contains(got, "ok schema:") {
+			t.Fatalf("stdout %q has no ok schema line", got)
+		}
+	})
+	t.Run("clean schema file", func(t *testing.T) {
+		home := doctorHome(t)
+		dir := doctorRepo(t)
+		ompActa(t, home)
+		scratchFile(t, dir, "2026-09-29-good.md", "schema: 1\n", "\n## Words\n\nhello\n")
+		if got := doctorRun(t, dir); !strings.Contains(got, "ok schema:") {
+			t.Fatalf("stdout %q has no ok schema line", got)
+		}
+	})
+	t.Run("one bad schema file, an old one ignored", func(t *testing.T) {
+		home := doctorHome(t)
+		dir := doctorRepo(t)
+		ompActa(t, home)
+		badScratch(t, dir, "2026-09-29-bad.md")
+		scratchFile(t, dir, "2026-09-29-old.md", "", "")
+		got := doctorRun(t, dir)
+		if !strings.Contains(got, "warn schema: scratch 2026-09-29-bad.md: missing ## Words") {
+			t.Fatalf("stdout %q has no warn schema line", got)
+		}
+		if strings.Contains(got, "2026-09-29-old.md") {
+			t.Fatalf("stdout %q names a file without schema: 1", got)
+		}
+	})
+	t.Run("two bad files are both named, sorted", func(t *testing.T) {
+		home := doctorHome(t)
+		dir := doctorRepo(t)
+		ompActa(t, home)
+		badScratch(t, dir, "2026-09-29-zzz.md")
+		badScratch(t, dir, "2026-09-29-aaa.md")
+		got := doctorRun(t, dir)
+		want := "warn schema: scratch 2026-09-29-aaa.md: missing ## Words; scratch 2026-09-29-zzz.md: missing ## Words"
+		if !strings.Contains(got, want) {
+			t.Fatalf("stdout %q has no %q", got, want)
+		}
+	})
+}

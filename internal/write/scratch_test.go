@@ -62,14 +62,14 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"id: SCRATCH-1", "status: raw", "title: newest-first", `created: "2026-09-26"`} {
+	for _, field := range []string{"id: SCRATCH-1", "status: raw", "title: newest-first", `created: "2026-09-26"`, `schema: "1"`} {
 		if !strings.Contains(string(got), field) {
 			t.Errorf("file lacks %q:\n%s", field, got)
 		}
 	}
-	// The body comes back byte for byte, the accented text included.
-	if !strings.HasSuffix(string(got), string(body)) {
-		t.Errorf("body changed:\ngot  %q\nwant %q", got, body)
+	// The user's words sit under Words byte for byte, the accents included.
+	if want := "## Words\n\n### 2026-09-26\n\n" + string(body); !strings.Contains(string(got), want) {
+		t.Errorf("body changed:\ngot  %q\nwant %q", got, want)
 	}
 	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "acta: new scratch 2026-09-26-newest-first" {
 		t.Errorf("commit message %q", msg)
@@ -98,8 +98,9 @@ func TestNewScratchKeepsABodyThatStartsWithARule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasSuffix(string(got), "created: \"2026-09-26\"\n---\n"+string(body)) {
-		t.Errorf("file = %q", got)
+	want := "schema: \"1\"\n---\n# rule-body\n\n## Words\n\n### 2026-09-26\n\n" + strings.TrimRight(string(body), "\n") + "\n\n## Context\n\n## Log\n\n## Open questions\n"
+	if !strings.HasSuffix(string(got), want) {
+		t.Errorf("file = %q, want it to end with %q", got, want)
 	}
 	if s := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); s != "" {
 		t.Errorf("tree dirty after a commit: %s", s)
@@ -121,8 +122,8 @@ func TestNewScratchTitleFlagAndUnicode(t *testing.T) {
 	if !strings.Contains(string(got), "title: Catatan Baru") {
 		t.Errorf("file lacks the title:\n%s", got)
 	}
-	if !strings.HasSuffix(string(got), string(body)) {
-		t.Errorf("body bytes changed:\ngot  %q\nwant %q", got, body)
+	if want := "## Words\n\n### 2026-09-26\n\n" + string(body); !strings.Contains(string(got), want) {
+		t.Errorf("body bytes changed:\ngot  %q\nwant %q", got, want)
 	}
 }
 
@@ -217,7 +218,7 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 		t.Fatalf("item = %+v, want specced", it)
 	}
 	before := gitRun(t, cfg.RepoRoot, "log", "--format=%H")
-	got, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", []byte("answer 1 ✓\n"))
+	got, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("answer 1 ✓\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,8 +226,8 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 		t.Fatalf("outcome %+v", got)
 	}
 	body, _ := os.ReadFile(o.Path)
-	if want := "first note ✓\n\nanswer 1 ✓\n"; !strings.HasSuffix(string(body), want) {
-		t.Errorf("body = %q, want it to end with %q", body, want)
+	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note ✓\n\n### 2026-09-26\n\nanswer 1 ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(body).Body != want {
+		t.Errorf("body = %q, want %q", body, want)
 	}
 	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "acta: add to scratch 2026-09-26-idea" {
 		t.Errorf("commit message %q", msg)
@@ -245,23 +246,24 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 	if it := mustLoad(t, cfg).Get("SCRATCH-1"); it.Status != "dropped" {
 		t.Fatalf("status %q want dropped", it.Status)
 	}
-	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", []byte("answer 2\n")); err != nil {
+	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("answer 2\n")); err != nil {
 		t.Fatal(err)
 	}
 	body, _ = os.ReadFile(o.Path)
-	if want := "answer 1 ✓\n\nanswer 2\n"; !strings.HasSuffix(string(body), want) {
-		t.Errorf("body = %q, want it to end with %q", body, want)
+	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note ✓\n\n### 2026-09-26\n\nanswer 1 ✓\n\n### 2026-09-26\n\nanswer 2\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(body).Body != want {
+		t.Errorf("body = %q, want %q", body, want)
 	}
 }
 
 func TestAppendScratchAddsTheNewlineTheBodyLacks(t *testing.T) {
 	fixNow(t)
-	cfg := repoWith(t, baseFiles)
-	o, err := NewScratch(cfg, "no-newline", "", []byte("no newline at the end"))
+	// A new item's body always ends with a newline, so this is the old
+	// append path that has to add the missing one.
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-01-old.md": "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nno newline at the end",
+	})
+	o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("next line\n"))
 	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", []byte("next line\n")); err != nil {
 		t.Fatal(err)
 	}
 	body, _ := os.ReadFile(o.Path)
@@ -296,7 +298,7 @@ func TestAppendScratchRefusesAndChangesNothing(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			b := mustLoad(t, cfg)
 			refuse(t, cfg, c.want, func() error {
-				_, err := AppendScratch(cfg, b, c.id, []byte(c.text))
+				_, err := AppendScratch(cfg, b, c.id, "", []byte(c.text))
 				return err
 			})
 			if got, _ := os.ReadFile(o.Path); string(got) != string(kept) {
@@ -331,4 +333,158 @@ func TestSetValueRefusesSpecced(t *testing.T) {
 		_, err := SetValue(cfg, mustLoad(t, cfg), "SCRATCH-1", "status", "fixing")
 		return err
 	})
+}
+
+func TestNewScratchWritesSkeleton(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "idea", "Idea", []byte("kata user\n\n\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(o.Path)
+	doc := board.Parse(src)
+	if !board.HasSchema(doc.Front) {
+		t.Errorf("no schema: 1 in %q", src)
+	}
+	if doc.Front["created"] != "2026-09-26" {
+		t.Errorf("created = %v", doc.Front["created"])
+	}
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nkata user\n\n## Context\n\n## Log\n\n## Open questions\n"
+	if doc.Body != want {
+		t.Errorf("body\n%q\nwant\n%q", doc.Body, want)
+	}
+	if p := board.CheckBody(board.KindScratch, doc.Body); p != nil {
+		t.Errorf("a new file fails its own schema: %v", p)
+	}
+}
+
+func TestAppendScratchSections(t *testing.T) {
+	const head = "# Idea\n\n## Words\n\n### 2026-09-26\n\nkata user\n\n"
+	cases := []struct{ section, want string }{
+		{"", head + "### 2026-09-26\n\nmore\n\n## Context\n\n## Log\n\n## Open questions\n"},
+		{"words", head + "### 2026-09-26\n\nmore\n\n## Context\n\n## Log\n\n## Open questions\n"},
+		{"context", head + "## Context\n\nmore\n\n## Log\n\n## Open questions\n"},
+		{"log", head + "## Context\n\n## Log\n\n### 2026-09-26\n\nmore\n\n## Open questions\n"},
+		{"questions", head + "## Context\n\n## Log\n\n## Open questions\n\nmore\n"},
+	}
+	for _, c := range cases {
+		t.Run("section="+c.section, func(t *testing.T) {
+			fixNow(t)
+			cfg := repoWith(t, baseFiles)
+			o, err := NewScratch(cfg, "idea", "Idea", []byte("kata user\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := AppendScratch(cfg, mustLoad(t, cfg), o.ShortID, c.section, []byte("more\n")); err != nil {
+				t.Fatal(err)
+			}
+			src, _ := os.ReadFile(o.Path)
+			body := board.Parse(src).Body
+			if body != c.want {
+				t.Errorf("body\n%q\nwant\n%q", body, c.want)
+			}
+			if p := board.CheckBody(board.KindScratch, body); p != nil {
+				t.Errorf("the append broke the schema: %v", p)
+			}
+		})
+	}
+}
+
+func TestAppendScratchBadSection(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "idea", "Idea", []byte("x\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept, _ := os.ReadFile(o.Path)
+	refuse(t, cfg, `unknown section "notes"; use words, context, log or questions`, func() error {
+		_, err := AppendScratch(cfg, mustLoad(t, cfg), o.ShortID, "notes", []byte("y\n"))
+		return err
+	})
+	if got, _ := os.ReadFile(o.Path); string(got) != string(kept) {
+		t.Errorf("the refused write changed the file: %q", got)
+	}
+}
+
+func TestAppendScratchOldItem(t *testing.T) {
+	// An old item has no schema field, so it has no sections to fill. No flag
+	// keeps today's append; a flag is refused.
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-01-old.md": "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n",
+	})
+	path := filepath.Join(cfg.Root, "scratch", "2026-09-01-old.md")
+	o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("more\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if o.Path != path {
+		t.Errorf("path %s want %s", o.Path, path)
+	}
+	src, _ := os.ReadFile(path)
+	want := "---\nid: SCRATCH-1\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n\nmore\n"
+	if string(src) != want {
+		t.Errorf("the old item was reshaped:\ngot  %q\nwant %q", src, want)
+	}
+	refuse(t, cfg, "SCRATCH-1 is an old item with no sections", func() error {
+		_, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "context", []byte("y\n"))
+		return err
+	})
+	if after, _ := os.ReadFile(path); string(after) != want {
+		t.Errorf("the refused write changed the file: %q", after)
+	}
+}
+
+func TestAppendScratchPutsBackAMissingHeading(t *testing.T) {
+	// A hand edit took a part away. The text still belongs there, so the
+	// heading is written back where the schema wants it.
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "idea", "Idea", []byte("kata user\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handEdit(t, cfg, o.Path, "## Log\n\n")
+	if _, err := AppendScratch(cfg, mustLoad(t, cfg), o.ShortID, "log", []byte("more\n")); err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(o.Path)
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nkata user\n\n## Context\n\n## Log\n\n### 2026-09-26\n\nmore\n\n## Open questions\n"
+	if body := board.Parse(src).Body; body != want {
+		t.Errorf("body %q want %q", body, want)
+	}
+}
+
+func TestAppendScratchRefusesABodyThatBreaksItsSchema(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "idea", "Idea", []byte("kata user\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handEdit(t, cfg, o.Path, "## Words\n\n### 2026-09-26\n\nkata user\n\n")
+	refuse(t, cfg, "scratch "+filepath.Base(o.Path)+": missing ## Words", func() error {
+		_, err := AppendScratch(cfg, mustLoad(t, cfg), o.ShortID, "context", []byte("more\n"))
+		return err
+	})
+}
+
+// handEdit takes a piece out of a written file and commits it, so the tree
+// is clean again before a refused write checks it.
+func handEdit(t *testing.T, cfg config.Config, path, cut string) {
+	t.Helper()
+	src, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), cut) {
+		t.Fatalf("%s does not hold %q", path, cut)
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(src), cut, "", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, cfg.RepoRoot, "add", ".")
+	gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", "break the body by hand")
 }

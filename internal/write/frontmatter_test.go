@@ -174,3 +174,52 @@ func TestSetFieldErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestRemoveField(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{
+			"key in the middle",
+			"---\nid: SCRATCH-1\nfinished: 2026-02-01\nstatus: raw\n---\n# T\n",
+			"---\nid: SCRATCH-1\nstatus: raw\n---\n# T\n",
+		},
+		{
+			"key missing",
+			"---\nid: SCRATCH-1\nstatus: raw\n---\n# T\n",
+			"---\nid: SCRATCH-1\nstatus: raw\n---\n# T\n",
+		},
+		{
+			"crlf file keeps crlf",
+			"---\r\nid: SCRATCH-1\r\nfinished: 2026-02-01\r\n---\r\n# T\r\n",
+			"---\r\nid: SCRATCH-1\r\n---\r\n# T\r\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := RemoveField([]byte(c.in), "finished")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(out) != c.want {
+				t.Errorf("\n got %q\nwant %q", out, c.want)
+			}
+		})
+	}
+}
+
+func TestRemoveFieldErrors(t *testing.T) {
+	cases := map[string]string{
+		"no frontmatter": "# T\n",
+		"unclosed block": "---\nstatus: raw\n# T\n",
+		"not a mapping":  "---\n- a\n- b\n---\n",
+		"broken yaml":    "---\nref: [x\n---\n",
+	}
+	for name, in := range cases {
+		out, err := RemoveField([]byte(in), "finished")
+		if err == nil {
+			t.Errorf("%s: want an error", name)
+		}
+		if out != nil {
+			t.Errorf("%s: wrote %q anyway", name, out)
+		}
+	}
+}

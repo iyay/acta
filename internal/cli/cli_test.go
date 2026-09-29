@@ -9,6 +9,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/write"
 )
 
 // debtRepo makes a git repo with .pm/plans/2026-09-26-short-ids.md, a plan
@@ -137,6 +141,7 @@ func TestDebtNoSubcommandExitsUsage(t *testing.T) {
 }
 
 func TestScratchNewWritesFileAndCommits(t *testing.T) {
+	fixDay(t, "2026-09-26")
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder
 	inDir(t, dir, func() {
@@ -155,9 +160,13 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 	if !strings.Contains(stdout.String(), "scratch/") {
 		t.Fatalf("stdout %q lacks the path", stdout.String())
 	}
-	body, _ := os.ReadFile(files[0])
-	if !strings.Contains(string(body), "status: raw") || !strings.HasSuffix(string(body), "sort the list ✓\n") {
-		t.Fatalf("file = %q", body)
+	src, _ := os.ReadFile(files[0])
+	doc := board.Parse(src)
+	if !strings.Contains(string(src), "status: raw") || !board.HasSchema(doc.Front) || doc.Front["created"] != "2026-09-26" {
+		t.Fatalf("file = %q", src)
+	}
+	if want := "# newest-first\n\n## Words\n\n### 2026-09-26\n\nsort the list ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; doc.Body != want {
+		t.Fatalf("body %q want %q", doc.Body, want)
 	}
 	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil ||
 		!strings.HasPrefix(strings.TrimSpace(string(out)), "acta: new scratch ") {
@@ -166,6 +175,7 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 }
 
 func TestScratchAddAppendsAndCommits(t *testing.T) {
+	fixDay(t, "2026-09-26")
 	dir := debtRepo(t)
 	var out, errOut strings.Builder
 	inDir(t, dir, func() {
@@ -182,13 +192,94 @@ func TestScratchAddAppendsAndCommits(t *testing.T) {
 		t.Fatalf("stdout %q lacks the short id", out.String())
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-idea.md"))
-	body, _ := os.ReadFile(files[0])
-	if !strings.HasSuffix(string(body), "first note\n\nanswer ✓\n") {
-		t.Fatalf("file = %q", body)
+	src, _ := os.ReadFile(files[0])
+	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note\n\n### 2026-09-26\n\nanswer ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(src).Body != want {
+		t.Fatalf("body %q want %q", src, want)
 	}
 	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "acta: add to scratch ") {
 		t.Fatalf("commit message %q", msg)
 	}
+}
+
+// fixDay pins the clock so the dated headings in a file can be compared
+// byte for byte.
+func fixDay(t *testing.T, day string) {
+	t.Helper()
+	old := write.Now
+	when, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write.Now = func() time.Time { return when }
+	t.Cleanup(func() { write.Now = old })
+}
+
+func TestScratchAddSectionPutsTextInThatSection(t *testing.T) {
+	fixDay(t, "2026-09-26")
+	dir := debtRepo(t)
+	var out, errOut strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"scratch", "new", "idea", "--title", "Idea"}, strings.NewReader("first note\n"), false, &out, &errOut); code != exitOK {
+			t.Fatalf("scratch new exit %d stderr %q", code, errOut.String())
+		}
+		out.Reset()
+		code := Run([]string{"scratch", "add", "SCRATCH-1", "--section", "context"}, strings.NewReader("more ✓\n"), false, &out, &errOut)
+		if code != exitOK {
+			t.Fatalf("exit %d stderr %q", code, errOut.String())
+		}
+	})
+	files, _ := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-idea.md"))
+	src, _ := os.ReadFile(files[0])
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nfirst note\n\n## Context\n\nmore ✓\n\n## Log\n\n## Open questions\n"
+	if body := board.Parse(src).Body; body != want {
+		t.Fatalf("body %q want %q", body, want)
+	}
+}
+
+func TestScratchAddBadSectionExitsBadInput(t *testing.T) {
+	fixDay(t, "2026-09-26")
+	dir := debtRepo(t)
+	var out, errOut strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"scratch", "new", "idea"}, strings.NewReader("first note\n"), false, &out, &errOut); code != exitOK {
+			t.Fatalf("scratch new exit %d stderr %q", code, errOut.String())
+		}
+		out.Reset()
+		code := Run([]string{"scratch", "add", "SCRATCH-1", "--section", "bogus"}, strings.NewReader("more\n"), false, &out, &errOut)
+		if code != exitBadInput {
+			t.Fatalf("exit %d want %d", code, exitBadInput)
+		}
+	})
+	want := `unknown section "bogus"; use words, context, log or questions`
+	if !strings.Contains(errOut.String(), want) {
+		t.Fatalf("stderr %q lacks %q", errOut.String(), want)
+	}
+	files, _ := filepath.Glob(filepath.Join(dir, ".pm", "scratch", "*-idea.md"))
+	src, _ := os.ReadFile(files[0])
+	if body := board.Parse(src).Body; strings.Contains(body, "more") {
+		t.Fatalf("the refused write changed the body: %q", body)
+	}
+	if n, _ := exec.Command("git", "-C", dir, "log", "--format=%s").Output(); !strings.HasPrefix(strings.TrimSpace(string(n)), "acta: new scratch") {
+		t.Fatalf("the refused write made a commit: %q", n)
+	}
+}
+
+func TestScratchAddHelpNamesTheSectionFlag(t *testing.T) {
+	dir := debtRepo(t)
+	var out, errOut strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"scratch", "add", "-h"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput {
+			t.Fatalf("exit %d stderr %q", code, errOut.String())
+		}
+		for _, want := range []string{
+			"usage: acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md",
+			"words, context, log or questions (default: words)",
+		} {
+			if !strings.Contains(errOut.String(), want) {
+				t.Fatalf("stderr %q lacks %q", errOut.String(), want)
+			}
+		}
+	})
 }
 
 func TestScratchNewBadSlugExitsBadInput(t *testing.T) {
@@ -213,7 +304,7 @@ func TestScratchNoSubcommandExitsUsage(t *testing.T) {
 		if code != exitBadInput {
 			t.Fatalf("exit %d stderr %q", code, stderr.String())
 		}
-		for _, want := range []string{"usage: acta scratch new", "scratch add"} {
+		for _, want := range []string{"usage: acta scratch new", "scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md"} {
 			if !strings.Contains(stderr.String(), want) {
 				t.Fatalf("stderr %q lacks %q", stderr.String(), want)
 			}

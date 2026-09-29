@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 var actaBin string
@@ -240,8 +241,11 @@ func TestSet(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, ".acta/bugs/2026-09-26-open.md"))
-	if !strings.HasPrefix(string(b), "---\nstatus: fixing\n---\n") {
-		t.Fatalf("file %q", b)
+	// Setting a working status writes the day the work began too. The date is
+	// written as text, so the file holds it in quotes.
+	want := "---\nstatus: fixing\nstarted: \"" + time.Now().Format("2006-01-02") + "\"\n---\n"
+	if !strings.HasPrefix(string(b), want) {
+		t.Fatalf("file %q, want it to start with %q", b, want)
 	}
 	for _, args := range [][]string{
 		{"set", "docs/superpowers/specs/2026-01-01-old", "status", "done"},

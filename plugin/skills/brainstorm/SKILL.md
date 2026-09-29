@@ -68,7 +68,7 @@ run `acta set scratch/<stem> status brainstorming`. The brainstorm hangs
 off that item, so a dead session loses nothing.
 
 Append as you go. Every answer the user gives and every approved design
-section is appended as it happens with `acta scratch add SCRATCH-n`.
+section is appended as it happens with `acta scratch add SCRATCH-n --section log`.
 
 **One Architectural brainstorm per session.** When a second one comes up
 in the same session, file it as a scratch item and ask the user to pick
@@ -134,9 +134,9 @@ your path and complete them in order.
 **Architectural:**
 0. **Scratch item** — find the item the request names, or file it with `acta scratch new`, then `acta set scratch/<stem> status brainstorming`
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria; append each answer with `acta scratch add`
+2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria; append each answer with `acta scratch add SCRATCH-n --section log`
 3. **Propose 2-3 approaches** — with trade-offs and your recommendation
-4. **Present design** — in sections scaled to their complexity, get user approval after each section, append each approved section with `acta scratch add`
+4. **Present design** — in sections scaled to their complexity, get user approval after each section, append each approved section with `acta scratch add SCRATCH-n --section log`
 5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPEC number and hash, and commit
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 7. **User reviews written spec** — ask user to review the spec file before proceeding

@@ -23,11 +23,30 @@ func TestSkillBrainstorm(t *testing.T) {
 			"closes:",
 			"commit it on the branch that is checked out (usually main)",
 			"`acta:build` makes the worktree",
+			"acta scratch add SCRATCH-n --section log",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
 			"names the DEBT ids it closes",
 			"in the worktree", "create its worktree now", "as the first commit"},
 	})
+}
+
+// TestBrainstormEveryScratchAddLogs catches one line that falls back to a
+// plain append. The Must list only proves the string exists somewhere, so a
+// single answer or section could quietly lose the section flag.
+func TestBrainstormEveryScratchAddLogs(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, line := range strings.Split(string(b), "\n") {
+		if !strings.Contains(line, "acta scratch add") {
+			continue
+		}
+		if !strings.Contains(line, "--section log") {
+			t.Errorf("brainstorm/SKILL.md:%d appends without --section log: %q", i+1, line)
+		}
+	}
 }
 
 // TestBrainstormBoundedWritesSpec reads the brainstorm skill on its own.

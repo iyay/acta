@@ -17,8 +17,10 @@ func TestSkillLand(t *testing.T) {
 			"in the plan's `closes:`",
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
 			"acta: tick <plan>", "before the merge, so the ticks reach main",
+			"git status --porcelain -- <plan path>",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
+			"Build never commits the plan file", "First commit the plan file",
 			"each DEBT id the plan names as closed"},
 	})
 }
