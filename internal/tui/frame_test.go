@@ -210,6 +210,60 @@ func TestTitleShowsTheSortOfEachPane(t *testing.T) {
 	}
 }
 
+// TestSortWordSitsBeforeTheCountInTheBottomBorder checks both sort states at
+// several widths, on every list box of the tab, top and bottom border both.
+// The word belongs to the bottom border next to the count, so the top border
+// never carries it.
+func TestSortWordSitsBeforeTheCountInTheBottomBorder(t *testing.T) {
+	t.Parallel()
+
+	// The o key flips the box that has the focus, and tab walks from List to
+	// Done, so each box gets the focus before it is flipped.
+	for i, p := range []pane{paneList, paneDone} {
+		for _, w := range []int{60, 100, 160} {
+			for _, flip := range []bool{false, true} {
+				m := press(sized(newModel(t), w, 40), tabKey(tabSpecs))
+				for range i {
+					m = press(m, "tab")
+				}
+				if flip {
+					m = press(m, "o")
+				}
+				word := m.sortWord(p)
+				if want := map[bool]string{false: "oldest", true: "newest"}[flip]; word != want {
+					t.Fatalf("pane %d w=%d flip=%v: word %q, want %q", p, w, flip, word, want)
+				}
+				top := plain(m.paneTop(p, m.geometry().side[p], m.edge(p)))
+				if strings.Contains(top, "oldest") || strings.Contains(top, "newest") {
+					t.Errorf("pane %d w=%d flip=%v: the top border still says the sort: %q", p, w, flip, top)
+				}
+				rows, sel, idx := m.slotOf(p)
+				count := itemCount(cursorOf(rows, *sel, *idx)+1, len(rows))
+				if got := bottomLine(t, m, p); !strings.HasSuffix(got, " "+word+" · "+count+" ┘") {
+					t.Errorf("pane %d w=%d flip=%v: bottom border %q, want it to end with %q", p, w, flip, got, word+" · "+count)
+				}
+			}
+		}
+	}
+}
+
+// TestNarrowBottomBorderDropsTheWordFirst walks every width from too narrow
+// for the word up to room for both, so the count never goes first.
+func TestNarrowBottomBorderDropsTheWordFirst(t *testing.T) {
+	t.Parallel()
+
+	count := "12 of 34"
+	both := "newest · " + count
+	for inner := range lipgloss.Width(" " + both + " ") {
+		if got := sortFoot("newest", count, inner); got != count {
+			t.Errorf("inner=%d: %q, want the count alone", inner, got)
+		}
+	}
+	if got := sortFoot("newest", count, lipgloss.Width(" "+both+" ")); got != both {
+		t.Errorf("room for both: %q, want %q", got, both)
+	}
+}
+
 func TestHelpListsTheSortKey(t *testing.T) {
 	t.Parallel()
 
