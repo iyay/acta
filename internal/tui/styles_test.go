@@ -63,7 +63,7 @@ func TestHexThemeRoles(t *testing.T) {
 	if s.work.GetForeground() != lipgloss.Color("#7aa2f7") {
 		t.Fatalf("work = %v", s.work.GetForeground())
 	}
-	if s.dim.GetForeground() != lipgloss.Color("#414868") {
+	if s.dim.GetForeground() != lipgloss.Color("#2d3147") {
 		t.Fatalf("dim = %v", s.dim.GetForeground())
 	}
 	if !s.faint.GetFaint() {
@@ -178,4 +178,49 @@ func TestViewCarriesTheThemeBackground(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestDimFadesTowardTheBackground checks every built-in theme with its own
+// colors: the dim color sits halfway between the background and slot 8, so
+// it is never a color the panes already wear.
+func TestDimFadesTowardTheBackground(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, ok := theme.Builtin(name)
+		if !ok || th.BG == "" {
+			continue
+		}
+		s := newStyles(th, true)
+		got := s.dim.GetForeground()
+		if want := lipgloss.Color(mixHex(th.BG, th.ANSI[slotDim])); got != want {
+			t.Errorf("%s: dim %v, want %v", name, got, want)
+		}
+		for _, used := range []string{th.FG, th.ANSI[slotDim], th.ANSI[slotAccent], th.ANSI[slotWork]} {
+			if th.BG != th.ANSI[slotDim] && got == lipgloss.Color(used) {
+				t.Errorf("%s: dim %v is a color the panes already wear", name, got)
+			}
+		}
+	}
+	term, _ := theme.Builtin("terminal")
+	if got := newStyles(term, true).dim.GetForeground(); got != lipgloss.Color("8") {
+		t.Errorf("terminal theme: dim %v, want slot 8", got)
+	}
+}
+
+func TestMixHex(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct{ a, b, want string }{
+		{"#1a1b26", "#414868", "#2d3147"},
+		{"#000000", "#ffffff", "#7f7f7f"},
+		{"#ABCDEF", "#abcdef", "#abcdef"},
+		{"", "#414868", "#414868"},
+		{"#12345", "#414868", "#414868"},
+		{"#zzzzzz", "#414868", "#414868"},
+	} {
+		if got := mixHex(c.a, c.b); got != c.want {
+			t.Errorf("mixHex(%q, %q) = %q, want %q", c.a, c.b, got, c.want)
+		}
+	}
 }

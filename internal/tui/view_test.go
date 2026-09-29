@@ -90,7 +90,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 	v := m.View()
 	for _, want := range []string{
 		" Scratches  Bugs  Debts  Specs  [Plans]  Activities",
-		"─List", "─Done ─ Dropped", "[0]─Detail",
+		"─Open", "─Done ─ Dropped", "[0]─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"plans/2026-09-21-alpha  Alpha plan",
 		"ID        : plans/2026-09-21-alpha",
@@ -289,10 +289,10 @@ func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
 		want string
 		gone string
 	}{
-		{nil, "─List", "─Done"},
-		{[]string{tabKey(tabSpecs)}, "─List", "─Done"},
-		{[]string{tabKey(tabSpecs), "tab"}, "─Done ─ Dropped", "─List"},
-		{[]string{tabKey(tabSpecs), "0"}, "[0]─Detail", "─List"},
+		{nil, "─Tasks", "─Done"},
+		{[]string{tabKey(tabSpecs)}, "─Open", "─Done"},
+		{[]string{tabKey(tabSpecs), "tab"}, "─Done ─ Dropped", "─Open"},
+		{[]string{tabKey(tabSpecs), "0"}, "[0]─Detail", "─Open"},
 	} {
 		m := sized(press(newModel(t), tc.keys...), 40, 20)
 		v := m.View()
@@ -977,7 +977,7 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
 		t.Error("the help popup is missing")
 	}
-	if !strings.Contains(v, "─List") || !strings.Contains(v, "[0]─Detail") {
+	if !strings.Contains(v, "─Tasks") || !strings.Contains(v, "[0]─Detail") {
 		t.Error("the popup should cover the boxes, not replace them")
 	}
 	if !strings.HasSuffix(plain(lastLine(v)), "2026-09-27 20:46 | Feedback  dev") {
@@ -1067,59 +1067,65 @@ func TestPopupChangesOnlyItsBox(t *testing.T) {
 }
 
 // TestPopupDimsTheBackground opens every popup the keys can open, at both
-// sizes, and reads the screen it covers. Every cell outside the box is the
-// dim style over its own plain text, every line of the box is the box the
-// model draws, and esc gives back the exact screen that was there before.
+// sizes, under both color profiles. Every cell outside the box is the dim
+// style over its own plain text, every line of the box is the box the model
+// draws, and esc gives back the exact screen that was there before.
 func TestPopupDimsTheBackground(t *testing.T) {
-	withColors(func() {
-		// The brush the view paints the screen behind a popup with, spelled
-		// out here so this test checks the colors the plan names and not
-		// the ones the view happens to use today.
-		dim := lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#414868"))
+	// The brush the view paints the screen behind a popup with, spelled out
+	// here so this test checks the color the plan names and not the one the
+	// view happens to use today.
+	dim := func() lipgloss.Style { return lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#2d3147")) }
+	withColors(func() { checkPopupDim(t, dim()) })
+	withTrueColor(func() { checkPopupDim(t, dim()) })
+}
 
-		for _, open := range []string{"?", "t", "s", "n"} {
-			for _, size := range [][2]int{{80, 30}, {160, 50}} {
-				m := press(sized(newModel(t), size[0], size[1]), tabKey(tabBugs))
-				before := m.View()
-				pop := press(m, open)
-				rows := strings.Split(pop.popupBox(), "\n")
-				x0, y0, w, h := popupRect(rows, pop.width, pop.height)
-				if w == 0 {
-					t.Errorf("popup %q at %dx%d never opened", open, size[0], size[1])
-					continue
-				}
-				// The theme background is under every line and after every
-				// reset. Take it off again, because what this test reads is
-				// the brush on the text and the frame has its own test.
-				frame := strings.TrimSuffix(pop.styles.paintFrame(""), "\x1b[K")
-				after := strings.Split(pop.View(), "\n")
-				for y, drawn := range after {
-					ln := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(drawn, frame), "\x1b[K"), frame, "")
-					parts := []string{ln}
-					if y >= y0 && y < y0+h && y < len(after)-1 {
-						i := strings.Index(ln, rows[y-y0])
-						if i < 0 {
-							t.Errorf("popup %q at %dx%d line %d: the box row is not drawn the way popupBox draws it", open, size[0], size[1], y)
-							continue
-						}
-						head, tail := ln[:i], ln[i+len(rows[y-y0]):]
-						if lipgloss.Width(head) != x0 || lipgloss.Width(rows[y-y0]) != w {
-							t.Errorf("popup %q at %dx%d line %d: the box sits at column %d and is %d cells wide, want %d and %d", open, size[0], size[1], y, lipgloss.Width(head), lipgloss.Width(rows[y-y0]), x0, w)
-						}
-						parts = []string{head, tail}
+// checkPopupDim opens every popup at both sizes and checks that every cell
+// behind the box is the dim brush over its own plain text, and that esc gives
+// back the exact screen from before.
+func checkPopupDim(t *testing.T, dim lipgloss.Style) {
+	t.Helper()
+	for _, open := range []string{"?", "t", "s", "n"} {
+		for _, size := range [][2]int{{80, 30}, {160, 50}} {
+			m := press(sized(newModel(t), size[0], size[1]), tabKey(tabBugs))
+			before := m.View()
+			pop := press(m, open)
+			rows := strings.Split(pop.popupBox(), "\n")
+			x0, y0, w, h := popupRect(rows, pop.width, pop.height)
+			if w == 0 {
+				t.Errorf("popup %q at %dx%d never opened", open, size[0], size[1])
+				continue
+			}
+			// The theme background is under every line and after every
+			// reset. Take it off again, because what this test reads is
+			// the brush on the text and the frame has its own test.
+			frame := strings.TrimSuffix(pop.styles.paintFrame(""), "\x1b[K")
+			after := strings.Split(pop.View(), "\n")
+			for y, drawn := range after {
+				ln := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(drawn, frame), "\x1b[K"), frame, "")
+				parts := []string{ln}
+				if y >= y0 && y < y0+h && y < len(after)-1 {
+					i := strings.Index(ln, rows[y-y0])
+					if i < 0 {
+						t.Errorf("popup %q at %dx%d line %d: the box row is not drawn the way popupBox draws it", open, size[0], size[1], y)
+						continue
 					}
-					for _, seg := range parts {
-						if got, want := seg, dim.Render(plain(seg)); got != want {
-							t.Errorf("popup %q at %dx%d line %d: the background keeps its own color\n got %q\nwant %q", open, size[0], size[1], y, got, want)
-						}
+					head, tail := ln[:i], ln[i+len(rows[y-y0]):]
+					if lipgloss.Width(head) != x0 || lipgloss.Width(rows[y-y0]) != w {
+						t.Errorf("popup %q at %dx%d line %d: the box sits at column %d and is %d cells wide, want %d and %d", open, size[0], size[1], y, lipgloss.Width(head), lipgloss.Width(rows[y-y0]), x0, w)
 					}
+					parts = []string{head, tail}
 				}
-				if closed := press(pop, "esc").View(); closed != before {
-					t.Errorf("popup %q at %dx%d: the view is not byte-equal to the one before it opened", open, size[0], size[1])
+				for _, seg := range parts {
+					if got, want := seg, dim.Render(plain(seg)); got != want {
+						t.Errorf("popup %q at %dx%d line %d: the background keeps its own color\n got %q\nwant %q", open, size[0], size[1], y, got, want)
+					}
 				}
 			}
+			if closed := press(pop, "esc").View(); closed != before {
+				t.Errorf("popup %q at %dx%d: the view is not byte-equal to the one before it opened", open, size[0], size[1])
+			}
 		}
-	})
+	}
 }
 
 // atCell gives the first n cells of a plain line, whole runes only, so a test
