@@ -101,6 +101,7 @@ func newModel(t *testing.T) Model {
 	cfg, b := fixture(t)
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
+	m.dcache = &detailCache{}
 	return m
 }
 

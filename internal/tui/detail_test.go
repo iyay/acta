@@ -647,3 +647,109 @@ func TestDetailShowsTheDates(t *testing.T) {
 		}
 	}
 }
+
+func TestDetailLinesAreBuiltOncePerChange(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	calls := 0
+	m.render = func(md string, _ int) string { calls++; return md }
+	m.dcache = &detailCache{}
+	// The width the detail box really has, so the draw below asks for the
+	// lines of the same width the calls above built.
+	w := scrollBox(m, paneDetail).textW()
+	m.detailLines(w)
+	m.detailLines(w)
+	m.View()
+	if calls != 1 {
+		t.Errorf("the same item at the same width rendered its body %d times, want 1", calls)
+	}
+}
+
+func TestDetailCacheFollowsWidthItemAndBoard(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = &detailCache{}
+	wide := strings.Join(m.detailLines(80), "\n")
+	narrow := strings.Join(m.detailLines(30), "\n")
+	if wide == narrow {
+		t.Error("a new width gave the lines of the old width")
+	}
+	first := strings.Join(m.detailLines(80), "\n")
+	// The plans tab lists two plans, so j walks to another item.
+	m = press(m, tabKey(tabPlans), "j")
+	if strings.Join(m.detailLines(80), "\n") == first {
+		t.Error("a new selected item gave the lines of the old item")
+	}
+	shown := strings.Join(m.detailLines(80), "\n")
+	fresh, err := m.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range fresh.Items {
+		it.Title = it.Title + " renamed"
+	}
+	next, _ := m.Update(reloadMsg{b: fresh})
+	if got := strings.Join(next.(Model).detailLines(80), "\n"); got == shown || !strings.Contains(got, "renamed") {
+		t.Error("a reloaded board gave the lines of the old board")
+	}
+}
+
+// With no item under the cursor the lines come from the board alone, so a
+// board that swaps its items for others must give other lines even though
+// the selected item is nil both times.
+func TestDetailCacheFollowsABoardWithNothingSelected(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	// The untyped group of the specs tab has no item of its own.
+	m = press(m, tabKey(tabSpecs))
+	for m.Selected() != nil {
+		m = press(m, "j")
+	}
+	if s := m.Selected(); s != nil {
+		t.Fatalf("the cursor is on %s, want a row that selects no item", s.ID)
+	}
+	m.dcache = &detailCache{}
+	before := strings.Join(m.detailLines(80), "\n")
+	fresh, err := m.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A board with nothing on it at all. The box names that case in its own
+	// words, where a board with a group under the cursor does not.
+	fresh.Items = nil
+	next, _ := m.Update(reloadMsg{b: fresh})
+	if after := strings.Join(next.(Model).detailLines(80), "\n"); after == before {
+		t.Errorf("a reloaded board with nothing selected gave the lines of the old board: %q", after)
+	}
+}
+
+func TestDetailWithoutCacheStillDraws(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = nil
+	if len(m.detailLines(80)) == 0 {
+		t.Error("a model with no cache must still draw the detail box")
+	}
+}
+
+// A new theme brings new styles and a new markdown renderer, so the box has
+// to be given lines built with them and not keep the ones of the old theme.
+func TestDetailCacheFollowsTheTheme(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = &detailCache{}
+	before := strings.Join(m.detailLines(80), "\n")
+	next := m.WithTheme("dracula", false)
+	after := strings.Join(next.detailLines(80), "\n")
+	if after == before {
+		t.Error("a new theme gave the lines of the old theme")
+	}
+	if !strings.Contains(after, "\x1b[") {
+		t.Errorf("a themed detail box draws no color at all: %q", after)
+	}
+}

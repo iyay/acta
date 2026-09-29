@@ -109,7 +109,8 @@ type Model struct {
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
 	render   func(md string, width int) string
-	styles   styles // the brushes every screen is painted with
+	dcache   *detailCache // the last detail lines, shared by every copy
+	styles   styles       // the brushes every screen is painted with
 }
 
 // New builds a model over b. dark picks the markdown style; ask the terminal
@@ -139,6 +140,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		},
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
+		dcache: &detailCache{},
 	}
 }
 
@@ -152,6 +154,7 @@ func (m Model) WithTheme(name string, dark bool) Model {
 	}
 	m.styles = newStyles(t, dark)
 	m.render = newRenderer(t.Dark(dark))
+	m.dcache = &detailCache{}
 	return m
 }
 

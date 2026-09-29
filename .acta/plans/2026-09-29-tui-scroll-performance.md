@@ -3,6 +3,7 @@ id: PLN-0037
 created: "2026-09-29"
 hash: z02pmcq
 started: "2026-09-29"
+finished: "2026-09-29"
 ---
 # TUI Scroll Performance Implementation Plan
 
@@ -306,7 +307,7 @@ git commit -m "tui: batch wheel notches per frame and scroll 3 lines each"
 - Consumes: `wheel`, `wheelOnly`, `wheelTick` test helpers from Task 1.
 - Produces: `type detailCache struct`, Model field `dcache *detailCache`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/detail_test.go`. `newModel` and `sized` already exist in the tests.
 
@@ -394,12 +395,12 @@ func BenchmarkWheelFrame(b *testing.B) {
 
 If `paneModel` needs a real `*testing.T` (it calls `t.Helper`, `t.TempDir` or `t.Fatal`), change its parameter to `testing.TB` so the benchmark passes `b`, and pass `b` instead of `t`.
 
-- [ ] **Step 2: Run the tests to watch them fail**
+- [x] **Step 2: Run the tests to watch them fail**
 
 Run: `go test ./internal/tui/ -run 'DetailLines|DetailCache|DetailWithout'`
 Expected: build FAIL with `undefined: detailCache` and `m.dcache undefined`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/detail.go`, above `detailLines`:
 
@@ -456,7 +457,7 @@ and in `New`, next to `render:`:
 
 Code that changes `m.render` or `m.styles` on an existing model (tests do this after `New`) must also set `m.dcache = &detailCache{}`; the tests in Step 1 do so. Update `newModel` in `internal/tui/model_test.go` to set `m.dcache = &detailCache{}` after it replaces `m.render`, so no test sees lines built by the glamour renderer.
 
-- [ ] **Step 4: Run the tests to watch them pass**
+- [x] **Step 4: Run the tests to watch them pass**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
@@ -464,7 +465,7 @@ Expected: PASS.
 Run: `go test ./internal/tui/ -run xxx -bench WheelFrame -benchmem`
 Expected: the benchmark runs and prints ns/op. Paste the line in the task report.
 
-- [ ] **Step 5: Full suite, format, vet, commit**
+- [x] **Step 5: Full suite, format, vet, commit**
 
 ```bash
 go test ./...
@@ -473,3 +474,36 @@ go vet ./internal/tui/
 git add internal/tui/detail.go internal/tui/detail_test.go internal/tui/model.go internal/tui/model_test.go internal/tui/view_bench_test.go
 git commit -m "tui: build the detail lines once per item, width and board"
 ```
+
+## Fix round 1
+
+Review round 1 (d943290..037572f) found two BLOCKERs. Both reviewers found the same two, and both proved them with probe tests.
+
+### Task 3: Drop stale wheel notches and never cache the empty detail box
+
+**Files:**
+- Modify: `internal/tui/model.go` (wheel tick, and every path that resets the detail offset or changes the item on show)
+- Modify: `internal/tui/sidebar.go` (`openTab`), only if the drop cannot live in one shared place
+- Modify: `internal/tui/detail.go` (`detailLines`)
+- Test: `internal/tui/scroll_test.go`, `internal/tui/detail_test.go`
+
+**verify:** (1) Wheel notches gathered for one item or one tab are never applied to another. List every path that changes the item on show, the open tab or the Done sub-tab while notches wait (click on a list row, key move, `moveTo` from a reload whose item went away, `openTab`, Done sub-tab switch, search), and show for each that the new item opens at offset 0 after the tick. Notches with no such change still scroll exactly as before. (2) With no item selected, the detail box always shows what a fresh build would show. List every input the nil-item branch reads (`listOf()`: query, tab, focus, Done sub-tab) and show that a change to each is seen.
+
+**BLOCKER 1:** `internal/tui/model.go:205-209`. The tick applies `wheelDelta` to `wheelPane` no matter what changed since the notches came in. `moveTo` (`model.go:304-306`) sets the detail offset to 0 for a new item, and the tick then undoes that.
+- Repro: Plans tab, focus on the detail box, 2 × `wheelOnly` down, `click` the second list row, `wheelTick`.
+- Wrong: detail `off = 6` on the new item. Expected: `off = 0`, which is what base d943290 gives.
+- Same cause: `openTab` (`sidebar.go:98-108`) and a reload that moves the selection.
+- Fix direction: drop the pending delta (`wheelDelta = 0`) in the one shared place every such path goes through. Or, at the tick, apply the delta only when the item and tab still match what they were when the notches came in. Pick the smaller one that covers every path in the verify list.
+- Mutation that proves the fix: remove the drop, and the new test goes red.
+
+**BLOCKER 2:** `internal/tui/detail.go:41-45`. The cache key is (board, item, width). When `Selected()` is nil, `buildDetailLines` also reads `len(m.listOf())`, which the key does not see.
+- Repro: Specs tab, `G` (cursor on the untyped group row), `/`, type `zzzq` so nothing matches.
+- Wrong: the box shows "enter opens the group". Expected: "No items".
+- Fix direction: do not use the cache when the selected item is nil. That branch has no markdown and costs nothing.
+- Mutation that proves the fix: put the cache back for the nil item, and the new test goes red.
+
+- [ ] **Step 1: Write the failing tests** for both BLOCKERs, using the repros above: one for the click, one for `openTab`, one for the reload that moves the selection, and one for the empty search.
+- [ ] **Step 2: Run them and watch them fail** with `go test ./internal/tui/ -run 'Wheel|Detail'`.
+- [ ] **Step 3: Write the minimal fix** for both BLOCKERs. Also fix the comment above the wheel case in `mouse`. It says the wheel "can never move a pane the user is not looking at", and that is no longer true.
+- [ ] **Step 4: Run the whole suite and watch it pass** with `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
+- [ ] **Step 5: Commit both fixes as one commit** with the message `tui: drop stale wheel notches and skip the cache for the empty detail box`.

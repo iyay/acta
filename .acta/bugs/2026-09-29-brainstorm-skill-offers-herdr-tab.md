@@ -2,6 +2,8 @@
 id: BUG-0007
 hash: o2l7pal
 started: "2026-09-29"
+fixed_in: 6ca8050
+finished: "2026-09-29"
 ---
 # acta:brainstorm offers a herdr tab, eval second-brainstorm-choices fails when the skill loads
 

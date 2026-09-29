@@ -19,10 +19,37 @@ const (
 	dotDone    = "✓"
 )
 
-// detailLines draws the header, the list of work and the body of the item on
-// show. Labels are upper case, padded to one width, with the colons in one
-// column, and a line with no value is left out.
+// detailCache keeps the last lines of the detail box. The box is asked for its
+// lines several times on every key and wheel notch, and building them renders
+// the whole markdown body each time. The model is copied on every update, so
+// the cache sits behind a pointer that all the copies share.
+type detailCache struct {
+	board *board.Board
+	item  *board.Item
+	width int
+	lines []string
+}
+
+// detailLines gives the lines of the detail box, built again only when the
+// item, the width or the board changed. A reload makes a new board, so its
+// items are new too and the old lines are never shown for them.
 func (m Model) detailLines(w int) []string {
+	c := m.dcache
+	if c == nil {
+		return m.buildDetailLines(w)
+	}
+	it := m.Selected()
+	if c.lines != nil && c.board == m.board && c.item == it && c.width == w {
+		return c.lines
+	}
+	*c = detailCache{board: m.board, item: it, width: w, lines: m.buildDetailLines(w)}
+	return c.lines
+}
+
+// buildDetailLines draws the header, the list of work and the body of the item
+// on show. Labels are upper case, padded to one width, with the colons in one
+// column, and a line with no value is left out.
+func (m Model) buildDetailLines(w int) []string {
 	it := m.Selected()
 	if it == nil {
 		if len(m.board.Items) == 0 {
