@@ -51,7 +51,7 @@ Core rules:
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
-8. One Architectural brainstorm per session. A second one cannot start in this session: file the scratch item first (acta scratch new), then name the two ways to open it elsewhere, a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:brainstorm for that way. Do not design it here.
+8. One Architectural brainstorm per session. A second one cannot start in this session: file the scratch item first, with one acta scratch new call (do not load acta:scratch, do not add more lines; "written, not committed" still counts as filed). In the same reply, name the two ways to open it elsewhere, a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:brainstorm for that way. Do not design it here.
 `
 
 // herdrExtra is the one extra choice, added only inside a herdr session. The

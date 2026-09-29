@@ -122,6 +122,8 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			"acta:brainstorm",
 			"claude --bg 'brainstorm SCRATCH-n'",
 			"file the scratch item first",
+			"one acta scratch new call",
+			"written, not committed",
 			"new session",
 		} {
 			if !strings.Contains(out, want) {
