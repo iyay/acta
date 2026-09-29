@@ -33,6 +33,8 @@ Before you pick one, run `acta voice show`. When it prints `build_executor: <nam
 
 Do not ask whether to create a worktree. Every change gets one: feature, fix, one-liner, config, docs in the repo. The main checkout is read-only for agents.
 
+The spec and plan from acta:brainstorm and acta:plan stay on main; they are already committed when the worktree is made. While a build runs, do not edit its plan on main: the ticks live in the worktree copy and would clash at merge. A plan change goes in the worktree.
+
 Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `acta:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
 
 ### Step 0: Detect Existing Isolation
