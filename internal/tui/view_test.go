@@ -89,7 +89,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans))
 	v := m.View()
 	for _, want := range []string{
-		" Scratches  Bugs  Debts  Specs  [Plans]  Activities",
+		" 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities",
 		"─Open", "─Done ─ Dropped", "[0]─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"plans/2026-09-21-alpha  Alpha plan",
@@ -101,17 +101,23 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 			t.Errorf("view is missing %q", want)
 		}
 	}
-	// The tab bar is the first line of the screen and the status line the
-	// last, so the boxes live between them.
+	// The tab box holds the first three lines of the screen and the status
+	// line the last, so the boxes live between them.
 	lines := strings.Split(v, "\n")
-	if !strings.Contains(plain(lines[0]), "[Plans]") {
-		t.Errorf("the first line is %q, want the tab bar", plain(lines[0]))
+	if !strings.Contains(plain(lines[1]), "5 Plans") {
+		t.Errorf("the names line is %q, want the tab box with Plans open", plain(lines[1]))
 	}
 	for _, line := range lines {
 		if w := lipgloss.Width(line); w > 200 {
 			t.Fatalf("line wider than the terminal (%d): %q", w, line)
 		}
 	}
+}
+
+// namesIn gives the words a line of the tab box draws, the cells between its
+// two walls.
+func namesIn(line string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(plain(line), "│"), "│")
 }
 
 // The tab bar is the one place the reader sees which tab is open, so a narrow
@@ -122,28 +128,26 @@ func TestTabBarKeepsTheOpenTab(t *testing.T) {
 
 	for i, tab := range topTabs {
 		m := sized(press(newModel(t), tabKey(i)), 200, 40)
-		open := "[" + tab.name + "]"
-		for w := 1; w <= 200; w++ {
-			bar := plain(strings.Split(sized(m, w, 40).View(), "\n")[0])
-			if w >= len(open)+1 {
+		open := fmt.Sprintf("%d %s", i+1, tab.name)
+		for w := 2; w <= 200; w++ {
+			inner := w - 2
+			bar := namesIn(strings.Split(sized(m, w, 40).View(), "\n")[1])
+			if inner >= len(open)+1 {
 				if !strings.Contains(bar, open) {
 					t.Fatalf("%s at %d columns: %q has no %q", tab.name, w, bar, open)
 				}
-			} else if want := " " + open; len(bar) != min(w, len(want)) || !strings.HasPrefix(want, bar) {
+			} else if want := " " + open; len(bar) != min(inner, len(want)) || !strings.HasPrefix(want, bar) {
 				// Too narrow even for the name, so the line holds as much of
-				// it as the width allows, and nothing else.
-				t.Fatalf("%s at %d columns: %q, want the first %d cells of %q", tab.name, w, bar, min(w, len(want)), want)
+				// it as the box allows, and nothing else.
+				t.Fatalf("%s at %d columns: %q, want the first %d cells of %q", tab.name, w, bar, min(inner, len(want)), want)
 			}
-			// A cut name reads as a word of its own, so every word on the line
-			// has to be a whole name or a piece of the open one.
-			for _, word := range strings.Fields(bar) {
-				if word == open || strings.HasPrefix(open, word) {
-					continue
+			// A cut name reads as a word of its own, so every name on the
+			// line has to carry the number that opens it and be a whole one.
+			for j, other := range topTabs {
+				name := fmt.Sprintf("%d %s", j+1, other.name)
+				if strings.Contains(bar, other.name) && !strings.Contains(bar, name) {
+					t.Fatalf("%s at %d columns: %q shows %q without the number in front of it, so it is a piece of a name", tab.name, w, bar, other.name)
 				}
-				if slices.ContainsFunc(topTabs[:], func(t topTab) bool { return t.name == word }) {
-					continue
-				}
-				t.Fatalf("%s at %d columns: %q shows %q, which is not a whole tab name", tab.name, w, bar, word)
 			}
 		}
 	}
@@ -157,10 +161,10 @@ func TestTabBarDropsTheNameFarthestFromTheOpenTab(t *testing.T) {
 
 	for i, tab := range topTabs {
 		m := sized(press(newModel(t), tabKey(i)), 200, 40)
-		for w := 1; w <= 200; w++ {
-			bar := plain(strings.Split(sized(m, w, 40).View(), "\n")[0])
+		for w := 2; w <= 200; w++ {
+			bar := namesIn(strings.Split(sized(m, w, 40).View(), "\n")[1])
 			drop := make([]bool, len(topTabs))
-			for widthOfBar(drop, i) > w {
+			for widthOfBar(drop) > w-2 {
 				// dropOrder walks the tabs from the right, skipping the open
 				// one, so the first match at the widest distance is the one
 				// on the right, which is the one a tie has to drop.
@@ -190,9 +194,9 @@ func TestTabBarDropsTheNameFarthestFromTheOpenTab(t *testing.T) {
 	}
 }
 
-// widthOfBar counts the cells the top line takes when the tabs in drop are
-// missing and tab i is the open one, the same way the view counts them.
-func widthOfBar(drop []bool, open int) int {
+// widthOfBar counts the cells the names line takes when the tabs in drop are
+// missing, the same way the view counts them.
+func widthOfBar(drop []bool) int {
 	w := 1
 	for i, tab := range topTabs {
 		if drop[i] {
@@ -201,13 +205,123 @@ func widthOfBar(drop []bool, open int) int {
 		if w > 1 {
 			w += 2
 		}
-		if i == open {
-			w += len(tab.name) + 2
-			continue
-		}
-		w += len(tab.name)
+		// Every name carries the number of the key that opens it, so the
+		// numbers take cells of their own.
+		w += len(strconv.Itoa(i+1)) + 1 + len(tab.name)
 	}
 	return w
+}
+
+// closedBox says what is wrong with the top three lines of a screen, so every
+// test that reads the tab box reads it the same way. Nothing wrong comes back
+// as no error: one box, closed on both sides, as wide as the screen.
+func closedBox(lines []string, w int) error {
+	if len(lines) < barRows {
+		return fmt.Errorf("the screen has %d lines, want a box of %d", len(lines), barRows)
+	}
+	// The two border lines hold nothing but their own dashes, so a box that
+	// something else was drawn over shows it. The names line in between holds
+	// the tab names, so only its walls are read.
+	for k, corners := range [][3]string{{"┌", "─", "┐"}, {"│", "", "│"}, {"└", "─", "┘"}} {
+		line := plain(lines[k])
+		if got := lipgloss.Width(line); got != w {
+			return fmt.Errorf("line %d is %d cells wide, want %d", k, got, w)
+		}
+		if !strings.HasPrefix(line, corners[0]) || !strings.HasSuffix(line, corners[2]) {
+			return fmt.Errorf("line %d is %q, want a box of %d cells", k, line, w)
+		}
+		if corners[1] != "" && strings.Trim(line, corners[0]+corners[1]+corners[2]) != "" {
+			return fmt.Errorf("line %d is %q, want nothing between its corners but dashes", k, line)
+		}
+	}
+	return nil
+}
+
+// TestTabsSitInABoxOfTheirOwn reads the top three lines at several widths
+// and on every tab, so no width and no open tab can break the box.
+func TestTabsSitInABoxOfTheirOwn(t *testing.T) {
+	t.Parallel()
+
+	for _, w := range []int{40, 60, 120, 200} {
+		for i := range topTabs {
+			m := press(sized(newModel(t), w, 30), tabKey(i))
+			lines := strings.Split(m.View(), "\n")
+			if err := closedBox(lines, w); err != nil {
+				t.Errorf("w=%d tab %d: %v", w, i, err)
+			}
+			mid := plain(lines[1])
+			if strings.ContainsAny(mid, "[]") {
+				t.Errorf("w=%d tab %d: names still wear brackets %q", w, i, mid)
+			}
+			if open := fmt.Sprintf("%d %s", i+1, topTabs[i].name); !strings.Contains(mid, open) {
+				t.Errorf("w=%d: the open tab %q is missing from %q", w, open, mid)
+			}
+			if w >= 120 {
+				for j, tab := range topTabs {
+					if name := fmt.Sprintf("%d %s", j+1, tab.name); !strings.Contains(mid, name) {
+						t.Errorf("w=%d: %q is missing from %q", w, name, mid)
+					}
+				}
+			}
+			g := m.geometry()
+			first := g.full
+			if g.wide {
+				first = g.side[paneList]
+			}
+			if first.y != barRows {
+				t.Errorf("w=%d tab %d: the first pane starts on line %d, want %d", w, i, first.y, barRows)
+			}
+		}
+	}
+}
+
+// TestTheOpenTabIsTheOnlyBrightName checks the brush of every name, so the
+// highlight can never sit on two tabs or on the wrong one.
+func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
+	withColors(func() {
+		for i := range topTabs {
+			m := press(sized(newModel(t), 160, 40), tabKey(i))
+			mid := strings.Split(m.View(), "\n")[1]
+			bright := m.styles.accent.Bold(true)
+			for j, tab := range topTabs {
+				on := strings.Contains(mid, bright.Render(fmt.Sprintf("%d %s", j+1, tab.name)))
+				if on != (j == i) {
+					t.Errorf("tab %d open: %q bright = %v", i, tab.name, on)
+				}
+			}
+		}
+	})
+}
+
+// The box has to close and hold its width on every screen the terminal can
+// report. A width too narrow for the two walls has no box to close, so every
+// line is a plain run of dashes, and the panes below still start under three
+// drawn lines.
+func TestTheTabBoxHoldsItsWidthOnEveryScreen(t *testing.T) {
+	t.Parallel()
+
+	for _, w := range sweep(0, 200, []int{0, 1, 2, 3, 5}) {
+		for i := range topTabs {
+			m := press(sized(newModel(t), 200, 30), tabKey(i))
+			rows := m.tabRows(w)
+			if len(rows) != barRows {
+				t.Fatalf("w=%d tab %d: %d rows, want %d", w, i, len(rows), barRows)
+			}
+			for k, row := range rows {
+				if got := lipgloss.Width(row); got != w {
+					t.Errorf("w=%d tab %d row %d: %d cells wide, %q", w, i, k, got, plain(row))
+				}
+				if w < 2 && strings.Trim(plain(row), "─") != "" {
+					t.Errorf("w=%d tab %d row %d: %q, want only dashes, there is no room for a corner", w, i, k, plain(row))
+				}
+			}
+			if w >= 2 {
+				if err := closedBox(rows, w); err != nil {
+					t.Errorf("w=%d tab %d: %v", w, i, err)
+				}
+			}
+		}
+	}
 }
 
 // Edge sizes of the layout. Under -short the size sweeps read only these,
@@ -1064,6 +1178,29 @@ func TestPopupChangesOnlyItsBox(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A popup sits over the panes, so the tab box above them stays whole on a
+// screen too short to fit both. Every popup and every size is read, because a
+// box that a help screen cuts in half is the one screen the reader needs.
+func TestAPopupNeverCoversTheTabBox(t *testing.T) {
+	t.Parallel()
+
+	for _, w := range []int{60, 120} {
+		for h := 4; h <= 24; h++ {
+			for _, open := range []string{"?", "t", "s", "n"} {
+				lines := strings.Split(plain(press(sized(newModel(t), w, h), open).View()), "\n")
+				for k, want := range []string{"┌", "│", "└"} {
+					if k >= len(lines) {
+						t.Fatalf("%dx%d popup %q: the screen has %d lines, want the box of %d", w, h, open, len(lines), barRows)
+					}
+					if !strings.HasPrefix(lines[k], want) {
+						t.Errorf("%dx%d popup %q: line %d is %q, want the tab box", w, h, open, k, lines[k])
+					}
+				}
+			}
+		}
+	}
 }
 
 // TestPopupDimsTheBackground opens every popup the keys can open, at both

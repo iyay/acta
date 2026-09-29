@@ -57,7 +57,7 @@ func itemCount(selected, total int) string {
 func (m Model) boxOf(p pane) box {
 	b := m.geometry().at(p)
 	if b.h == 0 {
-		return m.box(p, 0, 1, m.width, max(0, m.height-2))
+		return m.box(p, 0, barRows, m.width, max(0, m.height-barRows-1))
 	}
 	return b
 }

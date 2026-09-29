@@ -686,28 +686,28 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	t.Parallel()
 
 	// 120 columns, the normal width, on the Plans tab: two boxes on the left
-	// and the detail box on the right, all starting one line lower because
-	// the tab bar has the line above them.
+	// and the detail box on the right, all starting under the three lines of
+	// the tab box.
 	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
 	g := m.geometry()
 	if !g.wide || g.leftW != 36 {
 		t.Fatalf("wide %v leftW %d", g.wide, g.leftW)
 	}
-	want := [][4]int{{0, 1, 36, 19}, {0, 20, 36, 19}}
+	want := [][4]int{{0, barRows, 36, 18}, {0, barRows + 18, 36, 18}}
 	for p, w := range want {
 		if got := g.side[pane(p)]; got.x != w[0] || got.y != w[1] || got.w != w[2] || got.h != w[3] {
 			t.Fatalf("pane %d %+v, want %v", p, got, w)
 		}
 	}
-	if g.detail.x != 36 || g.detail.y != 1 || g.detail.w != 84 || g.detail.h != 38 {
+	if g.detail.x != 36 || g.detail.y != barRows || g.detail.w != 84 || g.detail.h != 36 {
 		t.Fatalf("the detail box %+v", g.detail)
 	}
 	// The border takes two lines and a row one, so a box shows as many rows
 	// as it has room for.
-	if g.side[paneList].inner != 17 || g.side[paneList].rows != 17 || g.side[paneList].first != 0 {
+	if g.side[paneList].inner != 16 || g.side[paneList].rows != 16 || g.side[paneList].first != 0 {
 		t.Fatalf("the List box holds %+v", g.side[paneList])
 	}
-	if g.side[paneDone].inner != 17 || g.side[paneDone].rows != 17 || g.side[paneDone].first != 0 {
+	if g.side[paneDone].inner != 16 || g.side[paneDone].rows != 16 || g.side[paneDone].first != 0 {
 		t.Fatalf("the Done box holds %+v", g.side[paneDone])
 	}
 	// Both names of the Done pane are still in the drawn title at this
@@ -718,7 +718,7 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	// Activities has no Done pane, so it draws one box where Plans draws
 	// two, and that box has the whole body height.
 	a := sized(newModel(t), 120, 40).geometry()
-	if len(a.side) != 1 || a.side[0].y != 1 || a.side[0].h != 38 {
+	if len(a.side) != 1 || a.side[0].y != barRows || a.side[0].h != 36 {
 		t.Fatalf("the Activities box is %+v, want one box of the full height", a.side)
 	}
 	// The left column is 30% of the width, held between 28 and 48.
@@ -729,13 +729,13 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	}
 	// Below 60 columns only the focused pane is on screen, full width.
 	n := sized(press(newModel(t), tabKey(tabSpecs), "tab"), 40, 20).geometry()
-	if n.wide || n.full.w != 40 || n.full.h != 18 {
+	if n.wide || n.full.w != 40 || n.full.h != 16 {
 		t.Fatalf("narrow screen %+v", n)
 	}
 	if n.side[paneList].w != 0 || n.detail.w != 0 {
 		t.Fatal("a narrow screen should only draw the focused pane")
 	}
-	if n.full.x != 0 || n.full.y != 1 || n.full.w != 40 || n.full.h != 18 {
+	if n.full.x != 0 || n.full.y != barRows || n.full.w != 40 || n.full.h != 16 {
 		t.Fatalf("the focused pane should take the whole screen: %+v", n.full)
 	}
 	// The click boxes sit where the drawn title puts the names, so a click

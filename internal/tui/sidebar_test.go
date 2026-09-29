@@ -70,9 +70,9 @@ func TestTUIOpensOnActivities(t *testing.T) {
 	if it := m.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha#task-2" {
 		t.Errorf("opens on %v, want the one task in progress", it)
 	}
-	bar := plain(strings.Split(m.View(), "\n")[0])
-	if !strings.HasPrefix(bar, " Scratches  Bugs  Debts  Specs  Plans  [Activities]") {
-		t.Errorf("the top line is %q, want the tab bar with Activities marked", bar)
+	bar := plain(strings.Split(m.View(), "\n")[1])
+	if !strings.HasPrefix(bar, "│ 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities") {
+		t.Errorf("the names line is %q, want the tab box with Activities marked", bar)
 	}
 }
 
