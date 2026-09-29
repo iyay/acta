@@ -41,6 +41,8 @@ type Item struct {
 	Children     []string // stories, bugs and plans: their task ids, in file order
 	Done         int      // task: ticked boxes; story or bug: done tasks
 	Total        int      // task: all boxes; story or bug: all tasks
+	Closes       []string // specs, plans and bugs: the items this one also finishes
+	ClosedBy     []string // items whose closes names this one, in file order
 	Path         string   // absolute file path
 	Line         int      // 1-based line to open the file at
 	Legacy       bool
@@ -61,6 +63,7 @@ type Item struct {
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
 	fmStatus string
+	fmCloses []string
 	fmParent string
 	plans    int
 	specFile bool
@@ -197,6 +200,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		b.linkDebt(d)
 	}
 	b.linkScratch(main.Dirs.Scratch)
+	b.linkCloses()
 	b.fillStarted(main, others)
 	b.derive()
 	b.fillAuthors(main.Root)
@@ -382,6 +386,7 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.FixedIn = field(doc.Front, "fixed_in")
 	it.fmStatus = field(doc.Front, "status")
 	it.fmParent = field(doc.Front, "parent")
+	it.fmCloses = listField(doc.Front, "closes")
 	setIDs(it, Prefix(it.Kind, false), doc)
 	return it
 }
@@ -561,14 +566,38 @@ func (b *Board) derive() {
 		it.Done, it.Total = done, len(it.Children)
 		switch {
 		case it.Kind == KindScratch:
-			it.Status, it.StatusSource = scratchStatus(it.fmStatus, len(it.Children) > 0)
+			// A scratch named in a closes list was turned into a spec just
+			// like one that hangs under a spec as its parent.
+			it.Status, it.StatusSource = scratchStatus(it.fmStatus, len(it.Children) > 0 || len(it.ClosedBy) > 0)
 		case it.fmStatus == "":
-			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
+			if st, ok := closedByStatus(b, it); ok {
+				it.Status, it.StatusSource = st, "derived"
+			} else {
+				it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
+			}
 		default:
 			it.Status, it.StatusSource = it.fmStatus, "frontmatter"
 		}
 		if it.fmStatus != "" && !contains(Allowed(it.Kind), it.fmStatus) {
 			it.Problems = append(it.Problems, "unknown status "+it.fmStatus)
+		}
+	}
+	// A spec with no plan of its own follows the specs and bugs that close
+	// it. A spec may close another spec, so the board can hold a chain and
+	// the order files were read in decides which end is settled first. The
+	// loop repeats until a pass changes nothing, and no chain is longer than
+	// the board, so it always ends.
+	for pass := 0; pass <= len(b.Items); pass++ {
+		settled := true
+		for _, it := range b.Items {
+			st, ok := closedByStatus(b, it)
+			if ok && st != it.Status {
+				it.Status, it.StatusSource = st, "derived"
+				settled = false
+			}
+		}
+		if settled {
+			break
 		}
 	}
 }
