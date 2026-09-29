@@ -1,5 +1,5 @@
 ---
-# guards: catet
+# guards: note this
 type: tool_used
 tool: Bash
 input_match: "acta scratch new"

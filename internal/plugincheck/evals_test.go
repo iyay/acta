@@ -16,7 +16,7 @@ var evalCases = []struct {
 	phrase string
 }{
 	{"side-idea-to-scratch", "scratch", "never"},
-	{"catet-to-scratch", "scratch", "catet"},
+	{"note-to-scratch", "scratch", "note this"},
 	{"second-brainstorm-choices", "brainstorm", "One Architectural brainstorm per session"},
 	{"one-file-fix-no-brainstorm", "brainstorm", "Spike and Bounded"},
 	{"brainstorm-files-scratch-first", "brainstorm", "status brainstorming"},
