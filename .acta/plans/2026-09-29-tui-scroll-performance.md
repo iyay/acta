@@ -2,6 +2,7 @@
 id: PLN-0037
 created: "2026-09-29"
 hash: z02pmcq
+started: "2026-09-29"
 ---
 # TUI Scroll Performance Implementation Plan
 
@@ -53,7 +54,7 @@ hash: z02pmcq
 **Interfaces:**
 - Produces: `const wheelStep = 3`, `const wheelFrame = 16 * time.Millisecond`, `type wheelTickMsg struct{}`, Model fields `wheelPane pane`, `wheelDelta int`, `wheelArmed bool`.
 
-- [ ] **Step 1: Change the test helper so it delivers the tick**
+- [x] **Step 1: Change the test helper so it delivers the tick**
 
 In `internal/tui/model_test.go`, the helper sends the wheel event, then the tick the real program would send 16 ms later. No sleep.
 
@@ -83,7 +84,7 @@ func wheelTick(m Model) Model {
 }
 ```
 
-- [ ] **Step 2: Move the existing wheel test to the 3-line step**
+- [x] **Step 2: Move the existing wheel test to the 3-line step**
 
 In `TestWheelScrollsOnlyTheFocusedPane` (`internal/tui/scroll_test.go`), one notch now moves `min(wheelStep, m.lastOff(p))` lines. Replace the two checks after the first `wheel(..., false)`:
 
@@ -104,7 +105,7 @@ and the `shows(m, p, 1)` check:
 
 The rest of the test (back to the top, stop at both ends) stays as it is.
 
-- [ ] **Step 3: Write the new failing tests**
+- [x] **Step 3: Write the new failing tests**
 
 Add to `internal/tui/scroll_test.go`. `paneModel` and `scrollBox` already exist there.
 
@@ -203,12 +204,12 @@ func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to watch them fail**
+- [x] **Step 4: Run the tests to watch them fail**
 
 Run: `go test ./internal/tui/ -run 'Wheel'`
 Expected: build FAIL with `undefined: wheelTickMsg` and `undefined: wheelStep`.
 
-- [ ] **Step 5: Write the implementation**
+- [x] **Step 5: Write the implementation**
 
 In `internal/tui/model.go`, next to the other message types:
 
@@ -274,12 +275,12 @@ Replace the two wheel cases in `mouse`:
 	}
 ```
 
-- [ ] **Step 6: Run the tests to watch them pass**
+- [x] **Step 6: Run the tests to watch them pass**
 
 Run: `go test ./internal/tui/`
 Expected: PASS. Any other test that counted on one line per notch fails here; fix its expected number to `wheelStep` the same way as Step 2, never by removing the check.
 
-- [ ] **Step 7: Format, vet, commit**
+- [x] **Step 7: Format, vet, commit**
 
 ```bash
 gofmt -l internal/tui

@@ -597,6 +597,29 @@ func TestWheelOverclampStaysInsideContent(t *testing.T) {
 	}
 }
 
+// One delta belongs to one pane. A notch on the next pane starts a fresh
+// frame for it, and the notches the reader already gave the old pane scroll
+// that pane rather than the new one.
+func TestWheelOnAnotherPaneKeepsEachNotchOnItsOwnPane(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	lb := scrollBox(m, paneList)
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	// The reader moves to the Done box and turns the wheel there, both before
+	// the tick that closes the first frame.
+	m = press(m, keyTo(paneDone))
+	db := scrollBox(m, paneDone)
+	m = wheelOnly(m, db.x+1, db.y+2, false)
+	m = wheelTick(m)
+	if want := min(wheelStep, m.lastOff(paneList)); m.off[paneList] != want {
+		t.Errorf("the notch over the List pane scrolled it to %d, want %d", m.off[paneList], want)
+	}
+	if want := min(wheelStep, m.lastOff(paneDone)); m.off[paneDone] != want {
+		t.Errorf("the notch over the Done pane scrolled it to %d, want %d", m.off[paneDone], want)
+	}
+}
+
 // The wheel is off while the help sits over the panes, so a notch there
 // gathers nothing and the pane underneath stays where the reader left it.
 func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
@@ -608,6 +631,40 @@ func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
 	m = wheel(m, b.x+1, b.y+2, false)
 	if m.off[paneDetail] != 0 || m.wheelDelta != 0 {
 		t.Errorf("the wheel under the help popup moved the pane: off %d, pending %d", m.off[paneDetail], m.wheelDelta)
+	}
+}
+
+// One notch moves three lines, the usual terminal step, so a scroll covers
+// ground. A step of one leaves the reader creeping down the pane.
+func TestWheelNotchMovesThreeLines(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	m = wheel(m, b.x+1, b.y+2, false)
+	if m.off[paneList] != 3 {
+		t.Errorf("one notch should scroll three lines, off is %d", m.off[paneList])
+	}
+}
+
+// A tick closes the frame, and the notch after it opens the next one. A tick
+// that left the frame armed forever would swallow every later notch, and the
+// wheel would stop moving the pane.
+func TestWheelScrollsAgainAfterTheFrameTick(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	first := wheel(m, b.x+1, b.y+2, false)
+	next, cmd := first.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if cmd == nil {
+		t.Fatal("a notch right after a tick must start the next frame")
+	}
+	// A second notch joins that frame, so the tick really covers both.
+	second := wheelOnly(next.(Model), b.x+1, b.y+2, false)
+	second = wheelTick(second)
+	if want := min(3*wheelStep, second.lastOff(paneList)); second.off[paneList] != want {
+		t.Errorf("three notches over two frames should scroll %d, off is %d", want, second.off[paneList])
 	}
 }
 
