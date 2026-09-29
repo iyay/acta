@@ -397,7 +397,7 @@ Not clean after round 1 or 2 → the fix round goes out **in this same turn, aut
    A defect in code already on the parent branch, that the diff did not bring in, stays out of the fix ticket: record it with `acta:bug` ("Where findings go" in `acta:review`).
    Exception: 1–2 findings, clear one-liners, no new context → inline `/goal`, still naming the implementer-subagent rule. 3+ or reasoning needed → the fix task in the plan.
 2. **Reuse the same agent** — slug lookup first, prompt where it lives, no move. Fix round on the same plan in the same worktree → `/goal` only, **no `/new`**. Write the fix brief as if it remembers nothing (omp compacts); reuse is an optimisation.
-3. Fix brief = same format, TICKETS = the new ticket ids, REPLY-BACK over `<fixed-from>..<new-head>`.
+3. Fix brief = same format, TICKETS = the new ticket ids, run `acta dispatch init` again first, and the REPLY-BACK line is the same one sentence as in the brief. No range in it: the recipient reads the head off the branch.
 4. **Dispatch, then STOP and yield.** One turn per round.
 5. Return → verify → `acta:review` again over the fix range (round 2: `<ROUND1_HEAD>..<head>` plus direct callers; round 3: `<ROUND2_HEAD>..<head>`). Fixes introduce defects at draft rate; in one session three rounds each added one, twice because the dispatch instruction itself was wrong. A green suite cannot tell you that.
 

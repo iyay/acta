@@ -51,3 +51,25 @@ func TestBrainstormBoundedWritesSpec(t *testing.T) {
 		}
 	}
 }
+
+// TestBrainstormBoundedReviewLoopsToShortSpec reads the graph on its own.
+// A Bounded "changes requested" once led into the Architectural design doc.
+func TestBrainstormBoundedReviewLoopsToShortSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	for _, want := range []string{
+		`"Write short spec" -> "User reviews short spec?"`,
+		`"User reviews short spec?" -> "Write short spec" [label="changes requested"]`,
+		`"User reviews short spec?" -> "Invoke acta:plan skill" [label="approved"]`,
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("brainstorm graph missing %s", want)
+		}
+	}
+	if strings.Contains(txt, `"Write short spec" -> "User reviews spec?"`) {
+		t.Error("Bounded still joins the Architectural review node")
+	}
+}
