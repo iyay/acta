@@ -176,6 +176,27 @@ func TestDoneSubTabKeysOnlyActOnTheDonePane(t *testing.T) {
 	}
 }
 
+// TestListPaneTitleSaysOpenOrTasks walks every tab, so no tab can keep the
+// old word and every tab with a kind says the same word.
+func TestListPaneTitleSaysOpenOrTasks(t *testing.T) {
+	t.Parallel()
+
+	for i := range topTabs {
+		m := press(sized(newModel(t), 160, 40), tabKey(i))
+		want := "Open"
+		if topTabs[i].kind == "" {
+			want = "Tasks"
+		}
+		if got := m.tabsOf(paneList); len(got) != 1 || got[0] != want {
+			t.Errorf("tab %s: title %q, want %q", topTabs[i].name, got, want)
+		}
+		top := plain(m.paneTop(paneList, m.geometry().side[paneList], m.edge(paneList)))
+		if !strings.Contains(top, want) || strings.Contains(top, "List") {
+			t.Errorf("tab %s: top border %q, want %q and no List", topTabs[i].name, top, want)
+		}
+	}
+}
+
 func TestFirstVisitSelectsTheTopRowAndShowsIt(t *testing.T) {
 	t.Parallel()
 

@@ -148,7 +148,12 @@ func (m Model) doneTabNames() []string {
 func (m Model) tabsOf(p pane) []string {
 	switch p {
 	case paneList:
-		return []string{"List"}
+		// Activities has no kind, so its box lists tasks and not the open
+		// items every other tab shows.
+		if topTabs[m.top].kind == "" {
+			return []string{"Tasks"}
+		}
+		return []string{"Open"}
 	case paneDone:
 		return m.doneTabNames()
 	}

@@ -1074,17 +1074,18 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 					clicked[name.name] = true
 				}
 			}
-			// The List box has one name, so a click on it only takes the
+			// The top box has one name, so a click on it only takes the
 			// focus and changes no sub-tab.
 			m := press(sized(newModel(t), w, 40), tabKey(i), "tab")
 			m = press(m, "]")
-			y, x, ok := drawnLetter(m, paneList, "List", "first")
+			name := m.tabsOf(paneList)[0]
+			y, x, ok := drawnLetter(m, paneList, name, "first")
 			if !ok {
-				t.Fatalf("at %d columns the List pane of %s draws no List name", w, topTabs[i].name)
+				t.Fatalf("at %d columns the top pane of %s draws no %s name", w, topTabs[i].name, name)
 			}
 			got := click(m, x, y)
 			if got.focus != paneList || got.done != 1 {
-				t.Fatalf("a click on the List name of %s gave focus %d and sub-tab %d, want the List on %d", topTabs[i].name, got.focus, got.done, 1)
+				t.Fatalf("a click on the top name of %s gave focus %d and sub-tab %d, want the top box on %d", topTabs[i].name, got.focus, got.done, 1)
 			}
 		}
 	}
