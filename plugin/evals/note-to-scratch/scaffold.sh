@@ -4,6 +4,12 @@
 # workspace before the agent starts. This script runs as the user, not in the
 # sandbox, so it can still find the CLI on PATH.
 set -euo pipefail
+# The eval runs this in an empty folder. Anywhere else it would git init,
+# change git config and commit files that are not ours, so stop first.
+if [ -n "$(ls -A)" ]; then
+  echo "scaffold.sh: run this in an empty folder" >&2
+  exit 1
+fi
 # A first run with no voice file makes the session rules send the agent to
 # /acta:setup before any other work, which spends a turn this case needs.
 # The eval home is a sealed throwaway, but a hand run in a normal shell would

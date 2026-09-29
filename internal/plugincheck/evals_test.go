@@ -2,6 +2,7 @@ package plugincheck
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -117,4 +118,35 @@ func caseText(t *testing.T, dir string) string {
 		b.Write(raw)
 	}
 	return b.String()
+}
+
+// TestScaffoldsRefuseNonEmptyDir runs every scaffold in a folder that already
+// holds a file. A scaffold runs git init, git config and a commit of the whole
+// folder, so a hand run inside a real repo would change that repo. It must
+// stop first and leave the folder as it was.
+func TestScaffoldsRefuseNonEmptyDir(t *testing.T) {
+	scaffolds, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", "*", "scaffold.sh"))
+	if err != nil || len(scaffolds) == 0 {
+		t.Fatalf("no scaffolds found: %v", err)
+	}
+	for _, s := range scaffolds {
+		t.Run(filepath.Base(filepath.Dir(s)), func(t *testing.T) {
+			dir := t.TempDir()
+			keep := filepath.Join(dir, "keep.txt")
+			if err := os.WriteFile(keep, []byte("mine\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("bash", s)
+			cmd.Dir = dir
+			cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}
+			out, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatalf("scaffold ran in a non-empty folder:\n%s", out)
+			}
+			entries, _ := os.ReadDir(dir)
+			if len(entries) != 1 || entries[0].Name() != "keep.txt" {
+				t.Fatalf("scaffold changed the folder: %v", entries)
+			}
+		})
+	}
 }
