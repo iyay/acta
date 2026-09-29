@@ -486,3 +486,58 @@ func TestEveryDetailItemHoldsNoTabAndFitsItsWidth(t *testing.T) {
 		}
 	}
 }
+
+// metaOf is the value of one header line named by its label, a label with a
+// space in it like CLOSED BY included, which the header pattern leaves out.
+func metaOf(t *testing.T, lines []string, label string) (string, bool) {
+	t.Helper()
+	for _, ln := range plainLines(lines) {
+		head, value, ok := strings.Cut(ln, ":")
+		if ok && strings.TrimSpace(head) == label {
+			return strings.TrimSpace(value), true
+		}
+	}
+	return "", false
+}
+
+// One spec that closes a scratch item, that scratch item, and a spec that
+// closes nothing, so the detail can be read on an item with closes, on one
+// with closed by and on one with neither.
+func closesFiles() map[string]string {
+	return map[string]string{
+		".acta/specs/2026-09-29-a.md":   "---\nid: SPEC-1\ncloses: [SCRATCH-1, scratch/2026-09-28-j]\n---\n# Spec A\n",
+		".acta/scratch/2026-09-28-i.md": "---\nid: SCRATCH-1\n---\n# Idea\n",
+		// No short id in the frontmatter, so the detail names this one by its
+		// path, the same way the closes list wrote it.
+		".acta/scratch/2026-09-28-j.md": "# Another idea\n",
+		".acta/specs/2026-09-29-b.md":   "---\nid: SPEC-2\n---\n# Spec B\n",
+	}
+}
+
+func TestDetailShowsClosesAndClosedBy(t *testing.T) {
+	cfg := treeCfg(t, closesFiles())
+	for _, c := range []struct{ id, label, value, absent string }{
+		{"SPEC-1", "CLOSES", "SCRATCH-1, scratch/2026-09-28-j", "CLOSED BY"},
+		{"SCRATCH-1", "CLOSED BY", "SPEC-1", "CLOSES"},
+		{"scratch/2026-09-28-j", "CLOSED BY", "SPEC-1", "CLOSES"},
+	} {
+		lines := detailLines(t, cfg, c.id)
+		got, ok := metaOf(t, lines, c.label)
+		if !ok {
+			t.Errorf("%s drew no %s line:\n%s", c.id, c.label, strings.Join(plainLines(lines), "\n"))
+			continue
+		}
+		if got != c.value {
+			t.Errorf("%s %s = %q, want %q", c.id, c.label, got, c.value)
+		}
+		if _, ok := metaOf(t, lines, c.absent); ok {
+			t.Errorf("%s drew a %s line it has no link for:\n%s", c.id, c.absent, strings.Join(plainLines(lines), "\n"))
+		}
+	}
+	// SPEC-2 closes nothing and nothing closes it, so both lines stay out.
+	for _, label := range []string{"CLOSES", "CLOSED BY"} {
+		if _, ok := metaOf(t, detailLines(t, cfg, "SPEC-2"), label); ok {
+			t.Errorf("SPEC-2 drew a %s line with no link", label)
+		}
+	}
+}

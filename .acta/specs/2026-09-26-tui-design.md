@@ -1,5 +1,4 @@
 ---
-status: done
 id: SPEC-4
 hash: ttye
 ---

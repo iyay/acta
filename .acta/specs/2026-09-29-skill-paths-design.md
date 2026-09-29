@@ -1,5 +1,6 @@
 ---
 parent: scratch/2026-09-29-brainstorm-always-writes-spec
+closes: [SCRATCH-14]
 id: SPEC-15
 hash: u873
 ---
