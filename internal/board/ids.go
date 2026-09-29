@@ -124,13 +124,74 @@ func (b *Board) addAlias(key string, it *Item, what string) {
 	if key == "" {
 		return
 	}
-	k := strings.ToLower(key)
+	k := Canon(key)
 	if old := b.alias[k]; old != nil && old != it {
 		old.Problems = append(old.Problems, "duplicate "+what+" "+key)
 		it.Problems = append(it.Problems, "duplicate "+what+" "+key)
 		return
 	}
 	b.alias[k] = it
+}
+
+// Canon turns any way of writing an id into one lookup key. Old prefixes
+// map to new ones and zeros in front of a number drop, so PLAN-30.3 and
+// PLN-0030.03 are the same key.
+func Canon(id string) string {
+	s := strings.ToLower(id)
+	pre, rest, ok := strings.Cut(s, "-")
+	if !ok {
+		return s
+	}
+	for _, p := range []string{"PLN", "SPC", "BUG", "DBT", "SCR"} {
+		if pre == strings.ToLower(OldPrefix(p)) {
+			pre = strings.ToLower(p)
+		}
+	}
+	parts := strings.Split(rest, ".")
+	for i, p := range parts {
+		if p != "" && strings.Trim(p, "0123456789") == "" {
+			parts[i] = strings.TrimLeft(p, "0")
+			if parts[i] == "" {
+				parts[i] = "0"
+			}
+		}
+	}
+	return pre + "-" + strings.Join(parts, ".")
+}
+
+// hashPrefix is the part of a hash after any prefix and dash, without a
+// task or item number. A file with no hash gives "".
+func hashPrefix(hash string) string {
+	h := strings.ToLower(hash)
+	if _, rest, ok := strings.Cut(h, "-"); ok {
+		h = rest
+	}
+	h, _, _ = strings.Cut(h, ".")
+	return h
+}
+
+// findHash walks the files for a hash that starts with id, the way git
+// matches a short commit hash. One hit is the item, no hit or several is
+// nothing. Tasks and debt items are left out, so one plan's hash does not
+// match all of its own rows.
+func (b *Board) findHash(id string) (hit *Item, many int) {
+	p := hashPrefix(id)
+	if len(p) < 4 {
+		return nil, 0
+	}
+	for _, it := range b.Items {
+		if it.Kind == KindTask || it.Kind == KindDebtItem {
+			continue
+		}
+		if strings.HasPrefix(hashPrefix(it.Hash), p) {
+			many++
+			hit = it
+		}
+	}
+	if many != 1 {
+		return nil, many
+	}
+	return hit, many
 }
 
 func (b *Board) aliasItem(it *Item) {

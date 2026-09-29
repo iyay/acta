@@ -263,7 +263,7 @@ git commit -m "feat(board): read old ids, show 3-letter prefix and fixed width"
   - `func (b *Board) Get(id string) *Item`: path id, then canon alias, then unique hash prefix.
   - `func (b *Board) Ambiguous(id string) bool`: true when `id` is a hash prefix two items share, so callers can say why nothing was found.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestCanon(t *testing.T) {
@@ -308,12 +308,12 @@ func TestGetFindsEveryForm(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests and watch them fail**
+- [x] **Step 2: Run the tests and watch them fail**
 
 Run: `go test ./internal/board/ -run 'TestCanon|TestGetFindsEveryForm' -v`
 Expected: FAIL with `undefined: Canon`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 ```go
 // Canon turns any way of writing an id into one lookup key. Old prefixes
@@ -345,12 +345,12 @@ func Canon(id string) string {
 
 `addAlias` stores `Canon(key)` instead of `strings.ToLower(key)`. `Get` becomes: `byID[id]`, then `alias[Canon(id)]`, then a hash prefix scan. The scan takes `id` with any `xxx-` prefix removed, needs at least 4 characters, and walks every item whose `Hash` part after the dash (and before any dot) starts with it. Exactly one file item matches: return it. Zero or two or more: return nil. `Ambiguous` runs the same scan and says if two or more matched. Tasks and debt items are skipped in the scan, so one plan's hash does not match itself many times.
 
-- [ ] **Step 4: Run the package tests**
+- [x] **Step 4: Run the package tests**
 
 Run: `go test ./internal/board/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./internal/board/
@@ -372,7 +372,7 @@ git commit -m "feat(board): one lookup key for old and new ids, hash prefix matc
 - Consumes: `board.Prefix`, `board.FormatID`, `board.IsID`, `board.IsHash` from Task 1.
 - Produces: `randHash()` returns 7 characters; `scanIDs(b)` keys `next` by new prefix (`PLN`, `SPC`, `BUG`, `DBT`, `SCR`) and reads numbers from `ShortID`, which Task 1 already shows in the new form.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestRandHashIsSevenChars(t *testing.T) {
@@ -401,12 +401,12 @@ func TestAssignIDsWritesNewFormat(t *testing.T) {
 
 Add the same check for `NewScratch` (expect `SCR-000N`), `NewBug` (expect `BUG-000N`) and the debt writer (expect `DBT-000N`), and for `FixDuplicates` with two files holding `PLN-0005` (expect the later one to become the next free `PLN-000N`). Reuse the helpers the existing `internal/write` tests already have for making a repo and reading frontmatter; if their names differ from `repoWith`, `loadBoard` and `readFront`, use the existing names.
 
-- [ ] **Step 2: Run the tests and watch them fail**
+- [x] **Step 2: Run the tests and watch them fail**
 
 Run: `go test ./internal/write/ -run 'TestRandHashIsSevenChars|TestAssignIDsWritesNewFormat|Scratch|Bug|Debt|Duplicate' -v`
 Expected: FAIL (4-char hash, `PLAN-13`).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 - `randHash`: `var b [7]byte`.
 - `scanIDs`: `next := map[string]int{"SPC": 1, "PLN": 1, "BUG": 1, "DBT": 1, "SCR": 1}`. Parse the number with `strconv.Atoi` after the dash; `Atoi("0012")` gives 12.
@@ -414,12 +414,12 @@ Expected: FAIL (4-char hash, `PLAN-13`).
 - `filePrefix` and `prefixOf`: `"PLAN"` becomes `"PLN"`.
 - `FixDuplicates` groups by `board.Canon(f.id)`, so `PLAN-5` and `PLN-0005` count as one number.
 
-- [ ] **Step 4: Run the package tests and fix fixtures**
+- [x] **Step 4: Run the package tests and fix fixtures**
 
 Run: `go test ./internal/write/`
 Expected: new tests PASS. Fix older tests that expect the old output format by changing the expected value, never by deleting the test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./internal/write/

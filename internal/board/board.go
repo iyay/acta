@@ -315,12 +315,25 @@ func fileKey(f srcFile) string {
 	return "root:" + f.id
 }
 
-// Get finds an item by path ID, number ID or hash ID. Short IDs ignore case.
+// Get finds an item by path ID, short ID in any form, or a hash prefix.
+// A hash prefix two files share finds nothing, so the caller can ask
+// Ambiguous why.
 func (b *Board) Get(id string) *Item {
 	if it := b.byID[id]; it != nil {
 		return it
 	}
-	return b.alias[strings.ToLower(id)]
+	if it := b.alias[Canon(id)]; it != nil {
+		return it
+	}
+	it, _ := b.findHash(id)
+	return it
+}
+
+// Ambiguous says if id is a hash prefix that more than one file shares, so
+// a caller can tell an ambiguous prefix from a typo.
+func (b *Board) Ambiguous(id string) bool {
+	_, many := b.findHash(id)
+	return many > 1
 }
 
 // List gives non-legacy items of kind k. Closed ones are left out unless all is set.

@@ -1,5 +1,5 @@
 ---
-id: DEBT-22
+id: DEBT-24
 hash: nqjx
 parent: plans/2026-09-29-body-schema-scratch
 ---
