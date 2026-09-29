@@ -253,9 +253,9 @@ plus a short spec is the whole process.
 
 **Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Commit the spec on the branch the work will use: create its worktree now, the way `acta:build` describes, and commit the spec there as the first commit.
 
-**Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and names the DEBT ids it closes.
+**Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DEBT id it closes in `closes:`.
 
-**Scratch items.** A spec made from a scratch item sets `parent: scratch/<stem>` in its frontmatter. `specced` then follows from that link.
+**Scratch items.** A spec made from one scratch item sets `parent: scratch/<stem>` in its frontmatter. A spec made from several sets the first one as `parent:` and lists the rest in `closes:`, so no item is left dangling. `specced` then follows from either the parent link or the `closes:` list.
 
 **Shared language.** While refining the design, keep `CONTEXT.md` (one domain term per line, in English) and `docs/adr/` (one file per hard-to-explain decision: the decision, why, the alternatives rejected) up to date. Propose a new `CONTEXT.md` term to the user and wait for a yes. These files change only during brainstorming.
 

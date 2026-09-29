@@ -12,7 +12,9 @@ func TestSkillPlan(t *testing.T) {
 			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
 			"run `acta id` right after", "parent: debt/",
 			"never holds a step that can only happen after landing",
+			"closes:", "parent: debt/<stem>",
 		},
-		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer"},
+		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
+			"names the DEBT ids it closes"},
 	})
 }

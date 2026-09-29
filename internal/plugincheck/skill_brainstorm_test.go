@@ -20,8 +20,10 @@ func TestSkillBrainstorm(t *testing.T) {
 			"parent: scratch/", "One Architectural brainstorm per session",
 			"claude --bg 'brainstorm SCRATCH-", "HERDR_ENV=1",
 			"pbcopy", "wl-copy", "xclip", "OSC 52", "press ←", "Spike and Bounded",
+			"closes:",
 		},
-		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style"},
+		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
+			"names the DEBT ids it closes"},
 	})
 }
 
