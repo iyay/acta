@@ -22,6 +22,7 @@ import (
 	"github.com/iyay/acta/internal/editor"
 	"github.com/iyay/acta/internal/trees"
 	"github.com/iyay/acta/internal/tui"
+	"github.com/iyay/acta/internal/voice"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -48,7 +49,8 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		version = info.Main.Version
 	}
-	m := tui.New(cfg, b, lipgloss.HasDarkBackground()).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
+	dark := lipgloss.HasDarkBackground()
+	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	load := func() (*board.Board, error) { return trees.Load(cfg) }
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
@@ -62,6 +64,14 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 		return exitOther
 	}
 	return exitOK
+}
+
+// voiceTheme is the theme the TUI paints with. A voice file that does not
+// parse still gives the default voice, so the board opens either way and the
+// name is simply empty, which the default theme covers.
+func voiceTheme() string {
+	v, _, _ := voice.Resolve()
+	return v.Theme
 }
 
 // Run handles one command line call and reports its exit code, so both

@@ -13,8 +13,11 @@ func TestSkillPlan(t *testing.T) {
 			"run `acta id` right after", "parent: debt/",
 			"never holds a step that can only happen after landing",
 			"closes:", "parent: debt/<stem>",
+			"Commit the plan on main", "only after the plan is approved",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
-			"names the DEBT ids it closes"},
+			"names the DEBT ids it closes",
+			"If working in an isolated worktree",
+		},
 	})
 }

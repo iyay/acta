@@ -391,6 +391,29 @@ func TestVoiceRefusedThemeSavesNoOtherFlag(t *testing.T) {
 	}
 }
 
+// The TUI reads its theme from the voice file. A file that does not parse
+// still gives the default voice, so the board opens either way; only the
+// name is left empty and the TUI paints the default.
+func TestVoiceThemeFallsBackOnABrokenVoiceFile(t *testing.T) {
+	home, path := voiceHome(t)
+	if got := voiceTheme(); got != "" {
+		t.Errorf("no voice file yet: theme = %q, want the empty default", got)
+	}
+	mustRun(t, "voice", "set", "--theme", "dracula")
+	if got := voiceTheme(); got != "dracula" {
+		t.Errorf("theme = %q want dracula", got)
+	}
+	if err := os.WriteFile(path, []byte("language: [oops\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := voiceTheme(); got != "" {
+		t.Errorf("broken voice file: theme = %q, want the empty default", got)
+	}
+	if home == "" {
+		t.Fatal("voiceHome gave no home")
+	}
+}
+
 // An empty --theme names no theme, so it is not a run that sets anything and
 // the theme already saved stays as it is.
 func TestVoiceSetEmptyThemeLeavesTheSavedOne(t *testing.T) {
