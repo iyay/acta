@@ -22,9 +22,9 @@ the approval gate never does.
 ## Three Paths
 
 Before your first question, classify the request and say the
-classification out loud — "this looks bounded, so I'll present a short
-design here rather than write a spec" — so your human partner can
-override it:
+classification out loud — "this looks bounded, so I'll present one
+design in chat and then write a short spec" — so your human partner
+can override it:
 
 - **Spike** — a feasibility question ("can we...", "is it possible...",
   "quick and dirty is fine") whose output is an answer, not code you
@@ -37,11 +37,15 @@ override it:
   Understanding the kind of app is not enough — bounded means the flow
   you are changing is already here to read. If there is no existing
   flow to change, the task is not bounded. Ask the clarifying
-  questions that matter, present a short design IN CHAT (a few
-  sentences to a few short paragraphs), and STOP. Implementation
+  questions that matter, present ONE recommended design in chat (a
+  few sentences to a few short paragraphs), and STOP. Implementation
   starts only after your human partner says yes to that design — a
-  bounded task's approval is as hard a gate as an architectural
-  one. No spec file, no implementation plan document.
+  bounded task's approval is as hard a gate as an architectural one.
+  On that yes, write a short spec (about half a page) to
+  `.acta/specs/YYYY-MM-DD-<topic>-design.md` in the worktree, run
+  `acta id`, commit, ask the user to review the file, and on
+  approval invoke the acta:plan skill. No 2-3 approaches, no
+  per-section approval, no one-per-session limit.
 - **Architectural** — new projects, new subsystems, changes that
   restructure how components fit together or alter interfaces others
   depend on. Follow the full process: questions, approaches, sectioned
@@ -123,7 +127,9 @@ your path and complete them in order.
 2. **Ask clarifying questions** — one at a time, the ones that matter
 3. **Present short design in chat** — approach, files touched, testing
 4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
-5. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
+5. **Write short spec** — about half a page in `.acta/specs/`, run `acta id`, commit in the worktree
+6. **User reviews spec** — ask them to read the file, then wait for the yes
+7. **Transition to implementation** — invoke acta:plan skill
 
 **Architectural:**
 0. **Scratch item** — find the item the request names, or file it with `acta scratch new`, then `acta set scratch/<stem> status brainstorming`
@@ -146,7 +152,7 @@ digraph brainstorming {
     "Present short design in chat" [shape=box];
     "Human approves?" [shape=diamond];
     "Investigate; report recommendation" [shape=doublecircle];
-    "Implement via normal workflow (no plan doc)" [shape=doublecircle];
+    "Write short spec" [shape=box];
     "Explore project context" [shape=box];
     "Ask clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
@@ -165,7 +171,8 @@ digraph brainstorming {
     "Ask clarifying questions (bounded)" -> "Present short design in chat";
     "Present short design in chat" -> "Human approves?";
     "Human approves?" -> "Investigate; report recommendation" [label="spike: yes"];
-    "Human approves?" -> "Implement via normal workflow (no plan doc)" [label="bounded: yes"];
+    "Human approves?" -> "Write short spec" [label="bounded: yes"];
+    "Write short spec" -> "User reviews spec?";
     "Hidden complexity? Upgrade path" -> "Classify: spike / bounded / architectural";
     "Explore project context" -> "Ask clarifying questions";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
@@ -182,18 +189,17 @@ digraph brainstorming {
 
 **Terminal states are path-bound.** Architectural: the ONLY skill you
 invoke after brainstorming is acta:plan — never frontend-design,
-mcp-builder, or any other implementation skill. Bounded: after
-approval, implementation proceeds directly through the normal
-development workflow; no plan document. Spike: the terminal state is a
-reported recommendation.
+mcp-builder, or any other implementation skill. Bounded: the same
+terminal state, acta:plan, once the user has approved the short spec.
+Spike: the terminal state is a reported recommendation.
 
 ## The Process
 
 The subsections below serve the bounded and architectural paths (a
 spike stops at "present the probe, get a nod"). Sections from
 **Exploring approaches** onward are architectural-path depth — for
-bounded work, context plus a few questions plus a short in-chat design
-is the whole process.
+bounded work, context plus a few questions plus one design in chat
+plus a short spec is the whole process.
 
 **Understanding the idea:**
 

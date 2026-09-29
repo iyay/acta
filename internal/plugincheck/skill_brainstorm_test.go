@@ -1,6 +1,11 @@
 package plugincheck
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestSkillBrainstorm(t *testing.T) {
 	CheckSkill(t, SkillRule{
@@ -18,4 +23,31 @@ func TestSkillBrainstorm(t *testing.T) {
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style"},
 	})
+}
+
+// TestBrainstormBoundedWritesSpec reads the brainstorm skill on its own.
+// A Bounded design once lived only in chat, so the user never saw a spec.
+func TestBrainstormBoundedWritesSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt := string(b)
+	for _, want := range []string{"Write short spec", "short spec (about half a page)"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("brainstorm/SKILL.md missing %q", want)
+		}
+	}
+	for _, old := range []string{
+		"No spec file, no implementation plan document",
+		"no plan document",
+		"no plan doc",
+		"Implement via normal workflow",
+		"implementation proceeds directly",
+		"short in-chat design",
+	} {
+		if strings.Contains(txt, old) {
+			t.Errorf("brainstorm/SKILL.md still says %q", old)
+		}
+	}
 }
