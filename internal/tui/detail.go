@@ -29,9 +29,9 @@ func (m Model) detailLines(w int) []string {
 			return cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)
 		}
 		if len(m.listOf()) == 0 {
-			return []string{faint.Render("No items")}
+			return []string{m.styles.faint.Render("No items")}
 		}
-		return []string{faint.Render("enter opens the group")}
+		return []string{m.styles.faint.Render("enter opens the group")}
 	}
 	fields := []struct{ label, value string }{
 		{"ID", idText(it)},
@@ -64,7 +64,7 @@ func (m Model) detailLines(w int) []string {
 	for _, p := range it.Problems {
 		lines = append(lines, truncate(expandTabs("! "+p), w))
 	}
-	lines = append(lines, faint.Render(strings.Repeat("─", max(1, w))))
+	lines = append(lines, m.styles.faint.Render(strings.Repeat("─", max(1, w))))
 	lines = append(lines, m.workLines(it, w)...)
 	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
 		lines = append(lines, fit(ln, w))
@@ -124,7 +124,7 @@ func (m Model) scratchLines(it *board.Item, w int) []string {
 	var out []string
 	for _, id := range it.Children {
 		if s := m.board.Get(id); s != nil {
-			out = append(out, workLine(s, false, w))
+			out = append(out, workLine(m.styles, s, false, w))
 		}
 	}
 	return out
@@ -135,7 +135,7 @@ func (m Model) taskLines(plan *board.Item, w int) []string {
 	var out []string
 	for _, id := range plan.Children {
 		if t := m.board.Get(id); t != nil {
-			out = append(out, workLine(t, false, w))
+			out = append(out, workLine(m.styles, t, false, w))
 		}
 	}
 	return out
@@ -171,7 +171,7 @@ func (m Model) debtLines(it *board.Item, w int) []string {
 		if line == nil {
 			continue
 		}
-		out = append(out, workLine(line, id == on, w))
+		out = append(out, workLine(m.styles, line, id == on, w))
 	}
 	return out
 }
@@ -184,12 +184,12 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 	var out []string
 	for _, sec := range board.Parse([]byte(it.Body)).Tasks {
 		for _, s := range sec.Steps {
-			mark, brush := dotWaiting, faint
+			mark, brush := dotWaiting, m.styles.faint
 			switch {
 			case s.State != ' ':
 				mark = dotDone
 			case going:
-				mark, brush, going = dotGoing, accent, false
+				mark, brush, going = dotGoing, m.styles.accent, false
 			}
 			out = append(out, brush.Render(truncate(expandTabs(mark+" "+s.Text), w)))
 		}
@@ -212,10 +212,10 @@ func dotOf(it *board.Item) string {
 // workLine is one line of the list: the dot, the short ID, the title, and for
 // work under way its count and its agent, the same tail a list row wears. A
 // line the reader is on stays bright; the rest are dim, dot included.
-func workLine(it *board.Item, on bool, w int) string {
-	mark, brush := dotOf(it), faint
+func workLine(s styles, it *board.Item, on bool, w int) string {
+	mark, brush := dotOf(it), s.faint
 	if mark == dotGoing {
-		brush = work
+		brush = s.work
 	}
 	if on {
 		brush = lipgloss.NewStyle()

@@ -13,6 +13,7 @@ import (
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/editor"
+	"github.com/iyay/acta/internal/theme"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -94,12 +95,14 @@ type Model struct {
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
 	render   func(md string, width int) string
+	styles   styles // the brushes every screen is painted with
 }
 
 // New builds a model over b. dark picks the markdown style; ask the terminal
 // before the program starts, because asking later fights Bubble Tea for stdin.
 func New(cfg config.Config, b *board.Board, dark bool) Model {
 	s := freshTab()
+	t, _ := theme.Builtin(theme.Default)
 	return Model{
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open:     defaultOpen,
@@ -120,8 +123,22 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 			}
 			return write.SetValue(cfg, fresh, id, field, value)
 		},
-		render: newRenderer(dark),
+		styles: newStyles(t, dark),
+		render: newRenderer(t.Dark(dark)),
 	}
+}
+
+// WithTheme picks the colors. A theme that does not load must not keep the
+// board from opening, so it falls back to the default and says why.
+func (m Model) WithTheme(name string, dark bool) Model {
+	t, err := theme.Load(name)
+	if err != nil {
+		t, _ = theme.Builtin(theme.Default)
+		m.status = err.Error()
+	}
+	m.styles = newStyles(t, dark)
+	m.render = newRenderer(t.Dark(dark))
+	return m
 }
 
 // WithLoad replaces how the model reloads the board, for example to read

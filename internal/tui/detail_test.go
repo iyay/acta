@@ -203,7 +203,7 @@ func TestDetailPlanListsItsTasksWithDots(t *testing.T) {
 				t.Errorf("the line of %s carries a count or an agent: %q", id, plain(ln))
 			}
 		}
-		if i := lineOf(t, lines, "PLAN-1.2"); !wears(lines[i], 38) && !wears(lines[i], 39) {
+		if i := lineOf(t, lines, "PLAN-1.2"); !wears(lines[i], 38, 5, 111) {
 			t.Errorf("the line of the work under way wears no accent: %q", lines[i])
 		}
 	})
@@ -215,7 +215,7 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 	withColors(func() {
 		lines := detailOf(t, "PLAN-1.2")
 		wantInOrder(t, lines, "✓ b", "● c")
-		if i := lineOf(t, lines, "● c"); !wears(lines[i], 38) && !wears(lines[i], 39) {
+		if i := lineOf(t, lines, "● c"); !wears(lines[i], 38, 5, 111) {
 			t.Errorf("the step under way wears no accent: %q", lines[i])
 		}
 		if i := lineOf(t, lines, "✓ b"); !wears(lines[i], 2) {

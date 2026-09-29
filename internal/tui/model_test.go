@@ -1353,7 +1353,7 @@ func TestAStartedTaskKeepsTheAccentAndItsCountAndAgent(t *testing.T) {
 		}
 		// The cursor has moved on, so the started task is drawn like every
 		// other in-progress row the reader is not on.
-		if row := paintedLine(m.View(), bx, 1); !wears(row, 2) || !wears(row, 38, 5, 39) {
+		if row := paintedLine(m.View(), bx, 1); !wears(row, 2) || !wears(row, 38, 5, 111) {
 			t.Errorf("the started row should be dim and wear the accent: %q", row)
 		}
 	})

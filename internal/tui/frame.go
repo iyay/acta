@@ -102,14 +102,14 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 			segs = append(segs, segment{text: piece.text, style: edge, sep: piece.sep})
 			continue
 		}
-		style := faint
+		style := m.styles.faint
 		switch {
 		case p == paneDetail:
 			if m.focus == p {
-				style = accent.Bold(true)
+				style = m.styles.accent.Bold(true)
 			}
 		case piece.tab == on:
-			style = accent.Bold(true)
+			style = m.styles.accent.Bold(true)
 		}
 		segs = append(segs, segment{text: piece.text, style: style})
 	}
@@ -119,7 +119,7 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 		if m.newest[p] {
 			word = "newest"
 		}
-		segs = append(segs, segment{text: " " + word + " ", style: faint})
+		segs = append(segs, segment{text: " " + word + " ", style: m.styles.faint})
 	}
 	return topLine(b.w, edge, segs)
 }
