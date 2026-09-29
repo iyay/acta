@@ -388,27 +388,39 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 
 // linkPlan gives a plan its own item and hangs the plan's tasks under it. The
 // spec or bug the plan names keeps the same tasks, so its own progress and
-// status do not change.
+// status do not change. A Spec line counts its spec even when the plan hangs
+// under a parent, or the spec never learns the plan exists (SPEC-16).
 func (b *Board) linkPlan(p planFile) {
 	var parent *Item
-	problem := ""
+	var spec *Item
+	var problems []string
+	wroteParent := field(p.doc.Front, "parent") != ""
 	if want := field(p.doc.Front, "parent"); want != "" {
 		if it := b.byID[want]; it != nil && it.Kind != KindTask {
 			parent = it
 		} else {
-			problem = "parent " + want + " not found"
+			problems = append(problems, "parent "+want+" not found")
 		}
-	} else if p.doc.SpecPath != "" {
-		if parent = b.findSpec(p.doc.SpecPath); parent == nil {
-			problem = "spec " + p.doc.SpecPath + " not found"
+	}
+	if p.doc.SpecPath != "" {
+		// The Spec line names the spec even when parent: is set, so a plan can
+		// hang under debt and still count for the spec that built it. A written
+		// parent that resolves to nothing stays broken; the spec does not take
+		// the plan's place in the tree, the plan just loses it.
+		spec = b.findSpec(p.doc.SpecPath)
+		switch {
+		case spec == nil:
+			problems = append(problems, "spec "+p.doc.SpecPath+" not found")
+		case parent == nil && !wroteParent:
+			parent = spec
+		case spec != parent:
+			spec.plans++
 		}
 	}
 	plan := fileItem(KindPlan, p.id, p.path, p.date, p.slug, p.legacy, p.doc)
 	plan.Worktree = p.tree
 	plan.OnDisk = p.onDisk
-	if problem != "" {
-		plan.Problems = append(plan.Problems, problem)
-	}
+	plan.Problems = append(plan.Problems, problems...)
 	b.add(plan)
 	// A plan speaks PLAN, whatever kind its frontmatter or its folder claims.
 	setIDs(plan, "PLAN", p.doc)
@@ -442,6 +454,9 @@ func (b *Board) linkPlan(p planFile) {
 		plan.Children = append(plan.Children, id)
 		if parent != nil {
 			parent.Children = append(parent.Children, id)
+		}
+		if spec != nil && spec != parent {
+			spec.Children = append(spec.Children, id)
 		}
 	}
 }
