@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -142,5 +143,70 @@ func TestRecordAgentStartWritesWithoutAName(t *testing.T) {
 	r, ok := readAgents(t, root)[taskID]
 	if !ok || !r.Started {
 		t.Fatalf("record = %+v (present %t), want started true", r, ok)
+	}
+}
+
+// Two ticks can land in the same .agents.json at the same moment, one for
+// each plan. The lock keeps them apart, so both names stay in the file.
+func TestRecordAgentTwoTasksAtOnceKeepsBoth(t *testing.T) {
+	useLockBase(t)
+	ids := []string{"plans/p#task-1", "plans/p#task-2"}
+	at := time.Date(2026, 9, 26, 10, 0, 0, 0, time.UTC)
+	for round := range 50 {
+		root := t.TempDir()
+		var wg sync.WaitGroup
+		for _, id := range ids {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if err := RecordAgent(root, id, "omp", at, false); err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		wg.Wait()
+		recs := readAgents(t, root)
+		for _, id := range ids {
+			if got := recs[id]; got.Agent != "omp" || got.At != at.Format(time.RFC3339) {
+				t.Fatalf("round %d: %s = %+v, want omp at %s", round, id, got, at.Format(time.RFC3339))
+			}
+		}
+	}
+}
+
+// A start with no agent name must not wipe the name an earlier tick left.
+func TestRecordAgentNamelessStartKeepsTheName(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	first := time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
+	later := first.Add(time.Hour)
+	if err := RecordAgent(root, taskID, "omp", first, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "", later, true); err != nil {
+		t.Fatal(err)
+	}
+	r := readAgents(t, root)[taskID]
+	if r.Agent != "omp" || !r.Started || r.At != later.Format(time.RFC3339) {
+		t.Fatalf("record = %+v, want agent omp, started, at %s", r, later.Format(time.RFC3339))
+	}
+}
+
+// A tick that has a name of its own still replaces the older one, so the
+// keep-the-name rule does not freeze a name forever.
+func TestRecordAgentNamedTickReplacesTheOlderName(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	first := time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
+	later := first.Add(time.Hour)
+	if err := RecordAgent(root, taskID, "claude", first, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "omp", later, false); err != nil {
+		t.Fatal(err)
+	}
+	r := readAgents(t, root)[taskID]
+	if r.Agent != "omp" || r.At != later.Format(time.RFC3339) {
+		t.Fatalf("record = %+v, want agent omp at %s", r, later.Format(time.RFC3339))
 	}
 }

@@ -36,12 +36,23 @@ func AgentName(flag string, env func(string) string) string {
 }
 
 // RecordAgent writes which agent works on taskID into the root folder's
-// .agents.json. The tick lock already keeps two ticks on one plan apart, so
-// this only has to keep the file itself readable: it writes a temp file next
-// to it and renames, which no reader ever sees half-written. A file that is
-// not valid JSON is replaced, because a broken record must not stop a tick.
+// .agents.json. The file lock keeps two ticks apart even when they work on
+// different plans, because the whole read, change and write happens under
+// it, so no name is lost. It writes a temp file next to the real one and
+// renames, which no reader ever sees half-written. A file that is not valid
+// JSON is replaced, because a broken record must not stop a tick.
 func RecordAgent(root, taskID, agent string, now time.Time, started bool) error {
+	// A plain tick with nobody named has nothing to write, so it never
+	// takes the lock at all.
+	if agent == "" && !started {
+		return nil
+	}
 	path := filepath.Join(root, ".agents.json")
+	unlock, err := lock(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	recs := map[string]agentRec{}
 	if b, err := os.ReadFile(path); err == nil {
 		var old map[string]agentRec
@@ -49,15 +60,16 @@ func RecordAgent(root, taskID, agent string, now time.Time, started bool) error 
 			recs = old
 		}
 	}
-	// A plain tick with nobody named has nothing to write. A start always
-	// writes, even without a name, so the board sees the task going.
-	if agent == "" && !started {
-		return nil
-	}
 	prev := recs[taskID]
+	name := agent
+	if name == "" {
+		// A start with no name must not wipe the name an earlier tick
+		// left, or the board shows nobody on a task someone is working.
+		name = prev.Agent
+	}
 	// A later tick keeps an earlier start: losing it would drop the task
 	// back to todo while someone is still on it.
-	recs[taskID] = agentRec{Agent: agent, At: now.Format(time.RFC3339), Started: started || prev.Started}
+	recs[taskID] = agentRec{Agent: name, At: now.Format(time.RFC3339), Started: started || prev.Started}
 	b, err := json.MarshalIndent(recs, "", "  ")
 	if err != nil {
 		return err
