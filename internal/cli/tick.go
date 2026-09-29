@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/write"
 )
@@ -109,6 +111,14 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "%s %d/%d\n", it.ID, done, total)
 	}
+	// A task tick also dates the plan above it and the spec or bug above
+	// that. The dates are a side effect: the tick itself worked, so a
+	// failure here only gets printed.
+	if it.Kind == board.KindTask {
+		if err := markTaskDates(cfg, it); err != nil {
+			fmt.Fprintf(stderr, "dates: %v\n", err)
+		}
+	}
 	// The board shows who works on what, so a successful tick says who it was.
 	// The record is a side effect: the tick itself worked, so a failure here
 	// only gets printed.
@@ -117,4 +127,54 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "agent record: %v\n", err)
 	}
 	return exitOK
+}
+
+// markTaskDates writes the dates a task tick gives its plan and the spec or
+// bug above it. Work began the moment any task is ticked, and work ends when
+// every task of the plan is done, and the spec a little later: when every
+// plan under it is done too. The board is read again because the tick that
+// just happened is what the file says.
+func markTaskDates(cfg config.Config, it *board.Item) error {
+	fresh, err := board.Load(cfg)
+	if err != nil {
+		return err
+	}
+	plan := fresh.Get(it.PlanID)
+	if err := markDate(plan.Path, write.MarkStarted); err != nil {
+		return err
+	}
+	if plan.Done == plan.Total {
+		if err := markDate(plan.Path, write.MarkFinished); err != nil {
+			return err
+		}
+	}
+	spec := fresh.Get(plan.SpecID)
+	if spec == nil {
+		return nil
+	}
+	if err := markDate(spec.Path, write.MarkStarted); err != nil {
+		return err
+	}
+	if spec.Status == "done" {
+		return markDate(spec.Path, write.MarkFinished)
+	}
+	return nil
+}
+
+// markDate runs one date writer over a file and writes the result back only
+// when the bytes really changed, so a tick never touches a file it has
+// nothing new to say about.
+func markDate(path string, set func([]byte) ([]byte, error)) error {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	out, err := set(src)
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(src, out) {
+		return nil
+	}
+	return os.WriteFile(path, out, 0o644)
 }
