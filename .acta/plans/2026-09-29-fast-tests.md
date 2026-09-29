@@ -1,6 +1,6 @@
 ---
-id: PLAN-34
-hash: pz2o
+id: PLN-0034
+hash: pz2odlu
 started: "2026-09-29"
 ---
 # Faster Test Suite Implementation Plan

@@ -1,6 +1,6 @@
 ---
-id: DEBT-24
-hash: hxt9
+id: DBT-0026
+hash: hxt9i9m
 parent: plans/2026-09-29-fast-tests
 ---
 # Review NOTEs: Faster Test Suite Implementation Plan

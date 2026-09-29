@@ -1,6 +1,9 @@
 ---
 id: BUG-0006
 hash: obj8k72
+started: "2026-09-29"
+fixed_in: ee544f6
+finished: "2026-09-29"
 ---
 # Second big brainstorm gets made-up options instead of the two real choices
 

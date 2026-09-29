@@ -23,8 +23,8 @@ const stateFile = "state/sessions.json"
 
 const (
 	blockText = "acta: this session already brainstormed %s. One Architectural brainstorm per session: " +
-		"file this one as a scratch item and offer the user the three choices from acta:brainstorm."
-	reminderText = "acta: this session already brainstormed %s; a second brainstorm gets the three choices."
+		"file this one as a scratch item and offer the user the choices rule 8 names."
+	reminderText = "acta: this session already brainstormed %s; a second brainstorm gets the choices rule 8 names."
 )
 
 var (

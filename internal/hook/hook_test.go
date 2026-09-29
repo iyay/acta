@@ -121,6 +121,7 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 		for _, want := range []string{
 			"acta:brainstorm",
 			"claude --bg 'brainstorm SCRATCH-n'",
+			"file the scratch item first",
 			"new session",
 		} {
 			if !strings.Contains(out, want) {
