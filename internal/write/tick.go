@@ -123,12 +123,29 @@ func TickLine(path string, line int, state byte) error {
 	return os.Rename(tmp, path)
 }
 
-// lockBase is where the per-user lock folder lives. It is fixed, not
-// os.TempDir, so two processes with a different TMPDIR still share one lock.
-var lockBase = "/tmp"
+// lockRoot points the lock folder somewhere else. Only a test sets it, to a
+// temp folder, so no test ever writes into the real cache folder. Empty
+// means the user's own cache folder.
+var lockRoot string
 
-// lockPath gives the lock file for a plan, inside a folder only this user
-// can use. /tmp is shared, so the folder is checked before we trust it.
+// lockDir gives the one folder every lock of this user lives in. The cache
+// folder sits inside the user's own home, so no other user can create it
+// first, and it is the same for every process whatever their TMPDIR says.
+// There is no /tmp fallback: a shared folder there can be taken over by
+// someone else, and a lock nobody can trust blocks every tick forever.
+func lockDir() (string, error) {
+	if lockRoot != "" {
+		return lockRoot, nil
+	}
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot find a cache folder for the lock: %w", err)
+	}
+	return filepath.Join(cache, "acta", "locks"), nil
+}
+
+// lockPath gives the lock file for a plan, named from the plan's real path
+// so two names of one plan still share one lock.
 func lockPath(plan string) (string, error) {
 	real, err := filepath.Abs(plan)
 	if err != nil {
@@ -137,14 +154,18 @@ func lockPath(plan string) (string, error) {
 	if r, err := filepath.EvalSymlinks(real); err == nil {
 		real = r
 	}
-	dir := filepath.Join(lockBase, fmt.Sprintf("pmb-%d", os.Getuid()))
+	dir, err := lockDir()
+	if err != nil {
+		return "", err
+	}
 	sum := sha256.Sum256([]byte(real))
-	return filepath.Join(dir, "pmb-"+hex.EncodeToString(sum[:8])+".lock"), nil
+	return filepath.Join(dir, "acta-"+hex.EncodeToString(sum[:8])+".lock"), nil
 }
 
 // safeDir makes the lock folder, or checks the one already there. Someone
-// else could make it first to steal or block our locks, so it must be a
-// real folder, ours, and closed to everyone else.
+// else could have made it first to steal or block our locks, so it must be
+// a real folder, ours, and closed to everyone else. Each refusal says which
+// of those three failed, so the fix is obvious.
 func safeDir(dir string) error {
 	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
 		return err
@@ -153,21 +174,32 @@ func safeDir(dir string) error {
 	if err != nil {
 		return err
 	}
+	if !fi.IsDir() {
+		return fmt.Errorf("lock folder %s is not a folder", dir)
+	}
 	st, ok := fi.Sys().(*syscall.Stat_t)
-	if !fi.IsDir() || !ok || int(st.Uid) != os.Getuid() || fi.Mode().Perm()&0o077 != 0 {
-		return fmt.Errorf("lock folder %s is not a private folder owned by you", dir)
+	if !ok || int(st.Uid) != os.Getuid() {
+		return fmt.Errorf("lock folder %s is not owned by you", dir)
+	}
+	if fi.Mode().Perm()&0o077 != 0 {
+		return fmt.Errorf("lock folder %s is open to other users", dir)
 	}
 	return nil
 }
 
-// lock takes an OS lock (flock) on a file in a private folder under /tmp,
-// named from the plan's real path. The kernel drops the lock when the
-// process ends, even in a crash, so no lock is ever left behind to take
-// over, and two processes can never both hold it. Keeping the file out of
-// the repo means no stray file shows up in git status.
+// lock takes an OS lock (flock) on a file in the user's cache folder, named
+// from the plan's real path. The kernel drops the lock when the process
+// ends, even in a crash, so no lock is ever left behind to take over, and
+// two processes can never both hold it. Keeping the file out of the repo
+// means no stray file shows up in git status.
 func lock(plan string) (func(), error) {
 	path, err := lockPath(plan)
 	if err != nil {
+		return nil, err
+	}
+	// The cache folder and the acta folder under it are ours and are not
+	// there yet on a first run, so make them closed to everyone else.
+	if err := os.MkdirAll(filepath.Dir(filepath.Dir(path)), 0o700); err != nil {
 		return nil, err
 	}
 	if err := safeDir(filepath.Dir(path)); err != nil {
@@ -192,7 +224,7 @@ func lock(plan string) (func(), error) {
 		}
 		if time.Now().After(deadline) {
 			f.Close()
-			return nil, fmt.Errorf("plan %s is locked by another pmb tick", plan)
+			return nil, fmt.Errorf("plan %s is locked by another acta tick", plan)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

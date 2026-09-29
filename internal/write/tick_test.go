@@ -2,11 +2,12 @@ package write
 
 import (
 	"errors"
-	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -121,6 +122,7 @@ func TestTickTextBadInput(t *testing.T) {
 }
 
 func TestTickLineSetsOnlyThatBox(t *testing.T) {
+	useLockBase(t)
 	path := filepath.Join(t.TempDir(), "d.md")
 	os.WriteFile(path, []byte("# R\n\n- [ ] a\n- [ ] b\n- [x] c\n"), 0o644)
 	if err := TickLine(path, 4, '-'); err != nil {
@@ -136,6 +138,7 @@ func TestTickLineSetsOnlyThatBox(t *testing.T) {
 }
 
 func TestTickLineRejectsNonBox(t *testing.T) {
+	useLockBase(t)
 	path := filepath.Join(t.TempDir(), "d.md")
 	os.WriteFile(path, []byte("# R\n\ntext\n"), 0o644)
 	if err := TickLine(path, 3, 'x'); err == nil {
@@ -148,6 +151,7 @@ func TestTickLineRejectsNonBox(t *testing.T) {
 }
 
 func TestTickFileConcurrent(t *testing.T) {
+	useLockBase(t)
 	p := filepath.Join(t.TempDir(), "plan.md")
 	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {
 		t.Fatal(err)
@@ -179,6 +183,9 @@ func TestHelperHoldLock(t *testing.T) {
 	if p == "" {
 		t.Skip("helper for TestTickAfterHolderDies")
 	}
+	if root := os.Getenv("PMB_LOCK_ROOT"); root != "" {
+		lockRoot = root
+	}
 	if _, err := lock(p); err != nil {
 		t.Fatal(err)
 	}
@@ -189,12 +196,13 @@ func TestHelperHoldLock(t *testing.T) {
 }
 
 func TestTickAfterHolderDies(t *testing.T) {
+	useLockBase(t)
 	p := filepath.Join(t.TempDir(), "plan.md")
 	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=^TestHelperHoldLock$")
-	cmd.Env = append(os.Environ(), "PMB_HOLD_LOCK="+p)
+	cmd.Env = append(os.Environ(), "PMB_HOLD_LOCK="+p, "PMB_LOCK_ROOT="+lockRoot)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -219,6 +227,7 @@ func TestTickAfterHolderDies(t *testing.T) {
 }
 
 func TestLockOneHolder(t *testing.T) {
+	useLockBase(t)
 	p := filepath.Join(t.TempDir(), "plan.md")
 	if err := os.WriteFile(p, []byte(plan), 0o644); err != nil {
 		t.Fatal(err)
@@ -261,6 +270,7 @@ func TestLockOneHolder(t *testing.T) {
 }
 
 func TestLockTimeout(t *testing.T) {
+	useLockBase(t)
 	p := filepath.Join(t.TempDir(), "plan.md")
 	unlock, err := lock(p)
 	if err != nil {
@@ -273,6 +283,7 @@ func TestLockTimeout(t *testing.T) {
 }
 
 func TestLockPathIgnoresTMPDIR(t *testing.T) {
+	want := useLockBase(t)
 	p := filepath.Join(t.TempDir(), "plan.md")
 	t.Setenv("TMPDIR", t.TempDir())
 	a, err := lockPath(p)
@@ -287,18 +298,149 @@ func TestLockPathIgnoresTMPDIR(t *testing.T) {
 	if a != b {
 		t.Fatalf("lock path follows TMPDIR: %s vs %s", a, b)
 	}
-	want := filepath.Join(lockBase, fmt.Sprintf("pmb-%d", os.Getuid()))
 	if filepath.Dir(a) != want {
 		t.Fatalf("lock folder = %s, want %s", filepath.Dir(a), want)
 	}
 }
 
-// useLockBase points the lock folder at a fresh temp folder for one test.
+// useLockBase points the lock folder at a fresh temp folder for one test,
+// so no test ever writes a lock into the real cache folder.
 func useLockBase(t *testing.T) string {
-	old := lockBase
-	lockBase = t.TempDir()
-	t.Cleanup(func() { lockBase = old })
-	return filepath.Join(lockBase, fmt.Sprintf("pmb-%d", os.Getuid()))
+	old := lockRoot
+	lockRoot = filepath.Join(t.TempDir(), "locks")
+	t.Cleanup(func() { lockRoot = old })
+	return lockRoot
+}
+
+// useRealCache sends the lock folder back to the user's own cache folder
+// for one test, because those tests only read where that folder would be.
+func useRealCache(t *testing.T) {
+	old := lockRoot
+	lockRoot = ""
+	t.Cleanup(func() { lockRoot = old })
+}
+
+// lockFiles counts the lock files under root, so a test can prove a refused
+// folder never got one.
+func lockFiles(t *testing.T, root string) int {
+	t.Helper()
+	n := 0
+	filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".lock") {
+			n++
+		}
+		return nil
+	})
+	return n
+}
+
+var lockNameRe = regexp.MustCompile(`^acta-[0-9a-f]{16}\.lock$`)
+
+func TestLockDirIsInTheCacheFolder(t *testing.T) {
+	useRealCache(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, "cache"))
+	dir, err := lockDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(dir, filepath.Join("acta", "locks")) {
+		t.Fatalf("lock folder = %s, want it to end in acta/locks", dir)
+	}
+	if !strings.HasPrefix(dir, home+string(os.PathSeparator)) {
+		t.Fatalf("lock folder = %s, want it inside the user's own home %s", dir, home)
+	}
+	// The first run finds no cache folder at all, so lock has to make the
+	// folders itself, closed to everyone else.
+	unlock, err := lock(filepath.Join(t.TempDir(), "plan.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	fi, err := os.Lstat(filepath.Dir(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fi.IsDir() || fi.Mode().Perm() != 0o700 {
+		t.Fatalf("acta folder mode = %v, want a 0700 folder", fi.Mode())
+	}
+	if lockFiles(t, dir) != 1 {
+		t.Fatalf("the lock file is not inside %s", dir)
+	}
+}
+
+func TestLockFailsWithNoCacheFolder(t *testing.T) {
+	useRealCache(t)
+	temp := t.TempDir()
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_CACHE_HOME", "")
+	_, err := lock(filepath.Join(t.TempDir(), "plan.md"))
+	if err == nil || !strings.HasPrefix(err.Error(), "cannot find a cache folder for the lock: ") {
+		t.Fatalf("err = %v, want the cache folder message", err)
+	}
+	// Nothing at all may be created when the cache folder cannot be found.
+	filepath.WalkDir(temp, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			t.Errorf("no cache folder: %s was created", p)
+		}
+		return nil
+	})
+}
+
+func TestSafeDirNamesEachRefusal(t *testing.T) {
+	for name, c := range map[string]struct {
+		setup func(dir string)
+		want  string
+	}{
+		"plain file":       {func(dir string) { os.WriteFile(dir, nil, 0o600) }, "is not a folder"},
+		"link to a folder": {func(dir string) { os.Symlink(t.TempDir(), dir) }, "is not a folder"},
+		"folder others can read": {func(dir string) {
+			os.Mkdir(dir, 0o755)
+			os.Chmod(dir, 0o755)
+		}, "is open to other users"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := useLockBase(t)
+			c.setup(dir)
+			unlock, err := lock(filepath.Join(t.TempDir(), "plan.md"))
+			if err == nil {
+				unlock()
+				t.Fatal("lock used an unsafe folder")
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want it to say %q", err, c.want)
+			}
+			if n := lockFiles(t, filepath.Dir(dir)); n != 0 {
+				t.Fatalf("%d lock files were taken in a refused folder", n)
+			}
+		})
+	}
+}
+
+func TestLockFileIsNamedActa(t *testing.T) {
+	dir := useLockBase(t)
+	unlock, err := lock(filepath.Join(t.TempDir(), "plan.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ents) != 1 {
+		t.Fatalf("lock folder holds %d files, want 1", len(ents))
+	}
+	if !lockNameRe.MatchString(ents[0].Name()) {
+		t.Fatalf("lock file = %s, want acta-<16 hex>.lock", ents[0].Name())
+	}
 }
 
 func TestLockMakesPrivateFolder(t *testing.T) {
