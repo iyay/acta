@@ -64,6 +64,13 @@ const wheelFrame = 16 * time.Millisecond
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
 
+// frameCache keeps the last frame View drew. A trackpad sends hundreds of
+// notches a second, and most of them only add to the pending delta, so the
+// screen stays the same. Drawing it again each time kept the TUI busy. The
+// model is copied on every update, so the frame sits behind a pointer that
+// all the copies share.
+type frameCache struct{ s string }
+
 // wheelMark is the screen a frame of notches was gathered on: the open tab, its
 // Done sub-tab, the search and the row under the cursor. A tick scrolls only
 // while all of it still stands, so notches meant for one item never land on
@@ -122,6 +129,8 @@ type Model struct {
 	setValue func(id, field, value string) (write.Outcome, error)
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
+	frame    *frameCache  // the last frame View drew, shared by every copy
+	same     bool         // true when the last message changed nothing on screen
 	styles   styles       // the brushes every screen is painted with
 }
 
@@ -154,6 +163,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
 		dcache: &detailCache{},
+		frame:  &frameCache{},
 	}
 }
 
@@ -168,6 +178,7 @@ func (m Model) WithTheme(name string, dark bool) Model {
 	m.styles = newStyles(t, dark)
 	m.render = newRenderer(t.Dark(dark))
 	m.dcache = &detailCache{}
+	m.frame = &frameCache{}
 	return m
 }
 
@@ -188,6 +199,9 @@ func nextMinute() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Every message may change the screen. The few that surely do not set
+	// this back below, so a path nobody thought about always draws again.
+	m.same = false
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		if msg.Width == m.width && msg.Height == m.height {
@@ -221,6 +235,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ended never sees them land on the new one.
 		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
+		} else {
+			m.same = true
 		}
 		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
@@ -487,6 +503,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // pointer, so the mouse and the keys always leave the same cursor.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
+		m.same = true
 		return m, nil
 	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
@@ -507,6 +524,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// never takes the focus. A wheel over another pane is ignored, so the
 		// notches only ever gather for the box the reader is looking at.
 		if p != m.focus {
+			m.same = true
 			return m, nil
 		}
 		step := wheelStep
@@ -521,9 +539,11 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		// Notches for another pane cannot share one delta. Scroll the old
 		// pane now so its notches are not lost.
+		flushed := false
 		if m.wheelDelta != 0 && m.wheelPane != p {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 			m.wheelDelta = 0
+			flushed = true
 		}
 		// The first notch of a frame writes the screen down. The notches
 		// after it share that screen and must not write over it.
@@ -532,6 +552,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		m.wheelPane = p
 		m.wheelDelta += step
+		// A flush to another pane moved that pane, so only a plain gather
+		// keeps the old frame.
+		m.same = !flushed
 		if m.wheelArmed {
 			return m, nil
 		}
@@ -539,6 +562,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
+		m.same = true
 		return m, nil
 	}
 	m.focusPane(p)

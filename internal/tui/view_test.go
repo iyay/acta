@@ -1922,3 +1922,83 @@ func TestListRowsLineUp(t *testing.T) {
 		}
 	}
 }
+
+// drewNew calls View once and says whether it really drew. It puts a marker
+// in the kept frame: a reused frame hands the marker back, a new draw does not.
+func drewNew(m Model) bool {
+	before := m.frame.s
+	m.frame.s = "\x00sentinel"
+	got := m.View()
+	drew := got != "\x00sentinel"
+	if !drew {
+		m.frame.s = before
+	}
+	return drew
+}
+
+func TestViewReusesTheFrameForANotchThatOnlyGathers(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m.View()
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	if drewNew(m) {
+		t.Error("a notch that only adds to the delta drew the screen again")
+	}
+}
+
+func TestViewReusesTheFrameForIgnoredMouseAndEmptyTick(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	m.View()
+	// A wheel over the list, while the detail box has the focus, is ignored.
+	lb := scrollBox(m, paneList)
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	if drewNew(m) {
+		t.Error("a wheel over a pane without the focus drew the screen again")
+	}
+	m = wheelTick(m)
+	if drewNew(m) {
+		t.Error("a tick with nothing gathered drew the screen again")
+	}
+	next, _ := m.Update(tea.MouseMsg{X: 1, Y: 1, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft})
+	if drewNew(next.(Model)) {
+		t.Error("a mouse release drew the screen again")
+	}
+}
+
+func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
+	t.Parallel()
+
+	base := paneModel(t, paneDetail)
+	b := scrollBox(base, paneDetail)
+	cases := map[string]func(Model) Model{
+		"a tick that scrolls": func(m Model) Model { return wheelTick(wheelOnly(m, b.x+1, b.y+2, false)) },
+		"a key":               func(m Model) Model { return press(m, "j") },
+		"a click on a row":    func(m Model) Model { lb := scrollBox(m, paneList); return click(m, lb.x+1, lb.y+2) },
+		"a reload":            func(m Model) Model { return reloaded(m) },
+		"a resize":            func(m Model) Model { return sized(m, m.width-1, m.height) },
+		"a clock tick": func(m Model) Model {
+			next, _ := m.Update(clockMsg(time.Now()))
+			return next.(Model)
+		},
+		"a flush to another pane": func(m Model) Model {
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m.focus = paneList
+			lb := scrollBox(m, paneList)
+			return wheelOnly(m, lb.x+1, lb.y+2, false)
+		},
+	}
+	for name, change := range cases {
+		m := base
+		m.frame = &frameCache{}
+		m.View()
+		m = wheelOnly(m, b.x+1, b.y+2, false) // leave same set, so the change must clear it
+		m = change(m)
+		if !drewNew(m) {
+			t.Errorf("%s: View gave the old frame back", name)
+		}
+	}
+}

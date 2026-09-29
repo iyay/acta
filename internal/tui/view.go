@@ -73,9 +73,23 @@ esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
-// View draws the whole screen: the boxes, the status line, and any popup on
-// top of them.
+// View gives the frame Bubble Tea puts on screen. When the last message
+// changed nothing, it hands back the frame it drew last time instead of
+// drawing the same screen again.
 func (m Model) View() string {
+	if m.same && m.frame != nil && m.frame.s != "" {
+		return m.frame.s
+	}
+	s := m.draw()
+	if m.frame != nil {
+		m.frame.s = s
+	}
+	return s
+}
+
+// draw paints the whole screen: the boxes, the status line, and any popup on
+// top of them.
+func (m Model) draw() string {
 	g := m.geometry()
 	// The status line always has a row of its own, so the tab box and the
 	// panes below it share the rest, and a terminal with fewer rows than the

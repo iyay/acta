@@ -2,6 +2,8 @@
 id: PLN-0038
 created: "2026-09-29"
 hash: wso2xr8
+started: "2026-09-29"
+finished: "2026-09-29"
 ---
 # TUI Frame Reuse Implementation Plan
 
@@ -63,7 +65,7 @@ Show that each path that scrolls or changes state draws again:
 **Interfaces:**
 - Produces: Model fields `same bool` and `frame *frameCache`, the type `frameCache struct{ s string }`, and the method `func (m Model) draw() string`, which holds the old body of `View`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/view_test.go`. The helpers `paneModel`, `scrollBox`, `wheelOnly`, `wheelTick`, `click`, `press`, `reloaded` and `sized` already exist in the tests. `drewNew` puts a marker in `m.frame`, so the test sees whether `View` drew.
 
@@ -151,12 +153,12 @@ func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
 
 If any name above does not exist under that name, look it up with grep in `internal/tui/*_test.go`, use the real name, and say which one you changed in the report. Add `"time"` and the `tea` import to `view_test.go` when they are not there yet.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/tui/ -run 'ViewReuses|ViewDrawsAgain'`
 Expected: a build failure with `m.frame undefined` and `undefined: frameCache`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/model.go`, next to `detailCache` use:
 
@@ -239,14 +241,14 @@ func (m Model) View() string {
 
 Any existing test that sets model fields by hand after an `Update` that set `same`, and then calls `View`, may now see the old frame. Fix such a test by setting `m.same = false` before its `View` call, and name each one you touched in the report. Never delete or weaken a check.
 
-- [ ] **Step 4: Run the tests and watch them pass**
+- [x] **Step 4: Run the tests and watch them pass**
 
 Run: `go test ./...`, `go vet ./...` and `gofmt -l internal` (the last must print nothing).
 Expected: every test passes.
 
 Mutation check: change `View` to always call `draw`. `TestViewReusesTheFrameForANotchThatOnlyGathers` must go red. Then put the change back.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/tui/model.go internal/tui/view.go internal/tui/view_test.go
