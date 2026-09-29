@@ -575,6 +575,15 @@ func (b *Board) derive() {
 			} else {
 				it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
 			}
+		case it.Kind == KindStory && it.plans > 0:
+			// A spec with a plan of its own decides that status from the plan's
+			// boxes. A status written next to the spec can only be a leftover
+			// from before the plan existed, so it loses and the board says so
+			// rather than letting a stale word hide a finished spec (SPEC-6).
+			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
+			if it.fmStatus != "" && it.fmStatus != it.Status {
+				it.Problems = append(it.Problems, "written status "+it.fmStatus+" ignored, derived "+it.Status)
+			}
 		default:
 			it.Status, it.StatusSource = it.fmStatus, "frontmatter"
 		}
