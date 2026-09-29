@@ -277,8 +277,8 @@ func TestLockTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer unlock()
-	if _, err := lock(p); err == nil || !strings.Contains(err.Error(), "locked") {
-		t.Fatalf("second lock: err = %v, want a locked error", err)
+	if _, err := lock(p); err == nil || !strings.Contains(err.Error(), p+" is locked by another acta command") {
+		t.Fatalf("second lock: err = %v, want the locked message for %s", err, p)
 	}
 }
 
@@ -392,6 +392,76 @@ func TestLockFailsWithNoCacheFolder(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+// A cache folder that is not a real absolute path is refused, because a
+// relative one is resolved against the working folder, and any user who can
+// write in the working folder can put a folder of their own there first.
+func TestLockDirRefusesARelativeCache(t *testing.T) {
+	// macOS reads only HOME, so the XDG cases can only run where the
+	// system really uses XDG_CACHE_HOME.
+	xdg := t.TempDir()
+	xdgUsed := func() bool {
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("XDG_CACHE_HOME", xdg)
+		got, err := os.UserCacheDir()
+		return err == nil && got == xdg
+	}()
+	for name, c := range map[string]struct{ home, xdg string }{
+		"relative home":     {"rel", ""},
+		"dot home":          {".", ""},
+		"empty home":        {"", ""},
+		"relative cache":    {"", "rel"},
+		"dot cache":         {"", "."},
+		"cache under dot":   {".", "./rel"},
+		"empty cache alone": {"", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			useRealCache(t)
+			// A good absolute home for the cases that only move the
+			// cache variable, so the refusal cannot come from a
+			// missing home. Both empty is its own case.
+			home := c.home
+			if home == "" && c.xdg != "" {
+				home = t.TempDir()
+			}
+			t.Setenv("HOME", home)
+			t.Setenv("XDG_CACHE_HOME", c.xdg)
+			dir, err := lockDir()
+			if c.xdg != "" && !xdgUsed {
+				// This system builds the cache folder from HOME
+				// only, so the rule to prove here is the same one
+				// everywhere: the answer is absolute or refused.
+				if err == nil && !filepath.IsAbs(dir) {
+					t.Fatalf("lock folder = %s, want an absolute path or a refusal", dir)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("lock folder = %s, want a refusal", dir)
+			}
+			if !strings.HasPrefix(err.Error(), "cannot find a cache folder for the lock: ") {
+				t.Fatalf("err = %v, want the cache folder message", err)
+			}
+			if dir != "" {
+				t.Fatalf("lock folder = %s with an error, want nothing", dir)
+			}
+			// A refusal writes nothing, and above all not into the
+			// working folder a relative path would point into.
+			work := t.TempDir()
+			t.Chdir(work)
+			if _, err := lock(filepath.Join(work, "plan.md")); err == nil {
+				t.Fatal("lock took a relative cache folder")
+			}
+			entries, err := os.ReadDir(work)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range entries {
+				t.Errorf("a refused lock still created %s", e.Name())
+			}
+		})
+	}
 }
 
 func TestSafeDirNamesEachRefusal(t *testing.T) {
