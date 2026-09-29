@@ -19,7 +19,9 @@ func TestSkillDispatch(t *testing.T) {
 		},
 		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
 			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-",
-			"until herdr agent read", "read it again", "--no-ff", "Contamination check", "git branch -d"},
+			"until herdr agent read", "read it again", "--no-ff", "Contamination check", "git branch -d",
+			"<fixed-from>", "<new-head>",
+		},
 	})
 }
 

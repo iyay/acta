@@ -161,6 +161,7 @@ digraph brainstorming {
     "Write design doc" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
+    "User reviews short spec?" [shape=diamond];
     "Invoke acta:plan skill" [shape=doublecircle];
     "Hidden complexity? Upgrade path" [shape=box];
 
@@ -172,7 +173,7 @@ digraph brainstorming {
     "Present short design in chat" -> "Human approves?";
     "Human approves?" -> "Investigate; report recommendation" [label="spike: yes"];
     "Human approves?" -> "Write short spec" [label="bounded: yes"];
-    "Write short spec" -> "User reviews spec?";
+    "Write short spec" -> "User reviews short spec?";
     "Hidden complexity? Upgrade path" -> "Classify: spike / bounded / architectural";
     "Explore project context" -> "Ask clarifying questions";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
@@ -184,6 +185,8 @@ digraph brainstorming {
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
     "User reviews spec?" -> "Invoke acta:plan skill" [label="approved"];
+    "User reviews short spec?" -> "Write short spec" [label="changes requested"];
+    "User reviews short spec?" -> "Invoke acta:plan skill" [label="approved"];
 }
 ```
 
