@@ -214,11 +214,15 @@ func bottomLine(t *testing.T, m Model, p pane) string {
 	return plain(col[b.y+b.h-1])
 }
 
-// footOf gives what a pane writes in its bottom border, with the border itself
-// cut off: the counter of a sidebar pane, nothing at all on the detail box.
+// footOf gives the counter a pane writes in its bottom border, with the
+// border and the sort word cut off, and nothing at all on the detail box.
 func footOf(t *testing.T, m Model, p pane) string {
 	t.Helper()
-	return strings.Trim(bottomLine(t, m, p), "─└┘ ")
+	foot := strings.Trim(bottomLine(t, m, p), "─└┘ ")
+	if _, count, ok := strings.Cut(foot, " · "); ok {
+		return count
+	}
+	return foot
 }
 
 // drawnFirst gives the first line a pane has on screen, walls and padding cut

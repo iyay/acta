@@ -121,15 +121,25 @@ func (m Model) paneTop(p pane, b box, edge lipgloss.Style) string {
 		}
 		segs = append(segs, segment{text: piece.text, style: style})
 	}
-	// The sort word goes last, so a narrow title drops it before any tab name.
-	if p != paneDetail {
-		word := "oldest"
-		if m.newest[p] {
-			word = "newest"
-		}
-		segs = append(segs, segment{text: " " + word + " ", style: m.styles.faint})
-	}
 	return topLine(b.w, edge, segs)
+}
+
+// sortWord is the order a list box shows its rows in.
+func (m Model) sortWord(p pane) string {
+	if m.newest[p] {
+		return "newest"
+	}
+	return "oldest"
+}
+
+// sortFoot joins the sort word and the count for the bottom border. A box
+// too narrow for both drops the word, because the count tells more.
+func sortFoot(word, count string, inner int) string {
+	both := word + " · " + count
+	if lipgloss.Width(" "+both+" ") <= inner {
+		return both
+	}
+	return count
 }
 
 // topLine draws the top line of a box of width w: the left corner, the pieces,

@@ -238,8 +238,9 @@ func (b box) rowAt(y int) int {
 
 // paneView draws one pane: its border with the title inside the top line, the
 // rows it holds, and the bottom line, which a sidebar pane closes with the
-// item count of what it holds. The scrollbar thumb is the right wall itself,
-// so the words of the pane get every cell between the two walls.
+// sort it lists in and the item count of what it holds. The scrollbar thumb is
+// the right wall itself, so the words of the pane get every cell between the
+// two walls.
 func (m Model) paneView(p pane, b box) string {
 	if b.w < 2 || b.h < 1 {
 		return ""
@@ -260,12 +261,13 @@ func (m Model) paneView(p pane, b box) string {
 	// A thumb marks the window on the right wall, in the brush the wall
 	// already wears, so the focus reads the same on the border as inside.
 	bar := scrollbar(total, b.inner, first, b.inner)
-	// Every sidebar pane counts the items it holds and the one under the
-	// cursor. The detail box counts lines, not items, so it writes nothing.
+	// Every sidebar pane closes its bottom border with the sort it lists in and
+	// the items it holds. The detail box counts lines, not items, so it writes
+	// nothing.
 	foot := ""
 	if p != paneDetail {
 		rows, sel, idx := m.slotOf(p)
-		foot = itemCount(cursorOf(rows, *sel, *idx)+1, len(rows))
+		foot = sortFoot(m.sortWord(p), itemCount(cursorOf(rows, *sel, *idx)+1, len(rows)), inner)
 	}
 	var content []string
 	if p == paneDetail {

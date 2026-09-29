@@ -340,7 +340,7 @@ git commit -m "feat(tui): title the list pane Open, or Tasks on Activities"
 - Consumes: `itemCount(selected, total int) string` (scroll.go).
 - Produces: `func (m Model) sortWord(p pane) string`; `func sortFoot(word, count string, inner int) string`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/frame_test.go` (add `lipgloss` to its imports if it is not there):
 
@@ -391,12 +391,12 @@ func TestNarrowBottomBorderDropsTheWordFirst(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestSortWordSitsBeforeTheCountInTheBottomBorder|TestNarrowBottomBorderDropsTheWordFirst' -v`
 Expected: FAIL, `m.sortWord undefined`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/tui/frame.go`, delete the sort word block at the end of `paneTop` (the comment "The sort word goes last..." and the `if p != paneDetail { ... }` block). Add under `paneTop`:
 
@@ -444,14 +444,14 @@ func footOf(t *testing.T, m Model, p pane) string {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass, then the package**
+- [x] **Step 4: Run the tests to see them pass, then the package**
 
 Run: `go test ./internal/tui -run 'TestSortWordSitsBeforeTheCountInTheBottomBorder|TestNarrowBottomBorderDropsTheWordFirst|TestTitleShowsTheSortOfEachPane' -v`
 Expected: PASS.
 Run: `go test ./internal/tui`
 Expected: `ok`. A test that still reads the sort word from the top border is updated to read the bottom border.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
