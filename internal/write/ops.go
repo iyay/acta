@@ -93,6 +93,15 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	if err != nil {
 		return Outcome{}, bad("%s: %v", id, err)
 	}
+	switch field {
+	case "status":
+		out, err = DatesFor(out, value)
+	case "fixed_in":
+		out, err = MarkFinished(out)
+	}
+	if err != nil {
+		return Outcome{}, bad("%s: %v", id, err)
+	}
 	if err := os.WriteFile(it.Path, out, 0o644); err != nil {
 		return Outcome{}, err
 	}

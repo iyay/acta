@@ -71,7 +71,7 @@ status: approved
   - `func CheckBody(k Kind, body string) []string` — problems as `missing ## <Name>`, `## <Name> is out of order`, `missing # title`; nil when clean; nil for a kind not in the table
   - `func SectionNames(k Kind) []string` — names in order
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package board
@@ -136,12 +136,12 @@ func TestHasSchema(t *testing.T) {
 ```
 
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `go test ./internal/board -run 'TestCheckBody|TestSchemaOnlyScratchIsOn|TestHasSchema'`
 Expected: FAIL, `undefined: CheckBody`
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 ```go
 package board
@@ -240,12 +240,12 @@ func CheckBody(k Kind, body string) []string {
 }
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `go test ./internal/board`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -273,7 +273,7 @@ git commit -m "board: add body schema table and check"
   - `func Working(status string) bool` — `in-progress`, `fixing`, `brainstorming`
   - `func DatesFor(src []byte, status string) ([]byte, error)` — working: `MarkStarted` then `ClearFinished`; closed: `MarkFinished`; other: unchanged
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 // dates_test.go
@@ -344,12 +344,12 @@ func TestOtherStatusChangesNoDate(t *testing.T) {
 
 In `frontmatter_test.go` add `TestRemoveField`: key present in the middle (the order of the others is kept), key missing (the output is byte-equal to the input), CRLF file (CRLF kept), and no frontmatter (error, nothing written). In `ops_test.go` add `TestSetValueWritesDates`: `SetValue(..., "status", "brainstorming")` on a scratch file leaves `started:` in the committed file; `"dropped"` then leaves `finished:`; `"brainstorming"` again removes `finished:` and keeps the first `started:`; `SetValue(..., "fixed_in", "abc1234")` on a bug leaves `finished:`.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/write -run 'TestDatesFor|TestStartedIsWrittenOnce|TestReopenClearsFinished|TestOtherStatusChangesNoDate|TestRemoveField|TestSetValueWritesDates'`
 Expected: FAIL, `undefined: DatesFor`
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 ```go
 // dates.go
@@ -403,12 +403,12 @@ func DatesFor(src []byte, status string) ([]byte, error) {
 
 `hasField` and `RemoveField` go in `frontmatter.go` and use the same yaml.v3 node walk `SetField` uses, so the order and line endings are kept. In `SetValue`, after `out, err := SetField(src, field, value)`: when `field == "status"`, run `out, err = DatesFor(out, value)`; when `field == "fixed_in"`, run `out, err = MarkFinished(out)`. Return `bad("%s: %v", id, err)` on error, like the line above.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/write`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
