@@ -479,3 +479,62 @@ func TestReplyBackOwnPaneFallsBackToUnknown(t *testing.T) {
 		})
 	}
 }
+
+// TestRoundFromBranch covers the slug rule straight, because git refuses
+// many of these names as real branches.
+func TestRoundFromBranch(t *testing.T) {
+	long := strings.Repeat("a", 63) + "-bcd"
+	for _, c := range []struct {
+		in, want string
+		ok       bool
+	}{
+		{"main", "main", true},
+		{"feat/X", "feat-x", true},
+		{"--a--b--", "a-b", true},
+		{"HEAD", "head", true},
+		{strings.Repeat("a", 70), strings.Repeat("a", 64), true},
+		{long, strings.Repeat("a", 63), true},
+		{"///", "", false},
+		{"", "", false},
+	} {
+		got, ok := roundFromBranch(c.in)
+		if got != c.want || ok != c.ok {
+			t.Errorf("roundFromBranch(%q) = %q, %v; want %q, %v", c.in, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestDispatchInitSlugsTheBranch(t *testing.T) {
+	dir := dispatchRepo(t)
+	dispatchGitOut(t, dir, "checkout", "-q", "-b", "feat/X")
+	code, _, stderr := runDispatchInit(t, dir, "--pane", "wM:pH", "--plan", ".acta/plans/2026-09-29-p.md")
+	if code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if r := readRecord(t, dir); r.Round != "feat-x" {
+		t.Fatalf("round %q, want feat-x", r.Round)
+	}
+}
+
+func TestDispatchInitDetachedHeadIsHead(t *testing.T) {
+	dir := dispatchRepo(t)
+	dispatchGitOut(t, dir, "checkout", "-q", "--detach")
+	code, _, stderr := runDispatchInit(t, dir, "--pane", "wM:pH", "--plan", ".acta/plans/2026-09-29-p.md")
+	if code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if r := readRecord(t, dir); r.Round != "head" {
+		t.Fatalf("round %q, want head", r.Round)
+	}
+}
+
+func TestDispatchInitExplicitRoundIsNotRewritten(t *testing.T) {
+	dir := dispatchRepo(t)
+	code, _, _ := runDispatchInit(t, dir, "--pane", "wM:pH", "--plan", ".acta/plans/2026-09-29-p.md", "--round", "Feat-X")
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d for an upper-case --round", code, exitBadInput)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta", ".dispatch.json")); !os.IsNotExist(err) {
+		t.Fatalf("record written for a bad --round: %v", err)
+	}
+}

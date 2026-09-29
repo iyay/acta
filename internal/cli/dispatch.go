@@ -35,6 +35,18 @@ var (
 	roundPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 )
 
+var notSlug = regexp.MustCompile(`[^a-z0-9]+`)
+
+// roundFromBranch turns a branch name into a round, so the default works for
+// names like feat/x that the round check would refuse as they are.
+func roundFromBranch(branch string) (string, bool) {
+	s := strings.Trim(notSlug.ReplaceAllString(strings.ToLower(branch), "-"), "-")
+	if len(s) > 64 {
+		s = strings.TrimRight(s[:64], "-")
+	}
+	return s, roundPattern.MatchString(s)
+}
+
 // checkRecord treats the record as untrusted, because anyone can edit the
 // file. Every value is checked before it is used for anything.
 func checkRecord(cfg config.Config, b *board.Board, r dispatchRecord) (*board.Item, error) {
@@ -102,7 +114,12 @@ func cmdDispatchInit(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "cannot read the branch name:", err)
 			return exitOther
 		}
-		slug = branch
+		s, ok := roundFromBranch(branch)
+		if !ok {
+			fmt.Fprintf(stderr, "cannot make a round from branch %q: pass --round <slug>\n", branch)
+			return exitBadInput
+		}
+		slug = s
 	}
 	r := dispatchRecord{Pane: *pane, Base: base, Plan: *plan, Round: slug}
 	if _, err := checkRecord(cfg, b, r); err != nil {
