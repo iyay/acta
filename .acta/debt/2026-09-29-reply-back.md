@@ -5,8 +5,8 @@ parent: plans/2026-09-29-reply-back
 ---
 # Review NOTEs: Dispatch Reply-Back Implementation Plan
 
-- [ ] plugin/skills/dispatch/SKILL.md:400 still says the fix brief REPLY-BACK goes over <fixed-from>..<new-head>; leftover of the hand-filled reply-back, and TestNoHandFilledReplyBack misses it.
-- [ ] dispatch init defaults the round to the branch name; a branch like feat/x, an uppercase name or a detached HEAD fails roundPattern and exits 1, and the error does not say to pass --round.
+- [x] plugin/skills/dispatch/SKILL.md:400 still says the fix brief REPLY-BACK goes over <fixed-from>..<new-head>; leftover of the hand-filled reply-back, and TestNoHandFilledReplyBack misses it.
+- [x] dispatch init defaults the round to the branch name; a branch like feat/x, an uppercase name or a detached HEAD fails roundPattern and exits 1, and the error does not say to pass --round.
 - [ ] checkRecord keeps the plan inside the root by text only (Clean + Rel), no symlink resolution; harmless today since the plan must name a board item.
 - [ ] dispatch init warns and still writes the record when EnsureGitignore fails, so the record could be committed by accident.
 - [ ] TestDispatchNewThenGoal fix-round wording loosened from "fix round: /goal only" to "then /goal only".
