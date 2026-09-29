@@ -39,6 +39,7 @@ type Input struct {
 	VoiceExists bool
 	VoiceErr    error
 	Conflicts   []string // enabled workflow plugins that clash with acta
+	Herdr       bool     // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
 }
 
 const coreRules = `
@@ -50,7 +51,14 @@ Core rules:
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
-8. One Architectural brainstorm per session. A second one becomes a scratch item; load acta:brainstorm and offer the user a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where they type brainstorm SCRATCH-n. Offer a herdr tab only when HERDR_ENV=1.
+8. One Architectural brainstorm per session. A second one becomes a scratch item; load acta:brainstorm, say that it cannot start in this session, and name the two ways to open it elsewhere: a background agent (claude --bg 'brainstorm SCRATCH-n') or a new session where the user types brainstorm SCRATCH-n. Answer first; do not file or design it yet.
+`
+
+// herdrExtra is the one extra choice, added only inside a herdr session. The
+// agent often cannot read the environment, so the text decides this, not the
+// agent: a session outside herdr never hears the word.
+const herdrExtra = `
+herdr: this session runs in a herdr tab. For a second brainstorm, offer the user one more way to run it: a new herdr tab.
 `
 
 // adhdRules is a short form of the i-have-adhd plugin's rules (MIT).
@@ -81,6 +89,9 @@ func SessionStart(in Input) string {
 		fmt.Fprintf(&b, "- acta:%s: %s\n", s.Name, s.When)
 	}
 	b.WriteString(coreRules)
+	if in.Herdr {
+		b.WriteString(herdrExtra)
+	}
 	switch {
 	case !in.VoiceExists:
 		b.WriteString(firstRun)

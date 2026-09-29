@@ -71,6 +71,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		in := loadVoice()
+		in.Herdr = os.Getenv("HERDR_ENV") == "1"
 		repo, _ := os.Getwd()
 		if cfg, err := config.Load(repo, ""); err == nil {
 			repo = cfg.RepoRoot

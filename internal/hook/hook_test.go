@@ -90,8 +90,7 @@ func TestSessionStartConflicts(t *testing.T) {
 
 func TestSessionStartStaysShort(t *testing.T) {
 	worst := korean()
-	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
-	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
+	worst.Herdr = true // the herdr line counts against the cap too
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: voice.Default(), Conflicts: worst.Conflicts},
@@ -103,8 +102,10 @@ func TestSessionStartStaysShort(t *testing.T) {
 	}
 }
 
-// An agent can answer a second big brainstorm from this rule alone,
-// without loading the skill. So the rule must name the real choices.
+// An agent can answer a second big brainstorm from this rule alone, so the
+// rule must name the real choices. Whether a herdr tab is one of them is the
+// hook's call, not the agent's: the hook reads the environment, the agent
+// often cannot, so a session outside herdr must say nothing about herdr.
 func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
@@ -116,12 +117,24 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			"acta:brainstorm",
 			"claude --bg 'brainstorm SCRATCH-n'",
 			"new session",
-			"HERDR_ENV=1",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: session start missing %q", name, want)
 			}
 		}
+		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
+		// and the voice lines count: the skill index above them names the
+		// dispatch skill, and an index is not an offer of a tab.
+		rules := out[strings.Index(out, "Core rules:"):]
+		if strings.Contains(strings.ToLower(rules), "herdr") {
+			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)
+		}
+	}
+	in := korean()
+	in.Herdr = true
+	out := SessionStart(in)
+	if !strings.Contains(strings.ToLower(out), "herdr tab") {
+		t.Errorf("herdr session start missing the herdr tab sentence:\n%s", out)
 	}
 }
 
