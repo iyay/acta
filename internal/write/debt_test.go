@@ -1,11 +1,15 @@
 package write
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/iyay/acta/internal/config"
 )
 
 // A plan file with an id and hash already set, so NewDebt can resolve it by
@@ -135,5 +139,125 @@ func TestNewDebtAutoCommitOff(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")); err != nil {
 		t.Fatal("file must still be written with auto_commit off")
+	}
+}
+
+// A tick and a NOTE landing on one debt file must both stay in the file,
+// whatever order they run in, and the file must never be half written.
+func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	// No git and no commit here: this test is about the file alone, and
+	// fifty rounds of commits would only make it slow.
+	cfg := config.Default(root)
+	cfg.AutoCommit = false
+	path := filepath.Join(root, "debt", "2026-09-29-locks.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The box sits on the sixth line: two lines of front matter, the
+	// heading, then a blank line.
+	const boxLine = 6
+	const first = "---\nid: DEBT-1\n---\n# Review NOTEs: Locks\n\n- [ ] first note\n"
+
+	// start puts the file back to one open box and gives back the copy a
+	// caller would already be holding.
+	start := func(t *testing.T) []byte {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(first), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return []byte(readFile(t, path))
+	}
+	// noTempLeft proves no half written file is left behind for the next
+	// run to pick up as junk.
+	noTempLeft := func(t *testing.T) {
+		t.Helper()
+		if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+			t.Fatalf("a temp file was left behind at %s.tmp", path)
+		}
+	}
+	wantBoth := func(t *testing.T, what string) {
+		t.Helper()
+		got := readFile(t, path)
+		if !strings.Contains(got, "- [x] first note\n") || !strings.Contains(got, "- [ ] new note\n") {
+			t.Fatalf("%s:\n%s", what, got)
+		}
+		noTempLeft(t)
+	}
+
+	t.Run("append then tick keeps both", func(t *testing.T) {
+		src := start(t)
+		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := TickLine(path, boxLine, 'x'); err != nil {
+			t.Fatal(err)
+		}
+		wantBoth(t, "the NOTE was lost")
+	})
+
+	t.Run("tick then append keeps both", func(t *testing.T) {
+		// This is the copy NewDebt already read, before the tick landed.
+		src := start(t)
+		if err := TickLine(path, boxLine, 'x'); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
+			t.Fatal(err)
+		}
+		wantBoth(t, "the tick was lost")
+	})
+
+	t.Run("nothing new leaves the file alone", func(t *testing.T) {
+		src := start(t)
+		out, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"first note"})
+		if err != nil || out.Committed {
+			t.Fatalf("out=%+v err=%v, want no write and no commit", out, err)
+		}
+		if got := readFile(t, path); got != first {
+			t.Fatalf("the file changed on a run with nothing new:\n%s", got)
+		}
+		// A NOTE that is already ticked is still on the file, so it must
+		// not come back as a second open box.
+		if err := TickLine(path, boxLine, 'x'); err != nil {
+			t.Fatal(err)
+		}
+		ticked := readFile(t, path)
+		if _, err := appendDebt(cfg, path, "2026-09-29-locks", []byte(ticked), []string{"first note"}); err != nil {
+			t.Fatal(err)
+		}
+		if got := readFile(t, path); got != ticked {
+			t.Fatalf("a ticked NOTE was added again:\n%s", got)
+		}
+		noTempLeft(t)
+	})
+
+	for round := range 50 {
+		src := start(t)
+		var wg sync.WaitGroup
+		gate := make(chan struct{})
+		failed := make(chan error, 2)
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-gate
+			failed <- TickLine(path, boxLine, 'x')
+		}()
+		go func() {
+			defer wg.Done()
+			<-gate
+			_, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"})
+			failed <- err
+		}()
+		close(gate)
+		wg.Wait()
+		close(failed)
+		for err := range failed {
+			if err != nil {
+				t.Fatalf("round %d: %v", round, err)
+			}
+		}
+		wantBoth(t, fmt.Sprintf("round %d lost a change", round))
 	}
 }
