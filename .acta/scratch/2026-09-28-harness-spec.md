@@ -32,3 +32,7 @@ Design section 1 approved 2026-09-29 (hook state): new subcommands acta hook pos
 Design section 2 approved 2026-09-29 (guards): existing brainstorm/scratch guards stay. New guards: hooks.json has PreToolUse and PostToolUse on Bash, wrappers exist, are executable, end in exit 0; land skill names the eval gate, plugin/skills/, plugin/hooks/ and make eval; each eval scenario maps to one skill phrase that plugincheck requires.
 
 Design section 3 approved 2026-09-29 (eval suite): plugin/evals/ with six cases (side idea to scratch, "catet aja" to scratch, second brainstorm offers three choices, obvious one-file fix skips Architectural, brainstorm start files scratch then status brainstorming, answers appended). Free file/command graders first; haiku LLM grader only for cases 3 and 4. scripts/eval wraps claude plugin eval with --model sonnet --ablation none --max-cost-usd 2 --no-publish --allow-tools Bash (no Makefile in repo, so make eval became scripts/eval). Plan task 1 is a spike proving the eval sandbox ignores the global CLAUDE.md. Cost cap default $2, user gave no number.
+
+Cost ruling 2026-09-29: user is on a subscription, so no --max-cost-usd; each case caps max_turns and timeout_seconds.
+
+Land gate ruling 2026-09-29: gate also needs scripts/eval in the repo, since the land skill is shared by every project. Hooks ship to every user; evals stay in the acta repo.

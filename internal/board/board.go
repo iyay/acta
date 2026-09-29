@@ -66,8 +66,11 @@ type Item struct {
 	fmCloses []string
 	fmParent string
 	plans    int
-	specFile bool
-	seq      int
+	// countedOn names the items a plan already counts on, so a closes: list
+	// naming one of them does not count the same plan a second time.
+	countedOn []string
+	specFile  bool
+	seq       int
 }
 
 // Board holds every item of one repo, newest first.
@@ -435,6 +438,15 @@ func (b *Board) linkPlan(p planFile) {
 	if parent != nil {
 		plan.SpecID = parent.ID
 		parent.plans++
+	}
+	// A plan can point at one spec from two sides: a parent and a Spec line.
+	// Note every item that took the plan, so linkCloses knows which specs
+	// already hold it and leaves them alone instead of counting it twice.
+	if parent != nil {
+		plan.countedOn = append(plan.countedOn, parent.ID)
+	}
+	if spec != nil && spec != parent {
+		plan.countedOn = append(plan.countedOn, spec.ID)
 	}
 	for _, t := range p.doc.Tasks {
 		id := p.id + "#task-" + t.Num

@@ -57,7 +57,9 @@ func (b *Board) linkCloses() {
 			target.ClosedBy = append(target.ClosedBy, it.ID)
 			// A spec closed by a plan carries that plan's work, so it counts
 			// the plan and the plan's tasks, the same way a Spec line does.
-			if target.Kind == KindStory && it.Kind == KindPlan {
+			// A plan can name the same spec from both sides, so a spec it
+			// already counts on keeps one plan and one copy of each task.
+			if target.Kind == KindStory && it.Kind == KindPlan && !contains(it.countedOn, target.ID) {
 				target.plans++
 				target.Children = append(target.Children, it.Children...)
 			}

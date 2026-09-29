@@ -251,3 +251,177 @@ func TestClosesOnAScratchFileIsIgnored(t *testing.T) {
 		}
 	}
 }
+
+// A plan can point at a spec three ways: a parent: in frontmatter, a Spec
+// line in the body, and a closes: list. However many of them name the same
+// spec, the spec counts the plan once and holds each of its tasks once, so
+// the progress reads right and a task is never shown twice.
+func TestSpecCountsEachPlanOnce(t *testing.T) {
+	const (
+		specS = "specs/2026-09-29-s-design"
+		specT = "specs/2026-09-29-t-design"
+		debtD = "debt/2026-09-29-d"
+		planP = "plans/2026-09-29-p"
+		planR = "plans/2026-09-29-r"
+	)
+	pTasks := []string{planP + "#task-1", planP + "#task-2"}
+	rTasks := []string{planR + "#task-1", planR + "#task-2"}
+	// plan builds a plan file with two tasks, the first one ticked, so a spec
+	// that counts the plan twice reads 2/4 instead of 1/2.
+	plan := func(parent, specLine, closes string) string {
+		fm := ""
+		if parent != "" || closes != "" {
+			fm = "---\n"
+			if parent != "" {
+				fm += "parent: " + parent + "\n"
+			}
+			if closes != "" {
+				fm += "closes: [" + closes + "]\n"
+			}
+			fm += "---\n"
+		}
+		body := "# P\n\n"
+		if specLine != "" {
+			body += "**Spec:** `.acta/specs/" + specLine + ".md`\n\n"
+		}
+		return fm + body + "### Task 1: One\n\n- [x] one\n\n### Task 2: Two\n\n- [ ] two\n"
+	}
+	base := func() map[string]string {
+		return map[string]string{
+			specS + ".md": "# S\n",
+			specT + ".md": "# T\n",
+			debtD + ".md": "# D\n\n- [ ] one\n",
+		}
+	}
+	type want struct {
+		plans    int
+		children []string
+		done     int
+		total    int
+		status   string
+	}
+	// onePlan is what a spec looks like when a single plan points at it once:
+	// one plan, its two tasks once each, one box ticked.
+	onePlan := func() want { return want{1, pTasks, 1, 2, "in-progress"} }
+	cases := []struct {
+		name  string
+		files func() map[string]string
+		want  map[string]want
+	}{
+		{
+			name:  "parent names the spec",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan(specS, "", ""); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name:  "Spec line only",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan("", "2026-09-29-s-design", ""); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name:  "closes only",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan("", "", specS); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name: "Spec line and closes",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan("", "2026-09-29-s-design", specS)
+				return f
+			},
+			want: map[string]want{specS: onePlan()},
+		},
+		{
+			name:  "parent and closes",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan(specS, "", specS); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name: "Spec line, debt parent and closes",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan(debtD, "2026-09-29-s-design", specS)
+				return f
+			},
+			want: map[string]want{specS: onePlan()},
+		},
+		{
+			name:  "debt parent and closes",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan(debtD, "", specS); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name:  "closes names the spec twice",
+			files: func() map[string]string { f := base(); f[planP+".md"] = plan("", "", specS+", "+specS); return f },
+			want:  map[string]want{specS: onePlan()},
+		},
+		{
+			name: "Spec line names one spec, closes another",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan("", "2026-09-29-s-design", specT)
+				return f
+			},
+			want: map[string]want{specS: onePlan(), specT: onePlan()},
+		},
+		{
+			name: "parent and Spec line name the same spec",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan(specS, "2026-09-29-s-design", "")
+				return f
+			},
+			want: map[string]want{specS: onePlan()},
+		},
+		{
+			name: "parent, Spec line and closes all name the same spec",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan(specS, "2026-09-29-s-design", specS)
+				return f
+			},
+			want: map[string]want{specS: onePlan()},
+		},
+		{
+			name: "two plans, one by Spec line and one by closes",
+			files: func() map[string]string {
+				f := base()
+				f[planP+".md"] = plan("", "2026-09-29-s-design", "")
+				f[planR+".md"] = plan("", "", specS)
+				return f
+			},
+			want: map[string]want{specS: {2, append(append([]string{}, pTasks...), rTasks...), 2, 4, "in-progress"}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := boardWith(t, c.files())
+			for id, w := range c.want {
+				it := b.Get(id)
+				if it == nil {
+					t.Fatalf("%s missing from the board", id)
+				}
+				if it.plans != w.plans {
+					t.Errorf("counts %d plans, want %d", it.plans, w.plans)
+				}
+				if it.Done != w.done || it.Total != w.total {
+					t.Errorf("progress %d/%d, want %d/%d", it.Done, it.Total, w.done, w.total)
+				}
+				if it.Status != w.status {
+					t.Errorf("status %s, want %s", it.Status, w.status)
+				}
+				for _, task := range w.children {
+					if !slices.Contains(it.Children, task) {
+						t.Errorf("holds no %s, want every task once", task)
+					}
+				}
+				// Every wanted task is there and the list is no longer, so no
+				// task sits in it twice.
+				if len(it.Children) != len(w.children) {
+					t.Errorf("children %v, want %v", it.Children, w.children)
+				}
+			}
+		})
+	}
+}
