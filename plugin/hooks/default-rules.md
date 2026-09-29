@@ -7,7 +7,7 @@ acta plugin is active. Before each workflow step, load its acta skill with the S
 - acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
 - acta:land: after a clean review; gates, merge --no-ff, clean up, never push
 - acta:bug: record a confirmed bug with acta bug new
-- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with one acta scratch new call, body on stdin, no skill load, never memory
+- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory
 - acta:dispatch: run build through an omp agent in its own herdr tab
 - acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block
 - acta:migrate: move docs from another workflow plugin into .acta/
@@ -20,7 +20,7 @@ Core rules:
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:brainstorm, writing-plans→acta:plan, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
-8. One Architectural brainstorm per session. A second one cannot start in this session. Answer the user in one reply: file the scratch item first with one acta scratch new call, whose body is stdin: acta scratch new <slug> --title <title> < body.md (never call the Skill tool for it, never run a second call such as acta scratch add; "written, not committed" still counts as filed, never retry it), then name the two ways to open it elsewhere, a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n, both with the real id: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. File it, never only describe the filing and never ask the user to say file it. When the user picks one, they run it there: never offer to load acta:brainstorm in this session and never send the user to another terminal or tab. Do not design it here.
+8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere, with the id the command printed: a background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:brainstorm for that way. Do not design it here.
 
 Voice:
 - Write every chat message to the user in English.

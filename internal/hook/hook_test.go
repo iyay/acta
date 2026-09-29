@@ -33,7 +33,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"(code, comments, commits, specs, plans) in English.",
 		"full, clear sentences",
 		"Style (ADHD reader):",
-		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with one acta scratch new call, body on stdin, no skill load, never memory`,
+		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
 	} {
 		if !strings.Contains(out, want) {
@@ -121,23 +121,18 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 		for _, want := range []string{
 			"acta:brainstorm",
 			"claude --bg 'brainstorm SCRATCH-n'",
-			"file the scratch item first",
+			"File the scratch item first",
 			"one acta scratch new call",
 			"written, not committed",
-			"whose body is stdin",
-			"acta scratch new <slug> --title <title> < body.md",
-			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
-			"never offer to load acta:brainstorm in this session",
-			"never send the user to another terminal or tab",
-			"never call the Skill tool for it",
-			"never run a second call such as acta scratch add",
-			"never only describe the filing",
-			"never ask the user to say file it",
 			"new session",
+			"load acta:brainstorm for that way",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: session start missing %q", name, want)
 			}
+		}
+		if !strings.Contains(out, "- acta:scratch: raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory") {
+			t.Errorf("%s: session start does not carry the plain scratch index line", name)
 		}
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
 		// and the voice lines count: the skill index above them names the
@@ -152,6 +147,27 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	out := SessionStart(in)
 	if !strings.Contains(strings.ToLower(out), "herdr tab") {
 		t.Errorf("herdr session start missing the herdr tab sentence:\n%s", out)
+	}
+}
+
+// The rule must not forbid a choice another text offers: herdrExtra offers a
+// new herdr tab inside a herdr session, and SKILL.md offers the same tab. So
+// no clause may send the user away to another terminal or tab, and the skill
+// may still be loaded for the way the user picked. Both herdr states are
+// checked, because the words must not change with the environment.
+func TestSessionStartNoChoiceIsForbidden(t *testing.T) {
+	for _, herdr := range []bool{false, true} {
+		in := korean()
+		in.Herdr = herdr
+		out := SessionStart(in)
+		for _, banned := range []string{
+			"another terminal or tab",
+			"never offer to load acta:brainstorm",
+		} {
+			if strings.Contains(out, banned) {
+				t.Errorf("herdr=%v: session start forbids a choice another text offers, has %q", herdr, banned)
+			}
+		}
 	}
 }
 
