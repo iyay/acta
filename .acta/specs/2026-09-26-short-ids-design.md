@@ -1,6 +1,6 @@
 ---
-id: SPEC-3
-hash: sulf
+id: SPC-0003
+hash: sulfevs
 ---
 # Short IDs for specs, plans, tasks and bugs
 

@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-harness-spec
-id: SPEC-18
-hash: gg2p
+id: SPC-0018
+hash: gg2p5jp
 ---
 
 # Harness So Agents Do Not Skip the Rules

@@ -84,6 +84,8 @@ func lineFor(t *testing.T, v, want string) ([]string, int) {
 }
 
 func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
+	t.Parallel()
+
 	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans))
 	v := m.View()
 	for _, want := range []string{
@@ -116,6 +118,8 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 // screen has to drop the names farthest from the open tab rather than cut the
 // open name away, and it must never show half a name of another tab.
 func TestTabBarKeepsTheOpenTab(t *testing.T) {
+	t.Parallel()
+
 	for i, tab := range topTabs {
 		m := sized(press(newModel(t), tabKey(i)), 200, 40)
 		open := "[" + tab.name + "]"
@@ -149,6 +153,8 @@ func TestTabBarKeepsTheOpenTab(t *testing.T) {
 // from the open tab, and on a tie the right one, so a name the reader is
 // working in always outlives the ones around it.
 func TestTabBarDropsTheNameFarthestFromTheOpenTab(t *testing.T) {
+	t.Parallel()
+
 	for i, tab := range topTabs {
 		m := sized(press(newModel(t), tabKey(i)), 200, 40)
 		for w := 1; w <= 200; w++ {
@@ -204,9 +210,61 @@ func widthOfBar(drop []bool, open int) int {
 	return w
 }
 
+// Edge sizes of the layout. Under -short the size sweeps read only these,
+// so a daily run is fast. The full run still walks every size.
+var (
+	edgeWidths  = []int{1, 2, 5, 6, 7, 29, 30, 31, 59, 60, 61, 93, 94, 159, 160, 161, 200}
+	edgeHeights = []int{10, 11, 24, 40, 60}
+)
+
+func sweep(lo, hi int, short []int) []int {
+	var out []int
+	if testing.Short() {
+		for _, v := range short {
+			if v >= lo && v <= hi {
+				out = append(out, v)
+			}
+		}
+		return out
+	}
+	for v := lo; v <= hi; v++ {
+		out = append(out, v)
+	}
+	return out
+}
+
+// These two check the size helper itself, because the slow tests above it
+// would quietly walk too few sizes if the helper picked the wrong ones. A full
+// run has to walk every size, and a short run only the edge sizes above.
+func TestSweepFullRangeWithoutShort(t *testing.T) {
+	t.Parallel()
+
+	if testing.Short() {
+		t.Skip("checks the full range")
+	}
+	got := sweep(3, 6, []int{4})
+	if !slices.Equal(got, []int{3, 4, 5, 6}) {
+		t.Fatalf("sweep(3, 6) = %v, want every value", got)
+	}
+}
+
+func TestSweepSamplesInsideRangeUnderShort(t *testing.T) {
+	t.Parallel()
+
+	if !testing.Short() {
+		t.Skip("checks the short list")
+	}
+	got := sweep(3, 6, []int{1, 4, 6, 9})
+	if !slices.Equal(got, []int{4, 6}) {
+		t.Fatalf("sweep(3, 6) = %v, want only listed values inside the range", got)
+	}
+}
+
 func TestViewNeverOverflowsAnyWindow(t *testing.T) {
-	for w := 30; w <= 200; w++ {
-		for h := 10; h <= 60; h++ {
+	t.Parallel()
+
+	for _, w := range sweep(30, 200, edgeWidths) {
+		for _, h := range sweep(10, 60, edgeHeights) {
 			base := sized(newModel(t), w, h)
 			for name, m := range map[string]Model{
 				"open":   base,
@@ -224,6 +282,8 @@ func TestViewNeverOverflowsAnyWindow(t *testing.T) {
 }
 
 func TestViewNarrowShowsOnlyTheFocusedPane(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		keys []string
 		want string
@@ -375,6 +435,8 @@ func lineWith(t *testing.T, lines []string, word string) string {
 // pane's row at that position, the divider, or empty space below the last
 // row, so a row can never take two lines.
 func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		for _, p := range press(newModel(t), tabKey(i)).panes() {
 			for _, w := range []int{40, 60, 120, 200} {
@@ -420,6 +482,8 @@ func TestEveryRowIsOneLineOnEveryTab(t *testing.T) {
 // work, so whatever else the pane drew between its rows, every line left is a
 // row of that work.
 func TestAPaneWithOneKindOfWorkDrawsNoRule(t *testing.T) {
+	t.Parallel()
+
 	full := newModel(t)
 	for _, tc := range []struct {
 		name string
@@ -472,6 +536,8 @@ func boardSays(m Model, w string) bool {
 // every tab. A status word on screen has to come from a file name or a title
 // the board really holds, which leaves no room for the view painting one.
 func TestNoListPanePaintsAStatusWord(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		for _, p := range press(newModel(t), tabKey(i)).panes() {
 			m := sized(press(newModel(t), tabKey(i)), 200, 40)
@@ -492,6 +558,8 @@ func TestNoListPanePaintsAStatusWord(t *testing.T) {
 // agent sit at the right end of the in-progress row, and a row that is not in
 // progress holds nothing but its name and its title.
 func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
@@ -517,6 +585,8 @@ func TestInProgressRowEndsWithItsCountAndAgent(t *testing.T) {
 // longer than the pane. The title gives way first, so the count and the agent
 // stay whole at the right end.
 func TestALongTitleIsCutSoTheCountFits(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	it := m.board.Get("specs/2026-09-20-alpha")
 	it.Done, it.Total, it.Agent = 2, 5, "claude"
@@ -656,6 +726,8 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 }
 
 func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
+	t.Parallel()
+
 	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
 	m := sized(press(clocked(newModel(t), 20, 46), "j"), 120, 40)
 	g := m.geometry()
@@ -685,6 +757,8 @@ func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 }
 
 func TestViewDebtDetail(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, map[string]string{
 		".acta/plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
 		".acta/debt/2026-09-27-short-ids.md":  "---\nid: DEBT-1\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
@@ -732,6 +806,8 @@ func TestViewDebtDetail(t *testing.T) {
 }
 
 func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
+	t.Parallel()
+
 	// Oldest first, so the first plan of the list links a spec, and its SPEC
 	// line is drawn.
 	m := sized(press(newModel(t), tabKey(tabPlans)), 120, 40)
@@ -753,6 +829,8 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 }
 
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
+	t.Parallel()
+
 	// Activities lists the one task of the fixture that is under way, and
 	// the detail of a task holds its own section and nothing else.
 	m := sized(press(newModel(t), tabKey(tabActivities)), 120, 40)
@@ -768,6 +846,8 @@ func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 	}
 }
 func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
+	t.Parallel()
+
 	// The rows run oldest file date first, so one j step reaches the weird
 	// story, the one with a bad status.
 	m := sized(press(newModel(t), tabKey(tabSpecs), "j"), 120, 60)
@@ -780,6 +860,8 @@ func TestViewShowsProblemsOfTheSelectedItem(t *testing.T) {
 }
 
 func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
+	t.Parallel()
+
 	m := sized(clocked(newModel(t), 20, 46), 100, 30)
 	last := lastLine(m.View())
 	if got := lipgloss.Width(last); got != 100 {
@@ -828,6 +910,8 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 }
 
 func TestViewStatusLineShowsDonateWhenSet(t *testing.T) {
+	t.Parallel()
+
 	m := sized(clocked(newModel(t), 20, 46), 200, 30)
 	m.cfg.Links.Donate = "https://ko-fi.com/someone"
 	last := lastLine(m.View())
@@ -844,6 +928,8 @@ func TestViewStatusLineShowsDonateWhenSet(t *testing.T) {
 }
 
 func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
+	t.Parallel()
+
 	wide := plain(lastLine(sized(clocked(newModel(t), 20, 46), 200, 30).View()))
 	if !strings.Contains(wide, "basic · live · 2026-09-27 20:46") {
 		t.Fatalf("a wide line keeps all three, got %q", wide)
@@ -884,6 +970,8 @@ func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
 }
 
 func TestViewHelpPopupCoversThePanes(t *testing.T) {
+	t.Parallel()
+
 	m := sized(press(clocked(newModel(t), 20, 46), "?"), 100, 30)
 	v := m.View()
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
@@ -911,9 +999,17 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 // and the focus on each of its panes, with no popup and with each of the three
 // popups, so no frame the screen can draw still holds a rounded corner.
 func TestNoRoundedCorners(t *testing.T) {
-	for w := 1; w <= 200; w++ {
+	t.Parallel()
+
+	// The list of boxes of a tab does not read the width, so it is built once
+	// per tab instead of once per width.
+	focuses := make([][]pane, len(topTabs))
+	for i := range topTabs {
+		focuses[i] = append(press(newModel(t), tabKey(i)).panes(), paneDetail)
+	}
+	for _, w := range sweep(1, 200, edgeWidths) {
 		for i := range topTabs {
-			for _, f := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
+			for _, f := range focuses[i] {
 				m := press(sized(newModel(t), w, 40), tabKey(i))
 				m.focusPane(f)
 				for _, frame := range []struct {
@@ -1044,6 +1140,8 @@ func atCell(s string, n int) string {
 // box has to come out exactly as it went in; when an edge lands inside a wide
 // rune, the rune has to stay whole and the line has to keep its width.
 func TestSpliceKeepsWideRunesWhole(t *testing.T) {
+	t.Parallel()
+
 	line := "日本語 abc テキスト"
 	want := lipgloss.Width(line)
 	for x0 := range want {
@@ -1068,6 +1166,8 @@ func TestSpliceKeepsWideRunesWhole(t *testing.T) {
 }
 
 func TestViewValuePopupAndSlug(t *testing.T) {
+	t.Parallel()
+
 	m := sized(press(newModel(t), tabKey(tabBugs), "tab", "s"), 100, 30)
 	if !strings.Contains(m.View(), "wontfix") {
 		t.Error("the value popup options are not shown")
@@ -1079,6 +1179,8 @@ func TestViewValuePopupAndSlug(t *testing.T) {
 }
 
 func TestViewFocusedPaneWearsTheAccent(t *testing.T) {
+	t.Parallel()
+
 	// A tab with both boxes, so the accent really moves from one to the other.
 	m := press(newModel(t), tabKey(tabBugs))
 	accentColor := m.styles.accentColor
@@ -1100,6 +1202,8 @@ func TestViewFocusedPaneWearsTheAccent(t *testing.T) {
 // TestViewDonePanesShowTheirOwnSubTabs reads the title of the Done pane of
 // every tab of the bar, so no tab can ever draw the sub-tabs of another.
 func TestViewDonePanesShowTheirOwnSubTabs(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		if len(topTabs[i].done) == 0 {
 			continue
@@ -1126,6 +1230,8 @@ func TestViewDonePanesShowTheirOwnSubTabs(t *testing.T) {
 }
 
 func TestViewEmptyRepo(t *testing.T) {
+	t.Parallel()
+
 	b, err := board.Load(config.Default(t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
@@ -1174,6 +1280,8 @@ func testViewInProgressRowsWearTheAccent(t *testing.T) {
 }
 
 func TestViewHasNoSectionLabels(t *testing.T) {
+	t.Parallel()
+
 	m := sized(splitModel(t), 200, 40)
 	for _, ln := range strings.Split(plain(m.View()), "\n") {
 		low := strings.ToLower(body(ln))
@@ -1184,6 +1292,8 @@ func TestViewHasNoSectionLabels(t *testing.T) {
 }
 
 func TestViewHelpListsTheNewKeys(t *testing.T) {
+	t.Parallel()
+
 	m := sized(press(newModel(t), "?"), 120, 40)
 	v := plain(m.View())
 	for _, want := range []string{"enter", "focus the detail", "e", "open the row", "esc", "back to the list"} {
@@ -1200,6 +1310,8 @@ func TestViewHelpListsTheNewKeys(t *testing.T) {
 // the focused box the room, z takes it back, moving to another box takes it
 // back, and z on the detail box does nothing at all.
 func TestZTogglesAndFocusRestores(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 120, 40)
 	if m.expanded != -1 {
 		t.Fatalf("a screen with nothing expanded reads %d", m.expanded)
@@ -1397,7 +1509,12 @@ func scrollTo(m Model, p pane, at string) Model {
 // nothing else.
 func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 	withColors(func() {
-		for _, size := range [][2]int{{80, 30}, {160, 50}} {
+		sizes := [][2]int{{80, 30}, {160, 50}}
+		if testing.Short() {
+			// One size keeps the check on every tab and pane. The full run adds the wide one.
+			sizes = sizes[:1]
+		}
+		for _, size := range sizes {
 			for i := range topTabs {
 				for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
 					for _, at := range []string{"top", "middle", "end"} {
@@ -1532,6 +1649,8 @@ func checkThumbOnTheBorder(t *testing.T, tab int, p pane, at string, w, h int) {
 // screen tall enough to hold all of it. Nothing overflows, so no box draws a
 // thumb.
 func TestThumbOnlyWhenThereIsSomethingToScroll(t *testing.T) {
+	t.Parallel()
+
 	for _, size := range [][2]int{{80, 30}, {160, 50}, {200, 120}} {
 		m := press(sized(newModel(t), size[0], size[1]), tabKey(tabPlans), "0")
 		v := m.View()

@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-3
-hash: lthv
+id: SCR-0003
+hash: lthvpyi
 title: drag-select-copy
 status: raw
 created: "2026-09-28"

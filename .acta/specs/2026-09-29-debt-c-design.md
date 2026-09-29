@@ -1,6 +1,6 @@
 ---
-id: SPEC-16
-hash: a5ki
+id: SPC-0016
+hash: a5kicgy
 ---
 # Debt Group C: Land Guard, Bounded Graph, Fix Brief, Round Slug
 

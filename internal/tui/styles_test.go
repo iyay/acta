@@ -39,6 +39,8 @@ func TestTerminalThemeUsesANSISlots(t *testing.T) {
 }
 
 func TestTerminalSelectedFollowsDarkFlag(t *testing.T) {
+	t.Parallel()
+
 	th, _ := theme.Builtin("terminal")
 	dark := newStyles(th, true).selected
 	light := newStyles(th, false).selected
@@ -51,6 +53,8 @@ func TestTerminalSelectedFollowsDarkFlag(t *testing.T) {
 }
 
 func TestHexThemeRoles(t *testing.T) {
+	t.Parallel()
+
 	th, _ := theme.Builtin("tokyo-night")
 	s := newStyles(th, false)
 	if s.accentColor != lipgloss.Color("#7aa2f7") {
@@ -74,6 +78,8 @@ func TestHexThemeRoles(t *testing.T) {
 }
 
 func TestHexSelectedFallsBackToSlots(t *testing.T) {
+	t.Parallel()
+
 	th, _ := theme.Builtin("tokyo-night")
 	th.SelectionBG, th.SelectionFG = "", ""
 	s := newStyles(th, true)
@@ -144,6 +150,8 @@ func TestWithThemeLoadsAKnownTheme(t *testing.T) {
 }
 
 func TestNewDefaultsToTokyoNight(t *testing.T) {
+	t.Parallel()
+
 	cfg, b := fixture(t)
 	if New(cfg, b, true).styles.bg != "#1a1b26" {
 		t.Fatal("New did not default to tokyo-night")

@@ -88,7 +88,7 @@ func TestPreToolBlocksSecondItemOnly(t *testing.T) {
 		t.Fatal("same item again must pass")
 	}
 	block, msg := PreTool(root, ev("s1", "acta set scratch/two status brainstorming"))
-	if !block || !strings.Contains(msg, "one") || !strings.Contains(msg, "three choices") {
+	if !block || !strings.Contains(msg, "one") || !strings.Contains(msg, "the choices rule 8 names") {
 		t.Fatalf("second item: block=%v msg=%q", block, msg)
 	}
 	if block, _ := PreTool(root, ev("s2", "acta set scratch/two status brainstorming")); block {
@@ -105,11 +105,11 @@ func TestBlockAndReminderNameScratchID(t *testing.T) {
 	}
 	_, msg := PreTool(root, ev("s1", "acta set scratch/two status brainstorming"))
 	want := "acta: this session already brainstormed SCRATCH-6. One Architectural brainstorm per session: " +
-		"file this one as a scratch item and offer the user the three choices from acta:brainstorm."
+		"file this one as a scratch item and offer the user the choices rule 8 names."
 	if msg != want {
 		t.Errorf("block message = %q, want %q", msg, want)
 	}
-	wantReminder := "acta: this session already brainstormed SCRATCH-6; a second brainstorm gets the three choices."
+	wantReminder := "acta: this session already brainstormed SCRATCH-6; a second brainstorm gets the choices rule 8 names."
 	if got := Reminder(root, "s1"); got != wantReminder {
 		t.Errorf("Reminder = %q, want %q", got, wantReminder)
 	}

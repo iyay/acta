@@ -1,6 +1,6 @@
 ---
-id: PLAN-18
-hash: hsni
+id: PLN-0018
+hash: hsnijdg
 ---
 # Skill Rules and First-Run Setup Implementation Plan
 

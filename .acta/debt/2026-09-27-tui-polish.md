@@ -1,6 +1,6 @@
 ---
-id: DEBT-9
-hash: pxim
+id: DBT-0009
+hash: pximcqy
 parent: plans/2026-09-27-tui-polish
 ---
 # Review NOTEs: TUI Polish Implementation Plan

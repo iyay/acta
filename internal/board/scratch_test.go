@@ -10,6 +10,8 @@ import (
 )
 
 func TestScratchStatusFollowsOneRule(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	cases := []struct {
 		id, status, source string
@@ -40,6 +42,8 @@ func TestScratchStatusFollowsOneRule(t *testing.T) {
 // eight pairs and not only on the ones the fixture happens to hold. The wants
 // are written out, so a change to the rule itself has to fail here.
 func TestScratchStatusEveryCombination(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		written, status, source string
 		linked                  bool
@@ -93,6 +97,8 @@ func TestScratchStatusEveryCombination(t *testing.T) {
 // A written dropped is a decision the user already made, so a spec that came
 // out of the idea cannot turn it into specced.
 func TestWrittenDroppedBeatsSpecLink(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{"scratch/2026-09-28-idea.md": "---\nstatus: dropped\n---\n# Idea\n"}
 	b := boardWith(t, files)
 	it := b.Get("scratch/2026-09-28-idea")
@@ -119,6 +125,8 @@ func TestWrittenDroppedBeatsSpecLink(t *testing.T) {
 // A spec naming an idea that is not there says so once and the board still
 // loads, so one typo never hides every other item.
 func TestSpecParentNotFoundIsOneProblem(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-28-idea.md":           "# Idea\n",
 		"specs/2026-09-28-from-idea-design.md": "---\nparent: scratch/missing\n---\n# From idea\n",
@@ -150,6 +158,8 @@ func TestSpecParentNotFoundIsOneProblem(t *testing.T) {
 // A status the file holds outside the scratch list gets the same problem line
 // every other kind gives a status it does not know, specced included.
 func TestScratchBadWrittenStatusIsOneProblem(t *testing.T) {
+	t.Parallel()
+
 	for _, bad := range []string{"bogus", "specced", "done"} {
 		b := boardWith(t, map[string]string{
 			"scratch/2026-09-28-idea.md": "---\nstatus: " + bad + "\n---\n# Idea\n",
@@ -165,6 +175,8 @@ func TestScratchBadWrittenStatusIsOneProblem(t *testing.T) {
 }
 
 func TestScratchStatusesAndPrefix(t *testing.T) {
+	t.Parallel()
+
 	if got := Allowed(KindScratch); !slices.Equal(got, []string{"raw", "brainstorming", "dropped"}) {
 		t.Errorf("Allowed = %v", got)
 	}

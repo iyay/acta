@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-skill-rules-spec
-id: SPEC-11
-hash: yk3t
+id: SPC-0011
+hash: yk3tuxz
 ---
 # Skill rules: scratch, one brainstorm per session, first-run setup
 

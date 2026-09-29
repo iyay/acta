@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-4
-hash: k8c6
+id: SCR-0004
+hash: k8c6x55
 title: jev-routing-spike
 status: raw
 created: "2026-09-28"

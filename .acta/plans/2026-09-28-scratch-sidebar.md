@@ -1,6 +1,6 @@
 ---
-id: PLAN-17
-hash: qgef
+id: PLN-0017
+hash: qgefr97
 ---
 # Scratchpad Kind and Five-Pane Sidebar Implementation Plan
 

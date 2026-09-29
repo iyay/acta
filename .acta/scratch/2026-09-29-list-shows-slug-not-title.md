@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-21
-hash: se62
+id: SCR-0021
+hash: se62cl7
 title: TUI list shows slug instead of title for some items
 status: raw
 created: "2026-09-29"

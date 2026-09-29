@@ -28,6 +28,8 @@ const planBehind = "# Plan A\n\n**Spec:** .acta/specs/2026-09-20-a.md\n\n### Tas
 const planAhead = "# Plan A\n\n**Spec:** .acta/specs/2026-09-20-a.md\n\n### Task 1: One\n- [x] a\n- [x] b\n"
 
 func TestLoadTreesPicksTheWorktreeAhead(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md":    specA,
 		".acta/plans/2026-09-21-a.md":    planBehind,
@@ -63,6 +65,8 @@ func TestLoadTreesPicksTheWorktreeAhead(t *testing.T) {
 }
 
 func TestLoadTreesMainAheadWins(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{".acta/plans/2026-09-21-a.md": planAhead})
 	wt := tree(t, map[string]string{".acta/plans/2026-09-21-a.md": planBehind})
 	b, err := LoadTrees(main, []Tree{{Cfg: wt, Branch: "feat"}})
@@ -75,6 +79,8 @@ func TestLoadTreesMainAheadWins(t *testing.T) {
 }
 
 func TestLoadTreesLegacyAndBrokenTrees(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{".acta/specs/2026-09-20-a.md": specA})
 	wt := tree(t, map[string]string{
 		"docs/superpowers/plans/2026-01-02-old.md": "# Old plan\n\n### Task 1: Old\n- [x] a\n",
@@ -93,6 +99,8 @@ func TestLoadTreesLegacyAndBrokenTrees(t *testing.T) {
 }
 
 func TestLoadTreesFromBranchFiles(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md": specA,
 		".acta/plans/2026-09-21-a.md": planBehind,
@@ -136,6 +144,8 @@ func TestLoadTreesFromBranchFiles(t *testing.T) {
 }
 
 func TestLoadIsLoadTreesWithNoOthers(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{".acta/specs/2026-09-20-a.md": specA})
 	a, _ := Load(main)
 	b, _ := LoadTrees(main, nil)

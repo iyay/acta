@@ -1,6 +1,6 @@
 ---
-id: SPEC-19
-hash: eqjj
+id: SPC-0019
+hash: eqjji2a
 ---
 # Private Lock Folder and Locked Writes
 

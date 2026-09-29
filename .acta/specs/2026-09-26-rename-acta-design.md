@@ -1,6 +1,6 @@
 ---
-id: SPEC-8
-hash: wx52
+id: SPC-0008
+hash: wx526y6
 ---
 # Rename pm and pmb to acta
 

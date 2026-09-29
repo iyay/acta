@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-23
-hash: xjl0
+id: SCR-0023
+hash: xjl0g92
 title: 'Build: always git worktree add, drop native EnterWorktree'
 status: raw
 created: "2026-09-29"

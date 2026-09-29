@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/iyay/acta/internal/board"
@@ -259,6 +260,8 @@ func screenTops(m Model) []string {
 // from one, out of the items the pane holds, and nothing at all when the pane
 // holds no items.
 func TestItemCount(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		sel, total int
 		want       string
@@ -300,6 +303,8 @@ func isThatRow(m Model, r row, line string) bool {
 // the top and on the last line at the end, and a thumb that keeps the size of
 // the window the pane shows.
 func TestScrollbarRowsAreThumbOnly(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		total, visible, first, h int
 		want                     string // one char per line: T thumb, . no thumb
@@ -332,6 +337,8 @@ func TestScrollbarRowsAreThumbOnly(t *testing.T) {
 }
 
 func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		total, vis, first   int
 		wantTop, wantBottom bool
@@ -354,6 +361,8 @@ func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
 }
 
 func TestScrollbarThumbSitsBetweenTheEnds(t *testing.T) {
+	t.Parallel()
+
 	// Half way down, the thumb sits inside the column, never on either end.
 	bar := scrollbar(100, 10, 45, 10)
 	if len(bar) != 10 {
@@ -377,6 +386,8 @@ func TestScrollbarThumbSitsBetweenTheEnds(t *testing.T) {
 }
 
 func TestScrollbarSurvivesOddNumbers(t *testing.T) {
+	t.Parallel()
+
 	// An offset past the end reads as the end, and one before the start reads
 	// as the start: a stale offset cannot leave the thumb off the column.
 	for _, c := range []struct {
@@ -408,6 +419,8 @@ func TestScrollbarSurvivesOddNumbers(t *testing.T) {
 }
 
 func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
+	t.Parallel()
+
 	// The fixture fits in every box of a tall enough screen, so none of them
 	// draws a thumb.
 	tall := press(sized(newModel(t), 120, 80), tabKey(tabPlans))
@@ -432,14 +445,17 @@ func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 }
 
 func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		before := m.Selected()
 		shown := screenTops(m)
 		b := scrollBox(m, p)
 		m = wheel(m, b.x+1, b.y+2, false)
-		if m.off[p] != 1 {
-			t.Errorf("pane %d: one notch should scroll it by one, off is %d", p, m.off[p])
+		step := min(wheelStep, m.lastOff(p))
+		if m.off[p] != step {
+			t.Errorf("pane %d: one notch should scroll it by %d, off is %d", p, step, m.off[p])
 		}
 		for q := range boxes {
 			if q != int(p) && drawnFirst(m, pane(q)) != shown[q] {
@@ -453,8 +469,8 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 			}
 		}
 		// What the screen has on top follows the wheel.
-		if !shows(m, p, 1) {
-			t.Errorf("pane %d: after one notch the top of the box should be its second line, it shows %q", p, drawnFirst(m, p))
+		if !shows(m, p, step) {
+			t.Errorf("pane %d: after one notch the top of the box should be line %d, it shows %q", p, step, drawnFirst(m, p))
 		}
 		m = wheel(m, b.x+1, b.y+2, true)
 		if m.off[p] != 0 {
@@ -495,10 +511,482 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 	}
 }
 
+// A trackpad sends hundreds of notches a second. Drawing the screen after
+// each one left the TUI far behind the wheel, so the notches of one frame are
+// gathered and scrolled once. A tick with nothing gathered must move nothing.
+func TestWheelNotchesInOneFrameScrollOnce(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, p)
+		b := scrollBox(m, p)
+		m = wheelOnly(m, b.x+1, b.y+2, false)
+		m = wheelOnly(m, b.x+1, b.y+2, false)
+		if m.off[p] != 0 {
+			t.Errorf("pane %d: notches must wait for the frame tick, off is %d", p, m.off[p])
+		}
+		m = wheelTick(m)
+		if want := min(2*wheelStep, m.lastOff(p)); m.off[p] != want {
+			t.Errorf("pane %d: two notches in one frame should scroll %d, off is %d", p, want, m.off[p])
+		}
+		// A second tick with nothing gathered must not move the pane again.
+		before := m.off[p]
+		m = wheelTick(m)
+		if m.off[p] != before {
+			t.Errorf("pane %d: an empty tick moved the pane from %d to %d", p, before, m.off[p])
+		}
+	}
+}
+
+// A wheel turned back and forth inside one frame ends where it started, so a
+// reader who changes their mind leaves the pane where it was.
+func TestWheelUpAndDownInOneFrameCancel(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m = wheel(m, b.x+1, b.y+2, false)
+	start := m.off[paneDetail]
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, true)
+	m = wheelTick(m)
+	if m.off[paneDetail] != start {
+		t.Errorf("down then up in one frame should leave the pane at %d, it is at %d", start, m.off[paneDetail])
+	}
+}
+
+// Only the first notch of a frame starts a tick, so a fast wheel does not
+// leave a queue of ticks behind that scroll the pane after the wheel stopped.
+func TestWheelArmsOneTickPerFrame(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	next, first := m.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if first == nil {
+		t.Fatal("the first notch of a frame must start the frame tick")
+	}
+	_, second := next.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if second != nil {
+		t.Error("a notch in a frame that already has a tick must not start another one")
+	}
+}
+
+// Whatever the wheel gathers, the scroll lands inside the content. A delta
+// that runs past the end of the pane stops at the last line it has.
+func TestWheelOverclampStaysInsideContent(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, p)
+		b := scrollBox(m, p)
+		for range 500 {
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+		}
+		m = wheelTick(m)
+		if want := m.lastOff(p); m.off[p] != want {
+			t.Errorf("pane %d: 500 notches in one frame scrolled to %d, the content allows %d", p, m.off[p], want)
+		}
+		for range 500 {
+			m = wheelOnly(m, b.x+1, b.y+2, true)
+		}
+		m = wheelTick(m)
+		if m.off[p] != 0 {
+			t.Errorf("pane %d: 500 notches up in one frame scrolled to %d, the top is 0", p, m.off[p])
+		}
+	}
+}
+
+// One delta belongs to one pane. A notch on the next pane starts a fresh
+// frame for it, and the notches the reader already gave the old pane scroll
+// that pane rather than the new one.
+func TestWheelOnAnotherPaneKeepsEachNotchOnItsOwnPane(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	lb := scrollBox(m, paneList)
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	// The reader moves to the Done box and turns the wheel there, both before
+	// the tick that closes the first frame.
+	m = press(m, keyTo(paneDone))
+	db := scrollBox(m, paneDone)
+	m = wheelOnly(m, db.x+1, db.y+2, false)
+	m = wheelTick(m)
+	if want := min(wheelStep, m.lastOff(paneList)); m.off[paneList] != want {
+		t.Errorf("the notch over the List pane scrolled it to %d, want %d", m.off[paneList], want)
+	}
+	if want := min(wheelStep, m.lastOff(paneDone)); m.off[paneDone] != want {
+		t.Errorf("the notch over the Done pane scrolled it to %d, want %d", m.off[paneDone], want)
+	}
+}
+
+// The wheel is off while the help sits over the panes, so a notch there
+// gathers nothing and the pane underneath stays where the reader left it.
+func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m.help = true
+	m = wheel(m, b.x+1, b.y+2, false)
+	if m.off[paneDetail] != 0 || m.wheelDelta != 0 {
+		t.Errorf("the wheel under the help popup moved the pane: off %d, pending %d", m.off[paneDetail], m.wheelDelta)
+	}
+}
+
+// One notch moves three lines, the usual terminal step, so a scroll covers
+// ground. A step of one leaves the reader creeping down the pane.
+func TestWheelNotchMovesThreeLines(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	m = wheel(m, b.x+1, b.y+2, false)
+	if m.off[paneList] != 3 {
+		t.Errorf("one notch should scroll three lines, off is %d", m.off[paneList])
+	}
+}
+
+// longTabs puts forty items with a body long enough to scroll in every list of
+// the Plans and the Bugs tab, under the open, finished and closed status, so a
+// tab switch and a Done sub-tab switch both land on lists that overflow and on
+// a detail box with room to move.
+func longTabs(t *testing.T) Model {
+	t.Helper()
+	body := "# Item " + strings.Repeat("x", 40) + "\n" + strings.Repeat("\nA line of the body.\n", 60)
+	files := map[string]string{}
+	for _, f := range []struct{ dir, status string }{
+		{"plans", ""},
+		{"plans", "done"},
+		{"plans", "dropped"},
+		{"bugs", ""},
+		{"bugs", "fixed"},
+		{"bugs", "wontfix"},
+	} {
+		front := ""
+		if f.status != "" {
+			front = "---\nstatus: " + f.status + "\n---\n"
+		}
+		for i := range 40 {
+			files[fmt.Sprintf(".acta/%s/2026-09-20-%s-%02d.md", f.dir, f.status, i)] = front + body
+		}
+	}
+	cfg := treeCfg(t, files)
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return sized(m, 120, 40)
+}
+
+// The notches of one frame belong to the screen the wheel turned on. Every
+// path that moves the item on show, the open tab or the Done sub-tab before the
+// tick must leave the new item at the top of its own box, and the notches of a
+// frame where nothing changed must still scroll.
+func TestWheelNotchesBelongToTheScreenTheyWereGatheredOn(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		box   pane
+		leave func(m Model) Model
+	}{
+		{
+			name: "a click on another row",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box: paneDetail,
+			leave: func(m Model) Model {
+				b := scrollBox(m, paneList)
+				return click(m, b.x+1, b.y+2)
+			},
+		},
+		{
+			name: "a key that moves the cursor",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, "esc", "j") },
+		},
+		{
+			name: "another tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), "0")
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, tabKey(tabBugs)) },
+		},
+		{
+			name: "another Done sub-tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), keyTo(paneDone))
+			},
+			box:   paneDone,
+			leave: func(m Model) Model { return press(m, "]") },
+		},
+		{
+			name: "a search for another item",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, "/", "open-37") },
+		},
+		{
+			name: "a reload that took the item away",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return reloadedWithout(m, m.Selected().ID) },
+		},
+		{
+			name: "nothing changed",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return m },
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[c.box] != 0 {
+				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
+			}
+			m = c.leave(m)
+			m = wheelTick(m)
+			if c.name == "nothing changed" {
+				// The frame the reader never left must still scroll.
+				if want := min(2*wheelStep, m.lastOff(c.box)); m.off[c.box] != want {
+					t.Errorf("notches with nothing changed scrolled %d, want %d", m.off[c.box], want)
+				}
+				return
+			}
+			if m.off[c.box] != 0 {
+				t.Errorf("the notches of the old screen scrolled the new one to line %d", m.off[c.box])
+			}
+			if !shows(m, c.box, 0) {
+				t.Errorf("the box shows %q at the top, want the first line of what is on show", drawnFirst(m, c.box))
+			}
+		})
+	}
+}
+
+// Notches that come in after the screen changed belong to the new screen, and
+// the ones that came before it are dropped. A frame that gathers on both sides
+// of a change scrolls what the new screen earned, no more.
+func TestWheelNotchesAfterTheChangeBelongToTheNewScreen(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		box   pane
+		leave func(m Model) Model
+	}{
+		{
+			name: "a reload that took the item away",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box: paneDetail,
+			leave: func(m Model) Model {
+				return reloadedWithout(m, m.Selected().ID)
+			},
+		},
+		{
+			name: "another tab",
+			start: func(t *testing.T) Model {
+				// Both tabs remember the detail box as the focused one, so
+				// the notch after the switch still lands on a detail box.
+				return press(longTabs(t), tabKey(tabBugs), keyTo(paneDetail),
+					tabKey(tabPlans), keyTo(paneDetail))
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, tabKey(tabBugs)) },
+		},
+		{
+			name: "another Done sub-tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), keyTo(paneDone))
+			},
+			box:   paneDone,
+			leave: func(m Model) Model { return press(m, "]") },
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[c.box] != 0 {
+				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
+			}
+			m = c.leave(m)
+			// The pane on screen is where the next notch lands, which the
+			// change may have moved.
+			b = scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelTick(m)
+			want := min(wheelStep, m.lastOff(c.box))
+			if m.off[c.box] != want {
+				t.Errorf("one notch after the change scrolled %d, want %d", m.off[c.box], want)
+			}
+			if !shows(m, c.box, int(want)) {
+				t.Errorf("the box shows %q, want line %d of what is on show", drawnFirst(m, c.box), want)
+			}
+		})
+	}
+}
+
+// The next notch lands on the box under the pointer, so it belongs to that
+// pane alone. The notches the reader gave the box they have already left are
+// not scrolled there on the way out.
+func TestWheelNotchOnAnotherPaneLeavesTheOldBoxWhereTheChangePutIt(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	first := m.Selected().ID
+	lb := scrollBox(m, paneList)
+	m = click(m, lb.x+1, lb.y+2)
+	if m.Selected().ID == first {
+		t.Fatalf("the click stayed on %q, the test needs another item on show", first)
+	}
+	lb = scrollBox(m, paneList)
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	m = wheelTick(m)
+	if m.off[paneDetail] != 0 {
+		t.Errorf("the notches of the old item scrolled the new one to line %d, want 0", m.off[paneDetail])
+	}
+	if !shows(m, paneDetail, 0) {
+		t.Errorf("the detail box shows %q, want the first line of the item on show", drawnFirst(m, paneDetail))
+	}
+	if want := min(wheelStep, m.lastOff(paneList)); m.off[paneList] != want {
+		t.Errorf("the notch over the list scrolled it to %d, want %d", m.off[paneList], want)
+	}
+}
+
+// A screen that never moved keeps its notches: the whole frame scrolls, or
+// the wheel would swallow the turn the reader gave it.
+func TestWheelNotchesScrollTheWholeFrameWhenNothingChanged(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name    string
+		start   func(t *testing.T) Model
+		box     pane
+		notches int
+		leave   func(m Model) Model
+	}{
+		{
+			name:    "the list pane",
+			start:   func(t *testing.T) Model { return paneModel(t, paneList) },
+			box:     paneList,
+			notches: 3,
+		},
+		{
+			name:    "the detail pane",
+			start:   func(t *testing.T) Model { return paneModel(t, paneDetail) },
+			box:     paneDetail,
+			notches: 2,
+		},
+		{
+			name: "a reload that kept the item",
+			start: func(t *testing.T) Model {
+				m := paneModel(t, paneDetail)
+				// The reader clicks the row they are on, so the cursor is
+				// written down and the reload finds the same one again.
+				lb := scrollBox(m, paneList)
+				m = click(m, lb.x+1, lb.y+1)
+				return press(m, keyTo(paneDetail))
+			},
+			box:     paneDetail,
+			notches: 2,
+			leave:   reloaded,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			for range c.notches {
+				m = wheelOnly(m, b.x+1, b.y+2, false)
+			}
+			if c.leave != nil {
+				m = c.leave(m)
+			}
+			m = wheelTick(m)
+			want := min(c.notches*wheelStep, m.lastOff(c.box))
+			if m.off[c.box] != want {
+				t.Errorf("the frame scrolled %d, want the whole total %d", m.off[c.box], want)
+			}
+			if !shows(m, c.box, int(want)) {
+				t.Errorf("the box shows %q, want line %d of what is on show", drawnFirst(m, c.box), want)
+			}
+		})
+	}
+}
+
+// reloadedWithout is the reload message of a board the item id is gone from, so
+// the cursor lands on another row the way a live reload lands it.
+func reloadedWithout(m Model, id string) Model {
+	fresh, err := m.load()
+	if err != nil {
+		return m
+	}
+	fresh.Items = slices.DeleteFunc(fresh.Items, func(it *board.Item) bool { return it.ID == id })
+	next, _ := m.Update(reloadMsg{b: fresh})
+	return next.(Model)
+}
+
+// reloaded is a reload message carrying the board as it stands, so the screen
+// is rebuilt under the reader and the item on show stays the one they are on.
+func reloaded(m Model) Model {
+	fresh, err := m.load()
+	if err != nil {
+		return m
+	}
+	next, _ := m.Update(reloadMsg{b: fresh})
+	return next.(Model)
+}
+
+// A tick closes the frame, and the notch after it opens the next one. A tick
+// that left the frame armed forever would swallow every later notch, and the
+// wheel would stop moving the pane.
+func TestWheelScrollsAgainAfterTheFrameTick(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	first := wheel(m, b.x+1, b.y+2, false)
+	next, cmd := first.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
+	if cmd == nil {
+		t.Fatal("a notch right after a tick must start the next frame")
+	}
+	// A second notch joins that frame, so the tick really covers both.
+	second := wheelOnly(next.(Model), b.x+1, b.y+2, false)
+	second = wheelTick(second)
+	if want := min(3*wheelStep, second.lastOff(paneList)); second.off[paneList] != want {
+		t.Errorf("three notches over two frames should scroll %d, off is %d", want, second.off[paneList])
+	}
+}
+
 // A pane with less content than it has rows has nowhere to scroll, so every
 // key and every notch leaves it at the top. An offset below zero would count
 // from a line that does not exist.
 func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
+	t.Parallel()
+
 	// The Plans tab has both list boxes, so the walk covers a tab with a
 	// Done pane as well as the detail box.
 	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
@@ -550,6 +1038,8 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 // any other pane it does nothing at all: no scroll, no focus change, so a
 // wheel can never move a pane the user is not looking at.
 func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		for _, q := range []pane{paneList, paneDone, paneDetail} {
 			if q == p {
@@ -596,6 +1086,8 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 // A click takes the focus, so the wheel over the same pane scrolls it right
 // after, with no key in between.
 func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, paneList)
 		b := scrollBox(m, p)
@@ -604,13 +1096,15 @@ func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
 		if m.focus != p {
 			t.Errorf("pane %d: the click should have taken the focus, focus is %d", p, m.focus)
 		}
-		if m.off[p] != 1 {
-			t.Errorf("pane %d: the wheel after the click should scroll it by one, off is %d", p, m.off[p])
+		if step := min(wheelStep, m.lastOff(p)); m.off[p] != step {
+			t.Errorf("pane %d: the wheel after the click should scroll it by %d, off is %d", p, step, m.off[p])
 		}
 	}
 }
 
 func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
+	t.Parallel()
+
 	// The keys of the detail box scroll it and leave both lists where they
 	// were, selection and offset.
 	m := press(longModel(t), tabKey(tabPlans), "G")
@@ -660,6 +1154,8 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 }
 
 func TestListKeepsTheSelectedRowVisible(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans))
 	rows, _, _ := m.slotOf(paneList)
 	// Walk down until the cursor sits below the fold, then keep walking: the
@@ -699,6 +1195,8 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 }
 
 func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "0")
 	for m.off[paneDetail] < 5 {
 		m = press(m, "j")
@@ -727,6 +1225,8 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 }
 
 func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		// Top: the thumb is on the first line and so is the content.
@@ -781,6 +1281,8 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 }
 
 func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := press(paneModel(t, p), "G")
 		if m.off[p] == 0 {
@@ -857,6 +1359,8 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 // G stops a line short of the end the screen can show and the last line on
 // screen is a line that never arrives.
 func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		// The detail box needs an item under it before it has a body, so the
 		// list is opened on the plans first.
@@ -898,6 +1402,8 @@ func isFirstLine(m Model, p pane, line string) bool {
 }
 
 func TestPanesKeepTheirOwnPlace(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "G")
 	open := screenTops(m)[paneList]
 	m = press(m, "tab", "G")
@@ -937,6 +1443,8 @@ func TestPanesKeepTheirOwnPlace(t *testing.T) {
 // the inner width, or that has no newline at the end, is the same problem
 // from the other side: the line is already full when the pane pads it.
 func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
+	t.Parallel()
+
 	// Heights below three leave no room for a pane at all, which the frame
 	// task covers on its own; what the scrollbar adds is a cell inside a pane.
 	for _, w := range []int{1, 2, 3, 4, 5, 6, 8, 12, 20, 40} {
@@ -1003,6 +1511,8 @@ func tail(body string) string {
 // box has to land on a window its new rows can fill and the screen has to
 // show that window.
 func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{}
 	for i := range 40 {
 		files[fmt.Sprintf(".acta/specs/2026-09-20-spec-%02d.md", i)] = "# Story " + fmt.Sprint(i) + "\n\nSome text.\n"

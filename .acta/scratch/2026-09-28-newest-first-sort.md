@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-1
-hash: tnwe
+id: SCR-0001
+hash: tnwe78s
 title: newest-first-sort
 status: raw
 created: "2026-09-28"

@@ -13,6 +13,8 @@ import (
 // push each other off screen. Every height the terminal can hand us goes
 // through, including the tiny ones that have no room to divide.
 func TestSplitAlwaysFillsTheHeight(t *testing.T) {
+	t.Parallel()
+
 	for h := range 2 {
 		// A terminal with no room yet must not panic, only split badly.
 		split(h, sidePanes)
@@ -43,6 +45,8 @@ func TestSplitAlwaysFillsTheHeight(t *testing.T) {
 // below that, the view draws the heights the model hands it, and no line of
 // the screen reaches past the right edge.
 func TestLeftHeightsFillAndExpand(t *testing.T) {
+	t.Parallel()
+
 	// The Plans tab has both boxes, so the walk covers the two box column and
 	// not the single box of Activities.
 	m := press(newModel(t), tabKey(tabPlans))
@@ -121,6 +125,8 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 // left column is exactly as tall as the detail pane, the screen has no more
 // lines than the terminal has rows, and no line reaches past the right edge.
 func TestViewFitsEveryTerminalSize(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	for h := 3; h <= 60; h++ {
 		for w := 1; w <= 200; w++ {
@@ -149,6 +155,8 @@ func TestViewFitsEveryTerminalSize(t *testing.T) {
 // TestViewSurvivesTinyTerminals covers the sizes too small to hold a pane at
 // all. A window squeezed to nothing must still draw without panicking.
 func TestViewSurvivesTinyTerminals(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	for h := 0; h <= 2; h++ {
 		for _, w := range []int{1, 2, 19, 20, 21} {
@@ -161,6 +169,8 @@ func TestViewSurvivesTinyTerminals(t *testing.T) {
 // standard renderer only paints over the cells the new frame uses, so a window
 // that shrinks leaves the rest of the old frame on screen until we say clear.
 func TestResizeClearsTheScreen(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 120, 40)
 	next, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	if cmd == nil || fmt.Sprint(cmd()) != fmt.Sprint(tea.ClearScreen()) {
@@ -173,6 +183,8 @@ func TestResizeClearsTheScreen(t *testing.T) {
 }
 
 func TestTitleShowsTheSortOfEachPane(t *testing.T) {
+	t.Parallel()
+
 	// The Specs tab has both a List and a Done box, so both sort words show.
 	m := press(newModel(t), tabKey(tabSpecs))
 	view := m.View()
@@ -193,6 +205,8 @@ func TestTitleShowsTheSortOfEachPane(t *testing.T) {
 }
 
 func TestHelpListsTheSortKey(t *testing.T) {
+	t.Parallel()
+
 	if !strings.Contains(helpLines, "oldest / newest") {
 		t.Fatalf("help does not list o: %q", helpLines)
 	}

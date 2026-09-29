@@ -1,6 +1,6 @@
 ---
-id: PLAN-3
-hash: v06n
+id: PLN-0003
+hash: v06nogf
 ---
 # Hook makes agents load pm skills Implementation Plan
 

@@ -54,6 +54,8 @@ func agentsOf(b *Board) string {
 }
 
 func TestAgentsOnOpenTasksAndTheirParents(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md":    specA,
 		".acta/plans/2026-09-21-a.md":    planAgents,
@@ -92,6 +94,8 @@ func TestAgentsOnOpenTasksAndTheirParents(t *testing.T) {
 }
 
 func TestNoAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md": specA,
 		".acta/plans/2026-09-21-a.md": planAhead,
@@ -108,6 +112,8 @@ func TestNoAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 }
 
 func TestBrokenAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md": specA,
 		".acta/plans/2026-09-21-a.md": planBehind,
@@ -140,6 +146,8 @@ func TestBrokenAgentsFileGivesNoAgentsAndNoError(t *testing.T) {
 }
 
 func TestNewestAgentWinsAcrossRoots(t *testing.T) {
+	t.Parallel()
+
 	plan := `# Plan A
 
 ### Task 1: One
@@ -190,6 +198,8 @@ func TestNewestAgentWinsAcrossRoots(t *testing.T) {
 }
 
 func TestBranchFromGitHasNoAgents(t *testing.T) {
+	t.Parallel()
+
 	plan := `# Plan A
 
 ### Task 1: One
@@ -223,6 +233,8 @@ func TestBranchFromGitHasNoAgents(t *testing.T) {
 // A task someone started but has not ticked yet reads in-progress, so its plan
 // and spec show progress; a done task never shows an agent again.
 func TestStartedTaskShowsInProgressBeforeAnyBox(t *testing.T) {
+	t.Parallel()
+
 	plan := `# Plan A
 
 **Spec:** .acta/specs/2026-09-20-a.md
@@ -254,6 +266,8 @@ func TestStartedTaskShowsInProgressBeforeAnyBox(t *testing.T) {
 
 // A done task with an old started record stays done and shows no agent.
 func TestDoneTaskWithStartedRecordShowsNoAgent(t *testing.T) {
+	t.Parallel()
+
 	main := tree(t, map[string]string{
 		".acta/specs/2026-09-20-a.md": specA,
 		".acta/plans/2026-09-21-a.md": planAhead,

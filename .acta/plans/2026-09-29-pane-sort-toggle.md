@@ -1,6 +1,6 @@
 ---
-id: PLAN-23
-hash: kdgu
+id: PLN-0023
+hash: kdgub2w
 ---
 # Pane Sort Toggle Implementation Plan
 

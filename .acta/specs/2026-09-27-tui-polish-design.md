@@ -1,6 +1,6 @@
 ---
-id: SPEC-9
-hash: w1o6
+id: SPC-0009
+hash: w1o6wzq
 ---
 # TUI polish: one-line rows, task dots, per-pane scroll, no broken frames
 

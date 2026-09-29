@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-dispatch-brief-loads-build
-id: SPEC-13
-hash: xbaq
+id: SPC-0013
+hash: xbaq5tx
 ---
 
 # Dispatch Reply-Back Design

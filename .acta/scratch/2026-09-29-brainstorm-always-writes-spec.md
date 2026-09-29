@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-12
-hash: uw0m
+id: SCR-0012
+hash: uw0mq7e
 title: Every approved brainstorm writes a spec
 status: raw
 created: "2026-09-29"

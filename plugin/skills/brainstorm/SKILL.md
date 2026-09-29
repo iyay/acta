@@ -77,8 +77,7 @@ one of:
 - (a) **Background agent** — run `claude --bg 'brainstorm SCR-0001'`
   from the repo, then tell the user to open the agents view (press ←, or
   `claude agents`).
-- (b) **New herdr tab** — offer this only when `HERDR_ENV=1` is set. With
-  no herdr, do not mention it.
+- (b) **New herdr tab** — offer this only when the session text has the `herdr:` line; the acta hook adds it only inside herdr. With no such line, do not mention herdr.
 - (c) **Manual new session** — copy the prompt `brainstorm SCR-0001` to
   the clipboard (`pbcopy` on macOS, `wl-copy` or `xclip` on Linux, OSC 52
   when none of those work) and also print the prompt, so the user can

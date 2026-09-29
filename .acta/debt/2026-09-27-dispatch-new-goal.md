@@ -1,6 +1,6 @@
 ---
-id: DEBT-3
-hash: kz9g
+id: DBT-0003
+hash: kz9g3b7
 parent: plans/2026-09-26-dispatch-new-goal
 ---
 # Review NOTEs: Dispatch sends /new and /goal as two confirmed steps Implementation Plan

@@ -141,6 +141,8 @@ func lineOf(t *testing.T, lines []string, want string) int {
 // A task counts its steps, so it labels the line SUBTASKS. Every other kind
 // counts the tasks under it and keeps TASKS.
 func TestDetailLabelsSubtasksOnATask(t *testing.T) {
+	t.Parallel()
+
 	for _, c := range []struct{ id, label string }{
 		{"PLAN-1", "TASKS"},
 		{"SPEC-1", "TASKS"},
@@ -165,6 +167,8 @@ func TestDetailLabelsSubtasksOnATask(t *testing.T) {
 // The author sits right under the status, comes from the file itself, and is
 // left out when git has no name to give.
 func TestDetailShowsTheAuthorUnderTheStatus(t *testing.T) {
+	t.Parallel()
+
 	lines := detailLines(t, gitTree(t, "Ana", boardFiles()), "PLAN-1")
 	labels := labelsOf(lines)
 	at := slices.Index(labels, "AUTHOR")
@@ -233,6 +237,8 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 // A spec lists the tasks of every plan under it, one plain line naming each
 // plan, and a bug the tasks of the plans that name it as their parent.
 func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
+	t.Parallel()
+
 	wantInOrder(t, detailOf(t, "SPEC-1"),
 		"PLN-0001  Plan A",
 		"✓ PLN-0001.01  First",
@@ -270,6 +276,8 @@ func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
 // The text of a debt file around its checklist renders under the list, once,
 // and not as the whole file again.
 func TestDetailDebtItemShowsTheTextAroundItsLine(t *testing.T) {
+	t.Parallel()
+
 	lines := plainLines(detailOf(t, "DEBT-1.1"))
 	below := strings.Join(lines[ruleLine(t, lines):], "\n")
 	if !strings.Contains(below, "Prose about the review.") {
@@ -295,6 +303,8 @@ func ruleLine(t *testing.T, lines []string) int {
 // Every kind of item draws its header, so no detail pane is empty while the
 // file behind it has something to say.
 func TestDetailIsNeverEmpty(t *testing.T) {
+	t.Parallel()
+
 	for _, id := range []string{"SPEC-1", "SPEC-2", "PLAN-1", "BUG-1", "PLAN-1.1", "PLAN-1.3", "DEBT-1.1", "DEBT-1.2"} {
 		lines := detailOf(t, id)
 		if len(lines) < 3 {
@@ -346,6 +356,8 @@ func gitTree(t *testing.T, name string, files map[string]string) config.Config {
 // A tab fills the room up to the next stop of eight, counted with the width
 // of the words before it on the same line.
 func TestExpandTabsToNextStop(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ in, want string }{
 		{"\tx", "        x"},
 		{"ab\tx", "ab      x"},
@@ -439,6 +451,8 @@ func frameBreak(view string, w int) int {
 // breaks otherwise: the screen counts the cells the pane never drew, and the
 // old words stay under the new ones.
 func TestDetailWithTabsFitsThePane(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, tabFiles())
 	for _, size := range [][2]int{{80, 30}, {160, 50}} {
 		w, h := size[0], size[1]
@@ -465,6 +479,8 @@ func TestDetailWithTabsFitsThePane(t *testing.T) {
 // to show: the header, the work list and the body all end in the same lines,
 // and none of them may hold a tab or outgrow the pane it is measured for.
 func TestEveryDetailItemHoldsNoTabAndFitsItsWidth(t *testing.T) {
+	t.Parallel()
+
 	files := tabFiles()
 	// A second plan whose own title holds a tab and whose frontmatter names a
 	// kind that does not exist, so the line a spec draws above the tasks of a
@@ -515,6 +531,8 @@ func closesFiles() map[string]string {
 }
 
 func TestDetailShowsClosesAndClosedBy(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, closesFiles())
 	for _, c := range []struct{ id, label, value, absent string }{
 		{"SPEC-1", "CLOSES", "SCR-0001, scratch/2026-09-28-j", "CLOSED BY"},
@@ -628,4 +646,189 @@ func TestDetailShowsTheDates(t *testing.T) {
 			t.Errorf("SCRATCH-1 %s says %q, want %q", c.label, got, c.want)
 		}
 	}
+}
+
+func TestDetailLinesAreBuiltOncePerChange(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	calls := 0
+	m.render = func(md string, _ int) string { calls++; return md }
+	m.dcache = &detailCache{}
+	// The width the detail box really has, so the draw below asks for the
+	// lines of the same width the calls above built.
+	w := scrollBox(m, paneDetail).textW()
+	m.detailLines(w)
+	m.detailLines(w)
+	m.View()
+	if calls != 1 {
+		t.Errorf("the same item at the same width rendered its body %d times, want 1", calls)
+	}
+}
+
+func TestDetailCacheFollowsWidthItemAndBoard(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = &detailCache{}
+	wide := strings.Join(m.detailLines(80), "\n")
+	narrow := strings.Join(m.detailLines(30), "\n")
+	if wide == narrow {
+		t.Error("a new width gave the lines of the old width")
+	}
+	first := strings.Join(m.detailLines(80), "\n")
+	// The plans tab lists two plans, so j walks to another item.
+	m = press(m, tabKey(tabPlans), "j")
+	if strings.Join(m.detailLines(80), "\n") == first {
+		t.Error("a new selected item gave the lines of the old item")
+	}
+	shown := strings.Join(m.detailLines(80), "\n")
+	fresh, err := m.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range fresh.Items {
+		it.Title = it.Title + " renamed"
+	}
+	next, _ := m.Update(reloadMsg{b: fresh})
+	if got := strings.Join(next.(Model).detailLines(80), "\n"); got == shown || !strings.Contains(got, "renamed") {
+		t.Error("a reloaded board gave the lines of the old board")
+	}
+}
+
+// With no item under the cursor the lines come from the board alone, so a
+// board that swaps its items for others must give other lines even though
+// the selected item is nil both times.
+func TestDetailCacheFollowsABoardWithNothingSelected(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	// The untyped group of the specs tab has no item of its own.
+	m = press(m, tabKey(tabSpecs))
+	for m.Selected() != nil {
+		m = press(m, "j")
+	}
+	if s := m.Selected(); s != nil {
+		t.Fatalf("the cursor is on %s, want a row that selects no item", s.ID)
+	}
+	m.dcache = &detailCache{}
+	before := strings.Join(m.detailLines(80), "\n")
+	fresh, err := m.load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A board with nothing on it at all. The box names that case in its own
+	// words, where a board with a group under the cursor does not.
+	fresh.Items = nil
+	next, _ := m.Update(reloadMsg{b: fresh})
+	if after := strings.Join(next.(Model).detailLines(80), "\n"); after == before {
+		t.Errorf("a reloaded board with nothing selected gave the lines of the old board: %q", after)
+	}
+}
+
+func TestDetailWithoutCacheStillDraws(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = nil
+	if len(m.detailLines(80)) == 0 {
+		t.Error("a model with no cache must still draw the detail box")
+	}
+}
+
+// A new theme brings new styles and a new markdown renderer, so the box has
+// to be given lines built with them and not keep the ones of the old theme.
+func TestDetailCacheFollowsTheTheme(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t), 160, 50)
+	m.dcache = &detailCache{}
+	before := strings.Join(m.detailLines(80), "\n")
+	next := m.WithTheme("dracula", false)
+	after := strings.Join(next.detailLines(80), "\n")
+	if after == before {
+		t.Error("a new theme gave the lines of the old theme")
+	}
+	if !strings.Contains(after, "\x1b[") {
+		t.Errorf("a themed detail box draws no color at all: %q", after)
+	}
+}
+
+// modelOf is a model over a board built from files, drawn with the markdown
+// left as it is so a test reads the words of a body.
+func modelOf(t *testing.T, files map[string]string) Model {
+	t.Helper()
+	cfg := treeCfg(t, files)
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return m
+}
+
+// groupModel is the Specs tab with the cursor on the untyped group row, the one
+// row that selects no item, and empty lists everywhere else.
+func groupModel(t *testing.T) Model {
+	t.Helper()
+	m := modelOf(t, map[string]string{
+		".acta/specs/2026-09-20-alpha.md":          "# Alpha\n",
+		"docs/superpowers/specs/2026-01-01-old.md": "# Old\n",
+	})
+	return sized(press(m, tabKey(tabSpecs), "G"), 160, 50)
+}
+
+// wontfixModel is the Bugs tab with the Done box on its Wontfix sub-tab, which
+// holds nothing, so nothing is selected there either.
+func wontfixModel(t *testing.T) Model {
+	t.Helper()
+	m := modelOf(t, map[string]string{
+		".acta/bugs/2026-09-24-crash.md": "---\nstatus: fixed\n---\n# App crashes\n",
+	})
+	return sized(press(m, tabKey(tabBugs), "tab", "]"), 160, 50)
+}
+
+// With no item under the cursor the box reads the list beside it, and the
+// cache key is the item, the width and the board, so it cannot see that list.
+// Every input the box reads with no item must still reach the drawn lines.
+func TestDetailWithNothingSelectedFollowsTheList(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		leave func(m Model) Model
+		want  string
+	}{
+		{"the query", groupModel, func(m Model) Model { return press(m, "/", "zzzq") }, "No items"},
+		{"the open tab", groupModel, func(m Model) Model { return press(m, tabKey(tabDebts)) }, "No items"},
+		{"the focused box", groupModel, func(m Model) Model { return press(m, "tab") }, "No items"},
+		{"the Done sub-tab", wontfixModel, func(m Model) Model { return press(m, "[") }, "App crashes"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			if s := m.Selected(); s != nil {
+				t.Fatalf("the test needs a box with no item on show, it holds %s", s.ID)
+			}
+			// Draw once, so the cache holds what the box says now.
+			drawnBox(t, m)
+			m = c.leave(m)
+			fresh := m
+			fresh.dcache = nil
+			got, want := drawnBox(t, m), drawnBox(t, fresh)
+			if got != want {
+				t.Errorf("the box drew the screen it was on before:\ngot  %q\nwant %q", got, want)
+			}
+			if !strings.Contains(got, c.want) {
+				t.Errorf("the box drew %q, want it to name %q", got, c.want)
+			}
+		})
+	}
+}
+
+// drawnBox is what the detail box has on screen, its walls and color cut off.
+func drawnBox(t *testing.T, m Model) string {
+	t.Helper()
+	return strings.Join(plainLines(paneRows(m, paneDetail)), "\n")
 }

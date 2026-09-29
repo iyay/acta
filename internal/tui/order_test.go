@@ -20,6 +20,8 @@ func spec(id, date string) *board.Item {
 }
 
 func TestOrderedSortsByFileDateBothWays(t *testing.T) {
+	t.Parallel()
+
 	in := []*board.Item{spec("specs/2026-09-20-b", "2026-09-20"), spec("specs/2026-09-01-a", "2026-09-01"), spec("specs/2026-09-10-c", "2026-09-10")}
 	if got, want := itemIDs(ordered(in, false)), []string{"specs/2026-09-01-a", "specs/2026-09-10-c", "specs/2026-09-20-b"}; !slices.Equal(got, want) {
 		t.Fatalf("oldest: got %v, want %v", got, want)
@@ -33,6 +35,8 @@ func TestOrderedSortsByFileDateBothWays(t *testing.T) {
 }
 
 func TestOrderedSameDateFallsBackToIDBothWays(t *testing.T) {
+	t.Parallel()
+
 	in := []*board.Item{spec("specs/2026-09-29-b", "2026-09-29"), spec("specs/2026-09-29-a", "2026-09-29")}
 	if got, want := itemIDs(ordered(in, false)), []string{"specs/2026-09-29-a", "specs/2026-09-29-b"}; !slices.Equal(got, want) {
 		t.Fatalf("oldest: got %v, want %v", got, want)
@@ -43,6 +47,8 @@ func TestOrderedSameDateFallsBackToIDBothWays(t *testing.T) {
 }
 
 func TestOrderedKeepsTasksUnderTheirPlanInFileOrder(t *testing.T) {
+	t.Parallel()
+
 	task := func(id string) *board.Item {
 		return &board.Item{ID: id, Kind: board.KindTask, Date: "2026-09-29", Status: "todo"}
 	}
@@ -56,6 +62,8 @@ func TestOrderedKeepsTasksUnderTheirPlanInFileOrder(t *testing.T) {
 }
 
 func TestOrderedPutsItemsWithNoDateLast(t *testing.T) {
+	t.Parallel()
+
 	in := []*board.Item{spec("specs/undated", ""), spec("specs/2026-09-01-a", "2026-09-01"), spec("specs/2026-09-20-b", "2026-09-20")}
 	for _, newest := range []bool{false, true} {
 		got := itemIDs(ordered(in, newest))
@@ -66,6 +74,8 @@ func TestOrderedPutsItemsWithNoDateLast(t *testing.T) {
 }
 
 func TestOFlipsOnlyTheFocusedBox(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	m.board = &board.Board{Items: []*board.Item{
 		spec("specs/2026-09-20-b", "2026-09-20"),
@@ -94,6 +104,8 @@ func TestOFlipsOnlyTheFocusedBox(t *testing.T) {
 // the row number moves when the list is reversed. The board is the real
 // fixture, so Get can still find the item behind the cursor.
 func TestOKeepsTheSelectedItemSelected(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	m = press(m, "j")
 	before := m.Selected().ID
@@ -109,6 +121,8 @@ func TestOKeepsTheSelectedItemSelected(t *testing.T) {
 }
 
 func TestOInTheDetailBoxChangesNoPane(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	m = press(m, "0", "o")
 	for p := range sidePanes {
@@ -119,6 +133,8 @@ func TestOInTheDetailBoxChangesNoPane(t *testing.T) {
 }
 
 func TestDonePaneFollowsFileDateNotCommitTime(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	m.board = &board.Board{Items: []*board.Item{
 		{ID: "specs/2026-09-20-late", Kind: board.KindStory, Date: "2026-09-20", Status: "done"},

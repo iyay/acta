@@ -1,6 +1,6 @@
 ---
-id: DEBT-15
-hash: lctk
+id: DBT-0015
+hash: lctkmbs
 parent: plans/2026-09-29-pane-sort-toggle
 ---
 # Review NOTEs: Pane Sort Toggle Implementation Plan

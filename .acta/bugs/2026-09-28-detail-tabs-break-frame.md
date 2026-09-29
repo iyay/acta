@@ -1,6 +1,6 @@
 ---
-id: BUG-2
-hash: s1nx
+id: BUG-0002
+hash: s1nx6xz
 fixed_in: cd5bbfd
 ---
 # Scrolling the detail pane breaks the screen when the body has tabs

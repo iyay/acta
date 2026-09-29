@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-themes
-id: SPEC-20
-hash: qham
+id: SPC-0020
+hash: qhamg6x
 ---
 # TUI themes
 

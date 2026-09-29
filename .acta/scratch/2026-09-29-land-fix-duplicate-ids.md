@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-14
-hash: v5er
+id: SCR-0014
+hash: v5erugw
 title: acta:land fixes duplicate ids after merge
 status: raw
 created: "2026-09-29"

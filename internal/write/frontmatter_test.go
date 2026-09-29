@@ -6,6 +6,8 @@ import (
 )
 
 func TestSetField(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name, in, key, value, want string
 	}{
@@ -48,6 +50,8 @@ func TestSetField(t *testing.T) {
 }
 
 func TestSetFieldLineEndings(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name, in, key, value, wantBody string
 		crlf                           bool
@@ -101,6 +105,8 @@ func TestSetFieldLineEndings(t *testing.T) {
 }
 
 func TestSetFieldMixedLineEndings(t *testing.T) {
+	t.Parallel()
+
 	repro := "---\r\nref: TICK-7\r\nstatus: draft\n---\r\n# Win spec\r\n\r\nGoal text.\r\n\r\n---\r\n\r\n## Tasks\r\n"
 	got, err := SetField([]byte(repro), "status", "approved")
 	if err != nil {
@@ -119,6 +125,8 @@ func TestSetFieldMixedLineEndings(t *testing.T) {
 }
 
 func TestSetFieldClosingFenceLineEndings(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ name, in, wantBody string }{
 		{"LF open CRLF close", "---\nref: TICK-7\nstatus: draft\r\n---\r\n# Win spec\n", "# Win spec\n"},
 		{"CRLF file body fence", "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n\r\n---\r\n\r\ntail\r\n", "# Win spec\r\n\r\n---\r\n\r\ntail\r\n"},
@@ -151,6 +159,8 @@ func TestSetFieldClosingFenceLineEndings(t *testing.T) {
 }
 
 func TestSetFieldMissingFenceWritesNothing(t *testing.T) {
+	t.Parallel()
+
 	for name, in := range map[string]string{
 		"LF file no fence":   "---\nref: TICK-7\nstatus: draft\n# Win spec\n",
 		"CRLF file no fence": "---\r\nref: TICK-7\r\nstatus: draft\r\n# Win spec\r\n",
@@ -164,6 +174,8 @@ func TestSetFieldMissingFenceWritesNothing(t *testing.T) {
 }
 
 func TestSetFieldErrors(t *testing.T) {
+	t.Parallel()
+
 	for name, in := range map[string]string{
 		"unclosed block": "---\nstatus: open\n# T\n",
 		"not a mapping":  "---\n- a\n- b\n---\n",

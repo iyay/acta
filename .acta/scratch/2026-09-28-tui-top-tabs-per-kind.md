@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-9
-hash: g0kk
+id: SCR-0009
+hash: g0kk96b
 title: 'TUI: top tabs per kind (Scratches, Bugs, Debts, Specs, Plans, Activities)'
 status: raw
 created: "2026-09-28"

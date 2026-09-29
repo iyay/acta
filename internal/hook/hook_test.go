@@ -35,7 +35,6 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Style (ADHD reader):",
 		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
-		"8. One Architectural brainstorm per session; a second one becomes a scratch item and the user picks how to open it.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -91,8 +90,12 @@ func TestSessionStartConflicts(t *testing.T) {
 
 func TestSessionStartStaysShort(t *testing.T) {
 	worst := korean()
+	// The worst case is everything at once: a long tone, three clashing
+	// plugins and the herdr line. Leave one out and the cap stops proving
+	// the cap.
 	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
 	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
+	worst.Herdr = true // the herdr line counts against the cap too
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: voice.Default(), Conflicts: worst.Conflicts},
@@ -100,6 +103,72 @@ func TestSessionStartStaysShort(t *testing.T) {
 	} {
 		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
+		}
+	}
+}
+
+// An agent can answer a second big brainstorm from this rule alone, so the
+// rule must name the real choices. Whether a herdr tab is one of them is the
+// hook's call, not the agent's: the hook reads the environment, the agent
+// often cannot, so a session outside herdr must say nothing about herdr.
+func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
+	for name, in := range map[string]Input{
+		"normal":    korean(),
+		"first run": {Voice: voice.Default()},
+		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		out := SessionStart(in)
+		for _, want := range []string{
+			"acta:brainstorm",
+			"claude --bg 'brainstorm SCRATCH-n'",
+			"File the scratch item first",
+			"one acta scratch new call",
+			"whose body is stdin: acta scratch new <slug> --title <title> < body.md",
+			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
+			"written, not committed",
+			"new session",
+			"load acta:brainstorm for that way",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: session start missing %q", name, want)
+			}
+		}
+		if !strings.Contains(out, "- acta:scratch: raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory") {
+			t.Errorf("%s: session start does not carry the plain scratch index line", name)
+		}
+		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
+		// and the voice lines count: the skill index above them names the
+		// dispatch skill, and an index is not an offer of a tab.
+		rules := out[strings.Index(out, "Core rules:"):]
+		if strings.Contains(strings.ToLower(rules), "herdr") {
+			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)
+		}
+	}
+	in := korean()
+	in.Herdr = true
+	out := SessionStart(in)
+	if !strings.Contains(strings.ToLower(out), "herdr tab") {
+		t.Errorf("herdr session start missing the herdr tab sentence:\n%s", out)
+	}
+}
+
+// The rule must not forbid a choice another text offers: herdrExtra offers a
+// new herdr tab inside a herdr session, and SKILL.md offers the same tab. So
+// no clause may send the user away to another terminal or tab, and the skill
+// may still be loaded for the way the user picked. Both herdr states are
+// checked, because the words must not change with the environment.
+func TestSessionStartNoChoiceIsForbidden(t *testing.T) {
+	for _, herdr := range []bool{false, true} {
+		in := korean()
+		in.Herdr = herdr
+		out := SessionStart(in)
+		for _, banned := range []string{
+			"another terminal or tab",
+			"never offer to load acta:brainstorm",
+		} {
+			if strings.Contains(out, banned) {
+				t.Errorf("herdr=%v: session start forbids a choice another text offers, has %q", herdr, banned)
+			}
 		}
 	}
 }

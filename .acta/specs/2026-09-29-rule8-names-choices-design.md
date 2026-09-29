@@ -1,7 +1,7 @@
 ---
 parent: bugs/2026-09-29-second-brainstorm-choices-not-offered
-id: SPEC-24
-hash: lzoi
+id: SPC-0024
+hash: lzoio4u
 ---
 # Session Rule 8 Names the Second-Brainstorm Choices
 

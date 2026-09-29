@@ -54,6 +54,27 @@ type watchFailedMsg struct{ err error }
 // clockMsg carries the time once a minute, for the clock in the status line.
 type clockMsg time.Time
 
+// wheelStep is how many lines one wheel notch moves, the usual terminal step.
+const wheelStep = 3
+
+// wheelFrame is how long wheel notches are gathered before one scroll. A
+// trackpad sends hundreds of notches a second, and drawing the screen after
+// each one left the TUI far behind the wheel.
+const wheelFrame = 16 * time.Millisecond
+
+// wheelTickMsg says the frame is over: scroll by what the wheel gathered.
+type wheelTickMsg struct{}
+
+// wheelMark is the screen a frame of notches was gathered on: the open tab, its
+// Done sub-tab, the search and the row under the cursor. A tick scrolls only
+// while all of it still stands, so notches meant for one item never land on
+// another.
+type wheelMark struct {
+	top, done int
+	query     string
+	sel       string
+}
+
 type editorDoneMsg struct {
 	newBug string // path of a new bug file; "" after a plain edit
 	tmpl   []byte
@@ -65,37 +86,42 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 
 // Model is the whole screen state. Bubble Tea copies it on every update.
 type Model struct {
-	cfg       config.Config
-	board     *board.Board
-	focus     pane                   // the box with the focus
-	last      pane                   // the list pane that had it last, for the detail box
-	top       int                    // the open tab, an index into topTabs
-	tabs      [len(topTabs)]tabState // the saved place of each tab that is not open
-	done      int                    // the Done sub-tab the open tab shows
-	newest    []bool                 // per list box: true shows the newest file date first
-	sel       []string
-	idx       []int // selected row number per pane, used when the id vanishes
-	query     string
-	expanded  int // the list pane that takes the room, -1 when none does
-	searching bool
-	groupOpen bool
-	openPlans map[string]bool // the plans the reader opened in a tree list
-	popup     *popup
-	slug      *string // non-nil while typing the slug of a new bug
-	help      bool
-	status    string
-	manual    bool
-	width     int
-	height    int
-	off       []int // the first line each box shows, the detail box last
-	now       time.Time
-	version   string                 // build version shown on the bottom line
-	open      func(url string) error // opens a link in the browser
+	cfg        config.Config
+	board      *board.Board
+	focus      pane                   // the box with the focus
+	last       pane                   // the list pane that had it last, for the detail box
+	top        int                    // the open tab, an index into topTabs
+	tabs       [len(topTabs)]tabState // the saved place of each tab that is not open
+	done       int                    // the Done sub-tab the open tab shows
+	newest     []bool                 // per list box: true shows the newest file date first
+	sel        []string
+	idx        []int // selected row number per pane, used when the id vanishes
+	query      string
+	expanded   int // the list pane that takes the room, -1 when none does
+	searching  bool
+	groupOpen  bool
+	openPlans  map[string]bool // the plans the reader opened in a tree list
+	popup      *popup
+	slug       *string // non-nil while typing the slug of a new bug
+	help       bool
+	status     string
+	manual     bool
+	width      int
+	height     int
+	off        []int // the first line each box shows, the detail box last
+	wheelPane  pane  // the pane the gathered notches scroll
+	wheelDelta int   // lines gathered from the wheel, not yet scrolled
+	wheelArmed bool  // true while a frame tick is on its way
+	wheelMark  wheelMark
+	now        time.Time
+	version    string                 // build version shown on the bottom line
+	open       func(url string) error // opens a link in the browser
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
 	render   func(md string, width int) string
-	styles   styles // the brushes every screen is painted with
+	dcache   *detailCache // the last detail lines, shared by every copy
+	styles   styles       // the brushes every screen is painted with
 }
 
 // New builds a model over b. dark picks the markdown style; ask the terminal
@@ -125,6 +151,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		},
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
+		dcache: &detailCache{},
 	}
 }
 
@@ -138,6 +165,7 @@ func (m Model) WithTheme(name string, dark bool) Model {
 	}
 	m.styles = newStyles(t, dark)
 	m.render = newRenderer(t.Dark(dark))
+	m.dcache = &detailCache{}
 	return m
 }
 
@@ -185,6 +213,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clockMsg:
 		m.now = time.Time(msg)
 		return m, nextMinute()
+	case wheelTickMsg:
+		// Notches belong to the screen they were gathered on, so a reader who
+		// moved the item, the tab, the sub-tab or the search before the frame
+		// ended never sees them land on the new one.
+		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
+			m.scrollPane(m.wheelPane, m.wheelDelta)
+		}
+		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
 		return m.afterEditor(msg)
 	case tea.KeyMsg:
@@ -251,6 +287,15 @@ func (m Model) Selected() *board.Item {
 		return nil
 	}
 	return m.board.Get(rows[i].id)
+}
+
+// mark is the screen as it stands: the open tab, its Done sub-tab, the search
+// and the row under the cursor. A wheel frame compares it with the one it
+// gathered its notches on, so the notches follow the reader and never land on
+// a screen they did not come from. It reads the cursor the model keeps rather
+// than the rows on show, so a notch costs no more than the frame it is part of.
+func (m Model) mark() wheelMark {
+	return wheelMark{top: m.top, done: m.done, query: m.query, sel: m.sel[m.listPane()]}
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old
@@ -451,19 +496,41 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
 		// The wheel belongs to the focused pane, the way the keys do, and it
-		// never takes the focus. A wheel over another pane is ignored, so
-		// scrolling can never move a pane the user is not looking at.
-		if p == m.focus {
-			m.scrollPane(p, -1)
+		// never takes the focus. A wheel over another pane is ignored, so the
+		// notches only ever gather for the box the reader is looking at.
+		if p != m.focus {
+			return m, nil
 		}
-		return m, nil
-	case tea.MouseButtonWheelDown:
-		if p == m.focus {
-			m.scrollPane(p, 1)
+		step := wheelStep
+		if msg.Button == tea.MouseButtonWheelUp {
+			step = -wheelStep
 		}
-		return m, nil
+		// The notches belong to the screen they were gathered on. A screen
+		// that is gone drops the delta it was given, so the next notch starts
+		// a new frame for the screen the reader is on now.
+		if m.wheelDelta != 0 && m.wheelMark != m.mark() {
+			m.wheelDelta = 0
+		}
+		// Notches for another pane cannot share one delta. Scroll the old
+		// pane now so its notches are not lost.
+		if m.wheelDelta != 0 && m.wheelPane != p {
+			m.scrollPane(m.wheelPane, m.wheelDelta)
+			m.wheelDelta = 0
+		}
+		// The first notch of a frame writes the screen down. The notches
+		// after it share that screen and must not write over it.
+		if m.wheelDelta == 0 {
+			m.wheelMark = m.mark()
+		}
+		m.wheelPane = p
+		m.wheelDelta += step
+		if m.wheelArmed {
+			return m, nil
+		}
+		m.wheelArmed = true
+		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
 		return m, nil

@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-newest-first-sort
-id: SPEC-14
-hash: q9cc
+id: SPC-0014
+hash: q9ccjo0
 ---
 # Sort toggle in every pane
 

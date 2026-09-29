@@ -1,6 +1,6 @@
 ---
-id: DEBT-24
-hash: nqjx
+id: DBT-0024
+hash: nqjxbpr
 parent: plans/2026-09-29-body-schema-scratch
 ---
 # Review NOTEs: Body Schema Plan 1: Base Rule, Date Meta and Scratch Implementation Plan

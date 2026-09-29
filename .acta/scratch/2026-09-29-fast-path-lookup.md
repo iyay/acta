@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-20
-hash: ar7o
+id: SCR-0020
+hash: ar7ofa1
 title: 'acta path: find an item file without git'
 status: raw
 created: "2026-09-29"

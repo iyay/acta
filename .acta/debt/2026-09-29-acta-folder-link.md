@@ -1,6 +1,6 @@
 ---
-id: DEBT-13
-hash: tbpc
+id: DBT-0013
+hash: tbpcmkr
 parent: plans/2026-09-28-acta-folder-link
 ---
 # Review NOTEs: Keep EnsureGitignore Inside the Repo Implementation Plan

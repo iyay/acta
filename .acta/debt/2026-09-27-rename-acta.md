@@ -1,6 +1,6 @@
 ---
-id: DEBT-7
-hash: gqal
+id: DBT-0007
+hash: gqalwue
 parent: plans/2026-09-27-rename-acta
 ---
 # Review NOTEs: Rename pm and pmb to acta Implementation Plan

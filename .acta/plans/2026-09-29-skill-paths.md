@@ -1,6 +1,6 @@
 ---
-id: PLAN-24
-hash: hjsq
+id: PLN-0024
+hash: hjsqd1o
 ---
 # Skill Paths Implementation Plan
 

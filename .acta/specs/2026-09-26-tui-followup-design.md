@@ -1,6 +1,6 @@
 ---
-id: SPEC-7
-hash: fed3
+id: SPC-0007
+hash: fed3wwe
 ---
 # TUI follow-up: status line, started tasks, in-progress split
 

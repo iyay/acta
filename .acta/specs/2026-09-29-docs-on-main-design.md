@@ -1,6 +1,6 @@
 ---
-id: SPEC-21
-hash: ythv
+id: SPC-0021
+hash: ythvi06
 ---
 # Specs and Plans on Main, Worktree at Build
 

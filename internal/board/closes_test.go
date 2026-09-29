@@ -6,6 +6,8 @@ import (
 )
 
 func TestClosesLinksEveryAllowedKind(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
 		"scratch/2026-09-29-b.md":      "# B\n",
@@ -32,6 +34,8 @@ func TestClosesLinksEveryAllowedKind(t *testing.T) {
 }
 
 func TestClosesBadEntriesAreProblems(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"plans/2026-09-29-q.md":        "# Q\n\n### Task 1: A\n\n- [ ] a\n",
 		"bugs/2026-09-29-x.md":         "# X\n",
@@ -49,6 +53,8 @@ func TestClosesBadEntriesAreProblems(t *testing.T) {
 }
 
 func TestClosesSingleStringLinksLikeAList(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
 		"specs/2026-09-29-s-design.md": "---\ncloses: SCR-0001\n---\n# S\n",
@@ -64,6 +70,8 @@ func TestClosesSingleStringLinksLikeAList(t *testing.T) {
 }
 
 func TestClosesResolvesAHashID(t *testing.T) {
+	t.Parallel()
+
 	// A hash is the one name an item keeps for good, so a closes list may use
 	// it like any other id.
 	b := boardWith(t, map[string]string{
@@ -81,6 +89,8 @@ func TestClosesResolvesAHashID(t *testing.T) {
 }
 
 func TestClosesEmptyListLinksNothing(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
 		"specs/2026-09-29-s-design.md": "---\ncloses: []\n---\n# S\n",
@@ -95,6 +105,8 @@ func TestClosesEmptyListLinksNothing(t *testing.T) {
 }
 
 func TestClosesSameIDTwiceLinksOnce(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
 		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0001, scratch/2026-09-29-a]\n---\n# S\n",
@@ -110,6 +122,8 @@ func TestClosesSameIDTwiceLinksOnce(t *testing.T) {
 }
 
 func TestClosesDroppedScratchStaysDropped(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-d.md":      "---\nid: SCRATCH-2\nstatus: dropped\n---\n# D\n",
 		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0002]\n---\n# S\n",
@@ -124,6 +138,8 @@ func TestClosesDroppedScratchStaysDropped(t *testing.T) {
 }
 
 func TestClosesSpecCountsPlanAndItsTasks(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-29-s-design.md": "# S\n",
 		"plans/2026-09-29-q.md":        "---\ncloses: [specs/2026-09-29-s-design]\n---\n# Q\n\n### Task 1: A\n\n- [x] a\n",
@@ -145,6 +161,8 @@ func TestClosesSpecCountsPlanAndItsTasks(t *testing.T) {
 }
 
 func TestClosesSpecFollowsTheBugThatClosesIt(t *testing.T) {
+	t.Parallel()
+
 	// The bug is the item that finishes the spec, so the bug writes closes:
 	// and the spec follows the bug's status.
 	files := map[string]string{
@@ -162,6 +180,8 @@ func TestClosesSpecFollowsTheBugThatClosesIt(t *testing.T) {
 }
 
 func TestClosesSpecFollowsASpecThatClosesIt(t *testing.T) {
+	t.Parallel()
+
 	// A spec may close a spec, so the answer can depend on a spec whose own
 	// answer is not settled yet. The board reads the bug before the specs,
 	// but the specs sort the other way round from each other.
@@ -179,6 +199,8 @@ func TestClosesSpecFollowsASpecThatClosesIt(t *testing.T) {
 }
 
 func TestClosesSpecWithAPlanOfItsOwnIgnoresItsClosers(t *testing.T) {
+	t.Parallel()
+
 	// A spec with a plan of its own reads that plan, so a bug closing the
 	// spec as well must not overwrite what the plan's boxes say.
 	b := boardWith(t, map[string]string{
@@ -196,6 +218,8 @@ func TestClosesSpecWithAPlanOfItsOwnIgnoresItsClosers(t *testing.T) {
 }
 
 func TestClosesSpecWithAWrittenStatusKeepsIt(t *testing.T) {
+	t.Parallel()
+
 	// A spec with no plan of its own may still carry a written status, and a
 	// closer does not take that away.
 	b := boardWith(t, map[string]string{
@@ -212,6 +236,8 @@ func TestClosesSpecWithAWrittenStatusKeepsIt(t *testing.T) {
 }
 
 func TestClosesSpecChainSettlesFromTheEnd(t *testing.T) {
+	t.Parallel()
+
 	// The spec at the end of the chain is read first, since the board sorts
 	// by date and keeps file order inside one date, so the answer has to be
 	// reached in more than one go.
@@ -230,6 +256,8 @@ func TestClosesSpecChainSettlesFromTheEnd(t *testing.T) {
 }
 
 func TestClosesOnAScratchFileIsIgnored(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md": "---\nid: SCRATCH-1\n---\n# A\n",
 		"scratch/2026-09-29-w.md": "---\nid: SCRATCH-2\ncloses: [SCR-0001]\n---\n# W\n",
@@ -257,6 +285,8 @@ func TestClosesOnAScratchFileIsIgnored(t *testing.T) {
 // spec, the spec counts the plan once and holds each of its tasks once, so
 // the progress reads right and a task is never shown twice.
 func TestSpecCountsEachPlanOnce(t *testing.T) {
+	t.Parallel()
+
 	const (
 		specS = "specs/2026-09-29-s-design"
 		specT = "specs/2026-09-29-t-design"
