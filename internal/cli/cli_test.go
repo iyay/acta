@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -289,6 +290,142 @@ func TestVoiceSetBadExecutor(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("%v: a bad value was written to the voice file", args)
 		}
+	}
+}
+
+// voiceHome gives a test its own HOME and voice file, so neither the theme
+// files nor the voice file of the machine the test runs on leak in.
+func voiceHome(t *testing.T) (home, path string) {
+	t.Helper()
+	home = t.TempDir()
+	t.Setenv("HOME", home)
+	path = filepath.Join(home, "voice.yaml")
+	t.Setenv("PM_VOICE_FILE", path)
+	return home, path
+}
+
+// writeUserTheme puts a theme file where theme.Load looks for one.
+func writeUserTheme(t *testing.T, home, name, body string) {
+	t.Helper()
+	dir := filepath.Join(home, ".acta", "themes")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name+".yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const goodTheme = `bg: "#101010"
+fg: "#eeeeee"
+ansi: ["#000000","#111111","#222222","#333333","#444444","#555555","#666666","#777777",
+       "#888888","#999999","#aaaaaa","#bbbbbb","#cccccc","#dddddd","#eeeeee","#ffffff"]
+`
+
+func TestVoiceSetThemeShowsIt(t *testing.T) {
+	voiceHome(t)
+	mustRun(t, "voice", "set", "--theme", "dracula")
+	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: dracula") {
+		t.Errorf("show is missing the theme line:\n%s", out)
+	}
+	asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", "")
+	if !strings.Contains(asJSON, `"theme":"dracula"`) {
+		t.Errorf("json is missing the theme:\n%s", asJSON)
+	}
+}
+
+// A theme file the user wrote is a real theme, so --theme has to take it.
+func TestVoiceSetThemeTakesAUserThemeFile(t *testing.T) {
+	home, _ := voiceHome(t)
+	writeUserTheme(t, home, "mine", goodTheme)
+	mustRun(t, "voice", "set", "--theme", "mine")
+	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: mine") {
+		t.Errorf("show is missing the theme line:\n%s", out)
+	}
+}
+
+// A name theme.Load refuses must never reach the file, because the TUI would
+// then fall back to another theme with nothing said about it.
+func TestVoiceSetThemeRefusesWhatThemeLoadRefuses(t *testing.T) {
+	home, path := voiceHome(t)
+	mustRun(t, "voice", "set", "--theme", "dracula")
+	writeUserTheme(t, home, "broken", "bg: [")
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"nope", "../x", "not a theme", "broken"} {
+		t.Run(name, func(t *testing.T) {
+			var stdout, stderr strings.Builder
+			code := Run([]string{"voice", "set", "--theme", name}, strings.NewReader(""), false, &stdout, &stderr)
+			if code != exitBadInput {
+				t.Errorf("--theme %s: exit %d, want %d", name, code, exitBadInput)
+			}
+			if !strings.Contains(stderr.String(), name) {
+				t.Errorf("--theme %s: the error does not name it: %s", name, stderr.String())
+			}
+			after, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Errorf("--theme %s changed the file:\n%s", name, after)
+			}
+		})
+	}
+}
+
+// A bad theme refuses the whole run, so the other flag in the same call is
+// not saved either. Half a change would leave the user guessing what stuck.
+func TestVoiceRefusedThemeSavesNoOtherFlag(t *testing.T) {
+	_, path := voiceHome(t)
+	var stdout, stderr strings.Builder
+	code := Run([]string{"voice", "set", "--language", "Korean", "--theme", "nope"},
+		strings.NewReader(""), false, &stdout, &stderr)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	written, err := os.ReadFile(path)
+	if !os.IsNotExist(err) {
+		t.Fatalf("the run wrote a voice file anyway:\n%s", written)
+	}
+}
+
+// An empty --theme names no theme, so it is not a run that sets anything and
+// the theme already saved stays as it is.
+func TestVoiceSetEmptyThemeLeavesTheSavedOne(t *testing.T) {
+	_, path := voiceHome(t)
+	mustRun(t, "voice", "set", "--theme", "dracula")
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := runCode(t, "voice", "set", "--theme", ""); code != exitBadInput {
+		t.Errorf("exit %d, want %d", code, exitBadInput)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Errorf("the file changed:\n%s", after)
+	}
+}
+
+func TestVoiceClearTheme(t *testing.T) {
+	voiceHome(t)
+	mustRun(t, "voice", "set", "--theme", "dracula")
+	mustRun(t, "voice", "set", "--clear-theme")
+	if out := mustRun(t, "voice", "show"); strings.Contains(out, "theme:") {
+		t.Errorf("clear left the theme:\n%s", out)
+	}
+	if asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":""`) {
+		t.Errorf("json theme is not empty:\n%s", asJSON)
+	}
+	// Clear then set in one call: the set wins, like the other clear pairs.
+	mustRun(t, "voice", "set", "--clear-theme", "--theme", "dracula")
+	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: dracula") {
+		t.Errorf("clear-then-set did not keep the theme:\n%s", out)
 	}
 }
 
