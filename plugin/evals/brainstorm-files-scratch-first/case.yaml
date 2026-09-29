@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: brainstorm-files-scratch-first
+context:
+  scaffold_script: scaffold.sh

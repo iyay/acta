@@ -15,6 +15,7 @@ func TestSkillLand(t *testing.T) {
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
+			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
 			"each DEBT id the plan names as closed"},

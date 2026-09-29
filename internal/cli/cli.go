@@ -109,7 +109,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "voice":
 		return cmdVoice(args[1:], stdout, stderr)
 	case "hook":
-		return cmdHook(args[1:], stdout, stderr)
+		return cmdHook(args[1:], stdin, stdout, stderr)
 	case "tick":
 		return cmdTick(args[1:], stdout, stderr)
 	case "id":
