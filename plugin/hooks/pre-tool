@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stops a second brainstorm in one session. acta exits 2 to block; that code
+# and its message go back to Claude. Any other failure must not get in the way.
+if command -v acta >/dev/null 2>&1; then
+  acta hook pre-tool
+  [ $? -eq 2 ] && exit 2
+fi
+exit 0

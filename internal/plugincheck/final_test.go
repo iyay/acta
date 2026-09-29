@@ -90,7 +90,9 @@ func TestHookScriptsAreTheOnlyExecutablesOutsideSkills(t *testing.T) {
 			t.Fatal(err)
 		}
 		exec := st.Mode()&0o111 != 0
-		allowed := rel == "hooks/session-start" || rel == "hooks/prompt-reminder" || rel == "skills/debug/find-polluter.sh"
+		allowed := rel == "hooks/session-start" || rel == "hooks/prompt-reminder" ||
+			rel == "hooks/pre-tool" || rel == "hooks/post-tool" ||
+			rel == "skills/debug/find-polluter.sh"
 		if exec && !allowed {
 			t.Errorf("%s is executable but should not be", rel)
 		}

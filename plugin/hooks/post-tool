@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Remembers which scratch item this session brainstormed. Never fails.
+if command -v acta >/dev/null 2>&1; then
+  acta hook post-tool
+fi
+exit 0
