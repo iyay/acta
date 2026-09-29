@@ -434,6 +434,199 @@ func TestAssignIDsNumbersScratchOnItsOwn(t *testing.T) {
 	}
 }
 
+// A file's first id is also the day the file was made. A kind that is not on
+// yet only gets created.
+func TestAssignIDsFirstIDWritesCreated(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/specs/2026-09-26-x-design.md": "# X\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "specs/2026-09-26-x-design.md"))))
+	if doc.Front["created"] != "2026-09-26" {
+		t.Errorf("created = %v", doc.Front["created"])
+	}
+	if board.HasSchema(doc.Front) {
+		t.Error("a spec is not on yet, so it must not get schema: 1")
+	}
+}
+
+// Scratch is the kind that is on, so a new idea is checked from now on and
+// gets both fields on its first id.
+func TestAssignIDsFirstIDWritesSchemaOnScratch(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-26-idea.md": "# One\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-26-idea.md"))))
+	if doc.Front["created"] != "2026-09-26" {
+		t.Errorf("created = %v", doc.Front["created"])
+	}
+	if !board.HasSchema(doc.Front) {
+		t.Error("a new scratch file must get schema: 1")
+	}
+}
+
+// A file that already had an id keeps every byte it came in with, so no date
+// and no schema flag lands on an old file.
+func TestAssignIDsLeavesAFileThatHasAnIDAlone(t *testing.T) {
+	fixNow(t)
+	in := "---\nid: SPEC-1\nhash: abcd\n---\n# X\n"
+	cfg := repoWith(t, map[string]string{".acta/specs/2026-09-01-x-design.md": in})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, filepath.Join(cfg.Root, "specs/2026-09-01-x-design.md")); got != in {
+		t.Errorf("a file that already had an id changed:\n%s", got)
+	}
+}
+
+// A file that already had an id only misses its hash. It takes the hash and
+// nothing else, because created and the schema flag belong to a first id.
+func TestAssignIDsWritesNoDatesToAFileThatAlreadyHasAnID(t *testing.T) {
+	fixNow(t)
+	for _, c := range []struct {
+		name, file, in string
+	}{
+		{"a spec", "specs/2026-09-01-x-design.md", "---\nid: SPEC-1\n---\n# X\n"},
+		{"a scratch", "scratch/2026-09-01-x.md", "---\nid: SCRATCH-1\n---\n# X\n\n## Words\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := repoWith(t, map[string]string{".acta/" + c.file: c.in})
+			if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+				t.Fatal(err)
+			}
+			got := readFile(t, filepath.Join(cfg.Root, c.file))
+			doc := board.Parse([]byte(got))
+			if doc.Front["hash"] == nil {
+				t.Error("the missing hash was not filled in")
+			}
+			if doc.Front["created"] != nil {
+				t.Errorf("a file that already had an id gained created = %v", doc.Front["created"])
+			}
+			if hasField([]byte(got), "schema") {
+				t.Errorf("a file that already had an id gained a schema flag:\n%s", got)
+			}
+		})
+	}
+}
+
+// A scratch file that already carries schema: 1 keeps the line as it was
+// written, so id does not turn the number into a string behind the tool that
+// put it there.
+func TestAssignIDsLeavesAnExistingSchemaFlagAlone(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-26-idea.md": "---\nstatus: raw\nschema: 1\n---\n# One\n\n## Words\n",
+	})
+	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-26-idea.md"))
+	if !strings.Contains(got, "schema: 1\n") {
+		t.Errorf("the schema flag was rewritten:\n%s", got)
+	}
+}
+
+// A file that asked for the check and fails it takes no id and is named in
+// the skips, while the good file next to it still gets one.
+func TestAssignIDsSkipsASchemaFileThatFails(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-26-bad.md":     "---\nstatus: raw\nschema: 1\n---\n# bad\n\n## Context\n",
+		".acta/specs/2026-09-26-ok-design.md": "# OK\n",
+	})
+	_, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsLine(out.Skips, "scratch 2026-09-26-bad.md: missing ## Words") {
+		t.Errorf("skips = %v", out.Skips)
+	}
+	if bad := readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-26-bad.md")); strings.Contains(bad, "id:") {
+		t.Errorf("a file that fails the check got an id:\n%s", bad)
+	}
+	if ok := readFile(t, filepath.Join(cfg.Root, "specs/2026-09-26-ok-design.md")); !strings.Contains(ok, "id: SPEC-") {
+		t.Errorf("the good file next to it got no id:\n%s", ok)
+	}
+}
+
+// A spec that grows out of a scratch idea closes that idea, and the date
+// rides the same commit as the id.
+func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{
+		".acta/scratch/2026-09-20-idea.md":      "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\n---\nx\n",
+		".acta/specs/2026-09-26-idea-design.md": "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
+	})
+	_, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil)
+	if err != nil || !out.Committed {
+		t.Fatalf("outcome %+v err %v", out, err)
+	}
+	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-20-idea.md"))))
+	if doc.Front["finished"] != "2026-09-26" {
+		t.Errorf("the scratch parent did not get finished = %v", doc.Front["finished"])
+	}
+	if n := gitRun(t, cfg.RepoRoot, "log", "--format=%s", "-1"); n != "acta: assign short ids" {
+		t.Errorf("the date must ride the id commit, last commit %q", n)
+	}
+}
+
+// Only a spec closes a scratch parent here. A bug the spec hangs under keeps
+// the day it closes, and a plan built on an idea does not close it either:
+// both are a command of their own.
+func TestAssignIDsClosesOnlyAScratchParentOfASpec(t *testing.T) {
+	fixNow(t)
+	for _, c := range []struct {
+		name  string
+		files map[string]string
+		keep  string // the file that must not gain a finished
+	}{
+		{
+			name: "a bug parent",
+			files: map[string]string{
+				".acta/bugs/2026-09-20-b.md":            "---\nid: BUG-1\nhash: bbbb\nstatus: raw\n---\n# B\n",
+				".acta/specs/2026-09-26-idea-design.md": "---\nparent: bugs/2026-09-20-b\n---\n# Idea\n",
+			},
+			keep: "bugs/2026-09-20-b.md",
+		},
+		{
+			name: "a plan on an idea",
+			files: map[string]string{
+				".acta/scratch/2026-09-20-idea.md": "---\nid: SCRATCH-1\nhash: aaaa\nstatus: brainstorming\n---\nx\n",
+				".acta/plans/2026-09-26-idea.md":   "---\nparent: scratch/2026-09-20-idea\n---\n# Idea\n",
+			},
+			keep: "scratch/2026-09-20-idea.md",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := repoWith(t, c.files)
+			if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
+				t.Fatal(err)
+			}
+			doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, c.keep))))
+			if doc.Front["finished"] != nil {
+				t.Errorf("%s gained finished = %v", c.keep, doc.Front["finished"])
+			}
+		})
+	}
+}
+
+// containsLine says whether one of the lines holds the text.
+func containsLine(lines []string, text string) bool {
+	for _, l := range lines {
+		if strings.Contains(l, text) {
+			return true
+		}
+	}
+	return false
+}
+
 func readFile(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)

@@ -31,8 +31,10 @@ var randHash = func() string {
 // lacks an id or hash a number past the highest of its prefix and a hash no
 // other item has. A value already written in a file is never changed, so a
 // run writes a field only when the file has none, and a file it cannot read
-// is skipped with its reason instead of ending the run. One commit holds the
-// run.
+// is skipped with its reason instead of ending the run. A first id also
+// writes the day the file was made, and a spec that grew out of a scratch
+// idea closes that idea. A file that asked for the schema check and fails it
+// takes no id at all. One commit holds the run.
 func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outcome, error) {
 	next, taken := scanIDs(b)
 	cands, skips := candidates(cfg, b, only)
@@ -42,16 +44,51 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		if err != nil {
 			return nil, Outcome{}, err
 		}
+		doc := board.Parse(orig)
+		if board.HasSchema(doc.Front) {
+			if probs := board.CheckBody(c.it.Kind, doc.Body); len(probs) > 0 {
+				// A file that asked for the check and fails it takes nothing,
+				// and the other files still get their ids.
+				word := string(c.it.Kind)
+				if c.it.Kind == board.KindStory {
+					word = "spec"
+				}
+				skips = append(skips, fmt.Sprintf("skip %s: %s %s: %s", fileID(cfg, c.file), word, filepath.Base(c.file), probs[0]))
+				continue
+			}
+		}
 		src := orig
 		id, hash := c.id, c.hash
 		if id == "" {
 			id = fmt.Sprintf("%s-%d", c.prefix, next[c.prefix])
 			next[c.prefix]++
-			out, err := SetField(src, "id", id)
-			if err != nil {
-				return nil, Outcome{Skips: skips}, err
+			writes := [][2]string{{"id", id}, {"created", Now().Format("2006-01-02")}}
+			if board.SchemaOn(c.it.Kind) && !hasField(orig, "schema") {
+				writes = append(writes, [2]string{"schema", "1"})
 			}
-			src = out
+			for _, w := range writes {
+				out, err := SetField(src, w[0], w[1])
+				if err != nil {
+					return nil, Outcome{Skips: skips}, err
+				}
+				src = out
+			}
+			if parent := closeScratchParent(b, c.it.Kind, doc.Front); parent != "" {
+				// The idea became a spec, so it closed today. Its date rides
+				// the same commit as the id.
+				psrc, err := os.ReadFile(parent)
+				if err != nil {
+					return nil, Outcome{Skips: skips}, err
+				}
+				pout, err := MarkFinished(psrc)
+				if err != nil {
+					return nil, Outcome{Skips: skips}, err
+				}
+				if err := os.WriteFile(parent, pout, 0o644); err != nil {
+					return nil, Outcome{Skips: skips}, err
+				}
+				paths = append(paths, parent)
+			}
 		}
 		if hash == "" {
 			hash = freeHash(taken)
@@ -81,6 +118,23 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 	}
 	r := gitc.CommitPaths(cfg.RepoRoot, paths, "acta: assign short ids")
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
+}
+
+// closeScratchParent gives the file of the scratch idea a spec grew out of.
+// Any other kind of parent is closed by its own command, so it gets nothing.
+func closeScratchParent(b *board.Board, k board.Kind, front map[string]any) string {
+	if k != board.KindStory {
+		return ""
+	}
+	want, _ := front["parent"].(string)
+	if !strings.HasPrefix(want, "scratch/") {
+		return ""
+	}
+	it := b.Get(want)
+	if it == nil || !it.OnDisk || it.Kind != board.KindScratch {
+		return ""
+	}
+	return it.Path
 }
 
 // FixDuplicates gives each later holder of a number the next free number.
