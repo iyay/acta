@@ -181,15 +181,23 @@ func TestScratchStatusesAndPrefix(t *testing.T) {
 			t.Errorf("Closed(%q) = true", s)
 		}
 	}
-	if Prefix(KindScratch, false) != "SCRATCH" {
+	if Prefix(KindScratch, false) != "SCR" {
 		t.Error("prefix")
 	}
-	if Prefix(KindScratch, true) != "PLAN" {
+	if Prefix(KindScratch, true) != "PLN" {
 		t.Error("a plan file is still a plan")
 	}
-	if Prefix(KindStory, false) != "SPEC" || Prefix(KindBug, false) != "BUG" || Prefix(KindDebt, false) != "DEBT" ||
-		Prefix(KindPlan, false) != "PLAN" || Prefix(KindTask, false) != "SPEC" {
+	if Prefix(KindStory, false) != "SPC" || Prefix(KindBug, false) != "BUG" || Prefix(KindDebt, false) != "DBT" ||
+		Prefix(KindPlan, false) != "PLN" || Prefix(KindTask, false) != "SPC" {
 		t.Error("other prefixes changed")
+	}
+	for new, old := range map[string]string{"PLN": "PLAN", "SPC": "SPEC", "DBT": "DEBT", "SCR": "SCRATCH", "BUG": "BUG"} {
+		if OldPrefix(new) != old {
+			t.Errorf("OldPrefix(%q) = %q, want %q", new, OldPrefix(new), old)
+		}
+	}
+	if got := FormatID("PLN", 30); got != "PLN-0030" {
+		t.Errorf("FormatID = %q, want PLN-0030", got)
 	}
 	if got := Allowed(KindStory); !slices.Equal(got, []string{"draft", "approved", "in-progress", "done", "dropped"}) {
 		t.Errorf("story statuses = %v", got)

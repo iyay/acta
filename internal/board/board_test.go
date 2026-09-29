@@ -394,16 +394,19 @@ func TestLoadDebtFileAndLines(t *testing.T) {
 		"plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
 		"debt/2026-09-27-short-ids.md":  "---\nid: DEBT-3\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
 	})
-	f := b.Get("DEBT-3")
+	f := b.Get("DBT-0003")
 	if f == nil || f.Kind != KindDebt || f.Status != "open" || f.Done != 2 || f.Total != 3 {
 		t.Fatalf("file = %+v", f)
 	}
-	for _, id := range []string{"DEBT-3", "debt-3", "debt-t9qe", "DEBT-T9QE", "debt/2026-09-27-short-ids"} {
+	if !f.OldForm {
+		t.Error("an old id and an old 4-char hash must mark the file for rewriting")
+	}
+	for _, id := range []string{"DBT-0003", "dbt-0003", "dbt-t9qe", "DBT-T9QE", "debt/2026-09-27-short-ids"} {
 		if b.Get(id) != f {
 			t.Errorf("%s does not resolve to the file", id)
 		}
 	}
-	cases := map[string]string{"DEBT-3.1": "open", "debt-3.1": "open", "debt-t9qe.2": "done", "DEBT-T9QE.2": "done", "debt/2026-09-27-short-ids#item-3": "wontfix"}
+	cases := map[string]string{"DBT-0003.01": "open", "dbt-0003.01": "open", "dbt-t9qe.02": "done", "DBT-T9QE.02": "done", "debt/2026-09-27-short-ids#item-3": "wontfix"}
 	for id, status := range cases {
 		it := b.Get(id)
 		if it == nil || it.Kind != KindDebtItem || it.Status != status {
@@ -416,7 +419,7 @@ func TestDebtFileDoneWhenAllLinesClosed(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"debt/2026-09-27-x.md": "---\nid: DEBT-1\n---\n# R\n\n- [x] a\n- [-] b\n",
 	})
-	if got := b.Get("DEBT-1").Status; got != "done" {
+	if got := b.Get("DBT-0001").Status; got != "done" {
 		t.Fatalf("status = %s, want done", got)
 	}
 }
@@ -431,7 +434,7 @@ func TestAuthorComesFromTheFirstCommit(t *testing.T) {
 		"plans/2026-09-21-a.md": "---\nid: PLAN-1\n---\n# Plan A\n\n**Spec:** `.acta/specs/2026-09-20-a.md`\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n",
 	})
 	b := loadDir(t, dir)
-	for _, id := range []string{"SPEC-1", "PLAN-1", "PLAN-1.1", "PLAN-1.2"} {
+	for _, id := range []string{"SPC-0001", "PLN-0001", "PLN-0001.01", "PLN-0001.02"} {
 		it := b.Get(id)
 		if it == nil {
 			t.Errorf("the board holds no %s", id)
@@ -450,7 +453,7 @@ func TestAuthorComesFromTheFirstCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitRun(t, dir, "config", "user.name", "Sari")
-	if got := loadDir(t, dir).Get("BUG-1").Author; got != "Sari" {
+	if got := loadDir(t, dir).Get("BUG-0001").Author; got != "Sari" {
 		t.Errorf("a file with no commit has author %q, want the user.name Sari", got)
 	}
 
@@ -467,10 +470,10 @@ func TestDebtItemTakesTheDebtFile(t *testing.T) {
 		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\nProse about the review.\n\n- [ ] first note\n- [x] second note\n",
 	})
 	b := loadDir(t, dir)
-	if got := b.Get("DEBT-1").Author; got != "Budi" {
+	if got := b.Get("DBT-0001").Author; got != "Budi" {
 		t.Errorf("the debt file has author %q, want Budi", got)
 	}
-	it := b.Get("DEBT-1.1")
+	it := b.Get("DBT-0001.01")
 	if it == nil || it.Author != "Budi" {
 		t.Fatalf("debt item = %+v, want the debt file's author Budi", it)
 	}
@@ -509,7 +512,7 @@ func TestAuthorIsAskedOncePerFile(t *testing.T) {
 	if names != 1 {
 		t.Errorf("user.name was read %d times in one load, want 1", names)
 	}
-	for _, id := range []string{"SPEC-1", "PLAN-1", "PLAN-1.3", "DEBT-1.1", "DEBT-1.2"} {
+	for _, id := range []string{"SPC-0001", "PLN-0001", "PLN-0001.03", "DBT-0001.01", "DBT-0001.02"} {
 		if got := b.Get(id).Author; got != "Sari" {
 			t.Errorf("%s author = %q, want the one name the whole load read", id, got)
 		}

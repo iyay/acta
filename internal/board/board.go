@@ -57,6 +57,7 @@ type Item struct {
 	Hash         string // permanent ID like PLAN-k3f2 or PLAN-k3f2.3; "" when none
 	RawID        string // id as the frontmatter holds it, "" when the file has none
 	RawHash      string // hash as the frontmatter holds it, "" when the file has none
+	OldForm      bool   // the file holds an old id or an old 4-char hash, so acta id rewrites it
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
 	Started      bool   // tasks only: someone ran tick --start on it
@@ -437,8 +438,8 @@ func (b *Board) linkPlan(p planFile) {
 	plan.OnDisk = p.onDisk
 	plan.Problems = append(plan.Problems, problems...)
 	b.add(plan)
-	// A plan speaks PLAN, whatever kind its frontmatter or its folder claims.
-	setIDs(plan, "PLAN", p.doc)
+	// A plan speaks PLN, whatever kind its frontmatter or its folder claims.
+	setIDs(plan, "PLN", p.doc)
 	b.aliasItem(plan)
 	// A plan is one plan, so it counts itself when its status is derived.
 	plan.plans = 1
@@ -474,7 +475,7 @@ func (b *Board) linkPlan(p planFile) {
 			Path: p.path, Line: t.Line, Legacy: p.legacy, Body: t.Body, TaskNum: t.Num,
 			PlanPath: p.path, Worktree: p.tree, OnDisk: p.onDisk}
 		b.add(task)
-		b.aliasTask(task, plan.ShortID, plan.Hash)
+		b.aliasTask(task, plan.ShortID, plan.Hash, plan)
 		plan.Children = append(plan.Children, id)
 		if parent != nil {
 			parent.Children = append(parent.Children, id)
@@ -522,7 +523,7 @@ func (b *Board) linkDebt(d debtFile) {
 			// holds only the words the file has around it.
 			Body: d.doc.Text, Worktree: d.it.Worktree, OnDisk: d.it.OnDisk}
 		b.add(item)
-		b.aliasDebtItem(item, d.it.ShortID, d.it.Hash, line.Num)
+		b.aliasDebtItem(item, d.it.ShortID, d.it.Hash, line.Num, d.it)
 		d.it.Children = append(d.it.Children, id)
 	}
 }
