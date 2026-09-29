@@ -256,27 +256,27 @@ BLOCKER 1, `plugin/skills/land/SKILL.md:61`: says "Build never commits the plan 
 
 BLOCKER 2, `plugin/skills/plan/SKILL.md:16` and `:21`: say "on main" with no exception. A review fix round is appended to the plan through acta:plan by an orchestrator sitting in the main checkout (`plugin/skills/review/SKILL.md:41` says same worktree). Following plan/SKILL.md it writes the fix task on main, the recipient never sees it, and it clashes with the worktree ticks at merge; `build/SKILL.md:36` forbids this. Expected: "on main" applies to a new plan only; a fix round, or any change to a plan whose build is running, is written and committed in that build's worktree.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `TestSkillLand` add to `Must`: `"git status --porcelain -- <plan path>"`; add to `MustNot`: `"Build never commits the plan file"`, `"First commit the plan file"`.
 In `TestSkillPlan` add to `Must`: `"A fix round, or any change to a plan whose build is running, goes in that build's worktree"`.
 
-- [ ] **Step 2: Run to see them fail**
+- [x] **Step 2: Run to see them fail**
 
 Run: `go test ./internal/plugincheck -run 'TestSkillLand|TestSkillPlan'`
 Expected: FAIL on the new strings.
 
-- [ ] **Step 3: Edit the skills**
+- [x] **Step 3: Edit the skills**
 
 land step 1: delete the sentence starting "First commit the plan file" and the sentence after it. At the end of step 2 append: `Then, when `git status --porcelain -- <plan path>` prints a line, commit it in the worktree as `acta: tick <plan>`, so every tick reaches main before the merge. Build already commits ticks per wave, so often there is nothing to commit; then skip this.` Keep the existing Must strings `acta: tick <plan>` and `before the merge, so the ticks reach main` passing (reword the appended line to contain both).
 plan: after the "Commit the plan on main" bullet add: `- A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.` and make the **Context:** line say a new plan.
 
-- [ ] **Step 4: Run to see them pass**
+- [x] **Step 4: Run to see them pass**
 
 Run: `go test ./internal/plugincheck/` then `go test ./...`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/land/SKILL.md plugin/skills/plan/SKILL.md internal/plugincheck/skill_land_test.go internal/plugincheck/skill_plan_test.go

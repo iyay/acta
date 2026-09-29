@@ -13,12 +13,13 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using acta:plan to create the implementation plan."
 
-**Context:** Write and commit the plan on main, next to its spec. `acta:build` makes the worktree, only after the plan is approved.
+**Context:** Write and commit a new plan on main, next to its spec. `acta:build` makes the worktree, only after the plan is approved.
 
 **Save plans to:** `.acta/plans/YYYY-MM-DD-<feature-name>.md` (`.acta/` is the default root; `.acta.yaml`, `ACTA_ROOT` or `acta --root` can move it).
 - (User preferences for plan location override this default)
 - Right after saving, run `acta id` right after so the plan gets its PLAN number and hash before anyone refers to it.
 - Commit the plan on main. The worktree branch starts from that commit, so it carries the plan.
+- A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.
 
 ## Scope Check
 

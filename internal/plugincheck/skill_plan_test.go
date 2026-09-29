@@ -14,6 +14,7 @@ func TestSkillPlan(t *testing.T) {
 			"never holds a step that can only happen after landing",
 			"closes:", "parent: debt/<stem>",
 			"Commit the plan on main", "only after the plan is approved",
+			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",
