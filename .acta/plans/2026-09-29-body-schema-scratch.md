@@ -432,7 +432,7 @@ git commit -m "write: date meta on status and fixed_in"
   - `func AppendScratch(cfg config.Config, b *board.Board, id, section string, text []byte) (Outcome, error)` — `section` is `""` (no flag given), `words`, `context`, `log` or `questions`. `""` means `words` on a new item and "append at the end" on an old item.
   - CLI: `acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestNewScratchWritesSkeleton(t *testing.T) {
@@ -524,12 +524,12 @@ func TestAppendScratchOldItem(t *testing.T) {
 
 Every other caller of `AppendScratch` in the existing tests now passes `""` as `section`. Their expected output stays the same, because their fixtures are old items. In `cli_test.go`, add a case for `acta scratch add SCRATCH-1 --section context` (exit 0, the text lands in Context), one for `--section bogus` (exit 1, the error on stderr), and one checking that `-h` prints the new usage line.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/write -run 'Scratch' && go test ./internal/cli -run 'Scratch'`
 Expected: FAIL, because the body has no sections and `AppendScratch` gets too many arguments
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `NewScratch`, add `{"schema", "1"}` after `{"created", ...}` in the field list. Then build the body:
 
@@ -565,12 +565,12 @@ Flow:
 
 In `cli.go`, `cmdScratchAdd` gets `section := fs.String("section", "", "words, context, log or questions (default: words)")` and passes `*section`. Update the three usage strings to `acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md`.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/write ./internal/cli`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -590,7 +590,7 @@ git commit -m "scratch: write sections and add --section"
 - Consumes: `board.SchemaOn`, `board.HasSchema`, `board.CheckBody`, `MarkFinished` (Task 2), `SetField`
 - Produces: no new API. `AssignIDs` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestAssignIDsFirstIDWritesCreated(t *testing.T) {
@@ -669,12 +669,12 @@ func TestAssignIDsFinishesScratchParent(t *testing.T) {
 
 `containsLine` is a tiny helper in the test file: true when any string in the slice contains the text. The spec's error text is `<kind> <file name>: missing ## <Section>`, so a skip line must contain that exact part.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/write -run 'TestAssignIDs'`
 Expected: FAIL, because `created` is missing and the broken file gets an id
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In the `AssignIDs` loop, before the id is assigned:
 
@@ -684,12 +684,12 @@ In the `AssignIDs` loop, before the id is assigned:
 
 Kind names in the skip text: use the same words the spec's error text uses (`scratch`, `bug`, `debt`, `spec`, `plan`). Map a spec's kind constant to `spec` and a plan file to `plan` with a small switch.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/write`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -709,7 +709,7 @@ git commit -m "id: write created and schema on first id, check schema files"
 - Consumes: `MarkStarted`, `MarkFinished` (Task 2), `board.Load`, `Item.PlanPath`, `Item.SpecID`, `Item.Status`
 - Produces: none
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add them to `tick_test.go`. `tickRepo` and `runTick` already exist there. The new fixture helper `datesRepo` writes one spec and either one or two plans that point at it:
 
@@ -830,12 +830,12 @@ func TestTickMakesNoCommit(t *testing.T) {
 
 Before writing new ones, check `internal/cli/*_test.go` for helpers that already run git (`grep -n "func git" internal/cli/*_test.go`), and reuse any you find as `gitInit` / `gitOut`. When none exist, write both in `tick_test.go` with `exec.Command("git", ...)`, setting `cmd.Dir = dir`, the user name and email set inline, and `t.Fatal` on error. Check the real task id form with `acta tick -h`, and the debt line id with the test at `tick_test.go:60`. When a form is different from the one above, use the real form.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/cli -run 'TestTick'`
 Expected: FAIL, because the plan and spec files hold no `started`
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `cmdTick`, after the `switch` that ticks (and before `RecordAgent`), only for `it.Kind == board.KindTask`:
 
@@ -855,12 +855,12 @@ if err := markTaskDates(cfg, it); err != nil {
 
 A date failure only gets printed, the same way the agent record does. The tick itself already worked.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/cli`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -881,7 +881,7 @@ git commit -m "tick: write started and finished on plan and spec"
 - Consumes: `board.Load`, `board.HasSchema`, `board.CheckBody`
 - Produces: `Env.SchemaProblems []string`, and `checkSchema(e Env) Result` with `Name: "schema"`. Put it in `Run` after `checkRepo`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestCheckSchema(t *testing.T) {
@@ -901,12 +901,12 @@ func TestCheckSchema(t *testing.T) {
 
 In `internal/cli/doctor_test.go`, build a repo with one bad `schema: 1` scratch file and one bad file that has no schema. Want: the doctor output has `warn schema: scratch 2026-...-bad.md: missing ## Words`, and it does not name the file without schema.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/doctor ./internal/cli -run 'Schema'`
 Expected: FAIL, `undefined: checkSchema`
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 ```go
 // checkSchema reports files that opted in to the body schema but lost a
@@ -922,12 +922,12 @@ func checkSchema(e Env) Result {
 
 In `internal/cli/doctor.go`, when a repo root is known, load the board. For each item that is not a task, not a debt line and not legacy, and whose file has `schema: 1`, run `CheckBody`. Build `<kind> <base name>: <problem>` strings and sort them. A board that fails to load adds nothing here, because `checkRepo` already covers a broken repo.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/doctor ./internal/cli`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...
@@ -947,7 +947,7 @@ git commit -m "doctor: warn on schema files missing a section"
 **Interfaces:**
 - Produces: `Item.Created, Item.StartedOn, Item.Finished string`. The name is `StartedOn` because `Item.Started bool` already exists for tasks. Each holds `YYYY-MM-DD` or `""`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Both tests go in `internal/tui/detail_test.go`. They use the helpers that are already there: `treeCfg`, `detailLines`, `plainLines`, `labelsOf`. The board fields are checked through `board.Load` in the same test.
 
@@ -1016,12 +1016,12 @@ func TestDetailShowsDates(t *testing.T) {
 
 Check what `labelsOf` returns for the date values too. When it gives only labels, add one more check that `2026-09-02` shows up on the STARTED line of SCRATCH-1.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/board ./internal/tui -run 'Dates'`
 Expected: FAIL, `Item has no field Created`
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `board.go`, wherever `Ref` / `FixedIn` are read from the frontmatter, read the three date keys the same way. Keep a value only when it is a string that parses with `time.Parse("2006-01-02", v)`. yaml can decode a bare date into a `time.Time`, so a `time.Time` also counts: format it back to `2006-01-02`.
 
@@ -1035,12 +1035,12 @@ In `detail.go`, add these after `{"AUTHOR", it.Author}`:
 
 Empty values are already skipped by the loop that draws these fields. Check this in the test.
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/board ./internal/tui`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...

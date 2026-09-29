@@ -109,7 +109,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdDebtNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "scratch":
 		if len(args) < 2 || (args[1] != "new" && args[1] != "add") {
-			fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md | acta scratch add <SCRATCH-n> < text.md")
+			fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md | acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md")
 			return exitBadInput
 		}
 		if args[1] == "new" {
@@ -451,9 +451,10 @@ func cmdScratchNew(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 
 func cmdScratchAdd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs, root := flags("scratch add", stderr)
+	section := fs.String("section", "", "words, context, log or questions (default: words)")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta scratch add <SCRATCH-n> < text.md")
+		fmt.Fprintln(stderr, "usage: acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md")
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
@@ -465,7 +466,7 @@ func cmdScratchAdd(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	o, err := write.AppendScratch(cfg, b, pos[0], text)
+	o, err := write.AppendScratch(cfg, b, pos[0], *section, text)
 	return report(o, err, stdout, stderr)
 }
 
