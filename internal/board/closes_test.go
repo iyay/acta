@@ -11,7 +11,7 @@ func TestClosesLinksEveryAllowedKind(t *testing.T) {
 		"scratch/2026-09-29-b.md":      "# B\n",
 		"specs/2026-09-29-t-design.md": "# T\n",
 		"debt/2026-09-29-d.md":         "---\nid: DEBT-1\n---\n# D\n\n- [ ] one\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-1, scratch/2026-09-29-b, specs/2026-09-29-t-design, DEBT-1.1]\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0001, scratch/2026-09-29-b, specs/2026-09-29-t-design, DBT-0001.01]\n---\n# S\n",
 	})
 	s := b.Get("specs/2026-09-29-s-design")
 	want := []string{"scratch/2026-09-29-a", "scratch/2026-09-29-b", "specs/2026-09-29-t-design", "debt/2026-09-29-d#item-1"}
@@ -51,7 +51,7 @@ func TestClosesBadEntriesAreProblems(t *testing.T) {
 func TestClosesSingleStringLinksLikeAList(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: SCRATCH-1\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: SCR-0001\n---\n# S\n",
 	})
 	s := b.Get("specs/2026-09-29-s-design")
 	want := []string{"scratch/2026-09-29-a"}
@@ -68,7 +68,7 @@ func TestClosesResolvesAHashID(t *testing.T) {
 	// it like any other id.
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\nhash: k3f2\n---\n# A\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-k3f2]\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-k3f2]\n---\n# S\n",
 	})
 	s := b.Get("specs/2026-09-29-s-design")
 	want := []string{"scratch/2026-09-29-a"}
@@ -97,7 +97,7 @@ func TestClosesEmptyListLinksNothing(t *testing.T) {
 func TestClosesSameIDTwiceLinksOnce(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md":      "---\nid: SCRATCH-1\n---\n# A\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-1, scratch/2026-09-29-a]\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0001, scratch/2026-09-29-a]\n---\n# S\n",
 	})
 	s := b.Get("specs/2026-09-29-s-design")
 	want := []string{"scratch/2026-09-29-a"}
@@ -112,7 +112,7 @@ func TestClosesSameIDTwiceLinksOnce(t *testing.T) {
 func TestClosesDroppedScratchStaysDropped(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-d.md":      "---\nid: SCRATCH-2\nstatus: dropped\n---\n# D\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-2]\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0002]\n---\n# S\n",
 	})
 	d := b.Get("scratch/2026-09-29-d")
 	if len(d.ClosedBy) != 1 {
@@ -232,8 +232,8 @@ func TestClosesSpecChainSettlesFromTheEnd(t *testing.T) {
 func TestClosesOnAScratchFileIsIgnored(t *testing.T) {
 	b := boardWith(t, map[string]string{
 		"scratch/2026-09-29-a.md": "---\nid: SCRATCH-1\n---\n# A\n",
-		"scratch/2026-09-29-w.md": "---\nid: SCRATCH-2\ncloses: [SCRATCH-1]\n---\n# W\n",
-		"debt/2026-09-29-d.md":    "---\nid: DEBT-1\ncloses: [SCRATCH-1]\n---\n# D\n\n- [ ] one\n",
+		"scratch/2026-09-29-w.md": "---\nid: SCRATCH-2\ncloses: [SCR-0001]\n---\n# W\n",
+		"debt/2026-09-29-d.md":    "---\nid: DEBT-1\ncloses: [SCR-0001]\n---\n# D\n\n- [ ] one\n",
 		"plans/2026-09-29-q.md":   "# Q\n\n### Task 1: A\n\n- [ ] a\n",
 	})
 	for _, id := range []string{"scratch/2026-09-29-w", "debt/2026-09-29-d", "plans/2026-09-29-q#task-1"} {

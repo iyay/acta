@@ -69,7 +69,7 @@ hash: q5u0
   - `func FormatID(prefix string, n int) string` returns `fmt.Sprintf("%s-%04d", prefix, n)`.
   - `Item.OldForm bool`: a new field, true when the file holds an old id or an old 4-char hash, so `acta id` knows to rewrite it.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 func TestIsIDNewFormat(t *testing.T) {
@@ -152,12 +152,12 @@ func TestOversizeNumbersGetProblems(t *testing.T) {
 
 `hasProblem(it *Item, p string) bool` is a small test helper: true when `it.Problems` holds `p`. Add a debt file case with 100 items the same way, expecting `item 100 is wider than 2 digits` on the debt file.
 
-- [ ] **Step 2: Run the tests and watch them fail**
+- [x] **Step 2: Run the tests and watch them fail**
 
 Run: `go test ./internal/board/ -run 'TestIsIDNewFormat|TestIsHashSevenChars|TestBoardShowsNewFormForOldFiles|TestBadIDShapesStayProblems|TestOversizeNumbersGetProblems' -v`
 Expected: FAIL (old `IsID` accepts `PLN-30`, `IsHash` accepts 4 chars, `OldForm` does not exist).
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 ```go
 func Prefix(k Kind, plan bool) string {
@@ -233,12 +233,12 @@ In `setIDs`: when `IsID(raw, prefix)` set `ShortID = raw`; else when `isOldID(ra
 
 In `aliasTask` and `aliasDebtItem`, add a `pad2(n string) string` helper: a plain number becomes `fmt.Sprintf("%02d", n)`, anything else (`F1`) stays. A number of 100 or more adds `"task N is wider than 2 digits"` to the plan, or `"item N is wider than 2 digits"` to the debt file. Both functions need the parent item to hang the problem on, so pass it in.
 
-- [ ] **Step 4: Run the package tests and fix fixtures**
+- [x] **Step 4: Run the package tests and fix fixtures**
 
 Run: `go test ./internal/board/`
 Expected: the new tests PASS. Older tests that assert `PLAN-12`, `SPEC-4` or 4-char hashes as the shown id now fail. Change their expected values to the new form. Keep their old-format input files, so they keep testing the old reading. Do not delete or skip any test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./... && go test ./internal/board/
@@ -589,19 +589,19 @@ git commit -m "test: list rows line up; fixtures move to the new id format"
 - Consumes: nothing (text only).
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing check**
+- [x] **Step 1: Write the failing check**
 
 Run: `grep -rnE '\b(PLAN|SPEC|DEBT|SCRATCH)-[0-9n]' plugin`
 Expected: matches in the 7 files above. This list is the red test.
 
-- [ ] **Step 2: Change the text**
+- [x] **Step 2: Change the text**
 
 - `SCRATCH-n` becomes `SCR-n`, `PLAN-n` becomes `PLN-n`, `SPEC-n` becomes `SPC-n`, `DEBT-17.1` becomes `DBT-0017.01`, and so on. Concrete numbers get 4 digits.
 - `plugin/skills/plan/SKILL.md`, section "Task Right-Sizing", add: "A plan holds 99 tasks at most, so task ids stay two digits wide. Work bigger than that is several plans."
 - `plugin/skills/land/SKILL.md`, where it runs `acta id` after the merge, add: "`acta id` also rewrites ids still in the old format (`PLAN-30` becomes `PLN-0030`)."
 - In the eval scaffold and prompt, change the ids the fixtures write, and change the grader only where it names an id string. The rule it checks stays the same.
 
-- [ ] **Step 3: Run the check again**
+- [x] **Step 3: Run the check again**
 
 Run: `grep -rnE '\b(PLAN|SPEC|DEBT|SCRATCH)-[0-9n]' plugin`
 Expected: no output, or only lines that on purpose mention the old format as an alias (the land sentence above).
@@ -609,7 +609,7 @@ Expected: no output, or only lines that on purpose mention the old format as an 
 Run: `go test ./internal/plugincheck/`
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add plugin
