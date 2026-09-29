@@ -272,3 +272,55 @@ func TestOversizeNumbersGetProblems(t *testing.T) {
 		t.Errorf("debt: %v", debt.Problems)
 	}
 }
+
+func TestCanon(t *testing.T) {
+	for in, want := range map[string]string{
+		"PLAN-30.3": "pln-30.3", "pln-0030.03": "pln-30.3", "PLN-30.3": "pln-30.3",
+		"SCRATCH-14": "scr-14", "scr-0014": "scr-14", "DEBT-22.4": "dbt-22.4",
+		"SPEC-4": "spc-4", "BUG-0007": "bug-7", "PLN-0030.F1": "pln-30.f1",
+		"PLN-k3f2abc": "pln-k3f2abc", "": "",
+	} {
+		if got := Canon(in); got != want {
+			t.Errorf("Canon(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestGetFindsEveryForm(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"plans/2026-09-21-a.md": "---\nid: PLAN-12\nhash: k3f2abc\n---\n# A\n\n**Spec:** none (Bounded, approved in chat on 2026-09-21)\n\n### Task 3: Three\n- [ ] x\n\n### Task F1: Fix\n- [ ] y\n",
+		"plans/2026-09-22-b.md": "---\nid: PLN-0013\nhash: k3f2xyz\n---\n# B\n\n**Spec:** none (Bounded, approved in chat on 2026-09-22)\n",
+		"debt/2026-09-27-d.md":  "---\nid: DBT-0002\n---\n# Review NOTEs\n\n- [ ] first\n",
+	})
+	for _, id := range []string{"PLN-0012", "pln-0012", "PLAN-12", "PLN-12", "plans/2026-09-21-a", "PLN-k3f2abc", "k3f2a", "k3f2abc"} {
+		if it := b.Get(id); it == nil || it.ID != "plans/2026-09-21-a" {
+			t.Errorf("Get(%q) = %v", id, it)
+		}
+	}
+	for _, id := range []string{"PLN-0012.03", "PLAN-12.3", "pln-12.03"} {
+		if it := b.Get(id); it == nil || it.ID != "plans/2026-09-21-a#task-3" {
+			t.Errorf("Get(%q) = %v", id, it)
+		}
+	}
+	if it := b.Get("PLN-0012.F1"); it == nil || it.ID != "plans/2026-09-21-a#task-F1" {
+		t.Errorf("Get F1 = %v", it)
+	}
+	for _, id := range []string{"DBT-0002.01", "DEBT-2.1", "dbt-2.01", "debt/2026-09-27-d#item-1"} {
+		if it := b.Get(id); it == nil || it.ID != "debt/2026-09-27-d#item-1" {
+			t.Errorf("Get(%q) = %v", id, it)
+		}
+	}
+	for _, id := range []string{"PLX-0012", "", "k3f", "k3f2", "SPC-0012", "PLAN-12.9", "PLN-0012.04"} {
+		if it := b.Get(id); it != nil {
+			t.Errorf("Get(%q) = %s, want nil", id, it.ID)
+		}
+	}
+	if !b.Ambiguous("k3f2") || b.Ambiguous("k3f2a") {
+		t.Error("Ambiguous wrong for k3f2 / k3f2a")
+	}
+	for _, id := range []string{"PLX-0012", "", "k3f", "SPC-0012", "PLAN-12", "plans/2026-09-21-a"} {
+		if b.Ambiguous(id) {
+			t.Errorf("Ambiguous(%q) = true, want false", id)
+		}
+	}
+}
