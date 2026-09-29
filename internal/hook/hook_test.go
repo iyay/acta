@@ -35,7 +35,6 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Style (ADHD reader):",
 		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
-		"8. One Architectural brainstorm per session; a second one becomes a scratch item and the user picks how to open it.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -100,6 +99,28 @@ func TestSessionStartStaysShort(t *testing.T) {
 	} {
 		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
+		}
+	}
+}
+
+// An agent can answer a second big brainstorm from this rule alone,
+// without loading the skill. So the rule must name the real choices.
+func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
+	for name, in := range map[string]Input{
+		"normal":    korean(),
+		"first run": {Voice: voice.Default()},
+		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		out := SessionStart(in)
+		for _, want := range []string{
+			"acta:brainstorm",
+			"claude --bg 'brainstorm SCRATCH-n'",
+			"new session",
+			"HERDR_ENV=1",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: session start missing %q", name, want)
+			}
 		}
 	}
 }
