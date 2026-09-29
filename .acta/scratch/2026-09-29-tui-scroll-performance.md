@@ -4,6 +4,7 @@ hash: cmqhubg
 title: TUI scroll is slow and delayed in every pane
 status: raw
 created: "2026-09-29"
+finished: "2026-09-29"
 ---
 User 2026-09-29, verbatim: "catet juga buat benerin scroll performance, karena skearang di semua panel scrolnya gak smooth dan cepet. lambat dan delayed"
 

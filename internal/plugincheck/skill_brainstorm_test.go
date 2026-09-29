@@ -18,7 +18,8 @@ func TestSkillBrainstorm(t *testing.T) {
 			"run " + "`acta id`" + ` right after`, "parent: debt/",
 			"acta scratch new", "acta scratch add", "status brainstorming",
 			"parent: scratch/", "One Architectural brainstorm per session",
-			"claude --bg 'brainstorm SCR-0001'", "HERDR_ENV=1",
+			"claude --bg 'brainstorm SCR-0001'",
+			"only when the session text has the " + "`herdr:`" + " line",
 			"pbcopy", "wl-copy", "xclip", "OSC 52", "press ←", "Spike and Bounded",
 			"closes:",
 			"commit it on the branch that is checked out (usually main)",
@@ -26,6 +27,7 @@ func TestSkillBrainstorm(t *testing.T) {
 			"acta scratch add SCRATCH-n --section log",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
+			"HERDR_ENV",
 			"names the DEBT ids it closes",
 			"in the worktree", "create its worktree now", "as the first commit"},
 	})
