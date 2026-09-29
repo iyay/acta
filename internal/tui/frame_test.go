@@ -62,13 +62,16 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 			for e := -1; e < n; e++ {
 				s := sized(m, w, h)
 				s.expanded = e
-				hs := s.leftHeights(h - 2)
+				// The tab box takes three lines and the status line one, so the
+				// boxes share what is left of the screen.
+				body := max(0, h-barRows-1)
+				hs := s.leftHeights(body)
 				sum := 0
 				for _, x := range hs {
 					sum += x
 				}
-				if sum != h-2 {
-					t.Fatalf("%dx%d expanded %d: heights %v add up to %d, want %d", w, h, e, hs, sum, h-2)
+				if sum != body {
+					t.Fatalf("%dx%d expanded %d: heights %v add up to %d, want %d", w, h, e, hs, sum, body)
 				}
 				// The boxes on screen are the ones the view draws. Below 60
 				// columns only the focused box reaches the screen, so the
@@ -91,9 +94,12 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 						continue
 					}
 					want := room
-					if h-2 < threshold {
+					if body < threshold {
 						want = 1
 					}
+					// A screen with no room at all leaves nothing to keep, not
+					// even a title bar.
+					want = min(want, body)
 					if x != want {
 						t.Errorf("%dx%d expanded %d: pane %d keeps %d lines, want %d", w, h, e, i+1, x, want)
 					}

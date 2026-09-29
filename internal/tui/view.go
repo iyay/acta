@@ -76,7 +76,10 @@ esc              back to the list, close this help
 // top of them.
 func (m Model) View() string {
 	g := m.geometry()
-	h := max(3, m.height-1)
+	// The status line always has a row of its own, so the tab box and the
+	// panes below it share the rest, and a terminal with fewer rows than the
+	// box needs simply loses the bottom of the box.
+	h := max(1, m.height-1)
 	var body string
 	if g.wide {
 		// A box with no room draws nothing, so it takes no line either and
@@ -92,7 +95,7 @@ func (m Model) View() string {
 	} else {
 		body = m.paneView(m.focus, g.full)
 	}
-	lines := append([]string{pad(m.tabBar(m.width), m.width)}, strings.Split(body, "\n")...)
+	lines := append(m.tabRows(m.width), strings.Split(body, "\n")...)
 	if len(lines) > h {
 		lines = lines[:h]
 	}
@@ -111,10 +114,29 @@ func (m Model) View() string {
 	return m.styles.paintFrame(body + "\n" + line)
 }
 
-// tabBar draws the top line: the tab names that fit the window, in order, the
-// open one in brackets and the accent, so the reader always sees where they
-// are. A window too narrow for every name loses the ones farthest from the
-// open tab first, so the open tab never goes off the line.
+// tabRows draws the tabs in a box of their own, so they read as the top of
+// the screen and not as one more line of text. A window too narrow for the
+// two walls has no box to close, so every line is a plain run of dashes of
+// the width it has, and the panes below still start under three drawn lines.
+func (m Model) tabRows(width int) []string {
+	edge := m.styles.faint
+	if width < 2 {
+		dash := edge.Render(strings.Repeat("─", max(0, width)))
+		return []string{dash, dash, dash}
+	}
+	inner := width - 2
+	return []string{
+		topLine(width, edge, nil),
+		edge.Render("│") + pad(m.tabBar(inner), inner) + edge.Render("│"),
+		edge.Render("└" + strings.Repeat("─", inner) + "┘"),
+	}
+}
+
+// tabBar draws the names line of the tab box: the tab names that fit the
+// window, in order, each with its key number, and the open one in the accent,
+// so the reader always sees where they are. A window too narrow for every
+// name loses the ones farthest from the open tab first, so the open tab never
+// goes off the line.
 func (m Model) tabBar(width int) string {
 	drop := make([]bool, len(topTabs))
 	line := m.barLine(drop)
@@ -147,11 +169,12 @@ func (m Model) barLine(drop []bool) string {
 		if drop[i] {
 			continue
 		}
+		name := fmt.Sprintf("%d %s", i+1, t.name)
 		if i == m.top {
-			names = append(names, m.styles.accent.Bold(true).Render("["+t.name+"]"))
+			names = append(names, m.styles.accent.Bold(true).Render(name))
 			continue
 		}
-		names = append(names, m.styles.faint.Render(t.name))
+		names = append(names, m.styles.faint.Render(name))
 	}
 	return " " + strings.Join(names, "  ")
 }

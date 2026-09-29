@@ -7,27 +7,31 @@ import (
 	xansi "github.com/charmbracelet/x/ansi"
 )
 
+// barRows is how tall the tab box is: its top border, the names, and its
+// bottom border.
+const barRows = 3
+
 // geometry measures the screen. The left column is 30% of the width, held
 // between 28 and 48 columns, and below 60 columns only the focused box is on
 // screen because two columns of a small terminal fit nothing.
 func (m Model) geometry() geom {
-	// The top line is the tab bar and the last line the status line, so the
-	// boxes share the rest. A terminal with fewer rows gets the rows it has.
-	bodyH := max(0, m.height-2)
+	// The tab box takes the top lines and the status line the last one, so
+	// the boxes share the rest. A terminal with fewer rows gets the rows it has.
+	bodyH := max(0, m.height-barRows-1)
 	panes := m.panes()
 	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(panes))}
-	y := 1
+	y := barRows
 	for p, h := range m.leftHeights(bodyH) {
 		g.side[p] = m.box(pane(p), 0, y, g.leftW, h)
 		y += h
 	}
 	// A box of zero width is not on screen, which is how a narrow terminal
 	// leaves all but the focused one out.
-	g.detail = m.box(paneDetail, g.leftW, 1, max(0, m.width-g.leftW), bodyH)
+	g.detail = m.box(paneDetail, g.leftW, barRows, max(0, m.width-g.leftW), bodyH)
 	if g.wide {
 		return g
 	}
-	g.full = m.box(m.focus, 0, 1, m.width, bodyH)
+	g.full = m.box(m.focus, 0, barRows, m.width, bodyH)
 	// Only the focused box is on screen now, so the others are zero boxes and
 	// neither the view nor the mouse finds them.
 	for p := range g.side {
@@ -72,6 +76,10 @@ func (m Model) leftHeights(h int) []int {
 	if h < expandedRoom*others+expandedRoom {
 		each = 1
 	}
+	// A screen too short to pay the other boxes their share cannot pay it at
+	// all, so the expanded box never ends up with a negative height. A single
+	// box column has nobody to pay, so it keeps all of them.
+	each = min(each, h/max(1, others))
 	for p := range out {
 		if p != m.expanded {
 			out[p] = each
@@ -176,8 +184,11 @@ func popupRect(rows []string, width, height int) (x, y, w, h int) {
 		return 0, 0, 0, 0
 	}
 	w = lipgloss.Width(rows[0])
-	body := max(3, height-1)
-	return max(0, (width-w)/2), max(0, (body-len(rows))/2), w, len(rows)
+	// The popup sits over the panes and never over the tab box above them,
+	// so it starts under the box and is centered in what is left of the
+	// screen.
+	body := max(0, height-barRows-1)
+	return max(0, (width-w)/2), barRows + max(0, (body-len(rows))/2), w, len(rows)
 }
 
 // splice puts one row of a box over the cells from x0 to x0+w of a line and
