@@ -3,7 +3,11 @@ name: brainstorm-files-scratch-first
 description: An Architectural brainstorm files its scratch item and marks it brainstorming before anything else.
 tags: [brainstorm]
 runs: 1
-max_turns: 3
+# The floor is four turns: read the skill, file the item, mark it
+# brainstorming, answer. The skill's example id is not one the CLI accepts, so
+# the child spends one turn on the id and one looking up the scratch input
+# form. Six gives it the work plus the answer without landing on the cap.
+max_turns: 6
 timeout_seconds: 240
 allowed_tools: []
 ---

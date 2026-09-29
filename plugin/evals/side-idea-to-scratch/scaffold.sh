@@ -4,6 +4,11 @@
 # workspace before the agent starts. This script runs as the user, not in the
 # sandbox, so it can still find the CLI on PATH.
 set -euo pipefail
+# A first run with no voice file makes the session rules send the agent to
+# /acta:setup before any other work, which spends a turn this case needs.
+# A real machine is already set up; say so.
+mkdir -p "$HOME/.acta"
+printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/voice.yaml"
 mkdir -p bin .acta/scratch
 cp "$(command -v acta)" bin/acta
 git init -q .
