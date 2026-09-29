@@ -753,3 +753,82 @@ func TestDetailCacheFollowsTheTheme(t *testing.T) {
 		t.Errorf("a themed detail box draws no color at all: %q", after)
 	}
 }
+
+// modelOf is a model over a board built from files, drawn with the markdown
+// left as it is so a test reads the words of a body.
+func modelOf(t *testing.T, files map[string]string) Model {
+	t.Helper()
+	cfg := treeCfg(t, files)
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return m
+}
+
+// groupModel is the Specs tab with the cursor on the untyped group row, the one
+// row that selects no item, and empty lists everywhere else.
+func groupModel(t *testing.T) Model {
+	t.Helper()
+	m := modelOf(t, map[string]string{
+		".acta/specs/2026-09-20-alpha.md":          "# Alpha\n",
+		"docs/superpowers/specs/2026-01-01-old.md": "# Old\n",
+	})
+	return sized(press(m, tabKey(tabSpecs), "G"), 160, 50)
+}
+
+// wontfixModel is the Bugs tab with the Done box on its Wontfix sub-tab, which
+// holds nothing, so nothing is selected there either.
+func wontfixModel(t *testing.T) Model {
+	t.Helper()
+	m := modelOf(t, map[string]string{
+		".acta/bugs/2026-09-24-crash.md": "---\nstatus: fixed\n---\n# App crashes\n",
+	})
+	return sized(press(m, tabKey(tabBugs), "tab", "]"), 160, 50)
+}
+
+// With no item under the cursor the box reads the list beside it, and the
+// cache key is the item, the width and the board, so it cannot see that list.
+// Every input the box reads with no item must still reach the drawn lines.
+func TestDetailWithNothingSelectedFollowsTheList(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		leave func(m Model) Model
+		want  string
+	}{
+		{"the query", groupModel, func(m Model) Model { return press(m, "/", "zzzq") }, "No items"},
+		{"the open tab", groupModel, func(m Model) Model { return press(m, tabKey(tabDebts)) }, "No items"},
+		{"the focused box", groupModel, func(m Model) Model { return press(m, "tab") }, "No items"},
+		{"the Done sub-tab", wontfixModel, func(m Model) Model { return press(m, "[") }, "App crashes"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			if s := m.Selected(); s != nil {
+				t.Fatalf("the test needs a box with no item on show, it holds %s", s.ID)
+			}
+			// Draw once, so the cache holds what the box says now.
+			drawnBox(t, m)
+			m = c.leave(m)
+			fresh := m
+			fresh.dcache = nil
+			got, want := drawnBox(t, m), drawnBox(t, fresh)
+			if got != want {
+				t.Errorf("the box drew the screen it was on before:\ngot  %q\nwant %q", got, want)
+			}
+			if !strings.Contains(got, c.want) {
+				t.Errorf("the box drew %q, want it to name %q", got, c.want)
+			}
+		})
+	}
+}
+
+// drawnBox is what the detail box has on screen, its walls and color cut off.
+func drawnBox(t *testing.T, m Model) string {
+	t.Helper()
+	return strings.Join(plainLines(paneRows(m, paneDetail)), "\n")
+}

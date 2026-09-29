@@ -65,6 +65,16 @@ const wheelFrame = 16 * time.Millisecond
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
 
+// wheelMark is the screen a frame of notches was gathered on: the open tab, its
+// Done sub-tab, the search and the row under the cursor. A tick scrolls only
+// while all of it still stands, so notches meant for one item never land on
+// another.
+type wheelMark struct {
+	top, done int
+	query     string
+	sel       string
+}
+
 type editorDoneMsg struct {
 	newBug string // path of a new bug file; "" after a plain edit
 	tmpl   []byte
@@ -102,6 +112,7 @@ type Model struct {
 	wheelPane  pane  // the pane the gathered notches scroll
 	wheelDelta int   // lines gathered from the wheel, not yet scrolled
 	wheelArmed bool  // true while a frame tick is on its way
+	wheelMark  wheelMark
 	now        time.Time
 	version    string                 // build version shown on the bottom line
 	open       func(url string) error // opens a link in the browser
@@ -203,7 +214,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.now = time.Time(msg)
 		return m, nextMinute()
 	case wheelTickMsg:
-		if m.wheelDelta != 0 {
+		// Notches belong to the screen they were gathered on, so a reader who
+		// moved the item, the tab, the sub-tab or the search before the frame
+		// ended never sees them land on the new one.
+		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 		}
 		m.wheelDelta, m.wheelArmed = 0, false
@@ -273,6 +287,15 @@ func (m Model) Selected() *board.Item {
 		return nil
 	}
 	return m.board.Get(rows[i].id)
+}
+
+// mark is the screen as it stands: the open tab, its Done sub-tab, the search
+// and the row under the cursor. A wheel frame compares it with the one it
+// gathered its notches on, so the notches follow the reader and not the
+// screen he has already left.
+func (m Model) mark() wheelMark {
+	_, sel, _ := m.slot()
+	return wheelMark{top: m.top, done: m.done, query: m.query, sel: *sel}
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old
@@ -475,8 +498,8 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	switch msg.Button {
 	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
 		// The wheel belongs to the focused pane, the way the keys do, and it
-		// never takes the focus. A wheel over another pane is ignored, so
-		// scrolling can never move a pane the user is not looking at.
+		// never takes the focus. A wheel over another pane is ignored, so the
+		// notches only ever gather for the box the reader is looking at.
 		if p != m.focus {
 			return m, nil
 		}
@@ -490,6 +513,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 			m.wheelDelta = 0
 		}
+		// The notches belong to the screen they were gathered on, so the last
+		// notch of a frame writes it down and the tick checks it.
+		m.wheelMark = m.mark()
 		m.wheelPane = p
 		m.wheelDelta += step
 		if m.wheelArmed {

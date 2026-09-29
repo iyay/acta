@@ -647,6 +647,152 @@ func TestWheelNotchMovesThreeLines(t *testing.T) {
 	}
 }
 
+// longTabs puts forty items with a body long enough to scroll in every list of
+// the Plans and the Bugs tab, under the open, finished and closed status, so a
+// tab switch and a Done sub-tab switch both land on lists that overflow and on
+// a detail box with room to move.
+func longTabs(t *testing.T) Model {
+	t.Helper()
+	body := "# Item " + strings.Repeat("x", 40) + "\n" + strings.Repeat("\nA line of the body.\n", 60)
+	files := map[string]string{}
+	for _, f := range []struct{ dir, status string }{
+		{"plans", ""},
+		{"plans", "done"},
+		{"plans", "dropped"},
+		{"bugs", ""},
+		{"bugs", "fixed"},
+		{"bugs", "wontfix"},
+	} {
+		front := ""
+		if f.status != "" {
+			front = "---\nstatus: " + f.status + "\n---\n"
+		}
+		for i := range 40 {
+			files[fmt.Sprintf(".acta/%s/2026-09-20-%s-%02d.md", f.dir, f.status, i)] = front + body
+		}
+	}
+	cfg := treeCfg(t, files)
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	return sized(m, 120, 40)
+}
+
+// The notches of one frame belong to the screen the wheel turned on. Every
+// path that moves the item on show, the open tab or the Done sub-tab before the
+// tick must leave the new item at the top of its own box, and the notches of a
+// frame where nothing changed must still scroll.
+func TestWheelNotchesBelongToTheScreenTheyWereGatheredOn(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name  string
+		start func(t *testing.T) Model
+		box   pane
+		leave func(m Model) Model
+	}{
+		{
+			name: "a click on another row",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box: paneDetail,
+			leave: func(m Model) Model {
+				b := scrollBox(m, paneList)
+				return click(m, b.x+1, b.y+2)
+			},
+		},
+		{
+			name: "a key that moves the cursor",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, "esc", "j") },
+		},
+		{
+			name: "another tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), "0")
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, tabKey(tabBugs)) },
+		},
+		{
+			name: "another Done sub-tab",
+			start: func(t *testing.T) Model {
+				return press(longTabs(t), tabKey(tabPlans), keyTo(paneDone))
+			},
+			box:   paneDone,
+			leave: func(m Model) Model { return press(m, "]") },
+		},
+		{
+			name: "a search for another item",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return press(m, "/", "open-37") },
+		},
+		{
+			name: "a reload that took the item away",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return reloadedWithout(m, m.Selected().ID) },
+		},
+		{
+			name: "nothing changed",
+			start: func(t *testing.T) Model {
+				return paneModel(t, paneDetail)
+			},
+			box:   paneDetail,
+			leave: func(m Model) Model { return m },
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := c.start(t)
+			b := scrollBox(m, c.box)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[c.box] != 0 {
+				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
+			}
+			m = c.leave(m)
+			m = wheelTick(m)
+			if c.name == "nothing changed" {
+				// The frame the reader never left must still scroll.
+				if want := min(2*wheelStep, m.lastOff(c.box)); m.off[c.box] != want {
+					t.Errorf("notches with nothing changed scrolled %d, want %d", m.off[c.box], want)
+				}
+				return
+			}
+			if m.off[c.box] != 0 {
+				t.Errorf("the notches of the old screen scrolled the new one to line %d", m.off[c.box])
+			}
+			if !shows(m, c.box, 0) {
+				t.Errorf("the box shows %q at the top, want the first line of what is on show", drawnFirst(m, c.box))
+			}
+		})
+	}
+}
+
+// reloadedWithout is the reload message of a board the item id is gone from, so
+// the cursor lands on another row the way a live reload lands it.
+func reloadedWithout(m Model, id string) Model {
+	fresh, err := m.load()
+	if err != nil {
+		return m
+	}
+	fresh.Items = slices.DeleteFunc(fresh.Items, func(it *board.Item) bool { return it.ID == id })
+	next, _ := m.Update(reloadMsg{b: fresh})
+	return next.(Model)
+}
+
 // A tick closes the frame, and the notch after it opens the next one. A tick
 // that left the frame armed forever would swallow every later notch, and the
 // wheel would stop moving the pane.

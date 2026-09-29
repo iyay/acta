@@ -33,12 +33,16 @@ type detailCache struct {
 // detailLines gives the lines of the detail box, built again only when the
 // item, the width or the board changed. A reload makes a new board, so its
 // items are new too and the old lines are never shown for them.
+//
+// With no item under the cursor the lines come from the list instead, and the
+// key above cannot see the list, so that box is built every time. It is one
+// short line with no markdown in it, so it costs nothing to build again.
 func (m Model) detailLines(w int) []string {
 	c := m.dcache
-	if c == nil {
+	it := m.Selected()
+	if c == nil || it == nil {
 		return m.buildDetailLines(w)
 	}
-	it := m.Selected()
 	if c.lines != nil && c.board == m.board && c.item == it && c.width == w {
 		return c.lines
 	}
