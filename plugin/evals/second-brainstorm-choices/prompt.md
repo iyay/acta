@@ -5,7 +5,7 @@ tags: [brainstorm]
 runs: 1
 max_turns: 2
 timeout_seconds: 120
-allowed_tools: []
+allowed_tools: [Skill]
 ---
 
 Earlier in this session we already started the design for the new billing
