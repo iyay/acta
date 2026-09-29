@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -542,4 +543,29 @@ func authorRepo(t *testing.T, name string, files map[string]string) string {
 		t.Fatalf("git commit: %v %s", err, out)
 	}
 	return dir
+}
+
+// TestSpecWithPlanIgnoresWrittenStatus: SPEC-6 stayed approved with every
+// task done because the written status won.
+func TestSpecWithPlanIgnoresWrittenStatus(t *testing.T) {
+	files := map[string]string{
+		"specs/2026-09-29-s-design.md": "---\nstatus: approved\n---\n# S\n",
+		"plans/2026-09-29-p.md":        "# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
+	}
+	s := boardWith(t, files).Get("specs/2026-09-29-s-design")
+	if s.Status != "done" || s.StatusSource != "derived" {
+		t.Errorf("spec = %s (%s), want done (derived)", s.Status, s.StatusSource)
+	}
+	if want := []string{"written status approved ignored, derived done"}; !slices.Equal(s.Problems, want) {
+		t.Errorf("problems %v, want %v", s.Problems, want)
+	}
+	files["specs/2026-09-29-s-design.md"] = "---\nstatus: done\n---\n# S\n"
+	if p := boardWith(t, files).Get("specs/2026-09-29-s-design").Problems; len(p) != 0 {
+		t.Errorf("same written and derived value still warns: %v", p)
+	}
+	delete(files, "plans/2026-09-29-p.md")
+	files["specs/2026-09-29-s-design.md"] = "---\nstatus: approved\n---\n# S\n"
+	if s := boardWith(t, files).Get("specs/2026-09-29-s-design"); s.Status != "approved" || s.StatusSource != "frontmatter" {
+		t.Errorf("spec with no plan = %s (%s), want approved (frontmatter)", s.Status, s.StatusSource)
+	}
 }
