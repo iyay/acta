@@ -22,7 +22,7 @@ func TestPath(t *testing.T) {
 	}
 	t.Setenv("PM_VOICE_FILE", "")
 	home, _ := os.UserHomeDir()
-	if p, _ := Path(); p != filepath.Join(home, ".acta", "voice.yaml") {
+	if p, _ := Path(); p != filepath.Join(home, ".acta", "config.yaml") {
 		t.Fatalf("got %q", p)
 	}
 }

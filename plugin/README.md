@@ -45,7 +45,7 @@ On the first session, the agent asks which language to chat in, which style
 acta voice set --language Korean --style adhd --tone "Casual, short sentences."
 ```
 
-The setting lives in `~/.acta/voice.yaml` (or `PM_VOICE_FILE`). Change it any
+The setting lives in `~/.acta/config.yaml` (or `PM_VOICE_FILE`). Change it any
 time with `/acta:setup` or `acta voice set`. Files written to the repo stay in the
 repo language (English unless you set `--repo-language`). If your CLAUDE.md
 names a language, it wins.
@@ -74,7 +74,7 @@ topics are covered by the plugin and can be removed from your file:
 | Debug phases, read-only until the hypothesis | `acta:debug` |
 | Review: two axes, BLOCKER or NOTE, three rounds | `acta:review` |
 | Landing: gates, merge --no-ff, no menu, never push | `acta:land` |
-| Chat language, style and tone | `~/.acta/voice.yaml` |
+| Chat language, style and tone | `~/.acta/config.yaml` |
 
 Keep anything personal to you: memory rules, your tool setup, your list of
 commands that need a warning. Until you trim, the same rules load twice;

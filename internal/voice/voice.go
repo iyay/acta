@@ -12,8 +12,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Voice is one user's setting. It now lives in ~/.acta/voice.yaml; the old
-// ~/.pm/voice.yaml is only read when the new file is missing.
+// Voice is one user's setting. It lives in ~/.acta/config.yaml. An old
+// ~/.acta/voice.yaml is moved there on the first read. The ~/.pm/voice.yaml
+// from before the rename is only read when both are missing.
 type Voice struct {
 	ChatLanguage   string `yaml:"chat_language"`
 	Style          string `yaml:"style"`
@@ -35,12 +36,22 @@ func Default() Voice {
 	return Voice{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
 }
 
-// Path is PM_VOICE_FILE when set, else ~/.acta/voice.yaml. Writes always go
+// Path is PM_VOICE_FILE when set, else ~/.acta/config.yaml. Writes always go
 // here, so one place holds the truth.
 func Path() (string, error) {
 	if p := os.Getenv("PM_VOICE_FILE"); p != "" {
 		return p, nil
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".acta", "config.yaml"), nil
+}
+
+// voicePath is the name the file had before it held more than the voice.
+// Resolve moves it to Path once.
+func voicePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -58,8 +69,9 @@ func oldPath() (string, error) {
 	return filepath.Join(home, ".pm", "voice.yaml"), nil
 }
 
-// Resolve reads the new file first and the old one when the new file is
-// missing, so existing users keep their setting after the rename.
+// Resolve reads config.yaml. When it is missing, an old ~/.acta/voice.yaml
+// is renamed to config.yaml first, so the user ends up with one file. When
+// both are missing, the ~/.pm file from before the acta rename is read.
 func Resolve() (Voice, bool, error) {
 	path, err := Path()
 	if err != nil {
@@ -67,6 +79,19 @@ func Resolve() (Voice, bool, error) {
 	}
 	v, exists, err := Load(path)
 	if exists || err != nil || os.Getenv("PM_VOICE_FILE") != "" {
+		return v, exists, err
+	}
+	voiceFile, err := voicePath()
+	if err != nil {
+		return Default(), false, err
+	}
+	// A missing voice.yaml is fine: there was none, or another hook moved it
+	// a moment ago. Any other failure means the file is still there, so read
+	// it where it is and lose nothing. The next read tries the move again.
+	if err := os.Rename(voiceFile, path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Load(voiceFile)
+	}
+	if v, exists, err := Load(path); exists || err != nil {
 		return v, exists, err
 	}
 	old, err := oldPath()
