@@ -18,7 +18,7 @@ func TestSkillBrainstorm(t *testing.T) {
 			"run " + "`acta id`" + ` right after`, "parent: debt/",
 			"acta scratch new", "acta scratch add", "status brainstorming",
 			"parent: scratch/", "One Architectural brainstorm per session",
-			"claude --bg 'brainstorm SCRATCH-", "HERDR_ENV=1",
+			"claude --bg 'brainstorm SCR-0001'", "HERDR_ENV=1",
 			"pbcopy", "wl-copy", "xclip", "OSC 52", "press ←", "Spike and Bounded",
 			"closes:",
 			"commit it on the branch that is checked out (usually main)",

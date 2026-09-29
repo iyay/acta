@@ -12,7 +12,7 @@ func TestSkillScratch(t *testing.T) {
 		Name:     "scratch",
 		MaxLines: 60,
 		Must: []string{
-			"acta scratch new", "acta scratch add", "verbatim", "images", "Filed SCRATCH-",
+			"acta scratch new", "acta scratch add", "verbatim", "images", "Filed SCR-0001",
 			"catet", "nanti", "kepikiran", "File this in Scratchpad?", "never", "memory",
 			"new session", "main branch", "status dropped",
 			"--section context", "--section questions", "right after",

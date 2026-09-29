@@ -11,7 +11,7 @@ func TestSkillLand(t *testing.T) {
 			"Never `git push`", "120000", "fixed_in", "The Gate Function",
 			"`acta id --fix-duplicates`", "renumber",
 			"acta show <plan id>", "done` is less than `total`",
-			"acta tick <DEBT-n.m> --all", "debt file",
+			"acta tick <DBT-nnnn.nn> --all", "debt file",
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
