@@ -1,6 +1,6 @@
 ---
-id: SPEC-25
-hash: t539
+id: SPC-0025
+hash: t5393ke
 ---
 
 # Faster Test Suite

@@ -1,6 +1,6 @@
 ---
-id: DEBT-12
-hash: kb3a
+id: DBT-0012
+hash: kb3a9cs
 parent: plans/2026-09-28-gitignore-link
 ---
 # Review NOTEs: Refuse a Linked .gitignore Implementation Plan

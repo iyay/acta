@@ -1,8 +1,8 @@
 ---
 parent: scratch/2026-09-28-spec-status-frontmatter-pins
-closes: [SCRATCH-14]
-id: SPEC-17
-hash: sh2e
+closes: [SCR-0014]
+id: SPC-0017
+hash: sh2epvu
 ---
 
 # One Piece of Work Closes Several Items

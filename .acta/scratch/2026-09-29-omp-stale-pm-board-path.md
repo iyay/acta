@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-22
-hash: ip1j
+id: SCR-0022
+hash: ip1j9ca
 title: omp still looks for house rules under the old pm-board path
 status: raw
 created: "2026-09-29"

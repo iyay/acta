@@ -259,6 +259,8 @@ func screenTops(m Model) []string {
 // from one, out of the items the pane holds, and nothing at all when the pane
 // holds no items.
 func TestItemCount(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		sel, total int
 		want       string
@@ -300,6 +302,8 @@ func isThatRow(m Model, r row, line string) bool {
 // the top and on the last line at the end, and a thumb that keeps the size of
 // the window the pane shows.
 func TestScrollbarRowsAreThumbOnly(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		total, visible, first, h int
 		want                     string // one char per line: T thumb, . no thumb
@@ -332,6 +336,8 @@ func TestScrollbarRowsAreThumbOnly(t *testing.T) {
 }
 
 func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		total, vis, first   int
 		wantTop, wantBottom bool
@@ -354,6 +360,8 @@ func TestScrollbarThumbFollowsTheOffset(t *testing.T) {
 }
 
 func TestScrollbarThumbSitsBetweenTheEnds(t *testing.T) {
+	t.Parallel()
+
 	// Half way down, the thumb sits inside the column, never on either end.
 	bar := scrollbar(100, 10, 45, 10)
 	if len(bar) != 10 {
@@ -377,6 +385,8 @@ func TestScrollbarThumbSitsBetweenTheEnds(t *testing.T) {
 }
 
 func TestScrollbarSurvivesOddNumbers(t *testing.T) {
+	t.Parallel()
+
 	// An offset past the end reads as the end, and one before the start reads
 	// as the start: a stale offset cannot leave the thumb off the column.
 	for _, c := range []struct {
@@ -408,6 +418,8 @@ func TestScrollbarSurvivesOddNumbers(t *testing.T) {
 }
 
 func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
+	t.Parallel()
+
 	// The fixture fits in every box of a tall enough screen, so none of them
 	// draws a thumb.
 	tall := press(sized(newModel(t), 120, 80), tabKey(tabPlans))
@@ -432,6 +444,8 @@ func TestScrollbarShowsOnlyOnOverflow(t *testing.T) {
 }
 
 func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		before := m.Selected()
@@ -499,6 +513,8 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 // key and every notch leaves it at the top. An offset below zero would count
 // from a line that does not exist.
 func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
+	t.Parallel()
+
 	// The Plans tab has both list boxes, so the walk covers a tab with a
 	// Done pane as well as the detail box.
 	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
@@ -550,6 +566,8 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 // any other pane it does nothing at all: no scroll, no focus change, so a
 // wheel can never move a pane the user is not looking at.
 func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		for _, q := range []pane{paneList, paneDone, paneDetail} {
 			if q == p {
@@ -596,6 +614,8 @@ func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
 // A click takes the focus, so the wheel over the same pane scrolls it right
 // after, with no key in between.
 func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, paneList)
 		b := scrollBox(m, p)
@@ -611,6 +631,8 @@ func TestWheelAfterAClickScrollsThatPane(t *testing.T) {
 }
 
 func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
+	t.Parallel()
+
 	// The keys of the detail box scroll it and leave both lists where they
 	// were, selection and offset.
 	m := press(longModel(t), tabKey(tabPlans), "G")
@@ -660,6 +682,8 @@ func TestKeysActOnTheFocusedPaneOnly(t *testing.T) {
 }
 
 func TestListKeepsTheSelectedRowVisible(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans))
 	rows, _, _ := m.slotOf(paneList)
 	// Walk down until the cursor sits below the fold, then keep walking: the
@@ -699,6 +723,8 @@ func TestListKeepsTheSelectedRowVisible(t *testing.T) {
 }
 
 func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "0")
 	for m.off[paneDetail] < 5 {
 		m = press(m, "j")
@@ -727,6 +753,8 @@ func TestSelectingAnotherItemPutsTheDetailBackAtTheTop(t *testing.T) {
 }
 
 func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := paneModel(t, p)
 		// Top: the thumb is on the first line and so is the content.
@@ -781,6 +809,8 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 }
 
 func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		m := press(paneModel(t, p), "G")
 		if m.off[p] == 0 {
@@ -857,6 +887,8 @@ func TestOffsetStaysInsideThePaneAfterAResize(t *testing.T) {
 // G stops a line short of the end the screen can show and the last line on
 // screen is a line that never arrives.
 func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		// The detail box needs an item under it before it has a body, so the
 		// list is opened on the plans first.
@@ -898,6 +930,8 @@ func isFirstLine(m Model, p pane, line string) bool {
 }
 
 func TestPanesKeepTheirOwnPlace(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "G")
 	open := screenTops(m)[paneList]
 	m = press(m, "tab", "G")
@@ -937,6 +971,8 @@ func TestPanesKeepTheirOwnPlace(t *testing.T) {
 // the inner width, or that has no newline at the end, is the same problem
 // from the other side: the line is already full when the pane pads it.
 func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
+	t.Parallel()
+
 	// Heights below three leave no room for a pane at all, which the frame
 	// task covers on its own; what the scrollbar adds is a cell inside a pane.
 	for _, w := range []int{1, 2, 3, 4, 5, 6, 8, 12, 20, 40} {
@@ -1003,6 +1039,8 @@ func tail(body string) string {
 // box has to land on a window its new rows can fill and the screen has to
 // show that window.
 func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{}
 	for i := range 40 {
 		files[fmt.Sprintf(".acta/specs/2026-09-20-spec-%02d.md", i)] = "# Story " + fmt.Sprint(i) + "\n\nSome text.\n"

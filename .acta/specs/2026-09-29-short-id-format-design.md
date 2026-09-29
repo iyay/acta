@@ -1,8 +1,8 @@
 ---
 parent: scratch/2026-09-29-fast-id-lookup
 status: approved
-id: SPEC-23
-hash: oo47
+id: SPC-0023
+hash: oo47ajk
 ---
 # Short Id Format: 3-Letter Prefix, Fixed Width
 

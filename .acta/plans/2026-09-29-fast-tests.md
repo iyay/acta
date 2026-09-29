@@ -1,6 +1,7 @@
 ---
 id: PLAN-34
 hash: pz2o
+started: "2026-09-29"
 ---
 # Faster Test Suite Implementation Plan
 
@@ -50,7 +51,7 @@ hash: pz2o
 **Interfaces:**
 - Produces: `func sweep(lo, hi int, short []int) []int` in `view_test.go`. Returns every int in `[lo, hi]`, or only the values of `short` inside `[lo, hi]` when `testing.Short()`.
 
-- [ ] **Step 1: Write the failing test for the helper**
+- [x] **Step 1: Write the failing test for the helper**
 
 ```go
 func TestSweepFullRangeWithoutShort(t *testing.T) {
@@ -74,12 +75,12 @@ func TestSweepSamplesInsideRangeUnderShort(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run both modes, see them fail**
+- [x] **Step 2: Run both modes, see them fail**
 
 Run: `go test ./internal/tui/ -run TestSweep` and `go test -short ./internal/tui/ -run TestSweep`
 Expected: build FAIL, `undefined: sweep`.
 
-- [ ] **Step 3: Add the helper and edge lists**
+- [x] **Step 3: Add the helper and edge lists**
 
 ```go
 // Edge sizes of the layout. Under -short the size sweeps read only these,
@@ -106,7 +107,7 @@ func sweep(lo, hi int, short []int) []int {
 }
 ```
 
-- [ ] **Step 4: Use it in the slow tests**
+- [x] **Step 4: Use it in the slow tests**
 
 `TestViewNeverOverflowsAnyWindow`: `for _, w := range sweep(30, 200, edgeWidths) {` and `for _, h := range sweep(10, 60, edgeHeights) {`.
 
@@ -122,12 +123,12 @@ if testing.Short() {
 }
 ```
 
-- [ ] **Step 5: Run both modes, see them pass and time them**
+- [x] **Step 5: Run both modes, see them pass and time them**
 
 Run: `go test -count=1 ./internal/tui/` and `go test -count=1 -short ./internal/tui/`
 Expected: both `ok`. Paste both times. `-short` should be well under the 94s baseline.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui/
@@ -145,12 +146,12 @@ git commit -m "Sample edge sizes in slow tui sweeps under -short"
 **Interfaces:**
 - Consumes: `sweep` from Task 1 (unchanged).
 
-- [ ] **Step 1: Find process-wide state**
+- [x] **Step 1: Find process-wide state**
 
 Run: `grep -rnE 'os\.Chdir|t\.Chdir|t\.Setenv|os\.Setenv|withColors|lipgloss\.Set|termenv' --include='*_test.go' .`
 Also grep each package's test helpers for writes to package-level vars. Write the list in the task report.
 
-- [ ] **Step 2: Add `t.Parallel()`**
+- [x] **Step 2: Add `t.Parallel()`**
 
 First line of each top-level test that is safe:
 
@@ -163,17 +164,17 @@ func TestSomething(t *testing.T) {
 
 Start with the slow packages: `cmd/acta`, `internal/write`, `internal/cli`, `internal/tui`, `internal/board`, `internal/gitc`, `internal/trees`. Skip packages under 3s.
 
-- [ ] **Step 3: Race check**
+- [x] **Step 3: Race check**
 
 Run: `go test -count=1 -race -short ./...` three times.
 Expected: all `ok`, no `DATA RACE`. A race or flaky failure means a test shares state: take `t.Parallel()` out of that test and name it in the report.
 
-- [ ] **Step 4: Full run and timings**
+- [x] **Step 4: Full run and timings**
 
 Run: `time go test -count=1 ./...` and `time go test -count=1 -short ./...`
 Expected: both `ok`. Paste both wall times against the 1:41 baseline.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./...

@@ -1,6 +1,6 @@
 ---
-id: SPEC-4
-hash: ttye
+id: SPC-0004
+hash: ttyefgv
 ---
 # pmb: TUI and CLI over the pm-board file contract
 

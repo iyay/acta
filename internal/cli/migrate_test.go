@@ -158,6 +158,8 @@ func TestMigrateRootRefusesUntracked(t *testing.T) {
 }
 
 func TestMigrateRootOutsideGit(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, ".pm"), 0o755); err != nil {
 		t.Fatal(err)

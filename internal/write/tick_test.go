@@ -18,6 +18,8 @@ import (
 const plan = "# P\n\n### Task 1: One\n- [x] a\n- [ ] b\n```text\n- [ ] in a fence\n```\n- [ ] c\n\n### Task 2: Two\n- [ ] d\n"
 
 func TestTickText(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name        string
 		line, step  int
@@ -41,6 +43,8 @@ func TestTickText(t *testing.T) {
 }
 
 func TestTickTextCRLF(t *testing.T) {
+	t.Parallel()
+
 	src := strings.ReplaceAll(plan, "\n", "\r\n")
 	out, done, _, err := TickText([]byte(src), 3, 2)
 	if err != nil || done != 2 || string(out) != strings.Replace(src, "- [ ] b", "- [x] b", 1) {
@@ -49,6 +53,8 @@ func TestTickTextCRLF(t *testing.T) {
 }
 
 func TestTickTextMixedLineEndings(t *testing.T) {
+	t.Parallel()
+
 	// Every layout the board parser accepts. The board turns \r\n into \n
 	// and splits on \n, so task 1's heading is line 3 and its boxes are
 	// a1 then a2 whichever endings each line keeps.
@@ -106,6 +112,8 @@ func TestTickTextMixedLineEndings(t *testing.T) {
 }
 
 func TestTickTextBadInput(t *testing.T) {
+	t.Parallel()
+
 	for name, c := range map[string]struct{ line, step int }{
 		"step too big":       {3, 4},
 		"negative step":      {3, -1},

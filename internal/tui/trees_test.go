@@ -39,6 +39,8 @@ func worktreeModel(t *testing.T) Model {
 }
 
 func TestWorktreeItemsAreLabelled(t *testing.T) {
+	t.Parallel()
+
 	// Oldest first, so the worktree bug of 09-24 is the second row.
 	m := press(worktreeModel(t), tabKey(tabBugs), "j")
 	v := m.View()
@@ -51,6 +53,8 @@ func TestWorktreeItemsAreLabelled(t *testing.T) {
 }
 
 func TestWorktreeItemsAreReadOnly(t *testing.T) {
+	t.Parallel()
+
 	// Oldest first, so the worktree bug of 09-24 is the second row.
 	m := press(worktreeModel(t), tabKey(tabBugs), "j")
 	for _, k := range []string{"s", "t"} {
@@ -66,6 +70,8 @@ func TestWorktreeItemsAreReadOnly(t *testing.T) {
 }
 
 func TestBranchItemsAreNotOpened(t *testing.T) {
+	t.Parallel()
+
 	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
 		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
@@ -93,6 +99,8 @@ func TestBranchItemsAreNotOpened(t *testing.T) {
 }
 
 func TestWithLoad(t *testing.T) {
+	t.Parallel()
+
 	called := false
 	m := worktreeModel(t).WithLoad(func() (*board.Board, error) {
 		called = true

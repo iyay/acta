@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-19
-hash: bhqg
+id: SCR-0019
+hash: bhqgz92
 title: Scratch skill must add context, not only verbatim words
 status: brainstorming
 created: "2026-09-29"

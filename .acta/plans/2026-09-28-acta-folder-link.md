@@ -1,7 +1,7 @@
 ---
 parent: bugs/2026-09-28-session-start-writes-through-acta-folder-link
-id: PLAN-21
-hash: vb12
+id: PLN-0021
+hash: vb127v0
 ---
 
 # Keep EnsureGitignore Inside the Repo Implementation Plan

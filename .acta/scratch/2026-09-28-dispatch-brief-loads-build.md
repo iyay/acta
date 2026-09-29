@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-7
-hash: wo3i
+id: SCR-0007
+hash: wo3i413
 title: Dispatch brief must load the build skill, not whitelist acta commands
 status: brainstorming
 created: "2026-09-28"

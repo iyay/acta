@@ -1,6 +1,6 @@
 ---
-id: PLAN-1
-hash: mbm7
+id: PLN-0001
+hash: mbm7pbp
 ---
 # Dispatch sends /new and /goal as two confirmed steps Implementation Plan
 

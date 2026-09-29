@@ -1,6 +1,6 @@
 ---
-id: DEBT-8
-hash: szcv
+id: DBT-0008
+hash: szcvavw
 parent: plans/2026-09-27-review-debt
 ---
 # Review NOTEs: Review Debt Implementation Plan

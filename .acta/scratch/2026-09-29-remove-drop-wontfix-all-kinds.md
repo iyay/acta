@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-18
-hash: cwog
+id: SCR-0018
+hash: cwogc6x
 title: Remove, drop and wont-fix actions for every kind
 status: raw
 created: "2026-09-29"

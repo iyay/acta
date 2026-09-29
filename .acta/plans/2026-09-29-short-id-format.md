@@ -1,8 +1,8 @@
 ---
 parent: scratch/2026-09-29-fast-id-lookup
 status: approved
-id: PLAN-32
-hash: q5u0
+id: PLN-0032
+hash: q5u0vwd
 ---
 # Short Id Format Implementation Plan
 

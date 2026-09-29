@@ -1,6 +1,6 @@
 ---
-id: DEBT-6
-hash: gjfg
+id: DBT-0006
+hash: gjfgz59
 parent: plans/2026-09-27-tui-followup
 ---
 # Review NOTEs: TUI follow-up Implementation Plan

@@ -3,6 +3,8 @@ package write
 import "testing"
 
 func TestBugTemplate(t *testing.T) {
+	t.Parallel()
+
 	want := "# ack dup on resend\n\n## Symptom\n\n## Root cause\n\n## Repro\n\n## Found in\n"
 	if got := string(BugTemplate("ack dup on resend", "")); got != want {
 		t.Fatalf("got %q", got)
@@ -13,6 +15,8 @@ func TestBugTemplate(t *testing.T) {
 }
 
 func TestBugFile(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ name, title, slug, ref, body, want string }{
 		{"title flag", "Print shows one type", "print-type", "", "## Symptom\nWrong value.\n",
 			"# Print shows one type\n\n## Symptom\nWrong value.\n"},
@@ -35,6 +39,8 @@ func TestBugFile(t *testing.T) {
 }
 
 func TestHasSymptom(t *testing.T) {
+	t.Parallel()
+
 	if !HasSymptom([]byte("# T\n\n## Symptom\nx\n")) || !HasSymptom([]byte("## Symptom  \n")) {
 		t.Error("missed a Symptom section")
 	}

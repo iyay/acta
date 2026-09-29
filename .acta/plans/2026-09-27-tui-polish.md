@@ -1,6 +1,6 @@
 ---
-id: PLAN-16
-hash: o8nd
+id: PLN-0016
+hash: o8ndihm
 ---
 # TUI Polish Implementation Plan
 

@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-17
-hash: s4h6
+id: SCR-0017
+hash: s4h6zmf
 title: Dim main window text when popup opens
 status: raw
 created: "2026-09-29"

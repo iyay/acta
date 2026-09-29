@@ -15,6 +15,8 @@ import (
 )
 
 func TestWatchDirs(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.Default("/r")
 	want := []string{"/r/.acta", "/r/.acta/specs", "/r/.acta/plans", "/r/.acta/bugs",
 		"/r/docs/superpowers", "/r/docs/superpowers/specs", "/r/docs/superpowers/plans", "/r/docs/superpowers/bugs"}
@@ -24,6 +26,8 @@ func TestWatchDirs(t *testing.T) {
 }
 
 func TestWatchGathersEventsIntoOneReload(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	var mu sync.Mutex
 	loads := 0
@@ -59,6 +63,8 @@ func TestWatchGathersEventsIntoOneReload(t *testing.T) {
 }
 
 func TestWatchPicksUpFoldersCreatedLater(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	later := filepath.Join(dir, "later")
 	msgs := make(chan tea.Msg, 10)
@@ -83,6 +89,8 @@ func TestWatchPicksUpFoldersCreatedLater(t *testing.T) {
 }
 
 func TestReloadKeyStillLoadsInManualMode(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	called := false
 	m.load = func() (*board.Board, error) { called = true; return m.board, nil }

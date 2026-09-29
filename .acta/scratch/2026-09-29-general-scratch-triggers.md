@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-16
-hash: luod
+id: SCR-0016
+hash: luodccp
 title: general-scratch-triggers
 status: raw
 created: "2026-09-29"

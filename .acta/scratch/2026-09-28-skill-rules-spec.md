@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-5
-hash: ogxe
+id: SCR-0005
+hash: ogxewwz
 title: skill-rules-spec
 status: brainstorming
 created: "2026-09-28"

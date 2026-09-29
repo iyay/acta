@@ -1,6 +1,6 @@
 ---
-id: DEBT-25
-hash: kslw
+id: DBT-0025
+hash: kslwc2z
 parent: plans/2026-09-29-short-id-format
 ---
 # Review NOTEs: Short Id Format Implementation Plan

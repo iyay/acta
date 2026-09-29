@@ -1,6 +1,6 @@
 ---
-id: SPEC-2
-hash: i2b1
+id: SPC-0002
+hash: i2b1de4
 ---
 # pm: a lean workflow plugin that replaces superpowers
 

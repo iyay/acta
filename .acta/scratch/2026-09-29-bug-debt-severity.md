@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-11
-hash: gij3
+id: SCR-0011
+hash: gij3qht
 title: Severity or priority for bugs and debt
 status: raw
 created: "2026-09-29"

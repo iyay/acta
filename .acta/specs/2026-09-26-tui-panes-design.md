@@ -1,6 +1,6 @@
 ---
-id: SPEC-5
-hash: jtlx
+id: SPC-0005
+hash: jtlxt4l
 ---
 # TUI: three panes, lazygit-style tabs, agent tags
 

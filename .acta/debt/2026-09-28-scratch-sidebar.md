@@ -1,6 +1,6 @@
 ---
-id: DEBT-10
-hash: u2v4
+id: DBT-0010
+hash: u2v4d4d
 parent: plans/2026-09-28-scratch-sidebar
 ---
 # Review NOTEs: Scratchpad Kind and Five-Pane Sidebar Implementation Plan

@@ -483,6 +483,8 @@ func TestReplyBackOwnPaneFallsBackToUnknown(t *testing.T) {
 // TestRoundFromBranch covers the slug rule straight, because git refuses
 // many of these names as real branches.
 func TestRoundFromBranch(t *testing.T) {
+	t.Parallel()
+
 	long := strings.Repeat("a", 63) + "-bcd"
 	for _, c := range []struct {
 		in, want string

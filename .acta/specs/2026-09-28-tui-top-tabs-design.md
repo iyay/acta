@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-09-28-tui-top-tabs-per-kind
-id: SPEC-12
-hash: x5dx
+id: SPC-0012
+hash: x5dx8jo
 ---
 # TUI top tabs, one per kind
 

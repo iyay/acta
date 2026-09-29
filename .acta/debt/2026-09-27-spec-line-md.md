@@ -1,6 +1,6 @@
 ---
-id: DEBT-2
-hash: v99z
+id: DBT-0002
+hash: v99zssa
 parent: plans/2026-09-26-spec-line-md
 ---
 # Review NOTEs: Spec line counts only .md paths Implementation Plan

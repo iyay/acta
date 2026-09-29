@@ -1,8 +1,8 @@
 ---
 parent: scratch/2026-09-29-brainstorm-always-writes-spec
-closes: [SCRATCH-14]
-id: SPEC-15
-hash: u873
+closes: [SCR-0014]
+id: SPC-0015
+hash: u8739wj
 ---
 
 # Bounded Brainstorms Write a Spec, Dispatch Lands Through acta:land

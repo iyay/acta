@@ -35,6 +35,8 @@ func ids(items []*Item) []string {
 }
 
 func TestLoadDerivesEveryItem(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	type want struct {
 		kind           Kind
@@ -93,6 +95,8 @@ func TestLoadDerivesEveryItem(t *testing.T) {
 // A task that has begun reads in-progress, whichever way it began: one ticked
 // box of three, or a started record and nothing ticked yet.
 func TestTaskUnderWayReadsInProgress(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"plans/2026-09-21-a.md": "# A plan\n\n### Task 1: One\n- [x] a\n- [ ] b\n- [ ] c\n",
 	})
@@ -104,6 +108,8 @@ func TestTaskUnderWayReadsInProgress(t *testing.T) {
 
 // The word doing is gone for good, so no item the board holds can read it.
 func TestNoItemOnTheBoardReadsDoing(t *testing.T) {
+	t.Parallel()
+
 	for _, it := range loadFixture(t).Items {
 		if it.Status == "doing" {
 			t.Errorf("%s reads doing, want in-progress", it.ID)
@@ -112,6 +118,8 @@ func TestNoItemOnTheBoardReadsDoing(t *testing.T) {
 }
 
 func TestLoadLinksPlans(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	parents := map[string]string{
 		"plans/2026-09-21-alpha#task-1":                "specs/2026-09-20-alpha",
@@ -140,6 +148,8 @@ func TestLoadLinksPlans(t *testing.T) {
 // Every plan file is its own item, with or without a spec, and a spec keeps
 // the progress and status it had while the plan folded into it.
 func TestPlansAreItems(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	alpha := b.Get("plans/2026-09-21-alpha")
 	if alpha == nil || alpha.Kind != KindPlan {
@@ -173,6 +183,8 @@ func TestPlansAreItems(t *testing.T) {
 // TestPlanSpecLineLinksBesideParent: a plan that works debt once hid its
 // spec, so the spec stayed draft after the plan landed (SPEC-16).
 func TestPlanSpecLineLinksBesideParent(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-29-s-design.md": "# S\n",
 		"debt/2026-09-29-d.md":         "# D\n\n- [ ] one\n",
@@ -194,6 +206,8 @@ func TestPlanSpecLineLinksBesideParent(t *testing.T) {
 // A spec path that names nothing is a problem on the plan, but the plan still
 // hangs under the parent it names in frontmatter.
 func TestPlanSpecLineMissingBesideParent(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"debt/2026-09-29-d.md":  "# D\n\n- [ ] one\n",
 		"plans/2026-09-29-p.md": "---\nparent: debt/2026-09-29-d\n---\n# P\n\n**Spec:** `.acta/specs/missing.md`\n\n### Task 1: A\n\n- [x] a\n",
@@ -211,6 +225,8 @@ func TestPlanSpecLineMissingBesideParent(t *testing.T) {
 // A parent that names nothing stays broken: the spec does not take the plan's
 // place in the tree, but the spec still counts the plan.
 func TestPlanSpecLineLinksWithBrokenParent(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-29-s-design.md": "# S\n",
 		"plans/2026-09-29-p.md":        "---\nparent: debt/nope\n---\n# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
@@ -231,6 +247,8 @@ func TestPlanSpecLineLinksWithBrokenParent(t *testing.T) {
 
 // A plan whose parent is its own spec counts that spec once, not twice.
 func TestPlanSpecLineSameItemAsParent(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-29-s-design.md": "# S\n",
 		"plans/2026-09-29-p.md":        "---\nparent: specs/2026-09-29-s-design\n---\n# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
@@ -249,6 +267,8 @@ func TestPlanSpecLineSameItemAsParent(t *testing.T) {
 }
 
 func TestLoadDashTasks(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	t1 := b.Get("plans/2026-09-26-dash-tasks#task-F-1")
 	t2 := b.Get("plans/2026-09-26-dash-tasks#task-F-2")
@@ -268,6 +288,8 @@ func TestLoadDashTasks(t *testing.T) {
 }
 
 func TestLoadDottedTasks(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	t1 := b.Get("plans/2026-09-28-dotted-tasks#task-2.1")
 	t2 := b.Get("plans/2026-09-28-dotted-tasks#task-2.2")
@@ -287,6 +309,8 @@ func TestLoadDottedTasks(t *testing.T) {
 }
 
 func TestLoadRecordsProblems(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	cases := map[string]string{
 		"plans/2026-09-27-orphan":     "parent bugs/nope not found",
@@ -309,6 +333,8 @@ func TestLoadRecordsProblems(t *testing.T) {
 }
 
 func TestLoadMarksLegacy(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	if !b.Get("docs/superpowers/specs/2026-01-01-old").Legacy || !b.Get("docs/superpowers/plans/2026-01-02-old#task-1").Legacy {
 		t.Error("legacy items not marked")
@@ -319,6 +345,8 @@ func TestLoadMarksLegacy(t *testing.T) {
 }
 
 func TestLists(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	check := func(name string, got, want []string) {
 		t.Helper()
@@ -350,6 +378,8 @@ func TestLists(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
+	t.Parallel()
+
 	b := loadFixture(t)
 	if got := ids(b.Search("b-1")); !contains(got, "bugs/2026-09-24-crash") {
 		t.Errorf("search by ref = %v", got)
@@ -363,6 +393,8 @@ func TestSearch(t *testing.T) {
 }
 
 func TestLoadMissingRoot(t *testing.T) {
+	t.Parallel()
+
 	b, err := Load(config.Default(t.TempDir()))
 	if err != nil || len(b.Items) != 0 {
 		t.Fatalf("got %v items, err %v", len(b.Items), err)
@@ -370,6 +402,8 @@ func TestLoadMissingRoot(t *testing.T) {
 }
 
 func TestAllowedAndClosed(t *testing.T) {
+	t.Parallel()
+
 	if !reflect.DeepEqual(Allowed(KindBug), []string{"open", "fixing", "fixed", "wontfix"}) {
 		t.Error("bug statuses")
 	}
@@ -390,6 +424,8 @@ func TestAllowedAndClosed(t *testing.T) {
 }
 
 func TestLoadDebtFileAndLines(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"plans/2026-09-26-short-ids.md": "---\nid: PLAN-3\nhash: k3f2\n---\n# Short IDs\n",
 		"debt/2026-09-27-short-ids.md":  "---\nid: DEBT-3\nhash: t9qe\nparent: plans/2026-09-26-short-ids\n---\n# Review NOTEs: Short IDs\n\n- [ ] a\n- [x] b\n- [-] c\n",
@@ -416,6 +452,8 @@ func TestLoadDebtFileAndLines(t *testing.T) {
 }
 
 func TestDebtFileDoneWhenAllLinesClosed(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"debt/2026-09-27-x.md": "---\nid: DEBT-1\n---\n# R\n\n- [x] a\n- [-] b\n",
 	})
@@ -429,6 +467,8 @@ func TestDebtFileDoneWhenAllLinesClosed(t *testing.T) {
 // file. A file git has no commit for belongs to whoever commits here now, and
 // a folder outside git leaves the field empty.
 func TestAuthorComesFromTheFirstCommit(t *testing.T) {
+	t.Parallel()
+
 	dir := authorRepo(t, "Ana", map[string]string{
 		"specs/2026-09-20-a.md": "---\nid: SPEC-1\n---\n# Spec A\n",
 		"plans/2026-09-21-a.md": "---\nid: PLAN-1\n---\n# Plan A\n\n**Spec:** `.acta/specs/2026-09-20-a.md`\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n",
@@ -466,6 +506,8 @@ func TestAuthorComesFromTheFirstCommit(t *testing.T) {
 // A debt item lives in its debt file, so it takes that file's author and the
 // text around the checklist as its body, not the whole file again.
 func TestDebtItemTakesTheDebtFile(t *testing.T) {
+	t.Parallel()
+
 	dir := authorRepo(t, "Budi", map[string]string{
 		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\nProse about the review.\n\n- [ ] first note\n- [x] second note\n",
 	})
@@ -551,6 +593,8 @@ func authorRepo(t *testing.T, name string, files map[string]string) string {
 // TestSpecWithPlanIgnoresWrittenStatus: SPEC-6 stayed approved with every
 // task done because the written status won.
 func TestSpecWithPlanIgnoresWrittenStatus(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{
 		"specs/2026-09-29-s-design.md": "---\nstatus: approved\n---\n# S\n",
 		"plans/2026-09-29-p.md":        "# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",

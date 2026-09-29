@@ -1,6 +1,6 @@
 ---
-id: DEBT-11
-hash: rafb
+id: DBT-0011
+hash: rafbigh
 parent: plans/2026-09-28-skill-rules
 ---
 # Review NOTEs: Skill Rules and First-Run Setup Implementation Plan

@@ -141,6 +141,8 @@ func lineOf(t *testing.T, lines []string, want string) int {
 // A task counts its steps, so it labels the line SUBTASKS. Every other kind
 // counts the tasks under it and keeps TASKS.
 func TestDetailLabelsSubtasksOnATask(t *testing.T) {
+	t.Parallel()
+
 	for _, c := range []struct{ id, label string }{
 		{"PLAN-1", "TASKS"},
 		{"SPEC-1", "TASKS"},
@@ -165,6 +167,8 @@ func TestDetailLabelsSubtasksOnATask(t *testing.T) {
 // The author sits right under the status, comes from the file itself, and is
 // left out when git has no name to give.
 func TestDetailShowsTheAuthorUnderTheStatus(t *testing.T) {
+	t.Parallel()
+
 	lines := detailLines(t, gitTree(t, "Ana", boardFiles()), "PLAN-1")
 	labels := labelsOf(lines)
 	at := slices.Index(labels, "AUTHOR")
@@ -233,6 +237,8 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 // A spec lists the tasks of every plan under it, one plain line naming each
 // plan, and a bug the tasks of the plans that name it as their parent.
 func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
+	t.Parallel()
+
 	wantInOrder(t, detailOf(t, "SPEC-1"),
 		"PLN-0001  Plan A",
 		"✓ PLN-0001.01  First",
@@ -270,6 +276,8 @@ func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
 // The text of a debt file around its checklist renders under the list, once,
 // and not as the whole file again.
 func TestDetailDebtItemShowsTheTextAroundItsLine(t *testing.T) {
+	t.Parallel()
+
 	lines := plainLines(detailOf(t, "DEBT-1.1"))
 	below := strings.Join(lines[ruleLine(t, lines):], "\n")
 	if !strings.Contains(below, "Prose about the review.") {
@@ -295,6 +303,8 @@ func ruleLine(t *testing.T, lines []string) int {
 // Every kind of item draws its header, so no detail pane is empty while the
 // file behind it has something to say.
 func TestDetailIsNeverEmpty(t *testing.T) {
+	t.Parallel()
+
 	for _, id := range []string{"SPEC-1", "SPEC-2", "PLAN-1", "BUG-1", "PLAN-1.1", "PLAN-1.3", "DEBT-1.1", "DEBT-1.2"} {
 		lines := detailOf(t, id)
 		if len(lines) < 3 {
@@ -346,6 +356,8 @@ func gitTree(t *testing.T, name string, files map[string]string) config.Config {
 // A tab fills the room up to the next stop of eight, counted with the width
 // of the words before it on the same line.
 func TestExpandTabsToNextStop(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ in, want string }{
 		{"\tx", "        x"},
 		{"ab\tx", "ab      x"},
@@ -439,6 +451,8 @@ func frameBreak(view string, w int) int {
 // breaks otherwise: the screen counts the cells the pane never drew, and the
 // old words stay under the new ones.
 func TestDetailWithTabsFitsThePane(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, tabFiles())
 	for _, size := range [][2]int{{80, 30}, {160, 50}} {
 		w, h := size[0], size[1]
@@ -465,6 +479,8 @@ func TestDetailWithTabsFitsThePane(t *testing.T) {
 // to show: the header, the work list and the body all end in the same lines,
 // and none of them may hold a tab or outgrow the pane it is measured for.
 func TestEveryDetailItemHoldsNoTabAndFitsItsWidth(t *testing.T) {
+	t.Parallel()
+
 	files := tabFiles()
 	// A second plan whose own title holds a tab and whose frontmatter names a
 	// kind that does not exist, so the line a spec draws above the tasks of a
@@ -515,6 +531,8 @@ func closesFiles() map[string]string {
 }
 
 func TestDetailShowsClosesAndClosedBy(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, closesFiles())
 	for _, c := range []struct{ id, label, value, absent string }{
 		{"SPEC-1", "CLOSES", "SCR-0001, scratch/2026-09-28-j", "CLOSED BY"},

@@ -1,6 +1,6 @@
 ---
-id: DEBT-1
-hash: ohwd
+id: DBT-0001
+hash: ohwd3gg
 parent: plans/2026-09-26-open-notes
 ---
 # Review NOTEs: Close open review NOTEs Implementation Plan

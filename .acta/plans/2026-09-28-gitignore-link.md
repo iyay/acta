@@ -1,7 +1,7 @@
 ---
 parent: bugs/2026-09-28-session-start-writes-through-gitignore-link
-id: PLAN-20
-hash: y7ij
+id: PLN-0020
+hash: y7ijyab
 ---
 
 # Refuse a Linked .gitignore Implementation Plan

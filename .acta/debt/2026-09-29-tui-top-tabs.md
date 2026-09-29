@@ -1,6 +1,6 @@
 ---
-id: DEBT-14
-hash: rhb4
+id: DBT-0014
+hash: rhb4l5a
 parent: plans/2026-09-28-tui-top-tabs
 ---
 # Review NOTEs: TUI Top Tabs Per Kind Implementation Plan

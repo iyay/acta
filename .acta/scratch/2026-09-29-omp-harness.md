@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-15
-hash: mgfe
+id: SCR-0015
+hash: mgfekh8
 title: omp-harness
 status: raw
 created: "2026-09-29"

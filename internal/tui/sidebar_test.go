@@ -23,6 +23,8 @@ func everyPlanOpen(b *board.Board) map[string]bool {
 }
 
 func TestTopTabsTable(t *testing.T) {
+	t.Parallel()
+
 	want := []struct {
 		name string
 		kind board.Kind
@@ -59,6 +61,8 @@ func TestTopTabsTable(t *testing.T) {
 }
 
 func TestTUIOpensOnActivities(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 160, 50)
 	if m.top != tabActivities || m.focus != paneList {
 		t.Fatalf("opens on tab %d pane %d, want Activities and its List", m.top, m.focus)
@@ -73,6 +77,8 @@ func TestTUIOpensOnActivities(t *testing.T) {
 }
 
 func TestNumberKeysOpenTheirTab(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 160, 50)
 	for from := range topTabs {
 		for to := range topTabs {
@@ -88,6 +94,8 @@ func TestNumberKeysOpenTheirTab(t *testing.T) {
 }
 
 func TestLeftRightWalkTheTabs(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 160, 50)
 	if got := press(m, "right").top; got != tabScratches {
 		t.Errorf("right from Activities opens tab %d, want Scratches", got)
@@ -111,6 +119,8 @@ func TestLeftRightWalkTheTabs(t *testing.T) {
 }
 
 func TestTabCyclesOnlyTheOpenTabsPanes(t *testing.T) {
+	t.Parallel()
+
 	m := press(sized(newModel(t), 160, 50), tabKey(tabPlans))
 	for i, want := range []pane{paneDone, paneDetail, paneList} {
 		m = press(m, "tab")
@@ -141,6 +151,8 @@ func TestTabCyclesOnlyTheOpenTabsPanes(t *testing.T) {
 }
 
 func TestDoneSubTabKeysOnlyActOnTheDonePane(t *testing.T) {
+	t.Parallel()
+
 	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs))
 	if got := press(m, "]").done; got != 0 {
 		t.Errorf("] on the List pane moved the Done sub-tab to %d", got)
@@ -165,6 +177,8 @@ func TestDoneSubTabKeysOnlyActOnTheDonePane(t *testing.T) {
 }
 
 func TestFirstVisitSelectsTheTopRowAndShowsIt(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		m := press(sized(newModel(t), 160, 50), tabKey(i))
 		rows := m.rowsOf(paneList)
@@ -183,6 +197,8 @@ func TestFirstVisitSelectsTheTopRowAndShowsIt(t *testing.T) {
 }
 
 func TestReturnVisitKeepsPaneRowAndTree(t *testing.T) {
+	t.Parallel()
+
 	m := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "j", "tab")
 	// Oldest first puts alpha before lonely, so step down to lonely before
 	// opening it: lonely has one task, alpha has two.
@@ -203,6 +219,8 @@ func TestReturnVisitKeepsPaneRowAndTree(t *testing.T) {
 // three rows to two. The cursor has to land on the last row that is left,
 // which is neither the row it was on nor the first row of the new list.
 func TestAShrunkListClampsTheCursor(t *testing.T) {
+	t.Parallel()
+
 	bugs := press(sized(newModel(t), 160, 50), tabKey(tabBugs), "G")
 	if got := cursorOf(bugs.rowsOf(paneList), bugs.sel[paneList], bugs.idx[paneList]); got != 2 {
 		t.Fatalf("before the reload the cursor is on row %d, want the last of the 3 bugs", got)
@@ -232,6 +250,8 @@ func TestAShrunkListClampsTheCursor(t *testing.T) {
 }
 
 func TestAnEmptyListShowsNoItems(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-only.md": "# Only bug\n\n## Symptom\nx\n"})
 	m := sized(detailModel(t, cfg), 160, 50)
 	for _, i := range []int{tabActivities, tabScratches} {
@@ -243,6 +263,8 @@ func TestAnEmptyListShowsNoItems(t *testing.T) {
 }
 
 func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, map[string]string{
 		".acta/plans/2026-09-20-one.md": "# One\n\n### Task 1: A\n\n- [x] a\n- [ ] b\n",
 		".acta/plans/2026-09-21-two.md": "# Two\n\n### Task 1: B\n\n- [x] a\n- [ ] b\n\n### Task 2: C\n\n- [ ] c\n",
@@ -282,6 +304,8 @@ func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 // full-width line of dashes, even where in-progress and not-started items sit
 // next to each other.
 func TestNoDividerRow(t *testing.T) {
+	t.Parallel()
+
 	m := sized(newModel(t), 160, 50)
 	m.openPlans = everyPlanOpen(m.board)
 	_, b := fixture(t)
@@ -332,6 +356,8 @@ func TestNoDividerRow(t *testing.T) {
 // SPC-0009; the shared fixture's linked spec has none, so the same line names
 // it by path there.
 func TestScratchDetailNamesTheLinkedSpec(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, map[string]string{
 		".acta/scratch/2026-09-28-idea.md":        "# Themes\n\nCatet aja dulu.\n",
 		".acta/specs/2026-09-28-themes-design.md": "---\nid: SPEC-9\nparent: scratch/2026-09-28-idea\n---\n# Themes design\n\nThe spec the idea became.\n",

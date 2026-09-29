@@ -1,6 +1,6 @@
 ---
-id: SPEC-10
-hash: ju87
+id: SPC-0010
+hash: ju877gp
 ---
 # Scratchpad kind and a five-pane sidebar
 

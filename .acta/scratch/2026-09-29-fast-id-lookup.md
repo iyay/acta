@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-13
-hash: oxoq
+id: SCR-0013
+hash: oxoqf86
 title: Cheapest and fastest way to find an item by id
 status: brainstorming
 created: "2026-09-29"

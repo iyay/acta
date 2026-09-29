@@ -1,6 +1,6 @@
 ---
-id: BUG-6
-hash: obj8
+id: BUG-0006
+hash: obj8k72
 ---
 # Second big brainstorm gets made-up options instead of the two real choices
 

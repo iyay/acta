@@ -1,6 +1,6 @@
 ---
-id: DEBT-16
-hash: hr7s
+id: DBT-0016
+hash: hr7szkn
 parent: plans/2026-09-29-reply-back
 ---
 # Review NOTEs: Dispatch Reply-Back Implementation Plan

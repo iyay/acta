@@ -20,6 +20,8 @@ func planModel(t *testing.T) Model {
 }
 
 func TestPlanRowsStartShutAndSpaceOrEnterFlipThem(t *testing.T) {
+	t.Parallel()
+
 	m := toPlans(planModel(t))
 	shut := []string{"plans/2026-09-21-alpha", "plans/2026-09-23-lonely"}
 	if got := rowIDs(m); !slices.Equal(got, shut) {
@@ -41,6 +43,8 @@ func TestPlanRowsStartShutAndSpaceOrEnterFlipThem(t *testing.T) {
 }
 
 func TestTreeRowsSelectTheirOwnDetail(t *testing.T) {
+	t.Parallel()
+
 	m := press(toPlans(planModel(t)), " ")
 	if it := m.Selected(); it == nil || it.Kind != board.KindPlan {
 		t.Fatalf("a plan row selects %v, want the plan", it)
@@ -63,6 +67,8 @@ func TestTreeRowsSelectTheirOwnDetail(t *testing.T) {
 }
 
 func TestTreeRowsWearTheirMarks(t *testing.T) {
+	t.Parallel()
+
 	m := toPlans(planModel(t))
 	rows := m.rowsOf(m.listPane())
 	if head := m.rowText(rows[1], m.board.Get(rows[1].id), 80); !strings.HasPrefix(head, "+ ") {
@@ -91,6 +97,8 @@ func TestTreeRowsWearTheirMarks(t *testing.T) {
 }
 
 func TestAPlanWithNoTasksAddsNoRows(t *testing.T) {
+	t.Parallel()
+
 	cfg := treeCfg(t, map[string]string{".acta/plans/2026-09-20-empty.md": "# Empty plan\n"})
 	m := toPlans(sized(detailModel(t, cfg), 160, 50))
 	if got := rowIDs(m); !slices.Equal(got, []string{"plans/2026-09-20-empty"}) {
@@ -106,6 +114,8 @@ func TestAPlanWithNoTasksAddsNoRows(t *testing.T) {
 }
 
 func TestTheDonePlansTreeBehavesTheSame(t *testing.T) {
+	t.Parallel()
+
 	m := toPlansDone(planModel(t))
 	rows := doneRowIDs(m)
 	if len(rows) == 0 {
@@ -125,6 +135,8 @@ func TestTheDonePlansTreeBehavesTheSame(t *testing.T) {
 }
 
 func TestOpeningAPlanLeavesOlderModelsAlone(t *testing.T) {
+	t.Parallel()
+
 	m := toPlans(planModel(t))
 	_ = press(m, " ")
 	if got := len(rowIDs(m)); got != 2 {

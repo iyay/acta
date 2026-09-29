@@ -39,6 +39,8 @@ var idFiles = map[string]string{
 }
 
 func TestGetResolvesEveryIDForm(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, idFiles)
 	cases := map[string]string{
 		"specs/2026-09-20-a-design": "specs/2026-09-20-a-design",
@@ -67,6 +69,8 @@ func TestGetResolvesEveryIDForm(t *testing.T) {
 }
 
 func TestItemsCarryShortIDs(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, idFiles)
 	task := b.Get("plans/2026-09-21-a#task-3")
 	if task.ShortID != "PLN-0012.03" || task.Hash != "PLN-k3f2.03" || !strings.HasSuffix(task.PlanPath, "2026-09-21-a.md") {
@@ -83,6 +87,8 @@ func TestItemsCarryShortIDs(t *testing.T) {
 // A 4-char hash is no longer a hash, but setIDs still reads one so an old file
 // loads. isHashLen is what lets it.
 func TestIsHash(t *testing.T) {
+	t.Parallel()
+
 	for s, want := range map[string]bool{"k3f2abc": true, "abcd": false, "1234": false, "K3f2": false, "k3f": false, "k3f2ab": false, "k-f2": false, "": false} {
 		if IsHash(s) != want {
 			t.Errorf("IsHash(%q) = %v", s, !want)
@@ -96,6 +102,8 @@ func TestIsHash(t *testing.T) {
 }
 
 func TestDuplicateShortIDsAreProblems(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"bugs/2026-09-23-a.md": "---\nid: BUG-7\nhash: b7aa\n---\n# A\n",
 		"bugs/2026-09-24-b.md": "---\nid: BUG-7\nhash: b7aa\n---\n# B\n",
@@ -112,6 +120,8 @@ func TestDuplicateShortIDsAreProblems(t *testing.T) {
 // says type: bug in specs/ reads as BUG and a plan file reads as PLN. The
 // folder a file sits in is not the kind it is.
 func TestPrefixFollowsTheKindTheFileIs(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-20-a-design.md": "---\ntype: bug\nid: BUG-3\nhash: m2x9\n---\n# A\n",
 		"plans/2026-09-21-b.md":        "---\nid: PLAN-12\nhash: k3f2\n---\n# B\n\n### Task 1: T\n- [ ] a\n",
@@ -135,6 +145,8 @@ func TestPrefixFollowsTheKindTheFileIs(t *testing.T) {
 // A value in the wrong shape stays a problem and never becomes an ID, and the
 // file's own id is kept so a tool can see it without reading the file again.
 func TestIDsKeepTheWrittenValue(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\nhash: toolongg\n---\n# A\n",
 	})
@@ -154,6 +166,8 @@ func TestIDsKeepTheWrittenValue(t *testing.T) {
 // A plan whose tasks belong to a spec is an item of its own, and the plan
 // file is where its own id lives.
 func TestPlanKeepsItsOwnFile(t *testing.T) {
+	t.Parallel()
+
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-20-a-design.md": "# A\n",
 		"plans/2026-09-21-b.md":        "---\nparent: specs/2026-09-20-a-design\nid: PLAN-12\nhash: k3f2\n---\n# B\n\n### Task 1: T\n- [ ] a\n",

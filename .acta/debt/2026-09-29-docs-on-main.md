@@ -1,6 +1,6 @@
 ---
-id: DEBT-23
-hash: lv8r
+id: DBT-0023
+hash: lv8rthg
 parent: plans/2026-09-29-docs-on-main
 ---
 # Review NOTEs: Specs and Plans on Main Implementation Plan

@@ -1,6 +1,6 @@
 ---
-id: DEBT-17
-hash: uc0d
+id: DBT-0017
+hash: uc0dwq7
 parent: plans/2026-09-29-skill-paths
 ---
 # Review NOTEs: Skill Paths Implementation Plan

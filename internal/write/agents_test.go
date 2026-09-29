@@ -13,6 +13,8 @@ import (
 const taskID = "plans/2026-09-26-short-ids#task-3"
 
 func TestAgentName(t *testing.T) {
+	t.Parallel()
+
 	// A flag wins over the environment; otherwise AI_AGENT is read.
 	vars := func(m map[string]string) func(string) string {
 		return func(k string) string { return m[k] }
@@ -39,6 +41,8 @@ func TestAgentName(t *testing.T) {
 }
 
 func TestRecordAgentWritesTheRecord(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	at := time.Date(2026, 9, 26, 20, 46, 0, 0, time.FixedZone("WIB", 7*3600))
 	if err := RecordAgent(root, taskID, "omp", at, false); err != nil {
@@ -60,6 +64,8 @@ func TestRecordAgentWritesTheRecord(t *testing.T) {
 }
 
 func TestRecordAgentUpdatesOneKeyAndKeepsTheRest(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	first := time.Date(2026, 9, 26, 9, 0, 0, 0, time.UTC)
 	later := first.Add(time.Hour)
@@ -79,6 +85,8 @@ func TestRecordAgentUpdatesOneKeyAndKeepsTheRest(t *testing.T) {
 }
 
 func TestRecordAgentReplacesBrokenJSON(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
@@ -92,6 +100,8 @@ func TestRecordAgentReplacesBrokenJSON(t *testing.T) {
 }
 
 func TestRecordAgentWithoutANameWritesNothing(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	if err := RecordAgent(root, taskID, "", time.Now(), false); err != nil {
 		t.Fatal(err)
@@ -120,6 +130,8 @@ func readAgents(t *testing.T, root string) map[string]agentRec {
 // A start is kept: the next normal tick updates name and time but must not
 // clear the started flag, or the board would drop back to todo.
 func TestRecordAgentKeepsStartedOnALaterTick(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	if err := RecordAgent(root, taskID, "", time.Now(), true); err != nil {
 		t.Fatal(err)
@@ -136,6 +148,8 @@ func TestRecordAgentKeepsStartedOnALaterTick(t *testing.T) {
 // A start with no agent name still writes: the board must see the start
 // even when the harness names nobody.
 func TestRecordAgentStartWritesWithoutAName(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	if err := RecordAgent(root, taskID, "", time.Now(), true); err != nil {
 		t.Fatal(err)

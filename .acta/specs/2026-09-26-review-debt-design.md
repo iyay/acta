@@ -1,6 +1,6 @@
 ---
-id: SPEC-6
-hash: cwpp
+id: SPC-0006
+hash: cwppl1w
 ---
 # Review NOTEs become tracked tech debt
 

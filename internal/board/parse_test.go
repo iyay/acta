@@ -7,6 +7,8 @@ import (
 )
 
 func TestParseFrontTitleAndBody(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("---\nref: New-261\nstatus: open\n---\n# The title\n\ntext\n"))
 	if !d.HasFront || d.FrontErr != nil {
 		t.Fatalf("front: has=%v err=%v", d.HasFront, d.FrontErr)
@@ -23,6 +25,8 @@ func TestParseFrontTitleAndBody(t *testing.T) {
 }
 
 func TestParseNoFront(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("# Only title\n"))
 	if d.HasFront || d.Front != nil || d.Title != "Only title" {
 		t.Fatalf("got %+v", d)
@@ -30,6 +34,8 @@ func TestParseNoFront(t *testing.T) {
 }
 
 func TestParseBrokenFront(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("---\nref: [unclosed\n---\n# Still read\n"))
 	if !d.HasFront || d.FrontErr == nil {
 		t.Fatalf("want a front error, got has=%v err=%v", d.HasFront, d.FrontErr)
@@ -40,6 +46,8 @@ func TestParseBrokenFront(t *testing.T) {
 }
 
 func TestParseUnclosedFrontIsBody(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("---\nno closing line\n# Title\n"))
 	if d.HasFront || d.Title != "Title" {
 		t.Fatalf("got has=%v title=%q", d.HasFront, d.Title)
@@ -47,6 +55,8 @@ func TestParseUnclosedFrontIsBody(t *testing.T) {
 }
 
 func TestParseCRLF(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("---\r\nref: X\r\n---\r\n# T\r\n"))
 	if d.Front["ref"] != "X" || d.Title != "T" {
 		t.Fatalf("got %+v", d)
@@ -54,6 +64,8 @@ func TestParseCRLF(t *testing.T) {
 }
 
 func TestParseSpecLine(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]string{
 		"**Spec:** `docs/superpowers/specs/2026-09-25-a-design.md`\n":                              "docs/superpowers/specs/2026-09-25-a-design.md",
 		"**Spec:** .pm/specs/2026-09-16-finished.md\n":                                             ".pm/specs/2026-09-16-finished.md",
@@ -76,6 +88,8 @@ func TestParseSpecLine(t *testing.T) {
 }
 
 func TestParseTasks(t *testing.T) {
+	t.Parallel()
+
 	src := strings.Join([]string{
 		"# Plan",                     // 1
 		"",                           // 2
@@ -117,6 +131,8 @@ func TestParseTasks(t *testing.T) {
 }
 
 func TestParseTaskNumberAsWritten(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ heading, num, title string }{
 		{"### Task 1: First step", "1", "First step"},
 		{"### Task 1:", "1", ""},
@@ -151,6 +167,8 @@ func TestParseTaskNumberAsWritten(t *testing.T) {
 }
 
 func TestParseDashTasksDoNotCollapse(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("# Plan\n\n### Task F-1: First\n\n### Task F-2: Second\n"))
 	if len(d.Tasks) != 2 {
 		t.Fatalf("got %d tasks, want 2: %+v", len(d.Tasks), d.Tasks)
@@ -161,6 +179,8 @@ func TestParseDashTasksDoNotCollapse(t *testing.T) {
 }
 
 func TestParseDottedTasksDoNotCollapse(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("# Plan\n\n### Task 2.1: First\n\n### Task 2.2: Second\n"))
 	if len(d.Tasks) != 2 {
 		t.Fatalf("got %d tasks, want 2: %+v", len(d.Tasks), d.Tasks)
@@ -174,6 +194,8 @@ func TestParseDottedTasksDoNotCollapse(t *testing.T) {
 }
 
 func TestParseTitleIgnoresFence(t *testing.T) {
+	t.Parallel()
+
 	d := Parse([]byte("```\n# not a title\n```\n# Real title\n"))
 	if d.Title != "Real title" {
 		t.Fatalf("title = %q", d.Title)
@@ -181,6 +203,8 @@ func TestParseTitleIgnoresFence(t *testing.T) {
 }
 
 func TestParseDebtChecklist(t *testing.T) {
+	t.Parallel()
+
 	src := "---\nid: DEBT-3\n---\n# Review NOTEs: X\n\nintro line\n\n- [ ] open one\n- [x] done one\n- [X] done two\n- [-] skipped one\n\n```\n- [ ] inside fence\n```\n"
 	doc := Parse([]byte(src))
 	want := []ItemLine{

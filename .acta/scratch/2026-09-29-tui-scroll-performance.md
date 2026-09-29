@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-10
-hash: cmqh
+id: SCR-0010
+hash: cmqhubg
 title: TUI scroll is slow and delayed in every pane
 status: raw
 created: "2026-09-29"

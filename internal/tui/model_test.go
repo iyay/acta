@@ -170,6 +170,8 @@ func doneRowIDs(m Model) []string { return ids(m.doneRows()) }
 // TestEachTabHoldsItsOwnItems reads the rows every tab of the bar lists, so
 // no two tabs can ever show the same kind of item.
 func TestEachTabHoldsItsOwnItems(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		tab  int
 		keys []string
@@ -193,6 +195,8 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 // other rows the Plans tab lists, so opening a plan is what puts a task on
 // the screen.
 func TestThePlansTabShowsTasksUnderAnOpenPlan(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabPlans), " ")
 	if got := strings.Join(rowIDs(m), " "); got != "plans/2026-09-21-alpha plans/2026-09-21-alpha#task-1 plans/2026-09-21-alpha#task-2 plans/2026-09-23-lonely" {
 		t.Fatalf("the opened Plans tree holds %q", got)
@@ -219,6 +223,8 @@ func debtModel(t *testing.T) Model {
 }
 
 func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
+	t.Parallel()
+
 	m := press(debtModel(t), tabKey(tabDebts))
 	if got := strings.Join(rowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-1" {
 		t.Fatalf("Debt open rows %q, want only the open line", got)
@@ -229,6 +235,8 @@ func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
 }
 
 func TestDebtDonePaneSplitsDoneAndWontfix(t *testing.T) {
+	t.Parallel()
+
 	m := press(debtModel(t), tabKey(tabDebts), "tab")
 	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-2" {
 		t.Fatalf("Debt Done rows %q", got)
@@ -249,6 +257,8 @@ func TestDebtDonePaneSplitsDoneAndWontfix(t *testing.T) {
 // a debt file on the board must never leak into, or take rows away from,
 // Specs, Plans or Bugs.
 func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
+	t.Parallel()
+
 	withDebt := debtModel(t)
 	without := withDebt
 	plain, err := board.Load(treeCfg(t, map[string]string{
@@ -271,6 +281,8 @@ func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
 // and both of its Done sub-tabs, so the Done pane of one tab can never show
 // the finished items of another.
 func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		tab  int
 		done int
@@ -302,6 +314,8 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 // A plan that is done lists its tasks in the Done pane as a tree too, so
 // opening a finished plan shows the tasks it finished with.
 func TestTheDonePlansTreeHoldsTheTasksOfAnOpenPlan(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabPlans), "tab", "G")
 	shut := doneRowIDs(m)
 	if len(shut) < 2 {
@@ -315,6 +329,8 @@ func TestTheDonePlansTreeHoldsTheTasksOfAnOpenPlan(t *testing.T) {
 }
 
 func TestMoveKeysInListPanes(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	if m.Selected().ID != "specs/2026-09-17-broken" {
 		t.Fatalf("first selection %s", m.Selected().ID)
@@ -347,6 +363,8 @@ func TestMoveKeysInListPanes(t *testing.T) {
 }
 
 func TestTopAndBottomKeysInListPanes(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	m = press(m, "G")
 	if m.openRows()[m.cursor()].id != groupRowID {
@@ -363,6 +381,8 @@ func TestTopAndBottomKeysInListPanes(t *testing.T) {
 }
 
 func TestScrollKeysInPaneDetail(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "0")
 	if m.off[paneDetail] != 0 {
 		t.Fatalf("the detail starts at the top: %d", m.off[paneDetail])
@@ -390,6 +410,8 @@ func TestScrollKeysInPaneDetail(t *testing.T) {
 }
 
 func TestScrollKeysDoNothingInListPanes(t *testing.T) {
+	t.Parallel()
+
 	m := press(longModel(t), tabKey(tabPlans), "0", "ctrl+d", "esc")
 	if m.off[paneDetail] != pageLines {
 		t.Fatalf("leaving the detail box should keep the body where it was: %d", m.off[paneDetail])
@@ -411,6 +433,8 @@ func TestScrollKeysDoNothingInListPanes(t *testing.T) {
 }
 
 func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	g := m.geometry()
 	// A row takes one line, so the third line of the pane is the third row.
@@ -431,6 +455,8 @@ func TestClickOnARowSelectsItAndFocusesItsPane(t *testing.T) {
 // shows and clicks where each of the two ends is drawn, so a click cannot land
 // on the neighbour of the row the eye sees.
 func TestAClickOnTheFirstAndLastVisibleRowLandsOnThatRow(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name string
 		keys []string
@@ -476,6 +502,8 @@ func TestAClickOnTheFirstAndLastVisibleRowLandsOnThatRow(t *testing.T) {
 // clicks the second one, so a click on a finished sub-tab name lands on that
 // sub-tab. The List box has one name, so a click there only takes the focus.
 func TestClickOnATabNameSwitchesTab(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabBugs), "tab")
 	g := m.geometry()
 	done := g.side[paneDone]
@@ -499,6 +527,8 @@ func TestClickOnATabNameSwitchesTab(t *testing.T) {
 }
 
 func TestClickInsideAPaneOnlyFocusesIt(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	g := m.geometry()
 	// Below the last row of the List box is its own border, so use the wide
@@ -519,6 +549,8 @@ func TestClickInsideAPaneOnlyFocusesIt(t *testing.T) {
 }
 
 func TestKeysContinueFromAClickedRow(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	g := m.geometry()
 	m = click(m, 2, g.side[paneList].y+1)
@@ -534,6 +566,8 @@ func TestKeysContinueFromAClickedRow(t *testing.T) {
 }
 
 func TestKeyADoesNothing(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	// The cursor is a slice, so it is copied out before the keys: a shared
 	// slice would hide a change instead of showing one.
@@ -549,6 +583,8 @@ func TestKeyADoesNothing(t *testing.T) {
 }
 
 func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), "?")
 	if !m.help {
 		t.Fatal("? should open the help")
@@ -579,6 +615,8 @@ func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
 }
 
 func TestAMinuteTickMovesTheClock(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	if m.now.IsZero() {
 		t.Fatal("the clock should start at the real time")
@@ -595,6 +633,8 @@ func TestAMinuteTickMovesTheClock(t *testing.T) {
 }
 
 func TestItemKeysUseTheFocusedListPane(t *testing.T) {
+	t.Parallel()
+
 	// The Done box has the focus, so s works on the finished plan it selected.
 	m := press(newModel(t), tabKey(tabPlans), "tab", "s")
 	if m.popup == nil || m.popup.field != "status" {
@@ -629,6 +669,8 @@ func TestItemKeysUseTheFocusedListPane(t *testing.T) {
 // the detail box sits beside them, and Activities draws one box where a kind
 // tab draws two.
 func TestGeometryPlacesThePanes(t *testing.T) {
+	t.Parallel()
+
 	// 120 columns, the normal width, on the Plans tab: two boxes on the left
 	// and the detail box on the right, all starting one line lower because
 	// the tab bar has the line above them.
@@ -705,6 +747,8 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 // TestSelectionIsPerTab walks every tab of the bar with its own cursor, so
 // opening another tab can never move the row one tab had selected.
 func TestSelectionIsPerTab(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		tab  int
 		keys []string
@@ -732,6 +776,8 @@ func TestSelectionIsPerTab(t *testing.T) {
 }
 
 func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabPlans), "tab", "j", "0")
 	if m.Selected().ID != "plans/2026-09-25-crash-fix" {
 		t.Fatalf("the detail should keep showing the Done box: %v", m.Selected())
@@ -749,6 +795,8 @@ func TestSelectedFollowsTheLastFocusedListPane(t *testing.T) {
 }
 
 func TestUntypedGroupRow(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	if got := rowIDs(m); got[len(got)-1] != groupRowID {
 		t.Fatalf("rows %v", got)
@@ -768,6 +816,8 @@ func TestUntypedGroupRow(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), "/", "c", "r", "a", "s", "h")
 	if !m.searching || m.query != "crash" {
 		t.Fatalf("searching %v query %q", m.searching, m.query)
@@ -797,6 +847,8 @@ func TestSearch(t *testing.T) {
 }
 
 func TestPopupRefusals(t *testing.T) {
+	t.Parallel()
+
 	// A task takes its status from its checkboxes, so s on a task row says
 	// so instead of opening the picker. Open a plan to reach a task row.
 	m := press(newModel(t), tabKey(tabPlans), " ", "j", "s")
@@ -810,6 +862,8 @@ func TestPopupRefusals(t *testing.T) {
 }
 
 func TestStatusPopupSetsValue(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	var got []string
 	m.setValue = func(id, field, value string) (write.Outcome, error) {
@@ -830,6 +884,8 @@ func TestStatusPopupSetsValue(t *testing.T) {
 }
 
 func TestPopupEscAndOutcomes(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabBugs), "t", "esc")
 	if m.popup != nil {
 		t.Fatal("esc should close the popup")
@@ -851,6 +907,8 @@ func TestPopupEscAndOutcomes(t *testing.T) {
 }
 
 func TestReloadKeepsSelection(t *testing.T) {
+	t.Parallel()
+
 	cfg, b := fixture(t)
 	m := press(newModel(t), tabKey(tabSpecs), "j") // the second spec of the oldest date
 	next, _ := m.Update(reloadMsg{b: b})
@@ -881,6 +939,8 @@ func TestReloadKeepsSelection(t *testing.T) {
 }
 
 func TestWatchFailedGoesManual(t *testing.T) {
+	t.Parallel()
+
 	next, _ := newModel(t).Update(WatchFailed(errors.New("too many files")))
 	m := next.(Model)
 	if !m.manual || !strings.Contains(m.status, "press r") {
@@ -889,6 +949,8 @@ func TestWatchFailedGoesManual(t *testing.T) {
 }
 
 func TestNewBugSlugInput(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), "n", "a", "B", "-", "1", " ", "backspace")
 	if m.slug == nil || *m.slug != "a-" {
 		t.Fatalf("slug %v", m.slug)
@@ -971,6 +1033,8 @@ func doneTabBefore(t *testing.T, m Model, i int) Model {
 // nothing. The letters come from the drawn title, so a click box that drifts
 // from the view fails here.
 func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
+	t.Parallel()
+
 	widths := clickWidths()
 	clicked := map[string]bool{}
 
@@ -1047,6 +1111,8 @@ func TestClickLandsOnEveryDrawnTabName(t *testing.T) {
 // end, so no sub-tab looks unselected and a click on its old spot falls into
 // the list. This checks it for every tab, at every width the review named.
 func TestTabTitleAlwaysShowsTheOpenTab(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		if len(topTabs[i].done) == 0 {
 			continue
@@ -1099,6 +1165,8 @@ func statusX(t *testing.T, m Model, name string) int {
 }
 
 func TestClickOnBottomLineLinksOpensThem(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name string
 		link string
@@ -1125,6 +1193,8 @@ func TestClickOnBottomLineLinksOpensThem(t *testing.T) {
 }
 
 func TestClickElsewhereOnBottomLineOpensNothing(t *testing.T) {
+	t.Parallel()
+
 	m := sized(clocked(newModel(t), 20, 46), 200, 30)
 	m.cfg.Links.Donate = "https://ko-fi.com/someone"
 	var got []string
@@ -1146,6 +1216,8 @@ func TestClickElsewhereOnBottomLineOpensNothing(t *testing.T) {
 }
 
 func TestClicksMatchDrawnWordsAtEveryWidth(t *testing.T) {
+	t.Parallel()
+
 	for _, donate := range []string{"", "https://ko-fi.com/someone"} {
 		for w := 30; w <= 200; w++ {
 			m := sized(clocked(newModel(t), 20, 46), w, 30)
@@ -1220,6 +1292,8 @@ func TestClicksMatchDrawnWordsAtEveryWidth(t *testing.T) {
 }
 
 func TestNormalizeVersion(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		in   string
 		want string
@@ -1264,6 +1338,8 @@ func openGroupIDs(m Model) (going, rest []string) {
 // board: the pane lists exactly the open items of its own kind, oldest file
 // date first.
 func TestEveryTabHoldsItsOpenItemsInFileDateOrder(t *testing.T) {
+	t.Parallel()
+
 	m := splitModel(t)
 	for i := range topTabs {
 		kind := topTabs[i].kind
@@ -1299,6 +1375,8 @@ func TestEveryTabHoldsItsOpenItemsInFileDateOrder(t *testing.T) {
 }
 
 func TestStartedTaskWithNoTicksCountsAsInProgress(t *testing.T) {
+	t.Parallel()
+
 	m := newModel(t)
 	lonely := m.board.Get("plans/2026-09-23-lonely#task-1")
 	if lonely.Done != 0 {
@@ -1360,6 +1438,8 @@ func TestAStartedTaskKeepsTheAccentAndItsCountAndAgent(t *testing.T) {
 }
 
 func TestUnknownStatusIsListedAndNotInProgress(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs))
 	found := false
 	for _, r := range m.openRows() {
@@ -1377,6 +1457,8 @@ func TestUnknownStatusIsListedAndNotInProgress(t *testing.T) {
 }
 
 func TestNoPaneEverDrawsARuleRow(t *testing.T) {
+	t.Parallel()
+
 	// Whatever mix of items a list holds, the rows are the items themselves.
 	keep := func(m Model, want func(*board.Item) bool) Model {
 		var items []*board.Item
@@ -1431,6 +1513,8 @@ func TestNoPaneEverDrawsARuleRow(t *testing.T) {
 }
 
 func TestSearchListsEveryMatch(t *testing.T) {
+	t.Parallel()
+
 	m := splitModel(t)
 	m = press(m, tabKey(tabSpecs), "/", "A", "l", "p", "h", "a")
 	rows := ids(m.openRows())
@@ -1445,6 +1529,8 @@ func TestSearchListsEveryMatch(t *testing.T) {
 }
 
 func TestClickOnTheSpaceBelowTheRowsKeepsTheSelection(t *testing.T) {
+	t.Parallel()
+
 	m := press(sized(splitModel(t), 120, 40), tabKey(tabSpecs))
 	g := m.geometry()
 	b := g.at(paneList)
@@ -1466,6 +1552,8 @@ func TestClickOnTheSpaceBelowTheRowsKeepsTheSelection(t *testing.T) {
 // of its list panes, so enter reaches the detail from anywhere a reader can
 // put the focus.
 func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		for _, p := range press(newModel(t), tabKey(i)).panes() {
 			// Enter on a plan row opens the plan instead, and a task row is
@@ -1505,6 +1593,8 @@ func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
 }
 
 func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), tabKey(tabSpecs), "G", "enter")
 	if !m.groupOpen {
 		t.Fatal("enter on the group row should open it")
@@ -1519,6 +1609,8 @@ func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
 }
 
 func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
+	t.Parallel()
+
 	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
 		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
@@ -1547,6 +1639,8 @@ func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
 // its list panes, plus the detail box, so no box the reader can reach refuses
 // the editor.
 func TestEOpensTheEditorFromEveryPane(t *testing.T) {
+	t.Parallel()
+
 	for i := range topTabs {
 		for _, p := range press(newModel(t), tabKey(i)).panes() {
 			m := press(newModel(t), tabKey(i))
@@ -1567,6 +1661,8 @@ func TestEOpensTheEditorFromEveryPane(t *testing.T) {
 }
 
 func TestEOnABranchItemWarns(t *testing.T) {
+	t.Parallel()
+
 	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
 	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
 		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
@@ -1592,6 +1688,8 @@ func TestEOnABranchItemWarns(t *testing.T) {
 // list panes of a tab, so esc always lands back on the list the reader came
 // from.
 func TestEscInDetailReturnsToTheListPane(t *testing.T) {
+	t.Parallel()
+
 	for _, p := range []pane{paneList, paneDone} {
 		m := press(newModel(t), tabKey(tabSpecs))
 		m.focusPane(p)
@@ -1607,6 +1705,8 @@ func TestEscInDetailReturnsToTheListPane(t *testing.T) {
 }
 
 func TestEscInDetailKeepsTheSelection(t *testing.T) {
+	t.Parallel()
+
 	m := press(newModel(t), "j", "enter")
 	id := m.Selected().ID
 	m = press(m, "esc")

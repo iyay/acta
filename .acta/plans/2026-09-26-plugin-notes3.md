@@ -1,6 +1,6 @@
 ---
-id: PLAN-6
-hash: f9gv
+id: PLN-0006
+hash: f9gvcns
 ---
 # pm plugin three NOTEs Implementation Plan
 

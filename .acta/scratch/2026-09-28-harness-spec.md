@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-6
-hash: gc5a
+id: SCR-0006
+hash: gc5as7v
 title: harness-spec
 status: brainstorming
 created: "2026-09-28"

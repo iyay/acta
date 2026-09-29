@@ -8,6 +8,8 @@ import (
 )
 
 func TestParseWorktrees(t *testing.T) {
+	t.Parallel()
+
 	a, b := t.TempDir(), t.TempDir()
 	out := "worktree " + a + "\nHEAD 1111\nbranch refs/heads/main\n\n" +
 		"worktree " + b + "\nHEAD 2222\ndetached\n\n" +

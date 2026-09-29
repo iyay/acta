@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-8
-hash: mdj2
+id: SCR-0008
+hash: mdj2pr8
 title: Spec frontmatter status pins the status and hides a finished spec
 status: brainstorming
 created: "2026-09-28"

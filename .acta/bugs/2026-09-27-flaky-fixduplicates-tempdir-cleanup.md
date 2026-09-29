@@ -1,6 +1,6 @@
 ---
-id: BUG-1
-hash: hqd7
+id: BUG-0001
+hash: hqd7ylj
 ---
 # TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst fails now and then
 

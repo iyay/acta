@@ -1,6 +1,6 @@
 ---
-id: PLAN-9
-hash: jz3d
+id: PLN-0009
+hash: jz3d2qc
 ---
 # Spec line counts only .md paths Implementation Plan
 

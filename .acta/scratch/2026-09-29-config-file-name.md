@@ -1,6 +1,6 @@
 ---
-id: SCRATCH-24
-hash: uehv
+id: SCR-0024
+hash: uehvwoo
 title: Rename ~/.acta/voice.yaml to config.yaml
 status: raw
 created: "2026-09-29"
