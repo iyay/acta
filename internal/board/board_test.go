@@ -169,6 +169,84 @@ func TestPlansAreItems(t *testing.T) {
 	}
 }
 
+// TestPlanSpecLineLinksBesideParent: a plan that works debt once hid its
+// spec, so the spec stayed draft after the plan landed (SPEC-16).
+func TestPlanSpecLineLinksBesideParent(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-29-s-design.md": "# S\n",
+		"debt/2026-09-29-d.md":         "# D\n\n- [ ] one\n",
+		"plans/2026-09-29-p.md":        "---\nparent: debt/2026-09-29-d\n---\n# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
+	})
+	spec := b.Get("specs/2026-09-29-s-design")
+	plan := b.Get("plans/2026-09-29-p")
+	if spec.Status != "done" || spec.Total != 1 {
+		t.Errorf("spec = %s %d/%d, want done 1/1", spec.Status, spec.Done, spec.Total)
+	}
+	if plan.SpecID != "debt/2026-09-29-d" {
+		t.Errorf("plan sits under %q, want the debt parent", plan.SpecID)
+	}
+	if len(plan.Problems) != 0 {
+		t.Errorf("problems %v, want none", plan.Problems)
+	}
+}
+
+// A spec path that names nothing is a problem on the plan, but the plan still
+// hangs under the parent it names in frontmatter.
+func TestPlanSpecLineMissingBesideParent(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"debt/2026-09-29-d.md":  "# D\n\n- [ ] one\n",
+		"plans/2026-09-29-p.md": "---\nparent: debt/2026-09-29-d\n---\n# P\n\n**Spec:** `.acta/specs/missing.md`\n\n### Task 1: A\n\n- [x] a\n",
+	})
+	plan := b.Get("plans/2026-09-29-p")
+	if plan.SpecID != "debt/2026-09-29-d" {
+		t.Errorf("plan sits under %q, want the debt parent", plan.SpecID)
+	}
+	want := []string{"spec .acta/specs/missing.md not found"}
+	if !reflect.DeepEqual(plan.Problems, want) {
+		t.Errorf("problems %v, want %v", plan.Problems, want)
+	}
+}
+
+// A parent that names nothing stays broken: the spec does not take the plan's
+// place in the tree, but the spec still counts the plan.
+func TestPlanSpecLineLinksWithBrokenParent(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-29-s-design.md": "# S\n",
+		"plans/2026-09-29-p.md":        "---\nparent: debt/nope\n---\n# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
+	})
+	spec := b.Get("specs/2026-09-29-s-design")
+	plan := b.Get("plans/2026-09-29-p")
+	if plan.SpecID != "" {
+		t.Errorf("plan sits under %q, want no parent", plan.SpecID)
+	}
+	want := []string{"parent debt/nope not found"}
+	if !reflect.DeepEqual(plan.Problems, want) {
+		t.Errorf("problems %v, want %v", plan.Problems, want)
+	}
+	if spec.Status != "done" || spec.Total != 1 {
+		t.Errorf("spec = %s %d/%d, want done 1/1", spec.Status, spec.Done, spec.Total)
+	}
+}
+
+// A plan whose parent is its own spec counts that spec once, not twice.
+func TestPlanSpecLineSameItemAsParent(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"specs/2026-09-29-s-design.md": "# S\n",
+		"plans/2026-09-29-p.md":        "---\nparent: specs/2026-09-29-s-design\n---\n# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n",
+	})
+	spec := b.Get("specs/2026-09-29-s-design")
+	plan := b.Get("plans/2026-09-29-p")
+	if plan.SpecID != "specs/2026-09-29-s-design" {
+		t.Errorf("plan sits under %q, want the spec", plan.SpecID)
+	}
+	if spec.Status != "done" || spec.Done != 1 || spec.Total != 1 {
+		t.Errorf("spec = %s %d/%d, want done 1/1 counted once", spec.Status, spec.Done, spec.Total)
+	}
+	if len(plan.Problems) != 0 {
+		t.Errorf("problems %v, want none", plan.Problems)
+	}
+}
+
 func TestLoadDashTasks(t *testing.T) {
 	b := loadFixture(t)
 	t1 := b.Get("plans/2026-09-26-dash-tasks#task-F-1")
