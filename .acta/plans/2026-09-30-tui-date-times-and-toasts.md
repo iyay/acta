@@ -2,6 +2,8 @@
 id: PLN-0057
 created: "2026-09-30"
 hash: b7a6i3b
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Times in the Detail Dates and Self-Hiding Toasts Implementation Plan
 
@@ -57,7 +59,7 @@ hash: b7a6i3b
 - Consumes: `Now` in `internal/write/ops.go`, `SetField`, `hasField`.
 - Produces: `const stampLayout = "2006-01-02 15:04:05"` in `internal/write/dates.go`, used by every writer of the three fields. `board.dateField` returns either shape unchanged.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/write/dates_test.go`, add:
 
@@ -91,12 +93,12 @@ In `internal/write/ids_test.go` and `internal/write/scratch_test.go`, find the t
 
 In `internal/tui/detail_test.go`, add one item to `datedFiles()` whose frontmatter has `created: "2026-09-01 08:00:00"`, `started: "2026-09-02 09:30:15"` and `finished: "2026-09-03 17:45:59"`. Add it to the case lists of `TestItemDatesFromFrontmatter`, `TestDetailShowsTheDates` and `TestDetailFooterNamesEveryDateAtEveryWidth`, with the long form `created 2026-09-01 08:00:00 · started 2026-09-02 09:30:15 · finished 2026-09-03 17:45:59` and the short form `c 2026-09-01 08:00:00 · s 2026-09-02 09:30:15 · f 2026-09-03 17:45:59`. Also add items whose values must read as "": `"2026-02-30 10:00:00"`, `"2026-09-30 25:00:00"`, `"2026-09-30 16:14"` and `"yesterday"`.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `scripts/test ./internal/write ./internal/tui -run 'TestDatesCarryTheTime|TestItemDates|TestDetailShowsTheDates|TestDetailFooterNamesEveryDate|Created|Scratch|ID'`
 Expected: FAIL. The writers still write a bare day, and the timed item reads as "".
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/write/dates.go`:
 
@@ -133,12 +135,12 @@ func isDate(s string) bool {
 
 The `time.Time` case in `dateField` stays as it is. Update the `Created`, `StartedOn` and `Finished` comments on `Item` to say `YYYY-MM-DD or YYYY-MM-DD HH:MM:SS`.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `scripts/test ./internal/write ./internal/board ./internal/tui`
 Expected: PASS for all three packages.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/write ./internal/board ./internal/tui
@@ -159,7 +161,7 @@ git commit -m "write, board: date fields carry the time to the second"
 - Consumes: `clearStatusAfter(d time.Duration, text string) tea.Cmd`, `clearStatusMsg{text string}`, `toastFor`.
 - Produces: `Update` is a thin wrapper over the old body, now named `func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/tui/model_test.go`, replace `TestCopyErrorsDoNotHide` with a test that checks the opposite, because the user ruled that errors hide too:
 
@@ -206,12 +208,12 @@ Add one test for the timer command itself. Run the `cmd` returned for a toast an
 
 `TestCopyToastHidesByItself`, `TestCopyToastKeepsANewerMessage` and the drag copy test in `select_test.go` stay and must still pass.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `scripts/test ./internal/tui -run 'TestEveryToastHidesByItself|TestCopyToast|TestDrag'`
 Expected: FAIL on `TestEveryToastHidesByItself`, because no timer is started for errors and refusals.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/model.go`, rename the current `Update` body to `update`, and add:
 
@@ -234,12 +236,12 @@ The comment that sits above the old `Update` moves onto `update`. In `copyID`, `
 
 Check every `return` in `update` that returns a `Model` value (not a pointer or another type). The wrapper's type assertion `next.(Model)` must hold on every path.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS for the whole package.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui

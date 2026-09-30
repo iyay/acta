@@ -57,7 +57,8 @@ type clockMsg time.Time
 // newer message that took the line in the meantime stays.
 type clearStatusMsg struct{ text string }
 
-// toastFor is how long a copy message stays on the status line.
+// toastFor is how long any message stays on the status line, errors included,
+// so the key hints behind it come back by themselves.
 const toastFor = 2 * time.Second
 
 // clearStatusAfter sends the clear message for text once d has passed.
@@ -263,7 +264,14 @@ func (m Model) WithTrace(t *Tracer) Model {
 	return m
 }
 
-func (m Model) Init() tea.Cmd { return nextMinute() }
+// Init starts the clock, and the hide timer for a message the model was built
+// with, such as a theme that did not load, because no Update saw it.
+func (m Model) Init() tea.Cmd {
+	if m.status == "" {
+		return nextMinute()
+	}
+	return tea.Batch(nextMinute(), clearStatusAfter(toastFor, m.status))
+}
 
 // nextMinute waits for the next minute to start and sends the time then, so
 // the clock in the status line moves once a minute.
@@ -272,7 +280,9 @@ func nextMinute() tea.Cmd {
 	return tea.Tick(wait, func(t time.Time) tea.Msg { return clockMsg(t) })
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// update runs one message and hands back the new model. Update wraps it to
+// start the timer for the status line.
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Every message may change the screen. The few that surely do not set
 	// this back below, so a path nobody thought about always draws again.
 	m.same = false
@@ -352,6 +362,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	}
 	return m, nil
+}
+
+// Update runs one message. When the message leaves a new text on the status
+// line, a timer is started for it here, in one place, so every toast hides
+// by itself and the key hints come back.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	before := m.status
+	next, cmd := m.update(msg)
+	after := next.(Model).status
+	if after == "" || after == before {
+		return next, cmd
+	}
+	return next, tea.Batch(cmd, clearStatusAfter(toastFor, after))
 }
 
 // inProgress says the item's work has begun: one of the going statuses, a
@@ -818,8 +841,8 @@ func (m Model) markRow(done bool) (tea.Model, tea.Cmd) {
 }
 
 // copyID puts the id of the row under the cursor on the clipboard, and the
-// status line says what was copied or why it could not be. A good copy hides
-// itself after a short while; an error stays until the next message.
+// status line says what was copied or why it could not be. Update starts the
+// timer that hides the message.
 func (m *Model) copyID() tea.Cmd {
 	it := m.Selected()
 	if it == nil {
@@ -832,7 +855,7 @@ func (m *Model) copyID() tea.Cmd {
 		return nil
 	}
 	m.status = "copied " + id
-	return clearStatusAfter(toastFor, m.status)
+	return nil
 }
 
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {

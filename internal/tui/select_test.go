@@ -142,8 +142,13 @@ func TestCopyPickedToast(t *testing.T) {
 	if got != "abc\ndef" {
 		t.Fatalf("clipboard = %q", got)
 	}
-	if m.status != "copied abc def" || cmd == nil {
-		t.Errorf("status = %q, cmd nil = %v", m.status, cmd == nil)
+	// The status line says what was copied. The timer to hide it is started by
+	// Update, not here, so a toast never gets two.
+	if m.status != "copied abc def" {
+		t.Errorf("status = %q", m.status)
+	}
+	if cmd != nil {
+		t.Errorf("copyPicked started its own timer, so the toast would get two")
 	}
 	// The toast clears the same way the y toast does.
 	next, _ := m.Update(clearStatusMsg{text: m.status})

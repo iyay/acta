@@ -1699,8 +1699,8 @@ func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("enter"))
 	m = next.(Model)
-	if cmd != nil {
-		t.Fatal("enter on a branch item should not open the editor")
+	if extra := notToast(cmd); len(extra) > 0 {
+		t.Fatalf("enter on a branch item opened something: %T", extra[0])
 	}
 	if !strings.Contains(m.status, "git worktree add") {
 		t.Fatalf("enter on a branch item should warn: %q", m.status)
@@ -1751,8 +1751,8 @@ func TestEOnABranchItemWarns(t *testing.T) {
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("e"))
 	m = next.(Model)
-	if cmd != nil {
-		t.Fatal("e on a branch item should not open the editor")
+	if extra := notToast(cmd); len(extra) > 0 {
+		t.Fatalf("e on a branch item opened something: %T", extra[0])
 	}
 	if !strings.Contains(m.status, "git worktree add") {
 		t.Fatalf("e on a branch item should warn: %q", m.status)
@@ -2406,19 +2406,17 @@ func TestCopyToastKeepsANewerMessage(t *testing.T) {
 	}
 }
 
-// A copy that did not work leaves the line alone, so the reader still sees
-// why it failed.
-func TestCopyErrorsDoNotHide(t *testing.T) {
+// Every message on the status line hides by itself, errors too, so the key
+// hints always come back.
+func TestEveryToastHidesByItself(t *testing.T) {
 	t.Parallel()
 
-	m := actModel(t)
-	m.clip = func(string) error { return errors.New("no clipboard") }
-	next, cmd := m.Update(key("y"))
-	if cmd != nil {
-		t.Error("a failed copy started a timer")
-	}
-	if got := next.(Model).status; !strings.HasPrefix(got, "copy failed") {
-		t.Errorf("status %q", got)
+	broken := actModel(t)
+	broken.clip = func(string) error { return errors.New("no clipboard") }
+
+	onTask := press(actModel(t), tabKey(tabPlans), "l", "j")
+	if it := onTask.Selected(); it == nil || it.Kind != board.KindTask {
+		t.Fatalf("the row under the cursor is %+v, want a task", it)
 	}
 
 	cfg := treeCfg(t, map[string]string{})
@@ -2426,13 +2424,135 @@ func TestCopyErrorsDoNotHide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, cmd = New(cfg, b, true).Update(key("y"))
-	if cmd != nil {
-		t.Error("nothing selected started a timer")
+	empty := New(cfg, b, true)
+
+	cases := []struct {
+		name string
+		m    Model
+		run  func(Model) (tea.Model, tea.Cmd)
+	}{
+		{"copy failed", broken, func(m Model) (tea.Model, tea.Cmd) { return m.Update(key("y")) }},
+		{"editor error", actModel(t), func(m Model) (tea.Model, tea.Cmd) {
+			return m.Update(editorDoneMsg{err: errors.New("boom")})
+		}},
+		{"tasks refuse the popup", onTask, func(m Model) (tea.Model, tea.Cmd) {
+			return m.Update(key("s"))
+		}},
+		{"nothing selected", empty, func(m Model) (tea.Model, tea.Cmd) { return m.Update(key("y")) }},
 	}
-	if got := next.(Model).status; got != "nothing selected" {
-		t.Errorf("status %q", got)
+	for _, c := range cases {
+		next, cmd := c.run(c.m)
+		got := next.(Model)
+		if got.status == "" {
+			t.Fatalf("%s: no message on the line", c.name)
+		}
+		if cmd == nil {
+			t.Fatalf("%s: %q started no timer, so it would stay", c.name, got.status)
+		}
+		cleared, _ := got.Update(clearStatusMsg{text: got.status})
+		if s := cleared.(Model).status; s != "" {
+			t.Fatalf("%s: the toast did not hide: %q", c.name, s)
+		}
 	}
+}
+
+// The search box is not a toast: typing there changes the list, not the
+// status line, so no timer is started for it.
+func TestSearchTextStartsNoTimer(t *testing.T) {
+	t.Parallel()
+
+	m := press(actModel(t), "/")
+	next, cmd := m.Update(key("BUG"))
+	got := next.(Model)
+	if got.query != "BUG" {
+		t.Fatalf("the query is %q, the keys never reached the box", got.query)
+	}
+	if cmd != nil || got.status != "" {
+		t.Fatalf("typing in the search started a timer: status %q, cmd %v", got.status, cmd != nil)
+	}
+}
+
+// A message the model was built with, such as a theme that did not load, was
+// never handled by Update, so the program starts the timer for it itself.
+func TestTheFirstToastHidesFromTheFirstFrame(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t).WithTheme("nope", true)
+	if m.status == "" {
+		t.Fatal("a theme that does not load must say so")
+	}
+	want := clearStatusMsg{text: m.status}
+	for _, msg := range runNow(m.Init(), 2*toastFor) {
+		if msg == want {
+			return
+		}
+	}
+	t.Fatalf("nothing sent %#v for the message the program started with", want)
+}
+
+// The timer a toast gets sends the clear message for that exact text, so a
+// toast that took the line later is not taken away by an older timer.
+func TestToastTimerClearsThatExactMessage(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.clip = func(string) error { return nil }
+	next, cmd := m.Update(key("y"))
+	status := next.(Model).status
+	if status == "" || cmd == nil {
+		t.Fatalf("status %q, cmd nil = %v", status, cmd == nil)
+	}
+	// The toast waits toastFor before it hides, so this test waits with it.
+	want := clearStatusMsg{text: status}
+	for _, msg := range runNow(cmd, 2*toastFor) {
+		if msg == want {
+			cleared, _ := next.Update(want)
+			if s := cleared.(Model).status; s != "" {
+				t.Fatalf("the toast did not hide: %q", s)
+			}
+			return
+		}
+	}
+	t.Fatalf("no command sent %#v, got %v", want, runNow(cmd, 2*toastFor))
+}
+
+// runNow runs a command, or every command in a batch, each on its own
+// goroutine, and gives back the messages that arrive inside the wait. A
+// command still waiting when the wait is over gives back nothing, so a slow
+// toast timer never holds a test up.
+func runNow(cmd tea.Cmd, within time.Duration) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	got := make(chan tea.Msg, 1)
+	go func() { got <- cmd() }()
+	var msg tea.Msg
+	select {
+	case msg = <-got:
+	case <-time.After(within):
+		return nil
+	}
+	batch, ok := msg.(tea.BatchMsg)
+	if !ok {
+		return []tea.Msg{msg}
+	}
+	var out []tea.Msg
+	for _, inner := range batch {
+		out = append(out, runNow(inner, within)...)
+	}
+	return out
+}
+
+// notToast runs what a key asked for and gives back every message that is
+// not the toast timer, so a test can still catch the side effect it means.
+func notToast(cmd tea.Cmd) []tea.Msg {
+	var out []tea.Msg
+	for _, msg := range runNow(cmd, 50*time.Millisecond) {
+		if _, clear := msg.(clearStatusMsg); !clear {
+			out = append(out, msg)
+		}
+	}
+	return out
 }
 
 func TestClearStatusAfterSendsItsText(t *testing.T) {
@@ -2611,8 +2731,8 @@ func TestMarkRefusesAWorktreeAndALegacyRow(t *testing.T) {
 	}
 	next, cmd := m.Update(key("+"))
 	m = next.(Model)
-	if called || cmd != nil {
-		t.Fatalf("worktree row: called %v cmd %v", called, cmd)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("worktree row: called %v", called)
 	}
 	if !strings.Contains(m.status, it.Worktree) {
 		t.Fatalf("the status does not name the worktree: %q", m.status)
@@ -2634,8 +2754,8 @@ func TestMarkRefusesAWorktreeAndALegacyRow(t *testing.T) {
 	}
 	next, cmd = root.Update(key("-"))
 	root = next.(Model)
-	if called || cmd != nil {
-		t.Fatalf("legacy row: called %v cmd %v", called, cmd)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("legacy row: called %v", called)
 	}
 	if !strings.Contains(root.status, "legacy") {
 		t.Fatalf("status %q", root.status)
@@ -2658,8 +2778,8 @@ func TestMarkWithNoRowSelected(t *testing.T) {
 	}
 	next, cmd := m.Update(key("+"))
 	m = next.(Model)
-	if called || cmd != nil {
-		t.Fatalf("no row: called %v cmd %v", called, cmd)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("no row: called %v", called)
 	}
 	if !strings.Contains(m.status, "nothing selected") {
 		t.Fatalf("status %q", m.status)
@@ -2732,10 +2852,12 @@ func TestMarkReloadsTheBoard(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("+ asked for no reload")
 	}
-	msg := cmd()
-	if _, ok := msg.(reloadMsg); !ok {
-		t.Fatalf("+ returned %T, want a reload", msg)
+	for _, msg := range runNow(cmd, time.Second) {
+		if _, ok := msg.(reloadMsg); ok {
+			return
+		}
 	}
+	t.Fatal("+ asked for no reload")
 }
 
 // worktreeTaskModel holds one plan that came from a worktree branch, opened

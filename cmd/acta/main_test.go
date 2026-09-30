@@ -7,10 +7,40 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 )
+
+// stampRe finds a date field and the value it holds, quoted and alone on its
+// own line, the way the writers write them.
+var stampRe = regexp.MustCompile(`(?m)^(created|started|finished): "([^"]*)"$`)
+
+// stamp says whether key in body holds today with a real time to the second.
+// The binary under test runs the real clock, so a test cannot know which
+// second it wrote and must not race it. The check is the shape: today's day,
+// a space, then eight digits that really are an hour, a minute and a second.
+func stamp(t *testing.T, body, key string) bool {
+	t.Helper()
+	for _, m := range stampRe.FindAllStringSubmatch(body, -1) {
+		if m[1] != key {
+			continue
+		}
+		day, clock, cut := strings.Cut(m[2], " ")
+		if !cut || day != time.Now().Format("2006-01-02") {
+			t.Errorf("%s = %q, want today %s with a time", key, m[2], time.Now().Format("2006-01-02"))
+			return false
+		}
+		if _, err := time.Parse("15:04:05", clock); err != nil {
+			t.Errorf("%s time = %q, want HH:MM:SS", key, clock)
+			return false
+		}
+		return true
+	}
+	t.Errorf("body holds no %s date: %q", key, body)
+	return false
+}
 
 var actaBin string
 var pmbBin string
@@ -251,11 +281,11 @@ func TestSet(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, ".acta/bugs/2026-09-26-open.md"))
-	// Setting a working status writes the day the work began too. The date is
+	// Setting a working status writes when the work began too. The date is
 	// written as text, so the file holds it in quotes.
-	want := "---\nstatus: fixing\nstarted: \"" + time.Now().Format("2006-01-02") + "\"\n---\n"
-	if !strings.HasPrefix(string(b), want) {
-		t.Fatalf("file %q, want it to start with %q", b, want)
+	body := string(b)
+	if !strings.HasPrefix(body, "---\nstatus: fixing\nstarted: \"") || !stamp(t, body, "started") {
+		t.Fatalf("file %q, want it to start with the fixing status and a started date", body)
 	}
 	for _, args := range [][]string{
 		{"set", "docs/superpowers/specs/2026-01-01-old", "status", "done"},

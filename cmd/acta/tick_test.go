@@ -235,8 +235,8 @@ func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
 	if strings.Count(string(after), "- [x]") != strings.Count(string(before), "- [x]") {
 		t.Fatal("--start must tick no box")
 	}
-	if !strings.Contains(string(after), `started: "`+time.Now().Format("2006-01-02")+`"`) {
-		t.Fatalf("--start wrote no started date: %q", after)
+	if !stamp(t, string(after), "started") {
+		t.Fatalf("--start wrote no started date with a time: %q", after)
 	}
 	recs := readRecords(t, agentsFile(t, dir))
 	if !recs[id].Started || recs[id].Agent != "omp" {
