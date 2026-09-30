@@ -73,15 +73,23 @@ esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
-// helpText is the key map with each key in the accent, so the eye finds the
-// key first and reads what it does after. A line is split at its first run of
-// two spaces, the gap the key column is laid out with.
+// helpText lays the key map out the way lazygit does: the keys in cyan, so
+// they differ from the border, pushed right so they all end at one column,
+// and what each key does starting right after it. A line of helpLines splits
+// at its first run of two spaces, the gap its key column is written with.
 func (m Model) helpText() string {
-	lines := strings.Split(helpLines, "\n")
-	for i, ln := range lines {
-		if at := strings.Index(ln, "  "); at > 0 {
-			lines[i] = m.styles.accent.Render(ln[:at]) + ln[at:]
-		}
+	type pair struct{ key, what string }
+	var pairs []pair
+	keyW := 0
+	for _, ln := range strings.Split(helpLines, "\n") {
+		k, w, _ := strings.Cut(ln, "  ")
+		p := pair{strings.TrimSpace(k), strings.TrimSpace(w)}
+		pairs = append(pairs, p)
+		keyW = max(keyW, lipgloss.Width(p.key))
+	}
+	lines := make([]string, len(pairs))
+	for i, p := range pairs {
+		lines[i] = m.styles.label.Render(p.key) + strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + " " + p.what
 	}
 	return strings.Join(lines, "\n")
 }

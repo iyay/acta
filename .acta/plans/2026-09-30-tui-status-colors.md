@@ -3,6 +3,7 @@ created: "2026-09-30"
 id: PLN-0047
 hash: ylyfrwe
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI Status Colors Implementation Plan
 
@@ -953,7 +954,7 @@ The value picker and the new-bug prompt stay free of accent inside the box. List
 - Consumes: `helpLines`, `styles.label`, `boxView`, `popupBox`; test helpers `withTrueColor`, `plain`, `newModel`, `sized`, `press`.
 - Produces: `func (m Model) helpText() string` (same name, new layout).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/view_test.go`, replace `TestHelpKeysWearTheAccent` with:
 
@@ -1009,12 +1010,12 @@ func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 
 In the `terminal` theme the accent and label codes are ANSI numbers, so `accent` is still a real code there. Keep `TestOtherPopupsHaveNoAccentInside` as it is.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestHelpKeysSitInARightAlignedColumn|TestOtherPopupsHaveNoAccentInside'`
 Expected: FAIL. The keys are in the accent and left-aligned.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/view.go`, replace the body and comment of `helpText`:
 
@@ -1041,12 +1042,12 @@ func (m Model) helpText() string {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS, including the help tests in `model_test.go` and `frame_test.go` that read `helpLines`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -1073,7 +1074,7 @@ List every place that named them.
 - Consumes: Tasks 2 and 3 have stopped using `work`.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/styles_test.go`, add:
 
@@ -1094,12 +1095,12 @@ Add `reflect` to the imports if it is missing. `slotWork` is a constant, so the 
 
 Run `grep -rn "\.work\b\|slotWork" internal/` to find every other place.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestNoWorkBrushIsLeft'`
 Expected: FAIL. `styles` still has a `work` field.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`:
 - Remove `work` from the `styles` fields.
@@ -1108,12 +1109,12 @@ In `internal/tui/styles.go`:
 
 Then run `grep -rn "\.work\b\|slotWork" internal/`. It must print nothing.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

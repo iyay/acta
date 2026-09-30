@@ -2119,53 +2119,66 @@ func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
 	}
 }
 
-// TestHelpKeysWearTheAccent reads every line of the ? popup. The keys must be
-// in the accent so they stand out from what they do, and nothing else on the
-// screen may move.
-func TestHelpKeysWearTheAccent(t *testing.T) {
+// TestHelpKeysSitInARightAlignedColumn reads every line of the ? popup. The
+// keys are cyan so they differ from the border, and they end at one column,
+// with what each does starting right after.
+func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 	withTrueColor(func() {
 		for _, name := range []string{"tokyo-night", "terminal"} {
 			m := sized(newModel(t).WithTheme(name, true), 120, 40)
 			text := m.helpText()
-			if plain(text) != helpLines {
-				t.Fatalf("%s: help text changed its words:\n%q", name, plain(text))
+			if got, want := strings.Fields(plain(text)), strings.Fields(helpLines); strings.Join(got, " ") != strings.Join(want, " ") {
+				t.Fatalf("%s: help words changed:\n got %q\nwant %q", name, got, want)
 			}
-			got := strings.Split(text, "\n")
-			for i, ln := range strings.Split(helpLines, "\n") {
-				key := ln
-				if at := strings.Index(ln, "  "); at > 0 {
-					key = ln[:at]
-				}
-				want := m.styles.accent.Render(key)
-				if !strings.HasPrefix(got[i], want) {
-					t.Errorf("%s line %d: key %q is not in the accent: %q", name, i, key, got[i])
-				}
-				if rest := strings.TrimPrefix(got[i], want); strings.Contains(rest, "\x1b[") {
-					t.Errorf("%s line %d: the description has a color: %q", name, i, rest)
-				}
+			keyW := 0
+			type pair struct{ key, what string }
+			var want []pair
+			for _, ln := range strings.Split(helpLines, "\n") {
+				k, w, _ := strings.Cut(ln, "  ")
+				p := pair{strings.TrimSpace(k), strings.TrimSpace(w)}
+				want = append(want, p)
+				keyW = max(keyW, lipgloss.Width(p.key))
 			}
-			before := strings.Split(m.boxView("Keys", helpLines), "\n")
-			after := strings.Split(press(m, "?").popupBox(), "\n")
-			if len(before) != len(after) {
-				t.Fatalf("%s: box has %d rows, want %d", name, len(after), len(before))
-			}
-			for i := range before {
-				if plain(after[i]) != plain(before[i]) {
-					t.Errorf("%s row %d: box text moved:\n got %q\nwant %q", name, i, plain(after[i]), plain(before[i]))
-				}
-				// The drawn row, not just helpText, has to wear the accent
-				// on the key. A box drawn from the plain helpLines looks the
-				// same once the colors are stripped, so read the row itself.
-				if i == 0 || i == len(before)-1 {
+			accent := strings.TrimSuffix(m.styles.accent.Render("x"), "x\x1b[0m")
+			for i, ln := range strings.Split(text, "\n") {
+				p := want[i]
+				cells := []rune(plain(ln))
+				if len(cells) < keyW+1 {
+					t.Errorf("%s line %d: line is %d cells, want %d: %q", name, i, len(cells), keyW+1, ln)
 					continue
 				}
-				inner := strings.TrimPrefix(after[i], m.styles.accent.Render("│"))
-				key := strings.Split(helpLines, "\n")[i-1]
-				if at := strings.Index(key, "  "); at > 0 {
-					key = key[:at]
+				// The key ends at the same cell on every line, which is the
+				// width of the widest key, and what it does starts right after.
+				if key := strings.TrimRight(string(cells[:keyW]), " "); key != p.key {
+					t.Errorf("%s line %d: key %q does not end at cell %d: %q", name, i, key, keyW, ln)
 				}
-				if !strings.HasPrefix(inner, m.styles.accent.Render(key)) {
-					t.Errorf("%s row %d: the key is not in the accent on screen: %q", name, i, inner)
+				if got := string(cells[keyW+1:]); got != p.what {
+					t.Errorf("%s line %d: description is %q, want %q", name, i, got, p.what)
+				}
+				// The key wears the label color and nothing else on the line
+				// does, so the border and the key never read the same.
+				worn := m.styles.label.Render(p.key)
+				if !strings.HasPrefix(ln, worn) {
+					t.Errorf("%s line %d: key %q is not in the label color: %q", name, i, p.key, ln)
+				}
+				if rest := strings.TrimPrefix(ln, worn); strings.Contains(rest, "\x1b[") {
+					t.Errorf("%s line %d: something past the key has a color: %q", name, i, ln)
+				}
+				if accent != "" && strings.Contains(ln, accent) {
+					t.Errorf("%s line %d: a key is still in the accent: %q", name, i, ln)
+				}
+			}
+			for _, w := range []int{60, 80, 120, 200} {
+				mw := sized(newModel(t).WithTheme(name, true), w, 40)
+				before := strings.Split(mw.boxView("Keys", helpLines), "\n")
+				after := strings.Split(press(mw, "?").popupBox(), "\n")
+				if len(before) != len(after) {
+					t.Fatalf("%s at %d: box has %d rows, want %d", name, w, len(after), len(before))
+				}
+				for i := range before {
+					if lipgloss.Width(after[i]) != lipgloss.Width(before[i]) {
+						t.Errorf("%s at %d row %d: width %d, want %d", name, w, i, lipgloss.Width(after[i]), lipgloss.Width(before[i]))
+					}
 				}
 			}
 		}
