@@ -313,7 +313,7 @@ git commit -m "tui: add kind and role brushes from theme slots"
 - Consumes: `styles.kind(board.Kind) lipgloss.Style`, `styles.work`, `styles.selected` (Task 1); test helper `sgrHas` (Task 1); `actModel`, `press`, `tabKey`, `plain` (existing test helpers).
 - Produces: `func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/scroll_test.go`. `actModel(t)` opens on the Activities tab with `BUG-0002` under the cursor, then the task `PLN-0004.01` (work under way), then the plan `PLN-0003` (see `TestYCopiesTheIDOfTheRow` in `model_test.go`). Check `rowIDs` first if the order differs, and pick the rows by id, not by index.
 
@@ -397,12 +397,12 @@ func TestPaintIDLeavesACutIDPlain(t *testing.T) {
 
 Add imports `github.com/charmbracelet/lipgloss` and `github.com/iyay/acta/internal/board` if the file lacks them.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestListRowsAreNotFaintAndWearKindColors|TestListRowWithWorkKeepsTheWorkColor|TestPaintIDLeavesACutIDPlain'`
 Expected: FAIL to build with `m.paintID undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `listView` (`internal/tui/scroll.go`), replace the brush switch and the `append` with:
 
@@ -443,12 +443,12 @@ func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string 
 
 Leave `nothing here` faint: it is a hint, not a row. Update any old test that checks rows are faint.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
@@ -846,7 +846,7 @@ git commit -m "tui: color top tabs by kind and the project and live words"
 - Consumes: nothing from earlier tasks.
 - Produces: `type clearStatusMsg struct{ text string }`; `const toastFor = 2 * time.Second`; `func clearStatusAfter(d time.Duration, text string) tea.Cmd`; `func (m *Model) copyID() tea.Cmd`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/model_test.go`:
 
@@ -919,12 +919,12 @@ func TestClearStatusAfterSendsItsText(t *testing.T) {
 
 Add `errors` to the imports if missing.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestCopyToast|TestCopyErrorsDoNotHide|TestClearStatusAfterSendsItsText'`
 Expected: FAIL to build with `undefined: clearStatusMsg`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/model.go`, next to the other message types:
 
@@ -968,12 +968,12 @@ The `"y"` key case. Call first, then return, because Go does not promise that `m
 		return m, cmd
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS, including `TestYCopiesTheIDOfTheRow` and `TestYCopiesTheIDOfARowWithNoNumber`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...

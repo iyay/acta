@@ -2369,3 +2369,72 @@ func TestCopyTextUsesPBCopyAndFallsBackToOSC52(t *testing.T) {
 		}
 	}
 }
+
+// A good copy starts a timer and the timer hides the message, and a message
+// that came later keeps the line.
+func TestCopyToastHidesByItself(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.clip = func(string) error { return nil }
+	next, cmd := m.Update(key("y"))
+	m = next.(Model)
+	if cmd == nil {
+		t.Fatal("a copy started no timer, so the toast would stay")
+	}
+	if m.status != "copied BUG-0002" {
+		t.Fatalf("status %q", m.status)
+	}
+	next, _ = m.Update(clearStatusMsg{text: "copied BUG-0002"})
+	if got := next.(Model).status; got != "" {
+		t.Fatalf("toast did not hide: %q", got)
+	}
+}
+
+func TestCopyToastKeepsANewerMessage(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.status = "reload failed: disk"
+	next, _ := m.Update(clearStatusMsg{text: "copied BUG-0002"})
+	if got := next.(Model).status; got != "reload failed: disk" {
+		t.Fatalf("a newer message was cleared: %q", got)
+	}
+}
+
+// A copy that did not work leaves the line alone, so the reader still sees
+// why it failed.
+func TestCopyErrorsDoNotHide(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.clip = func(string) error { return errors.New("no clipboard") }
+	next, cmd := m.Update(key("y"))
+	if cmd != nil {
+		t.Error("a failed copy started a timer")
+	}
+	if got := next.(Model).status; !strings.HasPrefix(got, "copy failed") {
+		t.Errorf("status %q", got)
+	}
+
+	cfg := treeCfg(t, map[string]string{})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, cmd = New(cfg, b, true).Update(key("y"))
+	if cmd != nil {
+		t.Error("nothing selected started a timer")
+	}
+	if got := next.(Model).status; got != "nothing selected" {
+		t.Errorf("status %q", got)
+	}
+}
+
+func TestClearStatusAfterSendsItsText(t *testing.T) {
+	t.Parallel()
+
+	if got := clearStatusAfter(0, "copied X")(); got != (clearStatusMsg{text: "copied X"}) {
+		t.Fatalf("got %#v", got)
+	}
+}

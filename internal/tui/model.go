@@ -53,6 +53,18 @@ type watchFailedMsg struct{ err error }
 // clockMsg carries the time once a minute, for the clock in the status line.
 type clockMsg time.Time
 
+// clearStatusMsg hides a toast. It carries the text it was sent for, so a
+// newer message that took the line in the meantime stays.
+type clearStatusMsg struct{ text string }
+
+// toastFor is how long a copy message stays on the status line.
+const toastFor = 2 * time.Second
+
+// clearStatusAfter sends the clear message for text once d has passed.
+func clearStatusAfter(d time.Duration, text string) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return clearStatusMsg{text: text} })
+}
+
 // wheelStep is how many lines one wheel notch moves, the usual terminal step.
 const wheelStep = 3
 
@@ -229,6 +241,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clockMsg:
 		m.now = time.Time(msg)
 		return m, nextMinute()
+	case clearStatusMsg:
+		if m.status == msg.text {
+			m.status = ""
+		}
 	case wheelTickMsg:
 		// Notches belong to the screen they were gathered on, so a reader who
 		// moved the item, the tab, the sub-tab or the search before the frame
@@ -482,7 +498,10 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		return m.edit()
 	case "y":
-		m.copyID()
+		// Copy first, then return, so the status the timer carries is the
+		// one the copy just set.
+		cmd := m.copyID()
+		return m, cmd
 	case " ":
 		m.toggleRow()
 	case "h":
@@ -621,19 +640,21 @@ func (m *Model) openPopup(key string) {
 }
 
 // copyID puts the id of the row under the cursor on the clipboard, and the
-// status line says what was copied or why it could not be.
-func (m *Model) copyID() {
+// status line says what was copied or why it could not be. A good copy hides
+// itself after a short while; an error stays until the next message.
+func (m *Model) copyID() tea.Cmd {
 	it := m.Selected()
 	if it == nil {
 		m.status = "nothing selected"
-		return
+		return nil
 	}
 	id := shortRef(it)
 	if err := m.clip(id); err != nil {
 		m.status = "copy failed: " + err.Error()
-		return
+		return nil
 	}
 	m.status = "copied " + id
+	return clearStatusAfter(toastFor, m.status)
 }
 
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
