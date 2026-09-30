@@ -1179,6 +1179,29 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	}
 }
 
+// The help box is 26 rows tall, so on a 26-row screen it covers the whole
+// screen by design. This pins the next size up, where the box still fits and
+// the status line must stay readable under it.
+func TestTheHelpBoxLeavesTheStatusLineVisible(t *testing.T) {
+	t.Parallel()
+
+	pop := press(sized(clocked(newModel(t), 20, 46), 100, 30), "?")
+	rows := plainLines(strings.Split(pop.popupBox(), "\n"))
+	lines := plainLines(strings.Split(pop.View(), "\n"))
+	y0 := boxOn(lines, rows[0])
+	if y0 < 0 {
+		t.Fatal("the top border of the help box is not on a 30-row screen")
+	}
+	for i, r := range rows {
+		if y0+i >= len(lines) || !strings.Contains(lines[y0+i], r) {
+			t.Errorf("row %d of the help box, %q, is not on a 30-row screen", i, r)
+		}
+	}
+	if !strings.HasSuffix(plain(lastLine(pop.View())), "2026-09-27 20:46 | Feedback  dev") {
+		t.Error("the help box took the status line")
+	}
+}
+
 // TestNoRoundedCorners walks every width from 1 to 200, every tab of the bar,
 // and the focus on each of its panes, with no popup and with each of the three
 // popups, so no frame the screen can draw still holds a rounded corner.
