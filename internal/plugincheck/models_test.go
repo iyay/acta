@@ -9,8 +9,8 @@ import (
 
 const modelsPara = "**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: \"sonnet\"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: \"opus\"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config."
 
-func TestModelsParagraphInSixSkills(t *testing.T) {
-	for _, s := range []string{"plan", "brainstorm", "debug", "build", "dispatch", "review"} {
+func TestModelsParagraphInFiveSkills(t *testing.T) {
+	for _, s := range []string{"plan", "brainstorm", "debug", "build", "review"} {
 		raw, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", s, "SKILL.md"))
 		if err != nil {
 			t.Fatal(err)

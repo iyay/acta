@@ -55,8 +55,8 @@ func TestBuildSkillEndsWithReplyBack(t *testing.T) {
 // TestDispatchBriefLoadsBuild checks the brief template. A recipient that
 // never loads the build skill never ticks --start and never replies back.
 func TestDispatchBriefLoadsBuild(t *testing.T) {
-	if txt := readSkill(t, "skills/dispatch/SKILL.md"); !strings.Contains(txt, "SKILL: load build") {
-		t.Error(`dispatch/SKILL.md missing "SKILL: load build" in the brief format`)
+	if txt := readSkill(t, "skills/build/dispatch.md"); !strings.Contains(txt, "SKILL: load build") {
+		t.Error(`build/dispatch.md missing "SKILL: load build" in the brief format`)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestNoSkillWhitelistsActaCommands(t *testing.T) {
 // TestNoHandFilledReplyBack stops a skill from telling a recipient to
 // fill in a review command by hand. acta reply-back builds that command.
 func TestNoHandFilledReplyBack(t *testing.T) {
-	for _, p := range skillFiles(t, "skills/dispatch") {
+	for _, p := range skillFiles(t, "skills/build") {
 		b, err := os.ReadFile(p)
 		if err != nil {
 			t.Fatal(err)
@@ -93,7 +93,7 @@ func TestNoHandFilledReplyBack(t *testing.T) {
 // TestDispatchInitBeforeGoal checks the delivery file. Without the record
 // the recipient's reply-back has no pane and no range to send.
 func TestDispatchInitBeforeGoal(t *testing.T) {
-	if txt := readSkill(t, "skills/dispatch/herdr-delivery.md"); !strings.Contains(txt, "acta dispatch init") {
-		t.Error("dispatch/herdr-delivery.md missing \"acta dispatch init\"")
+	if txt := readSkill(t, "skills/build/herdr-delivery.md"); !strings.Contains(txt, "acta dispatch init") {
+		t.Error("build/herdr-delivery.md missing \"acta dispatch init\"")
 	}
 }

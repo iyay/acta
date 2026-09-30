@@ -28,7 +28,6 @@ var Skills = []Skill{
 	{"land", "after a clean review; gates, merge --no-ff, clean up, never push"},
 	{"bug", "record a confirmed bug with acta bug new"},
 	{"scratch", `raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory`},
-	{"dispatch", "run build through an omp agent in its own herdr tab"},
 	{"setup", "first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block"},
 	{"migrate", "move docs from another workflow plugin into .acta/"},
 }

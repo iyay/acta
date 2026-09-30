@@ -44,8 +44,8 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 	if strings.Contains(out, "executor subagent (default)") {
 		t.Error("the build line must not call subagent the default; the config picks the executor")
 	}
-	if len(Skills) != 12 {
-		t.Fatalf("%d skills, want 12", len(Skills))
+	if len(Skills) != 11 {
+		t.Fatalf("%d skills, want 11", len(Skills))
 	}
 }
 
@@ -141,8 +141,8 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			t.Errorf("%s: session start does not carry the plain scratch index line", name)
 		}
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
-		// and the voice lines count: the skill index above them names the
-		// dispatch skill, and an index is not an offer of a tab.
+		// and the voice lines count: the skill index above them may name
+		// dispatch as an executor, and an index is not an offer of a tab.
 		rules := out[strings.Index(out, "Core rules:"):]
 		if strings.Contains(strings.ToLower(rules), "herdr") {
 			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)

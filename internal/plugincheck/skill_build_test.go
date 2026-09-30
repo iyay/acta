@@ -10,12 +10,12 @@ import (
 func TestSkillBuild(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "build",
-		MaxLines: 682,
+		MaxLines: 1000,
 		Must: []string{
 			"## Executors", "`subagent`", "`dispatch`", "`inline`",
 			`model: "sonnet"`, `agent="task"`, "Do not ask whether to create a worktree",
 			"../<repo>-<slug>", "git rev-parse --show-toplevel", "git add -A",
-			"acta:tdd", "acta:review", "acta:land", "acta:dispatch", "no per-task reviewer",
+			"acta:tdd", "acta:review", "acta:land", "no per-task reviewer",
 			"acta tick plans/<stem>#task-N --step <n>", "acta tick [TASK_ID] --step <n>", "acta: tick wave",
 			"acta tick plans/<stem>#task-N --all",
 			"acta show <plan id> --json", "progress.done",
@@ -28,7 +28,7 @@ func TestSkillBuild(t *testing.T) {
 			"On omp, `dispatch` runs as `subagent`", "Dispatch is only for harnesses other than omp.",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
-			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees",
+			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
 			`"$LOCATION/$BRANCH_NAME"`, "acta tick <task-id>", "run it again with --all",
 			"or `go test ./...`, whichever the project uses",
 			"run the full test suite and the type checks, show the output, then use",

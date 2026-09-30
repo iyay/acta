@@ -1,6 +1,6 @@
 # herdr delivery
 
-Every `acta:name` here is a skill from the `acta` plugin, same as SKILL.md. `mattpocock-skills:*` is gone.
+Every `acta:name` here is a skill from the `acta` plugin, same as dispatch.md. `mattpocock-skills:*` is gone.
 
 ## Completion signal — a reply-back push plus a one-shot lifecycle read, never a wait
 
@@ -30,7 +30,7 @@ Its failure mode: the reply-back line is the single most-skipped instruction in 
 herdr agent get <slug>          # .result.agent.agent_status → working | idle | blocked
 ```
 
-**Do NOT use `herdr agent wait` in the foreground.** It blocks the orchestrator's turn for as long as the recipient works. The one exception is the idle watcher below, which runs it as a background job. See "Never wait for the recipient" in SKILL.md.
+**Do NOT use `herdr agent wait` in the foreground.** It blocks the orchestrator's turn for as long as the recipient works. The one exception is the idle watcher below, which runs it as a background job. See "Never wait for the recipient" in dispatch.md.
 
 `idle` can also mean the recipient stopped early, and `unknown` never proves completion. Compare `git log` and `git diff --stat` against the brief's ticket list before reviewing. Because the lifecycle proves so little, **when you read it does not matter** — which is why waiting on it is wasted.
 
@@ -40,7 +40,7 @@ herdr agent get <slug>          # .result.agent.agent_status → working | idle 
 
 ## Provision the tab — ONE named tab per worktree, REUSED every round, never self-closed
 
-**The worktree must already exist** (SKILL.md Step -1).
+**The worktree must already exist** (the worktree from `## Worktree` in SKILL.md).
 
 The dispatch agent is named after the worktree slug and lives in its OWN TAB. Look it up by name first and reuse. Create a tab only when the name does not resolve — never split beside the orchestrator.
 
@@ -87,7 +87,7 @@ The tab stays for the life of the worktree. No parking, no moves. The separate `
 
 ### 4. The recipient touches NO pane, tab, or workspace
 
-The brief carries zero pane/tab commands; the recipient's only herdr command is the reply-back `herdr agent prompt`. You close the pane yourself in "Landing" (SKILL.md), after merge and worktree removal:
+The brief carries zero pane/tab commands; the recipient's only herdr command is the reply-back `herdr agent prompt`. You close the pane yourself in "Close the tab" (dispatch.md), after merge and worktree removal:
 
 ```bash
 herdr pane close "$PANE_ID"   # positional argument; the emptied tab auto-closes
@@ -126,7 +126,7 @@ herdr agent start <slug> --kind omp --pane <pane-id> -- --yolo
 
 Report that the `headroom wrap` layer was lost. Other kinds only when the user names one. Names match `[a-z][a-z0-9_-]{0,31}`.
 
-**acta must be installed in the recipient harness too.** Skills do not travel with the worktree; each harness installs its own copy. Before the first dispatch on a machine: check the harness lists `acta:dispatch`. Missing ‒ the recipient will freestyle every `acta:` line in the brief — STOP and report, do not dispatch.
+**acta must be installed in the recipient harness too.** Skills do not travel with the worktree; each harness installs its own copy. Before the first dispatch on a machine: check the harness lists `acta:build`. Missing ‒ the recipient will freestyle every `acta:` line in the brief — STOP and report, do not dispatch.
 
 ## Agent lifecycle across rounds
 
@@ -136,7 +136,7 @@ Report that the `headroom wrap` layer was lost. Other kinds only when the user n
 
 ## Deliver the pointer message
 
-New session, plan, or worktree — HARD RULE, four steps, a check after each (same as SKILL.md):
+New session, plan, or worktree — HARD RULE, four steps, a check after each (same as dispatch.md):
 
 ```bash
 # 1. omp ready: its empty input box is on screen
@@ -206,7 +206,7 @@ Right after the checkpoint read, start this as a background job (Claude Code: `r
 herdr agent wait <slug> --until idle --until done
 ```
 
-Its exit arrives as a notification, so it never blocks your turn. Background only — never a foreground wait, never a polling loop. The four reactions on that notification live in "Idle watcher" in SKILL.md.
+Its exit arrives as a notification, so it never blocks your turn. Background only — never a foreground wait, never a polling loop. The four reactions on that notification live in "Idle watcher" in dispatch.md.
 
 ## Failure handling
 
@@ -218,6 +218,6 @@ Its exit arrives as a notification, so it never blocks your turn. Background onl
 
 ## Worktree provisioning
 
-Default: plain `git worktree add ../<repo>-<slug> -b <slug> production` (SKILL.md Step -1) plus the reuse-else-new-tab flow. This is the `acta:build` git fallback run by hand — no consent prompt.
+Default: plain `git worktree add ../<repo>-<slug> -b <slug> production` (the worktree from `## Worktree` in SKILL.md) plus the reuse-else-new-tab flow. This is the `acta:build` git fallback run by hand — no consent prompt.
 
 `herdr worktree create` also creates a new **workspace** — a context switch. Probed 2026-08-06: it produced two workspaces and added no pane to the caller's workspace, so it cannot replace the default flow. Use only when the user explicitly asks for an isolated workspace. Clean-up: `herdr worktree remove --workspace <id>` and `herdr workspace close <id>`.

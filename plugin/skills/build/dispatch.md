@@ -1,63 +1,8 @@
----
-name: dispatch
-description: "acta: Use when acta:build runs with the dispatch executor, or the user asks to hand an approved plan to omp in another tab. Provisions the worktree and a dedicated herdr tab, hands off the plan's tasks through a short brief and /goal, then verifies from git, reviews with acta:review, routes BLOCKERs back as one fix task per round (three rounds at most), lands with acta:land, and closes the tab. Refuses without herdr or without an approved plan."
----
+# Dispatch — the plan in another pane
 
-# dispatch — approved work in another pane
-
-Hand approved tickets to an agent in another pane, then run verify → review → route → land. Runs on herdr.
+Read this only when `acta:build` runs the `dispatch` executor. Build already made the worktree (`## Worktree` in SKILL.md) and picked this executor. This file says how to hand the plan to an omp agent in its own herdr tab, how to wait for it, and how to send a fix round back to it. Review and landing are build's `## Close`, `acta:review` and `acta:land`; only the steps a tab adds live here.
 
 **Skill notation.** Every `acta:name` here is a skill from the `acta` plugin. `mattpocock-skills:*`, `/to-spec`, `/to-tickets`, `/implement`, `/code-review` are gone; a brief still naming them is stale — rewrite it before sending. "Ticket" below = one `acta:plan` task, mirrored in the tracker when the repo has one.
-
-## Entry gate — no dispatch without an approved plan
-
-Dispatch is the handoff step of `acta:build`. Before you touch a pane, all of these are true:
-
-- `acta:brainstorm` produced the design, the user said yes, `acta:plan` produced the plan at `.acta/plans/`, and the user said yes to that too. Tracker present → every task is a ticket there.
-- The plan carries confirmed files + symbols. The recipient gets facts, never "go look".
-- Every ticket has a `verify: [check]` line.
-
-Any missing → STOP, report which one, do not provision. "Small" is not an exemption.
-
-## Step -3 — Refuse inside omp
-
-Running in omp: STOP. Do not open a tab. Go back to `acta:build` and run the `subagent` executor (`agent()` with `agent="task"`). Dispatch is only for harnesses other than omp.
-
-## Step -2 — Detect herdr FIRST
-
-```bash
-printf 'herdr=%s\n' "${HERDR_ENV:-}"
-```
-
-- `HERDR_ENV=1` → read [herdr-delivery.md](herdr-delivery.md).
-- Anything else → STOP: "dispatch requires herdr". Do not fall back to an in-process subagent — different execution model.
-
-## Autonomous loop — HARD RULE, no user in the loop after plan approval
-
-Plan approval is the one yes you need. From then on the loop runs itself, end to end:
-
-1. **Reply-back lands → review starts in that same turn.** The notification IS the trigger. Do not report "the agent is done" and wait for the user to say "review it". Do not ask "shall I review?". Verify from git, then invoke `acta:review` immediately.
-2. **Review not clean → route fixes back in that same turn.** BLOCKERs → ONE fix ticket via `acta:plan` → prompt the same agent by slug → yield. Rounds 1 and 2 only; a BLOCKER after round 3 stops the loop (see Autonomy). No "here are the findings, want me to send them back?". The user sees findings only as a one-line status while the fix round is already dispatched.
-3. **Review clean + every ticket done → run `acta:land` in that same turn, then close the tab.** No "ready to merge, shall I?".
-
-Asking the user for any of these three is a violation, same class as skipping `acta:review`. The user reads the turn's report after the fact.
-
-The only things that stop the loop and go back to the user are the blockers listed under "Autonomy" below — a human decision, a BLOCKER still open after review round 3, a Destructive-list command, a merge you cannot resolve, red post-merge gates. Everything else is yours.
-
-## Autonomy — decide inside the phase, then yield
-
-Inside a phase every call is yours: provision, brief, deliver, checkpoint, verify, review, route, re-review, land. No mid-phase options, no "which pane?". Never `git push`.
-
-Autonomy is not a licence to hold the turn. Two phases, hard stop between them (see "Never wait").
-
-Phase stops early on a blocker report, not a permission ask:
-
-- No multiplexer.
-- A finding needing a human decision — design, scope, tradeoff, plan conflict.
-- **Round cap** — review round 3 still has a BLOCKER. `acta:review` allows three review rounds per plan; round 4 never starts on your own. STOP, report the BLOCKER, ask the user: land anyway, fix, or revert to `ROUND1_HEAD`. New BLOCKERs do not buy more rounds.
-- **Delivery stuck** — delivery that will not submit after ~2 attempts.
-- Drift at the comprehension checkpoint (correct, re-dispatch, then stop as usual).
-- Destructive-list command needed (`rm -rf`, `--force`, `drop`, `truncate`, `git reset --hard`, mass delete) → plain sentences, wait for the user.
 
 ## Never wait for the recipient — HARD RULE
 
@@ -77,8 +22,8 @@ Phase 2 resumes on either trigger: the REPLY-BACK notification lands, or the use
 
 **Phase 1 — dispatch (one turn, hard stop):**
 
-1. **Entry gate** passed (above).
-2. **Provision** (Step -1): worktree outside the repo, then look the agent up by slug and reuse; create its own tab only on a miss. Never a split beside you.
+1. **build picked `dispatch` and made the worktree** (`## Worktree` in SKILL.md).
+2. **Provision the tab**: look the agent up by slug and reuse; create its own tab only on a miss. Never a split beside you.
 3. **Write the hand-off doc** (Step 0a). Pointer at plan + tickets plus the mechanics no skill supplies. Not a rewritten plan.
 4. **Deliver**: `/new` on a new session/plan/worktree, `acta dispatch init` in the worktree, then always `/goal` carrying the brief path and the reply-back line.
 5. **Comprehension checkpoint**: exactly one read ~20s later — todo list must name the ticket ids, else drift; correct and re-dispatch. Todo list not up yet: report "checkpoint unconfirmed" and yield.
@@ -91,9 +36,9 @@ The recipient is the main agent in its pane: writes zero code itself, **fans eve
 
 7. **Verify** from git. Verify ≠ review.
 8. Tab: nothing to do. A stray pane split beside you → move it to its own tab once.
-9. **Review** via `acta:review` + plan ref — every round, no exceptions, Spec axis + Standards axis. Range per round: round 1 `<base>..<head>`; round 2 `<ROUND1_HEAD>..<head>` plus the direct callers of every function the fix touched; round 3 `<ROUND2_HEAD>..<head>` only.
-10. BLOCKERs or unfinished tickets → ONE fix ticket via `acta:plan` that holds all of them, route it to the same agent by slug, **stop and yield**. One turn per round. Round 3 still BLOCKED → stop, ask the user (see Autonomy).
-11. **Clean AND complete → `acta:land`, then close the tab.** Never leave a reviewed branch parked.
+9. **Review** via `acta:review`, over the range and the plan path build's `## Close` sets, every round, no exceptions.
+10. BLOCKERs or unfinished tickets → the one fix round in "Fix rounds" below, **stop and yield**. One turn per round. Round 3 still BLOCKED → stop, ask the user (see `acta:review`).
+11. **Clean AND complete → build's `## Close` runs `acta:land`, then "Close the tab" below.** Never leave a reviewed branch parked.
 
 ## One tab per dispatch — HARD RULE
 
@@ -132,7 +77,7 @@ Full surface: the separate `herdr` skill.
 | Record | `acta dispatch init --pane $HERDR_PANE_ID --plan <plan> [--round <slug>]` in the worktree, before every `/goal` |
 | Stray split pane | `herdr pane move <pane> --new-tab --no-focus --label <slug>` |
 
-Map, not instructions. Flags and failure handling live in the reference file.
+Map, not instructions. Flags and failure handling live in the reference file, [herdr-delivery.md](herdr-delivery.md).
 
 ## `/new` and `/goal` — every dispatch, every backend
 
@@ -208,46 +153,15 @@ Set it up before dispatching security, auth, data-migration or money work; check
 
 Also under-used, and worth naming in briefs: **`lsp`** answers "every caller of X" mechanically (references, rename, diagnostics) where grep guesses; **`todo`** carries phase tracking; **`agent://<id>/findings.0.path`** pulls a typed field straight out of a subagent's result.
 
-## Step -1 — Provision worktree, then tab
+## Provision the tab
 
-Worktree first — the tab's pane is placed into it. `acta:build` worktree rules apply (no consent prompt); here you run the git fallback yourself because the worktree must exist before the recipient's pane does.
+The worktree already exists (the worktree from `## Worktree` in SKILL.md). This step adds the tab and nothing else.
 
-1. **Worktree, outside the repo, per `acta:build`:**
+1. **Reuse the worktree's agent by slug on every turn.** `herdr agent get <slug>` is the first call on any turn touching the recipient. Resolves → reuse. Misses → create a tab, rename agent. Never a second tab for one worktree (two agents fight over one branch). Never scan for a "free" pane — `agent == ""` matches dev servers and tunnels; three mis-prompts in one session.
 
-   ```bash
-   REPO_ROOT=$(git rev-parse --show-toplevel)
-   REPO=$(basename "$REPO_ROOT")
-   git -C "$REPO_ROOT" worktree add "../${REPO}-<slug>" -b <slug> production   # other parent only if the user named it
-   WT=$(cd "$REPO_ROOT/../${REPO}-<slug>" && pwd)                              # absolute path for pane commands
-   ```
+2. **Launch the harness in the worktree**; wait for its prompt.
 
-   Record the parent branch in the brief; landing needs it. Never in-tree (`.claude/worktrees/`, `worktrees/`): recursive scanners (Shopify CLI, Vite, jest globs, tsc, eslint, docker) find both copies and fail — real breakage 2026-08-21. `.gitignore` hides it from git only.
-
-   Create, do not enter. You orchestrate from the main checkout.
-
-   Inherited in-tree worktree → `git worktree move <old> <new>`, re-point brief, re-dispatch. Stop a mid-round agent first; expect the held-goal block.
-
-2. **Reuse the worktree's agent by slug on every turn.** `herdr agent get <slug>` is the first call on any turn touching the recipient. Resolves → reuse. Misses → create a tab, rename agent. Never a second tab for one worktree (two agents fight over one branch). Never scan for a "free" pane — `agent == ""` matches dev servers and tunnels; three mis-prompts in one session.
-
-3. **Launch the harness in the worktree**; wait for its prompt.
-
-**Worktree prep the recipient cannot do.** Run all four; each has burned a dispatch.
-
-```bash
-ln -s <repo>/node_modules <worktree>/node_modules          # plus backend/.venv where one exists
-cp <repo>/.env.* <worktree>/                                # git-ignored env files the suite needs
-cp -R <repo>/.scratch/<feature> <worktree>/.scratch/        # gitignored tracker export, if the plan is not yet committed on the branch
-cp <repo>/AGENTS.md <repo>/CLAUDE.md <worktree>/ 2>/dev/null # house rules, see below
-```
-
-The plan under `.acta/plans/` is a tracked file: commit it on the branch as the first commit so it clones with the worktree. The brief forbids `npm install`.
-
-**House rules do not always reach the worktree, and omp reads them natively.** omp ingests `AGENTS.md` (and Cursor MDC, `.clinerules`, Copilot `applyTo`) in their native shape — so a worktree that has the file gets the rules for free, and one that doesn't gets nothing. Two ways the file goes missing:
-
-- `AGENTS.md` is a **symlink to CLAUDE.md** and CLAUDE.md is untracked or excluded (`.gitignore`, `.git/info/exclude`) → the worktree gets **neither**. Observed 2026-09-03: a backend agent ran a whole ticket with zero house rules and shipped `hasattr` guards the repo's own ADRs had removed, plus an untyped helper in a strict-typing codebase.
-- The repo keeps its rules only in an untracked local file.
-
-Check before dispatching: `ls <worktree>/AGENTS.md <worktree>/CLAUDE.md`. Missing → copy them in. The brief's restates are a floor, not a substitute: a restate carries five lines, the file carries the whole standard.
+The full tab surface — reuse vs create, the rename handle, the response shape, the `--yolo` layer, and failure handling — lives in [herdr-delivery.md](herdr-delivery.md).
 
 ## Step 0a — Write the hand-off doc
 
@@ -294,8 +208,6 @@ Security, auth, data-migration and money paths keep the full bar — there, "a f
 ## Spread the work — maximum subagents, every brief, every backend
 
 **The recipient is an orchestrator, not a typist.** `acta:build` already forbids it from writing code and already says fresh subagent per task; this section makes it fan out as wide as the ticket list allows. A recipient that runs six tickets through one implementer subagent serially is the slowest and least reviewable shape available: one context accumulates every file and every failed attempt, and by ticket 5 it has compacted away ticket 1's constraints.
-
-**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 The PARALLEL rules live in `references/house-rules.md` now, read before the todo list — no need to retype them into the brief. The `/goal` still has to carry the push: the `orchestrate` keyword's contract (decompose, dispatch subagents, parallelize disjoint work in ONE message, verify, never yield before closure) says the same thing, so put it in every `/goal` — it is skipped as often as the reply-back line.
 
@@ -348,7 +260,7 @@ TICKETS (anchor for your todo list — exactly these N):
   <TICKET-2> — <title> → verify: <property>
 WORKTREE: <abs path> (branch <slug>, parent <production>, base <base-sha>) — cd there FIRST, work ONLY there. Main checkout stays clean. No git checkout, no cd out, NO git push.
 FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — the orchestrator files them with `acta debt new` once the round is CLEAN.
-HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from this skill) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
+HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from SKILL.md) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
 GATES (from the worktree): <the plan's fast test command>; typecheck; git diff --stat vs <base-sha> shows only plan files.
 REPLY-BACK: after the last commit the build skill runs `acta reply-back`. Nothing else to hand-fill.
@@ -377,51 +289,25 @@ Compare commits against the ticket list. Re-run the decisive mutation yourself o
 
 **Verify ≠ review.** Verify asks "do tests catch the defects we thought of?" Review asks "what did we not think of?" Four clean mutation rounds in one session missed a symlink path-containment bypass, a swallowed audit record, a preview/cleanup divergence, and a scope bug. Re-review every round.
 
-## Review — `acta:review`, your side, every round
+## Review — the self-review exception never applies here
 
-The notification's only correct response: verify, then `acta:review` over this round's range (below) with the plan path in `{PLAN_OR_REQUIREMENTS}`. Runs in **your** session. Per `acta:review` you dispatch TWO read-only reviewer subagents in parallel (`acta:build`): Spec axis (faithful to the approved design + plan?) and Standards axis (repo standards + Fowler smells on the changed lines). Never prompt the implementor to review itself.
+**`acta:review`'s small-change self-review exception does NOT apply to a dispatch.** You did not write or watch the code; "a few lines" is what a drifted diff looks like from outside. Skill, every round, any diffstat. Everything else about the round — the two reviewers, the range, the plan path, the finding bar and the round cap — is `acta:review`.
 
-**`acta:review`'s small-change self-review exception does NOT apply here.** You did not write or watch the code; "a few lines" is what a drifted diff looks like from outside. Skill, every round, any diffstat.
+## Fix rounds
 
-- Name the skill literally, with the full prefix.
-- Range explicit, per round. Round 1: `<base>..<head>`. Round 2: `<ROUND1_HEAD>..<head>` plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the full deep lens again. Round 3: `<ROUND2_HEAD>..<head>` only. `ROUND1_HEAD` / `ROUND2_HEAD` = the head you reviewed in that round. No range → the skill defaults to `HEAD~1..HEAD` and reviews the wrong span.
-- Pass the plan path after an em-dash.
-- Findings only; reviewers never edit. Fixes = new tickets.
-- Findings come back through `acta:review`: verify each against the code before routing, push back on wrong ones with reasoning — a bad finding routed as a ticket is a wasted round.
+A round that comes back with BLOCKERs goes out **in this same turn, automatically**. A findings list handed to the user with no dispatch behind it is an incomplete turn. The fix task itself, the round count and what happens after round 3 are `acta:review`; only the delivery is here:
 
-User explicitly wants a *different* pane to review → that message needs: literal skill name, a review keyword, and the range.
-
-## After a review — route as one fix ticket, three rounds max
-
-**Clean** = Spec axis matches AND zero BLOCKERs (the finding bar in `acta:review`). Clean AND every ticket done → "Landing", same turn, no ask.
-
-Not clean after round 1 or 2 → the fix round goes out **in this same turn, automatically**. A findings list handed to the user with no dispatch behind it is an incomplete turn. Steps:
-
-1. **BLOCKERs → ONE fix ticket via `acta:plan`.** Append a `## Fix round <n>` section to the same plan file with ONE task that lists every BLOCKER: `file:line`, wrong vs expected, the mutation that proves each fix, one `verify:` line per BLOCKER. The whole task lands as one commit. NOTEs go to memory, one line each, never a ticket. Mirror the task to the tracker like any other ticket. No inline findings list in the prompt — an inline list is what makes a weak harness freestyle.
-   A defect in code already on the parent branch, that the diff did not bring in, stays out of the fix ticket: record it with `acta:bug` ("Where findings go" in `acta:review`).
-   Exception: 1–2 findings, clear one-liners, no new context → inline `/goal`, still naming the implementer-subagent rule. 3+ or reasoning needed → the fix task in the plan.
+1. **Exception — 1–2 findings, clear one-liners, no new context → inline `/goal`**, still naming the implementer-subagent rule. 3+ or reasoning needed → the fix task `acta:review` already defined.
 2. **Reuse the same agent** — slug lookup first, prompt where it lives, no move. Fix round on the same plan in the same worktree → `/goal` only, **no `/new`**. Write the fix brief as if it remembers nothing (omp compacts); reuse is an optimisation.
 3. Fix brief = same format, TICKETS = the new ticket ids, run `acta dispatch init` again first, and the REPLY-BACK line is the same one sentence as in the brief. No range in it: the recipient reads the head off the branch.
 4. **Dispatch, then STOP and yield.** One turn per round.
-5. Return → verify → `acta:review` again over the fix range (round 2: `<ROUND1_HEAD>..<head>` plus direct callers; round 3: `<ROUND2_HEAD>..<head>`). Fixes introduce defects at draft rate; in one session three rounds each added one, twice because the dispatch instruction itself was wrong. A green suite cannot tell you that.
 
-**Three review rounds per plan, hard cap (`acta:review`).** Rounds 1 and 2 are the same three moves in one turn: verify → review → (clean ? land : dispatch the one fix ticket). Never hand the user a findings list and stop after round 1 or 2; never ask "another round?". Round 3: clean → land; BLOCKER → STOP, report it, ask the user: land anyway, fix, or revert to `ROUND1_HEAD`. Round 4 never starts on your own. A round with zero BLOCKERs does not start.
+## Close the tab
 
-Escalate before the cap only when a finding needs a human decision. New findings do not reset or extend the round count.
+`acta:land` did the merge and removed the worktree. One step a dispatch adds, and only now: `herdr pane close <pane-id>`, with the pane id resolved from the slug and never from memory. `acta:land` has no pane step.
 
-## Landing — from the main checkout
+Report after landing, ADHD shape: merge SHA first, post-merge gate numbers, what was cleaned up, then two lines you owe the reader: `Bugs found by recipient:` naming every bug the recipient recorded under `.acta/bugs` in the diff, or `none`; and `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` when the file is missing or adds nothing. Then out-of-scope follow-ups the review surfaced, one next action last.
 
-Clean and complete → you land **in the same turn the clean verdict arrives**. Never ask; never report "ready to merge". The approved plan covers it.
+**Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--home-me-code-app-worktree--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic.
 
-1. **Run `acta:land` for the whole landing.** It holds the preconditions, the stray-file and symlink check, the parent branch, the merge, `acta id --fix-duplicates`, the gates on the merge result, and the worktree and branch cleanup. Never `git push`. Two copies of those steps drift apart, and the drift is how duplicate ids reach the parent branch.
-2. **Then close the pane, and only then:** `herdr pane close <pane-id>`, resolved from the slug and never from memory, after `acta:land` removed the worktree. `acta:land` has no pane step, so this is the one step a dispatch adds.
-
-The only cases that stop landing and go to the user: a finding needing a human decision; the parent is one the user has called protected; the merge conflict cannot be finished by intent; post-merge gates red. An open BLOCKER after round 1 or 2 is not one of these — it goes back to the agent as the fix ticket. After round 3 it goes to the user (see "After a review").
-
-Report after landing, ADHD shape: merge SHA first, post-merge gate numbers, what was cleaned up, then two lines you owe the reader: `Bugs found by recipient:` naming every bug the recipient recorded under `.acta/bugs` in the diff, or `none`; and `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` (see "Memory sweep before done"). Then out-of-scope follow-ups the review surfaced, one next action last.
-
-## Memory sweep before "done"
-
-Memory: before reporting done, one sweep — a gotcha that burned time, a dispatch mechanic that failed, an agreed convention → write it now. Routing: domain term → `CONTEXT.md`, decision → ADR, runbook → `.okf/`, session-scoped → memory. Diff play-by-play is noise.
-
-**Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--home-me-code-app-worktree--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic. Landing report gets one line: `Harvested from omp: <note titles>`, or `omp memory: nothing to harvest` when the file is missing or adds nothing.
+Before you report done, sweep your own memory once: a gotcha that burned time or a dispatch mechanic that failed is a NOTE for `acta debt new` (`acta:review` owns that routing), an agreed convention or a decision belongs in `CONTEXT.md` or an ADR (`acta:brainstorm` owns those), a runbook goes to `.okf/`. Diff play-by-play is noise.
