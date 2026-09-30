@@ -9,7 +9,8 @@ func TestSkillTDD(t *testing.T) {
 		Must: []string{
 			"The Iron Law", "## Cover the plan, not the universe", "## Quality bar",
 			"reverted", "regression test", "flag-off", "Test tooling", "writing-good-tests.md",
+			"the full suite runs in `acta:land`",
 		},
-		MustNot: []string{"superpowers:"},
+		MustNot: []string{"superpowers:", "- [ ] All tests pass"},
 	})
 }

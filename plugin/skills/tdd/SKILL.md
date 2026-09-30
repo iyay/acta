@@ -299,7 +299,7 @@ Before marking work complete:
 - [ ] Watched each test fail before implementing
 - [ ] Each test failed for expected reason (feature missing, not typo)
 - [ ] Wrote minimal code to pass each test
-- [ ] All tests pass
+- [ ] The task's tests and the tests of the code it touched pass (the full suite runs in `acta:land`)
 - [ ] Output pristine (no errors, warnings)
 - [ ] Tests use real code (mocks only if unavoidable)
 - [ ] Edge cases and errors covered

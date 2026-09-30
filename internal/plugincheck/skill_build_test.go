@@ -126,3 +126,20 @@ func TestBuildStartTickSkill(t *testing.T) {
 		t.Error("build/SKILL.md never states the --agent rule for --start")
 	}
 }
+
+// TestImplementerPromptNoFullSuite reads implementer-prompt.md on its own. The
+// implementer only reads this file, and the full suite belongs to acta:land.
+func TestImplementerPromptNoFullSuite(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "build", "implementer-prompt.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The prompt wraps lines, so join the words before matching a sentence.
+	txt := strings.Join(strings.Fields(string(b)), " ")
+	if strings.Contains(txt, "run the full suite once before committing") {
+		t.Error("implementer-prompt.md still says \"run the full suite once before committing\"")
+	}
+	if !strings.Contains(txt, "never the full suite") {
+		t.Error("implementer-prompt.md missing \"never the full suite\"")
+	}
+}
