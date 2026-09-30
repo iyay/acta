@@ -30,8 +30,8 @@ func TestHookCommands(t *testing.T) {
 		t.Fatalf("session-start before setup: %d\n%s", code, out)
 	}
 
-	if _, _, code := acta(t, dir, "", "voice", "set", "--language", "Korean"); code != 0 {
-		t.Fatal("voice set failed")
+	if _, _, code := acta(t, dir, "", "config", "set", "--language", "Korean"); code != 0 {
+		t.Fatal("config set failed")
 	}
 	out, _, _ = acta(t, dir, "", "hook", "prompt")
 	if strings.TrimSpace(out) != "acta voice: reply in Korean, adhd style." {

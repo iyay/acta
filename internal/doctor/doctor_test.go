@@ -101,7 +101,7 @@ func TestCheckTheme(t *testing.T) {
 			r := checkTheme(c.env)
 			fix := ""
 			if c.level != OK {
-				fix = "acta voice set --theme"
+				fix = "acta config set --theme"
 			}
 			wantLevel(t, r, c.level, fix)
 			if !strings.Contains(r.Msg, c.msg) {

@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: bugs/2026-09-30-omp-build-runs-dispatch-executor
 id: PLN-0051
 hash: nln9dod
+started: "2026-09-30"
 ---
 # omp Executor Rule and `acta config` Command Implementation Plan
 
@@ -69,7 +70,7 @@ hash: nln9dod
 - Consumes: nothing.
 - Produces: the exact sentences below; Task 4 renames `acta voice show` inside them and keeps the rest.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/plugincheck/skill_build_test.go`, `TestSkillBuild`, add to `Must`:
 
@@ -86,12 +87,12 @@ In `internal/plugincheck/skill_dispatch_test.go`, `TestSkillDispatch`, add to `M
 			"Dispatch is only for harnesses other than omp.",
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/plugincheck/ -run 'TestSkillBuild$|TestSkillDispatch$'`
 Expected: FAIL, both tests report the missing strings.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `plugin/skills/build/SKILL.md`, the `dispatch` row becomes:
 
@@ -113,12 +114,12 @@ In `plugin/skills/dispatch/SKILL.md`, right above `## Step -2 — Detect herdr F
 Running in omp: STOP. Do not open a tab. Go back to `acta:build` and run the `subagent` executor (`agent()` with `agent="task"`). Dispatch is only for harnesses other than omp.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/plugincheck/`
 Expected: PASS (size caps and every other skill rule still hold).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/build/SKILL.md plugin/skills/dispatch/SKILL.md internal/plugincheck/skill_build_test.go internal/plugincheck/skill_dispatch_test.go
@@ -141,7 +142,7 @@ git commit -m "fix: omp runs build subagents instead of dispatch"
 - Consumes: nothing.
 - Produces: `acta config show [--json]` and `acta config set [flags]` with the same flags as before. Function `cmdConfig(args []string, stdout, stderr io.Writer) int`, const `configUsage`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `git mv cmd/acta/voice_test.go cmd/acta/config_test.go` and `git mv internal/cli/voice.go internal/cli/config_cmd.go`. In `cmd/acta/config_test.go`, change every `"voice"` command arg to `"config"`, rename `TestVoice*` functions to `TestConfig*`, and add this case to the bad-input test:
 
@@ -160,12 +161,12 @@ func TestVoiceCommandIsGone(t *testing.T) {
 
 In `internal/cli/cli_test.go`, change every `"voice"` first arg of `mustRun`/`runCode` to `"config"` and the comment to "The config command needs no repo, so no inDir here." In `internal/doctor/doctor_test.go`, the expected fix becomes `fix = "acta config set --theme"`. In `cmd/acta/hook_test.go`, the call becomes `acta(t, dir, "", "config", "set", "--language", "Korean")` and the fatal text `"config set failed"`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./cmd/acta/ ./internal/cli/ ./internal/doctor/`
 Expected: FAIL, `config` is an unknown command and the doctor fix text still says `acta voice set`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/cli/cli.go`:
 
@@ -182,12 +183,12 @@ const configUsage = "usage: acta config show [--json] | acta config set [--langu
 
 Any other `acta voice` text in that file becomes `acta config`. In `internal/doctor/doctor.go`: `r.Fix = "acta config set --theme " + theme.Default`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./cmd/acta/ ./internal/cli/ ./internal/doctor/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./cmd/acta/ ./internal/cli/ ./internal/doctor/

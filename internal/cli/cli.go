@@ -121,8 +121,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 			return cmdScratchNew(args[2:], stdin, stdout, stderr)
 		}
 		return cmdScratchAdd(args[2:], stdin, stdout, stderr)
-	case "voice":
-		return cmdVoice(args[1:], stdout, stderr)
+	case "config":
+		return cmdConfig(args[1:], stdout, stderr)
 	case "hook":
 		return cmdHook(args[1:], stdin, stdout, stderr)
 	case "tick":
