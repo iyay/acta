@@ -1007,7 +1007,7 @@ func TestDetailDotsProblemsAndWorkLines(t *testing.T) {
 		m := actModel(t).WithTheme("tokyo-night", true)
 		s := m.styles
 		if s.dot(dotDone).GetForeground() != s.done.GetForeground() ||
-			s.dot(dotGoing).GetForeground() != s.accent.GetForeground() ||
+			s.dot(dotGoing).GetForeground() != s.pulse[0].GetForeground() ||
 			s.dot(dotWaiting).GetForeground() != s.waiting.GetForeground() {
 			t.Fatal("a dot does not wear the color of its state")
 		}

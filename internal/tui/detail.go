@@ -27,14 +27,14 @@ func (m Model) rule(w int) string {
 	return m.styles.faint.Render(strings.Repeat("─", max(1, w)))
 }
 
-// dot is the brush of a status dot: green when done, the accent while the
-// work is under way, grey while it waits.
+// dot is the brush of a status dot: green when done, the first frame of the
+// pulse while the work is under way, grey while it waits.
 func (s styles) dot(mark string) lipgloss.Style {
 	switch mark {
 	case dotDone:
 		return s.done
 	case dotGoing:
-		return s.accent
+		return s.pulse[0]
 	}
 	return s.waiting
 }

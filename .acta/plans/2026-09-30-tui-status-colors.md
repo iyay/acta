@@ -2,6 +2,7 @@
 created: "2026-09-30"
 id: PLN-0047
 hash: ylyfrwe
+started: "2026-09-30"
 ---
 # TUI Status Colors Implementation Plan
 
@@ -85,7 +86,7 @@ hash: ylyfrwe
   - `func contrastRatio(a, b string) float64`
   - `func farthestMix(fg, bg string, floor float64) float64`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/styles_test.go`:
 
@@ -186,12 +187,12 @@ func TestFarthestMixKeepsTheFloor(t *testing.T) {
 
 In `internal/tui/detail_test.go`, change the assert in `TestDetailDotsProblemsAndWorkLines` that expects `s.dot(dotGoing)` to be the accent, so that it expects `s.pulse[0]`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestPulseFramesStayReadable|TestTokyoNightPulseMoves|TestGoingDotIsFrameZero|TestFarthestMixKeepsTheFloor|TestDetailDotsProblemsAndWorkLines'`
 Expected: FAIL to build with `s.pulse undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`, add `math` to the imports and add below the slot constants:
 
@@ -339,12 +340,12 @@ Add `fmt` to the imports if it is gone. `strconv` and `strings` are already ther
 
 In `internal/tui/detail.go`, `styles.dot`, the `dotGoing` case becomes `return s.pulse[0]`. Change its comment: "green when done, the first frame of the pulse while the work is under way, grey while it waits."
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

@@ -382,3 +382,96 @@ func TestSgrHasSkipsColorNumbers(t *testing.T) {
 		t.Fatal("plain bold was missed")
 	}
 }
+
+// TestPulseFramesStayReadable walks every built-in theme. A frame too close
+// to the background would trip the terminal's minimum contrast and flash
+// white, so none may drop under 1.6.
+func TestPulseFramesStayReadable(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, _ := theme.Builtin(name)
+		s := newStyles(th, true)
+		if len(s.pulse) != pulseSteps {
+			t.Fatalf("%s: %d pulse frames, want %d", name, len(s.pulse), pulseSteps)
+		}
+		fg := func(i int) string { return string(s.pulse[i].GetForeground().(lipgloss.Color)) }
+		if th.BG == "" {
+			for i := range s.pulse {
+				want := "2"
+				if i >= pulseSteps/2 {
+					want = "10"
+				}
+				if fg(i) != want {
+					t.Errorf("%s frame %d = %s, want %s", name, i, fg(i), want)
+				}
+			}
+			continue
+		}
+		if fg(0) != th.ANSI[slotGreen] {
+			t.Errorf("%s frame 0 = %s, want green %s", name, fg(0), th.ANSI[slotGreen])
+		}
+		for i := 1; i < pulseSteps/2; i++ {
+			if fg(i) != fg(pulseSteps-i) {
+				t.Errorf("%s: frame %d %s and frame %d %s differ, the pulse is not symmetric", name, i, fg(i), pulseSteps-i, fg(pulseSteps-i))
+			}
+		}
+		prev := contrast(t, fg(0), th.BG)
+		for i := range s.pulse {
+			c := contrast(t, fg(i), th.BG)
+			if c < minPulseContrast {
+				t.Errorf("%s frame %d %s has contrast %.2f, want at least %.1f", name, i, fg(i), c, minPulseContrast)
+			}
+			if i > 0 && i <= pulseSteps/2 && c > prev+1e-9 {
+				t.Errorf("%s frame %d gets brighter on the way down: %.3f after %.3f", name, i, c, prev)
+			}
+			prev = c
+		}
+	}
+}
+
+func TestTokyoNightPulseMoves(t *testing.T) {
+	t.Parallel()
+
+	th, _ := theme.Builtin("tokyo-night")
+	s := newStyles(th, true)
+	if s.pulse[0].GetForeground() == s.pulse[pulseSteps/2].GetForeground() {
+		t.Fatal("frame 4 is still green, so the dot would not pulse")
+	}
+}
+
+func TestGoingDotIsFrameZero(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			th, _ := theme.Builtin(name)
+			s := newStyles(th, true)
+			if s.dot(dotGoing).GetForeground() != s.pulse[0].GetForeground() {
+				t.Errorf("%s: dot of work under way is %v, want frame 0 %v", name, s.dot(dotGoing).GetForeground(), s.pulse[0].GetForeground())
+			}
+			if s.goingDot != s.pulse[0].Render(dotGoing) {
+				t.Errorf("%s: goingDot %q, want %q", name, s.goingDot, s.pulse[0].Render(dotGoing))
+			}
+		}
+	})
+}
+
+func TestFarthestMixKeepsTheFloor(t *testing.T) {
+	t.Parallel()
+
+	if f := farthestMix("#1a1b26", "#1a1b26", 1.6); f != 0 {
+		t.Errorf("a green already on the floor mixed %.2f, want 0", f)
+	}
+	f := farthestMix("#9ece6a", "#1a1b26", 1.6)
+	if f <= 0 || f >= 1 {
+		t.Fatalf("farthestMix = %.2f, want between 0 and 1", f)
+	}
+	if c := contrastRatio(mixHex("#9ece6a", "#1a1b26", f), "#1a1b26"); c < 1.6 {
+		t.Errorf("the farthest mix has contrast %.2f, want at least 1.6", c)
+	}
+	if got := mixHex("#000000", "#ffffff", 0.5); got != "#808080" && got != "#7f7f7f" {
+		t.Errorf("mixHex halfway = %s", got)
+	}
+	if got := mixHex("nope", "#ffffff", 0.5); got != "nope" {
+		t.Errorf("mixHex on a bad color = %s, want it back as it came", got)
+	}
+}
