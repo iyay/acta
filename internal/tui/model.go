@@ -182,6 +182,7 @@ type Model struct {
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
+	markItem func(id string, done bool) (write.Outcome, error)
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
 	frame    *frameCache  // the last frame View drew, shared by every copy
@@ -217,6 +218,14 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 				return write.Outcome{}, err
 			}
 			return write.SetValue(cfg, fresh, id, field, value)
+		},
+		// Load fresh so the write never checks against a stale board.
+		markItem: func(id string, done bool) (write.Outcome, error) {
+			fresh, err := board.Load(cfg)
+			if err != nil {
+				return write.Outcome{}, err
+			}
+			return write.MarkItem(cfg, fresh, id, done)
 		},
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
@@ -569,6 +578,10 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.reloadCmd()
 	case "t", "s":
 		m.openPopup(k.String())
+	case "+":
+		return m.markRow(true)
+	case "-":
+		return m.markRow(false)
 	case "o":
 		// The detail box has no list to sort.
 		if m.focus != paneDetail {
@@ -755,6 +768,34 @@ func (m *Model) openPopup(key string) {
 		}
 	}
 	m.popup = &p
+}
+
+// markRow marks the task or debt line under the cursor done or back to open.
+// The same rows the status popup refuses are refused here, so a key press
+// never writes a file the popup would not.
+func (m Model) markRow(done bool) (tea.Model, tea.Cmd) {
+	it := m.Selected()
+	switch {
+	case it == nil:
+		m.status = "nothing selected"
+		return m, nil
+	case it.Kind != board.KindTask && it.Kind != board.KindDebtItem:
+		m.status = "+ and - work on a task or a debt line; use s for the status"
+		return m, nil
+	case it.Worktree != "":
+		m.status = "shown from worktree " + it.Worktree + "; edit it there"
+		return m, nil
+	case it.Legacy:
+		m.status = "legacy file, move it into the root folder first"
+		return m, nil
+	}
+	word := "open"
+	if done {
+		word = "done"
+	}
+	o, err := m.markItem(it.ID, done)
+	m.status = outcomeText(fmt.Sprintf("acta: %s %s", it.ID, word), o, err)
+	return m, m.reloadCmd()
 }
 
 // copyID puts the id of the row under the cursor on the clipboard, and the

@@ -1,6 +1,8 @@
 ---
 id: BUG-0020
 hash: sedlyuh
+fixed_in: 487e5d1
+finished: "2026-09-30"
 ---
 # Setup asks about split subagent models on every run
 

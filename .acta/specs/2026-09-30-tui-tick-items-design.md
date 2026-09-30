@@ -4,6 +4,7 @@ parent: scratch/2026-09-29-remove-drop-wontfix-all-kinds
 id: SPC-0044
 hash: boahydc
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Mark tasks and debt lines done from the TUI, and a clearer key help
 

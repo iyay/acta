@@ -2528,3 +2528,268 @@ func TestPulseAfterSendsAPulse(t *testing.T) {
 		t.Fatalf("got %#v", got)
 	}
 }
+
+func TestPlusAndMinusMarkATaskRow(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	var got []string
+	m.markItem = func(id string, done bool) (write.Outcome, error) {
+		got = append(got, fmt.Sprintf("%s %v", id, done))
+		return write.Outcome{Committed: true}, nil
+	}
+	// Open a plan to reach a task row, the same way TestPopupRefusals does.
+	m = press(m, tabKey(tabPlans), " ", "j")
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", it)
+	}
+	m = press(m, "+", "-")
+	if want := it.ID + " true," + it.ID + " false"; strings.Join(got, ",") != want {
+		t.Fatalf("markItem got %v, want %s", got, want)
+	}
+	if !strings.Contains(m.status, "committed") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+func TestPlusMarksADebtLineRow(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	var got string
+	m.markItem = func(id string, done bool) (write.Outcome, error) {
+		got = id
+		return write.Outcome{Committed: true}, nil
+	}
+	m = press(m, tabKey(tabDebts))
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindDebtItem {
+		t.Fatalf("not on a debt line row: %+v", it)
+	}
+	m = press(m, "+")
+	if got != it.ID {
+		t.Fatalf("markItem got %q, want %q", got, it.ID)
+	}
+}
+
+func TestPlusRefusesRowsThatAreNotTasksOrDebtLines(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	m = press(m, tabKey(tabBugs), "+")
+	if called || !strings.Contains(m.status, "task or a debt line") {
+		t.Fatalf("bug row: called %v status %q", called, m.status)
+	}
+	m = press(m, "?", "+")
+	if called {
+		t.Fatal("+ under the help called markItem")
+	}
+}
+
+// TestMarkRefusesAWorktreeAndALegacyRow keeps the keys off the rows whose file
+// lives somewhere else, because a write would land in the wrong tree.
+func TestMarkRefusesAWorktreeAndALegacyRow(t *testing.T) {
+	t.Parallel()
+
+	// A plan that came from a worktree branch, opened to its first task.
+	m := press(worktreeTaskModel(t), tabKey(tabPlans), " ", "j")
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindTask || it.Worktree == "" {
+		t.Fatalf("not on a worktree task row: %+v", it)
+	}
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd := m.Update(key("+"))
+	m = next.(Model)
+	if called || cmd != nil {
+		t.Fatalf("worktree row: called %v cmd %v", called, cmd)
+	}
+	if !strings.Contains(m.status, it.Worktree) {
+		t.Fatalf("the status does not name the worktree: %q", m.status)
+	}
+
+	// A task from a folder the board calls legacy. The board really holds
+	// such tasks, but the lists leave them out, so the flag is set here to
+	// reach the guard the same way such a row would.
+	root := press(newModel(t), tabKey(tabPlans), " ", "j")
+	sel := root.Selected()
+	if sel == nil || sel.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", sel)
+	}
+	sel.Legacy = true
+	called = false
+	root.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd = root.Update(key("-"))
+	root = next.(Model)
+	if called || cmd != nil {
+		t.Fatalf("legacy row: called %v cmd %v", called, cmd)
+	}
+	if !strings.Contains(root.status, "legacy") {
+		t.Fatalf("status %q", root.status)
+	}
+}
+
+// TestMarkWithNoRowSelected says so instead of writing something unknown.
+func TestMarkWithNoRowSelected(t *testing.T) {
+	t.Parallel()
+
+	// The Specs group row holds the legacy files, not an item of its own.
+	m := press(newModel(t), tabKey(tabSpecs), "G")
+	if m.Selected() != nil {
+		t.Fatalf("the group row is an item, so this proves nothing: %v", m.Selected())
+	}
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd := m.Update(key("+"))
+	m = next.(Model)
+	if called || cmd != nil {
+		t.Fatalf("no row: called %v cmd %v", called, cmd)
+	}
+	if !strings.Contains(m.status, "nothing selected") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+// TestMarkDoesNothingWhileAnOverlayIsOpen walks every box that sits over the
+// list, because each one takes the keys until it closes.
+func TestMarkDoesNothingWhileAnOverlayIsOpen(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		open []string
+	}{
+		{"the help", []string{"?"}},
+		{"a status popup", []string{tabKey(tabBugs), "j", "s"}},
+		{"a type popup", []string{tabKey(tabBugs), "j", "t"}},
+		{"the slug prompt", []string{"n"}},
+		{"the search", []string{"/"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			// Start on a task row, so a key that leaks through writes.
+			m := press(newModel(t), tabKey(tabPlans), " ", "j")
+			if m.Selected() == nil || m.Selected().Kind != board.KindTask {
+				t.Fatalf("not on a task row: %+v", m.Selected())
+			}
+			m = press(m, tc.open...)
+			called := false
+			m.markItem = func(string, bool) (write.Outcome, error) {
+				called = true
+				return write.Outcome{}, nil
+			}
+			for _, k := range []string{"+", "-"} {
+				next, cmd := m.Update(key(k))
+				m = next.(Model)
+				if called || cmd != nil {
+					t.Fatalf("%q under %s: called %v cmd %v", k, tc.name, called, cmd)
+				}
+			}
+		})
+	}
+}
+
+// TestMarkShowsTheError tells the truth when the write fails.
+func TestMarkShowsTheError(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), " ", "j")
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		return write.Outcome{}, errors.New("disk is full")
+	}
+	m = press(m, "+")
+	if !strings.Contains(m.status, "disk is full") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+// TestMarkReloadsTheBoard asks the program to read the files again, so the
+// screen shows the boxes the write just ticked.
+func TestMarkReloadsTheBoard(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), " ", "j")
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		return write.Outcome{Committed: true}, nil
+	}
+	_, cmd := m.Update(key("+"))
+	if cmd == nil {
+		t.Fatal("+ asked for no reload")
+	}
+	msg := cmd()
+	if _, ok := msg.(reloadMsg); !ok {
+		t.Fatalf("+ returned %T, want a reload", msg)
+	}
+}
+
+// worktreeTaskModel holds one plan that came from a worktree branch, opened
+// to its task, so the keys meet a row they must not write.
+func worktreeTaskModel(t *testing.T) Model {
+	t.Helper()
+	main := treeCfg(t, nil)
+	wt := treeCfg(t, map[string]string{".acta/plans/2026-09-21-a.md": "# A plan\n\n### Task 1: Step\n\n- [ ] do it\n"})
+	b, err := board.LoadTrees(main, []board.Tree{{Cfg: wt, Branch: "feat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(main, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m.dcache = &detailCache{}
+	return sized(m, 120, 40)
+}
+
+// TestMarkWritesTheFile is the one test that runs the markItem of New, so
+// the wiring is not taken on faith. Auto commit is off, so no git repository
+// is needed to see the box on disk change.
+func TestMarkWritesTheFile(t *testing.T) {
+	t.Parallel()
+
+	cfg := treeCfg(t, map[string]string{".acta/plans/2026-09-30-p.md": "# P\n\n### Task 1: Step\n\n- [ ] do it\n"})
+	cfg.AutoCommit = false
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m.dcache = &detailCache{}
+	m = press(sized(m, 120, 40), tabKey(tabPlans), " ", "j")
+	if it := m.Selected(); it == nil || it.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", it)
+	}
+	path := filepath.Join(cfg.Root, "plans", "2026-09-30-p.md")
+	m = press(m, "+")
+	if !strings.Contains(m.status, "written") {
+		t.Fatalf("status %q", m.status)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "- [x] do it") {
+		t.Fatalf("+ did not tick the box:\n%s", body)
+	}
+	m = press(m, "-")
+	body, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "- [ ] do it") {
+		t.Fatalf("- did not open the box:\n%s", body)
+	}
+}

@@ -4,6 +4,7 @@ parent: specs/2026-09-30-tui-tick-items-design
 id: PLN-0052
 hash: zb024n6
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Mark Tasks and Debt Lines Done from the TUI Implementation Plan
 
@@ -394,7 +395,7 @@ git commit -m "write: MarkItem sets a task or debt line done or open and commits
 **Interfaces:**
 - Consumes: `write.Untick(path string, headingLine int) (int, int, error)`, `write.TickLine(path string, line int, state byte) error`, `write.TaskDates(cfg config.Config, it *board.Item) ([]string, error)` from Task 1.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/cli/tick_test.go` (uses `tickRepo`, `runTick`, `debtFile`, `read`):
 
@@ -438,12 +439,12 @@ func TestTickUndoMixedWithAnotherActionIsRefused(t *testing.T) {
 
 Check the existing tests in this file for the real id forms of the task and the first debt line and use those if they differ from `plans/2026-09-27-n#task-1` and `DEBT-1.1`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/cli -run 'TestTickUndo' -v`
 Expected: FAIL, `flag provided but not defined: -undo`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/cli/tick.go`:
 
@@ -480,12 +481,12 @@ In `internal/cli/tick.go`:
    Declare `var err error` above the switch if none is in scope there, or reuse the one from `parseMixed`.
 4. Delete `markTaskDates` and `markDate` from this file, and change the call to `if _, err := write.TaskDates(cfg, it); err != nil {`. Drop any import that is now unused (`bytes`, `config`).
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/cli -run 'TestTick' -v`
 Expected: PASS, old tick tests included.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/cli && go vet ./internal/cli
@@ -507,7 +508,7 @@ git commit -m "cli: acta tick --undo puts a task or debt line back to open"
 - Consumes: `write.MarkItem(cfg config.Config, b *board.Board, id string, done bool) (write.Outcome, error)` from Task 1.
 - Produces: `Model.markItem func(id string, done bool) (write.Outcome, error)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/tui/model_test.go`:
 
@@ -578,12 +579,12 @@ func TestPlusRefusesRowsThatAreNotTasksOrDebtLines(t *testing.T) {
 
 Add `fmt` to the imports if missing. If the Debts tab opens with no row selected, press `j` first, and say so in the report.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui -run 'TestPlus' -v`
 Expected: FAIL to build, `m.markItem undefined`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/tui/model.go`:
 
@@ -641,12 +642,12 @@ func (m Model) markRow(done bool) (tea.Model, tea.Cmd) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui -run 'TestPlus|TestPopup|TestStatusPopup' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui
