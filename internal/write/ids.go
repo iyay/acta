@@ -64,7 +64,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		case id == "":
 			id = board.FormatID(c.prefix, next[c.prefix])
 			next[c.prefix]++
-			writes := [][2]string{{"id", id}, {"created", Now().Format("2006-01-02")}}
+			writes := [][2]string{{"id", id}, {"created", Now().Format(stampLayout)}}
 			if board.SchemaOn(c.it.Kind) && !hasField(orig, "schema") {
 				writes = append(writes, [2]string{"schema", "1"})
 			}

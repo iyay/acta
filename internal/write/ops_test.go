@@ -72,7 +72,7 @@ func TestSetValueCommits(t *testing.T) {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
 	body, _ := os.ReadFile(filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md"))
-	if string(body) != "---\nref: B-1\nstatus: fixed\nfinished: \"2026-09-26\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
+	if string(body) != "---\nref: B-1\nstatus: fixed\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash status fixed" {
@@ -101,15 +101,15 @@ func TestSetValueWritesDates(t *testing.T) {
 		}
 	}
 	set("status", "brainstorming")
-	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
+	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26 10:00:00\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
 		t.Errorf("brainstorming:\n got %q\nwant %q", read(), want)
 	}
 	set("status", "dropped")
-	if got := read(); !strings.Contains(got, "finished: \"2026-09-26\"") {
+	if got := read(); !strings.Contains(got, "finished: \"2026-09-26 10:00:00\"") {
 		t.Errorf("dropped has no finished: %q", got)
 	}
 	set("status", "brainstorming")
-	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
+	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26 10:00:00\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
 		t.Errorf("reopened:\n got %q\nwant %q", read(), want)
 	}
 
@@ -118,7 +118,7 @@ func TestSetValueWritesDates(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(filepath.Join(bug.Root, "bugs", "2026-09-24-crash.md"))
-	if !strings.Contains(string(got), "fixed_in: abc1234") || !strings.Contains(string(got), "finished: \"2026-09-26\"") {
+	if !strings.Contains(string(got), "fixed_in: abc1234") || !strings.Contains(string(got), "finished: \"2026-09-26 10:00:00\"") {
 		t.Errorf("fixed_in file = %q", got)
 	}
 }
@@ -328,7 +328,7 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 		t.Fatalf("ref: %+v %v", o, err)
 	}
 	body, _ := os.ReadFile(filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md"))
-	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
+	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash ref New-261" {

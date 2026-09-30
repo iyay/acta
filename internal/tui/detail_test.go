@@ -568,10 +568,11 @@ func TestDetailShowsClosesAndClosedBy(t *testing.T) {
 	}
 }
 
-// Six scratch items: one with all three dates, one with none, one with each
-// date on its own, and one whose three values are all junk. A good date comes
-// in both forms yaml gives: bare, which decodes to a time, and quoted, which
-// decodes to a string.
+// Seven scratch items: one with all three dates, one with none, one with each
+// date on its own, one whose three values are all junk, and one whose three
+// dates carry the time to the second. A good date comes in both forms yaml
+// gives: bare, which decodes to a time, and quoted, which decodes to a
+// string.
 func datedFiles() map[string]string {
 	return map[string]string{
 		".acta/scratch/2026-09-01-all.md":      "---\nid: SCRATCH-1\ntitle: all\nstatus: raw\ncreated: 2026-09-01\nstarted: \"2026-09-02\"\nfinished: 2026-09-03\n---\n# All\n",
@@ -580,12 +581,16 @@ func datedFiles() map[string]string {
 		".acta/scratch/2026-09-01-started.md":  "---\nid: SCRATCH-4\ntitle: started\nstatus: raw\nstarted: \"2026-09-02\"\n---\n# Started\n",
 		".acta/scratch/2026-09-01-finished.md": "---\nid: SCRATCH-5\ntitle: finished\nstatus: raw\nfinished: \"2026-09-03\"\n---\n# Finished\n",
 		".acta/scratch/2026-09-01-bad.md":      "---\nid: SCRATCH-6\ntitle: bad\nstatus: raw\ncreated: \"\"\nstarted: 12\nfinished: soon\n---\n# Bad\n",
+		".acta/scratch/2026-09-01-timed.md":    "---\nid: SCRATCH-7\ntitle: timed\nstatus: raw\ncreated: \"2026-09-01 08:00:00\"\nstarted: \"2026-09-02 09:30:15\"\nfinished: \"2026-09-03 17:45:59\"\n---\n# Timed\n",
+		".acta/scratch/2026-09-01-notime.md":   "---\nid: SCRATCH-8\ntitle: notime\nstatus: raw\ncreated: \"2026-02-30 10:00:00\"\nstarted: \"2026-09-30 25:00:00\"\nfinished: \"2026-09-30 16:14\"\n---\n# No Time\n",
+		".acta/scratch/2026-09-01-word.md":     "---\nid: SCRATCH-9\ntitle: word\nstatus: raw\ncreated: yesterday\nstarted: \"2026-02-30 10:00:00\"\nfinished: \"2026-09-30 16:14\"\n---\n# Word\n",
 	}
 }
 
-// The board keeps a date only when the frontmatter holds a real YYYY-MM-DD,
-// in the string form or the time form, and nothing at all when the value is
-// missing, empty, a number or a word.
+// The board keeps a date only when the frontmatter holds a real day, or a real
+// day and time down to the second, and nothing at all when the value is
+// missing, empty, a number, a word, a day that does not exist, an hour that
+// does not exist, or a time that stops before the seconds.
 func TestItemDatesFromFrontmatter(t *testing.T) {
 	b, err := board.Load(treeCfg(t, datedFiles()))
 	if err != nil {
@@ -598,6 +603,9 @@ func TestItemDatesFromFrontmatter(t *testing.T) {
 		{"SCRATCH-4", "", "2026-09-02", ""},
 		{"SCRATCH-5", "", "", "2026-09-03"},
 		{"SCRATCH-6", "", "", ""},
+		{"SCRATCH-7", "2026-09-01 08:00:00", "2026-09-02 09:30:15", "2026-09-03 17:45:59"},
+		{"SCRATCH-8", "", "", ""},
+		{"SCRATCH-9", "", "", ""},
 	} {
 		it := b.Get(c.id)
 		if it == nil {
@@ -621,6 +629,9 @@ func TestDetailShowsTheDates(t *testing.T) {
 		{"SCRATCH-4", "created - · started 2026-09-02 · finished -"},
 		{"SCRATCH-5", "created - · started - · finished 2026-09-03"},
 		{"SCRATCH-6", "created - · started - · finished -"},
+		{"SCRATCH-7", "created 2026-09-01 08:00:00 · started 2026-09-02 09:30:15 · finished 2026-09-03 17:45:59"},
+		{"SCRATCH-8", "created - · started - · finished -"},
+		{"SCRATCH-9", "created - · started - · finished -"},
 	} {
 		lines := detailLines(t, cfg, c.id)
 		if got := plain(lines[len(lines)-1]); got != c.foot {
@@ -655,6 +666,9 @@ func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
 		{"SCRATCH-4", "created - · started 2026-09-02 · finished -", "c - · s 2026-09-02 · f -"},
 		{"SCRATCH-5", "created - · started - · finished 2026-09-03", "c - · s - · f 2026-09-03"},
 		{"SCRATCH-6", "created - · started - · finished -", "c - · s - · f -"},
+		{"SCRATCH-7", "created 2026-09-01 08:00:00 · started 2026-09-02 09:30:15 · finished 2026-09-03 17:45:59", "c 2026-09-01 08:00:00 · s 2026-09-02 09:30:15 · f 2026-09-03 17:45:59"},
+		{"SCRATCH-8", "created - · started - · finished -", "c - · s - · f -"},
+		{"SCRATCH-9", "created - · started - · finished -", "c - · s - · f -"},
 	} {
 		m := onItem(t, sized(base, 120, 40), c.id)
 		for w := 5; w <= 130; w++ {

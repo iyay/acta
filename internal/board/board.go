@@ -61,9 +61,9 @@ type Item struct {
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
 	Started      bool   // tasks only: someone ran tick --start on it
-	Created      string // YYYY-MM-DD from the frontmatter, or ""
-	StartedOn    string // YYYY-MM-DD, the day work on it began
-	Finished     string // YYYY-MM-DD, the day it was finished
+	Created      string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS from the frontmatter, or ""
+	StartedOn    string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, when work on it began
+	Finished     string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, when it was finished
 
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
@@ -726,9 +726,11 @@ func field(front map[string]any, key string) string {
 	return strings.TrimSpace(fmt.Sprint(v))
 }
 
-// dateField is a YYYY-MM-DD value from the frontmatter, or "". A bare date
-// comes back from yaml as a time and a quoted one as a string, so both are
-// read; anything that is not a real day is dropped.
+// dateField is a date from the frontmatter, or "". It is a bare day
+// (YYYY-MM-DD) in old files and a day with a time (YYYY-MM-DD HH:MM:SS) in
+// new ones. A bare date comes back from yaml as a time and a quoted one as a
+// string, so both are read; anything that is not a real day or time is
+// dropped.
 func dateField(front map[string]any, key string) string {
 	switch v := front[key].(type) {
 	case string:
@@ -741,11 +743,15 @@ func dateField(front map[string]any, key string) string {
 	return ""
 }
 
-// isDate says whether the text is a real day, so a day that does not exist
-// never reaches the reader.
+// isDate says whether the text is a real day, or a real day and time, so a
+// date that does not exist never reaches the reader.
 func isDate(s string) bool {
-	_, err := time.Parse("2006-01-02", s)
-	return err == nil
+	for _, layout := range []string{"2006-01-02", "2006-01-02 15:04:05"} {
+		if _, err := time.Parse(layout, s); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func contains(list []string, s string) bool {

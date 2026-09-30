@@ -2,9 +2,10 @@
 id: SCR-0031
 hash: jt3bp7q
 title: setup on a partial config never offers to change voice
-status: raw
+status: dropped
 created: "2026-09-30"
 schema: "1"
+finished: "2026-09-30"
 ---
 # setup on a partial config never offers to change voice
 

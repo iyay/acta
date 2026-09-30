@@ -1,12 +1,16 @@
 package write
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestDatesFor(t *testing.T) {
 	fixNow(t)
 	src := "---\nid: SCRATCH-1\nstatus: raw\n---\n# T\n"
-	started := "---\nid: SCRATCH-1\nstatus: raw\nstarted: \"2026-09-26\"\n---\n# T\n"
-	finished := "---\nid: SCRATCH-1\nstatus: raw\nfinished: \"2026-09-26\"\n---\n# T\n"
+	started := "---\nid: SCRATCH-1\nstatus: raw\nstarted: \"2026-09-26 10:00:00\"\n---\n# T\n"
+	finished := "---\nid: SCRATCH-1\nstatus: raw\nfinished: \"2026-09-26 10:00:00\"\n---\n# T\n"
 	cases := []struct{ status, want string }{
 		{"brainstorming", started},
 		{"in-progress", started},
@@ -50,7 +54,7 @@ func TestReCloseGetsTheNewDay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "---\nfinished: \"2026-09-26\"\n---\n# T\n"; string(out) != want {
+	if want := "---\nfinished: \"2026-09-26 10:00:00\"\n---\n# T\n"; string(out) != want {
 		t.Errorf("\n got %q\nwant %q", out, want)
 	}
 }
@@ -72,7 +76,7 @@ func TestMarkFinishedOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "---\nstatus: raw\nfinished: \"2026-09-26\"\n---\n# T\n"; string(out) != want {
+	if want := "---\nstatus: raw\nfinished: \"2026-09-26 10:00:00\"\n---\n# T\n"; string(out) != want {
 		t.Errorf("\n got %q\nwant %q", out, want)
 	}
 }
@@ -102,5 +106,29 @@ func TestOtherStatusChangesNoDate(t *testing.T) {
 		if string(out) != in {
 			t.Errorf("%s changed the file: %q", s, out)
 		}
+	}
+}
+
+// Every date a file gets carries the time to the second, so two changes on
+// one day can be told apart.
+func TestDatesCarryTheTime(t *testing.T) {
+	old := Now
+	Now = func() time.Time { return time.Date(2026, 9, 30, 16, 14, 5, 0, time.Local) }
+	t.Cleanup(func() { Now = old })
+
+	src := []byte("---\nstatus: draft\n---\n# x\n")
+	out, err := MarkStarted(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `started: "2026-09-30 16:14:05"`) {
+		t.Fatalf("started has no time:\n%s", out)
+	}
+	out, err = MarkFinished(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `finished: "2026-09-30 16:14:05"`) {
+		t.Fatalf("finished has no time:\n%s", out)
 	}
 }

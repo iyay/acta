@@ -182,8 +182,8 @@ func onDay(t *testing.T, day int) {
 func specOf(dir string) string { return filepath.Join(dir, ".acta", "specs", "2026-09-20-s-design.md") }
 func planA(dir string) string  { return filepath.Join(dir, ".acta", "plans", "2026-09-21-a.md") }
 
-// wantsStarted says the file carries the started day a tick wrote. The date
-// is written as text, so the file holds it in quotes.
+// wantsStarted says the file carries the started day and time a tick wrote.
+// The date is written as text, so the file holds it in quotes.
 func wantsStarted(t *testing.T, path, day string) {
 	t.Helper()
 	if s := read(t, path); !strings.Contains(s, `started: "`+day+`"`) {
@@ -197,14 +197,14 @@ func TestCmdTickWritesStartedOnPlanAndSpec(t *testing.T) {
 	if code, _, errs := runTick(t, dir, "plans/2026-09-21-a#task-1", "--start"); code != exitOK {
 		t.Fatalf("exit %d: %s", code, errs)
 	}
-	wantsStarted(t, planA(dir), "2026-09-26")
-	wantsStarted(t, specOf(dir), "2026-09-26")
+	wantsStarted(t, planA(dir), "2026-09-26 10:00:00")
+	wantsStarted(t, specOf(dir), "2026-09-26 10:00:00")
 	// The day work began is written once, so a later tick on another day
 	// must not move it.
 	onDay(t, 27)
 	runTick(t, dir, "plans/2026-09-21-a#task-1", "--all")
-	wantsStarted(t, planA(dir), "2026-09-26")
-	wantsStarted(t, specOf(dir), "2026-09-26")
+	wantsStarted(t, planA(dir), "2026-09-26 10:00:00")
+	wantsStarted(t, specOf(dir), "2026-09-26 10:00:00")
 	for _, p := range []string{planA(dir), specOf(dir)} {
 		if s := read(t, p); strings.Contains(s, "2026-09-27") {
 			t.Errorf("a second tick moved a date in %s: %q", p, s)
@@ -216,21 +216,21 @@ func TestCmdTickStepStartsThePlanToo(t *testing.T) {
 	dir := datesRepo(t, 1)
 	onDay(t, 26)
 	runTick(t, dir, "plans/2026-09-21-a#task-2", "--step", "1")
-	wantsStarted(t, planA(dir), "2026-09-26")
-	wantsStarted(t, specOf(dir), "2026-09-26")
+	wantsStarted(t, planA(dir), "2026-09-26 10:00:00")
+	wantsStarted(t, specOf(dir), "2026-09-26 10:00:00")
 }
 
 func TestCmdTickFinishesPlanOnlyWhenAllTasksDone(t *testing.T) {
 	dir := datesRepo(t, 1)
 	onDay(t, 26)
 	runTick(t, dir, "plans/2026-09-21-a#task-1", "--all")
-	wantsStarted(t, planA(dir), "2026-09-26")
+	wantsStarted(t, planA(dir), "2026-09-26 10:00:00")
 	if strings.Contains(read(t, planA(dir)), "finished:") {
 		t.Fatalf("plan finished with a task still open: %q", read(t, planA(dir)))
 	}
 	runTick(t, dir, "plans/2026-09-21-a#task-2", "--all")
 	for _, p := range []string{planA(dir), specOf(dir)} {
-		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26"`) {
+		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26 10:00:00"`) {
 			t.Errorf("%s lacks finished: %q", p, s)
 		}
 	}
@@ -244,7 +244,7 @@ func TestCmdTickKeepsTheCloseDay(t *testing.T) {
 	runTick(t, dir, "plans/2026-09-21-a#task-1", "--all")
 	runTick(t, dir, "plans/2026-09-21-a#task-2", "--all")
 	for _, p := range []string{planA(dir), specOf(dir)} {
-		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26"`) {
+		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26 10:00:00"`) {
 			t.Fatalf("%s lacks finished on day 26: %q", p, s)
 		}
 	}
@@ -253,7 +253,7 @@ func TestCmdTickKeepsTheCloseDay(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errs)
 	}
 	for _, p := range []string{planA(dir), specOf(dir)} {
-		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26"`) {
+		if s := read(t, p); !strings.Contains(s, `finished: "2026-09-26 10:00:00"`) {
 			t.Errorf("%s lost the day it closed: %q", p, s)
 		}
 	}
@@ -264,7 +264,7 @@ func TestCmdTickSpecWaitsForEveryPlan(t *testing.T) {
 	onDay(t, 26)
 	runTick(t, dir, "plans/2026-09-21-a#task-1", "--all")
 	runTick(t, dir, "plans/2026-09-21-a#task-2", "--all")
-	if s := read(t, planA(dir)); !strings.Contains(s, `finished: "2026-09-26"`) {
+	if s := read(t, planA(dir)); !strings.Contains(s, `finished: "2026-09-26 10:00:00"`) {
 		t.Errorf("plan A lacks finished: %q", s)
 	}
 	if s := read(t, specOf(dir)); strings.Contains(s, "finished:") {
@@ -359,7 +359,7 @@ func TestTickUndoOpensEveryBoxOfAPartlyTickedTask(t *testing.T) {
 	if code, out, errOut := runTick(t, dir, "plans/2026-09-21-a#task-1", "--undo"); code != exitOK || !strings.Contains(out, "0/3") {
 		t.Fatalf("undo: %d %q %q", code, out, errOut)
 	}
-	want := "---\nid: PLAN-1\nhash: aaaa\nstarted: \"2026-09-26\"\n---\n# A\n\n**Spec:** `.acta/specs/2026-09-20-s-design.md`\n\n### Task 1: One\n- [ ] a\n- [ ] b\n- [ ] c\n"
+	want := "---\nid: PLAN-1\nhash: aaaa\nstarted: \"2026-09-26 10:00:00\"\n---\n# A\n\n**Spec:** `.acta/specs/2026-09-20-s-design.md`\n\n### Task 1: One\n- [ ] a\n- [ ] b\n- [ ] c\n"
 	if got := read(t, planA(dir)); got != want {
 		t.Fatalf("plan =\n%q\nwant\n%q", got, want)
 	}

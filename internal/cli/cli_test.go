@@ -162,7 +162,7 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 	}
 	src, _ := os.ReadFile(files[0])
 	doc := board.Parse(src)
-	if !strings.Contains(string(src), "status: raw") || !board.HasSchema(doc.Front) || doc.Front["created"] != "2026-09-26" {
+	if !strings.Contains(string(src), "status: raw") || !board.HasSchema(doc.Front) || doc.Front["created"] != "2026-09-26 00:00:00" {
 		t.Fatalf("file = %q", src)
 	}
 	if want := "# newest-first\n\n## Words\n\n### 2026-09-26\n\nsort the list ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; doc.Body != want {
