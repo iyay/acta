@@ -5,6 +5,7 @@ title: Default acta command to find any item by id
 status: raw
 created: "2026-09-30"
 schema: "1"
+finished: "2026-10-01 05:07:10"
 ---
 # Default acta command to find any item by id
 

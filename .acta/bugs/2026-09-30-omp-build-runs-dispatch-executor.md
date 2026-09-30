@@ -2,6 +2,8 @@
 id: BUG-0019
 hash: j1b4znk
 started: "2026-09-30"
+fixed_in: c456a76
+finished: "2026-09-30"
 ---
 # omp runs the dispatch executor and opens another omp tab
 

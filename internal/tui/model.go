@@ -57,7 +57,8 @@ type clockMsg time.Time
 // newer message that took the line in the meantime stays.
 type clearStatusMsg struct{ text string }
 
-// toastFor is how long a copy message stays on the status line.
+// toastFor is how long any message stays on the status line, errors included,
+// so the key hints behind it come back by themselves.
 const toastFor = 2 * time.Second
 
 // clearStatusAfter sends the clear message for text once d has passed.
@@ -182,6 +183,7 @@ type Model struct {
 
 	load     func() (*board.Board, error)
 	setValue func(id, field, value string) (write.Outcome, error)
+	markItem func(id string, done bool) (write.Outcome, error)
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
 	frame    *frameCache  // the last frame View drew, shared by every copy
@@ -217,6 +219,14 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 				return write.Outcome{}, err
 			}
 			return write.SetValue(cfg, fresh, id, field, value)
+		},
+		// Load fresh so the write never checks against a stale board.
+		markItem: func(id string, done bool) (write.Outcome, error) {
+			fresh, err := board.Load(cfg)
+			if err != nil {
+				return write.Outcome{}, err
+			}
+			return write.MarkItem(cfg, fresh, id, done)
 		},
 		styles: newStyles(t, dark),
 		render: newRenderer(t.Dark(dark)),
@@ -254,7 +264,14 @@ func (m Model) WithTrace(t *Tracer) Model {
 	return m
 }
 
-func (m Model) Init() tea.Cmd { return nextMinute() }
+// Init starts the clock, and the hide timer for a message the model was built
+// with, such as a theme that did not load, because no Update saw it.
+func (m Model) Init() tea.Cmd {
+	if m.status == "" {
+		return nextMinute()
+	}
+	return tea.Batch(nextMinute(), clearStatusAfter(toastFor, m.status))
+}
 
 // nextMinute waits for the next minute to start and sends the time then, so
 // the clock in the status line moves once a minute.
@@ -263,7 +280,9 @@ func nextMinute() tea.Cmd {
 	return tea.Tick(wait, func(t time.Time) tea.Msg { return clockMsg(t) })
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// update runs one message and hands back the new model. Update wraps it to
+// start the timer for the status line.
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Every message may change the screen. The few that surely do not set
 	// this back below, so a path nobody thought about always draws again.
 	m.same = false
@@ -290,6 +309,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.status = "reload failed: " + msg.err.Error()
 			return m, nil
+		}
+		// A tab whose cursor was never moved shows the row under it, so put
+		// that item down before the board changes. The reload can then tell
+		// the item the reader is on from another one, and keeps the scroll
+		// they made when the item on show really is the same.
+		if rows, sel, idx := m.slot(); *sel == "" && len(rows) > 0 {
+			*sel = rows[cursorOf(rows, *sel, *idx)].id
 		}
 		m.board = msg.b
 		m.moveTo(m.cursor())
@@ -343,6 +369,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	}
 	return m, nil
+}
+
+// Update runs one message. When the message leaves a new text on the status
+// line, a timer is started for it here, in one place, so every toast hides
+// by itself and the key hints come back.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	before := m.status
+	next, cmd := m.update(msg)
+	after := next.(Model).status
+	if after == "" || after == before {
+		return next, cmd
+	}
+	return next, tea.Batch(cmd, clearStatusAfter(toastFor, after))
 }
 
 // inProgress says the item's work has begun: one of the going statuses, a
@@ -567,8 +606,12 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.help = true
 	case "r":
 		return m, m.reloadCmd()
-	case "t", "s":
+	case "t", "s", "p":
 		m.openPopup(k.String())
+	case "+":
+		return m.markRow(true)
+	case "-":
+		return m.markRow(false)
 	case "o":
 		// The detail box has no list to sort.
 		if m.focus != paneDetail {
@@ -607,6 +650,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.same = true
 		return m, nil
 	}
+	// True once this press has dropped a pick that was on the screen. The bar
+	// below has to know it, or it keeps a frame with a band nothing holds.
+	pressCleared := false
 	switch {
 	case msg.Action == tea.MouseActionMotion && m.drag.held:
 		next := m.drag.to(msg.X, msg.Y)
@@ -623,6 +669,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, m.copyDrag()
 	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
 		// A new press ends the old pick, and starts a new one when it lands on words.
+		pressCleared = m.drag.on
 		m.drag = m.anchorAt(msg.X, msg.Y)
 	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
@@ -634,6 +681,21 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			}
 			_ = open(url)
 		}
+		return m, nil
+	}
+	// The tab box at the top is one more way to open a tab, the same as the
+	// number keys.
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
+		msg.Y < barRows && m.width >= 2 {
+		_, spans := m.barTabs(m.width - 2)
+		for i, s := range spans {
+			// The bar's left wall takes the first cell, so names start one in.
+			if s.w > 0 && msg.X >= 1+s.x && msg.X < 1+s.x+s.w {
+				m.openTab(i)
+				return m, nil
+			}
+		}
+		m.same = !pressCleared
 		return m, nil
 	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
@@ -733,6 +795,9 @@ func (m *Model) openPopup(key string) {
 	case it == nil:
 		m.status = "nothing selected"
 		return
+	case key == "p" && it.Kind != board.KindBug && it.Kind != board.KindDebtItem:
+		m.status = "p sets the priority of a bug or a debt line"
+		return
 	case it.Kind == board.KindTask:
 		m.status = "tasks take their status from their checkboxes"
 		return
@@ -749,6 +814,13 @@ func (m *Model) openPopup(key string) {
 		p = popup{field: "type", options: []string{string(board.KindStory), string(board.KindBug)}}
 		current = string(it.Kind)
 	}
+	if key == "p" {
+		p = popup{field: "priority", options: append(append([]string(nil), board.Priorities...), "none")}
+		current = it.Priority
+		if current == "" {
+			current = "none"
+		}
+	}
 	for i, o := range p.options {
 		if o == current {
 			p.idx = i
@@ -757,9 +829,37 @@ func (m *Model) openPopup(key string) {
 	m.popup = &p
 }
 
+// markRow marks the task or debt line under the cursor done or back to open.
+// The same rows the status popup refuses are refused here, so a key press
+// never writes a file the popup would not.
+func (m Model) markRow(done bool) (tea.Model, tea.Cmd) {
+	it := m.Selected()
+	switch {
+	case it == nil:
+		m.status = "nothing selected"
+		return m, nil
+	case it.Kind != board.KindTask && it.Kind != board.KindDebtItem:
+		m.status = "+ and - work on a task or a debt line; use s for the status"
+		return m, nil
+	case it.Worktree != "":
+		m.status = "shown from worktree " + it.Worktree + "; edit it there"
+		return m, nil
+	case it.Legacy:
+		m.status = "legacy file, move it into the root folder first"
+		return m, nil
+	}
+	word := "open"
+	if done {
+		word = "done"
+	}
+	o, err := m.markItem(it.ID, done)
+	m.status = outcomeText(fmt.Sprintf("acta: %s %s", it.ID, word), o, err)
+	return m, m.reloadCmd()
+}
+
 // copyID puts the id of the row under the cursor on the clipboard, and the
-// status line says what was copied or why it could not be. A good copy hides
-// itself after a short while; an error stays until the next message.
+// status line says what was copied or why it could not be. Update starts the
+// timer that hides the message.
 func (m *Model) copyID() tea.Cmd {
 	it := m.Selected()
 	if it == nil {
@@ -772,7 +872,7 @@ func (m *Model) copyID() tea.Cmd {
 		return nil
 	}
 	m.status = "copied " + id
-	return clearStatusAfter(toastFor, m.status)
+	return nil
 }
 
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -812,7 +912,7 @@ func (m Model) slugKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyEnter:
 		m.slug = nil
-		path, tmpl, err := write.StartBug(m.cfg, s, "")
+		path, tmpl, err := write.StartBug(m.cfg, s, "", "")
 		if err != nil {
 			m.status = "error: " + err.Error()
 			return m, nil

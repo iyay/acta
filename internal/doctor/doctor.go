@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/theme"
-	"github.com/iyay/acta/internal/voice"
 )
 
 // Level is how bad one check found the setup.
@@ -44,7 +44,7 @@ type Env struct {
 	AutoCommit     bool   // false when .acta.yaml turns auto_commit off
 	ConfigErr      error  // the config.Load error, when the config does not parse
 	VoiceExists    bool
-	Voice          voice.Voice
+	Voice          config.User
 	ThemeErr       error    // the theme.Load error for Voice.Theme
 	SchemaProblems []string // board files with schema: 1 that lost a section
 }
@@ -232,7 +232,9 @@ func checkStaleLinks(e Env) Result {
 			continue
 		}
 		names = append(names, en.Name())
-		fixes = append(fixes, "omp plugin unlink "+en.Name())
+		// omp cannot unlink itself, and the dead link is only a leftover file
+		// in node_modules, so the fix is to remove that path.
+		fixes = append(fixes, "rm "+p)
 	}
 	if len(names) == 0 {
 		r.Msg = "no dead omp plugin links"

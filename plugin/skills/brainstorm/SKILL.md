@@ -86,7 +86,7 @@ one of:
 Plan, build, review and land for this brainstorm may continue in the
 same session. Only the brainstorm itself is one per session.
 
-**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 ## Anti-Pattern: "Too Simple To Need Approval"
 
@@ -251,6 +251,8 @@ plus a short spec is the whole process.
 - Commit the design document to git
 
 **Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Write the spec and commit it on the branch that is checked out (usually main). No worktree yet: `acta:build` makes the worktree once the plan is approved.
+
+**Finding a file.** To find an item's file when you have only its id or hash, run `acta show <id|hash> --path` and it prints the path.
 
 **Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DBT id it closes in `closes:`.
 

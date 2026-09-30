@@ -140,5 +140,5 @@ func (m *Model) copyPicked(text string) tea.Cmd {
 	}
 	const lead = "copied "
 	m.status = lead + xansi.Truncate(strings.ReplaceAll(text, "\n", " "), max(1, m.width-len(lead)), "…")
-	return clearStatusAfter(toastFor, m.status)
+	return nil
 }

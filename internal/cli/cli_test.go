@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"io"
+
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/write"
 )
@@ -162,7 +164,7 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 	}
 	src, _ := os.ReadFile(files[0])
 	doc := board.Parse(src)
-	if !strings.Contains(string(src), "status: raw") || !board.HasSchema(doc.Front) || doc.Front["created"] != "2026-09-26" {
+	if !strings.Contains(string(src), "status: raw") || !board.HasSchema(doc.Front) || doc.Front["created"] != "2026-09-26 00:00:00" {
 		t.Fatalf("file = %q", src)
 	}
 	if want := "# newest-first\n\n## Words\n\n### 2026-09-26\n\nsort the list ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; doc.Body != want {
@@ -329,6 +331,9 @@ func TestScratchUnknownSubcommandNamesBothCommands(t *testing.T) {
 }
 
 func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
+	// The acta repo has its own .acta.yaml. Run outside it so its values
+	// do not show up here.
+	t.Chdir(t.TempDir())
 	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
 	mustRun(t, "config", "set", "--language", "Korean", "--tone", "short")
 	if out := mustRun(t, "config", "show"); strings.Contains(out, "build_executor") {
@@ -364,6 +369,29 @@ func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 	mustRun(t, "config", "set", "--clear-subagent-models", "--subagent-models", "split")
 	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: split") {
 		t.Errorf("clear-then-set did not keep split:\n%s", out)
+	}
+}
+
+// A no in setup is saved as default, so the next setup run sees it as set.
+func TestConfigSetSubagentModelsDefault(t *testing.T) {
+	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "config.yaml"))
+	mustRun(t, "config", "set", "--subagent-models", "default")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: default") {
+		t.Errorf("show lacks subagent_models: default:\n%s", out)
+	}
+	// The JSON is indented, so compare without spaces.
+	if out := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(out, `"subagent_models":"default"`) {
+		t.Errorf("json lacks subagent_models default:\n%s", out)
+	}
+	mustRun(t, "config", "set", "--clear-subagent-models")
+	if out := mustRun(t, "config", "show"); strings.Contains(out, "subagent_models") {
+		t.Errorf("clear left subagent_models:\n%s", out)
+	}
+	// The usage must name default too, or a user cannot find the value that stops the question.
+	var out, errs strings.Builder
+	Run([]string{"config", "set"}, strings.NewReader(""), false, &out, &errs)
+	if !strings.Contains(errs.String(), "--subagent-models split|default") {
+		t.Errorf("usage lacks --subagent-models split|default:\n%s", errs.String())
 	}
 }
 
@@ -655,6 +683,144 @@ func TestShowJSONCarriesClosesAndClosedByAsLists(t *testing.T) {
 	}
 }
 
+// pathRepo makes a repo whose planning files cover every way of naming an
+// item: a new id, a hash, a sub-item number, an old id only the board alias
+// knows, and an id written in quotes. root picks the folder name, so a moved
+// root gets its own repo.
+func pathRepo(t *testing.T, root string) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"specs/2026-10-01-a.md":   "---\nid: SPC-0054\nhash: az0vfpu\n---\n# Design\n",
+		"plans/2026-10-01-b.md":   "---\nid: PLN-0001\nhash: bk4n2qp\n---\n# Plan\n\n### Task 1: Do it\n\n- [ ] **Step 1: Write the failing test**\n",
+		"plans/2026-10-01-c.md":   "---\nid: PLN-0003\n---\n# Old plan\n",
+		"scratch/2026-10-01-d.md": "---\nid: \"SCR-0028\"\n---\n# Idea\n",
+	}
+	for p, body := range files {
+		full := filepath.Join(dir, root, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// The path a reader gets from --path must be the same one the plain show
+// prints on its path line, so a reader can paste either one.
+func TestShowPathPrintsTheFileForEveryInputForm(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	for _, c := range []struct {
+		name, id, want string
+	}{
+		{"new id", "SPC-0054", ".acta/specs/2026-10-01-a.md"},
+		{"full hash", "az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"quoted id", "SCR-0028", ".acta/scratch/2026-10-01-d.md"},
+		{"sub item takes the plan file", "PLN-0001.01", ".acta/plans/2026-10-01-b.md"},
+		{"hash prefix falls back", "az0v", ".acta/specs/2026-10-01-a.md"},
+		{"prefixed hash falls back", "SPC-az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"old id falls back", "PLAN-3", ".acta/plans/2026-10-01-c.md"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out := mustRun(t, "show", c.id, "--path")
+			if out != c.want+"\n" {
+				t.Errorf("show %s --path = %q, want one line %q", c.id, out, c.want)
+			}
+			line, ok := showLine(t, mustRun(t, "show", c.id), "path: ")
+			if !ok || line != "path: "+c.want {
+				t.Errorf("show %s path line = %q, want %q", c.id, line, "path: "+c.want)
+			}
+		})
+	}
+}
+
+// The root can move, so the scan has to read where the config says the files
+// are, not where it expects them.
+func TestShowPathFollowsAMovedRoot(t *testing.T) {
+	dir := pathRepo(t, ".pm")
+	t.Chdir(dir)
+	want := ".pm/specs/2026-10-01-a.md\n"
+	t.Setenv("ACTA_ROOT", "")
+	if out := mustRun(t, "show", "SPC-0054", "--root", ".pm", "--path"); out != want {
+		t.Errorf("--root gave %q, want %q", out, want)
+	}
+	t.Setenv("ACTA_ROOT", ".pm")
+	if out := mustRun(t, "show", "SPC-0054", "--path"); out != want {
+		t.Errorf("ACTA_ROOT gave %q, want %q", out, want)
+	}
+}
+
+// A hit reads the folder, so it must work where there is no git to call.
+func TestShowPathFindsANewIDAndHashWithoutGit(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	t.Setenv("PATH", t.TempDir())
+	for id, want := range map[string]string{
+		"SPC-0054": ".acta/specs/2026-10-01-a.md\n",
+		"az0vfpu":  ".acta/specs/2026-10-01-a.md\n",
+	} {
+		if out := mustRun(t, "show", id, "--path"); out != want {
+			t.Errorf("show %s --path with no git = %q, want %q", id, out, want)
+		}
+	}
+}
+
+// The board answers every form, so only calling the scan tells us the fast
+// path is what runs. A hash prefix and an old id are the board's job: the scan
+// matches whole values only, so it says nothing for them.
+func TestScanPathMatchesWholeValuesOnly(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	cfg, code := loadConfig("", io.Discard)
+	if code != exitOK {
+		t.Fatalf("loadConfig exit %d", code)
+	}
+	for _, c := range []struct {
+		id, want string
+	}{
+		{"SPC-0054", ".acta/specs/2026-10-01-a.md"},
+		{"az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"SCR-0028", ".acta/scratch/2026-10-01-d.md"},
+		{"PLN-0001.01", ".acta/plans/2026-10-01-b.md"},
+		{"az0v", ""},
+		{"SPC-az0vfpu", ""},
+		{"PLAN-3", ""},
+		{"PLN-0001.1", ".acta/plans/2026-10-01-b.md"},
+	} {
+		if got := scanPath(cfg, c.id); got != c.want {
+			t.Errorf("scanPath(%q) = %q, want %q", c.id, got, c.want)
+		}
+	}
+}
+
+func TestShowPathUnknownIDIsBadInput(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	var stdout, stderr strings.Builder
+	code := Run([]string{"show", "SPC-9999", "--path"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	if stderr.String() != "unknown id SPC-9999\n" {
+		t.Errorf("stderr %q, want %q", stderr.String(), "unknown id SPC-9999\n")
+	}
+	if stdout.String() != "" {
+		t.Errorf("stdout %q, want nothing", stdout.String())
+	}
+}
+
+// --path asks for the path and nothing else, so it wins over --json.
+func TestShowPathBeatsJSON(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	if out := mustRun(t, "show", "SPC-0054", "--json", "--path"); out != ".acta/specs/2026-10-01-a.md\n" {
+		t.Errorf("show --json --path = %q, want one path line", out)
+	}
+}
+
 // list --json draws the same items through the same struct, so a link that
 // show prints has to be there too.
 func TestListJSONCarriesClosesAndClosedBy(t *testing.T) {
@@ -691,5 +857,142 @@ func TestListJSONCarriesClosesAndClosedBy(t *testing.T) {
 	}
 	if seen != len(want) {
 		t.Errorf("list --json showed %d of the %d items under test", seen, len(want))
+	}
+}
+
+// TestConfigShowNamesOldFile covers the user who moved config.yaml away: show
+// once named the missing file and printed the values of ~/.pm/voice.yaml.
+func TestConfigShowNamesOldFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	old := filepath.Join(home, ".pm", "voice.yaml")
+	if err := os.MkdirAll(filepath.Dir(old), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old, []byte("chat_language: Korean\nstyle: plain\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writes := filepath.Join(home, ".acta", "config.yaml")
+	out := mustRun(t, "config", "show")
+	want := "file: " + old + " (exists: true, old file; config set writes " + writes + ")"
+	if !strings.Contains(out, want) {
+		t.Errorf("show:\n%s\nwant line %q", out, want)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["path"] != old || got["writes"] != writes {
+		t.Errorf("json path %v writes %v, want %q and %q", got["path"], got["writes"], old, writes)
+	}
+}
+
+// TestConfigSetNamesBrokenOldFile covers a broken ~/.pm/voice.yaml: set once
+// told the user to fix ~/.acta/config.yaml, a file that was not there.
+func TestConfigSetNamesBrokenOldFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	old := filepath.Join(home, ".pm", "voice.yaml")
+	if err := os.MkdirAll(filepath.Dir(old), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old, []byte("chat_language: [\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	newFile := filepath.Join(home, ".acta", "config.yaml")
+	var stdout, stderr strings.Builder
+	code := Run([]string{"config", "set", "--language", "Korean"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d; stderr %q", code, exitBadInput, stderr.String())
+	}
+	if want := "fix or delete " + old + " first"; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr %q lacks %q", stderr.String(), want)
+	}
+	if strings.Contains(stderr.String(), newFile) {
+		t.Errorf("stderr %q names %s, which does not exist", stderr.String(), newFile)
+	}
+	if _, err := os.Stat(newFile); !os.IsNotExist(err) {
+		t.Errorf("set wrote %s after a read error: %v", newFile, err)
+	}
+}
+
+// brokenVoice is content no voice file can parse.
+const brokenVoice = "chat_language: [\n"
+
+// setWithBrokenFile makes a temp HOME, writes brokenVoice to rel inside it and
+// hands back a run func for config set, so a test can change the home before
+// the run. When pmRel is not empty, PM_VOICE_FILE points at that file, which is
+// then both the file set reads and the file it would write.
+func setWithBrokenFile(t *testing.T, rel, pmRel string) (home, broken string, run func() string) {
+	t.Helper()
+	home = t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	broken = filepath.Join(home, rel)
+	if err := os.MkdirAll(filepath.Dir(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(broken, []byte(brokenVoice), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if pmRel != "" {
+		t.Setenv("PM_VOICE_FILE", filepath.Join(home, pmRel))
+	}
+	return home, broken, func() string {
+		t.Helper()
+		var stdout, stderr strings.Builder
+		code := Run([]string{"config", "set", "--language", "Korean"}, strings.NewReader(""), false, &stdout, &stderr)
+		if code != exitBadInput {
+			t.Fatalf("exit %d, want %d; stderr %q", code, exitBadInput, stderr.String())
+		}
+		return stderr.String()
+	}
+}
+
+// wantFixLine checks the fix line names exactly broken, and that set left that
+// file the way it found it.
+func wantFixLine(t *testing.T, stderr, broken string) {
+	t.Helper()
+	if want := "fix or delete " + broken + " first"; !strings.Contains(stderr, want) {
+		t.Errorf("stderr %q lacks %q", stderr, want)
+	}
+	if raw, err := os.ReadFile(broken); err != nil || string(raw) != brokenVoice {
+		t.Errorf("set changed the broken file %s: %q %v", broken, raw, err)
+	}
+}
+
+// TestConfigSetNamesBrokenConfigFile covers a broken ~/.acta/config.yaml: the
+// fix line must name that same file.
+func TestConfigSetNamesBrokenConfigFile(t *testing.T) {
+	_, broken, run := setWithBrokenFile(t, filepath.Join(".acta", "config.yaml"), "")
+	wantFixLine(t, run(), broken)
+}
+
+// TestConfigSetNamesBrokenPMVoiceFile covers a broken PM_VOICE_FILE: the fix
+// line must name that path, not the default one.
+func TestConfigSetNamesBrokenPMVoiceFile(t *testing.T) {
+	_, broken, run := setWithBrokenFile(t, filepath.Join("elsewhere", "voice.yaml"), filepath.Join("elsewhere", "voice.yaml"))
+	wantFixLine(t, run(), broken)
+}
+
+// TestConfigSetNamesBrokenUnmovableVoiceFile covers a broken ~/.acta/voice.yaml
+// that could not be moved to config.yaml: the fix line must name voice.yaml.
+func TestConfigSetNamesBrokenUnmovableVoiceFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can rename in a read-only folder")
+	}
+	home, broken, run := setWithBrokenFile(t, filepath.Join(".acta", "voice.yaml"), "")
+	// A folder we cannot write to makes the move fail, so the broken file
+	// stays where it is and is the one that failed to be read.
+	dir := filepath.Join(home, ".acta")
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	wantFixLine(t, run(), broken)
+	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); !os.IsNotExist(err) {
+		t.Errorf("set wrote config.yaml after a read error: %v", err)
 	}
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/testguard"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -69,6 +70,7 @@ func fixtureRoot(t *testing.T) string {
 }
 
 func TestMain(m *testing.M) {
+	testguard.Watch()
 	code := m.Run()
 	if fixtureDir != "" {
 		os.RemoveAll(filepath.Dir(fixtureDir))
@@ -692,16 +694,16 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	// the tab box.
 	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
 	g := m.geometry()
-	if !g.wide || g.leftW != 36 {
+	if !g.wide || g.leftW != 40 {
 		t.Fatalf("wide %v leftW %d", g.wide, g.leftW)
 	}
-	want := [][4]int{{0, barRows, 36, 18}, {0, barRows + 18, 36, 18}}
+	want := [][4]int{{0, barRows, 40, 18}, {0, barRows + 18, 40, 18}}
 	for p, w := range want {
 		if got := g.side[pane(p)]; got.x != w[0] || got.y != w[1] || got.w != w[2] || got.h != w[3] {
 			t.Fatalf("pane %d %+v, want %v", p, got, w)
 		}
 	}
-	if g.detail.x != 36 || g.detail.y != barRows || g.detail.w != 84 || g.detail.h != 36 {
+	if g.detail.x != 40 || g.detail.y != barRows || g.detail.w != 80 || g.detail.h != 36 {
 		t.Fatalf("the detail box %+v", g.detail)
 	}
 	// The border takes two lines and a row one, so a box shows as many rows
@@ -723,9 +725,10 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	if len(a.side) != 1 || a.side[0].y != barRows || a.side[0].h != 36 {
 		t.Fatalf("the Activities box is %+v, want one box of the full height", a.side)
 	}
-	// The left column is 30% of the width, held between 28 and 48.
-	for _, w := range []int{60, 80, 100, 120, 200} {
-		if got := sized(newModel(t), w, 40).geometry().leftW; got != clamp(w*3/10, 28, 48) {
+	// The left column is a third of the width, the way lazygit sizes its
+	// side panels, and never under 28 columns.
+	for _, w := range []int{60, 80, 100, 120, 150, 200, 240} {
+		if got := sized(newModel(t), w, 40).geometry().leftW; got != max(w/3, 28) {
 			t.Errorf("at %d columns the left column is %d", w, got)
 		}
 	}
@@ -1033,7 +1036,7 @@ func TestNewBugSlugInput(t *testing.T) {
 func clickWidths() []int {
 	var out []int
 	for w := 60; w <= 200; w++ {
-		if w == 60 || clamp(w*3/10, 28, 48) != clamp((w-1)*3/10, 28, 48) {
+		if w == 60 || max(w/3, 28) != max((w-1)/3, 28) {
 			out = append(out, w)
 		}
 	}
@@ -1698,8 +1701,8 @@ func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("enter"))
 	m = next.(Model)
-	if cmd != nil {
-		t.Fatal("enter on a branch item should not open the editor")
+	if extra := notToast(cmd); len(extra) > 0 {
+		t.Fatalf("enter on a branch item opened something: %T", extra[0])
 	}
 	if !strings.Contains(m.status, "git worktree add") {
 		t.Fatalf("enter on a branch item should warn: %q", m.status)
@@ -1750,8 +1753,8 @@ func TestEOnABranchItemWarns(t *testing.T) {
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("e"))
 	m = next.(Model)
-	if cmd != nil {
-		t.Fatal("e on a branch item should not open the editor")
+	if extra := notToast(cmd); len(extra) > 0 {
+		t.Fatalf("e on a branch item opened something: %T", extra[0])
 	}
 	if !strings.Contains(m.status, "git worktree add") {
 		t.Fatalf("e on a branch item should warn: %q", m.status)
@@ -2405,19 +2408,17 @@ func TestCopyToastKeepsANewerMessage(t *testing.T) {
 	}
 }
 
-// A copy that did not work leaves the line alone, so the reader still sees
-// why it failed.
-func TestCopyErrorsDoNotHide(t *testing.T) {
+// Every message on the status line hides by itself, errors too, so the key
+// hints always come back.
+func TestEveryToastHidesByItself(t *testing.T) {
 	t.Parallel()
 
-	m := actModel(t)
-	m.clip = func(string) error { return errors.New("no clipboard") }
-	next, cmd := m.Update(key("y"))
-	if cmd != nil {
-		t.Error("a failed copy started a timer")
-	}
-	if got := next.(Model).status; !strings.HasPrefix(got, "copy failed") {
-		t.Errorf("status %q", got)
+	broken := actModel(t)
+	broken.clip = func(string) error { return errors.New("no clipboard") }
+
+	onTask := press(actModel(t), tabKey(tabPlans), "l", "j")
+	if it := onTask.Selected(); it == nil || it.Kind != board.KindTask {
+		t.Fatalf("the row under the cursor is %+v, want a task", it)
 	}
 
 	cfg := treeCfg(t, map[string]string{})
@@ -2425,13 +2426,135 @@ func TestCopyErrorsDoNotHide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, cmd = New(cfg, b, true).Update(key("y"))
-	if cmd != nil {
-		t.Error("nothing selected started a timer")
+	empty := New(cfg, b, true)
+
+	cases := []struct {
+		name string
+		m    Model
+		run  func(Model) (tea.Model, tea.Cmd)
+	}{
+		{"copy failed", broken, func(m Model) (tea.Model, tea.Cmd) { return m.Update(key("y")) }},
+		{"editor error", actModel(t), func(m Model) (tea.Model, tea.Cmd) {
+			return m.Update(editorDoneMsg{err: errors.New("boom")})
+		}},
+		{"tasks refuse the popup", onTask, func(m Model) (tea.Model, tea.Cmd) {
+			return m.Update(key("s"))
+		}},
+		{"nothing selected", empty, func(m Model) (tea.Model, tea.Cmd) { return m.Update(key("y")) }},
 	}
-	if got := next.(Model).status; got != "nothing selected" {
-		t.Errorf("status %q", got)
+	for _, c := range cases {
+		next, cmd := c.run(c.m)
+		got := next.(Model)
+		if got.status == "" {
+			t.Fatalf("%s: no message on the line", c.name)
+		}
+		if cmd == nil {
+			t.Fatalf("%s: %q started no timer, so it would stay", c.name, got.status)
+		}
+		cleared, _ := got.Update(clearStatusMsg{text: got.status})
+		if s := cleared.(Model).status; s != "" {
+			t.Fatalf("%s: the toast did not hide: %q", c.name, s)
+		}
 	}
+}
+
+// The search box is not a toast: typing there changes the list, not the
+// status line, so no timer is started for it.
+func TestSearchTextStartsNoTimer(t *testing.T) {
+	t.Parallel()
+
+	m := press(actModel(t), "/")
+	next, cmd := m.Update(key("BUG"))
+	got := next.(Model)
+	if got.query != "BUG" {
+		t.Fatalf("the query is %q, the keys never reached the box", got.query)
+	}
+	if cmd != nil || got.status != "" {
+		t.Fatalf("typing in the search started a timer: status %q, cmd %v", got.status, cmd != nil)
+	}
+}
+
+// A message the model was built with, such as a theme that did not load, was
+// never handled by Update, so the program starts the timer for it itself.
+func TestTheFirstToastHidesFromTheFirstFrame(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t).WithTheme("nope", true)
+	if m.status == "" {
+		t.Fatal("a theme that does not load must say so")
+	}
+	want := clearStatusMsg{text: m.status}
+	for _, msg := range runNow(m.Init(), 2*toastFor) {
+		if msg == want {
+			return
+		}
+	}
+	t.Fatalf("nothing sent %#v for the message the program started with", want)
+}
+
+// The timer a toast gets sends the clear message for that exact text, so a
+// toast that took the line later is not taken away by an older timer.
+func TestToastTimerClearsThatExactMessage(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.clip = func(string) error { return nil }
+	next, cmd := m.Update(key("y"))
+	status := next.(Model).status
+	if status == "" || cmd == nil {
+		t.Fatalf("status %q, cmd nil = %v", status, cmd == nil)
+	}
+	// The toast waits toastFor before it hides, so this test waits with it.
+	want := clearStatusMsg{text: status}
+	for _, msg := range runNow(cmd, 2*toastFor) {
+		if msg == want {
+			cleared, _ := next.Update(want)
+			if s := cleared.(Model).status; s != "" {
+				t.Fatalf("the toast did not hide: %q", s)
+			}
+			return
+		}
+	}
+	t.Fatalf("no command sent %#v, got %v", want, runNow(cmd, 2*toastFor))
+}
+
+// runNow runs a command, or every command in a batch, each on its own
+// goroutine, and gives back the messages that arrive inside the wait. A
+// command still waiting when the wait is over gives back nothing, so a slow
+// toast timer never holds a test up.
+func runNow(cmd tea.Cmd, within time.Duration) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	got := make(chan tea.Msg, 1)
+	go func() { got <- cmd() }()
+	var msg tea.Msg
+	select {
+	case msg = <-got:
+	case <-time.After(within):
+		return nil
+	}
+	batch, ok := msg.(tea.BatchMsg)
+	if !ok {
+		return []tea.Msg{msg}
+	}
+	var out []tea.Msg
+	for _, inner := range batch {
+		out = append(out, runNow(inner, within)...)
+	}
+	return out
+}
+
+// notToast runs what a key asked for and gives back every message that is
+// not the toast timer, so a test can still catch the side effect it means.
+func notToast(cmd tea.Cmd) []tea.Msg {
+	var out []tea.Msg
+	for _, msg := range runNow(cmd, 50*time.Millisecond) {
+		if _, clear := msg.(clearStatusMsg); !clear {
+			out = append(out, msg)
+		}
+	}
+	return out
 }
 
 func TestClearStatusAfterSendsItsText(t *testing.T) {
@@ -2526,5 +2649,272 @@ func TestPulseAfterSendsAPulse(t *testing.T) {
 
 	if got := pulseAfter(0)(); got != (pulseMsg{}) {
 		t.Fatalf("got %#v", got)
+	}
+}
+
+func TestPlusAndMinusMarkATaskRow(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	var got []string
+	m.markItem = func(id string, done bool) (write.Outcome, error) {
+		got = append(got, fmt.Sprintf("%s %v", id, done))
+		return write.Outcome{Committed: true}, nil
+	}
+	// Open a plan to reach a task row, the same way TestPopupRefusals does.
+	m = press(m, tabKey(tabPlans), " ", "j")
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", it)
+	}
+	m = press(m, "+", "-")
+	if want := it.ID + " true," + it.ID + " false"; strings.Join(got, ",") != want {
+		t.Fatalf("markItem got %v, want %s", got, want)
+	}
+	if !strings.Contains(m.status, "committed") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+func TestPlusMarksADebtLineRow(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	var got string
+	m.markItem = func(id string, done bool) (write.Outcome, error) {
+		got = id
+		return write.Outcome{Committed: true}, nil
+	}
+	m = press(m, tabKey(tabDebts))
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindDebtItem {
+		t.Fatalf("not on a debt line row: %+v", it)
+	}
+	m = press(m, "+")
+	if got != it.ID {
+		t.Fatalf("markItem got %q, want %q", got, it.ID)
+	}
+}
+
+func TestPlusRefusesRowsThatAreNotTasksOrDebtLines(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	m = press(m, tabKey(tabBugs), "+")
+	if called || !strings.Contains(m.status, "task or a debt line") {
+		t.Fatalf("bug row: called %v status %q", called, m.status)
+	}
+	m = press(m, "?", "+")
+	if called {
+		t.Fatal("+ under the help called markItem")
+	}
+}
+
+// TestMarkRefusesAWorktreeAndALegacyRow keeps the keys off the rows whose file
+// lives somewhere else, because a write would land in the wrong tree.
+func TestMarkRefusesAWorktreeAndALegacyRow(t *testing.T) {
+	t.Parallel()
+
+	// A plan that came from a worktree branch, opened to its first task.
+	m := press(worktreeTaskModel(t), tabKey(tabPlans), " ", "j")
+	it := m.Selected()
+	if it == nil || it.Kind != board.KindTask || it.Worktree == "" {
+		t.Fatalf("not on a worktree task row: %+v", it)
+	}
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd := m.Update(key("+"))
+	m = next.(Model)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("worktree row: called %v", called)
+	}
+	if !strings.Contains(m.status, it.Worktree) {
+		t.Fatalf("the status does not name the worktree: %q", m.status)
+	}
+
+	// A task from a folder the board calls legacy. The board really holds
+	// such tasks, but the lists leave them out, so the flag is set here to
+	// reach the guard the same way such a row would.
+	root := press(newModel(t), tabKey(tabPlans), " ", "j")
+	sel := root.Selected()
+	if sel == nil || sel.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", sel)
+	}
+	sel.Legacy = true
+	called = false
+	root.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd = root.Update(key("-"))
+	root = next.(Model)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("legacy row: called %v", called)
+	}
+	if !strings.Contains(root.status, "legacy") {
+		t.Fatalf("status %q", root.status)
+	}
+}
+
+// TestMarkWithNoRowSelected says so instead of writing something unknown.
+func TestMarkWithNoRowSelected(t *testing.T) {
+	t.Parallel()
+
+	// The Specs group row holds the legacy files, not an item of its own.
+	m := press(newModel(t), tabKey(tabSpecs), "G")
+	if m.Selected() != nil {
+		t.Fatalf("the group row is an item, so this proves nothing: %v", m.Selected())
+	}
+	called := false
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		called = true
+		return write.Outcome{}, nil
+	}
+	next, cmd := m.Update(key("+"))
+	m = next.(Model)
+	if called || len(notToast(cmd)) > 0 {
+		t.Fatalf("no row: called %v", called)
+	}
+	if !strings.Contains(m.status, "nothing selected") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+// TestMarkDoesNothingWhileAnOverlayIsOpen walks every box that sits over the
+// list, because each one takes the keys until it closes.
+func TestMarkDoesNothingWhileAnOverlayIsOpen(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		open []string
+	}{
+		{"the help", []string{"?"}},
+		{"a status popup", []string{tabKey(tabBugs), "j", "s"}},
+		{"a type popup", []string{tabKey(tabBugs), "j", "t"}},
+		{"the slug prompt", []string{"n"}},
+		{"the search", []string{"/"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			// Start on a task row, so a key that leaks through writes.
+			m := press(newModel(t), tabKey(tabPlans), " ", "j")
+			if m.Selected() == nil || m.Selected().Kind != board.KindTask {
+				t.Fatalf("not on a task row: %+v", m.Selected())
+			}
+			m = press(m, tc.open...)
+			called := false
+			m.markItem = func(string, bool) (write.Outcome, error) {
+				called = true
+				return write.Outcome{}, nil
+			}
+			for _, k := range []string{"+", "-"} {
+				next, cmd := m.Update(key(k))
+				m = next.(Model)
+				if called || cmd != nil {
+					t.Fatalf("%q under %s: called %v cmd %v", k, tc.name, called, cmd)
+				}
+			}
+		})
+	}
+}
+
+// TestMarkShowsTheError tells the truth when the write fails.
+func TestMarkShowsTheError(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), " ", "j")
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		return write.Outcome{}, errors.New("disk is full")
+	}
+	m = press(m, "+")
+	if !strings.Contains(m.status, "disk is full") {
+		t.Fatalf("status %q", m.status)
+	}
+}
+
+// TestMarkReloadsTheBoard asks the program to read the files again, so the
+// screen shows the boxes the write just ticked.
+func TestMarkReloadsTheBoard(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), " ", "j")
+	m.markItem = func(string, bool) (write.Outcome, error) {
+		return write.Outcome{Committed: true}, nil
+	}
+	_, cmd := m.Update(key("+"))
+	if cmd == nil {
+		t.Fatal("+ asked for no reload")
+	}
+	for _, msg := range runNow(cmd, time.Second) {
+		if _, ok := msg.(reloadMsg); ok {
+			return
+		}
+	}
+	t.Fatal("+ asked for no reload")
+}
+
+// worktreeTaskModel holds one plan that came from a worktree branch, opened
+// to its task, so the keys meet a row they must not write.
+func worktreeTaskModel(t *testing.T) Model {
+	t.Helper()
+	main := treeCfg(t, nil)
+	wt := treeCfg(t, map[string]string{".acta/plans/2026-09-21-a.md": "# A plan\n\n### Task 1: Step\n\n- [ ] do it\n"})
+	b, err := board.LoadTrees(main, []board.Tree{{Cfg: wt, Branch: "feat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(main, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m.dcache = &detailCache{}
+	return sized(m, 120, 40)
+}
+
+// TestMarkWritesTheFile is the one test that runs the markItem of New, so
+// the wiring is not taken on faith. Auto commit is off, so no git repository
+// is needed to see the box on disk change.
+func TestMarkWritesTheFile(t *testing.T) {
+	t.Parallel()
+
+	cfg := treeCfg(t, map[string]string{".acta/plans/2026-09-30-p.md": "# P\n\n### Task 1: Step\n\n- [ ] do it\n"})
+	cfg.AutoCommit = false
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(cfg, b, true)
+	m.render = func(md string, _ int) string { return md }
+	m.dcache = &detailCache{}
+	m = press(sized(m, 120, 40), tabKey(tabPlans), " ", "j")
+	if it := m.Selected(); it == nil || it.Kind != board.KindTask {
+		t.Fatalf("not on a task row: %+v", it)
+	}
+	path := filepath.Join(cfg.Root, "plans", "2026-09-30-p.md")
+	m = press(m, "+")
+	if !strings.Contains(m.status, "written") {
+		t.Fatalf("status %q", m.status)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "- [x] do it") {
+		t.Fatalf("+ did not tick the box:\n%s", body)
+	}
+	m = press(m, "-")
+	body, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "- [ ] do it") {
+		t.Fatalf("- did not open the box:\n%s", body)
 	}
 }

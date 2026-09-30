@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
-	"github.com/iyay/acta/internal/voice"
 )
 
 // oldSkillRe matches the eleven old skill names. A bare "pm" with no colon
@@ -23,6 +23,10 @@ var oldPmbRe = regexp.MustCompile(`\bpmb\b`)
 // oldRootRe matches the old root folder. ".pm.yaml" carries no slash and
 // moved under its own rename, file by file.
 var oldRootRe = regexp.MustCompile(`\.pm/`)
+
+// oldVoiceRe matches the old config command. The Go package and the
+// PM_VOICE_FILE variable keep the voice name, so only "acta voice" fails.
+var oldVoiceRe = regexp.MustCompile(`\bacta voice\b`)
 
 // aliasLines is the one old text the rename keeps: the README sentence that
 // tells users pmb still runs as an alias. Paths read as walkPlugin reports
@@ -45,6 +49,7 @@ func oldNameProblems(source, text string) []string {
 		{"old skill name", oldSkillRe},
 		{"old pmb command", oldPmbRe},
 		{"old .pm/ root", oldRootRe},
+		{"old acta voice command", oldVoiceRe},
 	}
 	var out []string
 	for i, line := range strings.Split(text, "\n") {
@@ -81,15 +86,15 @@ func TestNoOldNames(t *testing.T) {
 	}
 	// The same check runs over what the session really shows, so the shown
 	// text cannot drift back while the files stay clean.
-	set := hook.Input{Voice: voice.Voice{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	set := hook.Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
 	shown := map[string]string{
-		"first run":      hook.SessionStart(hook.Input{Voice: voice.Default()}),
+		"first run":      hook.SessionStart(hook.Input{Voice: config.UserDefault()}),
 		"voice set":      hook.SessionStart(set),
-		"broken voice":   hook.SessionStart(hook.Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}),
-		"conflicts":      hook.SessionStart(hook.Input{Voice: voice.Default(), VoiceExists: true, Conflicts: []string{"superpowers@x"}}),
+		"broken voice":   hook.SessionStart(hook.Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")}),
+		"conflicts":      hook.SessionStart(hook.Input{Voice: config.UserDefault(), VoiceExists: true, Conflicts: []string{"superpowers@x"}}),
 		"prompt set":     hook.Prompt(set),
-		"prompt missing": hook.Prompt(hook.Input{Voice: voice.Default()}),
-		"prompt broken":  hook.Prompt(hook.Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}),
+		"prompt missing": hook.Prompt(hook.Input{Voice: config.UserDefault()}),
+		"prompt broken":  hook.Prompt(hook.Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")}),
 	}
 	for name, text := range shown {
 		for _, p := range oldNameProblems("hook "+name, text) {

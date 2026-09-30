@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,12 +9,11 @@ import (
 	"time"
 
 	"github.com/iyay/acta/internal/board"
-	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/write"
 )
 
-const tickUsage = "usage: acta tick <id> [--step N | --all | --start | --wontfix]"
+const tickUsage = "usage: acta tick <id> [--step N | --all | --start | --wontfix | --undo]"
 
 // cmdTick ticks checkboxes in a plan so the board shows progress while an
 // agent works. It never commits: the plan file is shared, and the
@@ -32,6 +30,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	agent := fs.String("agent", "", "name the agent running this tick (default: the AI_AGENT variable)")
 	start := fs.Bool("start", false, "mark the task started without ticking a box")
 	wontfix := fs.Bool("wontfix", false, "mark a debt line wontfix instead of done")
+	undo := fs.Bool("undo", false, "put the task or debt line back to open")
 	pos, err := parseMixed(fs, args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -43,7 +42,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	// Exactly one action per call: mixing two would lie to the board about
 	// which one actually happened, and a bare tick with none is a typo.
 	set := 0
-	for _, on := range []bool{*step > 0, *all, *start, *wontfix} {
+	for _, on := range []bool{*step > 0, *all, *start, *wontfix, *undo} {
 		if on {
 			set++
 		}
@@ -80,6 +79,29 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		return exitSkipped
 	}
 	switch {
+	case *undo:
+		// Undo is for a slip of the finger. It clears the boxes and nothing
+		// else: dates already written stay, and nobody is recorded.
+		if it.Kind == board.KindDebtItem {
+			err = write.TickLine(it.Path, it.Line, ' ')
+			if err == nil {
+				fmt.Fprintf(stdout, "%s open\n", it.ID)
+			}
+		} else {
+			var done, total int
+			done, total, err = write.Untick(it.Path, it.Line)
+			if err == nil {
+				fmt.Fprintf(stdout, "%s %d/%d\n", it.ID, done, total)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			if errors.Is(err, write.ErrBadInput) {
+				return exitBadInput
+			}
+			return exitOther
+		}
+		return exitOK
 	case it.Kind == board.KindDebtItem:
 		state := byte('x')
 		if *wontfix {
@@ -115,7 +137,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 	// that. The dates are a side effect: the tick itself worked, so a
 	// failure here only gets printed.
 	if it.Kind == board.KindTask {
-		if err := markTaskDates(cfg, it); err != nil {
+		if _, err := write.TaskDates(cfg, it); err != nil {
 			fmt.Fprintf(stderr, "dates: %v\n", err)
 		}
 	}
@@ -127,54 +149,4 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "agent record: %v\n", err)
 	}
 	return exitOK
-}
-
-// markTaskDates writes the dates a task tick gives its plan and the spec or
-// bug above it. Work began the moment any task is ticked, and work ends when
-// every task of the plan is done, and the spec a little later: when every
-// plan under it is done too. The board is read again because the tick that
-// just happened is what the file says.
-func markTaskDates(cfg config.Config, it *board.Item) error {
-	fresh, err := board.Load(cfg)
-	if err != nil {
-		return err
-	}
-	plan := fresh.Get(it.PlanID)
-	if err := markDate(plan.Path, write.MarkStarted); err != nil {
-		return err
-	}
-	if plan.Done == plan.Total {
-		if err := markDate(plan.Path, write.MarkFinishedOnce); err != nil {
-			return err
-		}
-	}
-	spec := fresh.Get(plan.SpecID)
-	if spec == nil {
-		return nil
-	}
-	if err := markDate(spec.Path, write.MarkStarted); err != nil {
-		return err
-	}
-	if spec.Status == "done" {
-		return markDate(spec.Path, write.MarkFinishedOnce)
-	}
-	return nil
-}
-
-// markDate runs one date writer over a file and writes the result back only
-// when the bytes really changed, so a tick never touches a file it has
-// nothing new to say about.
-func markDate(path string, set func([]byte) ([]byte, error)) error {
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	out, err := set(src)
-	if err != nil {
-		return err
-	}
-	if bytes.Equal(src, out) {
-		return nil
-	}
-	return os.WriteFile(path, out, 0o644)
 }

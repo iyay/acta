@@ -36,6 +36,7 @@ type Item struct {
 	StatusSource string // "derived" or "frontmatter"
 	Ref          string
 	FixedIn      string
+	Priority     string   // bugs and debt items: high, medium, low, or "" when unset
 	Parent       string   // tasks only
 	SpecID       string   // plans only: the spec or bug whose tasks the plan carries
 	PlanID       string   // tasks only: the plan file the task belongs to
@@ -61,9 +62,9 @@ type Item struct {
 	PlanPath     string // tasks only: the plan file, which holds the plan's IDs
 	Agent        string // the agent that last ticked this open task, or the agents of its open tasks
 	Started      bool   // tasks only: someone ran tick --start on it
-	Created      string // YYYY-MM-DD from the frontmatter, or ""
-	StartedOn    string // YYYY-MM-DD, the day work on it began
-	Finished     string // YYYY-MM-DD, the day it was finished
+	Created      string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS from the frontmatter, or ""
+	StartedOn    string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, when work on it began
+	Finished     string // YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, when it was finished
 
 	// plans counts the plans that hang on this item. A plan item is one plan
 	// itself, so it counts itself.
@@ -410,6 +411,15 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	}
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
+	// Only a bug carries a priority in its frontmatter. A word that is not a
+	// level is shown as a problem, and the bug counts as unset.
+	if p := field(doc.Front, "priority"); p != "" && it.Kind == KindBug {
+		if ValidPriority(p) {
+			it.Priority = p
+		} else {
+			it.Problems = append(it.Problems, "unknown priority "+p)
+		}
+	}
 	it.Created = dateField(doc.Front, "created")
 	it.StartedOn = dateField(doc.Front, "started")
 	it.Finished = dateField(doc.Front, "finished")
@@ -533,8 +543,9 @@ func (b *Board) linkDebt(d debtFile) {
 		}
 	}
 	for _, line := range d.doc.Items {
+		level, title := SplitPriority(line.Text)
 		id := d.it.ID + "#item-" + fmt.Sprintf("%d", line.Num)
-		item := &Item{ID: id, Kind: KindDebtItem, Title: line.Text, Date: d.it.Date, Slug: d.it.Slug,
+		item := &Item{ID: id, Kind: KindDebtItem, Title: title, Priority: level, Date: d.it.Date, Slug: d.it.Slug,
 			Parent: d.it.ID, Path: d.it.Path, Line: line.Line, Legacy: d.it.Legacy,
 			Status: itemStatus(line.State), StatusSource: "derived",
 			// The checklist becomes the list in the detail pane, so the body
@@ -607,6 +618,11 @@ func (b *Board) derive() {
 			// A scratch named in a closes list was turned into a spec just
 			// like one that hangs under a spec as its parent.
 			it.Status, it.StatusSource = scratchStatus(it.fmStatus, len(it.Children) > 0 || len(it.ClosedBy) > 0)
+		// A bug with a fixed_in has already been fixed, because that word is
+		// written only after the fix is merged. That is better proof than the
+		// ticks of a child plan, which can still be waiting to be ticked.
+		case it.Kind == KindBug && it.fmStatus == "" && it.FixedIn != "":
+			it.Status, it.StatusSource = "fixed", "derived"
 		case it.fmStatus == "":
 			if st, ok := closedByStatus(b, it); ok {
 				it.Status, it.StatusSource = st, "derived"
@@ -622,6 +638,10 @@ func (b *Board) derive() {
 			if it.fmStatus != "" && it.fmStatus != it.Status {
 				it.Problems = append(it.Problems, "written status "+it.fmStatus+" ignored, derived "+it.Status)
 			}
+		// approved and in-progress on a plan are only the stamp that says the
+		// plan may start, so the task boxes decide where it stands now.
+		case it.Kind == KindPlan && (it.fmStatus == "approved" || it.fmStatus == "in-progress"):
+			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
 		default:
 			it.Status, it.StatusSource = it.fmStatus, "frontmatter"
 		}
@@ -726,9 +746,11 @@ func field(front map[string]any, key string) string {
 	return strings.TrimSpace(fmt.Sprint(v))
 }
 
-// dateField is a YYYY-MM-DD value from the frontmatter, or "". A bare date
-// comes back from yaml as a time and a quoted one as a string, so both are
-// read; anything that is not a real day is dropped.
+// dateField is a date from the frontmatter, or "". It is a bare day
+// (YYYY-MM-DD) in old files and a day with a time (YYYY-MM-DD HH:MM:SS) in
+// new ones. A bare date comes back from yaml as a time and a quoted one as a
+// string, so both are read; anything that is not a real day or time is
+// dropped.
 func dateField(front map[string]any, key string) string {
 	switch v := front[key].(type) {
 	case string:
@@ -741,11 +763,15 @@ func dateField(front map[string]any, key string) string {
 	return ""
 }
 
-// isDate says whether the text is a real day, so a day that does not exist
-// never reaches the reader.
+// isDate says whether the text is a real day, or a real day and time, so a
+// date that does not exist never reaches the reader.
 func isDate(s string) bool {
-	_, err := time.Parse("2006-01-02", s)
-	return err == nil
+	for _, layout := range []string{"2006-01-02", "2006-01-02 15:04:05"} {
+		if _, err := time.Parse(layout, s); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func contains(list []string, s string) bool {

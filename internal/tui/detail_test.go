@@ -265,34 +265,128 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 	}
 }
 
-// A debt item lists every line of its debt file. No line is dim, and the line
-// on show is bold, so the reader knows which NOTE is open.
-func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
-	withColors(func() {
-		lines := detailOf(t, "DEBT-1.1")
-		wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
-		mine, other := lineOf(t, lines, "DBT-0001.01  first note"), lineOf(t, lines, "DBT-0001.02  second note")
-		if wears(lines[mine], 2) {
-			t.Errorf("the line on show is dim: %q", lines[mine])
-		}
-		if sgrHas(lines[other], "2") {
-			t.Errorf("the other line is faint: %q", lines[other])
-		}
-	})
-}
-
-// The text of a debt file around its checklist renders under the list, once,
-// and not as the whole file again.
-func TestDetailDebtItemShowsTheTextAroundItsLine(t *testing.T) {
+// A debt item is one note, and the list pane already names the other notes,
+// so its detail shows the whole note and nothing else of the file.
+func TestDetailDebtItemShowsOnlyItsNote(t *testing.T) {
 	t.Parallel()
 
 	lines := plainLines(detailOf(t, "DEBT-1.1"))
+	head := strings.Join(lines[:ruleLine(t, lines)], "\n")
 	below := strings.Join(lines[ruleLine(t, lines):], "\n")
-	if !strings.Contains(below, "Prose about the review.") {
-		t.Errorf("the debt detail holds no text of its file:\n%s", below)
+	if strings.Contains(head, "DEBT ") {
+		t.Errorf("the header still has a DEBT line:\n%s", head)
 	}
 	if n := strings.Count(below, "first note"); n != 1 {
-		t.Errorf("the debt detail shows its checklist line %d times under the header, want once:\n%s", n, below)
+		t.Errorf("the note shows %d times under the header, want once:\n%s", n, below)
+	}
+	for _, gone := range []string{"second note", "Prose about the review.", "Review NOTEs"} {
+		if strings.Contains(below, gone) {
+			t.Errorf("the debt item detail still shows %q:\n%s", gone, below)
+		}
+	}
+}
+
+// A note longer than the pane is wrapped, so every word of it can be read and
+// no line spills over the wall.
+func TestDetailDebtItemWrapsALongNote(t *testing.T) {
+	t.Parallel()
+
+	note := strings.TrimSpace(strings.Repeat("a long note word ", 20)) + " last<uid>"
+	cfg := treeCfg(t, map[string]string{
+		".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
+	})
+	// The real renderer, because the note is escaped for it and a stub that
+	// hands the text back would show the escapes.
+	lines := plainLines(onItem(t, detailModel(t, cfg), "DEBT-1.1").detailLines(100))
+	below := lines[ruleLine(t, lines):]
+	if got := strings.Join(strings.Fields(strings.Join(below, " ")), " "); !strings.Contains(got, note) {
+		t.Errorf("the detail does not hold the whole note %q:\n%s", note, strings.Join(below, "\n"))
+	}
+	for i, ln := range lines {
+		if w := lipgloss.Width(ln); w > 100 {
+			t.Errorf("line %d is %d cells wide: %q", i, w, ln)
+		}
+	}
+}
+
+// A debt file still lists every one of its lines, because only the debt
+// item's detail changed.
+func TestDetailDebtFileListsEveryLine(t *testing.T) {
+	t.Parallel()
+
+	m := detailModel(t, treeCfg(t, boardFiles()))
+	lines := plainLines(m.debtLines(m.board.Get("DEBT-1"), 100))
+	wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
+}
+
+// A note is drawn by the markdown renderer at every width, and no line is
+// cut, so the reader never loses a word, a lone "-" or a tag like <uid>.
+func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
+	t.Parallel()
+
+	notes := []string{
+		"internal/write/mark.go: + on a task already done (or - on one already open) changes nothing, and more",
+		`a checklist line gives "- [ ] - [ ] text".`,
+		"averyveryveryverylongwordwithnospacesatallthatrunsonandon then short",
+		"日本語のメモ and ünïcode words in one note",
+		"Another local user can pre-create /tmp/pmb-<uid>: a & b",
+		"view.go still runs `acta list --json` with *no* agent field",
+		`brainCmd: the (?:^|&&|;|\|\|) alternation is dead`,
+	}
+	// Markdown turns these into styling, so they are not drawn as text.
+	styled := strings.NewReplacer("`", "", "*", "")
+	for _, note := range notes {
+		cfg := treeCfg(t, map[string]string{
+			".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
+		})
+		m := onItem(t, detailModel(t, cfg), "DEBT-1.1")
+		want := strings.Join(strings.Fields(styled.Replace(note)), "")
+		for w := 10; w <= 160; w++ {
+			_, mid, _ := m.buildDetailParts(w)
+			var got strings.Builder
+			for i, ln := range mid {
+				if lw := lipgloss.Width(ln); lw > w {
+					t.Errorf("at %d wide line %d is %d cells: %q", w, i, lw, plain(ln))
+				}
+				got.WriteString(strings.Join(strings.Fields(plain(ln)), ""))
+			}
+			if got.String() != want {
+				t.Errorf("at %d wide the note reads %q, want %q", w, got.String(), want)
+			}
+		}
+	}
+}
+
+// A note sits in the detail the way a spec body does: the same blank line
+// above it and the same gap on the left, so the two kinds look alike.
+func TestDetailDebtItemNoteHasTheSpecBodyGaps(t *testing.T) {
+	t.Parallel()
+
+	const text = "Tests that call lock without the base still leave lock files"
+	cfg := treeCfg(t, map[string]string{
+		".acta/debt/2026-09-24-d.md":  "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + text + "\n",
+		".acta/specs/2026-09-20-a.md": "---\nid: SPEC-1\n---\n" + text + "\n",
+	})
+	firstText := func(mid []string) (row, col int) {
+		for i, ln := range mid {
+			if c := strings.Index(plain(ln), "Tests"); c >= 0 {
+				return i, c
+			}
+		}
+		t.Fatalf("no line holds the text:\n%s", strings.Join(mid, "\n"))
+		return 0, 0
+	}
+	for _, w := range []int{40, 80, 120} {
+		_, debtMid, _ := onItem(t, detailModel(t, cfg), "DEBT-1.1").buildDetailParts(w)
+		_, specMid, _ := onItem(t, detailModel(t, cfg), "SPEC-1").buildDetailParts(w)
+		dr, dc := firstText(debtMid)
+		_, sc := firstText(specMid)
+		if dc != sc {
+			t.Errorf("at %d wide the note starts at column %d, a spec body at %d", w, dc, sc)
+		}
+		if dr == 0 || strings.TrimSpace(plain(debtMid[dr-1])) != "" {
+			t.Errorf("at %d wide the note has no blank line above it:\n%s", w, strings.Join(debtMid, "\n"))
+		}
 	}
 }
 
@@ -568,10 +662,11 @@ func TestDetailShowsClosesAndClosedBy(t *testing.T) {
 	}
 }
 
-// Six scratch items: one with all three dates, one with none, one with each
-// date on its own, and one whose three values are all junk. A good date comes
-// in both forms yaml gives: bare, which decodes to a time, and quoted, which
-// decodes to a string.
+// Seven scratch items: one with all three dates, one with none, one with each
+// date on its own, one whose three values are all junk, and one whose three
+// dates carry the time to the second. A good date comes in both forms yaml
+// gives: bare, which decodes to a time, and quoted, which decodes to a
+// string.
 func datedFiles() map[string]string {
 	return map[string]string{
 		".acta/scratch/2026-09-01-all.md":      "---\nid: SCRATCH-1\ntitle: all\nstatus: raw\ncreated: 2026-09-01\nstarted: \"2026-09-02\"\nfinished: 2026-09-03\n---\n# All\n",
@@ -580,12 +675,16 @@ func datedFiles() map[string]string {
 		".acta/scratch/2026-09-01-started.md":  "---\nid: SCRATCH-4\ntitle: started\nstatus: raw\nstarted: \"2026-09-02\"\n---\n# Started\n",
 		".acta/scratch/2026-09-01-finished.md": "---\nid: SCRATCH-5\ntitle: finished\nstatus: raw\nfinished: \"2026-09-03\"\n---\n# Finished\n",
 		".acta/scratch/2026-09-01-bad.md":      "---\nid: SCRATCH-6\ntitle: bad\nstatus: raw\ncreated: \"\"\nstarted: 12\nfinished: soon\n---\n# Bad\n",
+		".acta/scratch/2026-09-01-timed.md":    "---\nid: SCRATCH-7\ntitle: timed\nstatus: raw\ncreated: \"2026-09-01 08:00:00\"\nstarted: \"2026-09-02 09:30:15\"\nfinished: \"2026-09-03 17:45:59\"\n---\n# Timed\n",
+		".acta/scratch/2026-09-01-notime.md":   "---\nid: SCRATCH-8\ntitle: notime\nstatus: raw\ncreated: \"2026-02-30 10:00:00\"\nstarted: \"2026-09-30 25:00:00\"\nfinished: \"2026-09-30 16:14\"\n---\n# No Time\n",
+		".acta/scratch/2026-09-01-word.md":     "---\nid: SCRATCH-9\ntitle: word\nstatus: raw\ncreated: yesterday\nstarted: \"2026-02-30 10:00:00\"\nfinished: \"2026-09-30 16:14\"\n---\n# Word\n",
 	}
 }
 
-// The board keeps a date only when the frontmatter holds a real YYYY-MM-DD,
-// in the string form or the time form, and nothing at all when the value is
-// missing, empty, a number or a word.
+// The board keeps a date only when the frontmatter holds a real day, or a real
+// day and time down to the second, and nothing at all when the value is
+// missing, empty, a number, a word, a day that does not exist, an hour that
+// does not exist, or a time that stops before the seconds.
 func TestItemDatesFromFrontmatter(t *testing.T) {
 	b, err := board.Load(treeCfg(t, datedFiles()))
 	if err != nil {
@@ -598,6 +697,9 @@ func TestItemDatesFromFrontmatter(t *testing.T) {
 		{"SCRATCH-4", "", "2026-09-02", ""},
 		{"SCRATCH-5", "", "", "2026-09-03"},
 		{"SCRATCH-6", "", "", ""},
+		{"SCRATCH-7", "2026-09-01 08:00:00", "2026-09-02 09:30:15", "2026-09-03 17:45:59"},
+		{"SCRATCH-8", "", "", ""},
+		{"SCRATCH-9", "", "", ""},
 	} {
 		it := b.Get(c.id)
 		if it == nil {
@@ -621,6 +723,9 @@ func TestDetailShowsTheDates(t *testing.T) {
 		{"SCRATCH-4", "created - · started 2026-09-02 · finished -"},
 		{"SCRATCH-5", "created - · started - · finished 2026-09-03"},
 		{"SCRATCH-6", "created - · started - · finished -"},
+		{"SCRATCH-7", "created 2026-09-01 08:00:00 · started 2026-09-02 09:30:15 · finished 2026-09-03 17:45:59"},
+		{"SCRATCH-8", "created - · started - · finished -"},
+		{"SCRATCH-9", "created - · started - · finished -"},
 	} {
 		lines := detailLines(t, cfg, c.id)
 		if got := plain(lines[len(lines)-1]); got != c.foot {
@@ -655,6 +760,9 @@ func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
 		{"SCRATCH-4", "created - · started 2026-09-02 · finished -", "c - · s 2026-09-02 · f -"},
 		{"SCRATCH-5", "created - · started - · finished 2026-09-03", "c - · s - · f 2026-09-03"},
 		{"SCRATCH-6", "created - · started - · finished -", "c - · s - · f -"},
+		{"SCRATCH-7", "created 2026-09-01 08:00:00 · started 2026-09-02 09:30:15 · finished 2026-09-03 17:45:59", "c 2026-09-01 08:00:00 · s 2026-09-02 09:30:15 · f 2026-09-03 17:45:59"},
+		{"SCRATCH-8", "created - · started - · finished -", "c - · s - · f -"},
+		{"SCRATCH-9", "created - · started - · finished -", "c - · s - · f -"},
 	} {
 		m := onItem(t, sized(base, 120, 40), c.id)
 		for w := 5; w <= 130; w++ {

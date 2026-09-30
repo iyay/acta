@@ -1,30 +1,38 @@
 ---
 name: build
-description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta voice show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan, and when the user asks to dispatch a plan or hand it to omp in another tab or pane. Creates the worktree without asking, then runs every task with a failing test first through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through dispatch.md) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
 
 Run an approved plan, task by task, in its own worktree. Every task starts with a failing test (`acta:tdd`) and ends with one commit. Review happens once, at the close (`acta:review`), then `acta:land` merges.
 
-Refuse to start without an approved spec and an approved plan. Say which one is missing.
+Refuse to start unless the spec is approved (for Bounded work with no spec file, approved in chat) and the plan is approved or has `depth: minimal` in its frontmatter. Say which one is missing.
 
 ## Executors
 
 | Executor | Who writes the code | How |
 |---|---|---|
 | `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
-| `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr. On omp, `dispatch` runs as `subagent` |
+| `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. Without it `dispatch` runs as `subagent`. On omp, `dispatch` runs as `subagent` |
 | `inline` | you | only when the user says "inline" |
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
-Before you pick one, run `acta voice show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
-On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
+Pick the executor in this order. When one of the first two gives an answer, do not ask.
+
+1. The argument of `/build <executor>`: `subagent`, `dispatch` or `inline`. It is for this run only; never save it.
+2. `build_executor: <name>` from `acta config show`.
+3. Neither: ask which executor to run, as the table above describes.
+
+Two fallbacks, each told to the user in one line:
+
+- On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
+- `dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing. `herdr` on PATH is not enough: dispatch needs this session's own pane id, `$HERDR_PANE_ID`.
 
 ## Models
 
-**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 - Implementers and other workers: the model the paragraph above names, or none. On omp, `agent="task"` and its role config picks the model.
 - Reviewers (`acta:review`): your own model alias, never lower.
@@ -37,6 +45,8 @@ Do not ask whether to create a worktree. Every change gets one: feature, fix, on
 The spec and plan from acta:brainstorm and acta:plan stay on main; they are already committed when the worktree is made. While a build runs, do not edit its plan on main: the ticks live in the worktree copy and would clash at merge. A plan change goes in the worktree.
 
 Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `acta:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
+
+Copy in the house rules too: `AGENTS.md` and `CLAUDE.md` — `AGENTS.md` is a symlink to an untracked `CLAUDE.md`, so a fresh worktree gets neither and the agent runs the whole ticket with zero house rules.
 
 ### Step 0: Detect Existing Isolation
 
@@ -65,19 +75,7 @@ If `GIT_DIR == GIT_COMMON` (or in a submodule): you are in a normal repo checkou
 
 ### Step 1: Create Isolated Workspace
 
-You have two mechanisms. Try them in this order.
-
-#### 1a. Native Worktree Tools (preferred)
-
-Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
-
-Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
-
-Only proceed to Step 1b if you have no native worktree tool available.
-
-#### 1b. Git Worktree Fallback
-
-Only use this if Step 1a does not apply — you have no native worktree tool available. Create a worktree manually using git.
+Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`. The user pushes by hand, so the spec and plan just committed on local main are often not on origin, and that worktree would start without the plan.
 
 Directory selection, in priority order. Explicit user preference always beats observed filesystem state.
 
@@ -114,7 +112,7 @@ if [ -f go.mod ]; then go mod download; fi
 
 ### Step 3: Verify Clean Baseline
 
-Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`.
+Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and a whole-repo run there spends every core on the machine.
 
 If tests fail: report the failures, ask whether to proceed or investigate. If tests pass, report ready: worktree path, passing count, and what is next. A dirty baseline makes every later failure ambiguous, so proceeding past failures is your human partner's call.
 
@@ -129,6 +127,8 @@ Work happens only in the worktree from ## Worktree. Never start implementation o
 Read the plan once, note its context and Global Constraints, and make a todo per task. If the plan names a spec, read that too: the spec is the authority the plan argues from, and conflicts inside the plan resolve against it.
 
 Before dispatching, scan the plan once for tasks that contradict each other or the Global Constraints, and rule on what you find against the plan text. The spec wins over the plan; your judgment settles what neither answers.
+
+To find an item's file when you have only its id or hash, run `acta show <id|hash> --path` and it prints the path.
 
 ## The Task Loop
 
@@ -207,6 +207,8 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 ## Close
 
 When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+
+Every executor closes this way. Only the fix round is sent differently: `subagent` gives the fix task to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent in its tab (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, after `acta:land` close the tab (`## Close the tab` in dispatch.md).
 
 ### Reply back when a dispatch record exists
 

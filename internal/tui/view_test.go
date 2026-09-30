@@ -309,7 +309,7 @@ func TestTabsWearTheirKindColors(t *testing.T) {
 		for _, name := range []string{"tokyo-night", "terminal"} {
 			for open := range topTabs {
 				m := press(actModel(t).WithTheme(name, true), tabKey(open))
-				line := m.barLine(make([]bool, len(topTabs)))
+				line, _ := m.barLine(make([]bool, len(topTabs)))
 				for i, tb := range topTabs {
 					label := fmt.Sprintf("%d %s", i+1, tb.name)
 					want := lipgloss.NewStyle().Foreground(m.styles.tabColor(tb.kind)).Render(label)
@@ -977,10 +977,13 @@ func TestViewDebtDetail(t *testing.T) {
 		}
 	}
 	detail := strings.Join(labels, "\n")
-	for _, want := range []string{`DEBT\s+: a$`, `STATUS\s+: open$`, `FROM\s+: PLN-0003 . Short IDs$`} {
+	for _, want := range []string{`STATUS\s+: open$`, `FROM\s+: PLN-0003 . Short IDs$`} {
 		if ok, _ := regexp.MatchString("(?m)"+want, detail); !ok {
 			t.Errorf("detail header is missing %q, got:\n%s", want, detail)
 		}
+	}
+	if ok, _ := regexp.MatchString(`(?m)^DEBT\s+:`, detail); ok {
+		t.Errorf("detail header still has a DEBT line:\n%s", detail)
 	}
 
 }
@@ -1048,8 +1051,8 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	if got := lipgloss.Width(last); got != 100 {
 		t.Errorf("the status line is %d cells wide, want 100", got)
 	}
-	if !strings.HasPrefix(plain(last), "? help") {
-		t.Errorf("the left should show only ? help, got %q", plain(last))
+	if !strings.Contains(plain(last), helpHint) {
+		t.Errorf("the left should always show Help, got %q", plain(last))
 	}
 	if !strings.Contains(plain(last), "basic · live · 2026-09-27 20:46") {
 		t.Errorf("the project, mode or date is missing: %q", plain(last))
@@ -1132,7 +1135,7 @@ func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
 		case !strings.Contains(line, "live"):
 			sawDateOnly = true
 		}
-		if !strings.Contains(line, "? help") {
+		if !strings.Contains(line, helpHint) {
 			sawLeftGone = true
 		}
 	}
@@ -1153,7 +1156,10 @@ func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
 func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	t.Parallel()
 
-	m := sized(press(clocked(newModel(t), 20, 46), "?"), 100, 30)
+	// The help box is 26 rows tall, borders and all, so the window is taller
+	// than that: a screen as short as the box leaves no room for the pane
+	// titles this test wants to see behind it.
+	m := sized(press(clocked(newModel(t), 20, 46), "?"), 100, 40)
 	v := m.View()
 	if !strings.Contains(v, "Keys") || !strings.Contains(v, "new bug") {
 		t.Error("the help popup is missing")
@@ -1166,13 +1172,36 @@ func TestViewHelpPopupCoversThePanes(t *testing.T) {
 	}
 	// The help names every key of the new layout.
 	help := plain(v)
-	for _, want := range []string{"1-6", "←", "→", "tab shift+tab", "[ ]", "space enter"} {
+	for _, want := range []string{"1-6", "←", "→", "tab shift+tab", "[ ]", "space", "enter"} {
 		if !strings.Contains(help, want) {
 			t.Errorf("the help shows no %q:\n%s", want, help)
 		}
 	}
 	if strings.Contains(press(m, "?").View(), "Keys") {
 		t.Error("? should close the help popup")
+	}
+}
+
+// The help box is 26 rows tall, so on a 26-row screen it covers the whole
+// screen by design. This pins the next size up, where the box still fits and
+// the status line must stay readable under it.
+func TestTheHelpBoxLeavesTheStatusLineVisible(t *testing.T) {
+	t.Parallel()
+
+	pop := press(sized(clocked(newModel(t), 20, 46), 100, 30), "?")
+	rows := plainLines(strings.Split(pop.popupBox(), "\n"))
+	lines := plainLines(strings.Split(pop.View(), "\n"))
+	y0 := boxOn(lines, rows[0])
+	if y0 < 0 {
+		t.Fatal("the top border of the help box is not on a 30-row screen")
+	}
+	for i, r := range rows {
+		if y0+i >= len(lines) || !strings.Contains(lines[y0+i], r) {
+			t.Errorf("row %d of the help box, %q, is not on a 30-row screen", i, r)
+		}
+	}
+	if !strings.HasSuffix(plain(lastLine(pop.View())), "2026-09-27 20:46 | Feedback  dev") {
+		t.Error("the help box took the status line")
 	}
 }
 
@@ -2192,6 +2221,103 @@ func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestHelpNamesOneKeyPerLine keeps the help plain: each line is one key, or
+// two keys that are opposites, so nobody has to guess which key does what.
+func TestHelpNamesOneKeyPerLine(t *testing.T) {
+	t.Parallel()
+
+	want := map[string]string{
+		"s": "set the status; dropped and wontfix close an item",
+		"t": "set the type: spec or bug",
+		"n": "new bug",
+		"+": "mark the task or debt line done",
+		"-": "put the task or debt line back to open",
+		"/": "search the rows",
+		"r": "reload the board from disk",
+		"q": "quit",
+	}
+	got := map[string]string{}
+	for _, ln := range strings.Split(helpLines, "\n") {
+		k, w, ok := strings.Cut(ln, "  ")
+		if !ok {
+			t.Fatalf("line has no key column: %q", ln)
+		}
+		got[strings.TrimSpace(k)] = strings.TrimSpace(w)
+	}
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("key %q: got %q, want %q", k, got[k], w)
+		}
+	}
+	for _, packed := range []string{"t s n", "/ r q", "space enter"} {
+		if _, ok := got[packed]; ok {
+			t.Errorf("packed line %q is back", packed)
+		}
+	}
+	if n := len(strings.Split(helpLines, "\n")); n > 24 {
+		t.Errorf("help has %d lines; more than 24 does not fit a 26-line screen", n)
+	}
+}
+
+// TestEveryHelpLineNamesOneKeyOrOnePairOfOpposites reads the key column of
+// every line, so a line can never pack two keys that do not undo each other.
+func TestEveryHelpLineNamesOneKeyOrOnePairOfOpposites(t *testing.T) {
+	t.Parallel()
+
+	// A key column may hold one key, one run of keys that do the same thing,
+	// or two keys that are each other's opposite. Every other shape is two
+	// jobs on one line, and the reader has to work out which key is which.
+	ok := map[string]bool{
+		"1-6":           true,
+		"← →":           true,
+		"tab shift+tab": true,
+		"[ ]":           true,
+		"j k":           true,
+		"g G":           true,
+		"h l":           true,
+		"ctrl+d ctrl+u": true,
+	}
+	for _, ln := range strings.Split(helpLines, "\n") {
+		k, w, cut := strings.Cut(ln, "  ")
+		if !cut {
+			t.Fatalf("line has no key column: %q", ln)
+		}
+		k, w = strings.TrimSpace(k), strings.TrimSpace(w)
+		if w == "" {
+			t.Errorf("line %q says nothing about its key", ln)
+		}
+		if strings.Contains(k, " ") && !ok[k] {
+			t.Errorf("line %q packs keys that are not opposites", ln)
+		}
+	}
+}
+
+// TestTheHelpBoxFitsA26LineScreen counts the box the way the screen draws it,
+// with the two borders, so a key map one line too long is caught here and not
+// by a reader whose window is short.
+func TestTheHelpBoxFitsA26LineScreen(t *testing.T) {
+	t.Parallel()
+
+	for _, w := range []int{50, 80, 120, 160} {
+		pop := press(sized(newModel(t), w, 26), "?")
+		rows := plainLines(strings.Split(pop.popupBox(), "\n"))
+		if n := len(rows) - 2; n > 24 {
+			t.Errorf("width %d: the help shows %d rows of keys, more than the 24 a 26-line screen holds", w, n)
+		}
+		lines := plainLines(strings.Split(pop.View(), "\n"))
+		y0 := boxOn(lines, rows[0])
+		if y0 < 0 {
+			t.Errorf("width %d: the top border of the help box is not on a 26-line screen", w)
+			continue
+		}
+		for i, r := range rows {
+			if y0+i >= len(lines) || !strings.Contains(lines[y0+i], r) {
+				t.Errorf("width %d: row %d of the help box, %q, is not on a 26-line screen", w, i, r)
+			}
+		}
+	}
 }
 
 func TestOtherPopupsHaveNoAccentInside(t *testing.T) {

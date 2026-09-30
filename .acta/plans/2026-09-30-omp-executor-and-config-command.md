@@ -4,6 +4,7 @@ parent: bugs/2026-09-30-omp-build-runs-dispatch-executor
 id: PLN-0051
 hash: nln9dod
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # omp Executor Rule and `acta config` Command Implementation Plan
 
@@ -264,7 +265,7 @@ git commit -m "feat: hook text names acta config"
 - Consumes: Task 1's sentences (their `acta voice show` becomes `acta config show`), Task 3's hook text.
 - Produces: `oldVoiceRe` in `no_old_names_test.go`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/plugincheck/no_old_names_test.go`, next to `oldRootRe`:
 
@@ -282,21 +283,21 @@ and add to the `checks` list in `oldNameProblems`:
 
 In the five plugincheck test files named above, change every `acta voice` to `acta config` (including `modelsPara`).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/plugincheck/`
 Expected: FAIL, the guard lists each plugin file that still says `acta voice`, and the skill Musts miss `acta config`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In each plugin file named above, replace `acta voice` with `acta config`, word for word, nothing else. In `plugin/evals/FACTS.md` line 119, `acta voice setup` becomes `acta config setup`; line 191 becomes `acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules).`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/plugincheck/`
 Expected: PASS. Then put one `acta voice` back in `plugin/README.md`, run the same command, see it FAIL with `old acta voice command`, and undo that edit by hand.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/plugincheck/

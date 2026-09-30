@@ -62,7 +62,7 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"id: SCR-0001", "status: raw", "title: newest-first", `created: "2026-09-26"`, `schema: "1"`} {
+	for _, field := range []string{"id: SCR-0001", "status: raw", "title: newest-first", `created: "2026-09-26 10:00:00"`, `schema: "1"`} {
 		if !strings.Contains(string(got), field) {
 			t.Errorf("file lacks %q:\n%s", field, got)
 		}
@@ -362,7 +362,7 @@ func TestNewScratchWritesSkeleton(t *testing.T) {
 	if !board.HasSchema(doc.Front) {
 		t.Errorf("no schema: 1 in %q", src)
 	}
-	if doc.Front["created"] != "2026-09-26" {
+	if doc.Front["created"] != "2026-09-26 10:00:00" {
 		t.Errorf("created = %v", doc.Front["created"])
 	}
 	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nkata user\n\n## Context\n\n## Log\n\n## Open questions\n"

@@ -20,11 +20,12 @@ type styles struct {
 	label, footLabel, done, waiting, problem, live lipgloss.Style
 	accentColor                                    lipgloss.TerminalColor
 	kinds                                          map[board.Kind]lipgloss.Color
-	cyan                                           lipgloss.Color   // the Activities tab, which holds no one kind
-	bandFG                                         lipgloss.Color   // text on a colored band
-	pulse                                          []lipgloss.Style // the frames of the dot of work under way
-	goingDot                                       string           // that dot drawn in frame 0, as every view draws it
-	bg, fg                                         string           // empty for the terminal theme
+	cyan                                           lipgloss.Color            // the Activities tab, which holds no one kind
+	bandFG                                         lipgloss.Color            // text on a colored band
+	pulse                                          []lipgloss.Style          // the frames of the dot of work under way
+	goingDot                                       string                    // that dot drawn in frame 0, as every view draws it
+	bg, fg                                         string                    // empty for the terminal theme
+	priority                                       map[string]lipgloss.Style // the one letter a row shows for its level
 }
 
 // Each role always takes the same slot, so any theme with 16 colors works.
@@ -38,6 +39,7 @@ const (
 	slotMagenta     = 5
 	slotCyan        = 6
 	slotBrightGreen = 10
+	slotBrightRed   = 9
 )
 
 // The pulse of a dot whose work is under way: eight frames, from green toward
@@ -106,12 +108,19 @@ func newStyles(t theme.Theme, dark bool) styles {
 		problem:   lipgloss.NewStyle().Foreground(slot(slotRed)),
 		live:      lipgloss.NewStyle().Foreground(slot(slotGreen)),
 		kinds:     kinds,
-		cyan:      slot(slotCyan),
-		bandFG:    bandFG,
-		bg:        t.BG,
-		fg:        t.FG,
-		pulse:     pulse,
-		goingDot:  pulse[0].Render(dotGoing),
+		// High is the one level that should catch the eye, so it gets the
+		// bright red. Low only needs to be there, so it is dim.
+		priority: map[string]lipgloss.Style{
+			"high":   lipgloss.NewStyle().Foreground(slot(slotBrightRed)),
+			"medium": lipgloss.NewStyle().Foreground(slot(slotYellow)),
+			"low":    lipgloss.NewStyle().Foreground(slot(slotDim)),
+		},
+		cyan:     slot(slotCyan),
+		bandFG:   bandFG,
+		bg:       t.BG,
+		fg:       t.FG,
+		pulse:    pulse,
+		goingDot: pulse[0].Render(dotGoing),
 	}
 }
 

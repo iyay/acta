@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iyay/acta/internal/voice"
+	"github.com/iyay/acta/internal/config"
 )
 
 // env gives every check a temp home and a fresh git repo, so no test can
@@ -24,7 +24,7 @@ func env(t *testing.T) Env {
 	}
 	return Env{Home: home, ClaudeDir: filepath.Join(home, ".claude"), RepoRoot: repo,
 		ActaRoot: filepath.Join(repo, ".acta"), Binary: "/bin/acta", Version: "test",
-		VoiceExists: true, Voice: voice.Voice{BuildExecutor: "subagent"}}
+		VoiceExists: true, Voice: config.User{BuildExecutor: "subagent"}}
 }
 
 func byName(rs []Result, name string) Result {
@@ -91,10 +91,10 @@ func TestCheckTheme(t *testing.T) {
 		msg   string
 	}{
 		{"empty", Env{}, OK, "tokyo-night"},
-		{"chosen", Env{Voice: voice.Voice{Theme: "dracula"}}, OK, "dracula"},
-		{"broken", Env{Voice: voice.Voice{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
-		{"bad name", Env{Voice: voice.Voice{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},
-		{"broken file", Env{Voice: voice.Voice{Theme: "mine"}, ThemeErr: errors.New(`theme "mine": ansi needs 16 colors, has 3`)}, Warn, "mine"},
+		{"chosen", Env{Voice: config.User{Theme: "dracula"}}, OK, "dracula"},
+		{"broken", Env{Voice: config.User{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
+		{"bad name", Env{Voice: config.User{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},
+		{"broken file", Env{Voice: config.User{Theme: "mine"}, ThemeErr: errors.New(`theme "mine": ansi needs 16 colors, has 3`)}, Warn, "mine"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -189,14 +189,29 @@ func TestDoctorHarness(t *testing.T) {
 }
 
 func TestDoctorStaleLinks(t *testing.T) {
+	// omp has no "unlink" action, so a hint naming one is a dead end. The
+	// dead link is just a file left in node_modules, so the fix removes it.
+	noUnlink := func(t *testing.T, rs []Result) {
+		t.Helper()
+		for _, r := range rs {
+			if strings.Contains(r.Fix, "omp plugin unlink") {
+				t.Fatalf("%s fix %q names an action omp does not have", r.Name, r.Fix)
+			}
+		}
+	}
 	t.Run("one dead link", func(t *testing.T) {
 		e := env(t)
 		link(t, filepath.Join(nodeModules(e), "pm"), filepath.Join(t.TempDir(), "gone"))
-		r := byName(Run(e), "stale-links")
-		wantLevel(t, r, Warn, "omp plugin unlink pm")
+		rs := Run(e)
+		r := byName(rs, "stale-links")
+		wantLevel(t, r, Warn, "rm "+filepath.Join(nodeModules(e), "pm"))
+		if r.Fix != "rm "+filepath.Join(nodeModules(e), "pm") {
+			t.Fatalf("fix %q wants only the one rm line", r.Fix)
+		}
 		if !strings.Contains(r.Msg, "pm") {
 			t.Fatalf("msg %q does not name pm", r.Msg)
 		}
+		noUnlink(t, rs)
 	})
 	t.Run("live link and folder beside it", func(t *testing.T) {
 		e := env(t)
@@ -204,18 +219,24 @@ func TestDoctorStaleLinks(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(nodeModules(e), "zeta"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		wantLevel(t, byName(Run(e), "stale-links"), OK, "")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), OK, "")
+		noUnlink(t, rs)
 	})
 	t.Run("no folder", func(t *testing.T) {
 		e := env(t)
-		wantLevel(t, byName(Run(e), "stale-links"), OK, "")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), OK, "")
+		noUnlink(t, rs)
 	})
 	t.Run("two dead links, one fix line each", func(t *testing.T) {
 		e := env(t)
 		link(t, filepath.Join(nodeModules(e), "pm"), filepath.Join(t.TempDir(), "gone"))
 		link(t, filepath.Join(nodeModules(e), "gstack"), filepath.Join(t.TempDir(), "gone2"))
-		r := byName(Run(e), "stale-links")
-		wantLevel(t, r, Warn, "omp plugin unlink gstack; omp plugin unlink pm")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), Warn,
+			"rm "+filepath.Join(nodeModules(e), "gstack")+"; rm "+filepath.Join(nodeModules(e), "pm"))
+		noUnlink(t, rs)
 	})
 	t.Run("unreadable folder", func(t *testing.T) {
 		if os.Geteuid() == 0 {
@@ -379,7 +400,7 @@ func TestDoctorSetup(t *testing.T) {
 	})
 	t.Run("no build executor", func(t *testing.T) {
 		e := env(t)
-		e.Voice = voice.Voice{}
+		e.Voice = config.User{}
 		wantLevel(t, byName(Run(e), "setup"), Warn, "/acta:setup")
 	})
 	t.Run("all set", func(t *testing.T) {

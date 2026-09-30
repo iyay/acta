@@ -1,6 +1,8 @@
 ---
 id: BUG-0013
 hash: ha43l97
+fixed_in: eb88bea
+finished: "2026-10-01 18:25:09"
 ---
 # A landed plan stays in the Open pane as approved
 

@@ -42,11 +42,11 @@ On the first session, the agent asks which language to chat in, which style
 (`adhd` or `plain`) and, if you like, a tone. It saves your answers with:
 
 ```bash
-acta voice set --language Korean --style adhd --tone "Casual, short sentences."
+acta config set --language Korean --style adhd --tone "Casual, short sentences."
 ```
 
 The setting lives in `~/.acta/config.yaml` (or `PM_VOICE_FILE`). Change it any
-time with `/acta:setup` or `acta voice set`. Files written to the repo stay in the
+time with `/acta:setup` or `acta config set`. Files written to the repo stay in the
 repo language (English unless you set `--repo-language`). If your CLAUDE.md
 names a language, it wins.
 

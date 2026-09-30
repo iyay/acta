@@ -1,6 +1,8 @@
 ---
 id: BUG-0005
 hash: uzbckp4
+fixed_in: 080bc63
+finished: "2026-10-01 16:14:08"
 ---
 # acta doctor tells you to run an omp command that does not exist
 

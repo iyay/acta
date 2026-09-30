@@ -72,7 +72,7 @@ func TestSetValueCommits(t *testing.T) {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
 	body, _ := os.ReadFile(filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md"))
-	if string(body) != "---\nref: B-1\nstatus: fixed\nfinished: \"2026-09-26\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
+	if string(body) != "---\nref: B-1\nstatus: fixed\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash status fixed" {
@@ -101,15 +101,15 @@ func TestSetValueWritesDates(t *testing.T) {
 		}
 	}
 	set("status", "brainstorming")
-	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
+	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26 10:00:00\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
 		t.Errorf("brainstorming:\n got %q\nwant %q", read(), want)
 	}
 	set("status", "dropped")
-	if got := read(); !strings.Contains(got, "finished: \"2026-09-26\"") {
+	if got := read(); !strings.Contains(got, "finished: \"2026-09-26 10:00:00\"") {
 		t.Errorf("dropped has no finished: %q", got)
 	}
 	set("status", "brainstorming")
-	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
+	if want := "---\nid: SCRATCH-1\nstatus: brainstorming\nstarted: \"2026-09-26 10:00:00\"\n---\n# Idea\n\ncatet dulu.\n"; read() != want {
 		t.Errorf("reopened:\n got %q\nwant %q", read(), want)
 	}
 
@@ -118,7 +118,7 @@ func TestSetValueWritesDates(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(filepath.Join(bug.Root, "bugs", "2026-09-24-crash.md"))
-	if !strings.Contains(string(got), "fixed_in: abc1234") || !strings.Contains(string(got), "finished: \"2026-09-26\"") {
+	if !strings.Contains(string(got), "fixed_in: abc1234") || !strings.Contains(string(got), "finished: \"2026-09-26 10:00:00\"") {
 		t.Errorf("fixed_in file = %q", got)
 	}
 }
@@ -213,7 +213,7 @@ func fixNow(t *testing.T) {
 func TestNewBug(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
-	o, err := NewBug(cfg, "ack-dup", "", "New-261", []byte("## Symptom\nTwo ACKs.\n"))
+	o, err := NewBug(cfg, "ack-dup", "", "New-261", "", []byte("## Symptom\nTwo ACKs.\n"))
 	if err != nil || !o.Committed {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
@@ -240,7 +240,7 @@ func TestNewBug(t *testing.T) {
 func TestNewBugWritesNewFormatIDAndHash(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
-	o, err := NewBug(cfg, "short-id", "", "New-9", []byte("## Symptom\nx\n"))
+	o, err := NewBug(cfg, "short-id", "", "New-9", "", []byte("## Symptom\nx\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestNewBugBadInput(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if _, err := NewBug(cfg, c.slug, "", "", []byte(c.body)); !errors.Is(err, ErrBadInput) {
+			if _, err := NewBug(cfg, c.slug, "", "", "", []byte(c.body)); !errors.Is(err, ErrBadInput) {
 				t.Fatalf("err = %v", err)
 			}
 		})
@@ -270,10 +270,10 @@ func TestNewBugBadInput(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg.Root, "bugs", "2026-09-26-no-symptom.md")); !os.IsNotExist(err) {
 		t.Fatal("a bug with no Symptom was written")
 	}
-	if _, err := NewBug(cfg, "twice", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "twice", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewBug(cfg, "twice", "", "", []byte("## Symptom\nx\n")); !errors.Is(err, ErrBadInput) {
+	if _, err := NewBug(cfg, "twice", "", "", "", []byte("## Symptom\nx\n")); !errors.Is(err, ErrBadInput) {
 		t.Fatalf("second bug with the same name: err = %v", err)
 	}
 }
@@ -281,7 +281,7 @@ func TestNewBugBadInput(t *testing.T) {
 func TestNewBugCreatesRootFolder(t *testing.T) {
 	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
 	fixNow(t)
-	if _, err := NewBug(cfg, "first", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "first", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -290,7 +290,7 @@ func TestStartAndFinishBug(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
 
-	path, tmpl, err := StartBug(cfg, "left-alone", "")
+	path, tmpl, err := StartBug(cfg, "left-alone", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestStartAndFinishBug(t *testing.T) {
 		t.Fatal("unchanged template was not removed")
 	}
 
-	path, tmpl, err = StartBug(cfg, "filled-in", "B-2")
+	path, tmpl, err = StartBug(cfg, "filled-in", "B-2", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 		t.Fatalf("ref: %+v %v", o, err)
 	}
 	body, _ := os.ReadFile(filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md"))
-	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
+	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash ref New-261" {
@@ -380,7 +380,7 @@ func TestCommitMessagesNeverUsePmPrefix(t *testing.T) {
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "status", "fixed"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewBug(cfg, "guard-bug", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "guard-bug", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "", []byte("a\n")); err != nil {

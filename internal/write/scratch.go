@@ -41,7 +41,7 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 		{"hash", freeHash(taken)},
 		{"title", title},
 		{"status", "raw"},
-		{"created", Now().Format("2006-01-02")},
+		{"created", Now().Format(stampLayout)},
 		{"schema", "1"},
 	} {
 		if content, err = SetField(content, f.key, f.value); err != nil {

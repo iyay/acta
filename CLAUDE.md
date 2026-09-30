@@ -27,10 +27,10 @@ Agents run `scripts/test --full` as the gate, not `-short`. The eval hooks call 
 ## Architecture
 
 - `internal/cli`: command dispatch (`list`, `show`, `set`, `bug`, `debt`, `scratch`, `voice`, `hook`, `tick`, `id`, `doctor`, `dispatch`, `reply-back`, `run-one`). Both binaries call `cli.Run`.
-- `internal/board`: loads every planning file of a repo into one `Board`. `internal/trees` adds the other git worktrees so the board shows work before it lands. `internal/config` finds where the planning files live.
+- `internal/board`: loads every planning file of a repo into one `Board`. `internal/trees` adds the other git worktrees so the board shows work before it lands. `internal/config` finds where the planning files live, and also holds the user setting.
 - `internal/write` changes planning files; `internal/gitc` commits them with the real git binary. Write commands auto-commit, so run them in a temp clone when only testing.
 - `internal/tui` (Bubble Tea + lipgloss) draws the board and watches the planning dirs with fsnotify. `internal/theme` holds its colors.
-- `internal/voice`: chat language, style, tone, repo language and build executor, stored in `~/.acta/config.yaml` (or `PM_VOICE_FILE`).
+- `internal/config/user.go`: the user setting (chat language, style, tone, repo language, build executor, subagent models), stored in `~/.acta/config.yaml` (or `PM_VOICE_FILE`).
 - `internal/hook`: builds the text the plugin hooks inject. `plugin/hooks/*` are thin shell scripts that call `acta hook ...` and fall back to `default-rules.md` when `acta` is missing. `pre-tool` exits 2 to block a second brainstorm in one session.
 - `internal/doctor`: install checks behind `acta doctor` (`--fix` touches the repo only).
 - `internal/plugincheck`: tests that keep `plugin/` valid: skill frontmatter, size caps, required rules, eval case layout, no absolute user paths. Editing a skill can fail Go tests.

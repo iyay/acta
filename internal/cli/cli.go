@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -22,7 +23,6 @@ import (
 	"github.com/iyay/acta/internal/editor"
 	"github.com/iyay/acta/internal/trees"
 	"github.com/iyay/acta/internal/tui"
-	"github.com/iyay/acta/internal/voice"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -75,7 +75,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 // parse still gives the default voice, so the board opens either way and the
 // name is simply empty, which the default theme covers.
 func voiceTheme() string {
-	v, _, _ := voice.Resolve()
+	v, _, _ := config.ResolveUser()
 	return v.Theme
 }
 
@@ -102,7 +102,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdSet(args[1:], stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
-			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] < body.md")
+			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
 			return exitBadInput
 		}
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
@@ -143,8 +143,10 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdReplyBack(args[1:], stdout, stderr)
 	case "run-one":
 		return cmdRunOne(args[1:], stdin, stdout, stderr)
+	case "eval-omp":
+		return cmdEvalOmp(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, reply-back or run-one\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, reply-back, run-one or eval-omp\n", args[0])
 		return exitBadInput
 	}
 }
@@ -297,10 +299,14 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 func cmdShow(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("show", stderr)
 	asJSON := fs.Bool("json", false, "print JSON")
+	onlyPath := fs.Bool("path", false, "print the file path only")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta show <id> [--json]")
+		fmt.Fprintln(stderr, "usage: acta show <id> [--json] [--path]")
 		return exitBadInput
+	}
+	if *onlyPath {
+		return showPath(*root, pos[0], stdout, stderr)
 	}
 	cfg, b, code := loadAllTrees(*root, stderr)
 	if code != exitOK {
@@ -343,6 +349,91 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+// showPath prints only the file an item lives in. It reads the frontmatter of
+// the planning files first, so a plain id or a full hash costs no board load.
+// A miss goes the long way round through the board, which knows old ids,
+// stems, and items that live only in another worktree.
+func showPath(root, id string, stdout, stderr io.Writer) int {
+	cfg, code := loadConfig(root, stderr)
+	if code != exitOK {
+		return code
+	}
+	if p := scanPath(cfg, id); p != "" {
+		fmt.Fprintln(stdout, p)
+		return exitOK
+	}
+	_, b, code := loadAllTrees(root, stderr)
+	if code != exitOK {
+		return code
+	}
+	it := b.Get(id)
+	if it == nil {
+		fmt.Fprintf(stderr, "unknown id %s\n", id)
+		return exitBadInput
+	}
+	fmt.Fprintln(stdout, toJSON(cfg, it).Path)
+	return exitOK
+}
+
+// scanPath gives the path of the file whose frontmatter names id or hash as
+// the whole value, in the same form show prints. A sub-item drops its number,
+// so PLN-0040.01 finds the plan file. Nothing means the board has to answer.
+func scanPath(cfg config.Config, id string) string {
+	want := id
+	if i := strings.IndexByte(want, '.'); i >= 0 {
+		want = want[:i]
+	}
+	for _, d := range []string{cfg.Dirs.Specs, cfg.Dirs.Plans, cfg.Dirs.Bugs, cfg.Dirs.Debt, cfg.Dirs.Scratch} {
+		if d == "" {
+			continue
+		}
+		files, err := filepath.Glob(filepath.Join(cfg.Root, d, "*.md"))
+		if err != nil {
+			continue
+		}
+		for _, f := range files {
+			if !namesID(f, want) {
+				continue
+			}
+			rel, err := filepath.Rel(cfg.RepoRoot, f)
+			if err != nil {
+				rel = f
+			}
+			return filepath.ToSlash(rel)
+		}
+	}
+	return ""
+}
+
+// namesID says if the file's frontmatter carries want as its whole id or hash
+// value. It reads only the block between the first two --- lines, so a long
+// body costs nothing.
+func namesID(path, want string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	if !sc.Scan() || strings.TrimSpace(sc.Text()) != "---" {
+		return false
+	}
+	for sc.Scan() {
+		ln := strings.TrimSpace(sc.Text())
+		if ln == "---" {
+			return false
+		}
+		k, v, ok := strings.Cut(ln, ":")
+		if !ok || (k != "id" && k != "hash") {
+			continue
+		}
+		if strings.Trim(strings.TrimSpace(v), "\"'") == want {
+			return true
+		}
+	}
+	return false
+}
+
 // shortRefs names linked items the way a reader says them out: the short id
 // when the file carries one, else the path id it goes by.
 func shortRefs(b *board.Board, ids []string) []string {
@@ -360,7 +451,7 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
-		fmt.Fprintln(stderr, "usage: acta set <id> status|type|fixed_in|ref <value>")
+		fmt.Fprintln(stderr, "usage: acta set <id> status|type|title|fixed_in|ref|priority <value>")
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
@@ -375,9 +466,10 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 	fs, root := flags("bug new", stderr)
 	ref := fs.String("ref", "", "outside ticket code")
 	title := fs.String("title", "", "bug title (default: the body's # line, or the slug)")
+	priority := fs.String("priority", "", "high, medium or low")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] < body.md")
+		fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
 		return exitBadInput
 	}
 	cfg, code := loadConfig(*root, stderr)
@@ -390,10 +482,10 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 			fmt.Fprintln(stderr, err)
 			return exitOther
 		}
-		o, err := write.NewBug(cfg, pos[0], *title, *ref, body)
+		o, err := write.NewBug(cfg, pos[0], *title, *ref, *priority, body)
 		return report(o, err, stdout, stderr)
 	}
-	path, tmpl, err := write.StartBug(cfg, pos[0], *ref)
+	path, tmpl, err := write.StartBug(cfg, pos[0], *ref, *priority)
 	if err != nil {
 		return report(write.Outcome{}, err, stdout, stderr)
 	}

@@ -486,7 +486,7 @@ func TestAssignIDsFirstIDWritesCreated(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "specs/2026-09-26-x-design.md"))))
-	if doc.Front["created"] != "2026-09-26" {
+	if doc.Front["created"] != "2026-09-26 10:00:00" {
 		t.Errorf("created = %v", doc.Front["created"])
 	}
 	if board.HasSchema(doc.Front) {
@@ -505,7 +505,7 @@ func TestAssignIDsFirstIDWritesSchemaOnScratch(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-26-idea.md"))))
-	if doc.Front["created"] != "2026-09-26" {
+	if doc.Front["created"] != "2026-09-26 10:00:00" {
 		t.Errorf("created = %v", doc.Front["created"])
 	}
 	if !board.HasSchema(doc.Front) {
@@ -610,7 +610,7 @@ func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
 		t.Fatalf("outcome %+v err %v", out, err)
 	}
 	doc := board.Parse([]byte(readFile(t, filepath.Join(cfg.Root, "scratch/2026-09-20-idea.md"))))
-	if doc.Front["finished"] != "2026-09-26" {
+	if doc.Front["finished"] != "2026-09-26 10:00:00" {
 		t.Errorf("the scratch parent did not get finished = %v", doc.Front["finished"])
 	}
 	if n := gitRun(t, cfg.RepoRoot, "log", "--format=%s", "-1"); n != "acta: assign short ids" {

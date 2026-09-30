@@ -228,12 +228,12 @@ func TestWorkflowPluginsList(t *testing.T) {
 
 func TestHouseRules(t *testing.T) {
 	txt := readFile(t, "references", "house-rules.md")
-	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back", "never write NOTEs to memory"} {
+	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back", "never write NOTEs to memory", "sorts them", "the review skill's `## After a CLEAN round` sorts them"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("house-rules.md missing %q", want)
 		}
 	}
-	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md", "per-task reviewer", "acta tick <task-id>", "<its task id>"} {
+	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md", "per-task reviewer", "acta tick <task-id>", "<its task id>", "files them with acta debt new", "orchestrator sorts them through", "orchestrator sorts it through"} {
 		if strings.Contains(txt, bad) {
 			t.Errorf("house-rules.md still has %q", bad)
 		}
@@ -250,7 +250,7 @@ func TestNoticeAndReadme(t *testing.T) {
 	}
 	readme := readFile(t, "README.md")
 	for _, want := range []string{"## Install", "## First run", "## Voice", "## Other workflow plugins",
-		"## Moving rules out of CLAUDE.md", "acta voice set", "acta doctor", "acta doctor --fix", "/acta:setup",
+		"## Moving rules out of CLAUDE.md", "acta config set", "acta doctor", "acta doctor --fix", "/acta:setup",
 		"acta: ", "only between acta markers"} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("README.md missing %q", want)

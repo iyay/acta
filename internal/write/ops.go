@@ -48,8 +48,12 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	switch {
 	case it == nil:
 		return Outcome{}, bad("unknown id %s", id)
+	case field == "priority":
+		return setPriority(cfg, it, id, value)
 	case it.Kind == board.KindTask:
 		return Outcome{}, bad("tasks take their status from their checkboxes")
+	case it.Kind == board.KindDebtItem:
+		return Outcome{}, bad("a debt item's title is its own line in the debt file; edit that line instead")
 	case it.Legacy:
 		return Outcome{}, bad("%s is a legacy file; move it into the root folder first", id)
 	}
@@ -77,8 +81,15 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if !refRe.MatchString(value) {
 			return Outcome{}, bad("ref %q must be one word of letters, digits and . _ / -, at most 40 characters", value)
 		}
+	case "title":
+		if strings.TrimSpace(value) == "" {
+			return Outcome{}, bad("title cannot be empty")
+		}
+		if strings.ContainsAny(value, "\r\n") {
+			return Outcome{}, bad("title must be one line, not %q", value)
+		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, fixed_in or ref", field)
+		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref or priority", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -89,7 +100,14 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	if err != nil {
 		return Outcome{}, err
 	}
-	out, err := SetField(src, field, value)
+	var out []byte
+	if field == "title" {
+		// A title lives in the body, not in the frontmatter, so it cannot go
+		// through SetField the way the other fields do.
+		out, err = setTitle(src, value)
+	} else {
+		out, err = SetField(src, field, value)
+	}
 	if err != nil {
 		return Outcome{}, bad("%s: %v", id, err)
 	}
@@ -108,9 +126,69 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	return finish(cfg, it.Path, fmt.Sprintf("acta: %s %s %s", id, field, value), dirty), nil
 }
 
+// setTitle changes the title of one item. The board reads a title from the
+// first "# " heading of the body, so that line is the one to rewrite. An old
+// item that keeps its title in its frontmatter has that field rewritten, and
+// an item with neither gets a heading at the top of its body. Every other
+// byte of the file is left alone.
+func setTitle(src []byte, title string) ([]byte, error) {
+	_, body, nl, ok, err := frontOf(src)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// A file without frontmatter is all body, and its line ending is
+		// whatever the frontmatter check could not see.
+		body = string(src)
+		if strings.Contains(body, "\r\n") {
+			nl = "\r\n"
+		}
+	}
+	// The frontmatter sits in front of the body in the same bytes, so keep it
+	// by cutting the file in two instead of rendering it again.
+	head := string(src[:len(src)-len(body)])
+	if at := titleHead(body); at >= 0 {
+		end := len(body)
+		// Stop at the newline, so the line keeps the file's own ending.
+		if j := strings.IndexByte(body[at:], '\n'); j >= 0 {
+			end = at + j
+			// A \r sits between the heading and that newline in a CRLF file,
+			// so leave it alone instead of swallowing it with the heading.
+			if end > at && body[end-1] == '\r' {
+				end--
+			}
+		}
+		return []byte(head + body[:at] + "# " + title + body[end:]), nil
+	}
+	if hasField(src, "title") {
+		return SetField(src, "title", title)
+	}
+	return []byte(head + "# " + title + nl + body), nil
+}
+
+// titleHead gives where the first "# " heading starts in a body, or -1. A
+// heading inside a code block is an example, not the title, the same way the
+// board reads it.
+func titleHead(body string) int {
+	inFence := false
+	at := 0
+	for _, ln := range strings.SplitAfter(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "```") {
+			inFence = !inFence
+		} else if !inFence && strings.HasPrefix(ln, "# ") {
+			return at
+		}
+		at += len(ln)
+	}
+	return -1
+}
+
 // NewBug writes a bug file from a body an agent sent and commits it. The new
 // file gets the next BUG number and a fresh hash before it is written.
-func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, error) {
+func NewBug(cfg config.Config, slug, title, ref, priority string, body []byte) (Outcome, error) {
+	if priority != "" && !board.ValidPriority(priority) {
+		return Outcome{}, bad("priority must be high, medium or low, not %q", priority)
+	}
 	path, err := bugPath(cfg, slug)
 	if err != nil {
 		return Outcome{}, err
@@ -133,6 +211,11 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 	if err != nil {
 		return Outcome{}, err
 	}
+	if priority != "" {
+		if content, err = SetField(content, "priority", priority); err != nil {
+			return Outcome{}, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return Outcome{}, err
 	}
@@ -143,12 +226,20 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 }
 
 // StartBug writes the bare template so an editor can open it.
-func StartBug(cfg config.Config, slug, ref string) (string, []byte, error) {
+func StartBug(cfg config.Config, slug, ref, priority string) (string, []byte, error) {
+	if priority != "" && !board.ValidPriority(priority) {
+		return "", nil, bad("priority must be high, medium or low, not %q", priority)
+	}
 	path, err := bugPath(cfg, slug)
 	if err != nil {
 		return "", nil, err
 	}
 	tmpl := BugTemplate(strings.ReplaceAll(slug, "-", " "), ref)
+	if priority != "" {
+		if tmpl, err = SetField(tmpl, "priority", priority); err != nil {
+			return "", nil, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", nil, err
 	}

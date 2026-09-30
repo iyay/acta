@@ -52,26 +52,32 @@ func (g geom) at(p pane) box {
 	return box{}
 }
 
-// hints is what the left of the status line says when nothing else is going on.
-const hints = "? help"
-
-// helpLines is the key map the ? popup shows, grouped by what the keys do.
-const helpLines = `1-6 ← →          open a tab, previous / next tab
-tab shift+tab    move between the panes of the tab
-[ ]              switch the Done tab, on the Done pane
-space enter      open or shut a plan row
-h l              shut or open a plan row, h on a task too
+// helpLines is the key map the ? popup shows, one key per line, so nobody
+// has to guess which key of a line does what.
+const helpLines = `1-6              open a tab
+← →              previous / next tab
+tab shift+tab    next / previous pane of the tab
+[ ]              previous / next Done tab, on the Done pane
+j k              move down / up a list, scroll the detail
+g G              go to the top / bottom
+ctrl+d ctrl+u    page down / up
+space            open or shut a plan row
+h l              shut / open a plan row, h on a task too
+enter            open or shut a plan row, or focus the detail
 z                expand the focused pane
 o                flip the sort: oldest / newest
-j k g G          move a list, scroll the detail
-ctrl+d ctrl+u    page down and up
-enter            focus the detail on the row
+/                search the rows
+r                reload the board from disk
 e                open the row in the editor
 y                copy the id of the row
-t s n            set a value, new bug
+s                set the status; dropped and wontfix close an item
+t                set the type: spec or bug
+p                set the priority of a bug or a debt line: high, medium, low or none
+n                new bug
++                mark the task or debt line done
+-                put the task or debt line back to open
 esc              back to the list, close this help
-/ r q            search, reload, quit
-?                close this help`
+q                quit`
 
 // helpText lays the key map out the way lazygit does: the keys in cyan, so
 // they differ from the border, pushed right so they all end at one column,
@@ -224,14 +230,16 @@ func (m Model) tabRows(width int) []string {
 	}
 }
 
-// tabBar draws the names line of the tab box: the tab names that fit the
+// barTabs draws the names line of the tab box: the tab names that fit the
 // window, in order, each with its key number and each in the color of its
 // own kind, the open one as a band of its color, so the reader always sees
 // where they are. A window too narrow for every name loses the ones farthest
-// from the open tab first, so the open tab never goes off the line.
-func (m Model) tabBar(width int) string {
+// from the open tab first, so the open tab never goes off the line. It also
+// says where each name sits, so the mouse clicks the same names the screen
+// shows, and a name that was dropped has a span of zero width.
+func (m Model) barTabs(width int) (string, []tabBox) {
 	drop := make([]bool, len(topTabs))
-	line := m.barLine(drop)
+	line, spans := m.barLine(drop)
 	for lipgloss.Width(line) > width {
 		// dropOrder walks the tabs from the right and skips the open one, so
 		// the first name at the widest distance is the right one of a tie.
@@ -248,20 +256,31 @@ func (m Model) tabBar(width int) string {
 			break
 		}
 		drop[at] = true
-		line = m.barLine(drop)
+		line, spans = m.barLine(drop)
 	}
+	return line, spans
+}
+
+// tabBar is the names line alone, for the view.
+func (m Model) tabBar(width int) string {
+	line, _ := m.barTabs(width)
 	return line
 }
 
 // barLine joins the tab names that are not in drop, so the bar can be measured
-// with one name less at a time until it fits the window.
-func (m Model) barLine(drop []bool) string {
+// with one name less at a time until it fits the window. It also counts where
+// each name starts, counted from the first cell inside the bar.
+func (m Model) barLine(drop []bool) (string, []tabBox) {
 	names := make([]string, 0, len(topTabs))
+	spans := make([]tabBox, len(topTabs))
+	x := 1
 	for i, t := range topTabs {
 		if drop[i] {
 			continue
 		}
 		name := fmt.Sprintf("%d %s", i+1, t.name)
+		spans[i] = tabBox{x: x, w: lipgloss.Width(name)}
+		x += lipgloss.Width(name) + 2
 		color := m.styles.tabColor(t.kind)
 		if i == m.top {
 			// The open tab is a band of its own color, so the eye finds it first.
@@ -270,7 +289,7 @@ func (m Model) barLine(drop []bool) string {
 		}
 		names = append(names, lipgloss.NewStyle().Foreground(color).Render(name))
 	}
-	return " " + strings.Join(names, "  ")
+	return " " + strings.Join(names, "  "), spans
 }
 
 // box measures one pane at the given rectangle and works out which of its
@@ -474,7 +493,7 @@ func (m Model) statusPieces() []statusPiece {
 func joinStatus(info []string, tail []statusPiece, w int) []statusPiece {
 	for len(info) > 1 {
 		out := append(infoPieces(info), tail...)
-		if lipgloss.Width(statusText(out))+lipgloss.Width(hints) <= w {
+		if lipgloss.Width(statusText(out))+lipgloss.Width(helpHint) <= w {
 			return out
 		}
 		info = info[1:]
@@ -525,13 +544,13 @@ func osc8(url, text string) string {
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 
-// statusLine draws the bottom line: the help hint, the search box or the last
-// message on the left, and the project, the watch mode, the date and time,
-// the links and the version on the right.
+// statusLine draws the bottom line: the keys of the focused pane, the search
+// box or the last message on the left, and the project, the watch mode, the
+// date and time, the links and the version on the right.
 func (m Model) statusLine() string {
 	// faintLeft says whether the left of the line is only a hint, so it wears
 	// the faint brush while the words next to it keep their own color.
-	left, faintLeft := hints, true
+	left, faintLeft := helpHint, true
 	switch {
 	case m.searching || m.query != "":
 		left, faintLeft = "/"+m.query, false
@@ -540,6 +559,11 @@ func (m Model) statusLine() string {
 	}
 	pieces := m.statusPieces()
 	right := statusText(pieces)
+	// The hints take what the right side leaves, less one cell so the two
+	// sides never touch.
+	if faintLeft {
+		left = m.hintLine(m.width - lipgloss.Width(right) - 1)
+	}
 	// The date and the links are what the line always tells, so the left
 	// gives way first when the window is narrow.
 	room := m.width - lipgloss.Width(right) - lipgloss.Width(left)

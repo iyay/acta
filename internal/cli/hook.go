@@ -8,7 +8,6 @@ import (
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
-	"github.com/iyay/acta/internal/voice"
 )
 
 const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt | acta hook pre-tool | acta hook post-tool"
@@ -46,18 +45,30 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !ok {
 			return exitOK
 		}
-		root, ok := hookRoot()
-		if !ok {
-			return exitOK
-		}
+		// A repo with no planning root is still a repo with a scripts/test,
+		// so the go test check is asked even then. Only the brainstorm state
+		// needs the root.
+		root, hasRoot := hookRoot()
 		if args[0] == "post-tool" {
+			if !hasRoot {
+				return exitOK
+			}
 			// Both writes are dropped on purpose: a session that cannot
 			// remember its brainstorm must not be stopped for it.
 			_ = hook.EnsureGitignore(root, "state/")
 			_ = hook.RecordBrainstorm(root, ev)
 			return exitOK
 		}
-		if block, msg := hook.PreTool(root, ev); block {
+		if hasRoot {
+			if block, msg := hook.PreTool(root, ev); block {
+				fmt.Fprintln(stderr, msg)
+				return exitBlock
+			}
+		}
+		// The go test block reads the folder the agent works in, not the
+		// planning root, so it comes after the brainstorm one.
+		cwd, _ := os.Getwd()
+		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); block {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -88,9 +99,21 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 }
 
+// loadVoice reads the user config and lays this repo's .acta.yaml over it.
+// A bad repo file keeps the user's own values and is named in RepoErr, so
+// a repo can never switch the chat language, and the session still sees
+// what to fix.
 func loadVoice() hook.Input {
-	v, exists, err := voice.Resolve()
-	return hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
+	v, exists, err := config.ResolveUser()
+	in := hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
+	if err != nil {
+		return in
+	}
+	cwd, _ := os.Getwd()
+	if cfg, lerr := config.Load(cwd, ""); lerr == nil {
+		in.Voice, _, in.RepoErr = config.MergeRepo(v, cfg.RepoRoot)
+	}
+	return in
 }
 
 // hookRoot finds the planning folder the session state lives in. It says no

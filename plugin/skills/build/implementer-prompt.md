@@ -6,7 +6,7 @@ Use this template when dispatching an implementer subagent.
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
   model: `sonnet` in Claude Code or `agent="task"` on omp, and only when
-         `acta voice show` lists `subagent_models: split`; when it does not,
+         `acta config show` lists `subagent_models: split`; when it does not,
          name no model and follow the user's own config.
   prompt: |
     You are implementing Task N: [task name]

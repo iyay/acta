@@ -1,6 +1,8 @@
 ---
 id: BUG-0016
 hash: lpjj005
+status: wontfix
+finished: "2026-10-01 18:48:19"
 ---
 # A frame tick scrolls the pane under an open help
 

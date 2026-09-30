@@ -1,20 +1,19 @@
 acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
 - acta:brainstorm: before any new feature, fix or behaviour change; design first, then wait for a yes
 - acta:plan: after the design is approved; tasks with verify lines and waves, then wait for a yes
-- acta:build: run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline
+- acta:build: run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline
 - acta:tdd: every code change; a failing test first
 - acta:debug: any bug, error, red test or wrong output, before touching code
 - acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
 - acta:land: after a clean review; gates, merge --no-ff, clean up, never push
 - acta:bug: record a confirmed bug with acta bug new
 - acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory
-- acta:dispatch: run build through an omp agent in its own herdr tab
 - acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block
 - acta:migrate: move docs from another workflow plugin into .acta/
 
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.
-2. No code before an approved design and an approved plan.
+2. No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.
 3. Every code change happens in a worktree and starts with a failing test.
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.

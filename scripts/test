@@ -1,20 +1,49 @@
 #!/bin/sh
 # Runs this repo's Go tests. A plain run skips the slow screen-size sweeps.
-# --full runs every test, but first waits for any other full run on this
-# machine to end, so agents in other worktrees do not fight over the CPU.
+# Any run of the whole repo, short or full, first waits for another run on
+# this machine to end, so agents in other worktrees do not fight over the CPU.
+# A run that names packages skips that wait, so the tight test loop never
+# stands still.
 # With no package given, the whole repo is tested.
 set -eu
 cd "$(dirname "$0")/.."
+# Git starts a background maintenance run after every commit, and that run
+# holds a lock inside .git/objects while a test is deleting its temp folder.
+# Turning it off keeps the tests from failing on a folder they cannot remove.
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=maintenance.auto
+export GIT_CONFIG_VALUE_0=false
 full=
 if [ "${1:-}" = "--full" ]; then
 	full=1
 	shift
 fi
 pkgs=./...
+whole=
+all=
+pkg=
 for a in "$@"; do
-	case $a in ./*) pkgs= ;; esac
+	case $a in
+	./...)
+		pkgs=
+		all=1
+		;;
+	./*)
+		pkgs=
+		pkg=1
+		;;
+	esac
 done
+# A call with ./... runs the whole repo, so it takes the lock whatever
+# package sits next to it. Only a call that names a package and never ./...
+# skips the wait.
+if [ -n "$all" ] || [ -z "$pkg" ]; then
+	whole=1
+fi
 if [ -n "$full" ]; then
 	exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+fi
+if [ -n "$whole" ]; then
+	exec go run ./cmd/acta run-one -- go test -short "$@" $pkgs
 fi
 exec go test -short "$@" $pkgs

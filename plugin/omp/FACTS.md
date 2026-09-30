@@ -113,3 +113,73 @@ $ cd "$(mktemp -d)" && PM_VOICE_FILE="$(mktemp -d)/voice.yaml" command omp --no-
 The extension runs under `-e` + `--plugin-dir`: the answer quotes the first
 line of the session rules, then the rules text flags the conflicting workflow
 plugin and the voice setup questions follow.
+
+
+## Brainstorm block in omp
+
+Checked 2026-09-30 with omp/18.4.4 and acta v0.0.0-20260930121646-6e177124f9ad on
+PATH. The extension hands `acta hook pre-tool` and `post-tool` the same stdin JSON
+Claude Code does, so the second brainstorm in one omp session is blocked.
+
+```text
+$ T="$(mktemp -d)" && cd "$T" && git init -q && git commit -q --allow-empty -m init
+$ printf 'first\n' | acta scratch new first-idea --title first
+SCR-0001  .acta/scratch/2026-09-30-first-idea.md
+$ printf 'second\n' | acta scratch new second-idea --title second
+SCR-0002  .acta/scratch/2026-09-30-second-idea.md
+$ D="$(date +%F)"
+$ PM_VOICE_FILE="$T/none.yaml" command omp --no-session --no-extensions --no-rules \
+    --plugin-dir <worktree>/plugin -e <worktree>/plugin/omp/index.ts -p \
+    "Run these two shell commands, each as its own bash call, one after the
+     other. First: acta set scratch/$D-first-idea status brainstorming. Second:
+     acta set scratch/$D-second-idea status brainstorming. Then quote, word for
+     word, any error the second call gave you."
+Working...
+**The second command was rejected. The error, word for word:**
+
+acta: this session already brainstormed SCR-0001. One Architectural brainstorm
+per session: file this one as a scratch item and offer the user the choices
+rule 8 names.
+
+(The first call set the status and printed the scratch file path; the second
+call was refused by the pre-tool hook.)
+
+$ cat .acta/state/sessions.json
+{"01a0f268-30d8-70f8-ad7f-0de11c8466ef":"2026-09-30-first-idea"}
+(One session id, one entry, the first item only. The blocked call recorded
+ nothing.)
+```
+
+Temp dir left in place per plan (no `rm -rf` performed):
+- T5 (two-brainstorm block check): $T
+
+## Running the eval cases in omp
+
+Checked 2026-09-30 with omp 18.4.4, from an empty temp folder. `acta eval-omp`
+uses exactly these facts.
+
+1. `--mode json` prints one JSON event per line. A tool call is
+   `{"type":"tool_execution_start","toolName":"bash","args":{"command":"..."}}`.
+   The last line is `{"type":"agent_end","messages":[...]}`, and the final
+   reply is the text parts of the last `role: "assistant"` message.
+2. `--no-skills` also drops the acta skills that `--plugin-dir` brings. With
+   it, the model listed no brainstorm, scratch or plan skill.
+3. `--skills=<names>` with the acta skill folder names keeps acta's skills and
+   filters out every other one. The model then listed exactly the 12 acta
+   skills: brainstorm, bug, build, debug, dispatch, land, migrate, plan,
+   review, scratch, setup, tdd.
+4. An extension given with `-e` still runs under `--no-extensions`: the run's
+   messages held the `acta` custom message, and the model quoted
+   "acta plugin is active".
+5. omp adds its own built-in messages (`eager-todo-prelude`,
+   `eager-task-prelude`) even with every flag above. They are part of omp.
+
+```text
+$ command omp --no-session --no-extensions --no-rules \
+   --skills="brainstorm,bug,build,debug,dispatch,land,migrate,plan,review,scratch,setup,tdd" \
+   --plugin-dir <acta>/plugin -e <acta>/plugin/omp/index.ts --mode json -p \
+   "Without running any tool, list the names of every skill available to you, comma separated, then quote the first line of any context message starting with 'acta plugin is active'."
+(reply) brainstorm, bug, build, debug, dispatch, land, migrate, plan, review, scratch, setup, tdd
+(reply) > acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. ...
+(custom messages) eager-todo-prelude, eager-task-prelude, acta
+```
