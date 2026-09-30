@@ -2,6 +2,7 @@
 created: "2026-09-30"
 id: PLN-0039
 hash: eg4p4yy
+started: "2026-09-30"
 ---
 # TUI Colors Implementation Plan
 
@@ -69,7 +70,7 @@ Task 3 and Task 4 both touch `view.go`, and Task 2 and Task 3 may both need to u
   - `func (s styles) tabColor(k board.Kind) lipgloss.Color`
   - test helper `func sgrHas(s, code string) bool` in `styles_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/styles_test.go` (add `regexp`, `strconv` and `github.com/iyay/acta/internal/board` to the imports):
 
@@ -187,12 +188,12 @@ func TestSgrHasSkipsColorNumbers(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestKindAndRoleSlots|TestKindWithNoColorIsPlain|TestBandTextUsesTheBackground|TestSgrHasSkipsColorNumbers'`
 Expected: FAIL to build with `s.kind undefined` (and the other new names).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`, import `github.com/iyay/acta/internal/board`, then:
 
@@ -285,12 +286,12 @@ func (s styles) tabColor(k board.Kind) lipgloss.Color {
 
 If `TestHexThemeRoles` or another old test checks that `work` is faint, update that one assert to check it is not faint.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...

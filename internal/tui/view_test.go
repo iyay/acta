@@ -829,10 +829,10 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		}
 
 		// The in-progress row is not selected, so it keeps the accent and
-		// is dim.
+		// is not faint, so a row under way reads at full brightness.
 		going := paintedLine(v, b, 2)
-		if !wears(going, 2) || !wears(going, 38, 5, 111) {
-			t.Errorf("an unselected in-progress row should be dim and keep the accent: %q", going)
+		if wears(going, 2) || !wears(going, 38, 5, 111) {
+			t.Errorf("an unselected in-progress row should keep the accent without faint: %q", going)
 		}
 		if wears(going, 48, 5, 23) {
 			t.Errorf("an unselected row wears a background: %q", going)

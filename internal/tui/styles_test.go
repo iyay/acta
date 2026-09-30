@@ -1,12 +1,15 @@
 package tui
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/theme"
 )
 
@@ -222,5 +225,117 @@ func TestMixHex(t *testing.T) {
 		if got := mixHex(c.a, c.b); got != c.want {
 			t.Errorf("mixHex(%q, %q) = %q, want %q", c.a, c.b, got, c.want)
 		}
+	}
+}
+
+// sgr finds each color code a style writes.
+var sgr = regexp.MustCompile(`\x1b\[([0-9;]*)m`)
+
+// sgrHas says whether s turns on the plain code, like "1" for bold or "2"
+// for faint. The numbers inside a color, like the 2 in "38;2;r;g;b", are
+// skipped, so they never pass for faint.
+func sgrHas(s, code string) bool {
+	for _, m := range sgr.FindAllStringSubmatch(s, -1) {
+		ps := strings.Split(m[1], ";")
+		for i := 0; i < len(ps); i++ {
+			switch ps[i] {
+			case "38", "48":
+				if i+1 < len(ps) && ps[i+1] == "5" {
+					i += 2
+				} else {
+					i += 4
+				}
+				continue
+			}
+			if ps[i] == code {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestKindAndRoleSlots(t *testing.T) {
+	t.Parallel()
+
+	hex, _ := theme.Builtin("tokyo-night")
+	term, _ := theme.Builtin("terminal")
+	for _, c := range []struct {
+		name string
+		th   theme.Theme
+		at   func(int) lipgloss.Color
+	}{
+		{"tokyo-night", hex, func(i int) lipgloss.Color { return lipgloss.Color(hex.ANSI[i]) }},
+		{"terminal", term, func(i int) lipgloss.Color { return lipgloss.Color(strconv.Itoa(i)) }},
+	} {
+		s := newStyles(c.th, true)
+		for k, slot := range map[board.Kind]int{
+			board.KindScratch: 2, board.KindBug: 1, board.KindDebt: 3, board.KindDebtItem: 3,
+			board.KindStory: 5, board.KindPlan: 4, board.KindTask: 4,
+		} {
+			if got := s.kind(k).GetForeground(); got != c.at(slot) {
+				t.Errorf("%s: kind %s = %v, want slot %d", c.name, k, got, slot)
+			}
+			if got := s.tabColor(k); got != c.at(slot) {
+				t.Errorf("%s: tab %s = %v, want slot %d", c.name, k, got, slot)
+			}
+		}
+		if got := s.tabColor(""); got != c.at(6) {
+			t.Errorf("%s: Activities tab = %v, want slot 6", c.name, got)
+		}
+		for name, r := range map[string]struct {
+			brush lipgloss.Style
+			slot  int
+		}{
+			"label": {s.label, 6}, "footLabel": {s.footLabel, 5}, "done": {s.done, 2},
+			"waiting": {s.waiting, 8}, "problem": {s.problem, 1}, "live": {s.live, 2},
+		} {
+			if got := r.brush.GetForeground(); got != c.at(r.slot) {
+				t.Errorf("%s: %s = %v, want slot %d", c.name, name, got, r.slot)
+			}
+		}
+		if s.work.GetFaint() {
+			t.Errorf("%s: work is still faint", c.name)
+		}
+	}
+}
+
+func TestKindWithNoColorIsPlain(t *testing.T) {
+	t.Parallel()
+
+	th, _ := theme.Builtin("tokyo-night")
+	s := newStyles(th, true)
+	if _, ok := s.kind("").GetForeground().(lipgloss.NoColor); !ok {
+		t.Fatalf("empty kind has color %v", s.kind("").GetForeground())
+	}
+	if _, ok := s.kind("nope").GetForeground().(lipgloss.NoColor); !ok {
+		t.Fatalf("unknown kind has color %v", s.kind("nope").GetForeground())
+	}
+}
+
+func TestBandTextUsesTheBackground(t *testing.T) {
+	t.Parallel()
+
+	hex, _ := theme.Builtin("tokyo-night")
+	if got := newStyles(hex, true).bandFG; got != lipgloss.Color(hex.BG) {
+		t.Fatalf("tokyo-night band text = %v, want %v", got, hex.BG)
+	}
+	term, _ := theme.Builtin("terminal")
+	if got := newStyles(term, true).bandFG; got != lipgloss.Color("0") {
+		t.Fatalf("terminal band text = %v, want slot 0", got)
+	}
+}
+
+func TestSgrHasSkipsColorNumbers(t *testing.T) {
+	t.Parallel()
+
+	if sgrHas("\x1b[38;2;2;2;2mx\x1b[0m", "2") {
+		t.Fatal("a 24-bit color passed for faint")
+	}
+	if !sgrHas("\x1b[2;38;2;1;1;1mx\x1b[0m", "2") {
+		t.Fatal("faint next to a color was missed")
+	}
+	if !sgrHas("\x1b[1mx\x1b[0m", "1") {
+		t.Fatal("plain bold was missed")
 	}
 }
