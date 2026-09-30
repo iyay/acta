@@ -17,6 +17,8 @@ func TestSkillDispatch(t *testing.T) {
 			"acta:bug", "already on the parent branch", "exactly one read", "checkpoint unconfirmed",
 			"never write NOTEs to memory",
 			"GATES (from the worktree): <the plan's fast test command>",
+			"## Step -3 — Refuse inside omp", "Running in omp: STOP.",
+			"Dispatch is only for harnesses other than omp.",
 		},
 		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
 			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-",

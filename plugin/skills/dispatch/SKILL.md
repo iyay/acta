@@ -19,6 +19,10 @@ Dispatch is the handoff step of `acta:build`. Before you touch a pane, all of th
 
 Any missing → STOP, report which one, do not provision. "Small" is not an exemption.
 
+## Step -3 — Refuse inside omp
+
+Running in omp: STOP. Do not open a tab. Go back to `acta:build` and run the `subagent` executor (`agent()` with `agent="task"`). Dispatch is only for harnesses other than omp.
+
 ## Step -2 — Detect herdr FIRST
 
 ```bash
