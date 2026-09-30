@@ -2049,6 +2049,9 @@ func TestViewReusesTheFrameForANotchThatOnlyGathers(t *testing.T) {
 
 	m := paneModel(t, paneDetail)
 	b := scrollBox(m, paneDetail)
+	// The first notch scrolls at once, so it draws. The second one waits for
+	// the tick and must not draw.
+	m = wheelOnly(m, b.x+1, b.y+2, false)
 	m.View()
 	m = wheelOnly(m, b.x+1, b.y+2, false)
 	if drewNew(m) {

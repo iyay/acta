@@ -70,8 +70,9 @@ const wheelStep = 3
 
 // wheelFrame is how long wheel notches are gathered before one scroll. A
 // trackpad sends hundreds of notches a second, and drawing the screen after
-// each one left the TUI far behind the wheel.
-const wheelFrame = 16 * time.Millisecond
+// each one left the TUI far behind the wheel. It is shorter than two renderer
+// writes at 120fps, so a steady scroll never skips a write.
+const wheelFrame = 12 * time.Millisecond
 
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
@@ -131,6 +132,7 @@ type Model struct {
 	wheelPane  pane  // the pane the gathered notches scroll
 	wheelDelta int   // lines gathered from the wheel, not yet scrolled
 	wheelArmed bool  // true while a frame tick is on its way
+	wheelMoved bool  // a notch scrolled at once, so the closing tick must draw
 	wheelMark  wheelMark
 	now        time.Time
 	version    string                  // build version shown on the bottom line
@@ -251,9 +253,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ended never sees them land on the new one.
 		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
-		} else {
-			m.same = true
+			m.wheelDelta = 0
+			// The wheel is still turning, so the next frame needs its tick.
+			m.wheelMoved = false
+			return m, wheelTickCmd()
 		}
+		// A notch that scrolled at once has not been written down yet, so
+		// this tick still has to write it. A tick after a wheel that did
+		// nothing may keep the frame the reader already has.
+		m.same = !m.wheelMoved
+		m.wheelMoved = false
 		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
 		return m.afterEditor(msg)
@@ -564,8 +573,18 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.wheelDelta = 0
 			flushed = true
 		}
-		// The first notch of a frame writes the screen down. The notches
-		// after it share that screen and must not write over it.
+		// With no tick waiting, the wheel had stopped. Scroll now, so the
+		// reader sees the pane move on the notch itself, and start a frame
+		// for the notches that follow.
+		if !m.wheelArmed {
+			m.scrollPane(p, step)
+			m.wheelPane = p
+			m.wheelMoved = true
+			m.wheelArmed = true
+			return m, wheelTickCmd()
+		}
+		// The first gathered notch of a frame writes the screen down. The
+		// notches after it share that screen and must not write over it.
 		if m.wheelDelta == 0 {
 			m.wheelMark = m.mark()
 		}
@@ -574,11 +593,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// A flush to another pane moved that pane, so only a plain gather
 		// keeps the old frame.
 		m.same = !flushed
-		if m.wheelArmed {
-			return m, nil
-		}
-		m.wheelArmed = true
-		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
+		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
 		m.same = true
@@ -598,6 +613,11 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.moveTo(rowIdx)
 	}
 	return m, nil
+}
+
+// wheelTickCmd asks for the end of the frame.
+func wheelTickCmd() tea.Cmd {
+	return tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 }
 
 // clickTab switches the Done box to the sub-tab the click landed on. The
