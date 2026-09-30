@@ -13,6 +13,7 @@ func TestSkillReview(t *testing.T) {
 			"## Where findings go", "acta:bug", "already on the parent branch",
 			"Small means one file, and only text or config with no code logic.",
 			"acta debt new",
+			"A NOTE may start with `(high) `, `(medium) ` or `(low) `",
 			"never the full suite",
 		},
 		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory"},

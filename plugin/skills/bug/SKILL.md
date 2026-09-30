@@ -38,6 +38,8 @@ acta bug new <slug> --ref <ticket code, if there is one> <<'EOF'
 EOF
 ```
 
+`--priority high|medium|low` is optional. Set it when the user named how urgent the bug is; leave it off otherwise. `acta set <bug id> priority <level>` changes it later, and `none` removes it.
+
 `## Symptom` is required; the other sections may wait until they are known. Tell the user the path `acta` printed. In a worktree, the bug file commits on that branch and lands with it.
 
 Exit codes: 0 written and committed; 1 bad input (fix the slug or the body); 2 written but not committed (tell the user why; `acta` says it on stderr); 3 something else failed (report it).

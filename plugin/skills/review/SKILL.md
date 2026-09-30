@@ -48,7 +48,7 @@ There is never a round 4. A round with no BLOCKER does not start. Findings in te
 
 - A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into the one fix task of this round (`## Fix round <n>` in the same plan), where it already shows on the board under the story.
 - A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
-- A NOTE stays a NOTE: one line. When the plan's final review round is CLEAN, collect every NOTE from all rounds of that plan and run `acta debt new <plan id>` on the branch (the NOTEs on stdin, one per line) before `acta:land`. The debt file merges with the branch.
+- A NOTE stays a NOTE: one line. When the plan's final review round is CLEAN, collect every NOTE from all rounds of that plan and run `acta debt new <plan id>` on the branch (the NOTEs on stdin, one per line) before `acta:land`. The debt file merges with the branch. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset, which is fine.
 
 ## Small changes
 
