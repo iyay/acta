@@ -275,6 +275,11 @@ func (m Model) openRows() []row {
 	}
 	tab := topTabs[m.top]
 	items := ordered(m.board.List(tab.kind, false), m.newest[paneList])
+	// Bugs and debt are where the user picks what to fix next, so the most
+	// urgent ones come first.
+	if tab.kind == board.KindBug || tab.kind == board.KindDebtItem {
+		items = byPriority(items)
+	}
 	if tab.tree {
 		return m.treeRows(items)
 	}

@@ -4,6 +4,7 @@ id: PLN-0064
 created: "2026-10-01 05:22:21"
 hash: lwfa6qz
 started: "2026-10-01 05:27:35"
+finished: "2026-10-01 05:52:33"
 ---
 # Priority for Bugs and Debt Items, and Build Always Uses git worktree add Implementation Plan
 
@@ -726,7 +727,7 @@ git commit -m "bug new --priority and acta set <id> priority"
 - Consumes: `board.Item.Priority`, `board.Priorities` (Task 3).
 - Produces: `func byPriority(items []*board.Item) []*board.Item` (new slice, stable).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/tui/priority_test.go`:
 
@@ -856,12 +857,12 @@ func TestByPriorityIsStableAndCopies(t *testing.T) {
 
 `detailLines` (in `detail_test.go`) loads its own board from `cfg` and walks every tab, so it finds the bugs.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui -run 'Priority'`
 Expected: FAIL to build: `undefined: byPriority`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `internal/tui/order.go`, add:
 
@@ -943,12 +944,12 @@ func priorityTag(it *board.Item) string {
 		{"PRIORITY", it.Priority},
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS (whole package, so layout, width and color tests still hold with no priority set).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui

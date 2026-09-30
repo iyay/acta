@@ -112,6 +112,7 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		{"ID", idText(it)},
 		{kindLabel(it.Kind), title},
 		{"STATUS", it.Status},
+		{"PRIORITY", it.Priority},
 		{"AUTHOR", it.Author},
 		{"FROM", m.fromText(it)},
 		{"REF", it.Ref},

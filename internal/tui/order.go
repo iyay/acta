@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,4 +59,19 @@ func idNum(it *board.Item) (int, bool) {
 func fileOf(id string) string {
 	file, _, _ := strings.Cut(id, "#")
 	return file
+}
+
+// byPriority moves high above medium above low above unset. The sort is
+// stable, so inside one level the order from ordered stays. It returns a new
+// slice so the caller's order is kept.
+func byPriority(items []*board.Item) []*board.Item {
+	out := append([]*board.Item(nil), items...)
+	rank := func(it *board.Item) int {
+		if i := slices.Index(board.Priorities, it.Priority); i >= 0 {
+			return i
+		}
+		return len(board.Priorities)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return rank(out[i]) < rank(out[j]) })
+	return out
 }

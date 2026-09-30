@@ -200,7 +200,13 @@ func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string
 		return base.Render(text)
 	}
 	brush := s.kind(it.Kind).Bold(base.GetBold())
-	return base.Render(text[:i]) + brush.Render(name) + base.Render(text[i+len(name):])
+	after := text[i+len(name):]
+	tag := "  " + priorityTag(it)
+	if it.Priority != "" && strings.HasPrefix(after, tag) {
+		letter := s.priority[it.Priority].Bold(base.GetBold()).Render(tag[2:3])
+		return base.Render(text[:i]) + brush.Render(name) + base.Render("  ") + letter + base.Render(after[3:])
+	}
+	return base.Render(text[:i]) + brush.Render(name) + base.Render(after)
 }
 
 // rowText gives the one line of a row: the short ID, or the file path when the
@@ -228,7 +234,7 @@ func (m Model) rowText(r row, it *board.Item, w int) string {
 	if r.tree {
 		lead += m.treeMark(r, it) + " "
 	}
-	head := lead + name + "  " + it.Title
+	head := lead + name + "  " + priorityTag(it) + it.Title
 	tally := progressText(it)
 	if !inProgress(it) || tally == "" {
 		return truncate(head, w)
@@ -243,6 +249,15 @@ func (m Model) rowText(r row, it *board.Item, w int) string {
 		return truncate(head, w)
 	}
 	return truncate(head, room) + strings.Repeat(" ", w-lipgloss.Width(truncate(head, room))-lipgloss.Width(tally)) + tally
+}
+
+// priorityTag is the one letter a row shows for its priority, with a space
+// after it. An item with no priority shows nothing, so its row stays as it was.
+func priorityTag(it *board.Item) string {
+	if it.Priority == "" {
+		return ""
+	}
+	return strings.ToUpper(it.Priority[:1]) + " "
 }
 
 // treeMark is what a tree row starts with: + on a shut plan, - on an open
