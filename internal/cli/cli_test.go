@@ -331,6 +331,9 @@ func TestScratchUnknownSubcommandNamesBothCommands(t *testing.T) {
 }
 
 func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
+	// The acta repo has its own .acta.yaml. Run outside it so its values
+	// do not show up here.
+	t.Chdir(t.TempDir())
 	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
 	mustRun(t, "config", "set", "--language", "Korean", "--tone", "short")
 	if out := mustRun(t, "config", "show"); strings.Contains(out, "build_executor") {
