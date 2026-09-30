@@ -60,6 +60,32 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
+func planN(dir string) string {
+	return filepath.Join(dir, ".acta", "plans", "2026-09-27-n.md")
+}
+
+// undoRepo holds one plan whose single task carries three checkboxes, under a
+// spec, so an undo can be watched on a task that was only partly ticked.
+func undoRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, d := range []string{"specs", "plans"} {
+		if err := os.MkdirAll(filepath.Join(dir, ".acta", d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := map[string]string{
+		"specs/2026-09-20-s-design.md": "---\nid: SPEC-1\nhash: ssss\n---\n# S\n",
+		"plans/2026-09-21-a.md":        "---\nid: PLAN-1\nhash: aaaa\n---\n# A\n\n**Spec:** `.acta/specs/2026-09-20-s-design.md`\n\n### Task 1: One\n- [ ] a\n- [ ] b\n- [ ] c\n",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, ".acta", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 func TestCmdTickDebtWontfix(t *testing.T) {
 	dir := tickRepo(t)
 	code, _, stderr := runTick(t, dir, "DEBT-1.2", "--wontfix")
@@ -275,5 +301,165 @@ func TestCmdTickMakesNoCommit(t *testing.T) {
 	runTick(t, dir, "plans/2026-09-21-a#task-2", "--all")
 	if after := gitOut(t, dir, "rev-list", "--count", "HEAD"); after != before {
 		t.Errorf("tick made a commit: %s -> %s", before, after)
+	}
+}
+
+func TestTickUndoPutsATaskBackToOpen(t *testing.T) {
+	dir := tickRepo(t)
+	if code, _, errOut := runTick(t, dir, "--all", "plans/2026-09-27-n#task-1"); code != exitOK {
+		t.Fatalf("tick --all: %d %s", code, errOut)
+	}
+	code, out, errOut := runTick(t, dir, "--undo", "plans/2026-09-27-n#task-1")
+	if code != exitOK || !strings.Contains(out, "0/1") {
+		t.Fatalf("undo: %d %q %q", code, out, errOut)
+	}
+	if got := read(t, planN(dir)); !strings.Contains(got, "- [ ] a") {
+		t.Fatalf("task not open: %q", got)
+	}
+}
+
+func TestTickUndoPutsADebtLineBackToOpen(t *testing.T) {
+	dir := tickRepo(t)
+	if code, _, errOut := runTick(t, dir, "--wontfix", "DEBT-1.1"); code != exitOK {
+		t.Fatalf("wontfix: %d %s", code, errOut)
+	}
+	if code, _, errOut := runTick(t, dir, "--undo", "DEBT-1.1"); code != exitOK {
+		t.Fatalf("undo: %d %s", code, errOut)
+	}
+	if got := read(t, debtFile(dir)); !strings.Contains(got, "- [ ] a\n- [ ] b") {
+		t.Fatalf("debt line not open: %q", got)
+	}
+}
+
+func TestTickUndoMixedWithAnotherActionIsRefused(t *testing.T) {
+	dir := tickRepo(t)
+	for _, id := range []string{"plans/2026-09-27-n#task-1", "DEBT-1.1"} {
+		for _, other := range []string{"--all", "--start", "--wontfix", "--step=1"} {
+			before := map[string]string{planN(dir): read(t, planN(dir)), debtFile(dir): read(t, debtFile(dir))}
+			if code, _, _ := runTick(t, dir, "--undo", other, id); code == exitOK {
+				t.Errorf("--undo %s %s: exit 0", other, id)
+			}
+			for path, want := range before {
+				if got := read(t, path); got != want {
+					t.Errorf("--undo %s %s changed %s: %q", other, id, path, got)
+				}
+			}
+		}
+	}
+}
+
+// A task ticked halfway has one box done and two open, and the day work began
+// is already written. Undo opens every box and leaves that day alone.
+func TestTickUndoOpensEveryBoxOfAPartlyTickedTask(t *testing.T) {
+	dir := undoRepo(t)
+	onDay(t, 26)
+	if code, _, errOut := runTick(t, dir, "plans/2026-09-21-a#task-1", "--step", "1"); code != exitOK {
+		t.Fatalf("step 1: %d %s", code, errOut)
+	}
+	if code, out, errOut := runTick(t, dir, "plans/2026-09-21-a#task-1", "--undo"); code != exitOK || !strings.Contains(out, "0/3") {
+		t.Fatalf("undo: %d %q %q", code, out, errOut)
+	}
+	want := "---\nid: PLAN-1\nhash: aaaa\nstarted: \"2026-09-26\"\n---\n# A\n\n**Spec:** `.acta/specs/2026-09-20-s-design.md`\n\n### Task 1: One\n- [ ] a\n- [ ] b\n- [ ] c\n"
+	if got := read(t, planA(dir)); got != want {
+		t.Fatalf("plan =\n%q\nwant\n%q", got, want)
+	}
+	if s := read(t, specOf(dir)); strings.Contains(s, "finished:") {
+		t.Errorf("undo closed the spec: %q", s)
+	}
+}
+
+// A task only started was never ticked, so an undo has nothing to open and
+// must leave the plan and the spec byte for byte as they were.
+func TestTickUndoAfterStartWritesNothing(t *testing.T) {
+	dir := datesRepo(t, 1)
+	onDay(t, 26)
+	if code, _, errOut := runTick(t, dir, "plans/2026-09-21-a#task-1", "--start"); code != exitOK {
+		t.Fatalf("start: %d %s", code, errOut)
+	}
+	before := map[string]string{planA(dir): read(t, planA(dir)), specOf(dir): read(t, specOf(dir))}
+	if code, _, errOut := runTick(t, dir, "plans/2026-09-21-a#task-1", "--undo"); code != exitOK {
+		t.Fatalf("undo: %d %s", code, errOut)
+	}
+	for path, want := range before {
+		if got := read(t, path); got != want {
+			t.Errorf("undo changed %s: %q", path, got)
+		}
+	}
+}
+
+func TestTickUndoOnAnOpenTaskChangesNothing(t *testing.T) {
+	dir := tickRepo(t)
+	before := read(t, planN(dir))
+	if code, out, errOut := runTick(t, dir, "plans/2026-09-27-n#task-1", "--undo"); code != exitOK || out == "" {
+		t.Fatalf("undo: %d %q %q", code, out, errOut)
+	}
+	if got := read(t, planN(dir)); got != before {
+		t.Fatalf("plan changed: %q", got)
+	}
+}
+
+func TestTickUndoOnAnOpenDebtLineChangesNothing(t *testing.T) {
+	dir := tickRepo(t)
+	before := read(t, debtFile(dir))
+	if code, out, errOut := runTick(t, dir, "DEBT-1.2", "--undo"); code != exitOK || out == "" {
+		t.Fatalf("undo: %d %q %q", code, out, errOut)
+	}
+	if got := read(t, debtFile(dir)); got != before {
+		t.Fatalf("debt file changed: %q", got)
+	}
+}
+
+// Undo is a slip of the finger, not work, so nobody is recorded as working on
+// the item: the file stays missing, and a record an earlier tick wrote is
+// left exactly as it was.
+func TestTickUndoWritesNoAgentRecord(t *testing.T) {
+	t.Run("no record file", func(t *testing.T) {
+		dir := tickRepo(t)
+		if code, _, errOut := runTick(t, dir, "plans/2026-09-27-n#task-1", "--undo", "--agent", "omp"); code != exitOK {
+			t.Fatalf("undo: %d %s", code, errOut)
+		}
+		if _, err := os.Stat(filepath.Join(dir, ".acta", ".agents.json")); !os.IsNotExist(err) {
+			t.Fatalf("undo wrote an agent record: %v", err)
+		}
+	})
+	t.Run("existing record untouched", func(t *testing.T) {
+		dir := tickRepo(t)
+		if code, _, errOut := runTick(t, dir, "plans/2026-09-27-n#task-1", "--all", "--agent", "omp"); code != exitOK {
+			t.Fatalf("tick: %d %s", code, errOut)
+		}
+		rec := filepath.Join(dir, ".acta", ".agents.json")
+		before := read(t, rec)
+		if code, _, errOut := runTick(t, dir, "plans/2026-09-27-n#task-1", "--undo", "--agent", "omp"); code != exitOK {
+			t.Fatalf("undo: %d %s", code, errOut)
+		}
+		if got := read(t, rec); got != before {
+			t.Fatalf("record changed: %q", got)
+		}
+	})
+}
+
+// Only a task and a debt line carry boxes, so anything else is refused the
+// same way a tick refuses it.
+func TestTickUndoRefusesAnItemThatIsNotATask(t *testing.T) {
+	dir := datesRepo(t, 1)
+	for _, id := range []string{"SPEC-1", "PLAN-1"} {
+		before := read(t, planA(dir))
+		if code, _, _ := runTick(t, dir, id, "--undo"); code != exitBadInput {
+			t.Errorf("--undo %s: exit %d, want %d", id, code, exitBadInput)
+		}
+		if got := read(t, planA(dir)); got != before {
+			t.Errorf("--undo %s changed the plan: %q", id, got)
+		}
+	}
+}
+
+func TestTickUsageNamesUndo(t *testing.T) {
+	dir := tickRepo(t)
+	code, _, errOut := runTick(t, dir, "--help")
+	if code != exitOK {
+		t.Fatalf("help: %d", code)
+	}
+	if !strings.Contains(errOut, "--undo") {
+		t.Fatalf("help hides --undo: %q", errOut)
 	}
 }
