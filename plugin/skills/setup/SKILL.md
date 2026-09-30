@@ -26,7 +26,7 @@ From the next message on, talk in the chosen language.
 
 ### Default build executor
 
-`subagent` (default) or `inline`. Offer `dispatch` only when herdr is there: `HERDR_ENV=1` in the environment, or `herdr` on PATH. Without herdr, do not offer `dispatch` at all.
+`subagent` (default) or `inline`. Offer `dispatch` only when `HERDR_ENV=1` is in the environment, which means this session runs inside a herdr pane. `herdr` on PATH is not enough: dispatch needs this session's own pane. Without `HERDR_ENV=1`, do not offer `dispatch` at all.
 
 ```bash
 acta config set --executor subagent

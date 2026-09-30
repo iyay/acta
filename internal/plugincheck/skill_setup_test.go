@@ -10,6 +10,7 @@ func TestSkillSetup(t *testing.T) {
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
 			"acta config show", "adhd", "plain", "full English name",
 			"acta doctor", "acta doctor --fix", "--executor", "HERDR_ENV=1", "herdr",
+			"Offer `dispatch` only when `HERDR_ENV=1` is in the environment",
 			"--subagent-models split", "--subagent-models default", "Claude Code only",
 			"<!-- acta:begin -->", "<!-- acta:end -->",
 			"only after a yes", "never edits settings",
@@ -20,6 +21,7 @@ func TestSkillSetup(t *testing.T) {
 			"create a CLAUDE.md that holds only the block",
 		},
 		MustNot: []string{"superpowers:", "It never edits CLAUDE.md",
+			"or `herdr` on PATH",
 			"~/.acta/voice.yaml", "only to files that already exist", "never create a CLAUDE.md",
 		},
 	})
