@@ -138,7 +138,7 @@ git commit -m "tui: left column is a third of the width, like lazygit"
 - Consumes: `m.openTab(i int)` in `internal/tui/sidebar.go`, `tabBox{x, w int}` in `internal/tui/view.go`.
 - Produces: `func (m Model) barTabs(width int) (string, []tabBox)`. The line is the names line of width `width`. `spans[i]` is where the name of `topTabs[i]` starts, counted from the first inner cell of the bar. A dropped name has `w == 0`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/tui/tabbar_test.go`:
 
@@ -204,12 +204,12 @@ func TestClickOnTheBarIsIgnoredUnderThePopups(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui -run 'TestClickOnATopTabOpensIt|TestClickOnTheBarIsIgnoredUnderThePopups'`
 Expected: FAIL to build with `m.barTabs undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/view.go`, `barLine` also returns the spans, and `barTabs` does what `tabBar` did:
 
@@ -296,12 +296,12 @@ In `internal/tui/model.go`, in `mouse`, right after the block that opens bottom 
 
 `tabRows` keeps calling `m.tabBar(inner)`. Nothing else changes there.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS, the whole package, so the older click, drag and draw tests still hold.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui

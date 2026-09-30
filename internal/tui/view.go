@@ -233,14 +233,16 @@ func (m Model) tabRows(width int) []string {
 	}
 }
 
-// tabBar draws the names line of the tab box: the tab names that fit the
+// barTabs draws the names line of the tab box: the tab names that fit the
 // window, in order, each with its key number and each in the color of its
 // own kind, the open one as a band of its color, so the reader always sees
 // where they are. A window too narrow for every name loses the ones farthest
-// from the open tab first, so the open tab never goes off the line.
-func (m Model) tabBar(width int) string {
+// from the open tab first, so the open tab never goes off the line. It also
+// says where each name sits, so the mouse clicks the same names the screen
+// shows, and a name that was dropped has a span of zero width.
+func (m Model) barTabs(width int) (string, []tabBox) {
 	drop := make([]bool, len(topTabs))
-	line := m.barLine(drop)
+	line, spans := m.barLine(drop)
 	for lipgloss.Width(line) > width {
 		// dropOrder walks the tabs from the right and skips the open one, so
 		// the first name at the widest distance is the right one of a tie.
@@ -257,20 +259,31 @@ func (m Model) tabBar(width int) string {
 			break
 		}
 		drop[at] = true
-		line = m.barLine(drop)
+		line, spans = m.barLine(drop)
 	}
+	return line, spans
+}
+
+// tabBar is the names line alone, for the view.
+func (m Model) tabBar(width int) string {
+	line, _ := m.barTabs(width)
 	return line
 }
 
 // barLine joins the tab names that are not in drop, so the bar can be measured
-// with one name less at a time until it fits the window.
-func (m Model) barLine(drop []bool) string {
+// with one name less at a time until it fits the window. It also counts where
+// each name starts, counted from the first cell inside the bar.
+func (m Model) barLine(drop []bool) (string, []tabBox) {
 	names := make([]string, 0, len(topTabs))
+	spans := make([]tabBox, len(topTabs))
+	x := 1
 	for i, t := range topTabs {
 		if drop[i] {
 			continue
 		}
 		name := fmt.Sprintf("%d %s", i+1, t.name)
+		spans[i] = tabBox{x: x, w: lipgloss.Width(name)}
+		x += lipgloss.Width(name) + 2
 		color := m.styles.tabColor(t.kind)
 		if i == m.top {
 			// The open tab is a band of its own color, so the eye finds it first.
@@ -279,7 +292,7 @@ func (m Model) barLine(drop []bool) string {
 		}
 		names = append(names, lipgloss.NewStyle().Foreground(color).Render(name))
 	}
-	return " " + strings.Join(names, "  ")
+	return " " + strings.Join(names, "  "), spans
 }
 
 // box measures one pane at the given rectangle and works out which of its

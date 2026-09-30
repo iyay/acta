@@ -309,7 +309,7 @@ func TestTabsWearTheirKindColors(t *testing.T) {
 		for _, name := range []string{"tokyo-night", "terminal"} {
 			for open := range topTabs {
 				m := press(actModel(t).WithTheme(name, true), tabKey(open))
-				line := m.barLine(make([]bool, len(topTabs)))
+				line, _ := m.barLine(make([]bool, len(topTabs)))
 				for i, tb := range topTabs {
 					label := fmt.Sprintf("%d %s", i+1, tb.name)
 					want := lipgloss.NewStyle().Foreground(m.styles.tabColor(tb.kind)).Render(label)

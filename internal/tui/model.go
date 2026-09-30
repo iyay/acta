@@ -649,6 +649,21 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	// The tab box at the top is one more way to open a tab, the same as the
+	// number keys.
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
+		msg.Y < barRows && m.width >= 2 {
+		_, spans := m.barTabs(m.width - 2)
+		for i, s := range spans {
+			// The bar's left wall takes the first cell, so names start one in.
+			if s.w > 0 && msg.X >= 1+s.x && msg.X < 1+s.x+s.w {
+				m.openTab(i)
+				return m, nil
+			}
+		}
+		m.same = true
+		return m, nil
+	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
 	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
