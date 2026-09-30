@@ -6,7 +6,7 @@ started: "2026-09-30"
 ---
 # Review NOTEs: Config File Name Implementation Plan
 
-- [ ] plugin/skills/build/SKILL.md:3 and :16 still call subagent the default executor; the body at :22 reads the config first, so only the wording is stale.
+- [x] plugin/skills/build/SKILL.md:3 and :16 still call subagent the default executor; the body at :22 reads the config first, so only the wording is stale.
 - [ ] internal/cli/voice.go:20: after a failed rename, acta voice show prints config.yaml (exists: true) while the values came from voice.yaml; the broken-YAML error at :85 names config.yaml in that case too.
 - [ ] Old and new acta binaries side by side: an old binary still reads and writes ~/.acta/voice.yaml, and the new one ignores it once config.yaml exists; rebuild the PATH binary right after landing.
 - [ ] internal/voice/voice.go:91: os.Rename replaces config.yaml if a non-acta writer creates it between Load and the rename; os.Link plus os.Remove would never overwrite.

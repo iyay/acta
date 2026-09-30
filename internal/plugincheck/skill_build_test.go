@@ -24,12 +24,15 @@ func TestSkillBuild(t *testing.T) {
 			"The spec and plan from acta:brainstorm and acta:plan stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
+			"the executor `acta voice show` names, else asks which one",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees",
 			`"$LOCATION/$BRANCH_NAME"`, "acta tick <task-id>", "run it again with --all",
 			"or `go test ./...`, whichever the project uses",
-			"run the full test suite and the type checks, show the output, then use"},
+			"run the full test suite and the type checks, show the output, then use",
+			"subagent (default", "`subagent` (default)",
+		},
 	})
 }
 

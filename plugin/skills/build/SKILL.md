@@ -1,6 +1,6 @@
 ---
 name: build
-description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta voice show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
@@ -13,7 +13,7 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 | Executor | Who writes the code | How |
 |---|---|---|
-| `subagent` (default) | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
+| `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 | `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr |
 | `inline` | you | only when the user says "inline" |
 
