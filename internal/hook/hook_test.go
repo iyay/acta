@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iyay/acta/internal/voice"
+	"github.com/iyay/acta/internal/config"
 )
 
 var update = flag.Bool("update", false, "rewrite plugin/hooks/default-rules.md")
 
 func korean() Input {
-	return Input{Voice: voice.Voice{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	return Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
 }
 
 func TestSessionStartListsSkillsAndRules(t *testing.T) {
@@ -63,7 +63,7 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 }
 
 func TestSessionStartFirstRun(t *testing.T) {
-	out := SessionStart(Input{Voice: voice.Default()})
+	out := SessionStart(Input{Voice: config.UserDefault()})
 	for _, want := range []string{"Voice: not set up yet.", "/acta:setup", "acta doctor", "Style (ADHD reader):",
 		"already names a chat language or style", "or the language CLAUDE.md names"} {
 		if !strings.Contains(out, want) {
@@ -76,7 +76,7 @@ func TestSessionStartFirstRun(t *testing.T) {
 }
 
 func TestSessionStartBrokenVoice(t *testing.T) {
-	out := SessionStart(Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("style must be adhd")})
+	out := SessionStart(Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("style must be adhd")})
 	if !strings.Contains(out, "could not be read (style must be adhd)") || !strings.Contains(out, "Style (ADHD reader):") {
 		t.Errorf("broken voice text wrong:\n%s", out)
 	}
@@ -102,8 +102,8 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.Herdr = true // the herdr line counts against the cap too
 	for name, in := range map[string]Input{
 		"worst":     worst,
-		"first run": {Voice: voice.Default(), Conflicts: worst.Conflicts},
-		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x"), Conflicts: worst.Conflicts},
+		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
+		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x"), Conflicts: worst.Conflicts},
 	} {
 		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
@@ -118,8 +118,8 @@ func TestSessionStartStaysShort(t *testing.T) {
 func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
-		"first run": {Voice: voice.Default()},
-		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")},
+		"first run": {Voice: config.UserDefault()},
+		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
 		for _, want := range []string{
@@ -183,8 +183,8 @@ func TestPrompt(t *testing.T) {
 		want string
 	}{
 		"set":     {korean(), "acta config: reply in Korean, adhd style."},
-		"missing": {Input{Voice: voice.Default()}, "acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."},
-		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta config: the config file could not be read; reply in English, adhd style."},
+		"missing": {Input{Voice: config.UserDefault()}, "acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."},
+		"broken":  {Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta config: the config file could not be read; reply in English, adhd style."},
 	}
 	for name, c := range cases {
 		if got := Prompt(c.in); got != c.want {
@@ -259,7 +259,7 @@ func TestClaudeDir(t *testing.T) {
 // what acta would print for a default voice.
 func TestDefaultRulesFile(t *testing.T) {
 	path := filepath.Join("..", "..", "plugin", "hooks", "default-rules.md")
-	want := SessionStart(Input{Voice: voice.Default(), VoiceExists: true})
+	want := SessionStart(Input{Voice: config.UserDefault(), VoiceExists: true})
 	if *update {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
@@ -290,8 +290,8 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 	for name, in := range map[string]Input{
 		"voice set": korean(),
 		"conflicts": worst,
-		"first run": {Voice: voice.Default()},
-		"broken":    {Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")},
+		"first run": {Voice: config.UserDefault()},
+		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
 		for _, want := range append([]string{

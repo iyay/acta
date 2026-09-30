@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: specs/2026-09-30-setup-subagent-models-default-design
 id: PLN-0053
 hash: kpuh4vp
+started: "2026-09-30"
 ---
 # Setup Remembers a No to Split Subagent Models Implementation Plan
 
@@ -77,7 +78,7 @@ hash: kpuh4vp
   - `func (v User) Validate() error`
   - unexported `fill(v User) User`, `voicePath()`, `oldPath()`
 
-- [ ] **Step 1: Move the tests first (red)**
+- [x] **Step 1: Move the tests first (red)**
 
 ```bash
 git mv internal/voice/voice_test.go internal/config/user_test.go
@@ -86,12 +87,12 @@ git mv internal/voice/voice_acta_test.go internal/config/user_acta_test.go
 
 In both moved test files: `package voice` -> `package config`, and apply the rename table to every use (`Voice` -> `User`, `Default()` -> `UserDefault()`, `Path()` -> `UserPath()`, `Resolve()` -> `ResolveUser()`, `SaveResolved(` -> `SaveUser(`, `Load(` -> `LoadUser(`, `Save(` -> `SaveUserFile(`, `ErrBad` -> `ErrBadUser`). Test function names stay as they are. Check first that no test name in `internal/config/config_test.go` or `internal/config/config_acta_test.go` clashes with a moved test name (for example both files may have `TestDefault`, `TestPath`, `TestLoadMissing`). When a name clashes, prefix the moved one with `User`, for example `TestDefault` -> `TestUserDefault`.
 
-- [ ] **Step 2: Run to watch it fail**
+- [x] **Step 2: Run to watch it fail**
 
 Run: `scripts/test ./internal/config/`
 Expected: FAIL to build with `undefined: User` (and the other new names).
 
-- [ ] **Step 3: Move the code**
+- [x] **Step 3: Move the code**
 
 ```bash
 git mv internal/voice/voice.go internal/config/user.go
@@ -106,7 +107,7 @@ In `internal/config/user.go`: change `package voice` to `package config`. `confi
 
 Keep the existing comment that says where the file lives. Apply the rename table to the declarations and to every use inside the file. `ErrBadUser` keeps the text `"bad voice setting"`.
 
-- [ ] **Step 4: Switch every importer**
+- [x] **Step 4: Switch every importer**
 
 In each of `internal/cli/cli.go`, `internal/cli/config_cmd.go`, `internal/cli/doctor.go`, `internal/cli/hook.go`, `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`, `internal/hook/hook.go`, `internal/hook/hook_test.go`, `internal/plugincheck/no_old_names_test.go`:
 - Drop the `"github.com/iyay/acta/internal/voice"` import. Add `"github.com/iyay/acta/internal/config"` where it is not there yet (`cli.go`, `doctor.go` and `hook.go` in `internal/cli` already import it).
@@ -127,7 +128,7 @@ with
 
 and in the `internal/board` line, change "`internal/config` finds where the planning files live." to "`internal/config` finds where the planning files live, and also holds the user setting."
 
-- [ ] **Step 5: Run to watch it pass**
+- [x] **Step 5: Run to watch it pass**
 
 Run: `scripts/test ./internal/config/ ./internal/cli/ ./internal/doctor/ ./internal/hook/ ./internal/plugincheck/`
 Expected: PASS.
@@ -135,7 +136,7 @@ Expected: PASS.
 Run: `go vet ./... && gofmt -l . && grep -rn 'internal/voice' --include='*.go' .`
 Expected: vet clean, no gofmt output, no grep output.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A internal/ CLAUDE.md

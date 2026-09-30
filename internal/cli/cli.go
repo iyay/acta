@@ -22,7 +22,6 @@ import (
 	"github.com/iyay/acta/internal/editor"
 	"github.com/iyay/acta/internal/trees"
 	"github.com/iyay/acta/internal/tui"
-	"github.com/iyay/acta/internal/voice"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -75,7 +74,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 // parse still gives the default voice, so the board opens either way and the
 // name is simply empty, which the default theme covers.
 func voiceTheme() string {
-	v, _, _ := voice.Resolve()
+	v, _, _ := config.ResolveUser()
 	return v.Theme
 }
 

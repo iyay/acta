@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iyay/acta/internal/voice"
+	"github.com/iyay/acta/internal/config"
 )
 
 // env gives every check a temp home and a fresh git repo, so no test can
@@ -24,7 +24,7 @@ func env(t *testing.T) Env {
 	}
 	return Env{Home: home, ClaudeDir: filepath.Join(home, ".claude"), RepoRoot: repo,
 		ActaRoot: filepath.Join(repo, ".acta"), Binary: "/bin/acta", Version: "test",
-		VoiceExists: true, Voice: voice.Voice{BuildExecutor: "subagent"}}
+		VoiceExists: true, Voice: config.User{BuildExecutor: "subagent"}}
 }
 
 func byName(rs []Result, name string) Result {
@@ -91,10 +91,10 @@ func TestCheckTheme(t *testing.T) {
 		msg   string
 	}{
 		{"empty", Env{}, OK, "tokyo-night"},
-		{"chosen", Env{Voice: voice.Voice{Theme: "dracula"}}, OK, "dracula"},
-		{"broken", Env{Voice: voice.Voice{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
-		{"bad name", Env{Voice: voice.Voice{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},
-		{"broken file", Env{Voice: voice.Voice{Theme: "mine"}, ThemeErr: errors.New(`theme "mine": ansi needs 16 colors, has 3`)}, Warn, "mine"},
+		{"chosen", Env{Voice: config.User{Theme: "dracula"}}, OK, "dracula"},
+		{"broken", Env{Voice: config.User{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
+		{"bad name", Env{Voice: config.User{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},
+		{"broken file", Env{Voice: config.User{Theme: "mine"}, ThemeErr: errors.New(`theme "mine": ansi needs 16 colors, has 3`)}, Warn, "mine"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -379,7 +379,7 @@ func TestDoctorSetup(t *testing.T) {
 	})
 	t.Run("no build executor", func(t *testing.T) {
 		e := env(t)
-		e.Voice = voice.Voice{}
+		e.Voice = config.User{}
 		wantLevel(t, byName(Run(e), "setup"), Warn, "/acta:setup")
 	})
 	t.Run("all set", func(t *testing.T) {

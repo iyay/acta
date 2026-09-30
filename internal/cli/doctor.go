@@ -16,7 +16,6 @@ import (
 	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/theme"
-	"github.com/iyay/acta/internal/voice"
 )
 
 const doctorUsage = "usage: acta doctor [--fix] [--known <file>]"
@@ -85,7 +84,7 @@ func doctorEnv(known string) doctor.Env {
 	if p, err := os.Executable(); err == nil {
 		e.Binary, e.Version = p, buildVersion()
 	}
-	v, exists, _ := voice.Resolve()
+	v, exists, _ := config.ResolveUser()
 	e.Voice, e.VoiceExists = v, exists
 	// Load the theme the voice file names, so the check reports the same
 	// error the TUI will hit.

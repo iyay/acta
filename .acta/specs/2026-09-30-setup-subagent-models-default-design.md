@@ -3,6 +3,7 @@ parent: bugs/2026-09-30-setup-asks-subagent-models-every-run
 created: "2026-09-30"
 id: SPC-0045
 hash: v5iresj
+started: "2026-09-30"
 ---
 # Setup remembers a no to split subagent models; user config moves into internal/config
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
-	"github.com/iyay/acta/internal/voice"
 )
 
 const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt | acta hook pre-tool | acta hook post-tool"
@@ -89,7 +88,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 }
 
 func loadVoice() hook.Input {
-	v, exists, err := voice.Resolve()
+	v, exists, err := config.ResolveUser()
 	return hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
 }
 

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/theme"
-	"github.com/iyay/acta/internal/voice"
 )
 
 const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
@@ -17,7 +17,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput
 	}
-	path, err := voice.Path()
+	path, err := config.UserPath()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
@@ -31,7 +31,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		v, exists, err := voice.Resolve()
+		v, exists, err := config.ResolveUser()
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
@@ -80,7 +80,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		v, _, err := voice.Resolve()
+		v, _, err := config.ResolveUser()
 		if err != nil {
 			// Never overwrite a file the user may still want to repair by hand.
 			fmt.Fprintf(stderr, "%v\nfix or delete %s first\n", err, path)
@@ -127,9 +127,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			}
 			v.Theme = *themeName
 		}
-		if err := voice.SaveResolved(v); err != nil {
+		if err := config.SaveUser(v); err != nil {
 			fmt.Fprintln(stderr, err)
-			if errors.Is(err, voice.ErrBad) {
+			if errors.Is(err, config.ErrBadUser) {
 				return exitBadInput
 			}
 			return exitOther

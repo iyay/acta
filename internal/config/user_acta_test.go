@@ -1,4 +1,4 @@
-package voice
+package config
 
 import (
 	"os"
@@ -28,19 +28,19 @@ func writeVoice(t *testing.T, path, body string) {
 
 func TestPathIsActaDefault(t *testing.T) {
 	home := withHome(t)
-	got, err := Path()
+	got, err := UserPath()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := filepath.Join(home, ".acta", "config.yaml"); got != want {
-		t.Fatalf("Path = %q, want %q", got, want)
+		t.Fatalf("UserPath = %q, want %q", got, want)
 	}
 }
 
 func TestResolveFallsBackToOldFile(t *testing.T) {
 	home := withHome(t)
 	writeVoice(t, filepath.Join(home, ".pm", "voice.yaml"), "chat_language: Korean\nstyle: plain\n")
-	v, exists, err := Resolve()
+	v, exists, err := ResolveUser()
 	if err != nil || !exists {
 		t.Fatalf("got %+v %v %v", v, exists, err)
 	}
@@ -59,7 +59,7 @@ func TestResolvePrefersNewFile(t *testing.T) {
 	home := withHome(t)
 	writeVoice(t, filepath.Join(home, ".pm", "voice.yaml"), "chat_language: Korean\nstyle: plain\n")
 	writeVoice(t, filepath.Join(home, ".acta", "config.yaml"), "chat_language: German\nstyle: adhd\n")
-	v, exists, err := Resolve()
+	v, exists, err := ResolveUser()
 	if err != nil || !exists {
 		t.Fatalf("got %+v %v %v", v, exists, err)
 	}
@@ -73,12 +73,12 @@ func TestSaveWritesNewFileOnly(t *testing.T) {
 	writeVoice(t, filepath.Join(home, ".pm", "voice.yaml"), "chat_language: Korean\nstyle: plain\n")
 	old, _ := os.ReadFile(filepath.Join(home, ".pm", "voice.yaml"))
 
-	v := Default()
+	v := UserDefault()
 	v.ChatLanguage = "German"
-	if err := SaveResolved(v); err != nil {
+	if err := SaveUser(v); err != nil {
 		t.Fatal(err)
 	}
-	got, exists, err := Load(filepath.Join(home, ".acta", "config.yaml"))
+	got, exists, err := LoadUser(filepath.Join(home, ".acta", "config.yaml"))
 	if err != nil || !exists {
 		t.Fatalf("got %+v %v %v", got, exists, err)
 	}
@@ -97,7 +97,7 @@ func TestResolveMovesVoiceFile(t *testing.T) {
 	body := "chat_language: Korean\nstyle: plain\nbuild_executor: dispatch\n"
 	writeVoice(t, oldFile, body)
 
-	v, exists, err := Resolve()
+	v, exists, err := ResolveUser()
 	if err != nil || !exists {
 		t.Fatalf("got %+v %v %v", v, exists, err)
 	}
@@ -119,7 +119,7 @@ func TestResolveConfigWinsOverVoiceFile(t *testing.T) {
 	writeVoice(t, oldFile, "chat_language: Korean\nstyle: plain\n")
 	writeVoice(t, filepath.Join(home, ".acta", "config.yaml"), "chat_language: German\nstyle: adhd\n")
 
-	v, _, err := Resolve()
+	v, _, err := ResolveUser()
 	if err != nil || v.ChatLanguage != "German" {
 		t.Fatalf("got %+v %v, want the config.yaml values", v, err)
 	}
@@ -135,8 +135,8 @@ func TestResolveDoesNotMoveWhenEnvIsSet(t *testing.T) {
 	writeVoice(t, oldFile, "chat_language: Korean\nstyle: plain\n")
 	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "mine.yaml"))
 
-	v, exists, err := Resolve()
-	if err != nil || exists || v != Default() {
+	v, exists, err := ResolveUser()
+	if err != nil || exists || v != UserDefault() {
 		t.Fatalf("got %+v %v %v, want defaults from the missing env file", v, exists, err)
 	}
 	if _, err := os.Stat(oldFile); err != nil {
@@ -149,8 +149,8 @@ func TestResolveDoesNotMoveWhenEnvIsSet(t *testing.T) {
 
 func TestResolveWithNoFilesGivesDefaults(t *testing.T) {
 	home := withHome(t)
-	v, exists, err := Resolve()
-	if err != nil || exists || v != Default() {
+	v, exists, err := ResolveUser()
+	if err != nil || exists || v != UserDefault() {
 		t.Fatalf("got %+v %v %v, want defaults", v, exists, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); !os.IsNotExist(err) {
@@ -173,7 +173,7 @@ func TestResolveReadsVoiceFileWhenMoveFails(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(dir, 0o755) })
 
-	v, exists, err := Resolve()
+	v, exists, err := ResolveUser()
 	if err != nil || !exists || v.ChatLanguage != "Korean" {
 		t.Fatalf("got %+v %v %v, want the voice.yaml values", v, exists, err)
 	}
@@ -188,13 +188,13 @@ func TestResolveTwoReadersRacingBothSeeTheSetting(t *testing.T) {
 
 	const readers = 8
 	var wg sync.WaitGroup
-	results := make([]Voice, readers)
+	results := make([]User, readers)
 	errs := make([]error, readers)
 	for i := 0; i < readers; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			results[i], _, errs[i] = Resolve()
+			results[i], _, errs[i] = ResolveUser()
 		}(i)
 	}
 	wg.Wait()

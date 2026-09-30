@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/iyay/acta/internal/voice"
+	"github.com/iyay/acta/internal/config"
 )
 
 // Skill is one acta skill and when to use it.
@@ -35,7 +35,7 @@ var Skills = []Skill{
 
 // Input is everything the hook text depends on.
 type Input struct {
-	Voice       voice.Voice
+	Voice       config.User
 	VoiceExists bool
 	VoiceErr    error
 	Conflicts   []string // enabled workflow plugins that clash with acta
