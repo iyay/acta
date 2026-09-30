@@ -265,35 +265,56 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 	}
 }
 
-// A debt item lists every line of its debt file. No line is dim, and the line
-// on show is bold, so the reader knows which NOTE is open.
-func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
-	withColors(func() {
-		lines := detailOf(t, "DEBT-1.1")
-		wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
-		mine, other := lineOf(t, lines, "DBT-0001.01  first note"), lineOf(t, lines, "DBT-0001.02  second note")
-		if wears(lines[mine], 2) {
-			t.Errorf("the line on show is dim: %q", lines[mine])
-		}
-		if sgrHas(lines[other], "2") {
-			t.Errorf("the other line is faint: %q", lines[other])
-		}
-	})
-}
-
-// The text of a debt file around its checklist renders under the list, once,
-// and not as the whole file again.
-func TestDetailDebtItemShowsTheTextAroundItsLine(t *testing.T) {
+// A debt item is one note, and the list pane already names the other notes,
+// so its detail shows the whole note and nothing else of the file.
+func TestDetailDebtItemShowsOnlyItsNote(t *testing.T) {
 	t.Parallel()
 
 	lines := plainLines(detailOf(t, "DEBT-1.1"))
+	head := strings.Join(lines[:ruleLine(t, lines)], "\n")
 	below := strings.Join(lines[ruleLine(t, lines):], "\n")
-	if !strings.Contains(below, "Prose about the review.") {
-		t.Errorf("the debt detail holds no text of its file:\n%s", below)
+	if strings.Contains(head, "DEBT ") {
+		t.Errorf("the header still has a DEBT line:\n%s", head)
 	}
 	if n := strings.Count(below, "first note"); n != 1 {
-		t.Errorf("the debt detail shows its checklist line %d times under the header, want once:\n%s", n, below)
+		t.Errorf("the note shows %d times under the header, want once:\n%s", n, below)
 	}
+	for _, gone := range []string{"second note", "Prose about the review.", "Review NOTEs"} {
+		if strings.Contains(below, gone) {
+			t.Errorf("the debt item detail still shows %q:\n%s", gone, below)
+		}
+	}
+}
+
+// A note longer than the pane is wrapped, so every word of it can be read and
+// no line spills over the wall.
+func TestDetailDebtItemWrapsALongNote(t *testing.T) {
+	t.Parallel()
+
+	note := strings.TrimSpace(strings.Repeat("a long note word ", 20)) + " last<uid>"
+	cfg := treeCfg(t, map[string]string{
+		".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
+	})
+	lines := plainLines(detailLines(t, cfg, "DEBT-1.1"))
+	below := lines[ruleLine(t, lines):]
+	if got := strings.Join(strings.Fields(strings.Join(below, " ")), " "); !strings.Contains(got, note) {
+		t.Errorf("the detail does not hold the whole note %q:\n%s", note, strings.Join(below, "\n"))
+	}
+	for i, ln := range lines {
+		if w := lipgloss.Width(ln); w > 100 {
+			t.Errorf("line %d is %d cells wide: %q", i, w, ln)
+		}
+	}
+}
+
+// A debt file still lists every one of its lines, because only the debt
+// item's detail changed.
+func TestDetailDebtFileListsEveryLine(t *testing.T) {
+	t.Parallel()
+
+	m := detailModel(t, treeCfg(t, boardFiles()))
+	lines := plainLines(m.debtLines(m.board.Get("DEBT-1"), 100))
+	wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
 }
 
 // ruleLine is where the header ends and the list and body begin.

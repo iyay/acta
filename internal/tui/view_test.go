@@ -977,10 +977,13 @@ func TestViewDebtDetail(t *testing.T) {
 		}
 	}
 	detail := strings.Join(labels, "\n")
-	for _, want := range []string{`DEBT\s+: a$`, `STATUS\s+: open$`, `FROM\s+: PLN-0003 . Short IDs$`} {
+	for _, want := range []string{`STATUS\s+: open$`, `FROM\s+: PLN-0003 . Short IDs$`} {
 		if ok, _ := regexp.MatchString("(?m)"+want, detail); !ok {
 			t.Errorf("detail header is missing %q, got:\n%s", want, detail)
 		}
+	}
+	if ok, _ := regexp.MatchString(`(?m)^DEBT\s+:`, detail); ok {
+		t.Errorf("detail header still has a DEBT line:\n%s", detail)
 	}
 
 }

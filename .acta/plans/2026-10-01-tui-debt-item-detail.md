@@ -3,6 +3,8 @@ parent: specs/2026-10-01-tui-debt-item-detail-design
 id: PLN-0061
 created: "2026-10-01 00:12:04"
 hash: h77lzid
+started: "2026-10-01 00:16:59"
+finished: "2026-10-01 00:21:31"
 ---
 # Debt Item Detail Shows the Full Note Implementation Plan
 
@@ -51,7 +53,7 @@ hash: h77lzid
 - Consumes: `Model.buildDetailParts(w int) (head, mid []string, foot string)`, `Model.debtLines(it *board.Item, w int) []string`, `xansi.Wrap(s string, limit int, breakpoints string) string`, test helpers `detailLines(t, cfg, id)`, `detailOf(t, id)`, `plainLines`, `ruleLine`, `treeCfg`, `boardFiles`, `detailModel`.
 - Produces: nothing new. `debtLines` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/tui/detail_test.go`, delete `TestDetailDebtItemListsEveryLineOfItsFile` and `TestDetailDebtItemShowsTheTextAroundItsLine`, and add these in their place:
 
@@ -122,12 +124,12 @@ In `internal/tui/view_test.go`, in the loop that checks the detail header (the o
 	}
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/tui -run 'TestDetailDebt|TestView'`
 Expected: FAIL. `TestDetailDebtItemShowsOnlyItsNote` finds the DEBT header line and "second note"; `TestDetailDebtItemWrapsALongNote` finds the note cut off; the view test finds the DEBT line. `TestDetailDebtFileListsEveryLine` may already pass.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `internal/tui/detail.go`, add `xansi "github.com/charmbracelet/x/ansi"` to the imports.
 
@@ -176,16 +178,98 @@ func (m Model) debtLines(file *board.Item, w int) []string {
 
 In `workLines`, change `case board.KindDebt, board.KindDebtItem:` to `case board.KindDebt:`, because a debt item no longer reaches it, and in its doc comment change "a debt file or debt item the lines of the debt file" to "a debt file its lines".
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS, including `TestDetailIsNeverEmpty` and the tab and width test that walks `DEBT-1.1`.
 
 Then run `go vet ./internal/tui && gofmt -l internal/tui` and expect no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/tui/detail.go internal/tui/detail_test.go internal/tui/view_test.go
 git commit -m "Debt item detail shows the full note alone (PLN-0061)"
+```
+
+## Fix round 1
+
+### Task 2: A wrapped note never loses text
+
+Review round 1 found that `xansi.Wrap(s, w, "")` can return a line wider than `w` when a `-` follows a space. `fit` then cuts the end of that line. Real note DBT-0046.01 at w=52 wraps to a 54-cell line `...already done (or -`, and the detail drops the ` -`.
+
+**Files:**
+- Modify: `internal/tui/detail.go` (the debt item branch of `buildDetailParts`)
+- Test: `internal/tui/detail_test.go`
+
+**verify:** For every debt item note and every pane width from 10 to 160, every wrapped line is at most w cells wide before `fit`, so `fit` never cuts anything, and joining the drawn middle lines gives back every non-space character of the note in order. The test sweeps the widths over notes that hold ` -` after a space, a word longer than the pane, and wide runes. List the notes and widths checked.
+
+**Interfaces:**
+- Consumes: `xansi.Wordwrap(s string, limit int, breakpoints string) string`, `xansi.Hardwrap(s string, limit int, preserveSpace bool) string`, test helpers `treeCfg`, `detailModel`, `onItem`, `plain`, `ruleLine`.
+- Produces: nothing new.
+
+- [ ] **Step 1: Write the failing test**
+
+In `internal/tui/detail_test.go`, add:
+
+```go
+// A note is wrapped to the pane at every width, and no wrapped line is cut,
+// so the reader never loses a word or a sign like a lone "-".
+func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
+	t.Parallel()
+
+	notes := []string{
+		"internal/write/mark.go: + on a task already done (or - on one already open) changes nothing, and more",
+		`a checklist line gives "- [ ] - [ ] text".`,
+		"averyveryveryverylongwordwithnospacesatallthatrunsonandon then short",
+		"日本語のメモ and ünïcode words in one note",
+	}
+	for _, note := range notes {
+		cfg := treeCfg(t, map[string]string{
+			".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
+		})
+		m := onItem(t, detailModel(t, cfg), "DEBT-1.1")
+		want := strings.Join(strings.Fields(note), "")
+		for w := 10; w <= 160; w++ {
+			_, mid, _ := m.buildDetailParts(w)
+			var got strings.Builder
+			for _, ln := range mid {
+				got.WriteString(strings.Join(strings.Fields(plain(ln)), ""))
+			}
+			if got.String() != want {
+				t.Errorf("at %d wide the note reads %q, want %q", w, got.String(), want)
+			}
+		}
+	}
+}
+```
+
+- [ ] **Step 2: Run the test to see it fail**
+
+Run: `scripts/test ./internal/tui -run TestDetailDebtItemNoteLosesNothingAtAnyWidth`
+Expected: FAIL at width 52 for the first note (the ` -` is gone) and at width 90 or so for the second.
+
+- [ ] **Step 3: Write the minimal code**
+
+In `buildDetailParts`, in the debt item branch, change the wrap call to:
+
+```go
+		// Wordwrap can leave a line wider than the pane when a "-" follows a
+		// space, and fit would then cut words off. Hardwrap breaks it again.
+		note := xansi.Hardwrap(xansi.Wordwrap(expandTabs(it.Title), w, ""), w, true)
+		for _, ln := range strings.Split(note, "\n") {
+			mid = append(mid, fit(ln, w))
+		}
+```
+
+- [ ] **Step 4: Run the tests to see them pass**
+
+Run: `scripts/test ./internal/tui`
+Expected: PASS. Then `go vet ./internal/tui && gofmt -l internal/tui` prints nothing.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add internal/tui/detail.go internal/tui/detail_test.go
+git commit -m "Wrapped debt note never loses text at any width (PLN-0061 fix round 1)"
 ```

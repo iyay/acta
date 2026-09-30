@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	xansi "github.com/charmbracelet/x/ansi"
 
 	"github.com/iyay/acta/internal/board"
 )
@@ -102,9 +103,14 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		}
 		return nil, []string{m.styles.faint.Render("enter opens the group")}, ""
 	}
+	title := it.Title
+	if it.Kind == board.KindDebtItem {
+		// A note is too long for one header line, so it goes in the middle.
+		title = ""
+	}
 	fields := []struct{ label, value string }{
 		{"ID", idText(it)},
-		{kindLabel(it.Kind), it.Title},
+		{kindLabel(it.Kind), title},
 		{"STATUS", it.Status},
 		{"AUTHOR", it.Author},
 		{"FROM", m.fromText(it)},
@@ -142,6 +148,14 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 	head = append(head, m.rule(w))
 	for _, p := range it.Problems {
 		mid = append(mid, m.styles.problem.Render(truncate(expandTabs("! "+p), w)))
+	}
+	if it.Kind == board.KindDebtItem {
+		// The list pane already names the other notes, so the middle is this
+		// note alone, wrapped so every word can be read.
+		for _, ln := range strings.Split(xansi.Wrap(expandTabs(it.Title), w, ""), "\n") {
+			mid = append(mid, fit(ln, w))
+		}
+		return head, mid, paintDates(m.styles, dateLine(it, w))
 	}
 	mid = append(mid, m.workLines(it, w)...)
 	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
@@ -236,13 +250,13 @@ func (m Model) closesText(ids []string) string {
 
 // workLines are the lines of work an item holds, one line each. What a kind
 // lists: a plan its tasks, a task its steps, a spec or a bug the tasks of
-// every plan under it, a debt file or debt item the lines of the debt file.
-// An item with no work at all lists nothing and leaves no empty line.
+// every plan under it, a debt file its lines. An item with no work at all
+// lists nothing and leaves no empty line.
 func (m Model) workLines(it *board.Item, w int) []string {
 	switch it.Kind {
 	case board.KindTask:
 		return m.stepLines(it, w)
-	case board.KindDebt, board.KindDebtItem:
+	case board.KindDebt:
 		return m.debtLines(it, w)
 	case board.KindPlan:
 		return m.taskLines(it, w)
@@ -291,22 +305,13 @@ func (m Model) planLines(parent *board.Item, w int) []string {
 	return out
 }
 
-// debtLines are the checklist lines of a debt file. The line on show is bold,
-// the others are plain, so the reader knows which NOTE is open.
-func (m Model) debtLines(it *board.Item, w int) []string {
-	file, on := it, it.ID
-	if it.Kind == board.KindDebtItem {
-		if file = m.board.Get(it.Parent); file == nil {
-			return nil
-		}
-	}
+// debtLines are the checklist lines of a debt file, one line each.
+func (m Model) debtLines(file *board.Item, w int) []string {
 	var out []string
 	for _, id := range file.Children {
-		line := m.board.Get(id)
-		if line == nil {
-			continue
+		if line := m.board.Get(id); line != nil {
+			out = append(out, workLine(m.styles, line, false, w))
 		}
-		out = append(out, workLine(m.styles, line, id == on, w))
 	}
 	return out
 }
