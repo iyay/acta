@@ -473,7 +473,7 @@ git commit -m "tui: draw list rows at full brightness with kind-colored ids"
 - Consumes: `styles.label`, `footLabel`, `done`, `waiting`, `problem`, `kind()`, `accent`, `work`, `faint` (Task 1); `sgrHas` (Task 1); `paintID` (Task 2, `scroll.go`).
 - Produces: `const footLines = 2`; `func (m Model) rule(w int) string`; `func (s styles) dot(mark string) lipgloss.Style`; `func paintDates(s styles, line string) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/detail_test.go`:
 
@@ -576,12 +576,12 @@ func TestStickyMidCountsBothFooterLines(t *testing.T) {
 
 If `actModel`'s bug has no `created` date, the footer still says `created -`, so the assert holds. If the test finds `detailCache` keyed so a changed `Problems` is not seen, the fresh `&detailCache{}` above handles it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestDetailLabelsAndIDWearColors|TestDetailDotsProblemsAndWorkLines|TestDetailFooterHasARuleAndColoredLabels|TestStickyMidCountsBothFooterLines'`
 Expected: FAIL to build with `s.dot undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/detail.go`:
 
@@ -678,12 +678,12 @@ In `internal/tui/view.go`, `detailView`:
 
 Update old tests that pin a one-line footer or the old `stickyMid` numbers.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...

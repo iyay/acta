@@ -291,8 +291,8 @@ func (m Model) planLines(parent *board.Item, w int) []string {
 	return out
 }
 
-// debtLines are the checklist lines of a debt file. The line on show is the
-// bright one, the others are dim, so the reader knows which NOTE is open.
+// debtLines are the checklist lines of a debt file. The line on show is bold,
+// the others are plain, so the reader knows which NOTE is open.
 func (m Model) debtLines(it *board.Item, w int) []string {
 	file, on := it, it.ID
 	if it.Kind == board.KindDebtItem {
