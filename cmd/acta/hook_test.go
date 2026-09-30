@@ -34,7 +34,7 @@ func TestHookCommands(t *testing.T) {
 		t.Fatal("config set failed")
 	}
 	out, _, _ = acta(t, dir, "", "hook", "prompt")
-	if strings.TrimSpace(out) != "acta voice: reply in Korean, adhd style." {
+	if strings.TrimSpace(out) != "acta config: reply in Korean, adhd style." {
 		t.Fatalf("prompt after setup: %q", out)
 	}
 	out, _, _ = acta(t, dir, "", "hook", "session-start")

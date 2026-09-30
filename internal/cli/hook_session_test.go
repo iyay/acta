@@ -194,7 +194,7 @@ func TestHookSessionPromptReminder(t *testing.T) {
 	}
 
 	voiceCode, voiceOut, voiceErr := runHook(t, "prompt", "")
-	if voiceCode != exitOK || voiceErr != "" || !strings.Contains(voiceOut, "acta voice:") {
+	if voiceCode != exitOK || voiceErr != "" || !strings.Contains(voiceOut, "acta config:") {
 		t.Fatalf("prompt with empty stdin: exit %d, stdout %q, stderr %q", voiceCode, voiceOut, voiceErr)
 	}
 
