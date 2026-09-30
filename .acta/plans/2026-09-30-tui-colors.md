@@ -999,7 +999,7 @@ Review round 1 (`752d34c..d95d375`): Standards axis CLEAN, Spec axis BLOCKED on 
 - Consumes: `styles.kind(board.Kind) lipgloss.Style`, `styles.dot`, `sgrHas` (Tasks 1 and 3); `actModel` (BUG-0002 has plan PLN-0004 "Plan Q" under it, with task PLN-0004.01 "Fixing").
 - Produces: `func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string`. `Model.paintID` stays and calls it, so the callers in `scroll.go` and `detail.go` do not change.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/detail_test.go`:
 
@@ -1047,12 +1047,12 @@ func TestDetailWorkLinesWearKindColoredIDs(t *testing.T) {
 
 If `m.Selected()` is not BUG-0002, or `planLines` of it has no `PLN-0004` line, look up the bug with `m.board.Get` by its path `bugs/2026-09-21-b` instead. Do not change the fixture.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run TestDetailWorkLinesWearKindColoredIDs`
 Expected: FAIL with "work line id is not in the plan color".
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/scroll.go`, move the body of `paintID` onto `styles`, and keep the `Model` method as a one-line call:
 
@@ -1098,12 +1098,12 @@ In `planLines`:
 		out = append(out, m.paintID(truncate(expandTabs(shortRef(it)+"  "+it.Title), w), it, lipgloss.NewStyle()))
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS, with every test from Tasks 1-5 still green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...

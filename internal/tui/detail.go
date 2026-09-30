@@ -285,7 +285,7 @@ func (m Model) planLines(parent *board.Item, w int) []string {
 		if it.Kind != board.KindPlan || it.SpecID != parent.ID {
 			continue
 		}
-		out = append(out, truncate(expandTabs(shortRef(it)+"  "+it.Title), w))
+		out = append(out, m.paintID(truncate(expandTabs(shortRef(it)+"  "+it.Title), w), it, lipgloss.NewStyle()))
 		out = append(out, m.taskLines(it, w)...)
 	}
 	return out
@@ -351,9 +351,9 @@ func dotOf(it *board.Item) string {
 }
 
 // workLine is one line of the list: the dot, the short ID, the title, and for
-// work under way its count and its agent, the same tail a list row wears. A
-// line the reader is on is bold; the rest are plain, and the dot wears the
-// color of its state.
+// work under way its count and its agent, the same tail a list row wears. The
+// ID wears the color of its kind, a line the reader is on is bold from the
+// dot onwards, and the dot wears the color of its state.
 func workLine(s styles, it *board.Item, on bool, w int) string {
 	mark, brush := dotOf(it), lipgloss.NewStyle()
 	if mark == dotGoing {
@@ -373,7 +373,7 @@ func workLine(s styles, it *board.Item, on bool, w int) string {
 	if !strings.HasPrefix(line, mark) {
 		return brush.Render(line)
 	}
-	return s.dot(mark).Render(mark) + brush.Render(line[len(mark):])
+	return s.dot(mark).Render(mark) + s.paintID(line[len(mark):], it, brush)
 }
 
 // tasksLabel names the line that counts the work: a task counts its steps, so

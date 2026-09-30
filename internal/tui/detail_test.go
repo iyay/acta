@@ -1073,3 +1073,48 @@ func TestStickyMidCountsBothFooterLines(t *testing.T) {
 		}
 	}
 }
+
+// Every line of work names its item by id, and the id wears the color of that
+// item's kind, on all the routes that draw one: the tasks of a plan, the plans
+// and tasks under a spec or a bug, the specs of an idea and the NOTE lines of
+// a debt file. The dot keeps its state color, the line the reader is on stays
+// bold from the dot to the agent, and an id the pane cut short stays plain.
+func TestDetailWorkLinesWearKindColoredIDs(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		s := m.styles
+		it := &board.Item{ShortID: "PLN-0003", Kind: board.KindPlan, Title: "Plan"}
+		off := workLine(s, it, false, 60)
+		if !strings.Contains(off, s.kind(board.KindPlan).Render("PLN-0003")) {
+			t.Errorf("work line id is not in the plan color: %q", off)
+		}
+		if !strings.HasPrefix(off, s.dot(dotWaiting).Render(dotWaiting)) {
+			t.Errorf("work line lost its dot color: %q", off)
+		}
+		on := workLine(s, it, true, 60)
+		if !strings.Contains(on, s.kind(board.KindPlan).Bold(true).Render("PLN-0003")) {
+			t.Errorf("the line the reader is on has no bold kind-colored id: %q", on)
+		}
+		if cut := workLine(s, it, false, 6); strings.Contains(cut, s.kind(board.KindPlan).Render("PLN-0003")) {
+			t.Errorf("a cut id got a color: %q", cut)
+		}
+
+		bug := m.Selected() // BUG-0002, with PLN-0004 under it
+		lines := m.planLines(bug, 80)
+		var head, task string
+		for _, ln := range lines {
+			switch p := plain(ln); {
+			case strings.Contains(p, "PLN-0004.01"):
+				task = ln
+			case strings.HasPrefix(p, "PLN-0004"):
+				head = ln
+			}
+		}
+		if !strings.Contains(head, s.kind(board.KindPlan).Render("PLN-0004")) {
+			t.Errorf("plan header line id is not in the plan color: %q", head)
+		}
+		if !strings.Contains(task, s.kind(board.KindTask).Render("PLN-0004.01")) {
+			t.Errorf("task line id is not in the task color: %q", task)
+		}
+	})
+}

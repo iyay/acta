@@ -160,6 +160,13 @@ func (m Model) listView(p pane, w int, b box) []string {
 // paintID draws a row with its id in the color of its kind and the rest in
 // base. A row with no item, or whose id was cut off, is all base.
 func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string {
+	return m.styles.paintID(text, it, base)
+}
+
+// paintID is the same for the code that holds only brushes, so a list row and
+// a line of work in the detail read alike. A bold base keeps the id bold, so
+// the line the reader is on stays bold from the dot to the agent.
+func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string {
 	if it == nil {
 		return base.Render(text)
 	}
@@ -171,7 +178,8 @@ func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string 
 	if i < 0 {
 		return base.Render(text)
 	}
-	return base.Render(text[:i]) + m.styles.kind(it.Kind).Render(name) + base.Render(text[i+len(name):])
+	brush := s.kind(it.Kind).Bold(base.GetBold())
+	return base.Render(text[:i]) + brush.Render(name) + base.Render(text[i+len(name):])
 }
 
 // rowText gives the one line of a row: the short ID, or the file path when the

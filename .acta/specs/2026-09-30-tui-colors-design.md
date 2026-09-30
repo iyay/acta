@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: SPC-0030
 hash: rw80yso
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI colors
 
