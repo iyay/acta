@@ -48,6 +48,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	switch {
 	case it == nil:
 		return Outcome{}, bad("unknown id %s", id)
+	case field == "priority":
+		return setPriority(cfg, it, id, value)
 	case it.Kind == board.KindTask:
 		return Outcome{}, bad("tasks take their status from their checkboxes")
 	case it.Legacy:
@@ -78,7 +80,7 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 			return Outcome{}, bad("ref %q must be one word of letters, digits and . _ / -, at most 40 characters", value)
 		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, fixed_in or ref", field)
+		return Outcome{}, bad("unknown field %q; use status, type, fixed_in, ref or priority", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -110,7 +112,10 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 
 // NewBug writes a bug file from a body an agent sent and commits it. The new
 // file gets the next BUG number and a fresh hash before it is written.
-func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, error) {
+func NewBug(cfg config.Config, slug, title, ref, priority string, body []byte) (Outcome, error) {
+	if priority != "" && !board.ValidPriority(priority) {
+		return Outcome{}, bad("priority must be high, medium or low, not %q", priority)
+	}
 	path, err := bugPath(cfg, slug)
 	if err != nil {
 		return Outcome{}, err
@@ -133,6 +138,11 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 	if err != nil {
 		return Outcome{}, err
 	}
+	if priority != "" {
+		if content, err = SetField(content, "priority", priority); err != nil {
+			return Outcome{}, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return Outcome{}, err
 	}
@@ -143,12 +153,20 @@ func NewBug(cfg config.Config, slug, title, ref string, body []byte) (Outcome, e
 }
 
 // StartBug writes the bare template so an editor can open it.
-func StartBug(cfg config.Config, slug, ref string) (string, []byte, error) {
+func StartBug(cfg config.Config, slug, ref, priority string) (string, []byte, error) {
+	if priority != "" && !board.ValidPriority(priority) {
+		return "", nil, bad("priority must be high, medium or low, not %q", priority)
+	}
 	path, err := bugPath(cfg, slug)
 	if err != nil {
 		return "", nil, err
 	}
 	tmpl := BugTemplate(strings.ReplaceAll(slug, "-", " "), ref)
+	if priority != "" {
+		if tmpl, err = SetField(tmpl, "priority", priority); err != nil {
+			return "", nil, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", nil, err
 	}

@@ -895,7 +895,7 @@ func (m Model) slugKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyEnter:
 		m.slug = nil
-		path, tmpl, err := write.StartBug(m.cfg, s, "")
+		path, tmpl, err := write.StartBug(m.cfg, s, "", "")
 		if err != nil {
 			m.status = "error: " + err.Error()
 			return m, nil

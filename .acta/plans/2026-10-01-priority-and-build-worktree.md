@@ -395,7 +395,7 @@ git commit -m "Board reads priority from bugs and debt lines"
   - `func write.StartBug(cfg config.Config, slug, ref, priority string) (string, []byte, error)`
   - `write.SetValue(cfg, b, id, "priority", "high"|"medium"|"low"|"none")`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/write/priority_test.go`:
 
@@ -547,12 +547,12 @@ func TestNewDebtKeepsTheTag(t *testing.T) {
 
 Update the existing calls in `internal/write/ops_test.go`: every `NewBug(cfg, a, b, c, body)` becomes `NewBug(cfg, a, b, c, "", body)`, and every `StartBug(cfg, a, b)` becomes `StartBug(cfg, a, b, "")`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/write -run 'Priority|KeepsTheTag'`
 Expected: FAIL to build: too many arguments to `NewBug` / `StartBug`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `internal/write/priority.go`:
 
@@ -695,12 +695,12 @@ In `internal/cli/cli.go`:
 
 In `internal/tui/model.go`: `write.StartBug(m.cfg, s, "")` becomes `write.StartBug(m.cfg, s, "", "")`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/write ./internal/cli` and `go build ./internal/tui`
 Expected: PASS, and the TUI still builds. (Write commands auto-commit; these tests run in temp repos from `repoWith`, never in this checkout.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/write internal/cli internal/tui && go vet ./internal/write ./internal/cli ./internal/tui

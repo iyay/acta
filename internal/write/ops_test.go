@@ -213,7 +213,7 @@ func fixNow(t *testing.T) {
 func TestNewBug(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
-	o, err := NewBug(cfg, "ack-dup", "", "New-261", []byte("## Symptom\nTwo ACKs.\n"))
+	o, err := NewBug(cfg, "ack-dup", "", "New-261", "", []byte("## Symptom\nTwo ACKs.\n"))
 	if err != nil || !o.Committed {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
@@ -240,7 +240,7 @@ func TestNewBug(t *testing.T) {
 func TestNewBugWritesNewFormatIDAndHash(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
-	o, err := NewBug(cfg, "short-id", "", "New-9", []byte("## Symptom\nx\n"))
+	o, err := NewBug(cfg, "short-id", "", "New-9", "", []byte("## Symptom\nx\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestNewBugBadInput(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if _, err := NewBug(cfg, c.slug, "", "", []byte(c.body)); !errors.Is(err, ErrBadInput) {
+			if _, err := NewBug(cfg, c.slug, "", "", "", []byte(c.body)); !errors.Is(err, ErrBadInput) {
 				t.Fatalf("err = %v", err)
 			}
 		})
@@ -270,10 +270,10 @@ func TestNewBugBadInput(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg.Root, "bugs", "2026-09-26-no-symptom.md")); !os.IsNotExist(err) {
 		t.Fatal("a bug with no Symptom was written")
 	}
-	if _, err := NewBug(cfg, "twice", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "twice", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewBug(cfg, "twice", "", "", []byte("## Symptom\nx\n")); !errors.Is(err, ErrBadInput) {
+	if _, err := NewBug(cfg, "twice", "", "", "", []byte("## Symptom\nx\n")); !errors.Is(err, ErrBadInput) {
 		t.Fatalf("second bug with the same name: err = %v", err)
 	}
 }
@@ -281,7 +281,7 @@ func TestNewBugBadInput(t *testing.T) {
 func TestNewBugCreatesRootFolder(t *testing.T) {
 	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
 	fixNow(t)
-	if _, err := NewBug(cfg, "first", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "first", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -290,7 +290,7 @@ func TestStartAndFinishBug(t *testing.T) {
 	cfg := repoWith(t, baseFiles)
 	fixNow(t)
 
-	path, tmpl, err := StartBug(cfg, "left-alone", "")
+	path, tmpl, err := StartBug(cfg, "left-alone", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestStartAndFinishBug(t *testing.T) {
 		t.Fatal("unchanged template was not removed")
 	}
 
-	path, tmpl, err = StartBug(cfg, "filled-in", "B-2")
+	path, tmpl, err = StartBug(cfg, "filled-in", "B-2", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func TestCommitMessagesNeverUsePmPrefix(t *testing.T) {
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "status", "fixed"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewBug(cfg, "guard-bug", "", "", []byte("## Symptom\nx\n")); err != nil {
+	if _, err := NewBug(cfg, "guard-bug", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "", []byte("a\n")); err != nil {

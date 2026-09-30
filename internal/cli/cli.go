@@ -102,7 +102,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdSet(args[1:], stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
-			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] < body.md")
+			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
 			return exitBadInput
 		}
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
@@ -451,7 +451,7 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
-		fmt.Fprintln(stderr, "usage: acta set <id> status|type|fixed_in|ref <value>")
+		fmt.Fprintln(stderr, "usage: acta set <id> status|type|fixed_in|ref|priority <value>")
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
@@ -466,9 +466,10 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 	fs, root := flags("bug new", stderr)
 	ref := fs.String("ref", "", "outside ticket code")
 	title := fs.String("title", "", "bug title (default: the body's # line, or the slug)")
+	priority := fs.String("priority", "", "high, medium or low")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] < body.md")
+		fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
 		return exitBadInput
 	}
 	cfg, code := loadConfig(*root, stderr)
@@ -481,10 +482,10 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 			fmt.Fprintln(stderr, err)
 			return exitOther
 		}
-		o, err := write.NewBug(cfg, pos[0], *title, *ref, body)
+		o, err := write.NewBug(cfg, pos[0], *title, *ref, *priority, body)
 		return report(o, err, stdout, stderr)
 	}
-	path, tmpl, err := write.StartBug(cfg, pos[0], *ref)
+	path, tmpl, err := write.StartBug(cfg, pos[0], *ref, *priority)
 	if err != nil {
 		return report(write.Outcome{}, err, stdout, stderr)
 	}
