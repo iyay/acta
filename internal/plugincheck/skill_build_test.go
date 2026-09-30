@@ -32,6 +32,7 @@ func TestSkillBuild(t *testing.T) {
 			"with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it",
 			"hand it to omp in another tab or pane",
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
+			"A native worktree tool puts the worktree inside the repo",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
@@ -40,6 +41,7 @@ func TestSkillBuild(t *testing.T) {
 			"or `go test ./...`, whichever the project uses",
 			"run the full test suite and the type checks, show the output, then use",
 			"subagent (default", "`subagent` (default)",
+			"EnterWorktree", "Native Worktree Tools", "native worktree tool available", "Git Worktree Fallback", "Step 1a",
 		},
 	})
 }

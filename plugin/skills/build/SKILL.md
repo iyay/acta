@@ -75,19 +75,7 @@ If `GIT_DIR == GIT_COMMON` (or in a submodule): you are in a normal repo checkou
 
 ### Step 1: Create Isolated Workspace
 
-You have two mechanisms. Try them in this order.
-
-#### 1a. Native Worktree Tools (preferred)
-
-Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
-
-Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
-
-Only proceed to Step 1b if you have no native worktree tool available.
-
-#### 1b. Git Worktree Fallback
-
-Only use this if Step 1a does not apply — you have no native worktree tool available. Create a worktree manually using git.
+Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`. The user pushes by hand, so the spec and plan just committed on local main are often not on origin, and that worktree would start without the plan.
 
 Directory selection, in priority order. Explicit user preference always beats observed filesystem state.
 
