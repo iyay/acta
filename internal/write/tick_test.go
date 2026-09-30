@@ -129,6 +129,36 @@ func TestTickTextBadInput(t *testing.T) {
 	}
 }
 
+func TestUntickTextClearsEveryBoxOfTheTaskOnly(t *testing.T) {
+	t.Parallel()
+
+	src := []byte("# P\n\n### Task 1: A\n- [x] a\n- [x] b\n\n### Task 2: B\n- [x] c\n")
+	out, done, total, err := UntickText(src, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "# P\n\n### Task 1: A\n- [ ] a\n- [ ] b\n\n### Task 2: B\n- [x] c\n"
+	if string(out) != want || done != 0 || total != 2 {
+		t.Fatalf("got %q %d/%d", out, done, total)
+	}
+}
+
+// The plan constant hides a box inside a code fence and puts a second task
+// after it. Untick clears the boxes of the one task, so the fenced line and
+// the next task keep their ticks.
+func TestUntickTextLeavesTheFenceAndTheNextTaskAlone(t *testing.T) {
+	t.Parallel()
+
+	out, done, total, err := UntickText([]byte(plan), 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(plan, "- [x] a", "- [ ] a", 1)
+	if string(out) != want || done != 0 || total != 3 {
+		t.Fatalf("got %q %d/%d want %q", out, done, total, want)
+	}
+}
+
 func TestTickLineSetsOnlyThatBox(t *testing.T) {
 	useLockBase(t)
 	path := filepath.Join(t.TempDir(), "d.md")

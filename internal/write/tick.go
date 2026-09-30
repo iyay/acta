@@ -27,6 +27,18 @@ var (
 // headingLine (1-based), or every box of that task when step is 0. Only the
 // ticked lines change.
 func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
+	return boxText(src, headingLine, step, 'x')
+}
+
+// UntickText clears every box of the task whose heading is on headingLine,
+// so a task marked done by mistake can go back to open.
+func UntickText(src []byte, headingLine int) ([]byte, int, int, error) {
+	return boxText(src, headingLine, 0, ' ')
+}
+
+// boxText writes state ('x' or ' ') into the ticked lines of one task and
+// leaves every other line byte for byte as it was.
+func boxText(src []byte, headingLine, step int, state byte) ([]byte, int, int, error) {
 	// Split on \n like the board parser so a 1-based Line means the same
 	// line here. Each line keeps its own trailing \r; the heading, fence
 	// and box matches are all prefix checks, so a trailing \r is harmless.
@@ -63,7 +75,7 @@ func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
 	}
 	for n, i := range boxes {
 		if step == 0 || n == step-1 {
-			lines[i] = tickBoxRe.ReplaceAllString(lines[i], "${1}x${3}")
+			lines[i] = tickBoxRe.ReplaceAllString(lines[i], "${1}"+string(state)+"${3}")
 		}
 	}
 	done := 0
@@ -78,6 +90,22 @@ func TickText(src []byte, headingLine, step int) ([]byte, int, int, error) {
 // Tick ticks a box in the plan file at path. An OS lock keeps two
 // implementers in one worktree from overwriting each other's ticks.
 func Tick(path string, headingLine, step int) (int, int, error) {
+	return rewriteTask(path, headingLine, func(src []byte) ([]byte, int, int, error) {
+		return TickText(src, headingLine, step)
+	})
+}
+
+// Untick opens every box of the task on headingLine (1-based) in the plan
+// file at path, and gives back the boxes of that task after the change.
+func Untick(path string, headingLine int) (int, int, error) {
+	return rewriteTask(path, headingLine, func(src []byte) ([]byte, int, int, error) {
+		return UntickText(src, headingLine)
+	})
+}
+
+// rewriteTask reads the file, hands it to edit and writes the result back
+// through a temp file, so a reader never sees half a plan.
+func rewriteTask(path string, headingLine int, edit func([]byte) ([]byte, int, int, error)) (int, int, error) {
 	unlock, err := lock(path)
 	if err != nil {
 		return 0, 0, err
@@ -87,7 +115,7 @@ func Tick(path string, headingLine, step int) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	out, done, total, err := TickText(src, headingLine, step)
+	out, done, total, err := edit(src)
 	if err != nil {
 		return 0, 0, err
 	}
