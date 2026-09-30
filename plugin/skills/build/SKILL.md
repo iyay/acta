@@ -38,6 +38,8 @@ The spec and plan from acta:brainstorm and acta:plan stay on main; they are alre
 
 Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `acta:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
 
+Copy in the house rules too: `AGENTS.md` and `CLAUDE.md` — `AGENTS.md` is a symlink to an untracked `CLAUDE.md`, so a fresh worktree gets neither and the agent runs the whole ticket with zero house rules.
+
 ### Step 0: Detect Existing Isolation
 
 Before creating anything, check if you are already in an isolated workspace.

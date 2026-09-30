@@ -2,6 +2,7 @@
 id: PLN-0058
 created: "2026-09-30"
 hash: rr5so5y
+started: "2026-09-30"
 ---
 # Build Owns Dispatch Implementation Plan
 
@@ -72,7 +73,7 @@ hash: rr5so5y
 - Consumes: nothing.
 - Produces: `plugin/skills/build/dispatch.md` and `plugin/skills/build/herdr-delivery.md`; `hook.Skills` with 11 entries and no `dispatch`. Task 2 links to `dispatch.md` from build's executor text.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/plugincheck/build_dispatch_test.go`:
 
@@ -193,12 +194,12 @@ In `internal/hook/hook_test.go` (`TestSessionStartListsSkillsAndRules`): `len(Sk
 
 Delete `internal/plugincheck/skill_dispatch_test.go`.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/plugincheck/ ./internal/hook/`
 Expected: FAIL: `TestNoDispatchSkill` (`plugin/skills/dispatch still exists`), `TestBuildDispatchDelivery` (read error on `build/dispatch.md`), the retargeted reply-back tests, and `TestSessionStartListsSkillsAndRules` (`12 skills, want 11`).
 
-- [ ] **Step 3: Move `herdr-delivery.md`**
+- [x] **Step 3: Move `herdr-delivery.md`**
 
 ```bash
 git mv plugin/skills/dispatch/herdr-delivery.md plugin/skills/build/herdr-delivery.md
@@ -206,7 +207,7 @@ git mv plugin/skills/dispatch/herdr-delivery.md plugin/skills/build/herdr-delive
 
 Then change only its pointers. Every `SKILL.md` in it meant the old dispatch skill: point each one at `dispatch.md` and the section of the same name. The line 43 and line 221 pointers to "Step -1" point at the build worktree instead: "the worktree from `## Worktree` in SKILL.md". The line 3 note says `same as dispatch.md`. No other text changes.
 
-- [ ] **Step 4: Write `plugin/skills/build/dispatch.md`**
+- [x] **Step 4: Write `plugin/skills/build/dispatch.md`**
 
 No frontmatter: it is a reference file, not a skill. Start with:
 
@@ -246,7 +247,7 @@ Then carry over these sections of the old `plugin/skills/dispatch/SKILL.md`, tex
 
 Before dropping each of the five sections in the last row, and each part cut from Review, After a review, Landing and Memory sweep, find each of its rules in `build/SKILL.md`, `plugin/skills/review/SKILL.md` or `plugin/skills/land/SKILL.md`. A rule found nowhere goes into `dispatch.md` when only a tab needs it, or into `build/SKILL.md` when every executor needs it. Write the list (rule, where it lives now) into your report for the verify line.
 
-- [ ] **Step 5: Delete the old skill and fix the pointers**
+- [x] **Step 5: Delete the old skill and fix the pointers**
 
 ```bash
 git rm plugin/skills/dispatch/SKILL.md
@@ -270,12 +271,12 @@ Regenerate the rules file:
 go test ./internal/hook -run TestDefaultRulesFile -update
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ ./internal/hook/`
 Expected: PASS.
 
-- [ ] **Step 7: Format, vet, commit**
+- [x] **Step 7: Format, vet, commit**
 
 ```bash
 gofmt -l internal/ && go vet ./internal/plugincheck/ ./internal/hook/

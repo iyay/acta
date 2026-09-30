@@ -60,6 +60,7 @@ func TestBuildDispatchDelivery(t *testing.T) {
 			"exactly one read", "checkpoint unconfirmed", "gets its own one read", "outside this rule",
 			"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "then `/goal` only",
 			"acta:review", "acta:land", "herdr pane close", "Bugs found by recipient",
+			"literal skill name, a review keyword, and the range",
 		},
 		"herdr-delivery.md": {
 			"exactly one read", "checkpoint unconfirmed", "HARD RULE", "New session started", "🎯 Goal",

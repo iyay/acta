@@ -293,6 +293,8 @@ Compare commits against the ticket list. Re-run the decisive mutation yourself o
 
 **`acta:review`'s small-change self-review exception does NOT apply to a dispatch.** You did not write or watch the code; "a few lines" is what a drifted diff looks like from outside. Skill, every round, any diffstat. Everything else about the round — the two reviewers, the range, the plan path, the finding bar and the round cap — is `acta:review`.
 
+User explicitly wants a *different* pane to review → that message needs three things: the literal skill name, a review keyword, and the range.
+
 ## Fix rounds
 
 A round that comes back with BLOCKERs goes out **in this same turn, automatically**. A findings list handed to the user with no dispatch behind it is an incomplete turn. The fix task itself, the round count and what happens after round 3 are `acta:review`; only the delivery is here:

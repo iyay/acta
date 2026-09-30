@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: scratch/2026-09-30-build-owns-dispatch
 id: SPC-0049
 hash: vwgdcje
+started: "2026-09-30"
 ---
 # One implementation skill: build owns dispatch
 
