@@ -33,7 +33,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"(code, comments, commits, specs, plans) in English.",
 		"full, clear sentences",
 		"Style (ADHD reader):",
-		`- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory`,
+		`- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
 		"- acta:build: run an approved plan in a worktree; executor from `acta voice show`, else ask: subagent, dispatch or inline",
 	} {
@@ -137,7 +137,7 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 				t.Errorf("%s: session start missing %q", name, want)
 			}
 		}
-		if !strings.Contains(out, "- acta:scratch: raw ideas (\"catet\", \"nanti\", side ideas); file with acta scratch new, never memory") {
+		if !strings.Contains(out, "- acta:scratch: raw ideas (\"note this\", \"later\", side ideas, any language); file with acta scratch new, never memory") {
 			t.Errorf("%s: session start does not carry the plain scratch index line", name)
 		}
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules

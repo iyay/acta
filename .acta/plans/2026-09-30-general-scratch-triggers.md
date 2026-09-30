@@ -3,6 +3,8 @@ parent: specs/2026-09-30-general-scratch-triggers-design
 created: "2026-09-30"
 id: PLN-0049
 hash: ysib7t0
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # General scratch trigger words Implementation Plan
 
@@ -52,7 +54,7 @@ hash: ysib7t0
 - Consumes: `CheckSkill`, `SkillRule` (existing, `internal/plugincheck`).
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/plugincheck/skill_scratch_test.go`, change the `Must` line and the `MustNot` list:
 
@@ -68,12 +70,12 @@ In `internal/plugincheck/skill_scratch_test.go`, change the `Must` line and the 
 		MustNot: []string{"superpowers:", "You may add your own lines", "below theirs", "catet", "nanti", "kepikiran"},
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/plugincheck/ -run 'TestSkillScratch$' -v`
 Expected: FAIL. It reports "idea for later" and "any language" missing and "catet", "nanti", "kepikiran" present.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `plugin/skills/scratch/SKILL.md`, line 3 becomes:
 
@@ -87,12 +89,12 @@ Line 12 becomes:
 - The user drops a raw idea: "note this", "later", "idea for later", or the same intent in any language. File it at once. Do not ask first; the words are the idea.
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ -v -run 'TestSkillScratch|TestEval'`
 Expected: PASS. The eval guard test still finds "note this".
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/plugincheck && go vet ./internal/plugincheck/
@@ -113,7 +115,7 @@ git commit -m "Use general scratch trigger words in the scratch skill"
 - Consumes: nothing from Task 1.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/hook/hook_test.go`, replace the expected line near line 36 with:
 
@@ -127,12 +129,12 @@ and the check near line 140 with:
 		if !strings.Contains(out, "- acta:scratch: raw ideas (\"note this\", \"later\", side ideas, any language); file with acta scratch new, never memory") {
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/hook/ -v`
 Expected: FAIL. Both checks report the new scratch line missing.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/hook/hook.go` line 30:
 
@@ -146,12 +148,12 @@ Then regenerate the file the shell hook and omp read:
 go test ./internal/hook -run TestDefaultRulesFile -update
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/hook/ -v && grep -n 'acta:scratch' plugin/hooks/default-rules.md`
 Expected: PASS, and the grep shows the new line.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/hook && go vet ./internal/hook/
