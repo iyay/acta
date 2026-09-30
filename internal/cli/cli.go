@@ -136,8 +136,10 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdDispatchInit(args[2:], stdout, stderr)
 	case "reply-back":
 		return cmdReplyBack(args[1:], stdout, stderr)
+	case "run-one":
+		return cmdRunOne(args[1:], stdin, stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init or reply-back\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, reply-back or run-one\n", args[0])
 		return exitBadInput
 	}
 }
