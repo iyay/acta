@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -66,7 +67,7 @@ func TestHexThemeRoles(t *testing.T) {
 	if s.work.GetForeground() != lipgloss.Color("#7aa2f7") {
 		t.Fatalf("work = %v", s.work.GetForeground())
 	}
-	if s.dim.GetForeground() != lipgloss.Color("#2d3147") {
+	if s.dim.GetForeground() != lipgloss.Color("#414868") {
 		t.Fatalf("dim = %v", s.dim.GetForeground())
 	}
 	if !s.faint.GetFaint() {
@@ -183,10 +184,39 @@ func TestViewCarriesTheThemeBackground(t *testing.T) {
 	})
 }
 
-// TestDimFadesTowardTheBackground checks every built-in theme with its own
-// colors: the dim color sits halfway between the background and slot 8, so
-// it is never a color the panes already wear.
-func TestDimFadesTowardTheBackground(t *testing.T) {
+// contrast is the WCAG contrast ratio of two #rrggbb colors. Terminals like
+// Ghostty swap a foreground for white or black when this is under their
+// floor, so a dim color that sits too close to the background turns bright.
+func contrast(t *testing.T, a, b string) float64 {
+	t.Helper()
+	lum := func(h string) float64 {
+		n, err := strconv.ParseUint(strings.TrimPrefix(h, "#"), 16, 32)
+		if err != nil || len(h) != 7 {
+			t.Fatalf("not a #rrggbb color: %q", h)
+		}
+		var out float64
+		for i, w := range []float64{0.2126, 0.7152, 0.0722} {
+			c := float64(n>>(16-8*i)&0xff) / 255
+			if c <= 0.03928 {
+				c /= 12.92
+			} else {
+				c = math.Pow((c+0.055)/1.055, 2.4)
+			}
+			out += w * c
+		}
+		return out
+	}
+	la, lb := lum(a), lum(b)
+	if la < lb {
+		la, lb = lb, la
+	}
+	return (la + 0.05) / (lb + 0.05)
+}
+
+// TestDimKeepsContrastOverTheBackground checks every built-in theme with its
+// own colors. The dim color must stay far enough from the background that a
+// terminal with a minimum contrast of 1.5 leaves it alone.
+func TestDimKeepsContrastOverTheBackground(t *testing.T) {
 	t.Parallel()
 
 	for _, name := range theme.Names() {
@@ -196,35 +226,28 @@ func TestDimFadesTowardTheBackground(t *testing.T) {
 		}
 		s := newStyles(th, true)
 		got := s.dim.GetForeground()
-		if want := lipgloss.Color(mixHex(th.BG, th.ANSI[slotDim])); got != want {
-			t.Errorf("%s: dim %v, want %v", name, got, want)
+		if got != lipgloss.Color(th.ANSI[slotDim]) {
+			t.Errorf("%s: dim %v, want slot 8 %s", name, got, th.ANSI[slotDim])
+			continue
 		}
-		for _, used := range []string{th.FG, th.ANSI[slotDim], th.ANSI[slotAccent], th.ANSI[slotWork]} {
-			if th.BG != th.ANSI[slotDim] && got == lipgloss.Color(used) {
-				t.Errorf("%s: dim %v is a color the panes already wear", name, got)
-			}
+		if r := contrast(t, string(got.(lipgloss.Color)), th.BG); r < 1.6 {
+			t.Errorf("%s: dim %v on %s has contrast %.2f, want at least 1.6", name, got, th.BG, r)
+		}
+	}
+}
+
+func TestDimIsNeverFaint(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, _ := theme.Builtin(name)
+		if newStyles(th, true).dim.GetFaint() {
+			t.Errorf("%s: dim is faint, which lowers its contrast again", name)
 		}
 	}
 	term, _ := theme.Builtin("terminal")
 	if got := newStyles(term, true).dim.GetForeground(); got != lipgloss.Color("8") {
 		t.Errorf("terminal theme: dim %v, want slot 8", got)
-	}
-}
-
-func TestMixHex(t *testing.T) {
-	t.Parallel()
-
-	for _, c := range []struct{ a, b, want string }{
-		{"#1a1b26", "#414868", "#2d3147"},
-		{"#000000", "#ffffff", "#7f7f7f"},
-		{"#ABCDEF", "#abcdef", "#abcdef"},
-		{"", "#414868", "#414868"},
-		{"#12345", "#414868", "#414868"},
-		{"#zzzzzz", "#414868", "#414868"},
-	} {
-		if got := mixHex(c.a, c.b); got != c.want {
-			t.Errorf("mixHex(%q, %q) = %q, want %q", c.a, c.b, got, c.want)
-		}
 	}
 }
 

@@ -3,6 +3,7 @@ parent: bugs/2026-09-30-popup-dim-turns-bright-in-ghostty
 created: "2026-09-30"
 id: PLN-0046
 hash: d9ep3ly
+started: "2026-09-30"
 ---
 # Popup Dim Contrast Implementation Plan
 
@@ -63,7 +64,7 @@ Every task touches `internal/tui/view_test.go`, and Tasks 1 and 3 both touch `in
 - Consumes: `slot`, `slotDim`, `theme.Names`, `theme.Builtin` (existing).
 - Produces: nothing new. `styles.dim` keeps its name and type.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/styles_test.go`, replace `TestDimFadesTowardTheBackground` and `TestMixHex` with the tests below. Add `math` and `strconv` to the imports if they are missing.
 
@@ -147,12 +148,12 @@ In `internal/tui/view_test.go`, `TestPopupDimsTheBackground`, change the brush a
 	dim := func() lipgloss.Style { return lipgloss.NewStyle().Foreground(lipgloss.Color("#414868")) }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestDimKeepsContrastOverTheBackground|TestDimIsNeverFaint|TestHexThemeRoles|TestPopupDimsTheBackground'`
 Expected: FAIL. On today's code, tokyo-night dim is `#2d3147`, not slot 8, and dim is faint.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `newStyles` (`internal/tui/styles.go`), the `dim` entry and its comment become:
 
@@ -166,12 +167,12 @@ In `newStyles` (`internal/tui/styles.go`), the `dim` entry and its comment becom
 
 Delete `dimColor`, `mixHex` and `hexRGB` together with their comments. Remove `fmt` from the imports if nothing else in the file uses it. Before you delete them, run `grep -rn "mixHex\|hexRGB\|dimColor" internal/` and check that no other file uses them.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

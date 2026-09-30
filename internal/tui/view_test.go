@@ -1324,8 +1324,8 @@ func boxOn(lines []string, row string) int {
 func TestPopupDimsTheBackground(t *testing.T) {
 	// The brush the view paints the screen behind a popup with, spelled out
 	// here so this test checks the color the plan names and not the one the
-	// view happens to use today.
-	dim := func() lipgloss.Style { return lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#2d3147")) }
+	// view happens to use today: tokyo-night slot 8, never faint.
+	dim := func() lipgloss.Style { return lipgloss.NewStyle().Foreground(lipgloss.Color("#414868")) }
 	withColors(func() { checkPopupDim(t, dim()) })
 	withTrueColor(func() { checkPopupDim(t, dim()) })
 }
