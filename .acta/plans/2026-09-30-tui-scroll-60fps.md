@@ -3,6 +3,7 @@ id: PLN-0045
 created: "2026-09-30"
 hash: mc42ys2
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI Scroll at 60fps Implementation Plan
 
@@ -838,7 +839,7 @@ git commit -m "tui: glue the wide layout line by line so each cell is measured o
   - `func (m Model) WithTrace(t *Tracer) Model`
   - in package `cli`: `func tuiTrace(path string, stdout *os.File, stderr io.Writer) (*tui.Tracer, []tea.ProgramOption, func())`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/tui/tracewire_test.go`:
 
@@ -948,12 +949,12 @@ func TestTuiTraceWritesTheSummaryOnDone(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'TestModel(Sends|WithNo)' -count=1 && go test ./internal/cli/ -run 'TuiTrace' -count=1`
 Expected: FAIL to build, `m.WithTrace undefined` and `undefined: tuiTrace`.
 
-- [ ] **Step 3: Wire it**
+- [x] **Step 3: Wire it**
 
 In `internal/tui/model.go`, add the field next to `frame`:
 
@@ -1050,12 +1051,12 @@ In `internal/cli/cli.go`, `runTUI` builds the program like this:
 
 `tea.WithFPS(120)` cannot be read back from a `tea.Program`, so no unit test sees it. The live trace in the landing report checks it: `first_p95_ms` above 16.7 with `view_p95_ms` near 4 means the option is missing.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -run 'TestModel(Sends|WithNo)|Trace' -count=1 -race && go test ./internal/cli/ -run 'TuiTrace' -count=1`
 Expected: PASS. Then `scripts/test ./internal/tui/ ./internal/cli/`. Expected: PASS.
 
-- [ ] **Step 5: Format, vet and commit**
+- [x] **Step 5: Format, vet and commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ ./internal/cli/

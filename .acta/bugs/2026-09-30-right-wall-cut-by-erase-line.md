@@ -1,6 +1,8 @@
 ---
 id: BUG-0015
 hash: dqy5od2
+fixed_in: "1641042"
+finished: "2026-09-30"
 ---
 # The right wall of every pane is missing
 

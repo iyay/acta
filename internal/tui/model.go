@@ -144,6 +144,7 @@ type Model struct {
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
 	frame    *frameCache  // the last frame View drew, shared by every copy
+	trace    *Tracer      // notes wheel notches and draws; nil when off
 	same     bool         // true when the last message changed nothing on screen
 	styles   styles       // the brushes every screen is painted with
 }
@@ -200,6 +201,13 @@ func (m Model) WithTheme(name string, dark bool) Model {
 // every worktree of the repo.
 func (m Model) WithLoad(f func() (*board.Board, error)) Model {
 	m.load = f
+	return m
+}
+
+// WithTrace makes the model note its wheel notches and draws in t. A nil t
+// keeps the note off, which is how the model runs when no trace is asked for.
+func (m Model) WithTrace(t *Tracer) Model {
+	m.trace = t
 	return m
 }
 
@@ -555,6 +563,10 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.same = true
 			return m, nil
 		}
+		// The notch got past the pane the reader is looking at, so it is part
+		// of the scroll. It is written down here, before any of the branches
+		// below change what is armed, so first says what really happened.
+		m.trace.Notch(!m.wheelArmed)
 		step := wheelStep
 		if msg.Button == tea.MouseButtonWheelUp {
 			step = -wheelStep

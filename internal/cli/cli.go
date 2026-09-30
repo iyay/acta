@@ -51,7 +51,12 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	}
 	dark := lipgloss.HasDarkBackground()
 	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	// 120fps halves how long a new frame waits to reach the screen.
+	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
+	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
+	defer traceDone()
+	m = m.WithTrace(tr)
+	p := tea.NewProgram(m, append(opts, traceOpts...)...)
 	load := func() (*board.Board, error) { return trees.Load(cfg) }
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
 	if stop, err := tui.Watch(dirs, load, p.Send); err != nil {

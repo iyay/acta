@@ -2,8 +2,9 @@
 id: SCR-0022
 hash: ip1j9ca
 title: omp still looks for house rules under the old pm-board path
-status: raw
+status: dropped
 created: "2026-09-29"
+finished: "2026-09-30"
 ---
 User 2026-09-29: "catet temuan yang aneh tadi".
 

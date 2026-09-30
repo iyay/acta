@@ -1,5 +1,5 @@
 ---
-id: BUG-0014
+id: BUG-0016
 hash: lpjj005
 ---
 # A frame tick scrolls the pane under an open help

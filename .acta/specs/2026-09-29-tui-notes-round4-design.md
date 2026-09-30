@@ -1,5 +1,6 @@
 ---
 parent: scratch/2026-09-29-popup-dim-main-text
+closes: [SCR-0025]
 id: SPC-0027
 created: "2026-09-29"
 hash: tumjl17

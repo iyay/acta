@@ -93,7 +93,13 @@ func (m Model) View() string {
 	if m.same && m.frame != nil && m.frame.s != "" {
 		return m.frame.s
 	}
+	// The draw is timed so a slow frame shows up in the trace. A nil tracer
+	// answers every question with nothing, so an untraced run pays nothing.
+	start := m.trace.Now()
 	s := m.draw()
+	if m.trace != nil {
+		m.trace.View(start, m.trace.Now().Sub(start))
+	}
 	if m.frame != nil {
 		m.frame.s = s
 	}
@@ -104,41 +110,65 @@ func (m Model) View() string {
 // top of them.
 func (m Model) draw() string {
 	g := m.geometry()
+	if !g.wide {
+		return m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false)
+	}
+	// A box with no room draws nothing, so it takes no line either and the
+	// boxes below it keep the place the geometry gave them.
+	var left []string
+	for p := range g.side {
+		if drawn := m.paneView(pane(p), g.side[p]); drawn != "" {
+			left = append(left, strings.Split(drawn, "\n")...)
+		}
+	}
+	right := strings.Split(m.paneView(paneDetail, g.detail), "\n")
+	// Every box line is already padded to its box width, so the two columns
+	// are glued with no measuring. Measuring each cell again was most of the
+	// time a frame took. A column that runs out gets blank lines of its width.
+	body := make([]string, max(len(left), len(right)))
+	for i := range body {
+		l, r := strings.Repeat(" ", g.leftW), strings.Repeat(" ", g.detail.w)
+		if i < len(left) {
+			l = left[i]
+		}
+		if i < len(right) {
+			r = right[i]
+		}
+		body[i] = l + r
+	}
+	return m.frameFrom(body, true)
+}
+
+// frameFrom puts the tab box on top of the body lines, cuts them to the
+// screen, adds the status line and lays any popup over it all. exact says
+// the body lines are already the screen width.
+func (m Model) frameFrom(body []string, exact bool) string {
 	// The status line always has a row of its own, so the tab box and the
 	// panes below it share the rest, and a terminal with fewer rows than the
 	// box needs simply loses the bottom of the box.
 	h := max(1, m.height-1)
-	var body string
-	if g.wide {
-		// A box with no room draws nothing, so it takes no line either and
-		// the boxes below it keep the place the geometry gave them.
-		var column []string
-		for p := range g.side {
-			if drawn := m.paneView(pane(p), g.side[p]); drawn != "" {
-				column = append(column, drawn)
-			}
-		}
-		body = lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.JoinVertical(lipgloss.Left, column...), m.paneView(paneDetail, g.detail))
-	} else {
-		body = m.paneView(m.focus, g.full)
-	}
-	lines := append(m.tabRows(m.width), strings.Split(body, "\n")...)
+	tabs := m.tabRows(m.width)
+	lines := append(tabs, body...)
 	if len(lines) > h {
 		lines = lines[:h]
 	}
 	for i, ln := range lines {
+		// The wide body is glued from boxes that are already the screen
+		// width, so only the tab rows and the narrow body need fitting.
+		if exact && i >= len(tabs) {
+			continue
+		}
 		lines[i] = fit(ln, m.width)
 	}
-	body = strings.Join(lines, "\n")
+	out := strings.Join(lines, "\n")
 	line := fit(m.statusLine(), m.width)
 	if m.popupBox() != "" {
 		// The box can be as tall as the screen, so it is laid over the body
 		// and the status line together. Cover greys every line it gets and
 		// strips the hyperlinks, which are off while a popup is open.
-		return m.styles.paintFrame(m.cover(body+"\n"+line), m.width)
+		return m.styles.paintFrame(m.cover(out+"\n"+line), m.width)
 	}
-	return m.styles.paintFrame(body+"\n"+line, m.width)
+	return m.styles.paintFrame(out+"\n"+line, m.width)
 }
 
 // tabRows draws the tabs in a box of their own, so they read as the top of
