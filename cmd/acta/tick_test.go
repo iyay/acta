@@ -11,6 +11,8 @@ import (
 )
 
 func TestTickCommand(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	plan := filepath.Join(dir, ".acta/plans/2026-09-21-alpha.md")
 	before, _ := os.ReadFile(plan)
@@ -48,6 +50,8 @@ func TestTickCommand(t *testing.T) {
 	}
 }
 func TestTickHelp(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	for _, args := range [][]string{
 		{"tick", "--help"},
@@ -71,6 +75,8 @@ func TestTickHelp(t *testing.T) {
 }
 
 func TestTickMixedLineEndingsFromBoardLine(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	// Plan's BLOCKER repro: a CRLF plan with no frontmatter. pmb set
 	// prepends an LF-only frontmatter block, so the file ends up mixed.
@@ -214,6 +220,8 @@ func commitCount(t *testing.T, dir string) string {
 // --start marks the task started without touching a box, and it refuses to
 // mix with the flags that tick boxes, writing nothing when refused.
 func TestTickStartMarksStartedWithoutTicking(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	plan := filepath.Join(dir, ".acta/plans/2026-09-21-alpha.md")
 	id := "plans/2026-09-21-alpha#task-1"

@@ -10,6 +10,8 @@ import (
 )
 
 func TestListShowsWorktreeProgress(t *testing.T) {
+	t.Parallel()
+
 	repo := fixtureRepo(t)
 	wt := repo + "-feat"
 	if out, err := exec.Command("git", "-C", repo, "worktree", "add", "-q", wt, "-b", "feat").CombinedOutput(); err != nil {
@@ -53,6 +55,8 @@ func TestListShowsWorktreeProgress(t *testing.T) {
 }
 
 func TestListShowsBranchItems(t *testing.T) {
+	t.Parallel()
+
 	repo := fixtureRepo(t)
 	gitDo := func(args ...string) {
 		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {

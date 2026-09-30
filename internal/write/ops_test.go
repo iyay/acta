@@ -15,12 +15,6 @@ import (
 
 func repoWith(t *testing.T, files map[string]string) config.Config {
 	t.Helper()
-	for _, k := range []string{"GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"} {
-		t.Setenv(k, "test")
-	}
-	for _, k := range []string{"GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"} {
-		t.Setenv(k, "test@example.com")
-	}
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -35,6 +29,10 @@ func repoWith(t *testing.T, files map[string]string) config.Config {
 		}
 	}
 	gitRun(t, dir, "init", "-q", "-b", "main")
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	gitRun(t, dir, "config", "user.name", "test")
+	gitRun(t, dir, "config", "user.email", "test@example.com")
 	gitRun(t, dir, "add", ".")
 	gitRun(t, dir, "commit", "-q", "-m", "init")
 	cfg := config.Default(dir)
@@ -126,6 +124,8 @@ func TestSetValueWritesDates(t *testing.T) {
 }
 
 func TestSetValueBadInput(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, baseFiles)
 	b := mustLoad(t, cfg)
 	cases := []struct{ name, id, field, value string }{
@@ -150,6 +150,8 @@ func TestSetValueBadInput(t *testing.T) {
 }
 
 func TestSetValueDirtyFileIsWrittenNotCommitted(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, baseFiles)
 	p := filepath.Join(cfg.Root, "bugs/2026-09-24-crash.md")
 	if err := os.WriteFile(p, []byte("---\nref: B-1\n---\n# Crash\n\n## Symptom\nEdited by hand.\n"), 0o644); err != nil {
@@ -165,6 +167,8 @@ func TestSetValueDirtyFileIsWrittenNotCommitted(t *testing.T) {
 }
 
 func TestSetValueCRLFFileKeepsRef(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-26-win.md": "---\r\nref: TICK-7\r\nstatus: draft\r\n---\r\n# Win spec\r\n",
 	})
@@ -189,6 +193,8 @@ func TestSetValueCRLFFileKeepsRef(t *testing.T) {
 }
 
 func TestSetValueAutoCommitOff(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, baseFiles)
 	cfg.AutoCommit = false
 	o, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "type", "story")
@@ -331,6 +337,8 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 }
 
 func TestSetValueFixedInAndRefBadInput(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{
 		".acta/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
 		".acta/specs/2026-09-20-alpha.md": "# Alpha\n",
@@ -390,6 +398,8 @@ func TestCommitMessagesNeverUsePmPrefix(t *testing.T) {
 }
 
 func TestSetValueFixedInAndRefKindsAndBounds(t *testing.T) {
+	t.Parallel()
+
 	files := map[string]string{
 		".acta/bugs/2026-09-24-crash.md":  "# Crash\n\n## Symptom\nx\n",
 		".acta/specs/2026-09-20-alpha.md": "# Alpha\n",

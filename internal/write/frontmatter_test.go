@@ -188,6 +188,8 @@ func TestSetFieldErrors(t *testing.T) {
 }
 
 func TestRemoveField(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ name, in, want string }{
 		{
 			"key in the middle",
@@ -219,6 +221,8 @@ func TestRemoveField(t *testing.T) {
 }
 
 func TestRemoveFieldErrors(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]string{
 		"no frontmatter": "# T\n",
 		"unclosed block": "---\nstatus: raw\n# T\n",

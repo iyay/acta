@@ -16,6 +16,9 @@ var actaBin string
 var pmbBin string
 
 func TestMain(m *testing.M) {
+	// An inherited PM_ROOT would point every test at the wrong board. Clear
+	// it once here, so no helper has to set env and block parallel tests.
+	os.Unsetenv("PM_ROOT")
 	dir, err := os.MkdirTemp("", "acta-bin")
 	if err != nil {
 		fmt.Println(err)
@@ -39,13 +42,6 @@ func TestMain(m *testing.M) {
 // fixtureRepo copies the board fixture into a fresh git repo.
 func fixtureRepo(t *testing.T) string {
 	t.Helper()
-	for _, k := range []string{"GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"} {
-		t.Setenv(k, "test")
-	}
-	for _, k := range []string{"GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"} {
-		t.Setenv(k, "test@example.com")
-	}
-	t.Setenv("PM_ROOT", "")
 	dst, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +64,9 @@ func fixtureRepo(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"add", "."}, {"commit", "-q", "-m", "init"}} {
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"config", "user.name", "test"}, {"config", "user.email", "test@example.com"}, {"add", "."}, {"commit", "-q", "-m", "init"}} {
 		if out, err := exec.Command("git", append([]string{"-C", dst}, args...)...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
 		}
@@ -134,6 +132,8 @@ func decode(t *testing.T, s string, v any) {
 }
 
 func TestListJSON(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, _, code := acta(t, dir, "", "list", "--type", "story", "--json")
 	if code != 0 {
@@ -156,6 +156,8 @@ func TestListJSON(t *testing.T) {
 
 // A plan is its own item, so a list line says so instead of calling it a story.
 func TestListShowsPlansAsPlans(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, _, code := acta(t, dir, "", "list", "--all")
 	if code != 0 {
@@ -180,6 +182,8 @@ func TestListShowsPlansAsPlans(t *testing.T) {
 }
 
 func TestListAllIncludesLegacyTasks(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, _, _ := acta(t, dir, "", "list", "--type", "task", "--all", "--json")
 	if !strings.Contains(out, `"docs/superpowers/plans/2026-01-02-old#task-1"`) {
@@ -192,6 +196,8 @@ func TestListAllIncludesLegacyTasks(t *testing.T) {
 }
 
 func TestShow(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, _, code := acta(t, dir, "", "show", "specs/2026-09-20-alpha", "--json")
 	if code != 0 {
@@ -211,6 +217,8 @@ func TestShow(t *testing.T) {
 // A task under way reads in-progress on the show line and in the JSON list,
 // and the old word never turns up in either.
 func TestAStartedOrHalfTickedTaskReadsInProgress(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, errOut, code := acta(t, dir, "", "show", "plans/2026-09-21-alpha#task-2")
 	if code != 0 {
@@ -236,6 +244,8 @@ func TestAStartedOrHalfTickedTaskReadsInProgress(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "set", "bugs/2026-09-26-open", "status", "fixing"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
@@ -261,6 +271,8 @@ func TestSet(t *testing.T) {
 }
 
 func TestSetDirtyFileExits2(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	p := filepath.Join(dir, ".acta/bugs/2026-09-26-open.md")
 	if err := os.WriteFile(p, []byte("# Button does nothing\n\n## Symptom\nEdited.\n"), 0o644); err != nil {
@@ -273,6 +285,8 @@ func TestSetDirtyFileExits2(t *testing.T) {
 }
 
 func TestBugNewFromStdin(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	out, errOut, code := acta(t, dir, "## Symptom\nTwo ACKs.\n", "bug", "new", "ack-dup", "--ref", "New-261")
 	if code != 0 {
@@ -293,6 +307,8 @@ const pmbWarning = "pmb is now acta; this name goes away in a later version"
 // TestPmbAliasWarns needs the thin pmb wrapper: warn on stderr first,
 // then match the acta run on stdout and exit code.
 func TestPmbAliasWarns(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	wantOut, _, wantCode := acta(t, dir, "", "list", "--all")
 	gotOut, gotErr, gotCode := pmb(t, dir, "", "list", "--all")
@@ -309,6 +325,8 @@ func TestPmbAliasWarns(t *testing.T) {
 
 // TestUsageSaysActa needs every help line to name acta, never pmb.
 func TestUsageSaysActa(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	_, noArgsErr, _ := acta(t, dir, "", "-h")
 	if !strings.Contains(noArgsErr, "acta") || strings.Contains(noArgsErr, "pmb") {

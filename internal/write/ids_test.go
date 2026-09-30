@@ -2,6 +2,7 @@ package write
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +13,8 @@ import (
 )
 
 func TestAssignIDsGivesMissingOnly(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "---\nid: SPC-0004\nhash: m2x9abc\n---\n# A\n",
 		".acta/specs/2026-09-21-b-design.md": "# B\n",
@@ -42,6 +45,8 @@ func TestAssignIDsGivesMissingOnly(t *testing.T) {
 }
 
 func TestAssignIDsOneCommit(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-21-b-design.md": "# B\n",
 		".acta/bugs/2026-09-23-c.md":         "# C\n",
@@ -58,6 +63,8 @@ func TestAssignIDsOneCommit(t *testing.T) {
 }
 
 func TestAssignIDsCountsOtherTrees(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/plans/2026-09-22-p.md": "# P\n\n### Task 1: One\n- [ ] x\n",
 	})
@@ -74,6 +81,8 @@ func TestAssignIDsCountsOtherTrees(t *testing.T) {
 }
 
 func TestAssignIDsSkipsLegacy(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, baseFiles)
 	legacy := filepath.Join(cfg.RepoRoot, "docs/superpowers/specs/2026-01-01-old.md")
 	before, _ := os.ReadFile(legacy)
@@ -87,6 +96,8 @@ func TestAssignIDsSkipsLegacy(t *testing.T) {
 }
 
 func TestAssignIDsOnlyNamed(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-21-b-design.md": "# B\n",
 		".acta/bugs/2026-09-23-c.md":         "# C\n",
@@ -129,6 +140,8 @@ func TestAssignIDsHashClash(t *testing.T) {
 }
 
 func TestFixDuplicates(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/bugs/2026-09-20-first.md": "---\nid: BUG-7\nhash: aaaa\n---\n# First\n",
 	})
@@ -156,6 +169,8 @@ func TestFixDuplicates(t *testing.T) {
 }
 
 func TestFixDuplicatesNoOp(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, baseFiles)
 	before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
 	changes, out, err := FixDuplicates(cfg, mustLoad(t, cfg))
@@ -170,6 +185,8 @@ func TestFixDuplicatesNoOp(t *testing.T) {
 // A file whose frontmatter will not parse is left alone and named on stderr,
 // the other files still get their IDs, and one commit holds the run.
 func TestAssignIDsSkipsBrokenFrontmatterAndCommitsTheRest(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-17-broken.md":   "---\nref: [unclosed\n---\n# Broken\n",
 		".acta/specs/2026-09-20-a-design.md": "# A\n",
@@ -203,6 +220,8 @@ func TestAssignIDsSkipsBrokenFrontmatterAndCommitsTheRest(t *testing.T) {
 // A file that says type: bug in specs/ is a bug, so it reads and writes as
 // BUG both times, and the second run has nothing left to do.
 func TestAssignIDsPrefixFollowsTheKindTheFileIs(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-15-really-bug.md": "---\ntype: bug\n---\n# Really a bug\n",
 	})
@@ -235,6 +254,8 @@ func TestAssignIDsPrefixFollowsTheKindTheFileIs(t *testing.T) {
 // it stays as written, the other field is still filled in, and the reason is
 // on stderr.
 func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-zz\n---\n# A\n",
 		".acta/bugs/2026-09-23-c.md":         "---\nhash: toolongg\n---\n# C\n",
@@ -274,6 +295,8 @@ func TestAssignIDsNeverRewritesAValueThatIsThere(t *testing.T) {
 // With auto_commit off the files are written and left for the person, and
 // the run says so the way finish does.
 func TestAssignIDsAutoCommitOff(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-23-c.md": "# C\n"})
 	cfg.AutoCommit = false
 	before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
@@ -295,6 +318,8 @@ func TestAssignIDsAutoCommitOff(t *testing.T) {
 // A file written on a branch before the main file in clock time still gives
 // the number up, because it only reaches the branch at the merge.
 func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-20-seed.md": "# Seed\n"})
 	put := func(rel, body string) {
 		t.Helper()
@@ -304,9 +329,15 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 	}
 	at := func(date string, args ...string) {
 		t.Helper()
-		t.Setenv("GIT_AUTHOR_DATE", date)
-		t.Setenv("GIT_COMMITTER_DATE", date)
-		gitRun(t, cfg.RepoRoot, args...)
+		// The dates go to this one git child only, not to the whole test process.
+		cmd := exec.Command("git", append([]string{"-C", cfg.RepoRoot}, args...)...)
+		cmd.Env = os.Environ()
+		for _, who := range []string{"AUTHOR", "COMMITTER"} {
+			cmd.Env = append(cmd.Env, "GIT_"+who+"_DATE="+date)
+		}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
 	}
 	put(".acta/bugs/2026-09-21-main.md", "---\nid: BUG-7\nhash: bbbb\n---\n# Main\n")
 	at("2030-01-01T00:00:00Z", "add", ".")
@@ -334,6 +365,8 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 // Two plans can hold the same number while their tasks sit on two different
 // specs, so the plan files themselves are the ones to repair.
 func TestFixDuplicatesRepairsPlansHeldBySpecs(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "# A\n",
 		".acta/specs/2026-09-21-b-design.md": "# B\n",
@@ -364,6 +397,8 @@ func TestFixDuplicatesRepairsPlansHeldBySpecs(t *testing.T) {
 // A plan that belongs to a spec is a file with an id of its own, whether or
 // not it has tasks to reach it.
 func TestAssignIDsGivesHeldPlanWithoutTasksAnID(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "# A\n",
 		".acta/plans/2026-09-25-a.md":        "---\nparent: specs/2026-09-20-a-design\n---\n# Fix A\n\nNothing to tick yet.\n",
@@ -385,6 +420,8 @@ func TestAssignIDsGivesHeldPlanWithoutTasksAnID(t *testing.T) {
 }
 
 func TestAssignIDsGivesDebtFileANumber(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/debt/2026-09-27-x.md": "# Review NOTEs: X\n\n- [ ] a\n",
 	})
@@ -401,6 +438,8 @@ func TestAssignIDsGivesDebtFileANumber(t *testing.T) {
 // Scratch numbers count on their own, so a new idea never pushes a spec or a
 // bug along.
 func TestAssignIDsNumbersScratchOnItsOwn(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-09-20-a-design.md": "---\nid: SPEC-4\nhash: m2x9\n---\n# A\n",
 		".acta/bugs/2026-09-23-c.md":         "---\nid: BUG-7\nhash: b7aa\n---\n# C\n",
@@ -650,6 +689,8 @@ func containsLine(lines []string, text string) bool {
 }
 
 func TestRandHashIsSevenChars(t *testing.T) {
+	t.Parallel()
+
 	for range 200 {
 		if h := randHash(); !board.IsHash(h) {
 			t.Fatalf("randHash() = %q", h)
@@ -660,6 +701,8 @@ func TestRandHashIsSevenChars(t *testing.T) {
 // A plan still holding an old id keeps its number, so a new plan lands past
 // it and not on top of it, and it lands in the new shape.
 func TestAssignIDsWritesNewFormat(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/plans/2026-09-21-a.md": "---\nid: PLAN-12\nhash: k3f2\n---\n# A\n\n### Task 1: One\n- [ ] x\n",
 		".acta/plans/2026-09-22-b.md": "# B\n\n### Task 1: One\n- [ ] x\n",
@@ -681,6 +724,8 @@ func TestAssignIDsWritesNewFormat(t *testing.T) {
 // body come out byte for byte the same, and a second run finds nothing old
 // and changes no byte at all.
 func TestAssignIDsRewritesOldFiles(t *testing.T) {
+	t.Parallel()
+
 	const body = "# A\n\nSee PLAN-12 and SCRATCH-14.\n\n**Spec:** none (Bounded, approved in chat on 2026-09-21)\n"
 	cfg := repoWith(t, map[string]string{
 		".acta/plans/2026-09-21-a.md":   "---\nparent: scratch/2026-09-20-x\nid: PLAN-12\nhash: k3f2\ncloses: [DEBT-17.1, SCRATCH-14]\nstatus: approved\n---\n" + body,
@@ -719,6 +764,8 @@ func TestAssignIDsRewritesOldFiles(t *testing.T) {
 // A file already in the new form is left exactly as it is, closes list and
 // all, so a run over a migrated tree writes nothing.
 func TestAssignIDsLeavesNewFilesAlone(t *testing.T) {
+	t.Parallel()
+
 	src := "---\nid: PLN-0012\nhash: k3f2abc\ncloses: [SCR-0014]\n---\n# A\n\n**Spec:** none (Bounded, approved in chat on 2026-09-21)\n"
 	cfg := repoWith(t, map[string]string{
 		".acta/plans/2026-09-21-a.md":   src,
@@ -734,6 +781,8 @@ func TestAssignIDsLeavesNewFilesAlone(t *testing.T) {
 // hash are already new is still rewritten for its list, and the rest of the
 // run goes on past the entry it could not resolve.
 func TestAssignIDsKeepsAClosesEntryItCannotResolve(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/plans/2026-09-21-a.md":   "---\nid: PLN-0012\nhash: k3f2abc\ncloses: [SCRATCH-14, DEBT-99]\n---\n# A\n",
 		".acta/scratch/2026-09-20-x.md": "---\nid: SCRATCH-14\nhash: m2x9abc\n---\nx\n",
@@ -807,6 +856,8 @@ func TestAssignIDsExtendsAnOldHashAndAvoidsAClash(t *testing.T) {
 // run that moved an old value commits as a migration, so the history says
 // which of the two happened.
 func TestAssignIDsCommitMessageSaysWhatChanged(t *testing.T) {
+	t.Parallel()
+
 	for _, c := range []struct {
 		name, body, msg string
 	}{
@@ -826,6 +877,8 @@ func TestAssignIDsCommitMessageSaysWhatChanged(t *testing.T) {
 // One number written two ways is still one number, so the file that came
 // second is the one that moves, and it moves to the new shape.
 func TestFixDuplicatesCountsOldAndNewAsOneNumber(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{
 		".acta/bugs/2026-09-20-first.md": "---\nid: BUG-5\nhash: aaaa\n---\n# First\n",
 	})

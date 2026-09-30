@@ -11,12 +11,6 @@ import (
 // migrateRepo makes a git repo with .pm/ holding one tracked file.
 func migrateRepo(t *testing.T) string {
 	t.Helper()
-	for _, k := range []string{"GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"} {
-		t.Setenv(k, "test")
-	}
-	for _, k := range []string{"GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"} {
-		t.Setenv(k, "test@example.com")
-	}
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -28,6 +22,10 @@ func migrateRepo(t *testing.T) string {
 		}
 	}
 	run("init", "-q", "-b", "main")
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	run("config", "user.name", "test")
+	run("config", "user.email", "test@example.com")
 	if err := os.MkdirAll(filepath.Join(dir, ".pm"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +53,8 @@ func gitLog(t *testing.T, dir string) []string {
 }
 
 func TestMigrateRootHappyPath(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, ".pm.yaml"), []byte("root: .pm\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -107,6 +107,8 @@ func TestMigrateRootHappyPath(t *testing.T) {
 }
 
 func TestMigrateRootRefusesWhenActaExists(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".acta"), 0o755); err != nil {
 		t.Fatal(err)
@@ -120,6 +122,8 @@ func TestMigrateRootRefusesWhenActaExists(t *testing.T) {
 }
 
 func TestMigrateRootRefusesWhenPmMissing(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	if out, err := exec.Command("git", "-C", dir, "rm", "-q", "-r", ".pm").CombinedOutput(); err != nil {
 		t.Fatalf("git rm: %v %s", err, out)
@@ -136,6 +140,8 @@ func TestMigrateRootRefusesWhenPmMissing(t *testing.T) {
 }
 
 func TestMigrateRootRefusesDirtyTracked(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, ".pm", "note.md"), []byte("dirty\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -147,6 +153,8 @@ func TestMigrateRootRefusesDirtyTracked(t *testing.T) {
 }
 
 func TestMigrateRootRefusesUntracked(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, ".pm", "new.md"), []byte("new\n"), 0o644); err != nil {
 		t.Fatal(err)

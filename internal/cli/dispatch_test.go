@@ -25,10 +25,6 @@ func dispatchRepo(t *testing.T) string {
 			t.Fatalf("git %v: %v %s", args, err, out)
 		}
 	}
-	t.Setenv("GIT_AUTHOR_NAME", "test")
-	t.Setenv("GIT_COMMITTER_NAME", "test")
-	t.Setenv("GIT_AUTHOR_EMAIL", "test@example.com")
-	t.Setenv("GIT_COMMITTER_EMAIL", "test@example.com")
 	plan := filepath.Join(dir, ".acta", "plans", "2026-09-29-p.md")
 	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
 		t.Fatal(err)
@@ -37,6 +33,10 @@ func dispatchRepo(t *testing.T) string {
 		t.Fatal(err)
 	}
 	run("init", "-q", "-b", "main")
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	run("config", "user.name", "test")
+	run("config", "user.email", "test@example.com")
 	run("add", ".")
 	run("commit", "-q", "-m", "init")
 	return dir
