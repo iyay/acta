@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -279,19 +280,71 @@ func TestTabsSitInABoxOfTheirOwn(t *testing.T) {
 }
 
 // TestTheOpenTabIsTheOnlyBrightName checks the brush of every name, so the
-// highlight can never sit on two tabs or on the wrong one.
+// band can never sit on two tabs or on the wrong one, and so every other name
+// is plain text in the color of its own kind.
 func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
 	withColors(func() {
 		for i := range topTabs {
 			m := press(sized(newModel(t), 160, 40), tabKey(i))
 			mid := strings.Split(m.View(), "\n")[1]
-			bright := m.styles.accent.Bold(true)
 			for j, tab := range topTabs {
-				on := strings.Contains(mid, bright.Render(fmt.Sprintf("%d %s", j+1, tab.name)))
-				if on != (j == i) {
-					t.Errorf("tab %d open: %q bright = %v", i, tab.name, on)
+				name := fmt.Sprintf("%d %s", j+1, tab.name)
+				color := m.styles.tabColor(tab.kind)
+				band := lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).Background(color)
+				if on := strings.Contains(mid, band.Render(name)); on != (j == i) {
+					t.Errorf("tab %d open: %q in the band = %v", i, tab.name, on)
+				}
+				if j != i && !strings.Contains(mid, lipgloss.NewStyle().Foreground(color).Render(name)) {
+					t.Errorf("tab %d open: %q is not plain text in its kind color", i, tab.name)
 				}
 			}
+		}
+	})
+}
+
+// TestTabsWearTheirKindColors reads every tab name in both themes with each
+// tab open, so no tab can go faint or lose the color of its kind.
+func TestTabsWearTheirKindColors(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			for open := range topTabs {
+				m := press(actModel(t).WithTheme(name, true), tabKey(open))
+				line := m.barLine(make([]bool, len(topTabs)))
+				for i, tb := range topTabs {
+					label := fmt.Sprintf("%d %s", i+1, tb.name)
+					want := lipgloss.NewStyle().Foreground(m.styles.tabColor(tb.kind)).Render(label)
+					if i == open {
+						want = lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).
+							Background(m.styles.tabColor(tb.kind)).Render(label)
+					}
+					if !strings.Contains(line, want) {
+						t.Errorf("%s, open %d: tab %q is not drawn as %q in %q", name, open, label, want, line)
+					}
+				}
+				if sgrHas(line, "2") {
+					t.Errorf("%s, open %d: a tab is faint: %q", name, open, line)
+				}
+			}
+		}
+	})
+}
+
+// TestStatusLineColorsProjectAndLive reads the words that tell something at a
+// glance: the project wears the accent, live wears green, and paused does not.
+func TestStatusLineColorsProjectAndLive(t *testing.T) {
+	withTrueColor(func() {
+		m := sized(actModel(t).WithTheme("tokyo-night", true), 200, 40)
+		line := m.statusLine()
+		project := filepath.Base(m.cfg.RepoRoot)
+		if !strings.Contains(line, m.styles.accent.Render(project)) {
+			t.Errorf("project %q is not in the accent: %q", project, plain(line))
+		}
+		if !strings.Contains(line, m.styles.live.Render("live")) {
+			t.Errorf("live is not green: %q", plain(line))
+		}
+		m.manual = true
+		if strings.Contains(m.statusLine(), m.styles.live.Render("paused")) {
+			t.Error("paused is green")
 		}
 	})
 }
@@ -998,7 +1051,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	if !strings.HasPrefix(plain(last), "? help") {
 		t.Errorf("the left should show only ? help, got %q", plain(last))
 	}
-	if !strings.Contains(last, "basic · live · 2026-09-27 20:46") {
+	if !strings.Contains(plain(last), "basic · live · 2026-09-27 20:46") {
 		t.Errorf("the project, mode or date is missing: %q", plain(last))
 	}
 	if !strings.Contains(last, "Feedback") {
@@ -1011,7 +1064,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 		t.Errorf("the line must not name pmb: %q", plain(last))
 	}
 	m.manual = true
-	if !strings.Contains(m.View(), "basic · paused · 2026-09-27 20:46") {
+	if !strings.Contains(plain(m.View()), "basic · paused · 2026-09-27 20:46") {
 		t.Error("watching off should read paused")
 	}
 	m.status = "acta: x status done committed"

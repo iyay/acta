@@ -147,10 +147,10 @@ func (m Model) tabRows(width int) []string {
 }
 
 // tabBar draws the names line of the tab box: the tab names that fit the
-// window, in order, each with its key number, and the open one in the accent,
-// so the reader always sees where they are. A window too narrow for every
-// name loses the ones farthest from the open tab first, so the open tab never
-// goes off the line.
+// window, in order, each with its key number and each in the color of its
+// own kind, the open one as a band of its color, so the reader always sees
+// where they are. A window too narrow for every name loses the ones farthest
+// from the open tab first, so the open tab never goes off the line.
 func (m Model) tabBar(width int) string {
 	drop := make([]bool, len(topTabs))
 	line := m.barLine(drop)
@@ -184,11 +184,13 @@ func (m Model) barLine(drop []bool) string {
 			continue
 		}
 		name := fmt.Sprintf("%d %s", i+1, t.name)
+		color := m.styles.tabColor(t.kind)
 		if i == m.top {
-			names = append(names, m.styles.accent.Bold(true).Render(name))
+			// The open tab is a band of its own color, so the eye finds it first.
+			names = append(names, lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).Background(color).Render(name))
 			continue
 		}
-		names = append(names, m.styles.faint.Render(name))
+		names = append(names, lipgloss.NewStyle().Foreground(color).Render(name))
 	}
 	return " " + strings.Join(names, "  ")
 }
@@ -480,7 +482,42 @@ func (m Model) statusLine() string {
 	if room > 0 {
 		gap = strings.Repeat(" ", room)
 	}
-	return left + gap + m.styles.faint.Render(right)
+	return left + gap + m.paintRight(pieces, right)
+}
+
+// paintRight colors the words on the right that tell something at a glance:
+// the project in the accent and live in green. The rest stays faint. It finds
+// each word in order, so a word cut off by a narrow window keeps the faint
+// brush, and links keep their wrappers so a click still finds them.
+func (m Model) paintRight(pieces []statusPiece, right string) string {
+	var b strings.Builder
+	at := 0
+	for i, p := range pieces {
+		var brush lipgloss.Style
+		switch {
+		case p.url != "":
+			continue
+		case i == 0 && p.text == filepath.Base(m.cfg.RepoRoot):
+			brush = m.styles.accent
+		case p.text == "live":
+			brush = m.styles.live
+		default:
+			continue
+		}
+		j := strings.Index(right[at:], p.text)
+		if j < 0 {
+			continue
+		}
+		if j > 0 {
+			b.WriteString(m.styles.faint.Render(right[at : at+j]))
+		}
+		b.WriteString(brush.Render(p.text))
+		at += j + len(p.text)
+	}
+	if at < len(right) {
+		b.WriteString(m.styles.faint.Render(right[at:]))
+	}
+	return b.String()
 }
 
 // statusLineBoxes gives the click boxes of the bottom line by reading the

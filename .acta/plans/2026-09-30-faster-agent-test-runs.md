@@ -2,7 +2,7 @@
 created: "2026-09-30"
 id: PLN-0042
 hash: rxv1rsf
-status: approved
+status: done
 started: "2026-09-30"
 finished: "2026-09-30"
 ---
