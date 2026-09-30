@@ -3,6 +3,7 @@ parent: specs/2026-10-01-priority-and-build-worktree-design
 id: PLN-0064
 created: "2026-10-01 05:22:21"
 hash: lwfa6qz
+started: "2026-10-01 05:27:35"
 ---
 # Priority for Bugs and Debt Items, and Build Always Uses git worktree add Implementation Plan
 
@@ -69,7 +70,7 @@ hash: lwfa6qz
 - Consumes: nothing.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `TestSkillBuild`, add to the `MustNot` list:
 
@@ -83,12 +84,12 @@ and add to the `Must` list:
 "A native worktree tool puts the worktree inside the repo",
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/plugincheck -run TestSkillBuild`
 Expected: FAIL naming `EnterWorktree`, `Native Worktree Tools` and the missing Must line.
 
-- [ ] **Step 3: Edit the skill**
+- [x] **Step 3: Edit the skill**
 
 Replace everything from `### Step 1: Create Isolated Workspace` up to (not including) `Sandbox fallback:` with:
 
@@ -119,12 +120,12 @@ grep -rn -i -E "native|EnterWorktree|1a|1b" plugin/skills/build/
 
 Any hit that tells the agent to use a harness worktree tool goes too. Hits about other things stay.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/plugincheck`
 Expected: PASS (the whole package, since size caps and other skill checks read the same file).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/plugincheck && go vet ./internal/plugincheck
@@ -147,7 +148,7 @@ git commit -m "Build always makes its worktree with git worktree add"
 - Consumes: nothing.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `TestSkillReview` `Must`, add:
 
@@ -161,12 +162,12 @@ In `TestSkillBug` `Must`, add:
 "`--priority high|medium|low` is optional",
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/plugincheck -run 'TestSkillReview|TestSkillBug'`
 Expected: FAIL, both Must lines missing.
 
-- [ ] **Step 3: Edit the skills**
+- [x] **Step 3: Edit the skills**
 
 In `plugin/skills/review/SKILL.md`, right after the sentence ending `The debt file merges with the branch.`, add on the same bullet:
 
@@ -180,12 +181,12 @@ In `plugin/skills/bug/SKILL.md`, right after the closing ```` ``` ```` of the `a
 `--priority high|medium|low` is optional. Set it when the user named how urgent the bug is; leave it off otherwise. `acta set <bug id> priority <level>` changes it later, and `none` removes it.
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/plugincheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/review/SKILL.md plugin/skills/bug/SKILL.md internal/plugincheck/skill_review_test.go internal/plugincheck/skill_bug_test.go
@@ -211,7 +212,7 @@ git commit -m "Review and bug skills name the optional priority"
   - `func board.ValidPriority(s string) bool`
   - `func board.SplitPriority(text string) (level, rest string)` — `("high", "note")` for `"(high) note"`, `("", text)` when there is no valid tag.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/board/priority_test.go`:
 
@@ -295,12 +296,12 @@ func TestDebtItemPriorityFromTag(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/board -run 'Priority'`
 Expected: FAIL to build: `undefined: SplitPriority`, `it.Priority undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `internal/board/priority.go`:
 
@@ -360,12 +361,12 @@ In `linkDebt`, inside the loop, before `item := &Item{...}`:
 
 and in the `Item` literal change `Title: line.Text` to `Title: title, Priority: level`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/board`
 Expected: PASS (whole package, so the old debt and bug tests still hold).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/board && go vet ./internal/board

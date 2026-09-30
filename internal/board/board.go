@@ -36,6 +36,7 @@ type Item struct {
 	StatusSource string // "derived" or "frontmatter"
 	Ref          string
 	FixedIn      string
+	Priority     string   // bugs and debt items: high, medium, low, or "" when unset
 	Parent       string   // tasks only
 	SpecID       string   // plans only: the spec or bug whose tasks the plan carries
 	PlanID       string   // tasks only: the plan file the task belongs to
@@ -410,6 +411,15 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	}
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
+	// Only a bug carries a priority in its frontmatter. A word that is not a
+	// level is shown as a problem, and the bug counts as unset.
+	if p := field(doc.Front, "priority"); p != "" && it.Kind == KindBug {
+		if ValidPriority(p) {
+			it.Priority = p
+		} else {
+			it.Problems = append(it.Problems, "unknown priority "+p)
+		}
+	}
 	it.Created = dateField(doc.Front, "created")
 	it.StartedOn = dateField(doc.Front, "started")
 	it.Finished = dateField(doc.Front, "finished")
@@ -533,8 +543,9 @@ func (b *Board) linkDebt(d debtFile) {
 		}
 	}
 	for _, line := range d.doc.Items {
+		level, title := SplitPriority(line.Text)
 		id := d.it.ID + "#item-" + fmt.Sprintf("%d", line.Num)
-		item := &Item{ID: id, Kind: KindDebtItem, Title: line.Text, Date: d.it.Date, Slug: d.it.Slug,
+		item := &Item{ID: id, Kind: KindDebtItem, Title: title, Priority: level, Date: d.it.Date, Slug: d.it.Slug,
 			Parent: d.it.ID, Path: d.it.Path, Line: line.Line, Legacy: d.it.Legacy,
 			Status: itemStatus(line.State), StatusSource: "derived",
 			// The checklist becomes the list in the detail pane, so the body

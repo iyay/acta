@@ -4,6 +4,7 @@ closes: [SCR-0023]
 id: SPC-0055
 created: "2026-10-01 05:15:46"
 hash: g3ul97k
+started: "2026-10-01 05:27:35"
 ---
 # Priority for bugs and debt items, and build always uses git worktree add
 
