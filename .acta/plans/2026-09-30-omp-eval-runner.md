@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: specs/2026-09-30-omp-harness-design
 id: PLN-0056
 hash: uavj6ws
+started: "2026-09-30"
 ---
 # omp Eval Runner Implementation Plan
 
@@ -77,7 +78,7 @@ hash: uavj6ws
   - `func (c Case) ClaudeOnly() bool`
   - `func LoadCases(evalDir string) ([]Case, error)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/evalomp/case_test.go`:
 
@@ -181,12 +182,12 @@ func TestLoadCasesErrors(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/evalomp -run TestLoadCases`
 Expected: FAIL, the package does not build (`LoadCases` undefined).
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/evalomp/case.go`:
 
@@ -386,12 +387,12 @@ func splitFrontmatter(src string) (fm, body string, ok bool) {
 }
 ```
 
-- [ ] **Step 4: Run the test to see it pass**
+- [x] **Step 4: Run the test to see it pass**
 
 Run: `scripts/test ./internal/evalomp -run TestLoadCases`
 Expected: PASS (`TestLoadCases`, `TestLoadCasesScalarTarget`, `TestLoadCasesErrors`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -w internal/evalomp && go vet ./internal/evalomp
@@ -419,7 +420,7 @@ git commit -m "evalomp: load the plugin's eval cases and graders"
   - `func ParseStream(r io.Reader) (Result, error)`
   - `func ListFiles(dir string) (map[string]bool, error)`
 
-- [ ] **Step 1: Write the fixture and the failing test**
+- [x] **Step 1: Write the fixture and the failing test**
 
 Create `internal/evalomp/testdata/stream.jsonl` (one JSON object per line; the shapes come from a real `omp --mode json` run on 2026-09-30):
 
@@ -505,12 +506,12 @@ func TestListFiles(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/evalomp -run 'TestParseStream|TestListFiles'`
 Expected: FAIL, `ParseStream` and `ListFiles` undefined. Task 1 runs in the same wave in the same worktree: if its half-written `case.go` breaks the build, wait and retry; never reset or delete its files.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/evalomp/result.go`:
 
@@ -640,12 +641,12 @@ func ListFiles(dir string) (map[string]bool, error) {
 }
 ```
 
-- [ ] **Step 4: Run the test to see it pass**
+- [x] **Step 4: Run the test to see it pass**
 
 Run: `scripts/test ./internal/evalomp -run 'TestParseStream|TestListFiles'`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -w internal/evalomp && go vet ./internal/evalomp
