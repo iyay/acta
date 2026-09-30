@@ -273,6 +273,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		m.width, m.height = msg.Width, msg.Height
+		// The picked cells were on the old screen, so they point at nothing now.
+		m.drag = drag{}
 		// A box that just got shorter cannot keep the place it had.
 		for p := pane(0); int(p) < boxes; p++ {
 			m.clampOff(p)
@@ -503,6 +505,8 @@ func (m *Model) end() {
 }
 
 func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Any key may move the screen, so the picked cells stop meaning anything.
+	m.drag = drag{}
 	if m.help {
 		// The help sits over the panes, so it takes the keys until it closes.
 		if s := k.String(); s == "?" || s == "esc" {
@@ -603,6 +607,24 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.same = true
 		return m, nil
 	}
+	switch {
+	case msg.Action == tea.MouseActionMotion && m.drag.held:
+		next := m.drag.to(msg.X, msg.Y)
+		m.same = next == m.drag
+		m.drag = next
+		return m, nil
+	case msg.Action == tea.MouseActionRelease && m.drag.held:
+		m.drag.held = false
+		if !m.drag.shown() {
+			m.drag = drag{}
+			m.same = true
+			return m, nil
+		}
+		return m, m.copyDrag()
+	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
+		// A new press ends the old pick, and starts a new one when it lands on words.
+		m.drag = m.anchorAt(msg.X, msg.Y)
+	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
 		msg.Y == m.height-1 {
 		if url, ok := m.linkAt(msg.X); ok {
@@ -617,11 +639,14 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
 	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
+		// The wheel moves the words, so the picked cells stop meaning anything.
+		cleared := m.drag.on
+		m.drag = drag{}
 		// The wheel belongs to the focused pane, the way the keys do, and it
 		// never takes the focus. A wheel over another pane is ignored, so the
 		// notches only ever gather for the box the reader is looking at.
 		if p != m.focus {
-			m.same = true
+			m.same = !cleared
 			return m, nil
 		}
 		// The notch got past the pane the reader is looking at, so it is part
@@ -665,7 +690,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.wheelDelta += step
 		// A flush to another pane moved that pane, so only a plain gather
 		// keeps the old frame.
-		m.same = !flushed
+		m.same = !flushed && !cleared
 		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {

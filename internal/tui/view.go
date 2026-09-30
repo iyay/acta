@@ -119,7 +119,7 @@ func (m Model) View() string {
 func (m Model) draw() string {
 	g := m.geometry()
 	if !g.wide {
-		return m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false)
+		return m.withDrag(m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false))
 	}
 	// A box with no room draws nothing, so it takes no line either and the
 	// boxes below it keep the place the geometry gave them.
@@ -144,7 +144,17 @@ func (m Model) draw() string {
 		}
 		body[i] = l + r
 	}
-	return m.frameFrom(body, true)
+	return m.withDrag(m.frameFrom(body, true))
+}
+
+// withDrag lays the band of a mouse pick over the frame. It uses the colors
+// the theme picks for selected text, with no bold, so the words keep their
+// width and look.
+func (m Model) withDrag(frame string) string {
+	if !m.drag.shown() {
+		return frame
+	}
+	return paintDrag(frame, m.drag, m.styles.selected.UnsetBold())
 }
 
 // frameFrom puts the tab box on top of the body lines, cuts them to the

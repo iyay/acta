@@ -4,6 +4,7 @@ parent: specs/2026-09-30-tui-drag-select-design
 id: PLN-0050
 hash: k0qzc6d
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI Drag Select and Pink Scratch Implementation Plan
 
@@ -575,7 +576,7 @@ git commit -m "Add the text selection a mouse drag makes, and its copy"
 - Consumes (Task 2): `drag`, `drag.held`, `drag.on`, `drag.shown()`, `drag.to(x, y int) drag`, `drag.spans()`, `Model.anchorAt(x, y int) drag`, `Model.copyDrag() tea.Cmd`, `paintDrag(frame string, d drag, brush lipgloss.Style) string`, `box.textArea() (rect, bool)`, Model field `drag`.
 - Produces: nothing new for later tasks.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `internal/tui/drag_test.go`:
 
@@ -757,12 +758,12 @@ func TestReleaseWithNoDragReusesTheFrame(t *testing.T) {
 
 `?` opens the help and `/` opens search in `model.go`'s `key`. The slug input and the popups have their own open keys; add them to `TestNoDragWhileSomethingIsOpen` in the same form, reading `key` for how they open. `paneList`, `paneDetail`, `paneModel`, `scrollBox`, `press`, `click`, `wheel`, `sized`, `plain` and `withColor` already exist in this package's tests. A blank pick is covered by Task 2's `TestCopyPickedOfSpacesCopiesNothing`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `scripts/test ./internal/tui/ -run 'Drag|Highlight|Release|Click'`
 Expected: FAIL, `copied ""` (no drag wiring yet).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `model.go`, `Update`, in the `tea.WindowSizeMsg` case right after `m.width, m.height = msg.Width, msg.Height`:
 
@@ -837,7 +838,7 @@ func (m Model) withDrag(frame string) string {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `scripts/test ./internal/tui/ -run 'Drag|Highlight|Release|Click'`
 Expected: PASS.
@@ -845,7 +846,7 @@ Expected: PASS.
 Then: `scripts/test ./internal/tui/`
 Expected: PASS, `TestViewReusesTheFrameForIgnoredMouseAndEmptyTick` and `TestViewDrawsAgainAfterEveryChange` included.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/
