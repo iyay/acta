@@ -23,6 +23,8 @@ func (m Model) hints() []string {
 	// another worktree, a legacy file and a branch that is not checked out
 	// away, so those rows get only the keys that work anywhere.
 	own := it != nil && it.OnDisk && it.Worktree == "" && !it.Legacy
+	// Only bugs and debt lines carry a priority, so only they offer p.
+	prio := own && (it.Kind == board.KindBug || it.Kind == board.KindDebtItem)
 	// The editor opens anything that is on disk and the copy key takes the id
 	// of anything at all, so those two follow the item and not the tree it was
 	// read from.
@@ -37,6 +39,9 @@ func (m Model) hints() []string {
 		if own && !tick {
 			out = append(out, "Status: s")
 		}
+		if prio {
+			out = append(out, "Priority: p")
+		}
 		if editable {
 			out = append(out, "Edit: e")
 		}
@@ -48,6 +53,9 @@ func (m Model) hints() []string {
 	out = append(out, "Detail: enter")
 	if own && !tick {
 		out = append(out, "Status: s", "Type: t")
+	}
+	if prio {
+		out = append(out, "Priority: p")
 	}
 	if editable {
 		out = append(out, "Edit: e")

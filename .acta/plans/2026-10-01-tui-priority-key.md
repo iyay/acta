@@ -3,6 +3,8 @@ parent: specs/2026-10-01-tui-priority-key-design
 id: PLN-0066
 created: "2026-10-01 06:17:35"
 hash: t2qbabk
+started: "2026-10-01 06:22:53"
+finished: "2026-10-01 06:36:33"
 ---
 # TUI Key p Sets Priority Implementation Plan
 
@@ -53,7 +55,7 @@ hash: t2qbabk
 - Consumes: `prioModel(t)` and `prioCfg(t)` in `internal/tui/priority_test.go` (bugs BUG-0001..0007, debt DBT-0001 items; Bugs open list order c, d, e, b, a); `newModel(t)`, `press`, `tabKey`, `sized` from the existing tests; `board.Item.Priority`.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/tui/priority_key_test.go`:
 
@@ -171,12 +173,12 @@ func TestHelpListsThePriorityKey(t *testing.T) {
 
 If a fixture row in `TestPriorityKeyRefusesOtherKinds` is not the kind named (for example the Scratches tab of `newModel` is empty), move the cursor with `j` to a row of that kind; never drop the case.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui -run 'Priority(Popup|Key|Hint)|HelpListsThePriorityKey'`
 Expected: FAIL: no popup on `p`, no hint, no help line.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `internal/tui/model.go`, key switch: change `case "t", "s":` to `case "t", "s", "p":`.
 
@@ -229,12 +231,12 @@ In the list branch, right after `if own && !tick { out = append(out, "Status: s"
 p                set the priority of a bug or a debt line: high, medium, low or none
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS (whole package, so the existing hint, help layout and popup tests still hold).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui

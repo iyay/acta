@@ -72,12 +72,12 @@ e                open the row in the editor
 y                copy the id of the row
 s                set the status; dropped and wontfix close an item
 t                set the type: spec or bug
+p                set the priority of a bug or a debt line: high, medium, low or none
 n                new bug
 +                mark the task or debt line done
 -                put the task or debt line back to open
 esc              back to the list, close this help
-q                quit
-?                close this help`
+q                quit`
 
 // helpText lays the key map out the way lazygit does: the keys in cyan, so
 // they differ from the border, pushed right so they all end at one column,

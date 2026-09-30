@@ -2,6 +2,8 @@
 id: SPC-0057
 created: "2026-10-01 06:16:05"
 hash: w7mzlq3
+started: "2026-10-01 06:22:53"
+finished: "2026-10-01 06:36:33"
 ---
 # TUI key p sets the priority of a bug or a debt line
 

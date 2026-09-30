@@ -599,7 +599,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.help = true
 	case "r":
 		return m, m.reloadCmd()
-	case "t", "s":
+	case "t", "s", "p":
 		m.openPopup(k.String())
 	case "+":
 		return m.markRow(true)
@@ -788,6 +788,9 @@ func (m *Model) openPopup(key string) {
 	case it == nil:
 		m.status = "nothing selected"
 		return
+	case key == "p" && it.Kind != board.KindBug && it.Kind != board.KindDebtItem:
+		m.status = "p sets the priority of a bug or a debt line"
+		return
 	case it.Kind == board.KindTask:
 		m.status = "tasks take their status from their checkboxes"
 		return
@@ -803,6 +806,13 @@ func (m *Model) openPopup(key string) {
 	if key == "t" {
 		p = popup{field: "type", options: []string{string(board.KindStory), string(board.KindBug)}}
 		current = string(it.Kind)
+	}
+	if key == "p" {
+		p = popup{field: "priority", options: append(append([]string(nil), board.Priorities...), "none")}
+		current = it.Priority
+		if current == "" {
+			current = "none"
+		}
 	}
 	for i, o := range p.options {
 		if o == current {
