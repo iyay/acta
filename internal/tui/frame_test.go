@@ -133,28 +133,33 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 func TestViewFitsEveryTerminalSize(t *testing.T) {
 	t.Parallel()
 
-	m := newModel(t)
+	// One subtest per height, each with a model of its own: the model holds
+	// a cache behind a pointer, and parallel subtests must not share it.
 	for h := 3; h <= 60; h++ {
-		for w := 1; w <= 200; w++ {
-			s := sized(m, w, h)
-			lines := strings.Split(s.View(), "\n")
-			if len(lines) > h {
-				t.Fatalf("%dx%d: %d lines", w, h, len(lines))
-			}
-			for i, ln := range lines {
-				if lipgloss.Width(ln) > w {
-					t.Fatalf("%dx%d line %d is %d wide", w, h, i, lipgloss.Width(ln))
+		t.Run(fmt.Sprintf("h%d", h), func(t *testing.T) {
+			t.Parallel()
+			m := newModel(t)
+			for w := 1; w <= 200; w++ {
+				s := sized(m, w, h)
+				lines := strings.Split(s.View(), "\n")
+				if len(lines) > h {
+					t.Fatalf("%dx%d: %d lines", w, h, len(lines))
+				}
+				for i, ln := range lines {
+					if lipgloss.Width(ln) > w {
+						t.Fatalf("%dx%d line %d is %d wide", w, h, i, lipgloss.Width(ln))
+					}
+				}
+				g := s.geometry()
+				left := 0
+				for _, b := range g.side {
+					left += b.h
+				}
+				if g.wide && left != g.detail.h {
+					t.Fatalf("%dx%d: left %d, detail %d", w, h, left, g.detail.h)
 				}
 			}
-			g := s.geometry()
-			left := 0
-			for _, b := range g.side {
-				left += b.h
-			}
-			if g.wide && left != g.detail.h {
-				t.Fatalf("%dx%d: left %d, detail %d", w, h, left, g.detail.h)
-			}
-		}
+		})
 	}
 }
 

@@ -108,7 +108,7 @@ git commit -m "Record test timings before the speedup"
 - Consumes: `lockDir() (string, error)`, `safeDir(dir string) error`, the test hook `lockRoot` and `TestMain` in `internal/write/main_test.go`, and the child-process pattern of `TestHelperHoldLock` in `internal/write/tick_test.go`; `exitOK`, `exitBadInput`, `exitOther` in `internal/cli/cli.go`; `actaBin` from `cmd/acta/main_test.go`.
 - Produces: `write.HoldRunOne(waiting func()) (release func(), err error)`; the command `acta run-one -- <cmd> [args...]`. Task 3 calls it by that name.
 
-- [ ] **Step 1: Write the failing lock tests**
+- [x] **Step 1: Write the failing lock tests**
 
 `internal/write/runone_test.go`:
 
@@ -230,12 +230,12 @@ func TestHoldRunOneRefusesAnOpenFolder(t *testing.T) {
 
 `useLockBase(t)` already exists in `internal/write/tick_test.go` (it points `lockRoot` at a temp folder and returns it). These tests change `lockRoot`, so none of them calls `t.Parallel()`.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/write/ -run 'RunOne' -count=1`
 Expected: FAIL, `undefined: HoldRunOne`.
 
-- [ ] **Step 3: Write `HoldRunOne`**
+- [x] **Step 3: Write `HoldRunOne`**
 
 `internal/write/runone.go`:
 
@@ -291,12 +291,12 @@ func HoldRunOne(waiting func()) (func(), error) {
 }
 ```
 
-- [ ] **Step 4: Run the lock tests and watch them pass**
+- [x] **Step 4: Run the lock tests and watch them pass**
 
 Run: `go test ./internal/write/ -run 'RunOne|Lock' -count=1`
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing CLI tests**
+- [x] **Step 5: Write the failing CLI tests**
 
 `internal/cli/runone_test.go`:
 
@@ -425,12 +425,12 @@ func TestRunOneStopReachesTheCommand(t *testing.T) {
 }
 ```
 
-- [ ] **Step 6: Run them and watch them fail**
+- [x] **Step 6: Run them and watch them fail**
 
 Run: `go test ./internal/cli/ -run RunOne -count=1` and `go test ./cmd/acta/ -run RunOne -count=1`
 Expected: FAIL, `unknown command "run-one"` (exit 1 instead of the command's code).
 
-- [ ] **Step 7: Write the command**
+- [x] **Step 7: Write the command**
 
 `internal/cli/runone.go`:
 
@@ -504,12 +504,12 @@ In `internal/cli/cli.go`, inside the `Run` switch, before `default:`:
 
 and in the `default:` line, change `dispatch init or reply-back` to `dispatch init, reply-back or run-one`.
 
-- [ ] **Step 8: Run them and watch them pass**
+- [x] **Step 8: Run them and watch them pass**
 
 Run: `go test ./internal/write/ ./internal/cli/ ./cmd/acta/ -count=1 -race`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -531,7 +531,7 @@ git commit -m "Add acta run-one to run one full suite at a time per machine"
 - Consumes: the command name `acta run-one -- <cmd>` from Task 2 (by name only; the test fakes `go`).
 - Produces: `scripts/test` and `scripts/test --full`, which Task 4 names in the skills and Task 7 times.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `scripts/test_test.go`:
 
@@ -595,12 +595,12 @@ func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `go test ./scripts/ -count=1`
 Expected: FAIL, the script `test` is not there (`no such file or directory`).
 
-- [ ] **Step 3: Write the script**
+- [x] **Step 3: Write the script**
 
 `scripts/test`, then `chmod 0755 scripts/test`:
 
@@ -627,12 +627,12 @@ fi
 exec go test -short "$@" $pkgs
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `go test ./scripts/ -count=1`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -651,6 +651,7 @@ git commit -m "Add scripts/test: short by default, --full waits its turn"
 - Modify: `plugin/skills/land/SKILL.md` (step 1 precondition; step 6)
 - Modify: `plugin/skills/review/SKILL.md` (the reviewers-may-run-tests sentence)
 - Test: `internal/plugincheck/skill_plan_test.go`, `skill_build_test.go`, `skill_dispatch_test.go`, `skill_land_test.go`, `skill_review_test.go`
+- Added during build (orchestrator ruling, spec section 3.1 wins): `plugin/skills/build/implementer-prompt.md` (it told implementers to run the full suite before each commit), `plugin/skills/tdd/SKILL.md` (checklist line "All tests pass"), `internal/plugincheck/skill_tdd_test.go`
 
 **verify:** No skill still sends an agent to the full suite outside `acta:land`: list every place in `plugin/skills/` that names a test run (`grep -rn "test suite\|go test\|npm test\|pytest\|cargo test\|run the tests" plugin/skills/`) and say for each whether it is narrow, fast, or the land gate. The land gate always runs the full suite once under `acta run-one`, and skips the rerun after the merge only when the merge tree equals the branch tree. The text stays stack-neutral: Go appears only as an example, next to other stacks. Every skill stays under its `MaxLines`, and the skills total stays under the 4240 cap in `TestTotalSkillSize`.
 
@@ -658,7 +659,7 @@ git commit -m "Add scripts/test: short by default, --full waits its turn"
 - Consumes: the names `acta run-one --`, `scripts/test`, `scripts/test --full` from Tasks 2 and 3.
 - Produces: skill text only.
 
-- [ ] **Step 1: Write the failing checks**
+- [x] **Step 1: Write the failing checks**
 
 Add to the `Must` list of each rule:
 
@@ -668,12 +669,12 @@ Add to the `Must` list of each rule:
 - `skill_land_test.go`: `"acta run-one -- <full command>"`, `"HEAD^{tree}"`, `"tree same as branch, gates reused"`
 - `skill_review_test.go`: `"never the full suite"`
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/plugincheck/ -run 'TestSkill(Plan|Build|Dispatch|Land|Review)$' -count=1`
 Expected: FAIL, one "missing" line per new string.
 
-- [ ] **Step 3: Change the skill text**
+- [x] **Step 3: Change the skill text**
 
 `plugin/skills/plan/SKILL.md`, a new section right before `## Waves`:
 
@@ -719,12 +720,12 @@ and in the Phase 2 check block, `<one-shot test runner> 2>&1 | tail -20       # 
 
 `plugin/skills/review/SKILL.md`, in the sentence "they may run tests to prove a finding", change that clause to "they may run the narrow tests that prove a finding, never the full suite".
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/plugincheck/ -count=1`
 Expected: PASS, including `TestTotalSkillSize`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -747,12 +748,12 @@ git commit -m "Skills run narrow tests; the full suite runs once, at land, under
 - Consumes: `sweep`, `edgeWidths`, `edgeHeights`, `sized`, `press`, `newModel`, `withColors`, `checkThumbOnTheBorder`, `topTabs`, `tabKey` in the tui tests.
 - Produces: nothing new.
 
-- [ ] **Step 1: Time the package before**
+- [x] **Step 1: Time the package before**
 
 Run: `go test -count=1 ./internal/tui/ -run 'TestViewNeverOverflowsAnyWindow|TestNoRoundedCorners|TestThumbSitsOnTheBorderNotInside|TestViewFitsEveryTerminalSize|TestTheTabBoxHoldsItsWidthOnEveryScreen' -v 2>&1 | grep -E '^(--- |ok)'`
 Keep the times; they go in the commit message. This change edits tests only, so there is no red test; the proof is the same case count, a green race run and the times.
 
-- [ ] **Step 2: Split each sweep's outer loop into parallel subtests**
+- [x] **Step 2: Split each sweep's outer loop into parallel subtests**
 
 `TestViewNeverOverflowsAnyWindow` becomes:
 
@@ -818,11 +819,11 @@ Do the same in `TestTheTabBoxHoldsItsWidthOnEveryScreen` (outer loop `w`) and `T
 
 Add `"fmt"` to the imports where it is missing.
 
-- [ ] **Step 3: Check the case count is the same**
+- [x] **Step 3: Check the case count is the same**
 
 With a temporary counter (an `atomic.Int64` bumped once per checked case), run each of the five tests with and without `-short` before and after the change; the counts must match. Remove the counter before the commit.
 
-- [ ] **Step 4: Run the package, with the race detector**
+- [x] **Step 4: Run the package, with the race detector**
 
 Run: `go test -count=1 ./internal/tui/` and `go test -count=1 -race -short ./internal/tui/`
 Expected: PASS. If the race detector reports `TestWatchGathersEventsIntoOneReload` in `internal/tui/watch_test.go` (the read of `loads` after the `select`), read it under the lock:
@@ -836,7 +837,7 @@ Expected: PASS. If the race detector reports `TestWatchGathersEventsIntoOneReloa
 	}
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...

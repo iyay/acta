@@ -300,27 +300,32 @@ func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
 func TestTheTabBoxHoldsItsWidthOnEveryScreen(t *testing.T) {
 	t.Parallel()
 
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(0, 200, []int{0, 1, 2, 3, 5}) {
-		for i := range topTabs {
-			m := press(sized(newModel(t), 200, 30), tabKey(i))
-			rows := m.tabRows(w)
-			if len(rows) != barRows {
-				t.Fatalf("w=%d tab %d: %d rows, want %d", w, i, len(rows), barRows)
-			}
-			for k, row := range rows {
-				if got := lipgloss.Width(row); got != w {
-					t.Errorf("w=%d tab %d row %d: %d cells wide, %q", w, i, k, got, plain(row))
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for i := range topTabs {
+				m := press(sized(newModel(t), 200, 30), tabKey(i))
+				rows := m.tabRows(w)
+				if len(rows) != barRows {
+					t.Fatalf("w=%d tab %d: %d rows, want %d", w, i, len(rows), barRows)
 				}
-				if w < 2 && strings.Trim(plain(row), "─") != "" {
-					t.Errorf("w=%d tab %d row %d: %q, want only dashes, there is no room for a corner", w, i, k, plain(row))
+				for k, row := range rows {
+					if got := lipgloss.Width(row); got != w {
+						t.Errorf("w=%d tab %d row %d: %d cells wide, %q", w, i, k, got, plain(row))
+					}
+					if w < 2 && strings.Trim(plain(row), "─") != "" {
+						t.Errorf("w=%d tab %d row %d: %q, want only dashes, there is no room for a corner", w, i, k, plain(row))
+					}
+				}
+				if w >= 2 {
+					if err := closedBox(rows, w); err != nil {
+						t.Errorf("w=%d tab %d: %v", w, i, err)
+					}
 				}
 			}
-			if w >= 2 {
-				if err := closedBox(rows, w); err != nil {
-					t.Errorf("w=%d tab %d: %v", w, i, err)
-				}
-			}
-		}
+		})
 	}
 }
 
@@ -377,21 +382,26 @@ func TestSweepSamplesInsideRangeUnderShort(t *testing.T) {
 func TestViewNeverOverflowsAnyWindow(t *testing.T) {
 	t.Parallel()
 
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(30, 200, edgeWidths) {
-		for _, h := range sweep(10, 60, edgeHeights) {
-			base := sized(newModel(t), w, h)
-			for name, m := range map[string]Model{
-				"open":   base,
-				"detail": press(base, tabKey(tabPlans)),
-				"help":   press(base, "?"),
-			} {
-				for _, line := range strings.Split(sized(m, w, h).View(), "\n") {
-					if got := lipgloss.Width(line); got > w {
-						t.Fatalf("%dx%d %s: line is %d cells wide, the window is %d: %q", w, h, name, got, w, line)
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for _, h := range sweep(10, 60, edgeHeights) {
+				base := sized(newModel(t), w, h)
+				for name, m := range map[string]Model{
+					"open":   base,
+					"detail": press(base, tabKey(tabPlans)),
+					"help":   press(base, "?"),
+				} {
+					for _, line := range strings.Split(sized(m, w, h).View(), "\n") {
+						if got := lipgloss.Width(line); got > w {
+							t.Fatalf("%dx%d %s: line is %d cells wide, the window is %d: %q", w, h, name, got, w, line)
+						}
 					}
 				}
 			}
-		}
+		})
 	}
 }
 
@@ -1122,26 +1132,31 @@ func TestNoRoundedCorners(t *testing.T) {
 	for i := range topTabs {
 		focuses[i] = append(press(newModel(t), tabKey(i)).panes(), paneDetail)
 	}
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(1, 200, edgeWidths) {
-		for i := range topTabs {
-			for _, f := range focuses[i] {
-				m := press(sized(newModel(t), w, 40), tabKey(i))
-				m.focusPane(f)
-				for _, frame := range []struct {
-					what string
-					v    string
-				}{
-					{"plain", m.View()},
-					{"help", press(m, "?").View()},
-					{"value", press(m, "s").View()},
-					{"slug", press(m, "n").View()},
-				} {
-					if strings.ContainsAny(plain(frame.v), "╭╮╰╯") {
-						t.Fatalf("width %d, tab %s, focus %d, %s: rounded corner in the frame", w, topTabs[i].name, f, frame.what)
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for i := range topTabs {
+				for _, f := range focuses[i] {
+					m := press(sized(newModel(t), w, 40), tabKey(i))
+					m.focusPane(f)
+					for _, frame := range []struct {
+						what string
+						v    string
+					}{
+						{"plain", m.View()},
+						{"help", press(m, "?").View()},
+						{"value", press(m, "s").View()},
+						{"slug", press(m, "n").View()},
+					} {
+						if strings.ContainsAny(plain(frame.v), "╭╮╰╯") {
+							t.Fatalf("width %d, tab %s, focus %d, %s: rounded corner in the frame", w, topTabs[i].name, f, frame.what)
+						}
 					}
 				}
 			}
-		}
+		})
 	}
 }
 
@@ -1697,15 +1712,22 @@ func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 			// One size keeps the check on every tab and pane. The full run adds the wide one.
 			sizes = sizes[:1]
 		}
-		for _, size := range sizes {
-			for i := range topTabs {
-				for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
-					for _, at := range []string{"top", "middle", "end"} {
-						checkThumbOnTheBorder(t, i, p, at, size[0], size[1])
+		// The group returns only when every subtest in it is done, so all of
+		// them run while the colors are on.
+		t.Run("group", func(t *testing.T) {
+			for _, size := range sizes {
+				for i := range topTabs {
+					for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
+						t.Run(fmt.Sprintf("%dx%d/%s/%d", size[0], size[1], topTabs[i].name, p), func(t *testing.T) {
+							t.Parallel()
+							for _, at := range []string{"top", "middle", "end"} {
+								checkThumbOnTheBorder(t, i, p, at, size[0], size[1])
+							}
+						})
 					}
 				}
 			}
-		}
+		})
 	})
 }
 
