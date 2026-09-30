@@ -94,23 +94,38 @@ func FirstSeen(repo, path string) (int, error) {
 	return len(commits), nil
 }
 
-// Author gives the name of the person whose commit first added path, and says
-// whether git knows the file at all. A file nobody committed has no author, so
-// the caller can fall back to the name this checkout commits under.
-func Author(repo, path string) (string, bool) {
-	if !inRepo(repo) {
-		return "", false
+// Authors gives, for each path git knows, the name of the person whose commit
+// first added it. It asks git once for all the paths, since one call per file
+// made every board load take seconds. The paths sit right inside repo. A path
+// git never saw has no entry, and a folder outside any checkout gives an
+// empty map without running git.
+func Authors(repo string, paths []string) map[string]string {
+	found := map[string]string{}
+	// With no paths, git would log the whole repo. Stop before that.
+	if len(paths) == 0 || !inRepo(repo) {
+		return found
 	}
-	out, err := run(repo, "log", "--diff-filter=A", "--format=%an", "--", path)
+	// No renames: a file moved inside the folder counts as added where it is
+	// now, the same answer a one-file log gives. quotePath off keeps names
+	// with non-ASCII letters as they are. Each commit line starts with a NUL
+	// byte, so an author line never reads as a file name.
+	args := append([]string{"-c", "core.quotePath=false", "log", "--no-renames", "--diff-filter=A",
+		"--relative", "--name-only", "--format=%x00%an", "--"}, paths...)
+	out, err := run(repo, args...)
 	if err != nil {
-		return "", false
+		return found
 	}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	name := strings.TrimSpace(lines[len(lines)-1])
-	if name == "" {
-		return "", false
+	name := ""
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.HasPrefix(line, "\x00"):
+			name = strings.TrimSpace(line[1:])
+		case line != "" && name != "":
+			// Git lists the newest commit first, so the last add seen is the first one.
+			found[filepath.Join(repo, line)] = name
+		}
 	}
-	return name, true
+	return found
 }
 
 // UserName gives the name this checkout commits under, or "" when git has no

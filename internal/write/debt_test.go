@@ -106,6 +106,8 @@ func TestNewDebtAllDuplicatesIsNoOp(t *testing.T) {
 }
 
 func TestNewDebtRejectsBadInput(t *testing.T) {
+	t.Parallel()
+
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
 	for name, c := range map[string]struct{ id, notes string }{
 		"empty":      {"PLAN-3", ""},

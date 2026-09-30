@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -532,7 +533,9 @@ func TestWheelScrollsOnlyTheFocusedPane(t *testing.T) {
 
 // A trackpad sends hundreds of notches a second. Drawing the screen after
 // each one left the TUI far behind the wheel, so the notches of one frame are
-// gathered and scrolled once. A tick with nothing gathered must move nothing.
+// gathered and scrolled once. The first notch of a frame scrolls at once, and
+// only the notches after it wait for the tick. A tick with nothing gathered
+// must move nothing.
 func TestWheelNotchesInOneFrameScrollOnce(t *testing.T) {
 	t.Parallel()
 
@@ -540,13 +543,17 @@ func TestWheelNotchesInOneFrameScrollOnce(t *testing.T) {
 		m := paneModel(t, p)
 		b := scrollBox(m, p)
 		m = wheelOnly(m, b.x+1, b.y+2, false)
+		first := min(wheelStep, m.lastOff(p))
+		if m.off[p] != first {
+			t.Errorf("pane %d: the first notch should scroll %d at once, off is %d", p, first, m.off[p])
+		}
 		m = wheelOnly(m, b.x+1, b.y+2, false)
-		if m.off[p] != 0 {
-			t.Errorf("pane %d: notches must wait for the frame tick, off is %d", p, m.off[p])
+		if m.off[p] != first {
+			t.Errorf("pane %d: a gathered notch must wait for the frame tick, off is %d", p, m.off[p])
 		}
 		m = wheelTick(m)
 		if want := min(2*wheelStep, m.lastOff(p)); m.off[p] != want {
-			t.Errorf("pane %d: two notches in one frame should scroll %d, off is %d", p, want, m.off[p])
+			t.Errorf("pane %d: the gathered notch should take the pane to %d, off is %d", p, want, m.off[p])
 		}
 		// A second tick with nothing gathered must not move the pane again.
 		before := m.off[p]
@@ -557,6 +564,55 @@ func TestWheelNotchesInOneFrameScrollOnce(t *testing.T) {
 	}
 }
 
+// Scrolling must start on the notch itself. Waiting for the frame tick made
+// every scroll start one frame late.
+func TestWheelFirstNotchScrollsAtOnce(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []pane{paneList, paneDone, paneDetail} {
+		m := paneModel(t, p)
+		b := scrollBox(m, p)
+		m = wheelOnly(m, b.x+1, b.y+2, false)
+		if want := min(wheelStep, m.lastOff(p)); m.off[p] != want {
+			t.Errorf("pane %d: the first notch should scroll %d at once, off is %d", p, want, m.off[p])
+		}
+	}
+}
+
+// While scrolling goes on, the tick must come back each frame. When the wheel
+// has stopped, the tick must stop too, so no tick runs for nothing.
+func TestWheelTickRearmsOnlyWhileScrolling(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	b := scrollBox(m, paneDetail)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	next, cmd := m.Update(wheelTickMsg{})
+	if cmd == nil {
+		t.Fatal("a tick that scrolled must arm the next tick")
+	}
+	m = next.(Model)
+	next, cmd = m.Update(wheelTickMsg{})
+	if cmd != nil {
+		t.Error("a tick with nothing gathered must not arm another tick")
+	}
+	m = next.(Model)
+	before := m.off[paneDetail]
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	if m.off[paneDetail] == before {
+		t.Error("the first notch after the wheel stopped must scroll at once")
+	}
+}
+
+// Two ticks inside the time the renderer takes for two writes at 120fps
+// keep the gap between writes at 16.7 ms or less.
+func TestWheelFrameFitsTwoRendererWrites(t *testing.T) {
+	if wheelFrame != 12*time.Millisecond {
+		t.Errorf("wheelFrame is %v, the spec says 12ms", wheelFrame)
+	}
+}
+
 // A wheel turned back and forth inside one frame ends where it started, so a
 // reader who changes their mind leaves the pane where it was.
 func TestWheelUpAndDownInOneFrameCancel(t *testing.T) {
@@ -564,13 +620,20 @@ func TestWheelUpAndDownInOneFrameCancel(t *testing.T) {
 
 	m := paneModel(t, paneDetail)
 	b := scrollBox(m, paneDetail)
+	// The first notch of a frame scrolls at once, so the frame that cancels is
+	// the next one: its first notch scrolls, and the down and the up after it
+	// are gathered and cancel each other out.
 	m = wheel(m, b.x+1, b.y+2, false)
 	start := m.off[paneDetail]
 	m = wheelOnly(m, b.x+1, b.y+2, false)
+	m = wheelOnly(m, b.x+1, b.y+2, false)
 	m = wheelOnly(m, b.x+1, b.y+2, true)
+	if want := start + wheelStep; m.off[paneDetail] != want {
+		t.Fatalf("the gathered down and up should cancel before the tick, off is %d, want %d", m.off[paneDetail], want)
+	}
 	m = wheelTick(m)
-	if m.off[paneDetail] != start {
-		t.Errorf("down then up in one frame should leave the pane at %d, it is at %d", start, m.off[paneDetail])
+	if want := start + wheelStep; m.off[paneDetail] != want {
+		t.Errorf("down then up in one frame should leave the pane at %d, it is at %d", want, m.off[paneDetail])
 	}
 }
 
@@ -584,6 +647,9 @@ func TestWheelArmsOneTickPerFrame(t *testing.T) {
 	next, first := m.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
 	if first == nil {
 		t.Fatal("the first notch of a frame must start the frame tick")
+	}
+	if want := min(wheelStep, next.(Model).lastOff(paneList)); next.(Model).off[paneList] != want {
+		t.Errorf("the first notch should scroll %d at once, off is %d", want, next.(Model).off[paneList])
 	}
 	_, second := next.Update(tea.MouseMsg{X: b.x + 1, Y: b.y + 2, Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
 	if second != nil {
@@ -650,6 +716,49 @@ func TestWheelWhileHelpIsOpenGathersNothing(t *testing.T) {
 	m = wheel(m, b.x+1, b.y+2, false)
 	if m.off[paneDetail] != 0 || m.wheelDelta != 0 {
 		t.Errorf("the wheel under the help popup moved the pane: off %d, pending %d", m.off[paneDetail], m.wheelDelta)
+	}
+}
+
+// A popup, a slug and a search each sit over the panes and take the wheel
+// themselves, so a notch there must not move a pane at all, not even on the
+// first notch of a frame, which scrolls at once everywhere else.
+func TestWheelUnderAPopupSlugOrSearchGathersNothing(t *testing.T) {
+	t.Parallel()
+
+	slug := "bug-"
+	for _, c := range []struct {
+		name string
+		open func(m Model) Model
+	}{
+		{
+			name: "a popup",
+			open: func(m Model) Model {
+				m.popup = &popup{field: "status", options: []string{"open", "done"}, idx: 0}
+				return m
+			},
+		},
+		{
+			name: "a slug",
+			open: func(m Model) Model { m.slug = &slug; return m },
+		},
+		{
+			name: "a search",
+			open: func(m Model) Model { m.searching = true; return m },
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := paneModel(t, paneDetail)
+			b := scrollBox(m, paneDetail)
+			m = c.open(m)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[paneDetail] != 0 || m.wheelDelta != 0 {
+				t.Errorf("the wheel under %s moved the pane: off %d, pending %d", c.name, m.off[paneDetail], m.wheelDelta)
+			}
+			m = wheelTick(m)
+			if m.off[paneDetail] != 0 {
+				t.Errorf("the tick under %s moved the pane to %d", c.name, m.off[paneDetail])
+			}
+		})
 	}
 }
 
@@ -776,25 +885,36 @@ func TestWheelNotchesBelongToTheScreenTheyWereGatheredOn(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			m := c.start(t)
 			b := scrollBox(m, c.box)
+			// A first notch scrolls at once and a tick with nothing gathered
+			// closes the frame, so it takes two notches and a tick to open a
+			// frame that stays open. The two notches after them are the
+			// gathered ones this case is about.
 			m = wheelOnly(m, b.x+1, b.y+2, false)
 			m = wheelOnly(m, b.x+1, b.y+2, false)
-			if m.off[c.box] != 0 {
-				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
+			m = wheelTick(m)
+			opened := m.off[c.box]
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			if m.off[c.box] != opened {
+				t.Fatalf("a gathered notch must wait for the frame tick, off is %d", m.off[c.box])
 			}
 			m = c.leave(m)
+			// The change may have put the box back at the top, so the notches
+			// are compared with where the box stood after it.
+			before := m.off[c.box]
 			m = wheelTick(m)
 			if c.name == "nothing changed" {
 				// The frame the reader never left must still scroll.
-				if want := min(2*wheelStep, m.lastOff(c.box)); m.off[c.box] != want {
+				if want := min(4*wheelStep, m.lastOff(c.box)); m.off[c.box] != want {
 					t.Errorf("notches with nothing changed scrolled %d, want %d", m.off[c.box], want)
 				}
 				return
 			}
-			if m.off[c.box] != 0 {
-				t.Errorf("the notches of the old screen scrolled the new one to line %d", m.off[c.box])
+			if m.off[c.box] != before {
+				t.Errorf("the notches of the old screen scrolled the new one to %d, it stood at %d", m.off[c.box], before)
 			}
-			if !shows(m, c.box, 0) {
-				t.Errorf("the box shows %q at the top, want the first line of what is on show", drawnFirst(m, c.box))
+			if !shows(m, c.box, before) {
+				t.Errorf("the box shows %q, want line %d of what is on show", drawnFirst(m, c.box), before)
 			}
 		})
 	}
@@ -845,10 +965,13 @@ func TestWheelNotchesAfterTheChangeBelongToTheNewScreen(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			m := c.start(t)
 			b := scrollBox(m, c.box)
+			// A first notch scrolls at once and a tick with nothing gathered
+			// closes the frame, so it takes two notches and a tick to leave a
+			// gathered notch behind. The change must drop that one.
 			m = wheelOnly(m, b.x+1, b.y+2, false)
-			if m.off[c.box] != 0 {
-				t.Fatalf("notches must wait for the frame tick, off is %d", m.off[c.box])
-			}
+			m = wheelOnly(m, b.x+1, b.y+2, false)
+			m = wheelTick(m)
+			m = wheelOnly(m, b.x+1, b.y+2, false)
 			m = c.leave(m)
 			// The pane on screen is where the next notch lands, which the
 			// change may have moved.
@@ -1564,4 +1687,112 @@ func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 			t.Errorf("groupOpen %v: the first line on screen is blank", open)
 		}
 	}
+}
+
+// listLines draws the list box of the open tab the way the screen does.
+func listLines(m Model) []string {
+	p := m.listPane()
+	b := m.geometry().at(p)
+	return m.listView(p, b.textW(), b)
+}
+
+// listRows gives every drawn line the id of the row it draws, so a check that
+// fails can name the row instead of counting lines.
+func listRows(m Model) map[string]string {
+	p := m.listPane()
+	b := m.geometry().at(p)
+	rows, _, _ := m.slotOf(p)
+	out := map[string]string{}
+	for i, ln := range listLines(m) {
+		if n := b.first + i; n < len(rows) {
+			out[rows[n].id] = ln
+		}
+	}
+	return out
+}
+
+// listRow finds the drawn line of one row by its whole id, so a row is named
+// and never counted.
+func listRow(t *testing.T, m Model, id string) string {
+	t.Helper()
+	ln, ok := listRows(m)[id]
+	if !ok {
+		t.Fatalf("no row for %s in %q", id, plainLines(listLines(m)))
+	}
+	return ln
+}
+
+// A row of any kind is drawn at full brightness, and the id of every row the
+// cursor is not on wears the color of its kind.
+func TestListRowsAreNotFaintAndWearKindColors(t *testing.T) {
+	withTrueColor(func() {
+		// Three lists between them hold every kind of row: plans and their
+		// tasks under Activities, a plan whose work has not begun on Plans,
+		// and the folded group of untyped files on Specs.
+		for _, m := range []Model{
+			actModel(t).WithTheme("tokyo-night", true),
+			press(actModel(t).WithTheme("tokyo-night", true), tabKey(tabPlans)),
+			press(newModel(t).WithTheme("tokyo-night", true), tabKey(tabSpecs)),
+		} {
+			rows, sel, idx := m.slotOf(m.listPane())
+			under := rows[cursorOf(rows, *sel, *idx)].id
+			for id, ln := range listRows(m) {
+				if sgrHas(ln, "2") {
+					t.Errorf("%s row is faint: %q in %q", id, plain(ln), plainLines(listLines(m)))
+				}
+				if id == under {
+					if !sgrHas(ln, "1") {
+						t.Errorf("row under the cursor is not the bold band: %q", plain(ln))
+					}
+					continue
+				}
+				it := m.board.Get(id)
+				if it == nil {
+					continue // the group row holds no item, so it has no id
+				}
+				name := it.ShortID
+				if name == "" {
+					name = it.ID
+				}
+				// An id the pane had to cut gets no color of its own.
+				if !strings.Contains(plain(ln), name) {
+					continue
+				}
+				if want := m.styles.kind(it.Kind).Render(name); !strings.Contains(ln, want) {
+					t.Errorf("%s id %s is not in its kind color: %q", id, name, plain(ln))
+				}
+			}
+		}
+	})
+}
+
+// A row whose work is under way keeps the work color on the words around the
+// id, and the id itself wears the color of its kind.
+func TestListRowWithWorkKeepsTheWorkColor(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		ln := listRow(t, m, "plans/2026-09-23-q#task-1")
+		if work := sgr.FindString(m.styles.work.Render("x")); !strings.Contains(ln, work) {
+			t.Errorf("work row lost the work color: %q", plain(ln))
+		}
+		if want := m.styles.kind(board.KindTask).Render("PLN-0004.01"); !strings.Contains(ln, want) {
+			t.Errorf("work row id is not in its kind color: %q", plain(ln))
+		}
+	})
+}
+
+// A row with no item, and one whose id was cut off by the pane width, are all
+// base: there is nothing to give a color of its own.
+func TestPaintIDLeavesACutIDPlain(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		it := &board.Item{ShortID: "PLN-0003", Kind: board.KindPlan}
+		base := lipgloss.NewStyle()
+		if got := m.paintID("PLN-0", it, base); got != base.Render("PLN-0") {
+			t.Errorf("cut id got a color: %q", got)
+		}
+		if got := m.paintID("x", nil, base); got != base.Render("x") {
+			t.Errorf("row with no item got a color: %q", got)
+		}
+	})
 }

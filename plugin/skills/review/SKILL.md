@@ -16,7 +16,7 @@ Dispatch two read-only reviewer subagents at the same time, both from [code-revi
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.
 
-Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Without a range a reviewer looks at the wrong span. Reviewers never edit, stage, commit or run a formatter; they may run tests to prove a finding. Ask them to test a property, not to hunt for any case you did not test.
+Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Without a range a reviewer looks at the wrong span. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
 
 ## Finding bar: BLOCKER or NOTE
 

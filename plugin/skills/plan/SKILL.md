@@ -72,6 +72,12 @@ Every task carries a `verify:` line. Write it as a claim that must hold on every
 
 Never give a line range as the target; a range is an instance. Name the rule and ask for the list of paths checked.
 
+## Test commands
+
+Every run step in a task names the narrowest command that proves it: the package or file the task touched, for example `go test ./internal/tui/ -run TestX`, `pytest tests/test_x.py::test_y` or `npm test -- x.test.ts`. Never `./...` in a task, and never the whole suite. The full suite runs once, in `acta:land`. Why: agents in other worktrees share the same machine, and each full run slows every other one down.
+
+The header names both commands on a `**Tests:**` line: the fast one (a short mode, or the touched packages) and the full one. When the repo has `scripts/test`, they are `scripts/test` and `scripts/test --full`.
+
 ## Waves
 
 Group tasks into waves by file ownership. Two tasks in one wave never touch the same file. A task that needs another task's output goes in a later wave. Declare the waves in the plan, after the file map, so the executor can run each wave's tasks in parallel.
@@ -109,6 +115,8 @@ argues from the spec, so the spec travels with it; executors read both.
 A Bounded plan with no spec file writes exactly
 `**Spec:** none (Bounded, approved in chat on <date>)`, with no other
 backticks on the line: acta reads a .md path there as the spec]
+
+**Tests:** [fast command, full command — see Test commands]
 
 ## Global Constraints
 

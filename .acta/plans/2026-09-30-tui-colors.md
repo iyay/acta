@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: PLN-0039
 hash: eg4p4yy
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI Colors Implementation Plan
 
@@ -69,7 +71,7 @@ Task 3 and Task 4 both touch `view.go`, and Task 2 and Task 3 may both need to u
   - `func (s styles) tabColor(k board.Kind) lipgloss.Color`
   - test helper `func sgrHas(s, code string) bool` in `styles_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/styles_test.go` (add `regexp`, `strconv` and `github.com/iyay/acta/internal/board` to the imports):
 
@@ -187,12 +189,12 @@ func TestSgrHasSkipsColorNumbers(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestKindAndRoleSlots|TestKindWithNoColorIsPlain|TestBandTextUsesTheBackground|TestSgrHasSkipsColorNumbers'`
 Expected: FAIL to build with `s.kind undefined` (and the other new names).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`, import `github.com/iyay/acta/internal/board`, then:
 
@@ -285,12 +287,12 @@ func (s styles) tabColor(k board.Kind) lipgloss.Color {
 
 If `TestHexThemeRoles` or another old test checks that `work` is faint, update that one assert to check it is not faint.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
@@ -312,7 +314,7 @@ git commit -m "tui: add kind and role brushes from theme slots"
 - Consumes: `styles.kind(board.Kind) lipgloss.Style`, `styles.work`, `styles.selected` (Task 1); test helper `sgrHas` (Task 1); `actModel`, `press`, `tabKey`, `plain` (existing test helpers).
 - Produces: `func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/scroll_test.go`. `actModel(t)` opens on the Activities tab with `BUG-0002` under the cursor, then the task `PLN-0004.01` (work under way), then the plan `PLN-0003` (see `TestYCopiesTheIDOfTheRow` in `model_test.go`). Check `rowIDs` first if the order differs, and pick the rows by id, not by index.
 
@@ -396,12 +398,12 @@ func TestPaintIDLeavesACutIDPlain(t *testing.T) {
 
 Add imports `github.com/charmbracelet/lipgloss` and `github.com/iyay/acta/internal/board` if the file lacks them.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestListRowsAreNotFaintAndWearKindColors|TestListRowWithWorkKeepsTheWorkColor|TestPaintIDLeavesACutIDPlain'`
 Expected: FAIL to build with `m.paintID undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `listView` (`internal/tui/scroll.go`), replace the brush switch and the `append` with:
 
@@ -442,12 +444,12 @@ func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string 
 
 Leave `nothing here` faint: it is a hint, not a row. Update any old test that checks rows are faint.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
@@ -472,7 +474,7 @@ git commit -m "tui: draw list rows at full brightness with kind-colored ids"
 - Consumes: `styles.label`, `footLabel`, `done`, `waiting`, `problem`, `kind()`, `accent`, `work`, `faint` (Task 1); `sgrHas` (Task 1); `paintID` (Task 2, `scroll.go`).
 - Produces: `const footLines = 2`; `func (m Model) rule(w int) string`; `func (s styles) dot(mark string) lipgloss.Style`; `func paintDates(s styles, line string) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/detail_test.go`:
 
@@ -575,12 +577,12 @@ func TestStickyMidCountsBothFooterLines(t *testing.T) {
 
 If `actModel`'s bug has no `created` date, the footer still says `created -`, so the assert holds. If the test finds `detailCache` keyed so a changed `Problems` is not seen, the fresh `&detailCache{}` above handles it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestDetailLabelsAndIDWearColors|TestDetailDotsProblemsAndWorkLines|TestDetailFooterHasARuleAndColoredLabels|TestStickyMidCountsBothFooterLines'`
 Expected: FAIL to build with `s.dot undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/detail.go`:
 
@@ -677,12 +679,12 @@ In `internal/tui/view.go`, `detailView`:
 
 Update old tests that pin a one-line footer or the old `stickyMid` numbers.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
@@ -704,7 +706,7 @@ git commit -m "tui: color detail labels, dots and problems, add a rule over the 
 - Consumes: `styles.tabColor(board.Kind) lipgloss.Color`, `styles.bandFG`, `styles.live`, `styles.accent` (Task 1); `topTabs` (`sidebar.go`); `sgrHas` (Task 1).
 - Produces: `func (m Model) paintRight(pieces []statusPiece, right string) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/view_test.go`:
 
@@ -755,12 +757,12 @@ func TestStatusLineColorsProjectAndLive(t *testing.T) {
 
 Add `fmt` and `path/filepath` to the imports if missing. The existing `statusLineBoxes` tests stay as they are and must still pass.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestTabsWearTheirKindColors|TestStatusLineColorsProjectAndLive'`
 Expected: FAIL: tabs are drawn faint and in the accent, and the project is faint.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `barLine` (`internal/tui/view.go`):
 
@@ -818,12 +820,12 @@ func (m Model) paintRight(pieces []statusPiece, right string) string {
 
 Update old tests that check the open tab is in the accent or that the right side is one faint span.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS, including every existing `statusLineBoxes` and tab-click test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
@@ -845,7 +847,7 @@ git commit -m "tui: color top tabs by kind and the project and live words"
 - Consumes: nothing from earlier tasks.
 - Produces: `type clearStatusMsg struct{ text string }`; `const toastFor = 2 * time.Second`; `func clearStatusAfter(d time.Duration, text string) tea.Cmd`; `func (m *Model) copyID() tea.Cmd`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/model_test.go`:
 
@@ -918,12 +920,12 @@ func TestClearStatusAfterSendsItsText(t *testing.T) {
 
 Add `errors` to the imports if missing.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/tui/ -run 'TestCopyToast|TestCopyErrorsDoNotHide|TestClearStatusAfterSendsItsText'`
 Expected: FAIL to build with `undefined: clearStatusMsg`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/model.go`, next to the other message types:
 
@@ -967,15 +969,144 @@ The `"y"` key case. Call first, then return, because Go does not promise that `m
 		return m, cmd
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/tui/`
 Expected: PASS, including `TestYCopiesTheIDOfTheRow` and `TestYCopiesTheIDOfARowWithNoNumber`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./... && go test ./...
 git add internal/tui/model.go internal/tui/model_test.go
 git commit -m "tui: hide the copy toast after two seconds"
+```
+
+## Fix round 1
+
+Review round 1 (`752d34c..d95d375`): Standards axis CLEAN, Spec axis BLOCKED on one finding. Spec change 3 says the work lines in the detail show "the id in the kind color". Today `workLine` (`internal/tui/detail.go`) paints only the dot, and the plan header line that `planLines` writes above its tasks is plain. Both show the id in the theme foreground. The Task 3 code in this plan left this out; this task closes it.
+
+### Task 6: Kind-colored ids on detail work lines
+
+**Files:**
+- Modify: `internal/tui/scroll.go` (`paintID`)
+- Modify: `internal/tui/detail.go` (`workLine`, `planLines`)
+- Test: `internal/tui/detail_test.go`
+
+**verify:** Every detail line that names an item by its id shows that id in the kind color of that item whenever the id is on screen whole. This covers every caller of `workLine` (the tasks of a plan, the tasks under a spec or bug, a task's own line, debt lines) and the plan header line from `planLines`. The line the reader is on stays bold, id included, and the dot keeps its state color. A line cut before the id ends is all in its base brush and is never broken. List every caller of `workLine` and `planLines` you checked.
+
+**Interfaces:**
+- Consumes: `styles.kind(board.Kind) lipgloss.Style`, `styles.dot`, `sgrHas` (Tasks 1 and 3); `actModel` (BUG-0002 has plan PLN-0004 "Plan Q" under it, with task PLN-0004.01 "Fixing").
+- Produces: `func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string`. `Model.paintID` stays and calls it, so the callers in `scroll.go` and `detail.go` do not change.
+
+- [x] **Step 1: Write the failing test**
+
+Add to `internal/tui/detail_test.go`:
+
+```go
+func TestDetailWorkLinesWearKindColoredIDs(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		s := m.styles
+		it := &board.Item{ShortID: "PLN-0003", Kind: board.KindPlan, Title: "Plan"}
+		off := workLine(s, it, false, 60)
+		if !strings.Contains(off, s.kind(board.KindPlan).Render("PLN-0003")) {
+			t.Errorf("work line id is not in the plan color: %q", off)
+		}
+		if !strings.HasPrefix(off, s.dot(dotWaiting).Render(dotWaiting)) {
+			t.Errorf("work line lost its dot color: %q", off)
+		}
+		on := workLine(s, it, true, 60)
+		if !strings.Contains(on, s.kind(board.KindPlan).Bold(true).Render("PLN-0003")) {
+			t.Errorf("the line the reader is on has no bold kind-colored id: %q", on)
+		}
+		if cut := workLine(s, it, false, 6); strings.Contains(cut, s.kind(board.KindPlan).Render("PLN-0003")) {
+			t.Errorf("a cut id got a color: %q", cut)
+		}
+
+		bug := m.Selected() // BUG-0002, with PLN-0004 under it
+		lines := m.planLines(bug, 80)
+		var head, task string
+		for _, ln := range lines {
+			switch p := plain(ln); {
+			case strings.Contains(p, "PLN-0004.01"):
+				task = ln
+			case strings.HasPrefix(p, "PLN-0004"):
+				head = ln
+			}
+		}
+		if !strings.Contains(head, s.kind(board.KindPlan).Render("PLN-0004")) {
+			t.Errorf("plan header line id is not in the plan color: %q", head)
+		}
+		if !strings.Contains(task, s.kind(board.KindTask).Render("PLN-0004.01")) {
+			t.Errorf("task line id is not in the task color: %q", task)
+		}
+	})
+}
+```
+
+If `m.Selected()` is not BUG-0002, or `planLines` of it has no `PLN-0004` line, look up the bug with `m.board.Get` by its path `bugs/2026-09-21-b` instead. Do not change the fixture.
+
+- [x] **Step 2: Run test to verify it fails**
+
+Run: `go test ./internal/tui/ -run TestDetailWorkLinesWearKindColoredIDs`
+Expected: FAIL with "work line id is not in the plan color".
+
+- [x] **Step 3: Write minimal implementation**
+
+In `internal/tui/scroll.go`, move the body of `paintID` onto `styles`, and keep the `Model` method as a one-line call:
+
+```go
+// paintID draws a row with its id in the color of its kind and the rest in
+// base. A row with no item, or whose id was cut off, is all base.
+func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string {
+	return m.styles.paintID(text, it, base)
+}
+
+// paintID is the same for code that holds only the brushes. A bold base
+// makes the id bold too, so the line the reader is on stays bold all across.
+func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string {
+	if it == nil {
+		return base.Render(text)
+	}
+	name := it.ShortID
+	if name == "" {
+		name = it.ID
+	}
+	i := strings.Index(text, name)
+	if i < 0 {
+		return base.Render(text)
+	}
+	return base.Render(text[:i]) + s.kind(it.Kind).Bold(base.GetBold()).Render(name) + base.Render(text[i+len(name):])
+}
+```
+
+In `internal/tui/detail.go`, the two returns at the end of `workLine` become:
+
+```go
+	if !strings.HasPrefix(line, mark) {
+		return brush.Render(line)
+	}
+	return s.dot(mark).Render(mark) + s.paintID(line[len(mark):], it, brush)
+```
+
+`workLine` names its item with `shortRef(it)`, which can be the hash or the path when there is no short id. `paintID` looks for `ShortID`, else `ID`. For an item with only a hash, `paintID` then finds no match and leaves the line in `brush`, which is the old look. That is fine: no id means nothing to color.
+
+In `planLines`:
+
+```go
+		out = append(out, m.paintID(truncate(expandTabs(shortRef(it)+"  "+it.Title), w), it, lipgloss.NewStyle()))
+```
+
+- [x] **Step 4: Run test to verify it passes**
+
+Run: `go test ./internal/tui/`
+Expected: PASS, with every test from Tasks 1-5 still green.
+
+- [x] **Step 5: Commit**
+
+```bash
+gofmt -l internal && go vet ./... && go test ./...
+git add internal/tui/scroll.go internal/tui/detail.go internal/tui/detail_test.go
+git commit -m "tui: color the ids on detail work lines by kind"
 ```

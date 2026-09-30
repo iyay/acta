@@ -1,0 +1,20 @@
+#!/bin/sh
+# Runs this repo's Go tests. A plain run skips the slow screen-size sweeps.
+# --full runs every test, but first waits for any other full run on this
+# machine to end, so agents in other worktrees do not fight over the CPU.
+# With no package given, the whole repo is tested.
+set -eu
+cd "$(dirname "$0")/.."
+full=
+if [ "${1:-}" = "--full" ]; then
+	full=1
+	shift
+fi
+pkgs=./...
+for a in "$@"; do
+	case $a in ./*) pkgs= ;; esac
+done
+if [ -n "$full" ]; then
+	exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+fi
+exec go test -short "$@" $pkgs

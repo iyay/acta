@@ -73,6 +73,19 @@ esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
+// helpText is the key map with each key in the accent, so the eye finds the
+// key first and reads what it does after. A line is split at its first run of
+// two spaces, the gap the key column is laid out with.
+func (m Model) helpText() string {
+	lines := strings.Split(helpLines, "\n")
+	for i, ln := range lines {
+		if at := strings.Index(ln, "  "); at > 0 {
+			lines[i] = m.styles.accent.Render(ln[:at]) + ln[at:]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // View gives the frame Bubble Tea puts on screen. When the last message
 // changed nothing, it hands back the frame it drew last time instead of
 // drawing the same screen again.
@@ -80,7 +93,13 @@ func (m Model) View() string {
 	if m.same && m.frame != nil && m.frame.s != "" {
 		return m.frame.s
 	}
+	// The draw is timed so a slow frame shows up in the trace. A nil tracer
+	// answers every question with nothing, so an untraced run pays nothing.
+	start := m.trace.Now()
 	s := m.draw()
+	if m.trace != nil {
+		m.trace.View(start, m.trace.Now().Sub(start))
+	}
 	if m.frame != nil {
 		m.frame.s = s
 	}
@@ -91,41 +110,65 @@ func (m Model) View() string {
 // top of them.
 func (m Model) draw() string {
 	g := m.geometry()
+	if !g.wide {
+		return m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false)
+	}
+	// A box with no room draws nothing, so it takes no line either and the
+	// boxes below it keep the place the geometry gave them.
+	var left []string
+	for p := range g.side {
+		if drawn := m.paneView(pane(p), g.side[p]); drawn != "" {
+			left = append(left, strings.Split(drawn, "\n")...)
+		}
+	}
+	right := strings.Split(m.paneView(paneDetail, g.detail), "\n")
+	// Every box line is already padded to its box width, so the two columns
+	// are glued with no measuring. Measuring each cell again was most of the
+	// time a frame took. A column that runs out gets blank lines of its width.
+	body := make([]string, max(len(left), len(right)))
+	for i := range body {
+		l, r := strings.Repeat(" ", g.leftW), strings.Repeat(" ", g.detail.w)
+		if i < len(left) {
+			l = left[i]
+		}
+		if i < len(right) {
+			r = right[i]
+		}
+		body[i] = l + r
+	}
+	return m.frameFrom(body, true)
+}
+
+// frameFrom puts the tab box on top of the body lines, cuts them to the
+// screen, adds the status line and lays any popup over it all. exact says
+// the body lines are already the screen width.
+func (m Model) frameFrom(body []string, exact bool) string {
 	// The status line always has a row of its own, so the tab box and the
 	// panes below it share the rest, and a terminal with fewer rows than the
 	// box needs simply loses the bottom of the box.
 	h := max(1, m.height-1)
-	var body string
-	if g.wide {
-		// A box with no room draws nothing, so it takes no line either and
-		// the boxes below it keep the place the geometry gave them.
-		var column []string
-		for p := range g.side {
-			if drawn := m.paneView(pane(p), g.side[p]); drawn != "" {
-				column = append(column, drawn)
-			}
-		}
-		body = lipgloss.JoinHorizontal(lipgloss.Top,
-			lipgloss.JoinVertical(lipgloss.Left, column...), m.paneView(paneDetail, g.detail))
-	} else {
-		body = m.paneView(m.focus, g.full)
-	}
-	lines := append(m.tabRows(m.width), strings.Split(body, "\n")...)
+	tabs := m.tabRows(m.width)
+	lines := append(tabs, body...)
 	if len(lines) > h {
 		lines = lines[:h]
 	}
 	for i, ln := range lines {
+		// The wide body is glued from boxes that are already the screen
+		// width, so only the tab rows and the narrow body need fitting.
+		if exact && i >= len(tabs) {
+			continue
+		}
 		lines[i] = fit(ln, m.width)
 	}
-	body = strings.Join(lines, "\n")
+	out := strings.Join(lines, "\n")
 	line := fit(m.statusLine(), m.width)
 	if m.popupBox() != "" {
 		// The box can be as tall as the screen, so it is laid over the body
 		// and the status line together. Cover greys every line it gets and
 		// strips the hyperlinks, which are off while a popup is open.
-		return m.styles.paintFrame(m.cover(body + "\n" + line))
+		return m.styles.paintFrame(m.cover(out+"\n"+line), m.width)
 	}
-	return m.styles.paintFrame(body + "\n" + line)
+	return m.styles.paintFrame(out+"\n"+line, m.width)
 }
 
 // tabRows draws the tabs in a box of their own, so they read as the top of
@@ -147,10 +190,10 @@ func (m Model) tabRows(width int) []string {
 }
 
 // tabBar draws the names line of the tab box: the tab names that fit the
-// window, in order, each with its key number, and the open one in the accent,
-// so the reader always sees where they are. A window too narrow for every
-// name loses the ones farthest from the open tab first, so the open tab never
-// goes off the line.
+// window, in order, each with its key number and each in the color of its
+// own kind, the open one as a band of its color, so the reader always sees
+// where they are. A window too narrow for every name loses the ones farthest
+// from the open tab first, so the open tab never goes off the line.
 func (m Model) tabBar(width int) string {
 	drop := make([]bool, len(topTabs))
 	line := m.barLine(drop)
@@ -184,11 +227,13 @@ func (m Model) barLine(drop []bool) string {
 			continue
 		}
 		name := fmt.Sprintf("%d %s", i+1, t.name)
+		color := m.styles.tabColor(t.kind)
 		if i == m.top {
-			names = append(names, m.styles.accent.Bold(true).Render(name))
+			// The open tab is a band of its own color, so the eye finds it first.
+			names = append(names, lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).Background(color).Render(name))
 			continue
 		}
-		names = append(names, m.styles.faint.Render(name))
+		names = append(names, lipgloss.NewStyle().Foreground(color).Render(name))
 	}
 	return " " + strings.Join(names, "  ")
 }
@@ -342,10 +387,10 @@ func (m Model) detailView(w, first, h int) []string {
 		return window(m.detailLines(w), first, h)
 	}
 	out := append(append([]string(nil), head...), window(mid, first, n)...)
-	for len(out) < h-1 {
+	for len(out) < h-footLines {
 		out = append(out, "")
 	}
-	return append(out, foot)
+	return append(out, m.rule(w), foot)
 }
 
 // window gives at most h lines of lines, from first on.
@@ -480,7 +525,42 @@ func (m Model) statusLine() string {
 	if room > 0 {
 		gap = strings.Repeat(" ", room)
 	}
-	return left + gap + m.styles.faint.Render(right)
+	return left + gap + m.paintRight(pieces, right)
+}
+
+// paintRight colors the words on the right that tell something at a glance:
+// the project in the accent and live in green. The rest stays faint. It finds
+// each word in order, so a word cut off by a narrow window keeps the faint
+// brush, and links keep their wrappers so a click still finds them.
+func (m Model) paintRight(pieces []statusPiece, right string) string {
+	var b strings.Builder
+	at := 0
+	for i, p := range pieces {
+		var brush lipgloss.Style
+		switch {
+		case p.url != "":
+			continue
+		case i == 0 && p.text == filepath.Base(m.cfg.RepoRoot):
+			brush = m.styles.accent
+		case p.text == "live":
+			brush = m.styles.live
+		default:
+			continue
+		}
+		j := strings.Index(right[at:], p.text)
+		if j < 0 {
+			continue
+		}
+		if j > 0 {
+			b.WriteString(m.styles.faint.Render(right[at : at+j]))
+		}
+		b.WriteString(brush.Render(p.text))
+		at += j + len(p.text)
+	}
+	if at < len(right) {
+		b.WriteString(m.styles.faint.Render(right[at:]))
+	}
+	return b.String()
 }
 
 // statusLineBoxes gives the click boxes of the bottom line by reading the
@@ -589,7 +669,7 @@ func (m Model) edge(p pane) lipgloss.Style {
 func (m Model) popupBox() string {
 	switch {
 	case m.help:
-		return m.boxView("Keys", helpLines)
+		return m.boxView("Keys", m.helpText())
 	case m.popup != nil:
 		var b strings.Builder
 		for i, o := range m.popup.options {

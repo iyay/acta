@@ -1,6 +1,6 @@
 ---
 name: build
-description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through one of three executors - subagent (default, the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta voice show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
@@ -13,7 +13,7 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 | Executor | Who writes the code | How |
 |---|---|---|
-| `subagent` (default) | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
+| `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 | `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr |
 | `inline` | you | only when the user says "inline" |
 
@@ -113,7 +113,7 @@ if [ -f go.mod ]; then go mod download; fi
 
 ### Step 3: Verify Clean Baseline
 
-Run the tests to make sure the workspace starts clean (`npm test`, `cargo test`, `pytest`, or `go test ./...`, whichever the project uses).
+Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`.
 
 If tests fail: report the failures, ask whether to proceed or investigate. If tests pass, report ready: worktree path, passing count, and what is next. A dirty baseline makes every later failure ambiguous, so proceeding past failures is your human partner's call.
 
@@ -205,7 +205,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 ## Close
 
-When every task is committed: run the full test suite and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 
 ### Reply back when a dispatch record exists
 

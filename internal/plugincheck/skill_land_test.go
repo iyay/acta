@@ -18,6 +18,7 @@ func TestSkillLand(t *testing.T) {
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
 			"acta: tick <plan>", "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
+			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
 			"Build never commits the plan file", "First commit the plan file",

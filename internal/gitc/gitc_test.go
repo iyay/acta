@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -217,30 +218,94 @@ func TestFirstSeenCountsTheMerge(t *testing.T) {
 	}
 }
 
-// The author of a file is the person whose commit first added it, so a later
-// edit by someone else never changes who wrote the file.
-func TestAuthorIsTheFirstCommit(t *testing.T) {
+// Authors asks git once for many files. The author of a file is the person
+// whose commit first added it, so a later edit by someone else never changes
+// who wrote it. A file moved inside the folder counts as added by whoever
+// moved it, which is what a one-file log said too.
+func TestAuthorsAsksOnceForManyFiles(t *testing.T) {
 	repo := firstCommitRepo(t, "Ana")
+	// A checkout that spots renames must still answer the same way, so the
+	// flag the test would need is on for every case below.
+	git(t, repo, "config", "diff.renames", "true")
+	writeFile(t, filepath.Join(repo, "old.md"), "old\n")
+	git(t, repo, "add", "old.md")
+	git(t, repo, "commit", "-qm", "ana adds old")
 	t.Setenv("GIT_AUTHOR_NAME", "Budi")
 	t.Setenv("GIT_COMMITTER_NAME", "Budi")
 	writeFile(t, filepath.Join(repo, "a.md"), "a again\n")
-	git(t, repo, "commit", "-qam", "second")
+	writeFile(t, filepath.Join(repo, "catatan-é.md"), "c\n")
+	git(t, repo, "mv", "old.md", "moved.md")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-qm", "budi edits, adds and moves")
+	// A name that only ever shows up through a move: git must answer for it as
+	// a file the mover added, not read the move as nothing at all.
+	t.Setenv("GIT_AUTHOR_NAME", "Citra")
+	t.Setenv("GIT_COMMITTER_NAME", "Citra")
+	git(t, repo, "mv", "moved.md", "pindah.md")
+	git(t, repo, "commit", "-qm", "citra moves it to a name nobody used")
+	// A file dropped and written again later still answers for whoever put it
+	// there the first time, so the newest name on the file never wins.
+	git(t, repo, "rm", "-q", "catatan-é.md")
+	git(t, repo, "commit", "-qm", "citra drops a file")
+	writeFile(t, filepath.Join(repo, "catatan-é.md"), "written again\n")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-qm", "citra writes it again")
 
-	if name, ok := Author(repo, filepath.Join(repo, "a.md")); !ok || name != "Ana" {
-		t.Fatalf("Author = %q, %v, want Ana, true", name, ok)
+	at := func(name string) string { return filepath.Join(repo, name) }
+	got := Authors(repo, []string{at("a.md"), at("catatan-é.md"), at("pindah.md"), at("new.md")})
+	want := map[string]string{
+		at("a.md"):         "Ana",
+		at("catatan-é.md"): "Budi",
+		at("pindah.md"):    "Citra",
 	}
-	if name, ok := Author(repo, filepath.Join(repo, "new.md")); ok || name != "" {
-		t.Errorf("a file git never saw gave %q, %v, want empty, false", name, ok)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Authors = %v, want %v (new.md was never committed, so it has no entry)", got, want)
 	}
-	// A repo with a .git but no commit has no author for anything either.
+
+	// The board asks about a folder, not the checkout root, so the keys have
+	// to come back the way they went in.
+	folder := filepath.Join(repo, "plans")
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_AUTHOR_NAME", "Budi")
+	t.Setenv("GIT_COMMITTER_NAME", "Budi")
+	inside := filepath.Join(folder, "rencana.md")
+	writeFile(t, inside, "p\n")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-qm", "budi writes a plan")
+	if got := Authors(folder, []string{inside}); !reflect.DeepEqual(got, map[string]string{inside: "Budi"}) {
+		t.Fatalf("Authors on a folder inside the checkout = %v, want {%s: Budi}", got, inside)
+	}
+}
+
+// Some asks have nothing to find. None of them may answer with names.
+func TestAuthorsWithNothingToFind(t *testing.T) {
+	repo := firstCommitRepo(t, "Ana")
+	// No paths at all must not turn into a log of the whole repo.
+	if got := Authors(repo, nil); len(got) != 0 {
+		t.Errorf("no paths gave %v, want an empty map", got)
+	}
+	// A repo with a .git but no commit has no author for anything.
 	empty := t.TempDir()
 	git(t, empty, "init", "-q", "-b", "main")
-	if name, ok := Author(empty, filepath.Join(empty, "a.md")); ok || name != "" {
-		t.Errorf("a repo with no commit gave %q, %v, want empty, false", name, ok)
+	if got := Authors(empty, []string{filepath.Join(empty, "a.md")}); len(got) != 0 {
+		t.Errorf("a repo with no commit gave %v, want an empty map", got)
 	}
-	// A folder outside any checkout answers at once, without running git.
-	if name, ok := Author(t.TempDir(), filepath.Join(repo, "a.md")); ok || name != "" {
-		t.Errorf("a folder with no repo gave %q, %v, want empty, false", name, ok)
+	// A folder outside any checkout answers at once, without running git: a
+	// fake git that writes down every call must never be reached.
+	spy := t.TempDir()
+	marks := filepath.Join(spy, "called")
+	fake := "#!/bin/sh\necho called >> " + marks + "\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(spy, "git"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", spy)
+	if got := Authors(spy, []string{filepath.Join(repo, "a.md")}); len(got) != 0 {
+		t.Errorf("a folder with no repo gave %v, want an empty map", got)
+	}
+	if _, err := os.Stat(marks); !os.IsNotExist(err) {
+		t.Errorf("git ran for a folder outside any checkout")
 	}
 }
 

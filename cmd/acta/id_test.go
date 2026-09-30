@@ -20,6 +20,8 @@ func gitCommit(t *testing.T, dir, msg string) {
 }
 
 func TestIDGivesAndIsIdempotent(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	before := commitCount(t, dir)
 	out, errOut, code := acta(t, dir, "", "id")
@@ -48,6 +50,8 @@ func TestIDGivesAndIsIdempotent(t *testing.T) {
 }
 
 func TestIDResolvesInShowTickSet(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
@@ -71,6 +75,8 @@ func TestIDResolvesInShowTickSet(t *testing.T) {
 }
 
 func TestIDUnknown(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
@@ -84,6 +90,8 @@ func TestIDUnknown(t *testing.T) {
 // With auto_commit off the ids are written and left in the working tree, and
 // the command still says what it did and succeeds.
 func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, ".pm.yaml"), []byte("auto_commit: false\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -102,6 +110,8 @@ func TestIDAutoCommitOffPrintsLinesAndExitsZero(t *testing.T) {
 	}
 }
 func TestIDFixDuplicates(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)
@@ -131,6 +141,8 @@ func TestIDFixDuplicates(t *testing.T) {
 }
 
 func TestListShowsShortIDFirst(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	if _, errOut, code := acta(t, dir, "", "id"); code != 0 {
 		t.Fatalf("id exit %d: %s", code, errOut)

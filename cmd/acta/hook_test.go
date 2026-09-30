@@ -59,6 +59,8 @@ func TestHookCommands(t *testing.T) {
 // A session must leave the record file git-ignored, or it shows up in every
 // git status. The line is added once and never committed.
 func TestHookSessionStartIgnoresTheAgentFile(t *testing.T) {
+	t.Parallel()
+
 	dir := fixtureRepo(t)
 	ignore := filepath.Join(dir, ".acta", ".gitignore")
 	for range 2 {

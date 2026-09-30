@@ -133,6 +133,8 @@ func commitPaths(t *testing.T, dir string) []string {
 }
 
 func TestMigrateRootCleanRepoCommitsOnlyTheMove(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	before := gitOut(t, dir, "rev-parse", "HEAD")
 
@@ -155,6 +157,8 @@ func TestMigrateRootCleanRepoCommitsOnlyTheMove(t *testing.T) {
 }
 
 func TestMigrateRootRenamesSettingsYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n  specs: specs\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -215,6 +219,8 @@ func TestMigrateRootDropsDefaultRootLine(t *testing.T) {
 }
 
 func TestMigrateRootRefusesForeignRoot(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "root: docs/plans\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -222,6 +228,8 @@ func TestMigrateRootRefusesForeignRoot(t *testing.T) {
 }
 
 func TestMigrateRootRefusesUntrackedYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "root: .pm\n")
 	assertRefused(t, dir)
@@ -233,6 +241,8 @@ func TestMigrateRootRefusesUntrackedYaml(t *testing.T) {
 // all and refuse before the first move. Without that the move happens and
 // git mv fails late with a raw git error and exit 3.
 func TestMigrateRootRefusesIgnoredUntrackedYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := planRepo(t)
 	writeRepoFile(t, dir, ".gitignore", ".pm.yaml\n")
 	commitAll(t, dir, "ignore yaml", ".gitignore")
@@ -258,6 +268,8 @@ func TestMigrateRootRefusesIgnoredUntrackedYaml(t *testing.T) {
 // check: a .pm.yaml that is committed and only added to .gitignore later is
 // still tracked, so git can rename it and the move goes ahead.
 func TestMigrateRootMovesYamlThatIsTrackedButIgnored(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -274,6 +286,8 @@ func TestMigrateRootMovesYamlThatIsTrackedButIgnored(t *testing.T) {
 }
 
 func TestMigrateRootRefusesModifiedYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -282,6 +296,8 @@ func TestMigrateRootRefusesModifiedYaml(t *testing.T) {
 }
 
 func TestMigrateRootRefusesStagedYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "dirs:\n  plans: plans\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -291,6 +307,8 @@ func TestMigrateRootRefusesStagedYaml(t *testing.T) {
 }
 
 func TestMigrateRootLeavesStagedFileAlone(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, "other.txt", "mine\n")
 	gitOut(t, dir, "add", "--", "other.txt")
@@ -313,6 +331,8 @@ func TestMigrateRootLeavesStagedFileAlone(t *testing.T) {
 }
 
 func TestMigrateRootLeavesUnstagedFileAlone(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, "other.txt", "one\n")
 	commitAll(t, dir, "add other", "other.txt")
@@ -331,6 +351,8 @@ func TestMigrateRootLeavesUnstagedFileAlone(t *testing.T) {
 }
 
 func TestMigrateRootRefusesUntrackedPm(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	gitOut(t, dir, "rm", "-q", "-r", ".pm")
 	gitOut(t, dir, "commit", "-q", "-m", "drop pm")
@@ -339,6 +361,8 @@ func TestMigrateRootRefusesUntrackedPm(t *testing.T) {
 }
 
 func TestMigrateRootRefusesIgnoredPm(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	gitOut(t, dir, "rm", "-q", "-r", ".pm")
 	writeRepoFile(t, dir, ".gitignore", ".pm/\n")
@@ -352,6 +376,8 @@ func TestMigrateRootRefusesIgnoredPm(t *testing.T) {
 }
 
 func TestMigrateRootUndoesWhenCommitFails(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "root: .pm\n")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -389,6 +415,8 @@ func TestMigrateRootUndoesWhenCommitFails(t *testing.T) {
 }
 
 func TestMigrateRootKeepsEmptyYaml(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "")
 	commitAll(t, dir, "add yaml", ".pm.yaml")
@@ -403,6 +431,8 @@ func TestMigrateRootKeepsEmptyYaml(t *testing.T) {
 }
 
 func TestMigrateRootRefusalNamesTheProblem(t *testing.T) {
+	t.Parallel()
+
 	dir := migrateRepo(t)
 	writeRepoFile(t, dir, ".pm.yaml", "root: .pm\n")
 	var stdout, stderr strings.Builder
@@ -595,6 +625,8 @@ var actaYamlForms = []struct {
 // any shape has to stop the command before the first git mv, whatever git
 // thinks of it and whatever the filesystem follows links to.
 func TestMigrateRootRefusesEveryActaYaml(t *testing.T) {
+	t.Parallel()
+
 	for _, form := range actaYamlForms {
 		t.Run(form.name, func(t *testing.T) {
 			dir := migrateRepo(t)

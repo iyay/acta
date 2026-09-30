@@ -528,36 +528,73 @@ func TestDebtItemTakesTheDebtFile(t *testing.T) {
 	}
 }
 
-// Git is asked once per file, not once per item: a spec, a plan with three
-// tasks and a debt file with two lines are three files, not seven questions.
-func TestAuthorIsAskedOncePerFile(t *testing.T) {
-	var files []string
-	gitAuthor = func(_ string, path string) (string, bool) {
-		files = append(files, path)
-		return "", false
+// Git is asked once per folder, not once per file or per item: two specs, a
+// plan with three tasks and a debt file with two lines sit in three folders,
+// so git gets three questions, and no file is named twice in one question.
+func TestAuthorIsAskedOncePerFolder(t *testing.T) {
+	var calls [][]string
+	gitAuthors = func(_ string, paths []string) map[string]string {
+		calls = append(calls, append([]string{}, paths...))
+		return map[string]string{}
 	}
 	names := 0
 	gitUserName = func(string) string {
 		names++
 		return "Sari"
 	}
-	t.Cleanup(func() { gitAuthor, gitUserName = gitc.Author, gitc.UserName })
+	t.Cleanup(func() { gitAuthors, gitUserName = gitc.Authors, gitc.UserName })
 
 	b := boardWith(t, map[string]string{
 		"specs/2026-09-20-a.md":    "---\nid: SPEC-1\n---\n# Spec A\n",
+		"specs/2026-09-20-b.md":    "---\nid: SPEC-2\n---\n# Spec B\n",
 		"plans/2026-09-21-a.md":    "---\nid: PLAN-1\n---\n# Plan A\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n\n### Task 3: Three\n- [ ] z\n",
 		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] one\n- [ ] two\n",
 	})
-	if len(files) != 3 {
-		t.Fatalf("git was asked about %d files, want 3 (a spec, a plan, a debt file): %v", len(files), files)
+	if len(calls) != 3 {
+		t.Fatalf("git was asked %d times, want 3 (specs, plans, debt): %v", len(calls), calls)
+	}
+	for _, paths := range calls {
+		seen := map[string]bool{}
+		for _, p := range paths {
+			if seen[p] {
+				t.Errorf("one question named %s twice: %v", p, paths)
+			}
+			seen[p] = true
+		}
+		if filepath.Base(filepath.Dir(paths[0])) == "specs" && len(paths) != 2 {
+			t.Errorf("the specs question named %d files, want both specs: %v", len(paths), paths)
+		}
 	}
 	if names != 1 {
 		t.Errorf("user.name was read %d times in one load, want 1", names)
 	}
-	for _, id := range []string{"SPC-0001", "PLN-0001", "PLN-0001.03", "DBT-0001.01", "DBT-0001.02"} {
+	for _, id := range []string{"SPC-0001", "SPC-0002", "PLN-0001", "PLN-0001.03", "DBT-0001.01", "DBT-0001.02"} {
 		if got := b.Get(id).Author; got != "Sari" {
 			t.Errorf("%s author = %q, want the one name the whole load read", id, got)
 		}
+	}
+}
+
+// One folder can hold a committed file and a file nobody committed yet. The
+// first keeps its author and the second gets the name this checkout commits
+// under.
+func TestAuthorMixesCommittedAndNewFilesInOneFolder(t *testing.T) {
+	t.Parallel()
+
+	dir := authorRepo(t, "Ana", map[string]string{
+		"specs/2026-09-20-a.md": "---\nid: SPEC-1\n---\n# Spec A\n",
+	})
+	late := filepath.Join(dir, ".acta", "specs", "2026-09-21-b.md")
+	if err := os.WriteFile(late, []byte("---\nid: SPEC-2\n---\n# Spec B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, dir, "config", "user.name", "Sari")
+	b := loadDir(t, dir)
+	if got := b.Get("SPC-0001").Author; got != "Ana" {
+		t.Errorf("the committed spec has author %q, want Ana", got)
+	}
+	if got := b.Get("SPC-0002").Author; got != "Sari" {
+		t.Errorf("the new spec has author %q, want the user.name Sari", got)
 	}
 }
 

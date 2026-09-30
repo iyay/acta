@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -88,6 +89,9 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 
 	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans))
 	v := m.View()
+	// A row is drawn as a plain row, an id in its kind color and a title
+	// after it, so the words are read without the color codes in between.
+	plainV := plain(v)
 	for _, want := range []string{
 		" 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities",
 		"─Open", "─Done ─ Dropped", "─Detail",
@@ -97,7 +101,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 		"FILE      : .acta/plans/2026-09-21-alpha.md",
 		"Write the failing test",
 	} {
-		if !strings.Contains(v, want) {
+		if !strings.Contains(plainV, want) {
 			t.Errorf("view is missing %q", want)
 		}
 	}
@@ -276,19 +280,71 @@ func TestTabsSitInABoxOfTheirOwn(t *testing.T) {
 }
 
 // TestTheOpenTabIsTheOnlyBrightName checks the brush of every name, so the
-// highlight can never sit on two tabs or on the wrong one.
+// band can never sit on two tabs or on the wrong one, and so every other name
+// is plain text in the color of its own kind.
 func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
 	withColors(func() {
 		for i := range topTabs {
 			m := press(sized(newModel(t), 160, 40), tabKey(i))
 			mid := strings.Split(m.View(), "\n")[1]
-			bright := m.styles.accent.Bold(true)
 			for j, tab := range topTabs {
-				on := strings.Contains(mid, bright.Render(fmt.Sprintf("%d %s", j+1, tab.name)))
-				if on != (j == i) {
-					t.Errorf("tab %d open: %q bright = %v", i, tab.name, on)
+				name := fmt.Sprintf("%d %s", j+1, tab.name)
+				color := m.styles.tabColor(tab.kind)
+				band := lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).Background(color)
+				if on := strings.Contains(mid, band.Render(name)); on != (j == i) {
+					t.Errorf("tab %d open: %q in the band = %v", i, tab.name, on)
+				}
+				if j != i && !strings.Contains(mid, lipgloss.NewStyle().Foreground(color).Render(name)) {
+					t.Errorf("tab %d open: %q is not plain text in its kind color", i, tab.name)
 				}
 			}
+		}
+	})
+}
+
+// TestTabsWearTheirKindColors reads every tab name in both themes with each
+// tab open, so no tab can go faint or lose the color of its kind.
+func TestTabsWearTheirKindColors(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			for open := range topTabs {
+				m := press(actModel(t).WithTheme(name, true), tabKey(open))
+				line := m.barLine(make([]bool, len(topTabs)))
+				for i, tb := range topTabs {
+					label := fmt.Sprintf("%d %s", i+1, tb.name)
+					want := lipgloss.NewStyle().Foreground(m.styles.tabColor(tb.kind)).Render(label)
+					if i == open {
+						want = lipgloss.NewStyle().Bold(true).Foreground(m.styles.bandFG).
+							Background(m.styles.tabColor(tb.kind)).Render(label)
+					}
+					if !strings.Contains(line, want) {
+						t.Errorf("%s, open %d: tab %q is not drawn as %q in %q", name, open, label, want, line)
+					}
+				}
+				if sgrHas(line, "2") {
+					t.Errorf("%s, open %d: a tab is faint: %q", name, open, line)
+				}
+			}
+		}
+	})
+}
+
+// TestStatusLineColorsProjectAndLive reads the words that tell something at a
+// glance: the project wears the accent, live wears green, and paused does not.
+func TestStatusLineColorsProjectAndLive(t *testing.T) {
+	withTrueColor(func() {
+		m := sized(actModel(t).WithTheme("tokyo-night", true), 200, 40)
+		line := m.statusLine()
+		project := filepath.Base(m.cfg.RepoRoot)
+		if !strings.Contains(line, m.styles.accent.Render(project)) {
+			t.Errorf("project %q is not in the accent: %q", project, plain(line))
+		}
+		if !strings.Contains(line, m.styles.live.Render("live")) {
+			t.Errorf("live is not green: %q", plain(line))
+		}
+		m.manual = true
+		if strings.Contains(m.statusLine(), m.styles.live.Render("paused")) {
+			t.Error("paused is green")
 		}
 	})
 }
@@ -300,27 +356,32 @@ func TestTheOpenTabIsTheOnlyBrightName(t *testing.T) {
 func TestTheTabBoxHoldsItsWidthOnEveryScreen(t *testing.T) {
 	t.Parallel()
 
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(0, 200, []int{0, 1, 2, 3, 5}) {
-		for i := range topTabs {
-			m := press(sized(newModel(t), 200, 30), tabKey(i))
-			rows := m.tabRows(w)
-			if len(rows) != barRows {
-				t.Fatalf("w=%d tab %d: %d rows, want %d", w, i, len(rows), barRows)
-			}
-			for k, row := range rows {
-				if got := lipgloss.Width(row); got != w {
-					t.Errorf("w=%d tab %d row %d: %d cells wide, %q", w, i, k, got, plain(row))
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for i := range topTabs {
+				m := press(sized(newModel(t), 200, 30), tabKey(i))
+				rows := m.tabRows(w)
+				if len(rows) != barRows {
+					t.Fatalf("w=%d tab %d: %d rows, want %d", w, i, len(rows), barRows)
 				}
-				if w < 2 && strings.Trim(plain(row), "─") != "" {
-					t.Errorf("w=%d tab %d row %d: %q, want only dashes, there is no room for a corner", w, i, k, plain(row))
+				for k, row := range rows {
+					if got := lipgloss.Width(row); got != w {
+						t.Errorf("w=%d tab %d row %d: %d cells wide, %q", w, i, k, got, plain(row))
+					}
+					if w < 2 && strings.Trim(plain(row), "─") != "" {
+						t.Errorf("w=%d tab %d row %d: %q, want only dashes, there is no room for a corner", w, i, k, plain(row))
+					}
+				}
+				if w >= 2 {
+					if err := closedBox(rows, w); err != nil {
+						t.Errorf("w=%d tab %d: %v", w, i, err)
+					}
 				}
 			}
-			if w >= 2 {
-				if err := closedBox(rows, w); err != nil {
-					t.Errorf("w=%d tab %d: %v", w, i, err)
-				}
-			}
-		}
+		})
 	}
 }
 
@@ -377,21 +438,26 @@ func TestSweepSamplesInsideRangeUnderShort(t *testing.T) {
 func TestViewNeverOverflowsAnyWindow(t *testing.T) {
 	t.Parallel()
 
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(30, 200, edgeWidths) {
-		for _, h := range sweep(10, 60, edgeHeights) {
-			base := sized(newModel(t), w, h)
-			for name, m := range map[string]Model{
-				"open":   base,
-				"detail": press(base, tabKey(tabPlans)),
-				"help":   press(base, "?"),
-			} {
-				for _, line := range strings.Split(sized(m, w, h).View(), "\n") {
-					if got := lipgloss.Width(line); got > w {
-						t.Fatalf("%dx%d %s: line is %d cells wide, the window is %d: %q", w, h, name, got, w, line)
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for _, h := range sweep(10, 60, edgeHeights) {
+				base := sized(newModel(t), w, h)
+				for name, m := range map[string]Model{
+					"open":   base,
+					"detail": press(base, tabKey(tabPlans)),
+					"help":   press(base, "?"),
+				} {
+					for _, line := range strings.Split(sized(m, w, h).View(), "\n") {
+						if got := lipgloss.Width(line); got > w {
+							t.Fatalf("%dx%d %s: line is %d cells wide, the window is %d: %q", w, h, name, got, w, line)
+						}
 					}
 				}
 			}
-		}
+		})
 	}
 }
 
@@ -819,18 +885,18 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		}
 
 		// The in-progress row is not selected, so it keeps the accent and
-		// is dim.
+		// is not faint, so a row under way reads at full brightness.
 		going := paintedLine(v, b, 2)
-		if !wears(going, 2) || !wears(going, 38, 5, 111) {
-			t.Errorf("an unselected in-progress row should be dim and keep the accent: %q", going)
+		if wears(going, 2) || !wears(going, 38, 5, 111) {
+			t.Errorf("an unselected in-progress row should keep the accent without faint: %q", going)
 		}
 		if wears(going, 48, 5, 23) {
 			t.Errorf("an unselected row wears a background: %q", going)
 		}
 		for _, i := range []int{3, 4} {
 			row := paintedLine(v, b, i)
-			if !wears(row, 2) {
-				t.Errorf("row %d is not dim: %q", i, row)
+			if sgrHas(row, "2") {
+				t.Errorf("row %d is faint: %q", i, plain(row))
 			}
 			if wears(row, 48, 5, 23) {
 				t.Errorf("row %d wears a background: %q", i, row)
@@ -985,7 +1051,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	if !strings.HasPrefix(plain(last), "? help") {
 		t.Errorf("the left should show only ? help, got %q", plain(last))
 	}
-	if !strings.Contains(last, "basic · live · 2026-09-27 20:46") {
+	if !strings.Contains(plain(last), "basic · live · 2026-09-27 20:46") {
 		t.Errorf("the project, mode or date is missing: %q", plain(last))
 	}
 	if !strings.Contains(last, "Feedback") {
@@ -998,7 +1064,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 		t.Errorf("the line must not name pmb: %q", plain(last))
 	}
 	m.manual = true
-	if !strings.Contains(m.View(), "basic · paused · 2026-09-27 20:46") {
+	if !strings.Contains(plain(m.View()), "basic · paused · 2026-09-27 20:46") {
 		t.Error("watching off should read paused")
 	}
 	m.status = "acta: x status done committed"
@@ -1122,26 +1188,31 @@ func TestNoRoundedCorners(t *testing.T) {
 	for i := range topTabs {
 		focuses[i] = append(press(newModel(t), tabKey(i)).panes(), paneDetail)
 	}
+	// One subtest per width, so the sizes spread over every core instead of
+	// one long loop holding the whole package up.
 	for _, w := range sweep(1, 200, edgeWidths) {
-		for i := range topTabs {
-			for _, f := range focuses[i] {
-				m := press(sized(newModel(t), w, 40), tabKey(i))
-				m.focusPane(f)
-				for _, frame := range []struct {
-					what string
-					v    string
-				}{
-					{"plain", m.View()},
-					{"help", press(m, "?").View()},
-					{"value", press(m, "s").View()},
-					{"slug", press(m, "n").View()},
-				} {
-					if strings.ContainsAny(plain(frame.v), "╭╮╰╯") {
-						t.Fatalf("width %d, tab %s, focus %d, %s: rounded corner in the frame", w, topTabs[i].name, f, frame.what)
+		t.Run(fmt.Sprintf("w%d", w), func(t *testing.T) {
+			t.Parallel()
+			for i := range topTabs {
+				for _, f := range focuses[i] {
+					m := press(sized(newModel(t), w, 40), tabKey(i))
+					m.focusPane(f)
+					for _, frame := range []struct {
+						what string
+						v    string
+					}{
+						{"plain", m.View()},
+						{"help", press(m, "?").View()},
+						{"value", press(m, "s").View()},
+						{"slug", press(m, "n").View()},
+					} {
+						if strings.ContainsAny(plain(frame.v), "╭╮╰╯") {
+							t.Fatalf("width %d, tab %s, focus %d, %s: rounded corner in the frame", w, topTabs[i].name, f, frame.what)
+						}
 					}
 				}
 			}
-		}
+		})
 	}
 }
 
@@ -1253,8 +1324,8 @@ func boxOn(lines []string, row string) int {
 func TestPopupDimsTheBackground(t *testing.T) {
 	// The brush the view paints the screen behind a popup with, spelled out
 	// here so this test checks the color the plan names and not the one the
-	// view happens to use today.
-	dim := func() lipgloss.Style { return lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#2d3147")) }
+	// view happens to use today: tokyo-night slot 8, never faint.
+	dim := func() lipgloss.Style { return lipgloss.NewStyle().Foreground(lipgloss.Color("#414868")) }
 	withColors(func() { checkPopupDim(t, dim()) })
 	withTrueColor(func() { checkPopupDim(t, dim()) })
 }
@@ -1278,7 +1349,7 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 			// The theme background is under every line and after every
 			// reset. Take it off again, because what this test reads is
 			// the brush on the text and the frame has its own test.
-			frame := strings.TrimSuffix(pop.styles.paintFrame(""), "\x1b[K")
+			frame := strings.TrimSuffix(pop.styles.paintFrame("", pop.width), "\x1b[K")
 			after := strings.Split(pop.View(), "\n")
 			for y, drawn := range after {
 				ln := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(drawn, frame), "\x1b[K"), frame, "")
@@ -1306,6 +1377,36 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 			}
 		}
 	}
+}
+
+// TestFullLinesKeepTheirLastCell draws every tab at several sizes, with and
+// without a popup. A line as wide as the window must not end in erase-line,
+// or the terminal blanks the right wall.
+func TestFullLinesKeepTheirLastCell(t *testing.T) {
+	withTrueColor(func() {
+		for _, size := range [][2]int{{80, 30}, {120, 40}, {204, 58}} {
+			for tab := range topTabs {
+				for _, open := range []string{"", "?"} {
+					m := press(sized(newModel(t), size[0], size[1]), tabKey(tab))
+					if open != "" {
+						m = press(m, open)
+					}
+					for y, ln := range strings.Split(m.View(), "\n") {
+						txt := plain(ln)
+						if lipgloss.Width(txt) != m.width {
+							continue
+						}
+						if strings.HasSuffix(ln, "\x1b[K") {
+							t.Errorf("%dx%d tab %d popup %q line %d: full line ends in erase-line", size[0], size[1], tab, open, y)
+						}
+						if strings.HasSuffix(txt, " ") && y < size[1]-1 {
+							t.Errorf("%dx%d tab %d popup %q line %d: full line ends in a blank, not the wall: %q", size[0], size[1], tab, open, y, txt)
+						}
+					}
+				}
+			}
+		}
+	})
 }
 
 // atCell gives the first n cells of a plain line, whole runes only, so a test
@@ -1697,15 +1798,22 @@ func TestThumbSitsOnTheBorderNotInside(t *testing.T) {
 			// One size keeps the check on every tab and pane. The full run adds the wide one.
 			sizes = sizes[:1]
 		}
-		for _, size := range sizes {
-			for i := range topTabs {
-				for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
-					for _, at := range []string{"top", "middle", "end"} {
-						checkThumbOnTheBorder(t, i, p, at, size[0], size[1])
+		// The group returns only when every subtest in it is done, so all of
+		// them run while the colors are on.
+		t.Run("group", func(t *testing.T) {
+			for _, size := range sizes {
+				for i := range topTabs {
+					for _, p := range append(press(newModel(t), tabKey(i)).panes(), paneDetail) {
+						t.Run(fmt.Sprintf("%dx%d/%s/%d", size[0], size[1], topTabs[i].name, p), func(t *testing.T) {
+							t.Parallel()
+							for _, at := range []string{"top", "middle", "end"} {
+								checkThumbOnTheBorder(t, i, p, at, size[0], size[1])
+							}
+						})
 					}
 				}
 			}
-		}
+		})
 	})
 }
 
@@ -1941,7 +2049,12 @@ func TestViewReusesTheFrameForANotchThatOnlyGathers(t *testing.T) {
 
 	m := paneModel(t, paneDetail)
 	b := scrollBox(m, paneDetail)
-	m.View()
+	// The first notch scrolls at once, so it draws. The second one waits for
+	// the tick and must not draw.
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	if !drewNew(m) {
+		t.Error("a notch that scrolls at once did not draw the screen")
+	}
 	m = wheelOnly(m, b.x+1, b.y+2, false)
 	if drewNew(m) {
 		t.Error("a notch that only adds to the delta drew the screen again")
@@ -2001,4 +2114,75 @@ func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
 			t.Errorf("%s: View gave the old frame back", name)
 		}
 	}
+}
+
+// TestHelpKeysWearTheAccent reads every line of the ? popup. The keys must be
+// in the accent so they stand out from what they do, and nothing else on the
+// screen may move.
+func TestHelpKeysWearTheAccent(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			m := sized(newModel(t).WithTheme(name, true), 120, 40)
+			text := m.helpText()
+			if plain(text) != helpLines {
+				t.Fatalf("%s: help text changed its words:\n%q", name, plain(text))
+			}
+			got := strings.Split(text, "\n")
+			for i, ln := range strings.Split(helpLines, "\n") {
+				key := ln
+				if at := strings.Index(ln, "  "); at > 0 {
+					key = ln[:at]
+				}
+				want := m.styles.accent.Render(key)
+				if !strings.HasPrefix(got[i], want) {
+					t.Errorf("%s line %d: key %q is not in the accent: %q", name, i, key, got[i])
+				}
+				if rest := strings.TrimPrefix(got[i], want); strings.Contains(rest, "\x1b[") {
+					t.Errorf("%s line %d: the description has a color: %q", name, i, rest)
+				}
+			}
+			before := strings.Split(m.boxView("Keys", helpLines), "\n")
+			after := strings.Split(press(m, "?").popupBox(), "\n")
+			if len(before) != len(after) {
+				t.Fatalf("%s: box has %d rows, want %d", name, len(after), len(before))
+			}
+			for i := range before {
+				if plain(after[i]) != plain(before[i]) {
+					t.Errorf("%s row %d: box text moved:\n got %q\nwant %q", name, i, plain(after[i]), plain(before[i]))
+				}
+				// The drawn row, not just helpText, has to wear the accent
+				// on the key. A box drawn from the plain helpLines looks the
+				// same once the colors are stripped, so read the row itself.
+				if i == 0 || i == len(before)-1 {
+					continue
+				}
+				inner := strings.TrimPrefix(after[i], m.styles.accent.Render("│"))
+				key := strings.Split(helpLines, "\n")[i-1]
+				if at := strings.Index(key, "  "); at > 0 {
+					key = key[:at]
+				}
+				if !strings.HasPrefix(inner, m.styles.accent.Render(key)) {
+					t.Errorf("%s row %d: the key is not in the accent on screen: %q", name, i, inner)
+				}
+			}
+		}
+	})
+}
+
+func TestOtherPopupsHaveNoAccentInside(t *testing.T) {
+	withTrueColor(func() {
+		// t and s open the two pickers, n opens the new bug prompt. The value
+		// picker is s, so it has to be in this list too.
+		for _, open := range []string{"t", "s", "n"} {
+			m := press(sized(newModel(t), 120, 40), tabKey(tabBugs), open)
+			rows := strings.Split(m.popupBox(), "\n")
+			accent := strings.TrimSuffix(m.styles.accent.Render("x"), "x\x1b[0m")
+			for i, r := range rows[1 : len(rows)-1] {
+				inner := strings.TrimSuffix(strings.TrimPrefix(r, m.styles.accent.Render("│")), m.styles.accent.Render("│"))
+				if strings.Contains(inner, accent) {
+					t.Errorf("popup %q row %d: accent inside the box: %q", open, i+1, inner)
+				}
+			}
+		}
+	})
 }

@@ -1,7 +1,8 @@
 ---
 id: PLN-0031
 hash: u6sq9on
-status: approved
+status: done
+finished: "2026-09-30"
 ---
 # Body Schema Plan 1: Base Rule, Date Meta and Scratch Implementation Plan
 

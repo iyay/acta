@@ -2,7 +2,9 @@
 created: "2026-09-30"
 id: PLN-0042
 hash: rxv1rsf
-status: approved
+status: done
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Faster Test Runs for Agents Implementation Plan
 
@@ -65,11 +67,11 @@ status: approved
 - Consumes: nothing.
 - Produces: the "before" rows that Task 7 compares against.
 
-- [ ] **Step 1: Wait for a quiet machine**
+- [x] **Step 1: Wait for a quiet machine**
 
 Run `uptime`. If the 1-minute load average is above 4, run it again every minute, for up to 10 minutes. After 10 minutes, measure anyway and write `busy` in the load column.
 
-- [ ] **Step 2: Run each command twice, fresh**
+- [x] **Step 2: Run each command twice, fresh**
 
 Run each line twice, one at a time, with `uptime` right before each run:
 
@@ -80,11 +82,11 @@ Run each line twice, one at a time, with `uptime` right before each run:
 
 Keep the `real` seconds, and from the full run keep the per-package time of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
 
-- [ ] **Step 3: Write the rows**
+- [x] **Step 3: Write the rows**
 
 Fill the before rows of the table in `## Timings` at the end of this file, one row per run, then the per-package line.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .acta/plans/2026-09-30-faster-agent-test-runs.md
@@ -107,7 +109,7 @@ git commit -m "Record test timings before the speedup"
 - Consumes: `lockDir() (string, error)`, `safeDir(dir string) error`, the test hook `lockRoot` and `TestMain` in `internal/write/main_test.go`, and the child-process pattern of `TestHelperHoldLock` in `internal/write/tick_test.go`; `exitOK`, `exitBadInput`, `exitOther` in `internal/cli/cli.go`; `actaBin` from `cmd/acta/main_test.go`.
 - Produces: `write.HoldRunOne(waiting func()) (release func(), err error)`; the command `acta run-one -- <cmd> [args...]`. Task 3 calls it by that name.
 
-- [ ] **Step 1: Write the failing lock tests**
+- [x] **Step 1: Write the failing lock tests**
 
 `internal/write/runone_test.go`:
 
@@ -229,12 +231,12 @@ func TestHoldRunOneRefusesAnOpenFolder(t *testing.T) {
 
 `useLockBase(t)` already exists in `internal/write/tick_test.go` (it points `lockRoot` at a temp folder and returns it). These tests change `lockRoot`, so none of them calls `t.Parallel()`.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/write/ -run 'RunOne' -count=1`
 Expected: FAIL, `undefined: HoldRunOne`.
 
-- [ ] **Step 3: Write `HoldRunOne`**
+- [x] **Step 3: Write `HoldRunOne`**
 
 `internal/write/runone.go`:
 
@@ -290,12 +292,12 @@ func HoldRunOne(waiting func()) (func(), error) {
 }
 ```
 
-- [ ] **Step 4: Run the lock tests and watch them pass**
+- [x] **Step 4: Run the lock tests and watch them pass**
 
 Run: `go test ./internal/write/ -run 'RunOne|Lock' -count=1`
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing CLI tests**
+- [x] **Step 5: Write the failing CLI tests**
 
 `internal/cli/runone_test.go`:
 
@@ -424,12 +426,12 @@ func TestRunOneStopReachesTheCommand(t *testing.T) {
 }
 ```
 
-- [ ] **Step 6: Run them and watch them fail**
+- [x] **Step 6: Run them and watch them fail**
 
 Run: `go test ./internal/cli/ -run RunOne -count=1` and `go test ./cmd/acta/ -run RunOne -count=1`
 Expected: FAIL, `unknown command "run-one"` (exit 1 instead of the command's code).
 
-- [ ] **Step 7: Write the command**
+- [x] **Step 7: Write the command**
 
 `internal/cli/runone.go`:
 
@@ -503,12 +505,12 @@ In `internal/cli/cli.go`, inside the `Run` switch, before `default:`:
 
 and in the `default:` line, change `dispatch init or reply-back` to `dispatch init, reply-back or run-one`.
 
-- [ ] **Step 8: Run them and watch them pass**
+- [x] **Step 8: Run them and watch them pass**
 
 Run: `go test ./internal/write/ ./internal/cli/ ./cmd/acta/ -count=1 -race`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -530,7 +532,7 @@ git commit -m "Add acta run-one to run one full suite at a time per machine"
 - Consumes: the command name `acta run-one -- <cmd>` from Task 2 (by name only; the test fakes `go`).
 - Produces: `scripts/test` and `scripts/test --full`, which Task 4 names in the skills and Task 7 times.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `scripts/test_test.go`:
 
@@ -594,12 +596,12 @@ func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `go test ./scripts/ -count=1`
 Expected: FAIL, the script `test` is not there (`no such file or directory`).
 
-- [ ] **Step 3: Write the script**
+- [x] **Step 3: Write the script**
 
 `scripts/test`, then `chmod 0755 scripts/test`:
 
@@ -626,12 +628,12 @@ fi
 exec go test -short "$@" $pkgs
 ```
 
-- [ ] **Step 4: Run it and watch it pass**
+- [x] **Step 4: Run it and watch it pass**
 
 Run: `go test ./scripts/ -count=1`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -650,6 +652,7 @@ git commit -m "Add scripts/test: short by default, --full waits its turn"
 - Modify: `plugin/skills/land/SKILL.md` (step 1 precondition; step 6)
 - Modify: `plugin/skills/review/SKILL.md` (the reviewers-may-run-tests sentence)
 - Test: `internal/plugincheck/skill_plan_test.go`, `skill_build_test.go`, `skill_dispatch_test.go`, `skill_land_test.go`, `skill_review_test.go`
+- Added during build (orchestrator ruling, spec section 3.1 wins): `plugin/skills/build/implementer-prompt.md` (it told implementers to run the full suite before each commit), `plugin/skills/tdd/SKILL.md` (checklist line "All tests pass"), `internal/plugincheck/skill_tdd_test.go`
 
 **verify:** No skill still sends an agent to the full suite outside `acta:land`: list every place in `plugin/skills/` that names a test run (`grep -rn "test suite\|go test\|npm test\|pytest\|cargo test\|run the tests" plugin/skills/`) and say for each whether it is narrow, fast, or the land gate. The land gate always runs the full suite once under `acta run-one`, and skips the rerun after the merge only when the merge tree equals the branch tree. The text stays stack-neutral: Go appears only as an example, next to other stacks. Every skill stays under its `MaxLines`, and the skills total stays under the 4240 cap in `TestTotalSkillSize`.
 
@@ -657,7 +660,7 @@ git commit -m "Add scripts/test: short by default, --full waits its turn"
 - Consumes: the names `acta run-one --`, `scripts/test`, `scripts/test --full` from Tasks 2 and 3.
 - Produces: skill text only.
 
-- [ ] **Step 1: Write the failing checks**
+- [x] **Step 1: Write the failing checks**
 
 Add to the `Must` list of each rule:
 
@@ -667,12 +670,12 @@ Add to the `Must` list of each rule:
 - `skill_land_test.go`: `"acta run-one -- <full command>"`, `"HEAD^{tree}"`, `"tree same as branch, gates reused"`
 - `skill_review_test.go`: `"never the full suite"`
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `go test ./internal/plugincheck/ -run 'TestSkill(Plan|Build|Dispatch|Land|Review)$' -count=1`
 Expected: FAIL, one "missing" line per new string.
 
-- [ ] **Step 3: Change the skill text**
+- [x] **Step 3: Change the skill text**
 
 `plugin/skills/plan/SKILL.md`, a new section right before `## Waves`:
 
@@ -718,12 +721,12 @@ and in the Phase 2 check block, `<one-shot test runner> 2>&1 | tail -20       # 
 
 `plugin/skills/review/SKILL.md`, in the sentence "they may run tests to prove a finding", change that clause to "they may run the narrow tests that prove a finding, never the full suite".
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 Run: `go test ./internal/plugincheck/ -count=1`
 Expected: PASS, including `TestTotalSkillSize`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -746,12 +749,12 @@ git commit -m "Skills run narrow tests; the full suite runs once, at land, under
 - Consumes: `sweep`, `edgeWidths`, `edgeHeights`, `sized`, `press`, `newModel`, `withColors`, `checkThumbOnTheBorder`, `topTabs`, `tabKey` in the tui tests.
 - Produces: nothing new.
 
-- [ ] **Step 1: Time the package before**
+- [x] **Step 1: Time the package before**
 
 Run: `go test -count=1 ./internal/tui/ -run 'TestViewNeverOverflowsAnyWindow|TestNoRoundedCorners|TestThumbSitsOnTheBorderNotInside|TestViewFitsEveryTerminalSize|TestTheTabBoxHoldsItsWidthOnEveryScreen' -v 2>&1 | grep -E '^(--- |ok)'`
 Keep the times; they go in the commit message. This change edits tests only, so there is no red test; the proof is the same case count, a green race run and the times.
 
-- [ ] **Step 2: Split each sweep's outer loop into parallel subtests**
+- [x] **Step 2: Split each sweep's outer loop into parallel subtests**
 
 `TestViewNeverOverflowsAnyWindow` becomes:
 
@@ -817,11 +820,11 @@ Do the same in `TestTheTabBoxHoldsItsWidthOnEveryScreen` (outer loop `w`) and `T
 
 Add `"fmt"` to the imports where it is missing.
 
-- [ ] **Step 3: Check the case count is the same**
+- [x] **Step 3: Check the case count is the same**
 
 With a temporary counter (an `atomic.Int64` bumped once per checked case), run each of the five tests with and without `-short` before and after the change; the counts must match. Remove the counter before the commit.
 
-- [ ] **Step 4: Run the package, with the race detector**
+- [x] **Step 4: Run the package, with the race detector**
 
 Run: `go test -count=1 ./internal/tui/` and `go test -count=1 -race -short ./internal/tui/`
 Expected: PASS. If the race detector reports `TestWatchGathersEventsIntoOneReload` in `internal/tui/watch_test.go` (the read of `loads` after the `select`), read it under the lock:
@@ -835,7 +838,7 @@ Expected: PASS. If the race detector reports `TestWatchGathersEventsIntoOneReloa
 	}
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -854,17 +857,17 @@ git commit -m "Split tui size sweeps into parallel subtests (before: <times>, af
 - Modify: `internal/trees/trees_test.go` (`setup`, a new `TestMain`)
 - Never: any `runone_test.go` (Task 2 owns them; they must stay serial)
 
-**verify:** No test in write, cmd/acta, cli or trees sets `GIT_AUTHOR_*` or `GIT_COMMITTER_*` any more (`grep -rn 'GIT_AUTHOR\|GIT_COMMITTER' internal/write internal/cli internal/trees cmd/acta` prints nothing), and no test leans on the user's own git identity: the four packages pass with `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`. A test gets `t.Parallel()` only when neither it nor any helper it calls uses `t.Setenv`, `os.Setenv`, `t.Chdir` or `os.Chdir`, or writes a package-level variable (such as `lockRoot` or `runTUI`); list for each package how many tests are parallel before and after, and name the reason each remaining serial test has to stay serial. `go test -race` passes for the four packages.
+**verify:** No test in write, cmd/acta, cli or trees sets `GIT_AUTHOR_*` or `GIT_COMMITTER_*` any more (`grep -rn 'GIT_AUTHOR\|GIT_COMMITTER' internal/write internal/cli internal/trees cmd/acta` prints nothing; build ruling: the one allowed hit is `internal/write/ids_test.go`, which sets `GIT_AUTHOR_DATE` and `GIT_COMMITTER_DATE` on one git child's `cmd.Env`, not on the test process), and no test leans on the user's own git identity: the four packages pass with `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`. A test gets `t.Parallel()` only when neither it nor any helper it calls uses `t.Setenv`, `os.Setenv`, `t.Chdir` or `os.Chdir`, or writes a package-level variable (such as `lockRoot` or `runTUI`); list for each package how many tests are parallel before and after, and name the reason each remaining serial test has to stay serial. `go test -race` passes for the four packages.
 
 **Interfaces:**
 - Consumes: the helpers named above; `gitRun(t, dir, args...)` in `internal/write`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Count the parallel tests before**
+- [x] **Step 1: Count the parallel tests before**
 
 Run, per package: `grep -c 't.Parallel()' <pkg>/*_test.go | awk -F: '{s+=$2} END {print s}'` and `grep -c '^func Test' <pkg>/*_test.go | awk -F: '{s+=$2} END {print s}'` for `internal/write`, `internal/cli`, `internal/trees`, `cmd/acta`. Keep the numbers for the commit message. This change edits tests only, so there is no red test; the proof is the green race run, the no-global-identity run and the counts.
 
-- [ ] **Step 2: Set identity in the repo, not in the env**
+- [x] **Step 2: Set identity in the repo, not in the env**
 
 In each helper, delete the `t.Setenv("GIT_AUTHOR_NAME", ...)` style lines (and loops) and, right after the helper's `git init`, set the identity inside that repo. In `repoWith`:
 
@@ -898,21 +901,21 @@ func TestMain(m *testing.M) {
 }
 ```
 
-- [ ] **Step 3: Prove no test leans on the user's git identity**
+- [x] **Step 3: Prove no test leans on the user's git identity**
 
 Run: `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 go test -count=1 ./internal/write/ ./internal/cli/ ./internal/trees/ ./cmd/acta/`
 Expected: PASS. A failure that is not about identity (for example a branch name) is reported in the task report, not patched here.
 
-- [ ] **Step 4: Add `t.Parallel()` where it is safe**
+- [x] **Step 4: Add `t.Parallel()` where it is safe**
 
 For each top-level test in the four packages, add `t.Parallel()` as the first line, followed by one blank line (the style the tui tests use), only when the rule in the verify line holds. Leave every other test as it is.
 
-- [ ] **Step 5: Run the four packages, with the race detector**
+- [x] **Step 5: Run the four packages, with the race detector**
 
 Run: `go test -count=1 -race ./internal/write/ ./internal/cli/ ./internal/trees/ ./cmd/acta/`
 Expected: PASS. Then count the parallel tests again as in Step 1.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -933,23 +936,23 @@ git commit -m "Git test helpers set identity in the repo; run safe tests in para
 - Consumes: the "before" rows from Task 1; `scripts/test` from Task 3.
 - Produces: the "after" rows the landing report quotes.
 
-- [ ] **Step 1: Wait for a quiet machine** (same rule as Task 1 Step 1)
+- [x] **Step 1: Wait for a quiet machine** (same rule as Task 1 Step 1)
 
-- [ ] **Step 2: Run each command twice**
+- [x] **Step 2: Run each command twice**
 
 ```bash
 /usr/bin/time -p scripts/test -count=1 2>&1 | tail -20
 /usr/bin/time -p scripts/test --full -count=1 2>&1 | tail -20
 ```
 
-`scripts/test` runs the same `go test -short ./...` as the before row, and `scripts/test --full` runs the same `go test ./...` under `acta run-one`. Keep the `real` seconds and, from the full run, the per-package times of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
+`scripts/test` runs the same `go test -short ./...` as the before row, and `scripts/test --full` runs the same `go test ./...` under `acta run-one`. Keep the `real`, `user` and `sys` seconds and, from the full run, the per-package times of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
 
-- [ ] **Step 3: Run the race gate**
+- [x] **Step 3: Run the race gate**
 
 Run: `go test -count=1 -race -short ./...`
 Expected: PASS.
 
-- [ ] **Step 4: Write the rows and commit**
+- [x] **Step 4: Write the rows and commit**
 
 Fill the after rows in `## Timings`, then:
 
@@ -966,16 +969,23 @@ Filled by Task 1 (before) and Task 7 (after). Wall time in seconds, from `/usr/b
 
 | when | command | load (1 min) | wall (s) | result |
 |---|---|---|---|---|
-| before | `go test -count=1 -short ./...` | | | |
-| before | `go test -count=1 -short ./...` | | | |
-| before | `go test -count=1 ./...` | | | |
-| before | `go test -count=1 ./...` | | | |
-| after | `scripts/test -count=1` | | | |
-| after | `scripts/test -count=1` | | | |
-| after | `scripts/test --full -count=1` | | | |
-| after | `scripts/test --full -count=1` | | | |
+| before | `go test -count=1 -short ./...` | busy (9.46) | 39.36 | pass (1100 tests, 15 packages) |
+| before | `go test -count=1 -short ./...` | busy (21.79) | 63.55 | pass (1100 tests, 15 packages) |
+| before | `go test -count=1 ./...` | busy (64.40) | 90.72 | pass (all 14 test packages ok) |
+| before | `go test -count=1 ./...` | busy (47.34) | 128.76 | pass (all 14 test packages ok) |
+| after | `scripts/test -count=1` | busy (35.80) | 35.75 | pass (all 15 test packages ok) |
+| after | `scripts/test -count=1` | busy (40.60) | 34.37 | pass (all 15 test packages ok) |
+| after | `scripts/test --full -count=1` | busy (46.66) | 45.84 | pass (all 15 test packages ok, no run-one wait) |
+| after | `scripts/test --full -count=1` | busy (57.95) | 55.35 | pass (all 15 test packages ok, no run-one wait) |
 
 Per package, full run (tui / write / cli / cmd/acta):
 
-- before:
-- after:
+- before: run 1: 86.502 / 35.849 / 34.618 / 33.149; run 2: 123.113 / 48.418 / 49.391 / 49.017 (the load stayed above 4 for the whole 10-minute wait, so every before run was busy)
+- after: run 1: 41.906 / 33.643 / 36.945 / 16.742; run 2: 51.188 / 39.946 / 43.218 / 17.638 (the load stayed above 4 for the whole 10-minute wait and jumped past 150 near its end, so every after run was busy too)
+
+CPU seconds (user / sys, from `/usr/bin/time -p`). The load was high for every before run, so CPU time is the fairer number to compare; wall time is still the one the user feels.
+
+- before, short: 57.17 / 72.81 and 57.26 / 72.60
+- before, full: 105.90 / 109.01 and 106.61 / 108.22
+- after, short: 50.85 / 68.39 and 50.07 / 70.49
+- after, full: 87.44 / 108.56 and 87.65 / 106.13

@@ -53,13 +53,26 @@ type watchFailedMsg struct{ err error }
 // clockMsg carries the time once a minute, for the clock in the status line.
 type clockMsg time.Time
 
+// clearStatusMsg hides a toast. It carries the text it was sent for, so a
+// newer message that took the line in the meantime stays.
+type clearStatusMsg struct{ text string }
+
+// toastFor is how long a copy message stays on the status line.
+const toastFor = 2 * time.Second
+
+// clearStatusAfter sends the clear message for text once d has passed.
+func clearStatusAfter(d time.Duration, text string) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return clearStatusMsg{text: text} })
+}
+
 // wheelStep is how many lines one wheel notch moves, the usual terminal step.
 const wheelStep = 3
 
 // wheelFrame is how long wheel notches are gathered before one scroll. A
 // trackpad sends hundreds of notches a second, and drawing the screen after
-// each one left the TUI far behind the wheel.
-const wheelFrame = 16 * time.Millisecond
+// each one left the TUI far behind the wheel. It is shorter than two renderer
+// writes at 120fps, so a steady scroll never skips a write.
+const wheelFrame = 12 * time.Millisecond
 
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
@@ -119,6 +132,7 @@ type Model struct {
 	wheelPane  pane  // the pane the gathered notches scroll
 	wheelDelta int   // lines gathered from the wheel, not yet scrolled
 	wheelArmed bool  // true while a frame tick is on its way
+	wheelMoved bool  // a notch scrolled at once, so the closing tick must draw
 	wheelMark  wheelMark
 	now        time.Time
 	version    string                  // build version shown on the bottom line
@@ -130,6 +144,7 @@ type Model struct {
 	render   func(md string, width int) string
 	dcache   *detailCache // the last detail lines, shared by every copy
 	frame    *frameCache  // the last frame View drew, shared by every copy
+	trace    *Tracer      // notes wheel notches and draws; nil when off
 	same     bool         // true when the last message changed nothing on screen
 	styles   styles       // the brushes every screen is painted with
 }
@@ -189,6 +204,13 @@ func (m Model) WithLoad(f func() (*board.Board, error)) Model {
 	return m
 }
 
+// WithTrace makes the model note its wheel notches and draws in t. A nil t
+// keeps the note off, which is how the model runs when no trace is asked for.
+func (m Model) WithTrace(t *Tracer) Model {
+	m.trace = t
+	return m
+}
+
 func (m Model) Init() tea.Cmd { return nextMinute() }
 
 // nextMinute waits for the next minute to start and sends the time then, so
@@ -229,15 +251,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clockMsg:
 		m.now = time.Time(msg)
 		return m, nextMinute()
+	case clearStatusMsg:
+		if m.status == msg.text {
+			m.status = ""
+		}
 	case wheelTickMsg:
 		// Notches belong to the screen they were gathered on, so a reader who
 		// moved the item, the tab, the sub-tab or the search before the frame
 		// ended never sees them land on the new one.
 		if m.wheelDelta != 0 && m.wheelMark == m.mark() {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
-		} else {
-			m.same = true
+			m.wheelDelta = 0
+			// The wheel is still turning, so the next frame needs its tick.
+			m.wheelMoved = false
+			return m, wheelTickCmd()
 		}
+		// A notch that scrolled at once has not been written down yet, so
+		// this tick still has to write it. A tick after a wheel that did
+		// nothing may keep the frame the reader already has.
+		m.same = !m.wheelMoved
+		m.wheelMoved = false
 		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
 		return m.afterEditor(msg)
@@ -482,7 +515,10 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		return m.edit()
 	case "y":
-		m.copyID()
+		// Copy first, then return, so the status the timer carries is the
+		// one the copy just set.
+		cmd := m.copyID()
+		return m, cmd
 	case " ":
 		m.toggleRow()
 	case "h":
@@ -527,6 +563,10 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.same = true
 			return m, nil
 		}
+		// The notch got past the pane the reader is looking at, so it is part
+		// of the scroll. It is written down here, before any of the branches
+		// below change what is armed, so first says what really happened.
+		m.trace.Notch(!m.wheelArmed)
 		step := wheelStep
 		if msg.Button == tea.MouseButtonWheelUp {
 			step = -wheelStep
@@ -545,8 +585,18 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.wheelDelta = 0
 			flushed = true
 		}
-		// The first notch of a frame writes the screen down. The notches
-		// after it share that screen and must not write over it.
+		// With no tick waiting, the wheel had stopped. Scroll now, so the
+		// reader sees the pane move on the notch itself, and start a frame
+		// for the notches that follow.
+		if !m.wheelArmed {
+			m.scrollPane(p, step)
+			m.wheelPane = p
+			m.wheelMoved = true
+			m.wheelArmed = true
+			return m, wheelTickCmd()
+		}
+		// The first gathered notch of a frame writes the screen down. The
+		// notches after it share that screen and must not write over it.
 		if m.wheelDelta == 0 {
 			m.wheelMark = m.mark()
 		}
@@ -555,11 +605,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// A flush to another pane moved that pane, so only a plain gather
 		// keeps the old frame.
 		m.same = !flushed
-		if m.wheelArmed {
-			return m, nil
-		}
-		m.wheelArmed = true
-		return m, tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
+		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
 		m.same = true
@@ -579,6 +625,11 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.moveTo(rowIdx)
 	}
 	return m, nil
+}
+
+// wheelTickCmd asks for the end of the frame.
+func wheelTickCmd() tea.Cmd {
+	return tea.Tick(wheelFrame, func(time.Time) tea.Msg { return wheelTickMsg{} })
 }
 
 // clickTab switches the Done box to the sub-tab the click landed on. The
@@ -621,19 +672,21 @@ func (m *Model) openPopup(key string) {
 }
 
 // copyID puts the id of the row under the cursor on the clipboard, and the
-// status line says what was copied or why it could not be.
-func (m *Model) copyID() {
+// status line says what was copied or why it could not be. A good copy hides
+// itself after a short while; an error stays until the next message.
+func (m *Model) copyID() tea.Cmd {
 	it := m.Selected()
 	if it == nil {
 		m.status = "nothing selected"
-		return
+		return nil
 	}
 	id := shortRef(it)
 	if err := m.clip(id); err != nil {
 		m.status = "copy failed: " + err.Error()
-		return
+		return nil
 	}
 	m.status = "copied " + id
+	return clearStatusAfter(toastFor, m.status)
 }
 
 func (m Model) popupKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {

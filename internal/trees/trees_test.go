@@ -10,6 +10,13 @@ import (
 	"github.com/iyay/acta/internal/config"
 )
 
+// TestMain clears an inherited PM_ROOT once, so no helper has to set env
+// and block parallel tests.
+func TestMain(m *testing.M) {
+	os.Unsetenv("PM_ROOT")
+	os.Exit(m.Run())
+}
+
 func run(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
@@ -29,19 +36,16 @@ func write(t *testing.T, path, body string) {
 
 func setup(t *testing.T) (repo, wt string) {
 	t.Helper()
-	for _, k := range []string{"GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"} {
-		t.Setenv(k, "test")
-	}
-	for _, k := range []string{"GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"} {
-		t.Setenv(k, "test@example.com")
-	}
-	t.Setenv("PM_ROOT", "")
 	base, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo = filepath.Join(base, "repo")
 	run(t, base, "init", "-q", "-b", "main", repo)
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	run(t, repo, "config", "user.name", "test")
+	run(t, repo, "config", "user.email", "test@example.com")
 	write(t, filepath.Join(repo, ".pm/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
 	run(t, repo, "add", ".")
 	run(t, repo, "commit", "-q", "-m", "init")
@@ -52,6 +56,8 @@ func setup(t *testing.T) (repo, wt string) {
 }
 
 func TestOthersAndLoad(t *testing.T) {
+	t.Parallel()
+
 	repo, wt := setup(t)
 	cfg, err := config.Load(repo, "")
 	if err != nil {
@@ -77,6 +83,8 @@ func TestOthersAndLoad(t *testing.T) {
 }
 
 func TestOthersReadsUnmergedBranches(t *testing.T) {
+	t.Parallel()
+
 	repo, _ := setup(t)
 	run(t, repo, "checkout", "-q", "-b", "feat-x")
 	write(t, filepath.Join(repo, ".pm/specs/2026-09-26-x.md"), "# Branch story\n")
@@ -114,6 +122,8 @@ func TestOthersReadsUnmergedBranches(t *testing.T) {
 }
 
 func TestOthersReadsWorktreeKeptOnOldRoot(t *testing.T) {
+	t.Parallel()
+
 	repo, _ := setup(t)
 	// The main tree moved to .acta, but the worktree on disk still keeps .pm.
 	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
@@ -131,6 +141,8 @@ func TestOthersReadsWorktreeKeptOnOldRoot(t *testing.T) {
 }
 
 func TestOthersReadsWorktreeAlreadyOnNewRoot(t *testing.T) {
+	t.Parallel()
+
 	repo, wt := setup(t)
 	// The main tree still uses .pm, but the worktree already moved to .acta.
 	if err := os.RemoveAll(filepath.Join(wt, ".pm")); err != nil {
@@ -151,6 +163,8 @@ func TestOthersReadsWorktreeAlreadyOnNewRoot(t *testing.T) {
 }
 
 func TestOthersKeepsMatchingRootName(t *testing.T) {
+	t.Parallel()
+
 	repo, wt := setup(t)
 	// Both trees moved to .acta: the worktree must be read from .acta itself.
 	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
@@ -169,6 +183,8 @@ func TestOthersKeepsMatchingRootName(t *testing.T) {
 }
 
 func TestOthersReadsUnmergedBranchOnOldRoot(t *testing.T) {
+	t.Parallel()
+
 	repo, _ := setup(t)
 	run(t, repo, "checkout", "-q", "-b", "feat-x")
 	write(t, filepath.Join(repo, ".pm/specs/2026-09-26-x.md"), "# Branch story\n")
@@ -192,6 +208,8 @@ func TestOthersReadsUnmergedBranchOnOldRoot(t *testing.T) {
 }
 
 func TestOthersListsCheckedOutBranchOnce(t *testing.T) {
+	t.Parallel()
+
 	repo, _ := setup(t)
 	write(t, filepath.Join(repo, ".acta/plans/2026-09-21-a.md"), "# Plan A\n\n### Task 1: One\n- [ ] a\n- [ ] b\n")
 	cfg, err := config.Load(repo, "")
@@ -210,6 +228,8 @@ func TestOthersListsCheckedOutBranchOnce(t *testing.T) {
 }
 
 func TestOthersOutsideGit(t *testing.T) {
+	t.Parallel()
+
 	cfg, _ := config.Load(t.TempDir(), "")
 	if Others(cfg) != nil {
 		t.Fatal("no trees outside git")
@@ -217,6 +237,8 @@ func TestOthersOutsideGit(t *testing.T) {
 }
 
 func TestWatchDirs(t *testing.T) {
+	t.Parallel()
+
 	repo, wt := setup(t)
 	cfg, _ := config.Load(repo, "")
 	dirs := WatchDirs(cfg, func(c config.Config) []string { return []string{c.Root} })

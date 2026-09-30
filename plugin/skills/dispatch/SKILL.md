@@ -346,7 +346,7 @@ WORKTREE: <abs path> (branch <slug>, parent <production>, base <base-sha>) — c
 FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — the orchestrator files them with `acta debt new` once the round is CLEAN.
 HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from this skill) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
-GATES (from the worktree): <one-shot test runner>; typecheck; git diff --stat vs <base-sha> shows only plan files.
+GATES (from the worktree): <the plan's fast test command>; typecheck; git diff --stat vs <base-sha> shows only plan files.
 REPLY-BACK: after the last commit the build skill runs `acta reply-back`. Nothing else to hand-fill.
 ```
 
@@ -364,7 +364,7 @@ Phase 2 starts because the user asked or the notification landed. Read lifecycle
 git log --oneline <base>..<head>
 git diff --stat <base>..<head>
 git diff --name-only <base>..<head>          # only plan files
-<one-shot test runner> 2>&1 | tail -20       # real counts, shown
+<the plan's fast test command> 2>&1 | tail -20   # real counts, shown
 ```
 
 Compare commits against the ticket list. Re-run the decisive mutation yourself on security/destructive changes. This is `acta:land` applied to someone else's claim: evidence in this turn, or it did not happen.

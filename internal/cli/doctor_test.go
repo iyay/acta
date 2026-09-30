@@ -23,10 +23,6 @@ func doctorHome(t *testing.T) string {
 func doctorRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	t.Setenv("GIT_AUTHOR_NAME", "test")
-	t.Setenv("GIT_COMMITTER_NAME", "test")
-	t.Setenv("GIT_AUTHOR_EMAIL", "test@example.com")
-	t.Setenv("GIT_COMMITTER_EMAIL", "test@example.com")
 	run := func(args ...string) {
 		t.Helper()
 		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
@@ -34,6 +30,10 @@ func doctorRepo(t *testing.T) string {
 		}
 	}
 	run("init", "-q", "-b", "main")
+	// Name the author inside the repo, not in the env, so tests that make
+	// commits can still run side by side.
+	run("config", "user.name", "test")
+	run("config", "user.email", "test@example.com")
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("repo\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
