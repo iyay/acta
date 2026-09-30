@@ -3,6 +3,7 @@ parent: scratch/2026-10-01-plan-depth-config
 id: SPC-0056
 created: "2026-10-01 05:27:02"
 hash: f8z5kqo
+started: "2026-10-01 05:57:35"
 ---
 # Plan depth setting and repo-level config
 

@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/theme"
 )
 
-const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D]"
 
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -36,12 +38,40 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
 		}
+		cwd, _ := os.Getwd()
+		cfg, err := config.Load(cwd, "")
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return exitBadInput
+		}
+		v, from, err := config.MergeRepo(v, cfg.RepoRoot)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return exitBadInput
+		}
+		depth := v.PlanDepth
+		if depth == "" {
+			depth = "full"
+		}
+		// Name the values the repo set, so the user knows which file to edit.
+		mark := func(k string) string {
+			if from[k] {
+				return " (repo)"
+			}
+			return ""
+		}
+		var fromRepo []string
+		for _, k := range config.RepoKeys {
+			if from[k] {
+				fromRepo = append(fromRepo, k)
+			}
+		}
 		if *asJSON {
 			return printJSON(stdout, stderr, map[string]any{
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme,
+				"theme": v.Theme, "plan_depth": depth, "from_repo": fromRepo,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -50,14 +80,15 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		if read != path {
 			state += ", old file; config set writes " + path
 		}
-		fmt.Fprintf(stdout, "file: %s (%s)\nchat_language: %s\nstyle: %s\nrepo_language: %s\n",
-			read, state, v.ChatLanguage, v.Style, v.RepoLanguage)
+		fmt.Fprintf(stdout, "file: %s (%s)\nchat_language: %s\nstyle: %s\nrepo_language: %s%s\n",
+			read, state, v.ChatLanguage, v.Style, v.RepoLanguage, mark("repo_language"))
 		if v.Tone != "" {
 			fmt.Fprintf(stdout, "tone: %s\n", v.Tone)
 		}
 		if v.BuildExecutor != "" {
-			fmt.Fprintf(stdout, "build_executor: %s\n", v.BuildExecutor)
+			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
 		}
+		fmt.Fprintf(stdout, "plan_depth: %s%s\n", depth, mark("plan_depth"))
 		if v.SubagentModels != "" {
 			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
 		}
@@ -78,13 +109,19 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		clearModels := fs.Bool("clear-subagent-models", false, "remove the subagent_models setting")
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
+		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
+		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
+		}
+		if *repoOnly {
+			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth},
+				*lang != "" || *style != "" || *tone != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme)
 		}
 		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
@@ -110,6 +147,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *executor != "" {
 			v.BuildExecutor = *executor
+		}
+		if *depth != "" {
+			v.PlanDepth = *depth
 		}
 		// Clear first, set second, so one call can replace the value.
 		if *clearModels {
@@ -147,4 +187,64 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput
 	}
+}
+
+// setRepo saves repo keys to .acta.yaml. Personal flags are refused, since
+// that file is committed and would change how the agent talks to everyone
+// who clones the repo.
+func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) int {
+	if personal {
+		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor and --plan-depth; set the others without --repo\n")
+		return exitBadInput
+	}
+	set := map[string]string{}
+	for k, val := range want {
+		if val != "" {
+			set[k] = val
+		}
+	}
+	if len(set) == 0 {
+		fmt.Fprintln(stderr, configUsage)
+		return exitBadInput
+	}
+	cwd, _ := os.Getwd()
+	cfg, err := config.Load(cwd, "")
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitBadInput
+	}
+	// With only .pm.yaml, a new .acta.yaml would win and hide every other
+	// setting in the old file.
+	_, errActa := os.Stat(filepath.Join(cfg.RepoRoot, ".acta.yaml"))
+	if _, errPM := os.Stat(filepath.Join(cfg.RepoRoot, ".pm.yaml")); errPM == nil && errActa != nil {
+		fmt.Fprintf(stderr, "this repo still uses .pm.yaml; rename it to .acta.yaml first\n")
+		return exitBadInput
+	}
+	// Check the values before the write, so a typo never lands in the file.
+	check := config.UserDefault()
+	for _, k := range config.RepoKeys {
+		switch val := set[k]; {
+		case val == "":
+		case k == "repo_language":
+			check.RepoLanguage = val
+		case k == "build_executor":
+			check.BuildExecutor = val
+		case k == "plan_depth":
+			check.PlanDepth = val
+		}
+	}
+	if err := check.Validate(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitBadInput
+	}
+	path, err := config.SaveRepoUser(cfg.RepoRoot, set)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		if errors.Is(err, config.ErrBadUser) {
+			return exitBadInput
+		}
+		return exitOther
+	}
+	fmt.Fprintln(stdout, path)
+	return exitOK
 }

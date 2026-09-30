@@ -3,6 +3,7 @@ parent: specs/2026-10-01-plan-depth-config-design
 id: PLN-0065
 created: "2026-10-01 05:32:58"
 hash: iejqcfl
+started: "2026-10-01 05:57:35"
 ---
 # Plan Depth Setting and Repo-Level Config Implementation Plan
 
@@ -64,7 +65,7 @@ hash: iejqcfl
   - `func MergeRepo(v User, repoRoot string) (User, map[string]bool, error)` — on error it returns `v` unchanged.
   - `func SaveRepoUser(repoRoot string, set map[string]string) (string, error)` — returns the path it wrote.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/config/repo_user_test.go`:
 
@@ -200,12 +201,12 @@ func TestSaveRepoUserKeepsOtherKeys(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/config -run 'MergeRepo|PlanDepth|SaveRepoUser'`
 Expected: FAIL to build: `MergeRepo`, `SaveRepoUser` and `User.PlanDepth` are undefined.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `internal/config/user.go`, add the field under `SubagentModels`:
 
@@ -354,12 +355,12 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/config`
 Expected: PASS, the older config tests too. Then `go vet ./internal/config && gofmt -l internal/config` prints nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/config/user.go internal/config/repo_user.go internal/config/repo_user_test.go
@@ -827,7 +828,7 @@ git commit -m "Session hook reads the repo layer; rule 2 lets a minimal plan ski
 - Consumes: the flags from Task 2 (`--plan-depth minimal|full`, `--repo`), as text only.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/plugincheck/skill_plan_test.go`, add to `Must`:
 
@@ -858,12 +859,12 @@ In `internal/plugincheck/skill_setup_test.go`, add to `Must`:
 
 and change `MaxLines: 66` to `MaxLines: 76`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/plugincheck -run 'TestSkillPlan|TestSkillBuild|TestSkillSetup'`
 Expected: FAIL naming each missing sentence.
 
-- [ ] **Step 3: Write the skill text**
+- [x] **Step 3: Write the skill text**
 
 `plugin/skills/plan/SKILL.md`: add this section right after `## Overview`:
 
@@ -904,12 +905,12 @@ Then ask once whether to save the executor and the depth for every repo or this 
 
 Keep the setup skill at 76 lines or fewer; shorten the new text, not the old, if it runs over.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/plugincheck`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add plugin/skills/plan/SKILL.md plugin/skills/build/SKILL.md plugin/skills/setup/SKILL.md internal/plugincheck/skill_plan_test.go internal/plugincheck/skill_build_test.go internal/plugincheck/skill_setup_test.go
