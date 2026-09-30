@@ -1,7 +1,7 @@
 acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
 - acta:brainstorm: before any new feature, fix or behaviour change; design first, then wait for a yes
 - acta:plan: after the design is approved; tasks with verify lines and waves, then wait for a yes
-- acta:build: run an approved plan in a worktree; executor from `acta voice show`, else ask: subagent, dispatch or inline
+- acta:build: run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline
 - acta:tdd: every code change; a failing test first
 - acta:debug: any bug, error, red test or wrong output, before touching code
 - acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most

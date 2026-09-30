@@ -209,7 +209,7 @@ git commit -m "feat: rename acta voice command to acta config"
 - Consumes: Task 2's `acta config set`.
 - Produces: prompt lines `acta config: reply in <L>, <style> style.`, `acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules).`, `acta config: the config file could not be read; reply in English, adhd style.`; build skill line `run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/hook/hook_test.go`, the expected strings become:
 
@@ -225,12 +225,12 @@ In `internal/hook/hook_test.go`, the expected strings become:
 
 In `internal/cli/hook_session_test.go`, `strings.Contains(voiceOut, "acta voice:")` becomes `strings.Contains(voiceOut, "acta config:")`. In `cmd/acta/hook_test.go`, the expected line becomes `"acta config: reply in Korean, adhd style."`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/hook/ ./internal/cli/ ./cmd/acta/`
 Expected: FAIL on the `acta voice` strings.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/hook/hook.go`, make the four strings match Step 1 exactly. In `plugin/hooks/default-rules.md`, the build line becomes:
 
@@ -238,12 +238,12 @@ In `internal/hook/hook.go`, make the four strings match Step 1 exactly. In `plug
 - acta:build: run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/hook/ ./internal/cli/ ./cmd/acta/ ./internal/plugincheck/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/hook/ ./internal/cli/ ./cmd/acta/

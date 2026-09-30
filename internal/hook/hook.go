@@ -21,7 +21,7 @@ type Skill struct{ Name, When string }
 var Skills = []Skill{
 	{"brainstorm", "before any new feature, fix or behaviour change; design first, then wait for a yes"},
 	{"plan", "after the design is approved; tasks with verify lines and waves, then wait for a yes"},
-	{"build", "run an approved plan in a worktree; executor from `acta voice show`, else ask: subagent, dispatch or inline"},
+	{"build", "run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline"},
 	{"tdd", "every code change; a failing test first"},
 	{"debug", "any bug, error, red test or wrong output, before touching code"},
 	{"review", "when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most"},
@@ -132,11 +132,11 @@ func SessionStart(in Input) string {
 func Prompt(in Input) string {
 	switch {
 	case !in.VoiceExists:
-		return "acta voice: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."
+		return "acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."
 	case in.VoiceErr != nil:
-		return "acta voice: the voice file could not be read; reply in English, adhd style."
+		return "acta config: the config file could not be read; reply in English, adhd style."
 	default:
-		return fmt.Sprintf("acta voice: reply in %s, %s style.", in.Voice.ChatLanguage, in.Voice.Style)
+		return fmt.Sprintf("acta config: reply in %s, %s style.", in.Voice.ChatLanguage, in.Voice.Style)
 	}
 }
 

@@ -35,7 +35,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Style (ADHD reader):",
 		`- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
-		"- acta:build: run an approved plan in a worktree; executor from `acta voice show`, else ask: subagent, dispatch or inline",
+		"- acta:build: run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -182,9 +182,9 @@ func TestPrompt(t *testing.T) {
 		in   Input
 		want string
 	}{
-		"set":     {korean(), "acta voice: reply in Korean, adhd style."},
-		"missing": {Input{Voice: voice.Default()}, "acta voice: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."},
-		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta voice: the voice file could not be read; reply in English, adhd style."},
+		"set":     {korean(), "acta config: reply in Korean, adhd style."},
+		"missing": {Input{Voice: voice.Default()}, "acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules)."},
+		"broken":  {Input{Voice: voice.Default(), VoiceExists: true, VoiceErr: errors.New("x")}, "acta config: the config file could not be read; reply in English, adhd style."},
 	}
 	for name, c := range cases {
 		if got := Prompt(c.in); got != c.want {
