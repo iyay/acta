@@ -3,6 +3,8 @@ created: "2026-09-30"
 parent: specs/2026-09-30-omp-harness-design
 id: PLN-0055
 hash: d2khlda
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # omp Brainstorm Block Implementation Plan
 
@@ -60,7 +62,7 @@ hash: d2khlda
   - `export function createState(run: Run, readDefaults?: () => string)` returning `{ reset(): void; contextFor(sessionId: string, cwd?: string): string; onToolCall(sessionId: string, command: string, cwd?: string): { block: true; reason: string } | undefined; onToolResult(sessionId: string, command: string, cwd?: string): void }`
   - `export default function acta(pi: any, run?: Run)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the whole of `plugin/omp/index.test.ts` with:
 
@@ -233,12 +235,12 @@ describe("extension", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `cd plugin/omp && bun test`
 Expected: FAIL. `payload` is not exported, `contextFor` returns a Promise, and the extension registers only three events.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Replace the whole of `plugin/omp/index.ts` with:
 
@@ -348,12 +350,12 @@ export default function acta(pi: any, run: Run = realRun) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `cd plugin/omp && bun test`
 Expected: PASS, every test in `index.test.ts`.
 
-- [ ] **Step 5: Run the real check in omp and record it**
+- [x] **Step 5: Run the real check in omp and record it**
 
 This needs the `acta` on PATH (any build since SCRATCH-6 landed has `acta hook pre-tool`). Replace `<worktree>` with the absolute path of this worktree. Run from a fresh temp folder:
 
@@ -384,7 +386,7 @@ the second brainstorm in one omp session is blocked.
 ```
 ````
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add plugin/omp/index.ts plugin/omp/index.test.ts plugin/omp/FACTS.md

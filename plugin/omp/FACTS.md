@@ -113,3 +113,42 @@ $ cd "$(mktemp -d)" && PM_VOICE_FILE="$(mktemp -d)/voice.yaml" command omp --no-
 The extension runs under `-e` + `--plugin-dir`: the answer quotes the first
 line of the session rules, then the rules text flags the conflicting workflow
 plugin and the voice setup questions follow.
+
+
+## Brainstorm block in omp
+
+Checked 2026-09-30 with omp/18.4.4 and acta v0.0.0-20260930121646-6e177124f9ad on
+PATH. The extension hands `acta hook pre-tool` and `post-tool` the same stdin JSON
+Claude Code does, so the second brainstorm in one omp session is blocked.
+
+```text
+$ T="$(mktemp -d)" && cd "$T" && git init -q && git commit -q --allow-empty -m init
+$ printf 'first\n' | acta scratch new first-idea --title first
+SCR-0001  .acta/scratch/2026-09-30-first-idea.md
+$ printf 'second\n' | acta scratch new second-idea --title second
+SCR-0002  .acta/scratch/2026-09-30-second-idea.md
+$ D="$(date +%F)"
+$ PM_VOICE_FILE="$T/none.yaml" command omp --no-session --no-extensions --no-rules \
+    --plugin-dir <worktree>/plugin -e <worktree>/plugin/omp/index.ts -p \
+    "Run these two shell commands, each as its own bash call, one after the
+     other. First: acta set scratch/$D-first-idea status brainstorming. Second:
+     acta set scratch/$D-second-idea status brainstorming. Then quote, word for
+     word, any error the second call gave you."
+Working...
+**The second command was rejected. The error, word for word:**
+
+acta: this session already brainstormed SCR-0001. One Architectural brainstorm
+per session: file this one as a scratch item and offer the user the choices
+rule 8 names.
+
+(The first call set the status and printed the scratch file path; the second
+call was refused by the pre-tool hook.)
+
+$ cat .acta/state/sessions.json
+{"01a0f268-30d8-70f8-ad7f-0de11c8466ef":"2026-09-30-first-idea"}
+(One session id, one entry, the first item only. The blocked call recorded
+ nothing.)
+```
+
+Temp dir left in place per plan (no `rm -rf` performed):
+- T5 (two-brainstorm block check): $T

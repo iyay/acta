@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: scratch/2026-09-29-omp-harness
 id: SPC-0047
 hash: r7tywsv
+started: "2026-09-30"
 ---
 # omp harness: the brainstorm block in omp, and an omp eval run
 
