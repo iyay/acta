@@ -59,11 +59,32 @@ func TestConfigShowRepoLayer(t *testing.T) {
 	}
 }
 
-// With nothing set anywhere, plan_depth still shows, as full.
+// With nothing set anywhere, plan_depth still shows, as full, marked
+// (default) so setup knows it was never asked.
 func TestConfigShowPlanDepthDefault(t *testing.T) {
 	repoWithGlobal(t, "", "")
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_depth: full\n") {
-		t.Errorf("show lacks plan_depth: full:\n%s", out)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_depth: full (default)\n") {
+		t.Errorf("show lacks plan_depth: full (default):\n%s", out)
+	}
+	if out := mustRun(t, "config", "show", "--json"); strings.Contains(out, "(default)") {
+		t.Errorf("json carries the mark:\n%s", out)
+	}
+}
+
+// A plan_depth set in either file, even to full, gets no (default) mark.
+func TestConfigShowPlanDepthSetHasNoDefaultMark(t *testing.T) {
+	cases := []struct{ global, repo, want string }{
+		{"plan_depth: full\n", "", "plan_depth: full\n"},
+		{"plan_depth: minimal\n", "", "plan_depth: minimal\n"},
+		{"", "plan_depth: full\n", "plan_depth: full (repo)\n"},
+		{"", "plan_depth: minimal\n", "plan_depth: minimal (repo)\n"},
+	}
+	for _, c := range cases {
+		repoWithGlobal(t, c.global, c.repo)
+		out := mustRun(t, "config", "show")
+		if !strings.Contains(out, c.want) || strings.Contains(out, "(default)") {
+			t.Errorf("global %q repo %q: want %q, no (default):\n%s", c.global, c.repo, c.want, out)
+		}
 	}
 }
 

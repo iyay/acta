@@ -49,9 +49,10 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
 		}
-		depth := v.PlanDepth
+		depth, depthMark := v.PlanDepth, ""
 		if depth == "" {
-			depth = "full"
+			// No file sets it. Say so, or setup thinks full was chosen.
+			depth, depthMark = "full", " (default)"
 		}
 		// Name the values the repo set, so the user knows which file to edit.
 		mark := func(k string) string {
@@ -88,7 +89,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		if v.BuildExecutor != "" {
 			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
 		}
-		fmt.Fprintf(stdout, "plan_depth: %s%s\n", depth, mark("plan_depth"))
+		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
 		if v.SubagentModels != "" {
 			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
 		}
