@@ -3,6 +3,8 @@ parent: bugs/2026-09-30-scratch-add-words-refused-on-old-item
 created: "2026-09-30"
 id: PLN-0044
 hash: ergzrsb
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Scratch Add Old Item Implementation Plan
 
@@ -51,7 +53,7 @@ hash: ergzrsb
 - Consumes: `AppendScratch(cfg config.Config, b *board.Board, id, section string, text []byte) (Outcome, error)`; test helpers `fixNow(t)`, `repoWith(t, files)`, `mustLoad(t, cfg)`, `refuse(t, cfg, msg, fn)` already in `internal/write`.
 - Produces: nothing new; the signature stays.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Replace `TestAppendScratchOldItem` in `internal/write/scratch_test.go` with:
 
@@ -95,12 +97,12 @@ func TestAppendScratchOldItem(t *testing.T) {
 
 If `repoWith` cannot be called twice in one test (for example, it pins something global), stop and report NEEDS_CONTEXT instead of changing the helper.
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `go test ./internal/write/ -run TestAppendScratchOldItem -v`
 Expected: FAIL in the `words`, `context`, `log` and `questions` subtests, each with "SCR-0001 is an old item with no sections"; the `""` and `unknown section` subtests pass.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/write/scratch.go`, the comment above `AppendScratch` becomes:
 
@@ -125,7 +127,7 @@ Inside `AppendScratch`, the old-item branch becomes:
 
 (The removed lines are the `if section != "" { return Outcome{}, bad("%s is an old item with no sections", it.ShortID) }` block. Leave the rest of the function as it is.)
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/write/ ./internal/cli/`
 Expected: PASS.
@@ -133,7 +135,7 @@ Expected: PASS.
 Run: `grep -rn 'old item with no sections' internal cmd`
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal && go vet ./internal/write/ && go test ./internal/write/ ./internal/cli/

@@ -75,9 +75,10 @@ var sections = map[string]struct {
 }
 
 // AppendScratch puts text in one part of a scratch body, one blank line
-// below what that part already holds. An old item has no parts, so it keeps
-// the plain append at the end of the file. Any status takes more text: an
-// idea that was specced or dropped can still collect an answer.
+// below what that part already holds. An old item has no parts, so any
+// section lands as the plain append at the end of the file, and the text
+// is never lost. Any status takes more text: an idea that was specced or
+// dropped can still collect an answer.
 func AppendScratch(cfg config.Config, b *board.Board, id, section string, text []byte) (Outcome, error) {
 	it := b.Get(id)
 	switch {
@@ -103,9 +104,6 @@ func AppendScratch(cfg config.Config, b *board.Board, id, section string, text [
 	}
 	out := string(src)
 	if !board.HasSchema(board.Parse(src).Front) {
-		if section != "" {
-			return Outcome{}, bad("%s is an old item with no sections", it.ShortID)
-		}
 		if !strings.HasSuffix(out, "\n") {
 			out += "\n"
 		}

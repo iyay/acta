@@ -424,32 +424,39 @@ func TestAppendScratchBadSection(t *testing.T) {
 }
 
 func TestAppendScratchOldItem(t *testing.T) {
-	// An old item has no schema field, so it has no sections to fill. No flag
-	// keeps today's append; a flag is refused.
+	// An old item has no schema field, so it has no sections to fill. Every
+	// known section, and no section at all, adds the text at the end of the
+	// file, so an answer is never lost. An unknown name is still refused.
 	fixNow(t)
-	cfg := repoWith(t, map[string]string{
-		".acta/scratch/2026-09-01-old.md": "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n",
+	const old = "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n"
+	const want = old + "\nmore\n"
+	for _, section := range []string{"", "words", "context", "log", "questions"} {
+		t.Run("section "+section, func(t *testing.T) {
+			cfg := repoWith(t, map[string]string{".acta/scratch/2026-09-01-old.md": old})
+			path := filepath.Join(cfg.Root, "scratch", "2026-09-01-old.md")
+			o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", section, []byte("more\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if o.Path != path {
+				t.Errorf("path %s want %s", o.Path, path)
+			}
+			if src, _ := os.ReadFile(path); string(src) != want {
+				t.Errorf("the old item was reshaped:\ngot  %q\nwant %q", src, want)
+			}
+		})
+	}
+	t.Run("unknown section", func(t *testing.T) {
+		cfg := repoWith(t, map[string]string{".acta/scratch/2026-09-01-old.md": old})
+		path := filepath.Join(cfg.Root, "scratch", "2026-09-01-old.md")
+		refuse(t, cfg, `unknown section "bogus"; use words, context, log or questions`, func() error {
+			_, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "bogus", []byte("y\n"))
+			return err
+		})
+		if after, _ := os.ReadFile(path); string(after) != old {
+			t.Errorf("the refused write changed the file: %q", after)
+		}
 	})
-	path := filepath.Join(cfg.Root, "scratch", "2026-09-01-old.md")
-	o, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("more\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if o.Path != path {
-		t.Errorf("path %s want %s", o.Path, path)
-	}
-	src, _ := os.ReadFile(path)
-	want := "---\nid: SCR-0001\nhash: aaaaaaa\ntitle: old\nstatus: raw\n---\nfree text\n\nmore\n"
-	if string(src) != want {
-		t.Errorf("the old item was reshaped:\ngot  %q\nwant %q", src, want)
-	}
-	refuse(t, cfg, "SCR-0001 is an old item with no sections", func() error {
-		_, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "context", []byte("y\n"))
-		return err
-	})
-	if after, _ := os.ReadFile(path); string(after) != want {
-		t.Errorf("the refused write changed the file: %q", after)
-	}
 }
 
 func TestAppendScratchPutsBackAMissingHeading(t *testing.T) {

@@ -1,6 +1,7 @@
 ---
 id: BUG-0011
 hash: nqdr1tj
+started: "2026-09-30"
 ---
 # Saving an answer to an old scratch item fails when the agent names the words section
 
