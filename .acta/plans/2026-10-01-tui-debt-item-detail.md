@@ -208,7 +208,7 @@ Review round 1 found that `xansi.Wrap(s, w, "")` can return a line wider than `w
 - Consumes: `xansi.Wordwrap(s string, limit int, breakpoints string) string`, `xansi.Hardwrap(s string, limit int, preserveSpace bool) string`, test helpers `treeCfg`, `detailModel`, `onItem`, `plain`, `ruleLine`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/detail_test.go`, add:
 
@@ -244,12 +244,12 @@ func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/tui -run TestDetailDebtItemNoteLosesNothingAtAnyWidth`
 Expected: FAIL at width 52 for the first note (the ` -` is gone) and at width 90 or so for the second.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `buildDetailParts`, in the debt item branch, change the wrap call to:
 
@@ -262,12 +262,12 @@ In `buildDetailParts`, in the debt item branch, change the wrap call to:
 		}
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS. Then `go vet ./internal/tui && gofmt -l internal/tui` prints nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/tui/detail.go internal/tui/detail_test.go

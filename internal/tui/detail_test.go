@@ -317,6 +317,36 @@ func TestDetailDebtFileListsEveryLine(t *testing.T) {
 	wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
 }
 
+// A note is wrapped to the pane at every width, and no wrapped line is cut,
+// so the reader never loses a word or a sign like a lone "-".
+func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
+	t.Parallel()
+
+	notes := []string{
+		"internal/write/mark.go: + on a task already done (or - on one already open) changes nothing, and more",
+		`a checklist line gives "- [ ] - [ ] text".`,
+		"averyveryveryverylongwordwithnospacesatallthatrunsonandon then short",
+		"日本語のメモ and ünïcode words in one note",
+	}
+	for _, note := range notes {
+		cfg := treeCfg(t, map[string]string{
+			".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
+		})
+		m := onItem(t, detailModel(t, cfg), "DEBT-1.1")
+		want := strings.Join(strings.Fields(note), "")
+		for w := 10; w <= 160; w++ {
+			_, mid, _ := m.buildDetailParts(w)
+			var got strings.Builder
+			for _, ln := range mid {
+				got.WriteString(strings.Join(strings.Fields(plain(ln)), ""))
+			}
+			if got.String() != want {
+				t.Errorf("at %d wide the note reads %q, want %q", w, got.String(), want)
+			}
+		}
+	}
+}
+
 // ruleLine is where the header ends and the list and body begin.
 func ruleLine(t *testing.T, lines []string) int {
 	t.Helper()

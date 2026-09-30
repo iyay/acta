@@ -2,6 +2,8 @@
 created: "2026-10-01 00:10:02"
 id: SPC-0052
 hash: vek4kv8
+started: "2026-10-01 00:29:21"
+finished: "2026-10-01 00:30:15"
 ---
 # Debt item detail shows the full note, not a copy of the list
 

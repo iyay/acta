@@ -152,7 +152,10 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 	if it.Kind == board.KindDebtItem {
 		// The list pane already names the other notes, so the middle is this
 		// note alone, wrapped so every word can be read.
-		for _, ln := range strings.Split(xansi.Wrap(expandTabs(it.Title), w, ""), "\n") {
+		// Wordwrap can leave a line wider than the pane when a "-" follows a
+		// space, and fit would then cut words off. Hardwrap breaks it again.
+		note := xansi.Hardwrap(xansi.Wordwrap(expandTabs(it.Title), w, ""), w, true)
+		for _, ln := range strings.Split(note, "\n") {
 			mid = append(mid, fit(ln, w))
 		}
 		return head, mid, paintDates(m.styles, dateLine(it, w))
