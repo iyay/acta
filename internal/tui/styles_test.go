@@ -2,6 +2,7 @@ package tui
 
 import (
 	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,6 +23,14 @@ func withTrueColor(f func()) {
 	f()
 }
 
+func TestNoWorkBrushIsLeft(t *testing.T) {
+	t.Parallel()
+
+	if _, ok := reflect.TypeOf(styles{}).FieldByName("work"); ok {
+		t.Error("styles still has a work brush; work under way is plain now")
+	}
+}
+
 func TestTerminalThemeUsesANSISlots(t *testing.T) {
 	th, _ := theme.Builtin("terminal")
 	s := newStyles(th, true)
@@ -29,7 +38,7 @@ func TestTerminalThemeUsesANSISlots(t *testing.T) {
 		t.Fatalf("accent = %v", s.accentColor)
 	}
 	withTrueColor(func() {
-		out := s.accent.Render("x") + s.dim.Render("x") + s.selected.Render("x") + s.work.Render("x")
+		out := s.accent.Render("x") + s.dim.Render("x") + s.selected.Render("x")
 		if strings.Contains(out, "38;2;") || strings.Contains(out, "48;2;") {
 			t.Fatalf("24-bit color in terminal mode: %q", out)
 		}
@@ -64,8 +73,8 @@ func TestHexThemeRoles(t *testing.T) {
 	if s.accentColor != lipgloss.Color("#7aa2f7") {
 		t.Fatalf("accent = %v", s.accentColor)
 	}
-	if s.work.GetForeground() != lipgloss.Color("#7aa2f7") {
-		t.Fatalf("work = %v", s.work.GetForeground())
+	if s.pulse[0].GetForeground() != lipgloss.Color(th.ANSI[slotGreen]) {
+		t.Fatalf("pulse frame 0 = %v", s.pulse[0].GetForeground())
 	}
 	if s.dim.GetForeground() != lipgloss.Color("#414868") {
 		t.Fatalf("dim = %v", s.dim.GetForeground())
@@ -332,13 +341,12 @@ func TestKindAndRoleSlots(t *testing.T) {
 		}{
 			"label": {s.label, 6}, "footLabel": {s.footLabel, 5}, "done": {s.done, 2},
 			"waiting": {s.waiting, 8}, "problem": {s.problem, 1}, "live": {s.live, 2},
+			// The dot of work under way is the pulse, so its first frame is green.
+			"pulseDot": {s.pulse[0], 2},
 		} {
 			if got := r.brush.GetForeground(); got != c.at(r.slot) {
 				t.Errorf("%s: %s = %v, want slot %d", c.name, name, got, r.slot)
 			}
-		}
-		if s.work.GetFaint() {
-			t.Errorf("%s: work is still faint", c.name)
 		}
 	}
 }

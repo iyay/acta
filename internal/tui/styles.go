@@ -16,7 +16,7 @@ import (
 // styles are the brushes the TUI paints with. They come from one theme, so
 // changing the theme changes every color at once.
 type styles struct {
-	accent, work, faint, dim, selected             lipgloss.Style
+	accent, faint, dim, selected                   lipgloss.Style
 	label, footLabel, done, waiting, problem, live lipgloss.Style
 	accentColor                                    lipgloss.TerminalColor
 	kinds                                          map[board.Kind]lipgloss.Color
@@ -30,7 +30,6 @@ type styles struct {
 // Each role always takes the same slot, so any theme with 16 colors works.
 const (
 	slotAccent      = 12
-	slotWork        = 4
 	slotDim         = 8
 	slotRed         = 1
 	slotGreen       = 2
@@ -88,8 +87,6 @@ func newStyles(t theme.Theme, dark bool) styles {
 	return styles{
 		accentColor: accent,
 		accent:      lipgloss.NewStyle().Foreground(accent),
-		// work marks a row whose work has begun.
-		work: lipgloss.NewStyle().Foreground(slot(slotWork)),
 		// faint paints every row the cursor is not on.
 		faint: lipgloss.NewStyle().Faint(true),
 		// dim paints the screen behind a popup, so the box on top is the only
