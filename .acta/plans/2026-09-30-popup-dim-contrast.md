@@ -194,7 +194,7 @@ git commit -m "tui: dim the screen behind a popup with plain slot 8"
 - Consumes: `helpLines`, `styles.accent`, `boxView` (existing); `withTrueColor`, `plain`, `newModel`, `sized`, `press` (existing test helpers).
 - Produces: `func (m Model) helpText() string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/view_test.go`:
 
@@ -257,12 +257,12 @@ func TestOtherPopupsHaveNoAccentInside(t *testing.T) {
 
 If `newModel(t)` opens on a tab where `t` opens no popup, pick the tab the way `checkPopupDim` does (`tabKey(tabBugs)`). The `s` popup is left out because it picks from the same list shape as `t`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestHelpKeysWearTheAccent|TestOtherPopupsHaveNoAccentInside'`
 Expected: FAIL to build with `m.helpText undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/view.go`, add below `helpLines`:
 
@@ -288,12 +288,12 @@ In `popupBox`, change the help case to:
 		return m.boxView("Keys", m.helpText())
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS, including `TestPopupDimsTheBackground` and the help tests in `model_test.go` and `frame_test.go`, which read `helpLines` itself.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

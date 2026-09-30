@@ -73,6 +73,19 @@ esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
+// helpText is the key map with each key in the accent, so the eye finds the
+// key first and reads what it does after. A line is split at its first run of
+// two spaces, the gap the key column is laid out with.
+func (m Model) helpText() string {
+	lines := strings.Split(helpLines, "\n")
+	for i, ln := range lines {
+		if at := strings.Index(ln, "  "); at > 0 {
+			lines[i] = m.styles.accent.Render(ln[:at]) + ln[at:]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // View gives the frame Bubble Tea puts on screen. When the last message
 // changed nothing, it hands back the frame it drew last time instead of
 // drawing the same screen again.
@@ -626,7 +639,7 @@ func (m Model) edge(p pane) lipgloss.Style {
 func (m Model) popupBox() string {
 	switch {
 	case m.help:
-		return m.boxView("Keys", helpLines)
+		return m.boxView("Keys", m.helpText())
 	case m.popup != nil:
 		var b strings.Builder
 		for i, o := range m.popup.options {

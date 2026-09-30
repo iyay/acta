@@ -2080,3 +2080,74 @@ func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
 		}
 	}
 }
+
+// TestHelpKeysWearTheAccent reads every line of the ? popup. The keys must be
+// in the accent so they stand out from what they do, and nothing else on the
+// screen may move.
+func TestHelpKeysWearTheAccent(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			m := sized(newModel(t).WithTheme(name, true), 120, 40)
+			text := m.helpText()
+			if plain(text) != helpLines {
+				t.Fatalf("%s: help text changed its words:\n%q", name, plain(text))
+			}
+			got := strings.Split(text, "\n")
+			for i, ln := range strings.Split(helpLines, "\n") {
+				key := ln
+				if at := strings.Index(ln, "  "); at > 0 {
+					key = ln[:at]
+				}
+				want := m.styles.accent.Render(key)
+				if !strings.HasPrefix(got[i], want) {
+					t.Errorf("%s line %d: key %q is not in the accent: %q", name, i, key, got[i])
+				}
+				if rest := strings.TrimPrefix(got[i], want); strings.Contains(rest, "\x1b[") {
+					t.Errorf("%s line %d: the description has a color: %q", name, i, rest)
+				}
+			}
+			before := strings.Split(m.boxView("Keys", helpLines), "\n")
+			after := strings.Split(press(m, "?").popupBox(), "\n")
+			if len(before) != len(after) {
+				t.Fatalf("%s: box has %d rows, want %d", name, len(after), len(before))
+			}
+			for i := range before {
+				if plain(after[i]) != plain(before[i]) {
+					t.Errorf("%s row %d: box text moved:\n got %q\nwant %q", name, i, plain(after[i]), plain(before[i]))
+				}
+				// The drawn row, not just helpText, has to wear the accent
+				// on the key. A box drawn from the plain helpLines looks the
+				// same once the colors are stripped, so read the row itself.
+				if i == 0 || i == len(before)-1 {
+					continue
+				}
+				inner := strings.TrimPrefix(after[i], m.styles.accent.Render("│"))
+				key := strings.Split(helpLines, "\n")[i-1]
+				if at := strings.Index(key, "  "); at > 0 {
+					key = key[:at]
+				}
+				if !strings.HasPrefix(inner, m.styles.accent.Render(key)) {
+					t.Errorf("%s row %d: the key is not in the accent on screen: %q", name, i, inner)
+				}
+			}
+		}
+	})
+}
+
+func TestOtherPopupsHaveNoAccentInside(t *testing.T) {
+	withTrueColor(func() {
+		// t and s open the two pickers, n opens the new bug prompt. The value
+		// picker is s, so it has to be in this list too.
+		for _, open := range []string{"t", "s", "n"} {
+			m := press(sized(newModel(t), 120, 40), tabKey(tabBugs), open)
+			rows := strings.Split(m.popupBox(), "\n")
+			accent := strings.TrimSuffix(m.styles.accent.Render("x"), "x\x1b[0m")
+			for i, r := range rows[1 : len(rows)-1] {
+				inner := strings.TrimSuffix(strings.TrimPrefix(r, m.styles.accent.Render("│")), m.styles.accent.Render("│"))
+				if strings.Contains(inner, accent) {
+					t.Errorf("popup %q row %d: accent inside the box: %q", open, i+1, inner)
+				}
+			}
+		}
+	})
+}
