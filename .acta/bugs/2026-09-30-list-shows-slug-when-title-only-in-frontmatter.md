@@ -1,6 +1,9 @@
 ---
 id: BUG-0018
 hash: j4wi74l
+started: "2026-09-30"
+fixed_in: 044315c
+finished: "2026-09-30"
 ---
 # List shows the slug instead of the title for old scratch items
 

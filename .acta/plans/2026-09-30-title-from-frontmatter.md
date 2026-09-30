@@ -4,6 +4,8 @@ closes: [SCR-0021]
 created: "2026-09-30"
 id: PLN-0048
 hash: zubk33q
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Item title falls back to the frontmatter title Implementation Plan
 
@@ -49,7 +51,7 @@ hash: zubk33q
 - Consumes: `Parse(src []byte) Doc` (`internal/board/parse.go:59`), `field(front map[string]any, key string) string` (`internal/board/board.go:716`), `fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item`.
 - Produces: no new names.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/board/board_test.go`:
 
@@ -77,12 +79,12 @@ func TestFileItemTitleFallback(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/board/ -run TestFileItemTitleFallback -v`
 Expected: FAIL on "title only" and "unicode title" with `title = "my-slug"`. The other cases pass already.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `fileItem` (`internal/board/board.go`), replace:
 
@@ -105,7 +107,7 @@ with:
 	}
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/board/ -run TestFileItemTitleFallback -v`
 Expected: PASS
@@ -113,7 +115,7 @@ Expected: PASS
 Run: `scripts/test ./internal/board/`
 Expected: ok
 
-- [ ] **Step 5: Format, vet, commit**
+- [x] **Step 5: Format, vet, commit**
 
 ```bash
 gofmt -l internal/board/
