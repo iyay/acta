@@ -31,21 +31,27 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		v, exists, err := config.ResolveUser()
+		v, read, exists, err := config.ResolveUserFile()
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
 		}
 		if *asJSON {
 			return printJSON(stdout, stderr, map[string]any{
-				"path": path, "exists": exists, "chat_language": v.ChatLanguage,
+				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
 				"theme": v.Theme,
 			})
 		}
-		fmt.Fprintf(stdout, "file: %s (exists: %v)\nchat_language: %s\nstyle: %s\nrepo_language: %s\n",
-			path, exists, v.ChatLanguage, v.Style, v.RepoLanguage)
+		// The values can come from an old file. Name it, and say where the
+		// next config set goes, so the user edits the right file.
+		state := fmt.Sprintf("exists: %v", exists)
+		if read != path {
+			state += ", old file; config set writes " + path
+		}
+		fmt.Fprintf(stdout, "file: %s (%s)\nchat_language: %s\nstyle: %s\nrepo_language: %s\n",
+			read, state, v.ChatLanguage, v.Style, v.RepoLanguage)
 		if v.Tone != "" {
 			fmt.Fprintf(stdout, "tone: %s\n", v.Tone)
 		}

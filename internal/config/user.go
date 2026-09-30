@@ -73,32 +73,44 @@ func oldPath() (string, error) {
 // is renamed to config.yaml first, so the user ends up with one file. When
 // both are missing, the ~/.pm file from before the acta rename is read.
 func ResolveUser() (User, bool, error) {
+	v, _, exists, err := ResolveUserFile()
+	return v, exists, err
+}
+
+// ResolveUserFile is ResolveUser plus the path of the file it read. With no
+// file at all the path is UserPath, where the next write goes.
+func ResolveUserFile() (User, string, bool, error) {
 	path, err := UserPath()
 	if err != nil {
-		return UserDefault(), false, err
+		return UserDefault(), "", false, err
 	}
 	v, exists, err := LoadUser(path)
 	if exists || err != nil || os.Getenv("PM_VOICE_FILE") != "" {
-		return v, exists, err
+		return v, path, exists, err
 	}
 	voiceFile, err := voicePath()
 	if err != nil {
-		return UserDefault(), false, err
+		return UserDefault(), path, false, err
 	}
 	// A missing voice.yaml is fine: there was none, or another hook moved it
 	// a moment ago. Any other failure means the file is still there, so read
 	// it where it is and lose nothing. The next read tries the move again.
 	if err := os.Rename(voiceFile, path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return LoadUser(voiceFile)
+		v, exists, err := LoadUser(voiceFile)
+		return v, voiceFile, exists, err
 	}
 	if v, exists, err := LoadUser(path); exists || err != nil {
-		return v, exists, err
+		return v, path, exists, err
 	}
 	old, err := oldPath()
 	if err != nil {
-		return UserDefault(), false, err
+		return UserDefault(), path, false, err
 	}
-	return LoadUser(old)
+	v, exists, err = LoadUser(old)
+	if !exists {
+		return v, path, false, err
+	}
+	return v, old, true, err
 }
 
 // SaveUser writes to the new file, never to the old one.

@@ -173,9 +173,12 @@ func TestResolveReadsVoiceFileWhenMoveFails(t *testing.T) {
 	}
 	t.Cleanup(func() { os.Chmod(dir, 0o755) })
 
-	v, exists, err := ResolveUser()
+	v, got, exists, err := ResolveUserFile()
 	if err != nil || !exists || v.ChatLanguage != "Korean" {
 		t.Fatalf("got %+v %v %v, want the voice.yaml values", v, exists, err)
+	}
+	if got != oldFile {
+		t.Fatalf("path = %q, want the voice.yaml it read, %q", got, oldFile)
 	}
 	if _, err := os.Stat(oldFile); err != nil {
 		t.Fatalf("voice.yaml must stay after a failed move: %v", err)
@@ -209,4 +212,49 @@ func TestResolveTwoReadersRacingBothSeeTheSetting(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); err != nil {
 		t.Fatalf("config.yaml must exist: %v", err)
 	}
+}
+
+// TestResolveUserFileNamesTheFileRead checks every place the setting can come
+// from. config show prints this path, so a wrong one sends the user to a file
+// that is not there.
+func TestResolveUserFileNamesTheFileRead(t *testing.T) {
+	t.Run("config.yaml", func(t *testing.T) {
+		home := withHome(t)
+		want := filepath.Join(home, ".acta", "config.yaml")
+		writeVoice(t, want, "chat_language: Korean\nstyle: plain\n")
+		if _, got, exists, err := ResolveUserFile(); err != nil || !exists || got != want {
+			t.Fatalf("got %q %v %v, want %q", got, exists, err, want)
+		}
+	})
+	t.Run("voice.yaml moved to config.yaml", func(t *testing.T) {
+		home := withHome(t)
+		writeVoice(t, filepath.Join(home, ".acta", "voice.yaml"), "chat_language: Korean\nstyle: plain\n")
+		want := filepath.Join(home, ".acta", "config.yaml")
+		if _, got, exists, err := ResolveUserFile(); err != nil || !exists || got != want {
+			t.Fatalf("got %q %v %v, want %q", got, exists, err, want)
+		}
+	})
+	t.Run("old ~/.pm file", func(t *testing.T) {
+		home := withHome(t)
+		want := filepath.Join(home, ".pm", "voice.yaml")
+		writeVoice(t, want, "chat_language: Korean\nstyle: plain\n")
+		if v, got, exists, err := ResolveUserFile(); err != nil || !exists || got != want || v.ChatLanguage != "Korean" {
+			t.Fatalf("got %+v %q %v %v, want %q", v, got, exists, err, want)
+		}
+	})
+	t.Run("no file", func(t *testing.T) {
+		home := withHome(t)
+		want := filepath.Join(home, ".acta", "config.yaml")
+		if _, got, exists, err := ResolveUserFile(); err != nil || exists || got != want {
+			t.Fatalf("got %q %v %v, want %q and exists false", got, exists, err, want)
+		}
+	})
+	t.Run("PM_VOICE_FILE", func(t *testing.T) {
+		withHome(t)
+		want := filepath.Join(t.TempDir(), "mine.yaml")
+		t.Setenv("PM_VOICE_FILE", want)
+		if _, got, _, err := ResolveUserFile(); err != nil || got != want {
+			t.Fatalf("got %q %v, want %q", got, err, want)
+		}
+	})
 }

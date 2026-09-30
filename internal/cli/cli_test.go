@@ -716,3 +716,31 @@ func TestListJSONCarriesClosesAndClosedBy(t *testing.T) {
 		t.Errorf("list --json showed %d of the %d items under test", seen, len(want))
 	}
 }
+
+// TestConfigShowNamesOldFile covers the user who moved config.yaml away: show
+// once named the missing file and printed the values of ~/.pm/voice.yaml.
+func TestConfigShowNamesOldFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	old := filepath.Join(home, ".pm", "voice.yaml")
+	if err := os.MkdirAll(filepath.Dir(old), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old, []byte("chat_language: Korean\nstyle: plain\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writes := filepath.Join(home, ".acta", "config.yaml")
+	out := mustRun(t, "config", "show")
+	want := "file: " + old + " (exists: true, old file; config set writes " + writes + ")"
+	if !strings.Contains(out, want) {
+		t.Errorf("show:\n%s\nwant line %q", out, want)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["path"] != old || got["writes"] != writes {
+		t.Errorf("json path %v writes %v, want %q and %q", got["path"], got["writes"], old, writes)
+	}
+}

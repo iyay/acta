@@ -2,6 +2,7 @@
 id: DBT-0051
 hash: mo71at6
 parent: plans/2026-09-30-build-owns-dispatch
+started: "2026-09-30 22:51:02"
 ---
 # Review NOTEs: Build Owns Dispatch Implementation Plan
 
@@ -19,7 +20,7 @@ parent: plans/2026-09-30-build-owns-dispatch
 - [ ] herdr-delivery.md says "four steps (same as dispatch.md)" but dispatch.md lists five (older mismatch).
 - [ ] herdr-delivery.md says check the harness lists acta:build; in omp the skill shows as bare build.
 - [ ] build/dispatch.md still says tickets are mirrored in the tracker, but the rule to mirror the fix task was dropped.
-- [ ] plugin/skills/setup/SKILL.md still offers dispatch when herdr is on PATH without HERDR_ENV=1; build then falls back to subagent. Setup should key on HERDR_ENV=1 alone.
+- [x] plugin/skills/setup/SKILL.md still offers dispatch when herdr is on PATH without HERDR_ENV=1; build then falls back to subagent. Setup should key on HERDR_ENV=1 alone.
 - [ ] Plan Task 3 Files list omits dispatch.md, herdr-delivery.md and build_dispatch_test.go, which the fix commit also changed.
 - [ ] herdr-delivery.md lead line states HERDR_ENV=1 as a fact and does not tell a reader who arrives without it to stop.
 - [ ] build/SKILL.md Close says dispatch sends the fix round to its tab and closes the tab, without saying only when dispatch really ran in a pane.

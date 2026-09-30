@@ -4,6 +4,8 @@ closes: [DBT-0051.15]
 id: PLN-0059
 created: "2026-09-30 22:47:34"
 hash: ya759gz
+started: "2026-09-30 22:51:02"
+finished: "2026-09-30 22:54:44"
 ---
 # Setup Herdr Check and Config Show Path Implementation Plan
 
@@ -55,7 +57,7 @@ hash: ya759gz
 - Consumes: nothing.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `TestSkillSetup`, add to `Must`:
 
@@ -69,12 +71,12 @@ and add to `MustNot`:
 			"or `herdr` on PATH",
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/plugincheck/ -run TestSkillSetup`
 Expected: FAIL: missing the new sentence, and the old `or `herdr` on PATH` wording is found.
 
-- [ ] **Step 3: Change the sentence**
+- [x] **Step 3: Change the sentence**
 
 In `plugin/skills/setup/SKILL.md`, the paragraph under `### Default build executor` becomes:
 
@@ -82,12 +84,12 @@ In `plugin/skills/setup/SKILL.md`, the paragraph under `### Default build execut
 `subagent` (default) or `inline`. Offer `dispatch` only when `HERDR_ENV=1` is in the environment, which means this session runs inside a herdr pane. `herdr` on PATH is not enough: dispatch needs this session's own pane. Without `HERDR_ENV=1`, do not offer `dispatch` at all.
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/plugincheck/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/ && go vet ./internal/plugincheck/
@@ -108,7 +110,7 @@ git commit -m "Setup offers dispatch only inside a herdr pane"
 - Consumes: nothing.
 - Produces: `func ResolveUserFile() (User, string, bool, error)` in package `config`: values, the path read (`UserPath()` when no file exists), exists, error.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/config/user_acta_test.go`, add:
 
@@ -205,12 +207,12 @@ func TestConfigShowNamesOldFile(t *testing.T) {
 
 Add `encoding/json` and `os` to the imports of `cli_test.go` if they are missing.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/config/ -run 'TestResolveUserFile|TestResolveReadsVoiceFileWhenMoveFails' && go test ./internal/cli/ -run TestConfigShowNamesOldFile`
 Expected: FAIL: `undefined: ResolveUserFile`, then the old `file:` line in the CLI test.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/config/user.go`, replace `ResolveUser` with the two functions below. Keep the existing comment inside the rename branch as it is.
 
@@ -273,12 +275,12 @@ In `internal/cli/config_cmd.go`, `show` case: call `v, read, exists, err := conf
 			read, state, v.ChatLanguage, v.Style, v.RepoLanguage)
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/config/ ./internal/cli/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/ && go vet ./internal/config/ ./internal/cli/
