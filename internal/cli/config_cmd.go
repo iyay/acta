@@ -10,11 +10,11 @@ import (
 	"github.com/iyay/acta/internal/voice"
 )
 
-const voiceUsage = "usage: acta voice show [--json] | acta voice set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
 
-func cmdVoice(args []string, stdout, stderr io.Writer) int {
+func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, voiceUsage)
+		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput
 	}
 	path, err := voice.Path()
@@ -24,11 +24,11 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 	}
 	switch args[0] {
 	case "show":
-		fs := flag.NewFlagSet("voice show", flag.ContinueOnError)
+		fs := flag.NewFlagSet("config show", flag.ContinueOnError)
 		fs.SetOutput(stderr)
 		asJSON := fs.Bool("json", false, "print JSON")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
-			fmt.Fprintln(stderr, voiceUsage)
+			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
 		v, exists, err := voice.Resolve()
@@ -60,7 +60,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	case "set":
-		fs := flag.NewFlagSet("voice set", flag.ContinueOnError)
+		fs := flag.NewFlagSet("config set", flag.ContinueOnError)
 		fs.SetOutput(stderr)
 		lang := fs.String("language", "", "chat language, as a full name (Korean)")
 		style := fs.String("style", "", "adhd or plain")
@@ -73,11 +73,11 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
-			fmt.Fprintln(stderr, voiceUsage)
+			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
 		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
-			fmt.Fprintln(stderr, voiceUsage)
+			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
 		v, _, err := voice.Resolve()
@@ -137,7 +137,7 @@ func cmdVoice(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, path)
 		return exitOK
 	default:
-		fmt.Fprintln(stderr, voiceUsage)
+		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput
 	}
 }

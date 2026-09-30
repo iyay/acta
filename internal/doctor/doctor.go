@@ -381,7 +381,7 @@ func checkTheme(e Env) Result {
 	}
 	if e.ThemeErr != nil {
 		r.Level, r.Msg = Warn, e.ThemeErr.Error()
-		r.Fix = "acta voice set --theme " + theme.Default
+		r.Fix = "acta config set --theme " + theme.Default
 		return r
 	}
 	r.Level, r.Msg = OK, "theme "+name+" loads"

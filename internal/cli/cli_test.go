@@ -59,7 +59,7 @@ func inDir(t *testing.T, dir string, fn func()) {
 }
 
 // runCode runs the CLI and returns its exit code, ignoring the output.
-// The voice command needs no repo, so no inDir here.
+// The config command needs no repo, so no inDir here.
 func runCode(t *testing.T, args ...string) int {
 	t.Helper()
 	var stdout, stderr strings.Builder
@@ -330,28 +330,28 @@ func TestScratchUnknownSubcommandNamesBothCommands(t *testing.T) {
 
 func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
-	mustRun(t, "voice", "set", "--language", "Korean", "--tone", "short")
-	if out := mustRun(t, "voice", "show"); strings.Contains(out, "build_executor") {
+	mustRun(t, "config", "set", "--language", "Korean", "--tone", "short")
+	if out := mustRun(t, "config", "show"); strings.Contains(out, "build_executor") {
 		t.Errorf("show printed an unset build_executor:\n%s", out)
 	}
-	mustRun(t, "voice", "set", "--executor", "dispatch")
-	mustRun(t, "voice", "set", "--subagent-models", "split")
-	out := mustRun(t, "voice", "show")
+	mustRun(t, "config", "set", "--executor", "dispatch")
+	mustRun(t, "config", "set", "--subagent-models", "split")
+	out := mustRun(t, "config", "show")
 	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch", "subagent_models: split"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show missing %q:\n%s", want, out)
 		}
 	}
 	// The JSON is indented, so compare without spaces.
-	asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", "")
+	asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", "")
 	for _, key := range []string{`"build_executor":"dispatch"`, `"subagent_models":"split"`} {
 		if !strings.Contains(asJSON, key) {
 			t.Errorf("json missing %q:\n%s", key, asJSON)
 		}
 	}
 	// Clearing the models must leave every other field alone.
-	mustRun(t, "voice", "set", "--clear-subagent-models")
-	after := mustRun(t, "voice", "show")
+	mustRun(t, "config", "set", "--clear-subagent-models")
+	after := mustRun(t, "config", "show")
 	if strings.Contains(after, "subagent_models") {
 		t.Errorf("clear left subagent_models:\n%s", after)
 	}
@@ -361,8 +361,8 @@ func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 		}
 	}
 	// Clear then set in one call: the set wins, so the user ends up with split.
-	mustRun(t, "voice", "set", "--clear-subagent-models", "--subagent-models", "split")
-	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "subagent_models: split") {
+	mustRun(t, "config", "set", "--clear-subagent-models", "--subagent-models", "split")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: split") {
 		t.Errorf("clear-then-set did not keep split:\n%s", out)
 	}
 }
@@ -371,9 +371,9 @@ func TestVoiceSetBadExecutor(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "voice.yaml")
 	t.Setenv("PM_VOICE_FILE", path)
 	for _, args := range [][]string{
-		{"voice", "set", "--executor", "robot"},
-		{"voice", "set", "--subagent-models", "all"},
-		{"voice", "set", "--language", "Korean", "--executor", "omp"},
+		{"config", "set", "--executor", "robot"},
+		{"config", "set", "--subagent-models", "all"},
+		{"config", "set", "--language", "Korean", "--executor", "omp"},
 	} {
 		if code := runCode(t, args...); code != exitBadInput {
 			t.Errorf("%v: exit %d, want %d", args, code, exitBadInput)
@@ -415,11 +415,11 @@ ansi: ["#000000","#111111","#222222","#333333","#444444","#555555","#666666","#7
 
 func TestVoiceSetThemeShowsIt(t *testing.T) {
 	voiceHome(t)
-	mustRun(t, "voice", "set", "--theme", "dracula")
-	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: dracula") {
+	mustRun(t, "config", "set", "--theme", "dracula")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: dracula") {
 		t.Errorf("show is missing the theme line:\n%s", out)
 	}
-	asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", "")
+	asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", "")
 	if !strings.Contains(asJSON, `"theme":"dracula"`) {
 		t.Errorf("json is missing the theme:\n%s", asJSON)
 	}
@@ -429,8 +429,8 @@ func TestVoiceSetThemeShowsIt(t *testing.T) {
 func TestVoiceSetThemeTakesAUserThemeFile(t *testing.T) {
 	home, _ := voiceHome(t)
 	writeUserTheme(t, home, "mine", goodTheme)
-	mustRun(t, "voice", "set", "--theme", "mine")
-	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: mine") {
+	mustRun(t, "config", "set", "--theme", "mine")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: mine") {
 		t.Errorf("show is missing the theme line:\n%s", out)
 	}
 }
@@ -439,7 +439,7 @@ func TestVoiceSetThemeTakesAUserThemeFile(t *testing.T) {
 // then fall back to another theme with nothing said about it.
 func TestVoiceSetThemeRefusesWhatThemeLoadRefuses(t *testing.T) {
 	home, path := voiceHome(t)
-	mustRun(t, "voice", "set", "--theme", "dracula")
+	mustRun(t, "config", "set", "--theme", "dracula")
 	writeUserTheme(t, home, "broken", "bg: [")
 	before, err := os.ReadFile(path)
 	if err != nil {
@@ -448,7 +448,7 @@ func TestVoiceSetThemeRefusesWhatThemeLoadRefuses(t *testing.T) {
 	for _, name := range []string{"nope", "../x", "not a theme", "broken"} {
 		t.Run(name, func(t *testing.T) {
 			var stdout, stderr strings.Builder
-			code := Run([]string{"voice", "set", "--theme", name}, strings.NewReader(""), false, &stdout, &stderr)
+			code := Run([]string{"config", "set", "--theme", name}, strings.NewReader(""), false, &stdout, &stderr)
 			if code != exitBadInput {
 				t.Errorf("--theme %s: exit %d, want %d", name, code, exitBadInput)
 			}
@@ -471,7 +471,7 @@ func TestVoiceSetThemeRefusesWhatThemeLoadRefuses(t *testing.T) {
 func TestVoiceRefusedThemeSavesNoOtherFlag(t *testing.T) {
 	_, path := voiceHome(t)
 	var stdout, stderr strings.Builder
-	code := Run([]string{"voice", "set", "--language", "Korean", "--theme", "nope"},
+	code := Run([]string{"config", "set", "--language", "Korean", "--theme", "nope"},
 		strings.NewReader(""), false, &stdout, &stderr)
 	if code != exitBadInput {
 		t.Fatalf("exit %d, want %d", code, exitBadInput)
@@ -490,7 +490,7 @@ func TestVoiceThemeFallsBackOnABrokenVoiceFile(t *testing.T) {
 	if got := voiceTheme(); got != "" {
 		t.Errorf("no voice file yet: theme = %q, want the empty default", got)
 	}
-	mustRun(t, "voice", "set", "--theme", "dracula")
+	mustRun(t, "config", "set", "--theme", "dracula")
 	if got := voiceTheme(); got != "dracula" {
 		t.Errorf("theme = %q want dracula", got)
 	}
@@ -509,12 +509,12 @@ func TestVoiceThemeFallsBackOnABrokenVoiceFile(t *testing.T) {
 // the theme already saved stays as it is.
 func TestVoiceSetEmptyThemeLeavesTheSavedOne(t *testing.T) {
 	_, path := voiceHome(t)
-	mustRun(t, "voice", "set", "--theme", "dracula")
+	mustRun(t, "config", "set", "--theme", "dracula")
 	before, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if code := runCode(t, "voice", "set", "--theme", ""); code != exitBadInput {
+	if code := runCode(t, "config", "set", "--theme", ""); code != exitBadInput {
 		t.Errorf("exit %d, want %d", code, exitBadInput)
 	}
 	after, err := os.ReadFile(path)
@@ -528,17 +528,17 @@ func TestVoiceSetEmptyThemeLeavesTheSavedOne(t *testing.T) {
 
 func TestVoiceClearTheme(t *testing.T) {
 	voiceHome(t)
-	mustRun(t, "voice", "set", "--theme", "dracula")
-	mustRun(t, "voice", "set", "--clear-theme")
-	if out := mustRun(t, "voice", "show"); strings.Contains(out, "theme:") {
+	mustRun(t, "config", "set", "--theme", "dracula")
+	mustRun(t, "config", "set", "--clear-theme")
+	if out := mustRun(t, "config", "show"); strings.Contains(out, "theme:") {
 		t.Errorf("clear left the theme:\n%s", out)
 	}
-	if asJSON := strings.ReplaceAll(mustRun(t, "voice", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":""`) {
+	if asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":""`) {
 		t.Errorf("json theme is not empty:\n%s", asJSON)
 	}
 	// Clear then set in one call: the set wins, like the other clear pairs.
-	mustRun(t, "voice", "set", "--clear-theme", "--theme", "dracula")
-	if out := mustRun(t, "voice", "show"); !strings.Contains(out, "theme: dracula") {
+	mustRun(t, "config", "set", "--clear-theme", "--theme", "dracula")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: dracula") {
 		t.Errorf("clear-then-set did not keep the theme:\n%s", out)
 	}
 }
