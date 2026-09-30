@@ -52,9 +52,6 @@ func (g geom) at(p pane) box {
 	return box{}
 }
 
-// hints is what the left of the status line says when nothing else is going on.
-const hints = "? help"
-
 // helpLines is the key map the ? popup shows, one key per line, so nobody
 // has to guess which key of a line does what.
 const helpLines = `1-6              open a tab
@@ -496,7 +493,7 @@ func (m Model) statusPieces() []statusPiece {
 func joinStatus(info []string, tail []statusPiece, w int) []statusPiece {
 	for len(info) > 1 {
 		out := append(infoPieces(info), tail...)
-		if lipgloss.Width(statusText(out))+lipgloss.Width(hints) <= w {
+		if lipgloss.Width(statusText(out))+lipgloss.Width(helpHint) <= w {
 			return out
 		}
 		info = info[1:]
@@ -547,13 +544,13 @@ func osc8(url, text string) string {
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 
-// statusLine draws the bottom line: the help hint, the search box or the last
-// message on the left, and the project, the watch mode, the date and time,
-// the links and the version on the right.
+// statusLine draws the bottom line: the keys of the focused pane, the search
+// box or the last message on the left, and the project, the watch mode, the
+// date and time, the links and the version on the right.
 func (m Model) statusLine() string {
 	// faintLeft says whether the left of the line is only a hint, so it wears
 	// the faint brush while the words next to it keep their own color.
-	left, faintLeft := hints, true
+	left, faintLeft := helpHint, true
 	switch {
 	case m.searching || m.query != "":
 		left, faintLeft = "/"+m.query, false
@@ -562,6 +559,11 @@ func (m Model) statusLine() string {
 	}
 	pieces := m.statusPieces()
 	right := statusText(pieces)
+	// The hints take what the right side leaves, less one cell so the two
+	// sides never touch.
+	if faintLeft {
+		left = m.hintLine(m.width - lipgloss.Width(right) - 1)
+	}
 	// The date and the links are what the line always tells, so the left
 	// gives way first when the window is narrow.
 	room := m.width - lipgloss.Width(right) - lipgloss.Width(left)

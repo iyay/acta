@@ -3,6 +3,7 @@ id: PLN-0054
 created: "2026-09-30"
 hash: bq1x3uy
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Clickable Top Tabs, Wider Sidebar and Pane Key Hints Implementation Plan
 
@@ -323,7 +324,7 @@ git commit -m "tui: a click on a top tab opens it"
 - Consumes: `m.Selected() *board.Item`, `m.focus`, `m.top`, `topTabs[i].tree`, `paneList`, `paneDone`, `paneDetail`, `board.KindTask`, `board.KindDebtItem`.
 - Produces: `const helpHint = "Help: ?"`, `func (m Model) hints() []string`, `func (m Model) hintLine(w int) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/tui/hints_test.go`:
 
@@ -419,12 +420,12 @@ func TestHintLineDropsFromTheRightAndKeepsHelp(t *testing.T) {
 
 In `internal/tui/view_test.go`, the old `? help` checks become `Help: ?`: `TestViewStatusLineShowsHelpAndClock` checks `strings.Contains(plain(last), helpHint)` in place of the `? help` prefix, and the width sweep that sets `sawLeftGone` checks `strings.Contains(line, helpHint)`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui -run 'TestHints|TestHintLine|TestViewStatusLine'`
 Expected: FAIL to build with `m.hints undefined` and `undefined: helpHint`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `internal/tui/hints.go`:
 
@@ -505,15 +506,62 @@ In `internal/tui/view.go`:
 
 The rest of `statusLine` stays as it is.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS, the whole package, so the older status line and link click tests still hold.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui
 git add internal/tui/hints.go internal/tui/hints_test.go internal/tui/view.go internal/tui/view_test.go
 git commit -m "tui: status line shows the keys of the focused pane"
+```
+
+## Fix round 1
+
+Review round 1 over `6e17712..64ea11d` found two BLOCKERs. Both go in one task and land as one commit.
+
+### Task 4: Fix the stale drag highlight on a bar miss and the hidden Edit and Copy hints
+
+**Files:**
+- Modify: `internal/tui/model.go` (`mouse`, the tab bar branch)
+- Modify: `internal/tui/hints.go` (`hints`)
+- Test: `internal/tui/tabbar_test.go`, `internal/tui/hints_test.go`
+
+**verify:** (1) No left press on any cell of the `barRows` top lines ever leaves a drag highlight on screen after the press cleared the drag. A press on a tab name, a press on a blank cell, and a press while a drag highlight is showing all redraw the screen whenever `m.drag` changed. List every branch of the bar click path and what it sets `m.same` to. (2) Every hint the status line shows names a key that works on that row, and every key that works on the row is shown when it fits. In particular: `Edit: e` shows on every row whose item is on disk, including worktree and legacy rows. `Copy id: y` shows on every row that has an item. `Status: s`, `Type: t`, `Tick: +` and `Untick: -` stay hidden where their key refuses the row. List every row kind checked (group row, worktree row, legacy row, row not on disk, task, debt line, plain item) and the hints each one gets.
+
+**Interfaces:**
+- Consumes: `m.drag.on`, `m.anchorAt`, `m.Selected() *board.Item`, `it.OnDisk`, `it.Worktree`, `it.Legacy`, `worktreeModel(t)` in `internal/tui/trees_test.go`.
+- Produces: nothing new.
+
+Findings:
+1. `internal/tui/model.go`, bar miss branch in `mouse`. The press has already run `m.drag = m.anchorAt(msg.X, msg.Y)`, which clears an old drag because the bar holds no words. The miss branch then sets `m.same = true`, so `View()` reuses the old frame and the old highlight stays on screen with nothing selected under it. Before this plan the same press fell through to `focusPane` and redrew. Expected: the screen redraws when the press cleared a drag. Take the pattern the wheel branch uses: remember `cleared := m.drag.on` before the press handling, then set `m.same = !cleared` on a miss.
+2. `internal/tui/hints.go`, the `own` gate in `hints`. It hides `Edit: e` and `Copy id: y` on worktree rows, legacy rows and rows not on disk. But `edit()` opens any item that is on disk, and `copyID()` only refuses a nil item. Repro: `worktreeModel`, Bugs tab, `j` onto the worktree bug (`Worktree == "feat"`, `OnDisk == true`). The hints are `[Detail: enter New bug: n Sort: o]`, but `y` copies and `e` opens the editor. Expected: `Edit: e` when `it != nil && it.OnDisk`, and `Copy id: y` when `it != nil`. `Status: s`, `Type: t` and the tick keys keep the `own` gate, because their code refuses those rows.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `internal/tui/tabbar_test.go`, add a test. Start a drag across detail words the way `internal/tui/drag_test.go` does, until `m.drag.on` is true and the view shows the highlight. Then left-press a blank cell of bar line 1. The test asserts that `m.same` is false and that `m.View()` equals the view a fresh model in the same state draws, with no highlight.
+
+In `internal/tui/hints_test.go`, add a test. Use `worktreeModel(t)`, open the Bugs tab and press `j` onto the worktree bug. Assert that `Edit: e` and `Copy id: y` are in `hints()` and that `Status: s` and `Type: t` are not. Also assert that a row with an item that is not on disk shows `Copy id: y` and does not show `Edit: e`.
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `scripts/test ./internal/tui -run 'TestClickOnTheBar|TestHints'`
+Expected: FAIL on the new tests only.
+
+- [ ] **Step 3: Fix both findings as the Findings list says**
+
+- [ ] **Step 4: Run the package**
+
+Run: `scripts/test ./internal/tui`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+gofmt -l . && go vet ./internal/tui
+git add internal/tui/model.go internal/tui/hints.go internal/tui/tabbar_test.go internal/tui/hints_test.go
+git commit -m "tui: bar miss redraws a cleared drag; Edit and Copy hints follow their keys"
 ```

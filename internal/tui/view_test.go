@@ -1048,8 +1048,8 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 	if got := lipgloss.Width(last); got != 100 {
 		t.Errorf("the status line is %d cells wide, want 100", got)
 	}
-	if !strings.HasPrefix(plain(last), "? help") {
-		t.Errorf("the left should show only ? help, got %q", plain(last))
+	if !strings.Contains(plain(last), helpHint) {
+		t.Errorf("the left should always show Help, got %q", plain(last))
 	}
 	if !strings.Contains(plain(last), "basic · live · 2026-09-27 20:46") {
 		t.Errorf("the project, mode or date is missing: %q", plain(last))
@@ -1132,7 +1132,7 @@ func TestViewStatusLineDropsProjectThenStatus(t *testing.T) {
 		case !strings.Contains(line, "live"):
 			sawDateOnly = true
 		}
-		if !strings.Contains(line, "? help") {
+		if !strings.Contains(line, helpHint) {
 			sawLeftGone = true
 		}
 	}
