@@ -1,0 +1,7 @@
+{"type":"session","version":3,"id":"s-1","cwd":"/tmp/x"}
+{"type":"agent_start"}
+{"type":"message_start","message":{"role":"custom","customType":"acta","content":"acta plugin is active."}}
+{"type":"tool_execution_start","toolCallId":"c1","toolName":"bash","args":{"command":"acta scratch new idea --title idea"},"intent":"file it"}
+{"type":"tool_execution_end","toolCallId":"c1","toolName":"bash","result":{"content":[{"type":"text","text":"SCR-0001"}]},"isError":false}
+{"type":"tool_execution_start","toolCallId":"c2","toolName":"read","args":{"path":"skill://scratch"}}
+{"type":"agent_end","messages":[{"role":"custom","customType":"acta","content":"acta plugin is active."},{"role":"assistant","content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"Filed as SCR-0001."},{"type":"text","text":"Next: brainstorm it."}]},{"role":"toolResult","toolCallId":"c2","content":[{"type":"text","text":"skill text"}]},{"role":"assistant","content":[{"type":"toolCall","id":"c3","name":"todo"}]}]}
