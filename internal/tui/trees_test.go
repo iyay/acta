@@ -47,7 +47,7 @@ func TestWorktreeItemsAreLabelled(t *testing.T) {
 	if !strings.Contains(v, "Worktree bug") || !strings.Contains(v, "Main bug") {
 		t.Fatalf("the list does not hold the worktree item:\n%s", v)
 	}
-	if !strings.Contains(v, "WORKTREE  : feat") {
+	if !strings.Contains(plain(v), "WORKTREE  : feat") {
 		t.Fatalf("the detail pane does not name the worktree:\n%s", v)
 	}
 }
@@ -84,7 +84,7 @@ func TestBranchItemsAreNotOpened(t *testing.T) {
 	m.render = func(md string, _ int) string { return md }
 	// Oldest first, so the branch bug of 09-25 is the second row.
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j")
-	if v := m.View(); !strings.Contains(v, "Branch bug") || !strings.Contains(v, "WORKTREE  : feat-x (not checked out)") {
+	if v := m.View(); !strings.Contains(v, "Branch bug") || !strings.Contains(plain(v), "WORKTREE  : feat-x (not checked out)") {
 		t.Fatalf("branch item not labelled:\n%s", v)
 	}
 	next, cmd := m.Update(key("enter"))

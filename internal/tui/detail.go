@@ -19,6 +19,38 @@ const (
 	dotDone    = "✓"
 )
 
+// footLines is how tall the detail footer is: the rule and the date line.
+const footLines = 2
+
+// rule is the line that sets the header and the footer off from the middle.
+func (m Model) rule(w int) string {
+	return m.styles.faint.Render(strings.Repeat("─", max(1, w)))
+}
+
+// dot is the brush of a status dot: green when done, the accent while the
+// work is under way, grey while it waits.
+func (s styles) dot(mark string) lipgloss.Style {
+	switch mark {
+	case dotDone:
+		return s.done
+	case dotGoing:
+		return s.accent
+	}
+	return s.waiting
+}
+
+// paintDates colors the names in the date line, so the dates stand out from
+// the words around them. Each part is "name date", split by " · ".
+func paintDates(s styles, line string) string {
+	parts := strings.Split(line, " · ")
+	for i, p := range parts {
+		if name, rest, ok := strings.Cut(p, " "); ok {
+			parts[i] = s.footLabel.Render(name) + " " + rest
+		}
+	}
+	return strings.Join(parts, " · ")
+}
+
 // detailCache keeps the last parts of the detail box. The box is asked for its
 // lines several times on every key and wheel notch, and building them renders
 // the whole markdown body each time. The model is copied on every update, so
@@ -95,26 +127,37 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		if f.value == "" {
 			continue
 		}
-		head = append(head, truncate(expandTabs(fmt.Sprintf("%-*s: %s", width, f.label, f.value)), w))
+		line := truncate(expandTabs(fmt.Sprintf("%-*s: %s", width, f.label, f.value)), w)
+		// The id is painted first, because the label then goes on the plain
+		// text that is left over.
+		if f.label == "ID" {
+			line = m.paintID(line, it, lipgloss.NewStyle())
+		}
+		// A label cut off by a narrow pane is left as it is.
+		if f.label != "" && strings.HasPrefix(line, f.label) {
+			line = m.styles.label.Render(f.label) + line[len(f.label):]
+		}
+		head = append(head, line)
 	}
-	head = append(head, m.styles.faint.Render(strings.Repeat("─", max(1, w))))
+	head = append(head, m.rule(w))
 	for _, p := range it.Problems {
-		mid = append(mid, truncate(expandTabs("! "+p), w))
+		mid = append(mid, m.styles.problem.Render(truncate(expandTabs("! "+p), w)))
 	}
 	mid = append(mid, m.workLines(it, w)...)
 	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
 		mid = append(mid, fit(ln, w))
 	}
-	return head, mid, dateLine(it, w)
+	return head, mid, paintDates(m.styles, dateLine(it, w))
 }
 
-// detailLines is the whole detail as one block: the header, the middle and
-// the date line. A box too short to keep the header on top scrolls this.
+// detailLines is the whole detail as one block: the header, the middle, the
+// rule and the date line. A box too short to keep the header on top scrolls
+// this.
 func (m Model) detailLines(w int) []string {
 	head, mid, foot := m.detailParts(w)
 	out := append(append([]string(nil), head...), mid...)
 	if foot != "" {
-		out = append(out, foot)
+		out = append(out, m.rule(w), foot)
 	}
 	return out
 }
@@ -143,11 +186,11 @@ func dateLine(it *board.Item, w int) string {
 }
 
 // stickyMid is how many middle lines a detail box h lines tall shows under a
-// header of head lines and over the footer. It is 0 when the box has no room
-// for the header, the footer and 3 middle lines: then the whole detail
-// scrolls as one block, so a short box still shows everything.
+// header of head lines and over the two footer lines. It is 0 when the box has
+// no room for the header, the two footer lines and 3 middle lines: then the
+// whole detail scrolls as one block, so a short box still shows everything.
 func stickyMid(head, h int) int {
-	if n := h - head - 1; n >= 3 {
+	if n := h - head - footLines; n >= 3 {
 		return n
 	}
 	return 0
@@ -276,14 +319,20 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 	var out []string
 	for _, sec := range board.Parse([]byte(it.Body)).Tasks {
 		for _, s := range sec.Steps {
-			mark, brush := dotWaiting, m.styles.faint
+			mark, brush := dotWaiting, lipgloss.NewStyle()
 			switch {
 			case s.State != ' ':
 				mark = dotDone
 			case going:
 				mark, brush, going = dotGoing, m.styles.accent, false
 			}
-			out = append(out, brush.Render(truncate(expandTabs(mark+" "+s.Text), w)))
+			line := truncate(expandTabs(mark+" "+s.Text), w)
+			if strings.HasPrefix(line, mark) {
+				line = m.styles.dot(mark).Render(mark) + brush.Render(line[len(mark):])
+			} else {
+				line = brush.Render(line)
+			}
+			out = append(out, line)
 		}
 	}
 	return out
@@ -303,14 +352,15 @@ func dotOf(it *board.Item) string {
 
 // workLine is one line of the list: the dot, the short ID, the title, and for
 // work under way its count and its agent, the same tail a list row wears. A
-// line the reader is on stays bright; the rest are dim, dot included.
+// line the reader is on is bold; the rest are plain, and the dot wears the
+// color of its state.
 func workLine(s styles, it *board.Item, on bool, w int) string {
-	mark, brush := dotOf(it), s.faint
+	mark, brush := dotOf(it), lipgloss.NewStyle()
 	if mark == dotGoing {
 		brush = s.work
 	}
 	if on {
-		brush = lipgloss.NewStyle()
+		brush = lipgloss.NewStyle().Bold(true)
 	}
 	text := shortRef(it) + "  " + it.Title
 	if inProgress(it) {
@@ -319,7 +369,11 @@ func workLine(s styles, it *board.Item, on bool, w int) string {
 			text += " · " + it.Agent
 		}
 	}
-	return brush.Render(truncate(expandTabs(mark+" "+text), w))
+	line := truncate(expandTabs(mark+" "+text), w)
+	if !strings.HasPrefix(line, mark) {
+		return brush.Render(line)
+	}
+	return s.dot(mark).Render(mark) + brush.Render(line[len(mark):])
 }
 
 // tasksLabel names the line that counts the work: a task counts its steps, so

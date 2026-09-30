@@ -342,10 +342,10 @@ func (m Model) detailView(w, first, h int) []string {
 		return window(m.detailLines(w), first, h)
 	}
 	out := append(append([]string(nil), head...), window(mid, first, n)...)
-	for len(out) < h-1 {
+	for len(out) < h-footLines {
 		out = append(out, "")
 	}
-	return append(out, foot)
+	return append(out, m.rule(w), foot)
 }
 
 // window gives at most h lines of lines, from first on.

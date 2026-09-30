@@ -201,8 +201,8 @@ func TestDetailPlanListsItsTasksWithDots(t *testing.T) {
 		}
 		for _, id := range []string{"PLN-0001.01", "PLN-0001.03"} {
 			ln := lines[lineOf(t, lines, id)]
-			if !wears(ln, 2) {
-				t.Errorf("the line of %s is not dim: %q", id, plain(ln))
+			if sgrHas(ln, "2") {
+				t.Errorf("the line of %s is faint: %q", id, plain(ln))
 			}
 			if strings.ContainsAny(plain(ln), "/·") {
 				t.Errorf("the line of %s carries a count or an agent: %q", id, plain(ln))
@@ -223,8 +223,8 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 		if i := lineOf(t, lines, "● c"); !wears(lines[i], 38, 5, 111) {
 			t.Errorf("the step under way wears no accent: %q", lines[i])
 		}
-		if i := lineOf(t, lines, "✓ b"); !wears(lines[i], 2) {
-			t.Errorf("a ticked step is not dim: %q", lines[i])
+		if i := lineOf(t, lines, "✓ b"); sgrHas(lines[i], "2") {
+			t.Errorf("a ticked step is faint: %q", lines[i])
 		}
 	})
 	// A task with no box at all lists no step and leaves no empty line.
@@ -258,8 +258,8 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 	}
 }
 
-// A debt item lists every line of its debt file, and the line on show is the
-// bright one while the others are dim.
+// A debt item lists every line of its debt file. No line is dim, and the line
+// on show is bold, so the reader knows which NOTE is open.
 func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
 	withColors(func() {
 		lines := detailOf(t, "DEBT-1.1")
@@ -268,8 +268,8 @@ func TestDetailDebtItemListsEveryLineOfItsFile(t *testing.T) {
 		if wears(lines[mine], 2) {
 			t.Errorf("the line on show is dim: %q", lines[mine])
 		}
-		if !wears(lines[other], 2) {
-			t.Errorf("the other line is not dim: %q", lines[other])
+		if sgrHas(lines[other], "2") {
+			t.Errorf("the other line is faint: %q", lines[other])
 		}
 	})
 }
@@ -778,7 +778,7 @@ func TestStickyMidNeedsThreeMiddleLines(t *testing.T) {
 	t.Parallel()
 
 	for _, c := range []struct{ head, h, want int }{
-		{5, 9, 3}, {5, 8, 0}, {0, 4, 3}, {0, 3, 0}, {5, 0, 0}, {5, 30, 24},
+		{5, 10, 3}, {5, 9, 0}, {0, 5, 3}, {0, 4, 0}, {5, 0, 0}, {5, 31, 24},
 	} {
 		if got := stickyMid(c.head, c.h); got != c.want {
 			t.Errorf("stickyMid(%d, %d) = %d, want %d", c.head, c.h, got, c.want)
@@ -969,4 +969,107 @@ func TestDetailWithNothingSelectedFollowsTheList(t *testing.T) {
 func drawnBox(t *testing.T, m Model) string {
 	t.Helper()
 	return strings.Join(plainLines(paneRows(m, paneDetail)), "\n")
+}
+
+// Every label of the header wears the label color, the id on the ID line
+// wears the color of its kind, and nothing in the header is faint.
+func TestDetailLabelsAndIDWearColors(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true) // BUG-0002 under the cursor
+		head, _, _ := m.detailParts(100)
+		var id, status string
+		for _, ln := range head {
+			switch {
+			case strings.HasPrefix(plain(ln), "ID"):
+				id = ln
+			case strings.HasPrefix(plain(ln), "STATUS"):
+				status = ln
+			}
+		}
+		if !strings.HasPrefix(status, m.styles.label.Render("STATUS")) {
+			t.Errorf("STATUS label is not cyan: %q", status)
+		}
+		if !strings.Contains(id, m.styles.kind(board.KindBug).Render("BUG-0002")) {
+			t.Errorf("id is not in the bug color: %q", id)
+		}
+		for _, ln := range head {
+			if sgrHas(ln, "2") && !strings.Contains(plain(ln), "──") {
+				t.Errorf("header line is faint: %q", ln)
+			}
+		}
+	})
+}
+
+// A dot wears the color of its state, a work line is not faint, the line the
+// reader is on is bold, and a problem line is red.
+func TestDetailDotsProblemsAndWorkLines(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		s := m.styles
+		if s.dot(dotDone).GetForeground() != s.done.GetForeground() ||
+			s.dot(dotGoing).GetForeground() != s.accent.GetForeground() ||
+			s.dot(dotWaiting).GetForeground() != s.waiting.GetForeground() {
+			t.Fatal("a dot does not wear the color of its state")
+		}
+		it := &board.Item{ShortID: "PLN-0003", Kind: board.KindPlan, Title: "Plan"}
+		off := workLine(s, it, false, 60)
+		if sgrHas(off, "2") {
+			t.Errorf("work line is faint: %q", off)
+		}
+		if !strings.HasPrefix(off, s.dot(dotWaiting).Render(dotWaiting)) {
+			t.Errorf("waiting dot is not grey: %q", off)
+		}
+		if on := workLine(s, it, true, 60); !sgrHas(on, "1") {
+			t.Errorf("the line the reader is on is not bold: %q", on)
+		}
+		bug := m.Selected()
+		bug.Problems = []string{"broken"}
+		m.dcache = &detailCache{}
+		_, mid, _ := m.detailParts(60)
+		if !strings.Contains(strings.Join(mid, "\n"), s.problem.Render("! broken")) {
+			t.Errorf("problem line is not red: %q", mid)
+		}
+	})
+}
+
+// The footer is two lines tall on both paths: the rule first, then the dates
+// with their names in the footer color.
+func TestDetailFooterHasARuleAndColoredLabels(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		for _, h := range []int{40, 6} { // sticky, then one block
+			lines := m.detailView(60, 0, h)
+			if h == 6 {
+				lines = m.detailLines(60)
+			}
+			n := len(lines)
+			for n > 0 && strings.TrimSpace(plain(lines[n-1])) == "" {
+				n--
+			}
+			foot, rule := lines[n-1], plain(lines[n-2])
+			if strings.Trim(rule, "─") != "" || rule == "" {
+				t.Errorf("h=%d: line above the footer is %q, want a rule", h, rule)
+			}
+			if !strings.Contains(foot, m.styles.footLabel.Render("created")) {
+				t.Errorf("h=%d: footer label is not magenta: %q", h, foot)
+			}
+		}
+	})
+}
+
+// The sticky middle counts both footer lines, so a box with no room for the
+// header, the rule, the dates and 3 middle lines scrolls as one block.
+func TestStickyMidCountsBothFooterLines(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct{ head, h, want int }{
+		{5, 10, 3}, // 5 head + 2 foot + 3 middle fits exactly
+		{5, 9, 0},  // one line short: the whole detail scrolls
+		{0, 5, 3},
+		{0, 4, 0},
+	} {
+		if got := stickyMid(c.head, c.h); got != c.want {
+			t.Errorf("stickyMid(%d, %d) = %d, want %d", c.head, c.h, got, c.want)
+		}
+	}
 }
