@@ -4,6 +4,7 @@ id: PLN-0065
 created: "2026-10-01 05:32:58"
 hash: iejqcfl
 started: "2026-10-01 05:57:35"
+finished: "2026-10-01 06:10:09"
 ---
 # Plan Depth Setting and Repo-Level Config Implementation Plan
 
@@ -379,7 +380,7 @@ git commit -m "Config gains plan_depth and a repo layer in .acta.yaml"
 - Consumes: `config.MergeRepo`, `config.SaveRepoUser`, `config.RepoKeys`, `User.PlanDepth` (Task 1); `config.Load(cwd, "")` for `RepoRoot`; test helper `mustRun` in `cli_test.go`.
 - Produces: nothing new for later tasks.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/cli/config_repo_test.go`:
 
@@ -520,12 +521,12 @@ func TestConfigShowBrokenRepoFile(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/cli -run 'ConfigShowRepo|ConfigShowPlanDepth|ConfigSetRepo|ConfigSetPlanDepth|ConfigShowBrokenRepo'`
 Expected: FAIL: `--plan-depth` and `--repo` are unknown flags, and show has no `plan_depth` line.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `internal/cli/config_cmd.go`:
 
@@ -674,12 +675,12 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) in
 }
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/cli -run Config`
 Expected: PASS, the older config tests too. Then `go vet ./internal/cli && gofmt -l internal/cli` prints nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/cli/config_cmd.go internal/cli/config_repo_test.go
@@ -700,7 +701,7 @@ git commit -m "acta config show and set read and write the repo layer"
 - Consumes: `config.MergeRepo` (Task 1), `config.Load`, `hook.Input`.
 - Produces: `hook.Input.RepoErr error`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/cli/hook_repo_test.go`:
 
@@ -752,12 +753,12 @@ In `internal/hook/hook_test.go`, change the expected rule 2 line (near line 29) 
 		"No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.",
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/cli -run TestHookUsesRepoLanguage` and `scripts/test ./internal/hook`
 Expected: FAIL: the hook prints `in English`, and rule 2 lacks the minimal sentence.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `internal/hook/hook.go`, add a field to `Input` under `VoiceErr`:
 
@@ -804,12 +805,12 @@ func loadVoice() hook.Input {
 
 Regenerate the rules file: `go test ./internal/hook -run TestDefaultRulesFile -update`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/hook ./internal/cli -run 'Hook|DefaultRules'`
 Expected: PASS. Then `git diff plugin/hooks/default-rules.md` shows only the rule 2 line, and `go vet ./internal/hook ./internal/cli && gofmt -l internal` prints nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/cli/hook.go internal/cli/hook_repo_test.go internal/hook/hook.go internal/hook/hook_test.go plugin/hooks/default-rules.md

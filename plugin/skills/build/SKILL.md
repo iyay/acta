@@ -7,7 +7,7 @@ description: "acta: Use to run an approved plan, and when the user asks to dispa
 
 Run an approved plan, task by task, in its own worktree. Every task starts with a failing test (`acta:tdd`) and ends with one commit. Review happens once, at the close (`acta:review`), then `acta:land` merges.
 
-Refuse to start without an approved spec and an approved plan. Say which one is missing.
+Refuse to start unless the spec is approved (for Bounded work with no spec file, approved in chat) and the plan is approved or has `depth: minimal` in its frontmatter. Say which one is missing.
 
 ## Executors
 

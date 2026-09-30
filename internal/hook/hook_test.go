@@ -26,7 +26,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"No code before an approved design and an approved plan.",
+		"No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.",
 		"Never push.",
 		"CLAUDE.md or AGENTS.md",
 		"Write every chat message to the user in Korean.",

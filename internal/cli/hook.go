@@ -87,9 +87,21 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 }
 
+// loadVoice reads the user config and lays this repo's .acta.yaml over it.
+// A bad repo file keeps the user's own values and is named in RepoErr, so
+// a repo can never switch the chat language, and the session still sees
+// what to fix.
 func loadVoice() hook.Input {
 	v, exists, err := config.ResolveUser()
-	return hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
+	in := hook.Input{Voice: v, VoiceExists: exists, VoiceErr: err}
+	if err != nil {
+		return in
+	}
+	cwd, _ := os.Getwd()
+	if cfg, lerr := config.Load(cwd, ""); lerr == nil {
+		in.Voice, _, in.RepoErr = config.MergeRepo(v, cfg.RepoRoot)
+	}
+	return in
 }
 
 // hookRoot finds the planning folder the session state lives in. It says no

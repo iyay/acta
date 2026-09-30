@@ -21,6 +21,17 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 - Commit the plan on main. The worktree branch starts from that commit, so it carries the plan.
 - A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.
 
+## Plan depth
+
+Pick the depth in this order, and do not ask when one answers: the argument of `/plan minimal` or `/plan full` (this run only, never saved), then `plan_depth` from `acta config show`, then `full`.
+
+- `full`: everything below, with real code in every code step, and a wait for the user's yes.
+- `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the ponytail-lazy line plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, a property-shaped `**verify:**` and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 6 lines a task.
+
+The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
+
+A minimal plan needs no yes: save it, run `acta id`, commit it on main, tell the user its path in one line, and invoke `acta:build` in the same turn. The spec still needs its yes first.
+
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
@@ -203,7 +214,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Hand-off
 
-Save the plan, show it to the user, and wait for a yes. Approval of the design did not approve the plan.
+Save the plan, show it to the user, and wait for a yes (a minimal plan skips the wait, see Plan depth). Approval of the design did not approve the plan.
 
 Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. When the line is missing and the user has not said, ask which one: `subagent`, `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).
 

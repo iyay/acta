@@ -33,6 +33,8 @@ func TestSkillBuild(t *testing.T) {
 			"hand it to omp in another tab or pane",
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 			"A native worktree tool puts the worktree inside the repo",
+			"or has `depth: minimal` in its frontmatter",
+			"Refuse to start unless the spec is approved",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
@@ -42,6 +44,7 @@ func TestSkillBuild(t *testing.T) {
 			"run the full test suite and the type checks, show the output, then use",
 			"subagent (default", "`subagent` (default)",
 			"EnterWorktree", "Native Worktree Tools", "native worktree tool available", "Git Worktree Fallback", "Step 1a",
+			"Refuse to start without an approved spec and an approved plan. Say which one is missing.",
 		},
 	})
 }

@@ -32,6 +32,16 @@ From the next message on, talk in the chosen language.
 acta config set --executor subagent
 ```
 
+### Plan depth
+
+`full` (default: real code in every plan step, and the plan waits for a yes) or `minimal` (short steps, no code, build starts right away).
+
+```bash
+acta config set --plan-depth full
+```
+
+Then ask once whether to save the executor and the depth for every repo or this repo only. This repo only: `acta config set --repo --executor inline --plan-depth minimal` writes `.acta.yaml`, which is committed, so it reaches everyone who clones the repo. Use `--plan-depth minimal` the same way in the global command.
+
 ### Split subagent models
 
 Ask this one in Claude Code only, and only while `acta config show` has no `subagent_models` line. Default no. A yes saves `acta config set --subagent-models split`. A no saves `acta config set --subagent-models default`, so the question is not asked again; the user's own config wins.

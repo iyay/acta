@@ -5,7 +5,7 @@ import "testing"
 func TestSkillSetup(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "setup",
-		MaxLines: 66,
+		MaxLines: 76,
 		Must: []string{
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
 			"acta config show", "adhd", "plain", "full English name",
@@ -19,6 +19,9 @@ func TestSkillSetup(t *testing.T) {
 			"When only AGENTS.md exists, write the block there",
 			"run `/init` first",
 			"create a CLAUDE.md that holds only the block",
+			"--plan-depth minimal", "--plan-depth full", "acta config set --repo",
+			"every repo or this repo only",
+			"acta config set --repo --executor inline --plan-depth minimal",
 		},
 		MustNot: []string{"superpowers:", "It never edits CLAUDE.md",
 			"or `herdr` on PATH",

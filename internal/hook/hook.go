@@ -37,6 +37,7 @@ type Input struct {
 	Voice       config.User
 	VoiceExists bool
 	VoiceErr    error
+	RepoErr     error    // .acta.yaml could not be read; its repo keys are left out
 	Conflicts   []string // enabled workflow plugins that clash with acta
 	Herdr       bool     // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
 }
@@ -44,7 +45,7 @@ type Input struct {
 const coreRules = `
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.
-2. No code before an approved design and an approved plan.
+2. No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.
 3. Every code change happens in a worktree and starts with a failing test.
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
@@ -108,6 +109,9 @@ func SessionStart(in Input) string {
 			for _, ln := range strings.Split(v.Tone, "\n") {
 				fmt.Fprintf(&b, "  %s\n", ln)
 			}
+		}
+		if in.RepoErr != nil {
+			fmt.Fprintf(&b, "- The repo settings could not be read (%v). The ones above come from your own config until .acta.yaml is fixed.\n", in.RepoErr)
 		}
 		if v.Style == "adhd" {
 			b.WriteString(adhdRules)
