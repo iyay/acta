@@ -322,9 +322,9 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 			mark, brush := dotWaiting, lipgloss.NewStyle()
 			switch {
 			case s.State != ' ':
-				mark = dotDone
+				mark, brush = dotDone, m.styles.done
 			case going:
-				mark, brush, going = dotGoing, m.styles.accent, false
+				mark, going = dotGoing, false
 			}
 			line := truncate(expandTabs(mark+" "+s.Text), w)
 			if strings.HasPrefix(line, mark) {
@@ -351,16 +351,18 @@ func dotOf(it *board.Item) string {
 }
 
 // workLine is one line of the list: the dot, the short ID, the title, and for
-// work under way its count and its agent, the same tail a list row wears. The
-// ID wears the color of its kind, a line the reader is on is bold from the
-// dot onwards, and the dot wears the color of its state.
+// work under way its count and its agent, the same tail a list row wears. A
+// finished line reads green so the eye skips it, the ID keeps the color of
+// its kind, the line the reader is on is bold, and the dot wears the color of
+// its state.
 func workLine(s styles, it *board.Item, on bool, w int) string {
 	mark, brush := dotOf(it), lipgloss.NewStyle()
-	if mark == dotGoing {
-		brush = s.work
+	if mark == dotDone {
+		// Done work reads green, so the eye skips it.
+		brush = s.done
 	}
 	if on {
-		brush = lipgloss.NewStyle().Bold(true)
+		brush = brush.Bold(true)
 	}
 	text := shortRef(it) + "  " + it.Title
 	if inProgress(it) {

@@ -208,8 +208,10 @@ func TestDetailPlanListsItsTasksWithDots(t *testing.T) {
 				t.Errorf("the line of %s carries a count or an agent: %q", id, plain(ln))
 			}
 		}
-		if i := lineOf(t, lines, "PLN-0001.02"); !wears(lines[i], 38, 5, 111) {
-			t.Errorf("the line of the work under way wears no accent: %q", lines[i])
+		// Work under way wears the foreground, so the text behind the id
+		// carries no color of its own. The id itself keeps its kind color.
+		if i := lineOf(t, lines, "PLN-0001.02"); sgr.MatchString(lines[i][strings.Index(lines[i], "  Second")+2:]) {
+			t.Errorf("the text of the work under way wears a color: %q", lines[i])
 		}
 	})
 }
@@ -220,8 +222,13 @@ func TestDetailTaskListsItsSteps(t *testing.T) {
 	withColors(func() {
 		lines := detailOf(t, "PLAN-1.2")
 		wantInOrder(t, lines, "✓ b", "● c")
-		if i := lineOf(t, lines, "● c"); !wears(lines[i], 38, 5, 111) {
-			t.Errorf("the step under way wears no accent: %q", lines[i])
+		// The step under way wears the pulse dot and no color of its own, so
+		// what follows the dot carries no code.
+		i := lineOf(t, lines, "● c")
+		rest := lines[i][strings.Index(lines[i], dotGoing):]
+		rest = rest[strings.Index(rest, "\x1b[0m")+len("\x1b[0m"):]
+		if sgr.MatchString(rest) {
+			t.Errorf("the text of the step under way wears a color: %q", lines[i])
 		}
 		if i := lineOf(t, lines, "✓ b"); sgrHas(lines[i], "2") {
 			t.Errorf("a ticked step is faint: %q", lines[i])
@@ -1115,6 +1122,74 @@ func TestDetailWorkLinesWearKindColoredIDs(t *testing.T) {
 		}
 		if !strings.Contains(task, s.kind(board.KindTask).Render("PLN-0004.01")) {
 			t.Errorf("task line id is not in the task color: %q", task)
+		}
+	})
+}
+
+// A work line shows a finished item in green with its id still in the color
+// of its kind, while work under way reads in the plain foreground with the
+// pulse dot in front of it.
+func TestDetailWorkLinesShowDoneAndGoing(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		s := m.styles
+		green := sgr.FindString(s.done.Render("x"))
+		done := &board.Item{ShortID: "PLN-0003.01", Kind: board.KindTask, Title: "Finished", Status: "done"}
+		ln := workLine(s, done, false, 80)
+		if !strings.HasPrefix(ln, s.done.Render(dotDone)) {
+			t.Errorf("done mark is not green: %q", ln)
+		}
+		if !strings.Contains(ln, s.kind(board.KindTask).Render("PLN-0003.01")) {
+			t.Errorf("done id lost its kind color: %q", ln)
+		}
+		if !strings.Contains(ln[strings.Index(ln, "PLN-0003.01"):], green) {
+			t.Errorf("done title is not green: %q", ln)
+		}
+		if on := workLine(s, done, true, 80); !sgrHas(on, "1") || !strings.Contains(on, green) {
+			t.Errorf("the done line the reader is on is not bold green: %q", on)
+		}
+
+		going := m.board.Get("plans/2026-09-23-q#task-1") // PLN-0004.01, under way
+		gl := workLine(s, going, false, 80)
+		if !strings.HasPrefix(gl, s.goingDot) {
+			t.Errorf("work under way has no pulse dot: %q", gl)
+		}
+		// The id keeps its kind color, and in this theme the kind color and the
+		// accent are the same code, so the id comes off before the text is
+		// read for the accent.
+		rest := strings.TrimPrefix(gl, s.goingDot)
+		rest = strings.Replace(rest, s.kind(board.KindTask).Render(going.ShortID), "", 1)
+		if strings.Contains(rest, sgr.FindString(s.accent.Render("x"))) {
+			t.Errorf("work under way text is still blue: %q", gl)
+		}
+		if strings.Contains(rest, green) {
+			t.Errorf("work under way text is green: %q", gl)
+		}
+	})
+}
+
+// A ticked step is green, the step under way is plain with the pulse dot, and
+// the rest of the boxes keep their own marks.
+func TestDetailStepLinesShowDoneAndGoing(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		s := m.styles
+		task := m.board.Get("plans/2026-09-23-q#task-1") // steps: [x] f, [ ] g, under way
+		lines := m.stepLines(task, 60)
+		if len(lines) != 2 {
+			t.Fatalf("got %d step lines, want 2: %q", len(lines), lines)
+		}
+		if want := s.done.Render(dotDone); !strings.HasPrefix(lines[0], want) {
+			t.Errorf("ticked step mark is not green: %q", lines[0])
+		}
+		if !strings.Contains(lines[0], sgr.FindString(s.done.Render("x"))+" f") && !strings.Contains(lines[0], s.done.Render(" f")) {
+			t.Errorf("ticked step text is not green: %q", lines[0])
+		}
+		if !strings.HasPrefix(lines[1], s.goingDot) {
+			t.Errorf("the step under way has no pulse dot: %q", lines[1])
+		}
+		if strings.Contains(lines[1], sgr.FindString(s.accent.Render("x"))+" g") {
+			t.Errorf("the step under way is still in the accent: %q", lines[1])
 		}
 	})
 }
