@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: SPC-0039
 hash: u5azafn
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI status colors: help key column, green done, pulsing dot
 

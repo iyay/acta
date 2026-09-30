@@ -3,6 +3,7 @@ package tui
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -1470,8 +1471,9 @@ func TestStartedTaskWithNoTicksCountsAsInProgress(t *testing.T) {
 }
 
 // A task someone started before ticking a box is work under way, so its row
-// wears the accent and ends on its count and its agent, the same as a task
-// with a box ticked.
+// ends on its count and its agent, the same as a task with a box ticked. The
+// words read in the plain foreground: work under way is no longer the accent,
+// and it is not faint either.
 func TestAStartedTaskKeepsTheAccentAndItsCountAndAgent(t *testing.T) {
 	withColors(func() {
 		cfg := treeCfg(t, map[string]string{
@@ -1501,9 +1503,10 @@ func TestAStartedTaskKeepsTheAccentAndItsCountAndAgent(t *testing.T) {
 			t.Errorf("line 2 is %q, want the second task", got)
 		}
 		// The cursor has moved on, so the started task is drawn like every
-		// other in-progress row the reader is not on: the accent, no faint.
-		if row := paintedLine(m.View(), bx, 1); wears(row, 2) || !wears(row, 38, 5, 111) {
-			t.Errorf("the started row should keep the accent without faint: %q", row)
+		// other in-progress row the reader is not on: plain, neither faint
+		// nor the accent.
+		if row := paintedLine(m.View(), bx, 1); wears(row, 2) || wears(row, 38, 5, 111) {
+			t.Errorf("the started row should read plain, not faint and not the accent: %q", row)
 		}
 	})
 }
@@ -2435,6 +2438,93 @@ func TestClearStatusAfterSendsItsText(t *testing.T) {
 	t.Parallel()
 
 	if got := clearStatusAfter(0, "copied X")(); got != (clearStatusMsg{text: "copied X"}) {
+		t.Fatalf("got %#v", got)
+	}
+}
+
+// quietModel is a board with no work under way, so the pulse never starts.
+func quietModel(t *testing.T) Model {
+	t.Helper()
+	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-21-q.md": "---\nid: BUG-0009\n---\n# Quiet\n"})
+	b, err := board.Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(cfg, b, true)
+}
+
+func TestPulseMovesOnlyWithADotOnScreen(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.frame = &frameCache{dots: true}
+	next, cmd := m.Update(pulseMsg{})
+	got := next.(Model)
+	if cmd == nil || !got.pulsing {
+		t.Fatal("a pulse with work under way did not arm the next one")
+	}
+	if got.pulse != 1 || got.same {
+		t.Fatalf("pulse %d same %v, want frame 1 drawn again", got.pulse, got.same)
+	}
+	got.frame = &frameCache{dots: false}
+	next, cmd = got.Update(pulseMsg{})
+	quiet := next.(Model)
+	if cmd == nil {
+		t.Fatal("work under way but no dot on screen stopped the pulse chain")
+	}
+	if quiet.pulse != 1 || !quiet.same {
+		t.Fatalf("with no dot on screen the pulse moved to %d or drew again (same %v)", quiet.pulse, quiet.same)
+	}
+}
+
+func TestPulseStopsWithNoWork(t *testing.T) {
+	t.Parallel()
+
+	m := quietModel(t)
+	m.frame = &frameCache{dots: true}
+	next, cmd := m.Update(pulseMsg{})
+	stopped := next.(Model)
+	if cmd != nil || stopped.pulsing {
+		t.Fatal("a board with no work under way kept pulsing")
+	}
+	// The last frame showed a dot, so a tick that stops the chain has to say
+	// the screen is the same, or the view draws a frame nobody can see a
+	// change in.
+	if !stopped.same {
+		t.Error("the last tick of a chain that stops left the screen marked as changed")
+	}
+}
+
+func TestResizeAndReloadArmThePulseOnce(t *testing.T) {
+	t.Parallel()
+
+	m := actModel(t)
+	m.pulsing = false
+	next, cmd := m.Update(tea.WindowSizeMsg{Width: m.width + 1, Height: m.height})
+	armed := next.(Model)
+	if cmd == nil || !armed.pulsing {
+		t.Fatal("a resize with work under way did not arm the pulse")
+	}
+	next, cmd = armed.Update(tea.WindowSizeMsg{Width: armed.width + 1, Height: armed.height})
+	if cmd == nil || fmt.Sprint(cmd()) != fmt.Sprint(tea.ClearScreen()) {
+		t.Fatal("a second resize while pulsing must only clear the screen")
+	}
+	quiet := quietModel(t)
+	if _, cmd := quiet.Update(tea.WindowSizeMsg{Width: 99, Height: 30}); cmd == nil || fmt.Sprint(cmd()) != fmt.Sprint(tea.ClearScreen()) {
+		t.Fatal("a resize with no work must only clear the screen")
+	}
+	idle := actModel(t)
+	idle.pulsing = false
+	next, cmd = idle.Update(reloadMsg{b: idle.board})
+	if cmd == nil || !next.(Model).pulsing {
+		t.Fatal("a reload with work under way did not arm the pulse")
+	}
+}
+
+func TestPulseAfterSendsAPulse(t *testing.T) {
+	t.Parallel()
+
+	if got := pulseAfter(0)(); got != (pulseMsg{}) {
 		t.Fatalf("got %#v", got)
 	}
 }

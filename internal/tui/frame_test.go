@@ -183,6 +183,9 @@ func TestResizeClearsTheScreen(t *testing.T) {
 	t.Parallel()
 
 	m := sized(newModel(t), 120, 40)
+	// The first resize already armed the pulse, so the second one only
+	// clears the screen and hands the next tick on.
+	m.pulsing = true
 	next, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	if cmd == nil || fmt.Sprint(cmd()) != fmt.Sprint(tea.ClearScreen()) {
 		t.Fatal("a size change must clear the screen so old rows do not stay")

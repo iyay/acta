@@ -13,13 +13,13 @@ func TestSkillScratch(t *testing.T) {
 		MaxLines: 60,
 		Must: []string{
 			"acta scratch new", "acta scratch add", "verbatim", "images", "Filed SCR-0001",
-			"catet", "nanti", "kepikiran", "File this in Scratchpad?", "never", "memory",
+			"note this", "idea for later", "any language", "File this in Scratchpad?", "never", "memory",
 			"new session", "main branch", "status dropped",
 			"--section context", "--section questions", "right after",
 			"what work was going on", "what already exists", "file:line",
 			"where the facts came from",
 		},
-		MustNot: []string{"superpowers:", "You may add your own lines", "below theirs"},
+		MustNot: []string{"superpowers:", "You may add your own lines", "below theirs", "catet", "nanti", "kepikiran"},
 	})
 }
 

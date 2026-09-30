@@ -4,6 +4,7 @@ hash: luodccp
 title: general-scratch-triggers
 status: raw
 created: "2026-09-29"
+finished: "2026-09-30"
 ---
 # Scratch trigger words must be general, not one user's slang
 

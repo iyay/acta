@@ -653,3 +653,25 @@ func TestSpecWithPlanIgnoresWrittenStatus(t *testing.T) {
 		t.Errorf("spec with no plan = %s (%s), want approved (frontmatter)", s.Status, s.StatusSource)
 	}
 }
+
+func TestFileItemTitleFallback(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name, src, want string
+	}{
+		{"title only", "---\ntitle: Severity or priority\n---\nsome words\n", "Severity or priority"},
+		{"heading wins", "---\ntitle: From front\n---\n# From body\n", "From body"},
+		{"empty title", "---\ntitle: \"\"\n---\nwords\n", "my-slug"},
+		{"spaces title", "---\ntitle: \"   \"\n---\nwords\n", "my-slug"},
+		{"null title", "---\ntitle:\n---\nwords\n", "my-slug"},
+		{"neither", "---\nstatus: raw\n---\nwords\n", "my-slug"},
+		{"unicode title", "---\ntitle: Catat ide 日本語 ✓\n---\nwords\n", "Catat ide 日本語 ✓"},
+	}
+	for _, c := range cases {
+		it := fileItem(KindScratch, "scratch/2026-09-30-my-slug", "scratch/2026-09-30-my-slug.md", "2026-09-30", "my-slug", false, Parse([]byte(c.src)))
+		if it.Title != c.want {
+			t.Errorf("%s: title = %q, want %q", c.name, it.Title, c.want)
+		}
+	}
+}

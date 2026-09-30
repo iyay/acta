@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: PLN-0047
 hash: ylyfrwe
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # TUI Status Colors Implementation Plan
 
@@ -85,7 +87,7 @@ hash: ylyfrwe
   - `func contrastRatio(a, b string) float64`
   - `func farthestMix(fg, bg string, floor float64) float64`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/styles_test.go`:
 
@@ -186,12 +188,12 @@ func TestFarthestMixKeepsTheFloor(t *testing.T) {
 
 In `internal/tui/detail_test.go`, change the assert in `TestDetailDotsProblemsAndWorkLines` that expects `s.dot(dotGoing)` to be the accent, so that it expects `s.pulse[0]`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestPulseFramesStayReadable|TestTokyoNightPulseMoves|TestGoingDotIsFrameZero|TestFarthestMixKeepsTheFloor|TestDetailDotsProblemsAndWorkLines'`
 Expected: FAIL to build with `s.pulse undefined`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`, add `math` to the imports and add below the slot constants:
 
@@ -339,12 +341,12 @@ Add `fmt` to the imports if it is gone. `strconv` and `strings` are already ther
 
 In `internal/tui/detail.go`, `styles.dot`, the `dotGoing` case becomes `return s.pulse[0]`. Change its comment: "green when done, the first frame of the pulse while the work is under way, grey while it waits."
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -374,7 +376,7 @@ List every row type checked: plain, tree plan, tree task, Done pane, group, curs
 - Consumes: `styles.done`, `styles.goingDot` (Task 1); `dotOf`, `dotDone`, `dotGoing` (`detail.go`); test helpers `listRow`, `listRows`, `sgr`, `sgrHas`, `withTrueColor`, `plain`, `treeCfg`, `actModel`, `press`, `tabKey`, `sized`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Replace `TestListRowWithWorkKeepsTheWorkColor` in `internal/tui/scroll_test.go` with the tests below. The old test pins the `work` color, which this task removes.
 
@@ -457,12 +459,12 @@ func TestCursorRowKeepsItsBandWithoutAPulseDot(t *testing.T) {
 
 If the fixture paths or ids above differ from what `board.Load` gives, print `rowIDs(m)` and adjust the keys in the test, not the fixture meaning.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestListRowWithWorkIsPlainWithAPulseDot|TestDoneListRowsAreGreen|TestCursorRowKeepsItsBandWithoutAPulseDot'`
 Expected: FAIL. The work row is blue and has no pulse dot, and the done row is not green.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `listView` (`internal/tui/scroll.go`), replace the part after the selected-row `continue`:
 
@@ -484,12 +486,12 @@ In `listView` (`internal/tui/scroll.go`), replace the part after the selected-ro
 
 Remove the old `inProgress(it)` → `m.styles.work` branch. Update the comment on `listView` if it names the work color.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS. Old list tests that pinned the work color are updated here and listed in the report.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -517,7 +519,7 @@ This holds for every caller: `scratchLines`, `taskLines` (the plan tasks, and th
 - Consumes: `styles.done`, `styles.goingDot`, `styles.dot` (Task 1), `styles.paintID`, `sgr`, `sgrHas`, `withTrueColor`, `actModel`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/detail_test.go`:
 
@@ -584,12 +586,12 @@ func TestDetailStepLinesShowDoneAndGoing(t *testing.T) {
 
 If the fixture ids or step texts differ from what `actModel` loads, print them and fix the test keys, not the fixture.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestDetailWorkLinesShowDoneAndGoing|TestDetailStepLinesShowDoneAndGoing'`
 Expected: FAIL. Done text is plain, and work under way uses the `work` or accent color.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `workLine` (`internal/tui/detail.go`), the start becomes:
 
@@ -618,12 +620,12 @@ In `stepLines`, the switch becomes:
 			}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS. Old detail tests that pinned the accent step or the work color are updated here and listed in the report.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -662,7 +664,7 @@ List every message path checked.
   - `Model` fields `pulse int` and `pulsing bool`
   - `frameCache` field `dots bool`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/model_test.go`:
 
@@ -785,12 +787,12 @@ func TestFrameShowsTheCurrentPulseFrame(t *testing.T) {
 
 Add `fmt` to the `model_test.go` imports if it is missing.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestPulseMovesOnlyWithADotOnScreen|TestPulseStopsWithNoWork|TestResizeAndReloadArmThePulseOnce|TestPulseAfterSendsAPulse|TestFrameShowsTheCurrentPulseFrame'`
 Expected: FAIL to build with `undefined: pulseMsg`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/model.go`, change `frameCache` and its comment:
 
@@ -918,12 +920,12 @@ In `frameFrom`, the tail becomes:
 
 Keep every other line of `frameFrom` as it is.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS, including `TestResizeClearsTheScreen`. That test is sized from `newModel`: its first resize may arm the pulse, and its second resize, while pulsing, returns `tea.ClearScreen` alone. If it fails because `newModel` holds work and is not pulsing at the second resize, set `m.pulsing = true` before the second resize in that test, and list the change.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -952,7 +954,7 @@ The value picker and the new-bug prompt stay free of accent inside the box. List
 - Consumes: `helpLines`, `styles.label`, `boxView`, `popupBox`; test helpers `withTrueColor`, `plain`, `newModel`, `sized`, `press`.
 - Produces: `func (m Model) helpText() string` (same name, new layout).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/view_test.go`, replace `TestHelpKeysWearTheAccent` with:
 
@@ -1008,12 +1010,12 @@ func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 
 In the `terminal` theme the accent and label codes are ANSI numbers, so `accent` is still a real code there. Keep `TestOtherPopupsHaveNoAccentInside` as it is.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestHelpKeysSitInARightAlignedColumn|TestOtherPopupsHaveNoAccentInside'`
 Expected: FAIL. The keys are in the accent and left-aligned.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/view.go`, replace the body and comment of `helpText`:
 
@@ -1040,12 +1042,12 @@ func (m Model) helpText() string {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS, including the help tests in `model_test.go` and `frame_test.go` that read `helpLines`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/
@@ -1072,7 +1074,7 @@ List every place that named them.
 - Consumes: Tasks 2 and 3 have stopped using `work`.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/styles_test.go`, add:
 
@@ -1093,12 +1095,12 @@ Add `reflect` to the imports if it is missing. `slotWork` is a constant, so the 
 
 Run `grep -rn "\.work\b\|slotWork" internal/` to find every other place.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestNoWorkBrushIsLeft'`
 Expected: FAIL. `styles` still has a `work` field.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`:
 - Remove `work` from the `styles` fields.
@@ -1107,12 +1109,12 @@ In `internal/tui/styles.go`:
 
 Then run `grep -rn "\.work\b\|slotWork" internal/`. It must print nothing.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

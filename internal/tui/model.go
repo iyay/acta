@@ -77,12 +77,52 @@ const wheelFrame = 12 * time.Millisecond
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
 
-// frameCache keeps the last frame View drew. A trackpad sends hundreds of
-// notches a second, and most of them only add to the pending delta, so the
-// screen stays the same. Drawing it again each time kept the TUI busy. The
-// model is copied on every update, so the frame sits behind a pointer that
-// all the copies share.
-type frameCache struct{ s string }
+// frameCache keeps the last frame View drew, and whether a pulse dot was on
+// it, so the pulse tick knows if drawing again would change anything. A
+// trackpad sends hundreds of notches a second, and most of them only add to
+// the pending delta, so the screen stays the same. Drawing it again each time
+// kept the TUI busy. The model is copied on every update, so the frame sits
+// behind a pointer that all the copies share.
+type frameCache struct {
+	s    string
+	dots bool
+}
+
+// pulseMsg moves the pulse of the dots of work under way one frame on.
+type pulseMsg struct{}
+
+// pulseStep is the time one pulse frame stays on screen, so eight frames make
+// one breath of about a second.
+const pulseStep = 120 * time.Millisecond
+
+// pulseAfter sends the next pulse once d has passed.
+func pulseAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return pulseMsg{} })
+}
+
+// hasWork says if any item on the board is under way, the only time a dot
+// can pulse at all.
+func (m Model) hasWork() bool {
+	if m.board == nil {
+		return false
+	}
+	for _, it := range m.board.Items {
+		if inProgress(it) {
+			return true
+		}
+	}
+	return false
+}
+
+// armPulse starts the pulse chain when there is work under way and no pulse
+// is on its way already, so two chains never run at once.
+func (m *Model) armPulse() tea.Cmd {
+	if m.pulsing || !m.hasWork() {
+		return nil
+	}
+	m.pulsing = true
+	return pulseAfter(pulseStep)
+}
 
 // wheelMark is the screen a frame of notches was gathered on: the open tab, its
 // Done sub-tab, the search and the row under the cursor. A tick scrolls only
@@ -134,6 +174,7 @@ type Model struct {
 	wheelArmed bool  // true while a frame tick is on its way
 	wheelMoved bool  // a notch scrolled at once, so the closing tick must draw
 	wheelMark  wheelMark
+	drag       drag // the text a mouse drag selected; empty when none
 	now        time.Time
 	version    string                  // build version shown on the bottom line
 	open       func(url string) error  // opens a link in the browser
@@ -146,6 +187,8 @@ type Model struct {
 	frame    *frameCache  // the last frame View drew, shared by every copy
 	trace    *Tracer      // notes wheel notches and draws; nil when off
 	same     bool         // true when the last message changed nothing on screen
+	pulse    int          // the pulse frame the dots of work under way wear now
+	pulsing  bool         // true while a pulse message is on its way
 	styles   styles       // the brushes every screen is painted with
 }
 
@@ -230,6 +273,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		m.width, m.height = msg.Width, msg.Height
+		// The picked cells were on the old screen, so they point at nothing now.
+		m.drag = drag{}
 		// A box that just got shorter cannot keep the place it had.
 		for p := pane(0); int(p) < boxes; p++ {
 			m.clampOff(p)
@@ -237,6 +282,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The renderer only paints the cells the new frame uses, so a window
 		// that shrinks leaves the rest of the old frame on screen. Wiping it
 		// is the only way to take those rows back.
+		if c := m.armPulse(); c != nil {
+			return m, tea.Batch(tea.ClearScreen, c)
+		}
 		return m, tea.ClearScreen
 	case reloadMsg:
 		if msg.err != nil {
@@ -245,6 +293,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.board = msg.b
 		m.moveTo(m.cursor())
+		return m, m.armPulse()
+	case pulseMsg:
+		m.pulsing = false
+		if !m.hasWork() {
+			m.same = true
+			return m, nil
+		}
+		m.pulsing = true
+		if m.frame == nil || !m.frame.dots {
+			// No dot on screen: nothing to draw, but work may show again.
+			m.same = true
+			return m, pulseAfter(pulseStep)
+		}
+		m.pulse = (m.pulse + 1) % pulseSteps
+		return m, pulseAfter(pulseStep)
 	case watchFailedMsg:
 		m.manual = true
 		m.status = "live reload off: " + msg.err.Error() + " (press r)"
@@ -442,6 +505,8 @@ func (m *Model) end() {
 }
 
 func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Any key may move the screen, so the picked cells stop meaning anything.
+	m.drag = drag{}
 	if m.help {
 		// The help sits over the panes, so it takes the keys until it closes.
 		if s := k.String(); s == "?" || s == "esc" {
@@ -542,6 +607,24 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.same = true
 		return m, nil
 	}
+	switch {
+	case msg.Action == tea.MouseActionMotion && m.drag.held:
+		next := m.drag.to(msg.X, msg.Y)
+		m.same = next == m.drag
+		m.drag = next
+		return m, nil
+	case msg.Action == tea.MouseActionRelease && m.drag.held:
+		m.drag.held = false
+		if !m.drag.shown() {
+			m.drag = drag{}
+			m.same = true
+			return m, nil
+		}
+		return m, m.copyDrag()
+	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
+		// A new press ends the old pick, and starts a new one when it lands on words.
+		m.drag = m.anchorAt(msg.X, msg.Y)
+	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
 		msg.Y == m.height-1 {
 		if url, ok := m.linkAt(msg.X); ok {
@@ -556,11 +639,14 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)
 	switch msg.Button {
 	case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
+		// The wheel moves the words, so the picked cells stop meaning anything.
+		cleared := m.drag.on
+		m.drag = drag{}
 		// The wheel belongs to the focused pane, the way the keys do, and it
 		// never takes the focus. A wheel over another pane is ignored, so the
 		// notches only ever gather for the box the reader is looking at.
 		if p != m.focus {
-			m.same = true
+			m.same = !cleared
 			return m, nil
 		}
 		// The notch got past the pane the reader is looking at, so it is part
@@ -604,7 +690,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.wheelDelta += step
 		// A flush to another pane moved that pane, so only a plain gather
 		// keeps the old frame.
-		m.same = !flushed
+		m.same = !flushed && !cleared
 		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {

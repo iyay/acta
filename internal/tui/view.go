@@ -73,15 +73,23 @@ esc              back to the list, close this help
 / r q            search, reload, quit
 ?                close this help`
 
-// helpText is the key map with each key in the accent, so the eye finds the
-// key first and reads what it does after. A line is split at its first run of
-// two spaces, the gap the key column is laid out with.
+// helpText lays the key map out the way lazygit does: the keys in cyan, so
+// they differ from the border, pushed right so they all end at one column,
+// and what each key does starting right after it. A line of helpLines splits
+// at its first run of two spaces, the gap its key column is written with.
 func (m Model) helpText() string {
-	lines := strings.Split(helpLines, "\n")
-	for i, ln := range lines {
-		if at := strings.Index(ln, "  "); at > 0 {
-			lines[i] = m.styles.accent.Render(ln[:at]) + ln[at:]
-		}
+	type pair struct{ key, what string }
+	var pairs []pair
+	keyW := 0
+	for _, ln := range strings.Split(helpLines, "\n") {
+		k, w, _ := strings.Cut(ln, "  ")
+		p := pair{strings.TrimSpace(k), strings.TrimSpace(w)}
+		pairs = append(pairs, p)
+		keyW = max(keyW, lipgloss.Width(p.key))
+	}
+	lines := make([]string, len(pairs))
+	for i, p := range pairs {
+		lines[i] = strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + m.styles.label.Render(p.key) + " " + p.what
 	}
 	return strings.Join(lines, "\n")
 }
@@ -111,7 +119,7 @@ func (m Model) View() string {
 func (m Model) draw() string {
 	g := m.geometry()
 	if !g.wide {
-		return m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false)
+		return m.withDrag(m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false))
 	}
 	// A box with no room draws nothing, so it takes no line either and the
 	// boxes below it keep the place the geometry gave them.
@@ -136,7 +144,17 @@ func (m Model) draw() string {
 		}
 		body[i] = l + r
 	}
-	return m.frameFrom(body, true)
+	return m.withDrag(m.frameFrom(body, true))
+}
+
+// withDrag lays the band of a mouse pick over the frame. It uses the colors
+// the theme picks for selected text, with no bold, so the words keep their
+// width and look.
+func (m Model) withDrag(frame string) string {
+	if !m.drag.shown() {
+		return frame
+	}
+	return paintDrag(frame, m.drag, m.styles.selected.UnsetBold())
 }
 
 // frameFrom puts the tab box on top of the body lines, cuts them to the
@@ -165,10 +183,27 @@ func (m Model) frameFrom(body []string, exact bool) string {
 	if m.popupBox() != "" {
 		// The box can be as tall as the screen, so it is laid over the body
 		// and the status line together. Cover greys every line it gets and
-		// strips the hyperlinks, which are off while a popup is open.
+		// strips the hyperlinks, which are off while a popup is open. No dot
+		// can pulse behind it, so the tick has nothing to draw.
+		if m.frame != nil {
+			m.frame.dots = false
+		}
 		return m.styles.paintFrame(m.cover(out+"\n"+line), m.width)
 	}
-	return m.styles.paintFrame(out+"\n"+line, m.width)
+	return m.styles.paintFrame(m.pulseDots(out+"\n"+line), m.width)
+}
+
+// pulseDots swaps every dot of work under way for the frame of the moment, and
+// notes whether there was one, so the pulse tick knows if it has to draw.
+func (m Model) pulseDots(s string) string {
+	dots := m.styles.goingDot != "" && strings.Contains(s, m.styles.goingDot)
+	if m.frame != nil {
+		m.frame.dots = dots
+	}
+	if !dots || m.pulse == 0 {
+		return s
+	}
+	return strings.ReplaceAll(s, m.styles.goingDot, m.styles.pulse[m.pulse].Render(dotGoing))
 }
 
 // tabRows draws the tabs in a box of their own, so they read as the top of

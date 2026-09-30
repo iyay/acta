@@ -7,7 +7,7 @@ acta plugin is active. Before each workflow step, load its acta skill with the S
 - acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
 - acta:land: after a clean review; gates, merge --no-ff, clean up, never push
 - acta:bug: record a confirmed bug with acta bug new
-- acta:scratch: raw ideas ("catet", "nanti", side ideas); file with acta scratch new, never memory
+- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory
 - acta:dispatch: run build through an omp agent in its own herdr tab
 - acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block
 - acta:migrate: move docs from another workflow plugin into .acta/

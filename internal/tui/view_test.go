@@ -859,7 +859,7 @@ func paintedLine(v string, b box, i int) string {
 // TestTheSelectedRowWearsASubtleBand reads the brushes of the selected row
 // and of the rows around it. The cursor is a dark band across the whole row
 // with bright text, never reversed video; every other row is dim and carries
-// no background, and the in-progress one keeps the accent.
+// no background, and the in-progress one reads plain.
 func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 	withColors(func() {
 		// The rows are the board's own order, so the in-progress spec is the
@@ -884,11 +884,11 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 			t.Errorf("the band stops short of the row width %d: %q", want, sel)
 		}
 
-		// The in-progress row is not selected, so it keeps the accent and
-		// is not faint, so a row under way reads at full brightness.
+		// The in-progress row is not selected, so it carries no background of
+		// its own and no accent: work under way reads plain, not faint.
 		going := paintedLine(v, b, 2)
-		if wears(going, 2) || !wears(going, 38, 5, 111) {
-			t.Errorf("an unselected in-progress row should keep the accent without faint: %q", going)
+		if wears(going, 2) || wears(going, 38, 5, 111) {
+			t.Errorf("an unselected in-progress row should read plain, not faint and not the accent: %q", going)
 		}
 		if wears(going, 48, 5, 23) {
 			t.Errorf("an unselected row wears a background: %q", going)
@@ -1534,13 +1534,13 @@ func lastLine(v string) string {
 	return lines[len(lines)-1]
 }
 
-func TestViewInProgressRowsWearTheAccent(t *testing.T) {
+func TestInProgressListRowsReadPlain(t *testing.T) {
 	withColors(func() {
-		testViewInProgressRowsWearTheAccent(t)
+		testInProgressListRowsReadPlain(t)
 	})
 }
 
-func testViewInProgressRowsWearTheAccent(t *testing.T) {
+func testInProgressListRowsReadPlain(t *testing.T) {
 	// Step twice, so neither the in-progress row nor the not-started one
 	// shows the selected brush: both must show their own brush instead.
 	m := sized(press(splitModel(t), tabKey(tabSpecs), "j"), 200, 40)
@@ -1551,8 +1551,11 @@ func testViewInProgressRowsWearTheAccent(t *testing.T) {
 		switch {
 		case strings.Contains(ln, "specs/2026-09-20-alpha"):
 			seenGoing = true
-			if !wears(cell, 38, 5, 111) {
-				t.Errorf("the in-progress row wears no accent color: %q", cell)
+			if wears(cell, 38, 5, 111) {
+				t.Errorf("the in-progress row wears the accent color: %q", cell)
+			}
+			if wears(cell, 2) {
+				t.Errorf("the in-progress row is faint: %q", cell)
 			}
 		case strings.Contains(ln, "specs/2026-09-22-beta"):
 			seenWaiting = true
@@ -2116,53 +2119,75 @@ func TestViewDrawsAgainAfterEveryChange(t *testing.T) {
 	}
 }
 
-// TestHelpKeysWearTheAccent reads every line of the ? popup. The keys must be
-// in the accent so they stand out from what they do, and nothing else on the
-// screen may move.
-func TestHelpKeysWearTheAccent(t *testing.T) {
+// TestHelpKeysSitInARightAlignedColumn reads every line of the ? popup. The
+// keys are cyan so they differ from the border, and they end at one column,
+// with what each does starting right after.
+func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 	withTrueColor(func() {
 		for _, name := range []string{"tokyo-night", "terminal"} {
 			m := sized(newModel(t).WithTheme(name, true), 120, 40)
 			text := m.helpText()
-			if plain(text) != helpLines {
-				t.Fatalf("%s: help text changed its words:\n%q", name, plain(text))
+			if got, want := strings.Fields(plain(text)), strings.Fields(helpLines); strings.Join(got, " ") != strings.Join(want, " ") {
+				t.Fatalf("%s: help words changed:\n got %q\nwant %q", name, got, want)
 			}
-			got := strings.Split(text, "\n")
-			for i, ln := range strings.Split(helpLines, "\n") {
-				key := ln
-				if at := strings.Index(ln, "  "); at > 0 {
-					key = ln[:at]
-				}
-				want := m.styles.accent.Render(key)
-				if !strings.HasPrefix(got[i], want) {
-					t.Errorf("%s line %d: key %q is not in the accent: %q", name, i, key, got[i])
-				}
-				if rest := strings.TrimPrefix(got[i], want); strings.Contains(rest, "\x1b[") {
-					t.Errorf("%s line %d: the description has a color: %q", name, i, rest)
-				}
+			keyW := 0
+			type pair struct{ key, what string }
+			var want []pair
+			for _, ln := range strings.Split(helpLines, "\n") {
+				k, w, _ := strings.Cut(ln, "  ")
+				p := pair{strings.TrimSpace(k), strings.TrimSpace(w)}
+				want = append(want, p)
+				keyW = max(keyW, lipgloss.Width(p.key))
 			}
-			before := strings.Split(m.boxView("Keys", helpLines), "\n")
-			after := strings.Split(press(m, "?").popupBox(), "\n")
-			if len(before) != len(after) {
-				t.Fatalf("%s: box has %d rows, want %d", name, len(after), len(before))
-			}
-			for i := range before {
-				if plain(after[i]) != plain(before[i]) {
-					t.Errorf("%s row %d: box text moved:\n got %q\nwant %q", name, i, plain(after[i]), plain(before[i]))
+			accent := strings.TrimSuffix(m.styles.accent.Render("x"), "x\x1b[0m")
+			for i, ln := range strings.Split(text, "\n") {
+				p := want[i]
+				wantLine := strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + m.styles.label.Render(p.key) + " " + p.what
+				if ln != wantLine {
+					t.Errorf("%s line %d:\n got %q\nwant %q", name, i, ln, wantLine)
 				}
-				// The drawn row, not just helpText, has to wear the accent
-				// on the key. A box drawn from the plain helpLines looks the
-				// same once the colors are stripped, so read the row itself.
-				if i == 0 || i == len(before)-1 {
+				cells := []rune(plain(ln))
+				if len(cells) < keyW+1 {
+					t.Errorf("%s line %d: line is %d cells, want %d: %q", name, i, len(cells), keyW+1, ln)
 					continue
 				}
-				inner := strings.TrimPrefix(after[i], m.styles.accent.Render("│"))
-				key := strings.Split(helpLines, "\n")[i-1]
-				if at := strings.Index(key, "  "); at > 0 {
-					key = key[:at]
+				// Every key ends at the same cell, the width of the widest key,
+				// and what it does starts one cell later. The left edge moves
+				// with how long the key is, so a short key sits further right.
+				kw := lipgloss.Width(p.key)
+				if got := string(cells[keyW-kw : keyW]); got != p.key {
+					t.Errorf("%s line %d: key ends before cell %d: got %q want %q", name, i, keyW, got, p.key)
 				}
-				if !strings.HasPrefix(inner, m.styles.accent.Render(key)) {
-					t.Errorf("%s row %d: the key is not in the accent on screen: %q", name, i, inner)
+				if pad := string(cells[:keyW-kw]); strings.TrimLeft(pad, " ") != "" {
+					t.Errorf("%s line %d: the gap before the key is not empty: %q", name, i, pad)
+				}
+				if got := string(cells[keyW+1:]); got != p.what {
+					t.Errorf("%s line %d: description is %q, want %q", name, i, got, p.what)
+				}
+				// The key wears the label color and nothing else on the line
+				// does, so the border and the key never read the same.
+				worn := m.styles.label.Render(p.key)
+				if !strings.Contains(ln, worn) {
+					t.Errorf("%s line %d: key %q is not in the label color: %q", name, i, p.key, ln)
+				}
+				if rest := strings.Replace(ln, worn, "", 1); strings.Contains(rest, "\x1b[") {
+					t.Errorf("%s line %d: something past the key has a color: %q", name, i, ln)
+				}
+				if accent != "" && strings.Contains(ln, accent) {
+					t.Errorf("%s line %d: a key is still in the accent: %q", name, i, ln)
+				}
+			}
+			for _, w := range []int{60, 80, 120, 200} {
+				mw := sized(newModel(t).WithTheme(name, true), w, 40)
+				before := strings.Split(mw.boxView("Keys", helpLines), "\n")
+				after := strings.Split(press(mw, "?").popupBox(), "\n")
+				if len(before) != len(after) {
+					t.Fatalf("%s at %d: box has %d rows, want %d", name, w, len(after), len(before))
+				}
+				for i := range before {
+					if lipgloss.Width(after[i]) != lipgloss.Width(before[i]) {
+						t.Errorf("%s at %d row %d: width %d, want %d", name, w, i, lipgloss.Width(after[i]), lipgloss.Width(before[i]))
+					}
 				}
 			}
 		}
@@ -2183,6 +2208,38 @@ func TestOtherPopupsHaveNoAccentInside(t *testing.T) {
 					t.Errorf("popup %q row %d: accent inside the box: %q", open, i+1, inner)
 				}
 			}
+		}
+	})
+}
+
+func TestFrameShowsTheCurrentPulseFrame(t *testing.T) {
+	withTrueColor(func() {
+		m := sized(actModel(t).WithTheme("tokyo-night", true), 160, 40)
+		m.frame = &frameCache{}
+		out := m.View()
+		if !m.frame.dots {
+			t.Fatal("a screen with work under way recorded no pulse dot")
+		}
+		if !strings.Contains(out, m.styles.goingDot) {
+			t.Fatalf("frame 0 shows no pulse dot")
+		}
+		m.pulse = 3
+		m.same = false
+		out = m.View()
+		if strings.Contains(out, m.styles.goingDot) {
+			t.Error("frame 3 still shows the frame 0 dot")
+		}
+		if !strings.Contains(out, m.styles.pulse[3].Render(dotGoing)) {
+			t.Error("frame 3 is not on screen")
+		}
+		// The frame behind a popup still carries the dot of the last normal
+		// draw, so the popup path has to clear it, or the tick keeps drawing
+		// a screen the reader cannot see.
+		pop := press(m, "?")
+		pop.frame = &frameCache{dots: true}
+		pop.View()
+		if pop.frame.dots {
+			t.Error("a popup is open, yet a pulse dot was recorded, so the tick keeps drawing behind it")
 		}
 	})
 }

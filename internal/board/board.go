@@ -389,6 +389,11 @@ func (b *Board) add(it *Item) {
 func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it := &Item{ID: id, Kind: k, Title: doc.Title, Date: date, Slug: slug,
 		Path: path, Line: 1, Legacy: legacy, Body: doc.Body}
+	// Old scratch items keep their title only in the frontmatter, with no
+	// heading in the body. Use it before falling back to the slug.
+	if it.Title == "" {
+		it.Title = field(doc.Front, "title")
+	}
 	if it.Title == "" {
 		it.Title = slug
 	}

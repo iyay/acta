@@ -2,6 +2,7 @@ package tui
 
 import (
 	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,6 +23,14 @@ func withTrueColor(f func()) {
 	f()
 }
 
+func TestNoWorkBrushIsLeft(t *testing.T) {
+	t.Parallel()
+
+	if _, ok := reflect.TypeOf(styles{}).FieldByName("work"); ok {
+		t.Error("styles still has a work brush; work under way is plain now")
+	}
+}
+
 func TestTerminalThemeUsesANSISlots(t *testing.T) {
 	th, _ := theme.Builtin("terminal")
 	s := newStyles(th, true)
@@ -29,7 +38,7 @@ func TestTerminalThemeUsesANSISlots(t *testing.T) {
 		t.Fatalf("accent = %v", s.accentColor)
 	}
 	withTrueColor(func() {
-		out := s.accent.Render("x") + s.dim.Render("x") + s.selected.Render("x") + s.work.Render("x")
+		out := s.accent.Render("x") + s.dim.Render("x") + s.selected.Render("x")
 		if strings.Contains(out, "38;2;") || strings.Contains(out, "48;2;") {
 			t.Fatalf("24-bit color in terminal mode: %q", out)
 		}
@@ -64,8 +73,8 @@ func TestHexThemeRoles(t *testing.T) {
 	if s.accentColor != lipgloss.Color("#7aa2f7") {
 		t.Fatalf("accent = %v", s.accentColor)
 	}
-	if s.work.GetForeground() != lipgloss.Color("#7aa2f7") {
-		t.Fatalf("work = %v", s.work.GetForeground())
+	if s.pulse[0].GetForeground() != lipgloss.Color(th.ANSI[slotGreen]) {
+		t.Fatalf("pulse frame 0 = %v", s.pulse[0].GetForeground())
 	}
 	if s.dim.GetForeground() != lipgloss.Color("#414868") {
 		t.Fatalf("dim = %v", s.dim.GetForeground())
@@ -313,7 +322,7 @@ func TestKindAndRoleSlots(t *testing.T) {
 	} {
 		s := newStyles(c.th, true)
 		for k, slot := range map[board.Kind]int{
-			board.KindScratch: 2, board.KindBug: 1, board.KindDebt: 3, board.KindDebtItem: 3,
+			board.KindBug: 1, board.KindDebt: 3, board.KindDebtItem: 3,
 			board.KindStory: 5, board.KindPlan: 4, board.KindTask: 4,
 		} {
 			if got := s.kind(k).GetForeground(); got != c.at(slot) {
@@ -332,13 +341,42 @@ func TestKindAndRoleSlots(t *testing.T) {
 		}{
 			"label": {s.label, 6}, "footLabel": {s.footLabel, 5}, "done": {s.done, 2},
 			"waiting": {s.waiting, 8}, "problem": {s.problem, 1}, "live": {s.live, 2},
+			// The dot of work under way is the pulse, so its first frame is green.
+			"pulseDot": {s.pulse[0], 2},
 		} {
 			if got := r.brush.GetForeground(); got != c.at(r.slot) {
 				t.Errorf("%s: %s = %v, want slot %d", c.name, name, got, r.slot)
 			}
 		}
-		if s.work.GetFaint() {
-			t.Errorf("%s: work is still faint", c.name)
+	}
+}
+
+// TestScratchIsPink checks every built-in theme. A scratch id and the
+// Scratches tab must be pink, so a scratch never looks like finished work.
+// Done keeps green, so nothing else may take the pink.
+func TestScratchIsPink(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, _ := theme.Builtin(name)
+		for _, dark := range []bool{true, false} {
+			want := lipgloss.Color("#c2185b")
+			switch {
+			case th.BG == "":
+				want = "212"
+			case th.Dark(dark):
+				want = "#ff79c6"
+			}
+			s := newStyles(th, dark)
+			if got := s.kind(board.KindScratch).GetForeground(); got != want {
+				t.Errorf("%s dark=%v: scratch id = %v, want %v", name, dark, got, want)
+			}
+			if got := s.tabColor(board.KindScratch); got != want {
+				t.Errorf("%s dark=%v: Scratches tab = %v, want %v", name, dark, got, want)
+			}
+			if got := s.done.GetForeground(); got == want {
+				t.Errorf("%s dark=%v: done took the scratch pink", name, dark)
+			}
 		}
 	}
 }
@@ -380,5 +418,98 @@ func TestSgrHasSkipsColorNumbers(t *testing.T) {
 	}
 	if !sgrHas("\x1b[1mx\x1b[0m", "1") {
 		t.Fatal("plain bold was missed")
+	}
+}
+
+// TestPulseFramesStayReadable walks every built-in theme. A frame too close
+// to the background would trip the terminal's minimum contrast and flash
+// white, so none may drop under 1.6.
+func TestPulseFramesStayReadable(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, _ := theme.Builtin(name)
+		s := newStyles(th, true)
+		if len(s.pulse) != pulseSteps {
+			t.Fatalf("%s: %d pulse frames, want %d", name, len(s.pulse), pulseSteps)
+		}
+		fg := func(i int) string { return string(s.pulse[i].GetForeground().(lipgloss.Color)) }
+		if th.BG == "" {
+			for i := range s.pulse {
+				want := "2"
+				if i >= pulseSteps/2 {
+					want = "10"
+				}
+				if fg(i) != want {
+					t.Errorf("%s frame %d = %s, want %s", name, i, fg(i), want)
+				}
+			}
+			continue
+		}
+		if fg(0) != th.ANSI[slotGreen] {
+			t.Errorf("%s frame 0 = %s, want green %s", name, fg(0), th.ANSI[slotGreen])
+		}
+		for i := 1; i < pulseSteps/2; i++ {
+			if fg(i) != fg(pulseSteps-i) {
+				t.Errorf("%s: frame %d %s and frame %d %s differ, the pulse is not symmetric", name, i, fg(i), pulseSteps-i, fg(pulseSteps-i))
+			}
+		}
+		prev := contrast(t, fg(0), th.BG)
+		for i := range s.pulse {
+			c := contrast(t, fg(i), th.BG)
+			if c < minPulseContrast {
+				t.Errorf("%s frame %d %s has contrast %.2f, want at least %.1f", name, i, fg(i), c, minPulseContrast)
+			}
+			if i > 0 && i <= pulseSteps/2 && c > prev+1e-9 {
+				t.Errorf("%s frame %d gets brighter on the way down: %.3f after %.3f", name, i, c, prev)
+			}
+			prev = c
+		}
+	}
+}
+
+func TestTokyoNightPulseMoves(t *testing.T) {
+	t.Parallel()
+
+	th, _ := theme.Builtin("tokyo-night")
+	s := newStyles(th, true)
+	if s.pulse[0].GetForeground() == s.pulse[pulseSteps/2].GetForeground() {
+		t.Fatal("frame 4 is still green, so the dot would not pulse")
+	}
+}
+
+func TestGoingDotIsFrameZero(t *testing.T) {
+	withTrueColor(func() {
+		for _, name := range []string{"tokyo-night", "terminal"} {
+			th, _ := theme.Builtin(name)
+			s := newStyles(th, true)
+			if s.dot(dotGoing).GetForeground() != s.pulse[0].GetForeground() {
+				t.Errorf("%s: dot of work under way is %v, want frame 0 %v", name, s.dot(dotGoing).GetForeground(), s.pulse[0].GetForeground())
+			}
+			if s.goingDot != s.pulse[0].Render(dotGoing) {
+				t.Errorf("%s: goingDot %q, want %q", name, s.goingDot, s.pulse[0].Render(dotGoing))
+			}
+		}
+	})
+}
+
+func TestFarthestMixKeepsTheFloor(t *testing.T) {
+	t.Parallel()
+
+	if f := farthestMix("#1a1b26", "#1a1b26", 1.6); f != 0 {
+		t.Errorf("a green already on the floor mixed %.2f, want 0", f)
+	}
+	f := farthestMix("#9ece6a", "#1a1b26", 1.6)
+	if f <= 0 || f >= 1 {
+		t.Fatalf("farthestMix = %.2f, want between 0 and 1", f)
+	}
+	if c := contrastRatio(mixHex("#9ece6a", "#1a1b26", f), "#1a1b26"); c < 1.6 {
+		t.Errorf("the farthest mix has contrast %.2f, want at least 1.6", c)
+	}
+	if got := mixHex("#000000", "#ffffff", 0.5); got != "#808080" && got != "#7f7f7f" {
+		t.Errorf("mixHex halfway = %s", got)
+	}
+	if got := mixHex("nope", "#ffffff", 0.5); got != "nope" {
+		t.Errorf("mixHex on a bad color = %s, want it back as it came", got)
 	}
 }
