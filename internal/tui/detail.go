@@ -153,9 +153,10 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		// The list pane already names the other notes, so the middle is this
 		// note alone, drawn like the body of a spec so both look the same.
 		// The renderer drops text that looks like an HTML tag, such as
-		// <uid>, so those signs are escaped first. It can also leave a line
-		// wider than the pane, and fit would cut it, so Hardwrap breaks it.
-		note := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
+		// <uid>, and eats a backslash before a sign, so those are escaped
+		// first. It can also leave a line wider than the pane, and fit
+		// would cut it, so Hardwrap breaks it.
+		note := strings.NewReplacer(`\`, `\\`, "&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
 		for _, ln := range strings.Split(xansi.Hardwrap(m.render(note, w), w, true), "\n") {
 			mid = append(mid, fit(ln, w))
 		}

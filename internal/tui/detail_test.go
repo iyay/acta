@@ -331,6 +331,7 @@ func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
 		"日本語のメモ and ünïcode words in one note",
 		"Another local user can pre-create /tmp/pmb-<uid>: a & b",
 		"view.go still runs `acta list --json` with *no* agent field",
+		`brainCmd: the (?:^|&&|;|\|\|) alternation is dead`,
 	}
 	// Markdown turns these into styling, so they are not drawn as text.
 	styled := strings.NewReplacer("`", "", "*", "")

@@ -181,7 +181,7 @@ Review round 1 found that markdown reads `\|` as an escaped pipe. The real note 
 - Consumes: the Task 1 test `TestDetailDebtItemNoteLosesNothingAtAnyWidth`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add this note to the `notes` list of `TestDetailDebtItemNoteLosesNothingAtAnyWidth`:
 
@@ -189,12 +189,12 @@ Add this note to the `notes` list of `TestDetailDebtItemNoteLosesNothingAtAnyWid
 		`brainCmd: the (?:^|&&|;|\|\|) alternation is dead`,
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/tui -run TestDetailDebtItemNoteLosesNothingAtAnyWidth`
 Expected: FAIL. The note reads `(?:^|&&|;|||)`.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 Put the backslash first in the replacer, and name it in the comment:
 
@@ -206,12 +206,12 @@ Put the backslash first in the replacer, and name it in the comment:
 		note := strings.NewReplacer(`\`, `\\`, "&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS. Then `go vet ./internal/tui && gofmt -l internal/tui` prints nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/tui/detail.go internal/tui/detail_test.go
