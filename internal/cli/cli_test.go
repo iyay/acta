@@ -744,3 +744,112 @@ func TestConfigShowNamesOldFile(t *testing.T) {
 		t.Errorf("json path %v writes %v, want %q and %q", got["path"], got["writes"], old, writes)
 	}
 }
+
+// TestConfigSetNamesBrokenOldFile covers a broken ~/.pm/voice.yaml: set once
+// told the user to fix ~/.acta/config.yaml, a file that was not there.
+func TestConfigSetNamesBrokenOldFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	old := filepath.Join(home, ".pm", "voice.yaml")
+	if err := os.MkdirAll(filepath.Dir(old), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old, []byte("chat_language: [\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	newFile := filepath.Join(home, ".acta", "config.yaml")
+	var stdout, stderr strings.Builder
+	code := Run([]string{"config", "set", "--language", "Korean"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d; stderr %q", code, exitBadInput, stderr.String())
+	}
+	if want := "fix or delete " + old + " first"; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr %q lacks %q", stderr.String(), want)
+	}
+	if strings.Contains(stderr.String(), newFile) {
+		t.Errorf("stderr %q names %s, which does not exist", stderr.String(), newFile)
+	}
+	if _, err := os.Stat(newFile); !os.IsNotExist(err) {
+		t.Errorf("set wrote %s after a read error: %v", newFile, err)
+	}
+}
+
+// brokenVoice is content no voice file can parse.
+const brokenVoice = "chat_language: [\n"
+
+// setWithBrokenFile makes a temp HOME, writes brokenVoice to rel inside it and
+// hands back a run func for config set, so a test can change the home before
+// the run. When pmRel is not empty, PM_VOICE_FILE points at that file, which is
+// then both the file set reads and the file it would write.
+func setWithBrokenFile(t *testing.T, rel, pmRel string) (home, broken string, run func() string) {
+	t.Helper()
+	home = t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", "")
+	broken = filepath.Join(home, rel)
+	if err := os.MkdirAll(filepath.Dir(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(broken, []byte(brokenVoice), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if pmRel != "" {
+		t.Setenv("PM_VOICE_FILE", filepath.Join(home, pmRel))
+	}
+	return home, broken, func() string {
+		t.Helper()
+		var stdout, stderr strings.Builder
+		code := Run([]string{"config", "set", "--language", "Korean"}, strings.NewReader(""), false, &stdout, &stderr)
+		if code != exitBadInput {
+			t.Fatalf("exit %d, want %d; stderr %q", code, exitBadInput, stderr.String())
+		}
+		return stderr.String()
+	}
+}
+
+// wantFixLine checks the fix line names exactly broken, and that set left that
+// file the way it found it.
+func wantFixLine(t *testing.T, stderr, broken string) {
+	t.Helper()
+	if want := "fix or delete " + broken + " first"; !strings.Contains(stderr, want) {
+		t.Errorf("stderr %q lacks %q", stderr, want)
+	}
+	if raw, err := os.ReadFile(broken); err != nil || string(raw) != brokenVoice {
+		t.Errorf("set changed the broken file %s: %q %v", broken, raw, err)
+	}
+}
+
+// TestConfigSetNamesBrokenConfigFile covers a broken ~/.acta/config.yaml: the
+// fix line must name that same file.
+func TestConfigSetNamesBrokenConfigFile(t *testing.T) {
+	_, broken, run := setWithBrokenFile(t, filepath.Join(".acta", "config.yaml"), "")
+	wantFixLine(t, run(), broken)
+}
+
+// TestConfigSetNamesBrokenPMVoiceFile covers a broken PM_VOICE_FILE: the fix
+// line must name that path, not the default one.
+func TestConfigSetNamesBrokenPMVoiceFile(t *testing.T) {
+	_, broken, run := setWithBrokenFile(t, filepath.Join("elsewhere", "voice.yaml"), filepath.Join("elsewhere", "voice.yaml"))
+	wantFixLine(t, run(), broken)
+}
+
+// TestConfigSetNamesBrokenUnmovableVoiceFile covers a broken ~/.acta/voice.yaml
+// that could not be moved to config.yaml: the fix line must name voice.yaml.
+func TestConfigSetNamesBrokenUnmovableVoiceFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can rename in a read-only folder")
+	}
+	home, broken, run := setWithBrokenFile(t, filepath.Join(".acta", "voice.yaml"), "")
+	// A folder we cannot write to makes the move fail, so the broken file
+	// stays where it is and is the one that failed to be read.
+	dir := filepath.Join(home, ".acta")
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	wantFixLine(t, run(), broken)
+	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); !os.IsNotExist(err) {
+		t.Errorf("set wrote config.yaml after a read error: %v", err)
+	}
+}

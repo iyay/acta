@@ -3,6 +3,8 @@ parent: bugs/2026-09-30-config-set-names-wrong-broken-file
 id: PLN-0060
 created: "2026-09-30 23:21:23"
 hash: rg7bji1
+started: "2026-09-30 23:26:46"
+finished: "2026-09-30 23:34:12"
 ---
 # Config Set Broken File Path Implementation Plan
 
@@ -50,7 +52,7 @@ hash: rg7bji1
 - Consumes: `config.ResolveUserFile() (User, string, bool, error)`.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/cli/cli_test.go`, add:
 
@@ -86,12 +88,12 @@ func TestConfigSetNamesBrokenOldFile(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/cli/ -run TestConfigSetNamesBrokenOldFile`
 Expected: FAIL: stderr names `.acta/config.yaml` instead of `.pm/voice.yaml`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/cli/config_cmd.go`, `set` case:
 
@@ -107,12 +109,12 @@ In `internal/cli/config_cmd.go`, `set` case:
 
 When `ResolveUserFile` fails before it knows any path (`UserPath` error), `read` is empty; `cmdConfig` already returned on that error at its top, so this line never prints an empty path.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/cli/ ./internal/config/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/ && go vet ./internal/cli/

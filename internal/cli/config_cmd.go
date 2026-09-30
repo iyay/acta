@@ -86,10 +86,11 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		v, _, err := config.ResolveUser()
+		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
 			// Never overwrite a file the user may still want to repair by hand.
-			fmt.Fprintf(stderr, "%v\nfix or delete %s first\n", err, path)
+			// Name the file that failed: it can be an old one, not config.yaml.
+			fmt.Fprintf(stderr, "%v\nfix or delete %s first\n", err, read)
 			return exitBadInput
 		}
 		if *lang != "" {
