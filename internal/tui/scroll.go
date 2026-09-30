@@ -143,17 +143,35 @@ func (m Model) listView(p pane, w int, b box) []string {
 			break
 		}
 		it := m.board.Get(rows[n].id)
-		brush := m.styles.faint
-		switch {
-		case n == cur:
-			brush = m.styles.selected
-		case inProgress(it):
-			// Work in progress wears the accent, dimmed; the rest stay plain.
-			brush = m.styles.work
+		text := pad(m.rowText(rows[n], it, w), w)
+		if n == cur {
+			out = append(out, m.styles.selected.Render(text))
+			continue
 		}
-		out = append(out, brush.Render(pad(m.rowText(rows[n], it, w), w)))
+		base := lipgloss.NewStyle()
+		if inProgress(it) {
+			base = m.styles.work
+		}
+		out = append(out, m.paintID(text, it, base))
 	}
 	return out
+}
+
+// paintID draws a row with its id in the color of its kind and the rest in
+// base. A row with no item, or whose id was cut off, is all base.
+func (m Model) paintID(text string, it *board.Item, base lipgloss.Style) string {
+	if it == nil {
+		return base.Render(text)
+	}
+	name := it.ShortID
+	if name == "" {
+		name = it.ID
+	}
+	i := strings.Index(text, name)
+	if i < 0 {
+		return base.Render(text)
+	}
+	return base.Render(text[:i]) + m.styles.kind(it.Kind).Render(name) + base.Render(text[i+len(name):])
 }
 
 // rowText gives the one line of a row: the short ID, or the file path when the

@@ -1565,3 +1565,111 @@ func TestFoldingTheGroupKeepsTheListReadable(t *testing.T) {
 		}
 	}
 }
+
+// listLines draws the list box of the open tab the way the screen does.
+func listLines(m Model) []string {
+	p := m.listPane()
+	b := m.geometry().at(p)
+	return m.listView(p, b.textW(), b)
+}
+
+// listRows gives every drawn line the id of the row it draws, so a check that
+// fails can name the row instead of counting lines.
+func listRows(m Model) map[string]string {
+	p := m.listPane()
+	b := m.geometry().at(p)
+	rows, _, _ := m.slotOf(p)
+	out := map[string]string{}
+	for i, ln := range listLines(m) {
+		if n := b.first + i; n < len(rows) {
+			out[rows[n].id] = ln
+		}
+	}
+	return out
+}
+
+// listRow finds the drawn line of one row by its whole id, so a row is named
+// and never counted.
+func listRow(t *testing.T, m Model, id string) string {
+	t.Helper()
+	ln, ok := listRows(m)[id]
+	if !ok {
+		t.Fatalf("no row for %s in %q", id, plainLines(listLines(m)))
+	}
+	return ln
+}
+
+// A row of any kind is drawn at full brightness, and the id of every row the
+// cursor is not on wears the color of its kind.
+func TestListRowsAreNotFaintAndWearKindColors(t *testing.T) {
+	withTrueColor(func() {
+		// Three lists between them hold every kind of row: plans and their
+		// tasks under Activities, a plan whose work has not begun on Plans,
+		// and the folded group of untyped files on Specs.
+		for _, m := range []Model{
+			actModel(t).WithTheme("tokyo-night", true),
+			press(actModel(t).WithTheme("tokyo-night", true), tabKey(tabPlans)),
+			press(newModel(t).WithTheme("tokyo-night", true), tabKey(tabSpecs)),
+		} {
+			rows, sel, idx := m.slotOf(m.listPane())
+			under := rows[cursorOf(rows, *sel, *idx)].id
+			for id, ln := range listRows(m) {
+				if sgrHas(ln, "2") {
+					t.Errorf("%s row is faint: %q in %q", id, plain(ln), plainLines(listLines(m)))
+				}
+				if id == under {
+					if !sgrHas(ln, "1") {
+						t.Errorf("row under the cursor is not the bold band: %q", plain(ln))
+					}
+					continue
+				}
+				it := m.board.Get(id)
+				if it == nil {
+					continue // the group row holds no item, so it has no id
+				}
+				name := it.ShortID
+				if name == "" {
+					name = it.ID
+				}
+				// An id the pane had to cut gets no color of its own.
+				if !strings.Contains(plain(ln), name) {
+					continue
+				}
+				if want := m.styles.kind(it.Kind).Render(name); !strings.Contains(ln, want) {
+					t.Errorf("%s id %s is not in its kind color: %q", id, name, plain(ln))
+				}
+			}
+		}
+	})
+}
+
+// A row whose work is under way keeps the work color on the words around the
+// id, and the id itself wears the color of its kind.
+func TestListRowWithWorkKeepsTheWorkColor(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		ln := listRow(t, m, "plans/2026-09-23-q#task-1")
+		if work := sgr.FindString(m.styles.work.Render("x")); !strings.Contains(ln, work) {
+			t.Errorf("work row lost the work color: %q", plain(ln))
+		}
+		if want := m.styles.kind(board.KindTask).Render("PLN-0004.01"); !strings.Contains(ln, want) {
+			t.Errorf("work row id is not in its kind color: %q", plain(ln))
+		}
+	})
+}
+
+// A row with no item, and one whose id was cut off by the pane width, are all
+// base: there is nothing to give a color of its own.
+func TestPaintIDLeavesACutIDPlain(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		it := &board.Item{ShortID: "PLN-0003", Kind: board.KindPlan}
+		base := lipgloss.NewStyle()
+		if got := m.paintID("PLN-0", it, base); got != base.Render("PLN-0") {
+			t.Errorf("cut id got a color: %q", got)
+		}
+		if got := m.paintID("x", nil, base); got != base.Render("x") {
+			t.Errorf("row with no item got a color: %q", got)
+		}
+	})
+}

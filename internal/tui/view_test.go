@@ -88,6 +88,9 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 
 	m := press(sized(clocked(newModel(t), 20, 46), 200, 40), tabKey(tabPlans))
 	v := m.View()
+	// A row is drawn as a plain row, an id in its kind color and a title
+	// after it, so the words are read without the color codes in between.
+	plainV := plain(v)
 	for _, want := range []string{
 		" 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities",
 		"─Open", "─Done ─ Dropped", "─Detail",
@@ -97,7 +100,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 		"FILE      : .acta/plans/2026-09-21-alpha.md",
 		"Write the failing test",
 	} {
-		if !strings.Contains(v, want) {
+		if !strings.Contains(plainV, want) {
 			t.Errorf("view is missing %q", want)
 		}
 	}
@@ -839,8 +842,8 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 		}
 		for _, i := range []int{3, 4} {
 			row := paintedLine(v, b, i)
-			if !wears(row, 2) {
-				t.Errorf("row %d is not dim: %q", i, row)
+			if sgrHas(row, "2") {
+				t.Errorf("row %d is faint: %q", i, plain(row))
 			}
 			if wears(row, 48, 5, 23) {
 				t.Errorf("row %d wears a background: %q", i, row)
