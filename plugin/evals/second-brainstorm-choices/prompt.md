@@ -1,7 +1,7 @@
 ---
 name: second-brainstorm-choices
 description: A second Architectural brainstorm in one session is filed and the user gets the three choices, minus the herdr tab.
-tags: [brainstorm]
+tags: [brainstorm, claude-only]
 runs: 1
 max_turns: 3
 timeout_seconds: 240

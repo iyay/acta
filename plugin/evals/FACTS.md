@@ -477,3 +477,30 @@ claude plugin eval --eval-dir evals --model sonnet --ablation none \
 
 - Case 3 grants `allowed_tools: [Skill]` so the child can load the brainstorm
   skill and answer from it; with no tools it never reads the rule it is graded on.
+
+## The same cases in omp
+
+`scripts/eval --omp` (or `acta eval-omp [--case <glob>] [plugin-dir]`) runs
+these cases through omp, one at a time, and prints `PASS`, `FAIL` or `SKIP`
+per case. It uses omp's own default model for the run and for the `llm` judge.
+The omp flags it uses are in `plugin/omp/FACTS.md`.
+
+Each case gets an empty folder and a throwaway home. The scaffold runs with
+`HOME` set to that home, and the omp run gets `PM_VOICE_FILE` pointing at the
+voice file the scaffold writes there. omp itself keeps the real home, because
+it needs the user's login.
+
+Known gaps, on purpose:
+
+1. `max_turns` is ignored. omp has no turn cap flag; only `timeout_seconds`
+   stops a run.
+2. `allowed_tools` is ignored. omp has no flag for it.
+3. The `llm` judge votes once, not best of three, to save quota.
+4. A case tagged `claude-only` is skipped. `second-brainstorm-choices` has the
+   tag, because its grader asks for `claude --bg`. It is a tag and not a new
+   field, because an unknown frontmatter key is an error here.
+
+Only the graders the suite uses are supported: `file_exists`, `regex` on
+`last_message` or `{ source: file, path }`, `tool_used`, and `llm`. Anything
+else fails with a message that names it, and `TestRealSuiteRunsInOmp` fails
+when a new case uses one without the `claude-only` tag.

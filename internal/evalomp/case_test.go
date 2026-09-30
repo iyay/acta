@@ -110,3 +110,28 @@ func TestLoadCasesErrors(t *testing.T) {
 		t.Error("a missing eval folder must be an error")
 	}
 }
+
+// TestRealSuiteRunsInOmp keeps the shared suite honest: a new case either
+// uses graders this runner can grade, or is tagged claude-only on purpose.
+func TestRealSuiteRunsInOmp(t *testing.T) {
+	cases, err := LoadCases("../../plugin/evals")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) == 0 {
+		t.Fatal("no cases found in plugin/evals")
+	}
+	for _, c := range cases {
+		if c.Name == "second-brainstorm-choices" && !c.ClaudeOnly() {
+			t.Error("second-brainstorm-choices asks for claude --bg, so it must be tagged claude-only")
+		}
+		if c.ClaudeOnly() {
+			continue
+		}
+		for _, g := range c.Graders {
+			if why := Unsupported(g); why != "" {
+				t.Errorf("%s/%s: %s", c.Name, g.Name, why)
+			}
+		}
+	}
+}

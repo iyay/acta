@@ -6,6 +6,13 @@
 # paths, a test in this repo rejects those, and the land gate runs this script.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# --omp runs the same cases through omp instead. The runner comes from this
+# checkout; the hooks inside each run still use the acta on PATH.
+if [ "${1:-}" = "--omp" ]; then
+  shift
+  exec go run ./cmd/acta eval-omp "$@" plugin
+fi
 out="$(mktemp -d)"
 echo "Results will be written to $out"
 exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash \

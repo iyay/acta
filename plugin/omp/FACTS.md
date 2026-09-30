@@ -152,3 +152,34 @@ $ cat .acta/state/sessions.json
 
 Temp dir left in place per plan (no `rm -rf` performed):
 - T5 (two-brainstorm block check): $T
+
+## Running the eval cases in omp
+
+Checked 2026-09-30 with omp 18.4.4, from an empty temp folder. `acta eval-omp`
+uses exactly these facts.
+
+1. `--mode json` prints one JSON event per line. A tool call is
+   `{"type":"tool_execution_start","toolName":"bash","args":{"command":"..."}}`.
+   The last line is `{"type":"agent_end","messages":[...]}`, and the final
+   reply is the text parts of the last `role: "assistant"` message.
+2. `--no-skills` also drops the acta skills that `--plugin-dir` brings. With
+   it, the model listed no brainstorm, scratch or plan skill.
+3. `--skills=<names>` with the acta skill folder names keeps acta's skills and
+   filters out every other one. The model then listed exactly the 12 acta
+   skills: brainstorm, bug, build, debug, dispatch, land, migrate, plan,
+   review, scratch, setup, tdd.
+4. An extension given with `-e` still runs under `--no-extensions`: the run's
+   messages held the `acta` custom message, and the model quoted
+   "acta plugin is active".
+5. omp adds its own built-in messages (`eager-todo-prelude`,
+   `eager-task-prelude`) even with every flag above. They are part of omp.
+
+```text
+$ command omp --no-session --no-extensions --no-rules \
+   --skills="brainstorm,bug,build,debug,dispatch,land,migrate,plan,review,scratch,setup,tdd" \
+   --plugin-dir <acta>/plugin -e <acta>/plugin/omp/index.ts --mode json -p \
+   "Without running any tool, list the names of every skill available to you, comma separated, then quote the first line of any context message starting with 'acta plugin is active'."
+(reply) brainstorm, bug, build, debug, dispatch, land, migrate, plan, review, scratch, setup, tdd
+(reply) > acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. ...
+(custom messages) eager-todo-prelude, eager-task-prelude, acta
+```

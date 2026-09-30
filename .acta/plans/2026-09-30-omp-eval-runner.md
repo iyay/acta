@@ -4,6 +4,7 @@ parent: specs/2026-09-30-omp-harness-design
 id: PLN-0056
 hash: uavj6ws
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # omp Eval Runner Implementation Plan
 
@@ -672,7 +673,7 @@ git commit -m "evalomp: parse omp's json event stream into the reply and tool ca
   - `func Grade(g Grader, w Workspace, judge Judge) Outcome`
   - `func Unsupported(g Grader) string` (empty when this runner can grade `g`, else the reason)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/evalomp/grade_test.go`:
 
@@ -805,12 +806,12 @@ func TestUnsupported(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/evalomp -run 'TestGrade|TestUnsupported'`
 Expected: FAIL, `Grade`, `Judge` and `Unsupported` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/evalomp/grade.go`:
 
@@ -984,12 +985,12 @@ func gradeLLM(g Grader, w Workspace, judge Judge) Outcome {
 }
 ```
 
-- [ ] **Step 4: Run the test to see it pass**
+- [x] **Step 4: Run the test to see it pass**
 
 Run: `scripts/test ./internal/evalomp -run 'TestGrade|TestUnsupported'`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -w internal/evalomp && go vet ./internal/evalomp
@@ -1017,7 +1018,7 @@ git commit -m "evalomp: grade a run with file_exists, regex, tool_used and llm"
   - `func OmpJudge(omp string) Judge`
   - `func RunAll(cases []Case, o Options, only string, judge Judge, out io.Writer) (failed bool)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/evalomp/run_test.go`:
 
@@ -1193,12 +1194,12 @@ func TestRunAll(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `scripts/test ./internal/evalomp -run 'TestSkillNames|TestRunCase|TestRunAll'`
 Expected: FAIL, `RunCase`, `RunAll`, `SkillNames`, `Options` and `ErrTimeout` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/evalomp/run.go`:
 
@@ -1378,12 +1379,12 @@ func runOne(c Case, o Options, judge Judge) string {
 }
 ```
 
-- [ ] **Step 4: Run the test to see it pass**
+- [x] **Step 4: Run the test to see it pass**
 
 Run: `scripts/test ./internal/evalomp`
 Expected: PASS, every test in the package.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -w internal/evalomp && go vet ./internal/evalomp
@@ -1411,7 +1412,7 @@ git commit -m "evalomp: run each case through omp in a throwaway folder and prin
 - Consumes: `LoadCases`, `SkillNames`, `RunAll`, `OmpJudge`, `Options`, `Unsupported` (Tasks 1 to 4).
 - Produces: `func cmdEvalOmp(args []string, stdout, stderr io.Writer) int` in package `cli`; CLI usage `acta eval-omp [--case <glob>] [plugin-dir]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to the end of `internal/evalomp/case_test.go`:
 
@@ -1524,12 +1525,12 @@ func TestEvalOmpIsACommand(t *testing.T) {
 
 Before writing `TestEvalOmpIsACommand`, open `internal/cli/cli.go` and check the exact signature of `Run` (the argument order of stdin, the TTY flag and the writers). Match the call to it; do not change `Run`.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/evalomp ./internal/cli -run 'TestRealSuiteRunsInOmp|TestEvalOmp'`
 Expected: FAIL. `cmdEvalOmp` and `exitCaseFailed` are undefined, and `second-brainstorm-choices` is not tagged `claude-only`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/cli/eval_omp.go`:
 
@@ -1621,12 +1622,12 @@ if [ "${1:-}" = "--omp" ]; then
 fi
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/evalomp ./internal/cli ./internal/plugincheck`
 Expected: PASS. `internal/plugincheck` still passes with the new tag.
 
-- [ ] **Step 5: Record the facts**
+- [x] **Step 5: Record the facts**
 
 Append to the end of `plugin/omp/FACTS.md`:
 
@@ -1694,7 +1695,7 @@ else fails with a message that names it, and `TestRealSuiteRunsInOmp` fails
 when a new case uses one without the `claude-only` tag.
 ````
 
-- [ ] **Step 6: Run the checks again and commit**
+- [x] **Step 6: Run the checks again and commit**
 
 Run: `scripts/test ./internal/evalomp ./internal/cli ./internal/plugincheck`
 Expected: PASS (the FACTS files hold no absolute user path).
