@@ -29,11 +29,13 @@ func TestSkillBuild(t *testing.T) {
 			"Copy in the house rules too",
 			"`/build <executor>`", "It is for this run only; never save it.",
 			"HERDR_ENV=1", "Build never refuses because herdr is missing.",
+			"with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it",
 			"hand it to omp in another tab or pane",
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
+			"and no `herdr` on PATH",
 			`"$LOCATION/$BRANCH_NAME"`, "acta tick <task-id>", "run it again with --all",
 			"or `go test ./...`, whichever the project uses",
 			"run the full test suite and the type checks, show the output, then use",
@@ -166,7 +168,11 @@ func TestBuildExecutorOrder(t *testing.T) {
 	if arg < 0 || cfg < 0 || ask < 0 || !(arg < cfg && cfg < ask) {
 		t.Errorf("build/SKILL.md must list the executor order argument, config, ask (got %d, %d, %d)", arg, cfg, ask)
 	}
-	if !strings.Contains(txt, "runs as `subagent`. Build never refuses because herdr is missing.") {
-		t.Error("build/SKILL.md missing the no-herdr fallback to subagent")
+	const fallback = "`dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing."
+	if !strings.Contains(txt, fallback) {
+		t.Errorf("build/SKILL.md missing the herdr fallback %q", fallback)
+	}
+	if strings.Contains(txt, "no `herdr` on PATH") {
+		t.Error("build/SKILL.md still lets herdr on PATH alone pick dispatch; dispatch needs HERDR_ENV=1 and $HERDR_PANE_ID")
 	}
 }

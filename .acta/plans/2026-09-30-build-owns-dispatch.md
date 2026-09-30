@@ -416,7 +416,7 @@ git commit -m "Build picks its executor from the argument, then config, then ask
 - Consumes: the `## Executors` text from Task 2.
 - Produces: nothing later tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/plugincheck/skill_build_test.go`, `TestSkillBuild`: add to `MustNot` the old wording `"and no `herdr` on PATH"`. In `TestBuildExecutorOrder`, replace the no-herdr check with:
 
@@ -430,12 +430,12 @@ In `internal/plugincheck/skill_build_test.go`, `TestSkillBuild`: add to `MustNot
 	}
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/plugincheck/ -run 'TestSkillBuild|TestBuildExecutorOrder'`
 Expected: FAIL on the missing fallback text and the old `and no `herdr` on PATH` wording.
 
-- [ ] **Step 3: Fix the text**
+- [x] **Step 3: Fix the text**
 
 In `plugin/skills/build/SKILL.md`, the second fallback bullet becomes:
 
@@ -445,12 +445,12 @@ In `plugin/skills/build/SKILL.md`, the second fallback bullet becomes:
 
 In `.acta/specs/2026-09-30-build-owns-dispatch-design.md`, Build flow item 2, replace `With `dispatch` and no herdr (no `HERDR_ENV=1` and no `herdr` on PATH), it also runs as `subagent`.` with `With `dispatch` and no `HERDR_ENV=1` (this session is not inside a herdr pane), it also runs as `subagent`; `herdr` on PATH is not enough.`
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ ./internal/hook/`
 Expected: PASS.
 
-- [ ] **Step 5: Format, vet, commit**
+- [x] **Step 5: Format, vet, commit**
 
 ```bash
 gofmt -l internal/ && go vet ./internal/plugincheck/

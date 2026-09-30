@@ -60,11 +60,13 @@ func TestBuildDispatchDelivery(t *testing.T) {
 			"exactly one read", "checkpoint unconfirmed", "gets its own one read", "outside this rule",
 			"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "then `/goal` only",
 			"acta:review", "acta:land", "herdr pane close", "Bugs found by recipient",
+			"Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent`",
 			"literal skill name, a review keyword, and the range",
 		},
 		"herdr-delivery.md": {
 			"exactly one read", "checkpoint unconfirmed", "HARD RULE", "New session started", "🎯 Goal",
 			"never in one prompt", "then `/goal` only", "--agent omp", "acta dispatch init", "herdr pane close",
+			"Reference for a dispatch already running",
 		},
 	} {
 		txt := readBuildFile(t, file)

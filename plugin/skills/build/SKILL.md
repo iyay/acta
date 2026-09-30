@@ -14,7 +14,7 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 | Executor | Who writes the code | How |
 |---|---|---|
 | `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
-| `dispatch` | an omp agent in its own herdr tab | read [dispatch.md](dispatch.md) and follow it. On omp, `dispatch` runs as `subagent` |
+| `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. Without it `dispatch` runs as `subagent`. On omp, `dispatch` runs as `subagent` |
 | `inline` | you | only when the user says "inline" |
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
@@ -28,7 +28,7 @@ Pick the executor in this order. When one of the first two gives an answer, do n
 Two fallbacks, each told to the user in one line:
 
 - On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
-- `dispatch` with no herdr (no `HERDR_ENV=1` in the environment and no `herdr` on PATH) runs as `subagent`. Build never refuses because herdr is missing.
+- `dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing. `herdr` on PATH is not enough: dispatch needs this session's own pane id, `$HERDR_PANE_ID`.
 
 ## Models
 

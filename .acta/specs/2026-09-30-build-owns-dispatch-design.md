@@ -38,7 +38,7 @@ Status: design approved by the user in chat on 2026-09-30, section by section. A
 ### Build flow
 
 1. **Pick the executor.** The argument of `/build <executor>` (`subagent`, `dispatch` or `inline`) wins. With no argument, use `build_executor` from `acta config show`. With neither, ask. The argument is for that run only and is never saved.
-2. **Fallbacks.** On omp, `dispatch` runs as `subagent`. With `dispatch` and no herdr (no `HERDR_ENV=1` and no `herdr` on PATH), it also runs as `subagent`. Each fallback is told to the user in one line. Build never refuses because herdr is missing.
+2. **Fallbacks.** On omp, `dispatch` runs as `subagent`. With `dispatch` and no `HERDR_ENV=1` (this session is not inside a herdr pane), it also runs as `subagent`; `herdr` on PATH is not enough. Each fallback is told to the user in one line. Build never refuses because herdr is missing.
 3. **Worktree.** Every executor uses the one `## Worktree` section. Dispatch no longer makes its own worktree; `dispatch.md` only adds the tab.
 4. **Tasks.** `subagent` and `inline` run the task loop as today. `dispatch` hands the whole plan to one omp agent through `dispatch.md` and ends the turn (phase 1). Phase 2 starts on the reply-back and takes every number again from git, then goes to Close.
 5. **Close** is the same for every executor: fast tests, the `progress.done` check, `acta:review`, fix rounds, then `acta:land` without asking when clean. Only the fix-round delivery differs: `subagent` gets a new implementer, `dispatch` prompts the same agent in its tab. With `dispatch`, the tab is closed after land.

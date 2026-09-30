@@ -1,6 +1,6 @@
 # Dispatch — the plan in another pane
 
-Read this only when `acta:build` runs the `dispatch` executor. Build already made the worktree (`## Worktree` in SKILL.md) and picked this executor. This file says how to hand the plan to an omp agent in its own herdr tab, how to wait for it, and how to send a fix round back to it. Review and landing are build's `## Close`, `acta:review` and `acta:land`; only the steps a tab adds live here.
+Read this only when `acta:build` runs the `dispatch` executor and this session is inside a herdr pane, `HERDR_ENV=1` set. Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent` (`## Executors` in SKILL.md), and everything below needs a real `$HERDR_PANE_ID`, so read no further. Build already made the worktree (`## Worktree` in SKILL.md) and picked this executor. This file says how to hand the plan to an omp agent in its own herdr tab, how to wait for it, and how to send a fix round back to it. Review and landing are build's `## Close`, `acta:review` and `acta:land`; only the steps a tab adds live here.
 
 **Skill notation.** Every `acta:name` here is a skill from the `acta` plugin. `mattpocock-skills:*`, `/to-spec`, `/to-tickets`, `/implement`, `/code-review` are gone; a brief still naming them is stale — rewrite it before sending. "Ticket" below = one `acta:plan` task, mirrored in the tracker when the repo has one.
 

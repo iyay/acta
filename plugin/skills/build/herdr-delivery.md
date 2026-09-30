@@ -1,6 +1,6 @@
 # herdr delivery
 
-Every `acta:name` here is a skill from the `acta` plugin, same as dispatch.md. `mattpocock-skills:*` is gone.
+Reference for a dispatch already running: `acta:build` reached this file through `dispatch.md`, so `HERDR_ENV=1` is set and this session is inside a herdr pane. Every `acta:name` here is a skill from the `acta` plugin, same as dispatch.md. `mattpocock-skills:*` is gone.
 
 ## Completion signal — a reply-back push plus a one-shot lifecycle read, never a wait
 
