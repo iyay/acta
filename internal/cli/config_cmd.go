@@ -10,7 +10,7 @@ import (
 	"github.com/iyay/acta/internal/theme"
 )
 
-const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme]"
 
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -68,7 +68,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		clearTone := fs.Bool("clear-tone", false, "remove the tone")
 		repo := fs.String("repo-language", "", "language for files written to the repo")
 		executor := fs.String("executor", "", "which executor runs the plan: subagent, dispatch or inline")
-		models := fs.String("subagent-models", "", "how models are picked for subagents: split")
+		models := fs.String("subagent-models", "", "how models are picked for subagents: split, or default to leave it to your own config")
 		clearModels := fs.Bool("clear-subagent-models", false, "remove the subagent_models setting")
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")

@@ -119,6 +119,9 @@ func TestValidateExecutorAndModels(t *testing.T) {
 		{"Subagent", "", false},
 		{"omp", "", false},
 		{"", "all", false},
+		{"", "default", true},
+		{"", "mixed", false},
+		{"", "Default", false},
 		{"", "split ", true}, // fill trims
 	} {
 		v := UserDefault()

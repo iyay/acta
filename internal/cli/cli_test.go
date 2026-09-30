@@ -367,6 +367,29 @@ func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 	}
 }
 
+// A no in setup is saved as default, so the next setup run sees it as set.
+func TestConfigSetSubagentModelsDefault(t *testing.T) {
+	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "config.yaml"))
+	mustRun(t, "config", "set", "--subagent-models", "default")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: default") {
+		t.Errorf("show lacks subagent_models: default:\n%s", out)
+	}
+	// The JSON is indented, so compare without spaces.
+	if out := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(out, `"subagent_models":"default"`) {
+		t.Errorf("json lacks subagent_models default:\n%s", out)
+	}
+	mustRun(t, "config", "set", "--clear-subagent-models")
+	if out := mustRun(t, "config", "show"); strings.Contains(out, "subagent_models") {
+		t.Errorf("clear left subagent_models:\n%s", out)
+	}
+	// The usage must name default too, or a user cannot find the value that stops the question.
+	var out, errs strings.Builder
+	Run([]string{"config", "set"}, strings.NewReader(""), false, &out, &errs)
+	if !strings.Contains(errs.String(), "--subagent-models split|default") {
+		t.Errorf("usage lacks --subagent-models split|default:\n%s", errs.String())
+	}
+}
+
 func TestVoiceSetBadExecutor(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "voice.yaml")
 	t.Setenv("PM_VOICE_FILE", path)

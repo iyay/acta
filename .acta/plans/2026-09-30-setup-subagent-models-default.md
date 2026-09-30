@@ -4,6 +4,7 @@ parent: specs/2026-09-30-setup-subagent-models-default-design
 id: PLN-0053
 hash: kpuh4vp
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Setup Remembers a No to Split Subagent Models Implementation Plan
 
@@ -161,7 +162,7 @@ git commit -m "Move the user setting from internal/voice into internal/config (S
 - Consumes: `config.User`, `config.UserDefault`, `config.ErrBadUser`, `fill`, `(User).Validate` from Task 1.
 - Produces: nothing new; `subagent_models: default` becomes a valid stored value.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/config/user_test.go`, `TestValidateExecutorAndModels`, add these rows to the table:
 
@@ -195,7 +196,7 @@ If the existing split test sets up the env another way (a helper), copy that set
 
 In `internal/plugincheck/skill_setup_test.go`, next to `"--subagent-models split"` in `Must`, add `"--subagent-models default"`.
 
-- [ ] **Step 2: Run to watch them fail**
+- [x] **Step 2: Run to watch them fail**
 
 Run: `scripts/test ./internal/config/ -run TestValidateExecutorAndModels`
 Expected: FAIL on `models "default": ... want ok=true`.
@@ -206,7 +207,7 @@ Expected: FAIL, the set is refused with the subagent_models error.
 Run: `scripts/test ./internal/plugincheck/ -run Setup`
 Expected: FAIL, the setup skill lacks `--subagent-models default`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `internal/config/user.go`, `Validate`, replace the models check with:
 
@@ -232,7 +233,7 @@ with
 Ask this one in Claude Code only, and only while `acta config show` has no `subagent_models` line. Default no. A yes saves `acta config set --subagent-models split`. A no saves `acta config set --subagent-models default`, so the question is not asked again; the user's own config wins.
 ```
 
-- [ ] **Step 4: Run to watch them pass**
+- [x] **Step 4: Run to watch them pass**
 
 Run: `scripts/test ./internal/config/ ./internal/cli/ ./internal/plugincheck/`
 Expected: PASS.
@@ -240,7 +241,7 @@ Expected: PASS.
 Run: `go vet ./... && gofmt -l .`
 Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/config/user.go internal/config/user_test.go internal/cli/config_cmd.go internal/cli/cli_test.go plugin/skills/setup/SKILL.md internal/plugincheck/skill_setup_test.go

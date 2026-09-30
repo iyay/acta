@@ -34,7 +34,7 @@ acta config set --executor subagent
 
 ### Split subagent models
 
-Ask this one in Claude Code only. Default no. A yes saves `acta config set --subagent-models split`; a no saves nothing and the user's own config wins.
+Ask this one in Claude Code only, and only while `acta config show` has no `subagent_models` line. Default no. A yes saves `acta config set --subagent-models split`. A no saves `acta config set --subagent-models default`, so the question is not asked again; the user's own config wins.
 
 ### The acta block
 

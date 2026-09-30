@@ -174,8 +174,10 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: build_executor must be subagent, dispatch or inline, not %q", ErrBadUser, v.BuildExecutor)
 	}
-	if v.SubagentModels != "" && v.SubagentModels != "split" {
-		return fmt.Errorf("%w: subagent_models must be split or empty, not %q", ErrBadUser, v.SubagentModels)
+	switch v.SubagentModels {
+	case "", "split", "default":
+	default:
+		return fmt.Errorf("%w: subagent_models must be split or default, not %q", ErrBadUser, v.SubagentModels)
 	}
 	return nil
 }

@@ -10,7 +10,7 @@ func TestSkillSetup(t *testing.T) {
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
 			"acta config show", "adhd", "plain", "full English name",
 			"acta doctor", "acta doctor --fix", "--executor", "HERDR_ENV=1", "herdr",
-			"--subagent-models split", "Claude Code only",
+			"--subagent-models split", "--subagent-models default", "Claude Code only",
 			"<!-- acta:begin -->", "<!-- acta:end -->",
 			"only after a yes", "never edits settings",
 			"which part to change",
