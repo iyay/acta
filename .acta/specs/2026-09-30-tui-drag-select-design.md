@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: scratch/2026-09-28-drag-select-copy
 id: SPC-0042
 hash: h293afb
+started: "2026-09-30"
 ---
 # TUI drag to select and copy, and a pink scratch color
 

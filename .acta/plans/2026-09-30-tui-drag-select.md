@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: specs/2026-09-30-tui-drag-select-design
 id: PLN-0050
 hash: k0qzc6d
+started: "2026-09-30"
 ---
 # TUI Drag Select and Pink Scratch Implementation Plan
 
@@ -65,7 +66,7 @@ hash: k0qzc6d
 - Consumes: nothing new.
 - Produces: `func scratchColor(t theme.Theme, dark bool) lipgloss.Color`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `styles_test.go`, drop `board.KindScratch: 2,` from the slot map in `TestKindAndRoleSlots` (scratch has no slot now; the rest of that test stays). Add:
 
@@ -100,12 +101,12 @@ func TestScratchIsPink(t *testing.T) {
 
 `theme.Names()` lists every built-in theme, `terminal` included.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestScratchIsPink|TestKindAndRoleSlots'`
 Expected: FAIL, `scratch id = ... want #ff79c6` (it is slot 2 green now).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `styles.go`, remove `board.KindScratch: slotGreen,` from `kindSlots`. In `newStyles`, after the loop that fills `kinds`:
 
@@ -133,12 +134,12 @@ func scratchColor(t theme.Theme, dark bool) lipgloss.Color {
 
 Update the `kindSlots` comment only if it now says something false.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS. Any other test that pinned scratch as green gets its expected color changed to the pink, and is listed in the report.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/
@@ -175,7 +176,7 @@ git commit -m "Paint scratch pink so it no longer looks like done"
   - `func (m *Model) copyDrag() tea.Cmd`
   - Model field `drag drag`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `internal/tui/select_test.go`:
 
@@ -379,12 +380,12 @@ func TestCopyDragCopiesTheScreenWithNoBand(t *testing.T) {
 
 The `withColor` and `plain` helpers already live in `view_test.go`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `scripts/test ./internal/tui/ -run 'Drag|TextArea|Anchor|CopyPicked'`
 Expected: FAIL to compile: `undefined: drag`, `undefined: rect`, `undefined: dragText`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add to `Model` in `model.go`, next to the wheel fields:
 
@@ -543,7 +544,7 @@ func (m *Model) copyPicked(text string) tea.Cmd {
 
 Then run `go mod tidy`. It drops `// indirect` from `github.com/charmbracelet/x/ansi` in `go.mod`, since `internal/tui` imports it straight. Check `git diff go.mod go.sum` shows only that change.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `scripts/test ./internal/tui/ -run 'Drag|TextArea|Anchor|CopyPicked'`
 Expected: PASS.
@@ -551,7 +552,7 @@ Expected: PASS.
 Then: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/

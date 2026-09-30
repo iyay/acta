@@ -174,6 +174,7 @@ type Model struct {
 	wheelArmed bool  // true while a frame tick is on its way
 	wheelMoved bool  // a notch scrolled at once, so the closing tick must draw
 	wheelMark  wheelMark
+	drag       drag // the text a mouse drag selected; empty when none
 	now        time.Time
 	version    string                  // build version shown on the bottom line
 	open       func(url string) error  // opens a link in the browser
