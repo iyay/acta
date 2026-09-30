@@ -3,6 +3,7 @@ created: "2026-09-30"
 parent: specs/2026-09-30-tui-tick-items-design
 id: PLN-0052
 hash: zb024n6
+started: "2026-09-30"
 ---
 # Mark Tasks and Debt Lines Done from the TUI Implementation Plan
 
@@ -65,7 +66,7 @@ hash: zb024n6
 **Interfaces:**
 - Produces: `func UntickText(src []byte, headingLine int) ([]byte, int, int, error)`, `func Untick(path string, headingLine int) (int, int, error)` (both return done and total boxes after the change), `func TaskDates(cfg config.Config, it *board.Item) ([]string, error)` (returns the paths it wrote), `func MarkItem(cfg config.Config, b *board.Board, id string, done bool) (Outcome, error)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/write/tick_test.go`:
 
@@ -184,12 +185,12 @@ func TestMarkItemLeavesADirtyFileUncommitted(t *testing.T) {
 
 If a task id in the board is not `plans/<stem>#task-N`, print `b.Items` ids once and use the real form; the form above is what `acta tick` takes today. `readFile` already lives in `ids_test.go`; reuse it.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/write -run 'TestUntickText|TestMarkItem' -v`
 Expected: FAIL to build, `undefined: UntickText` and `undefined: MarkItem`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 In `internal/write/tick.go`, move the body of `TickText` into `boxText(src []byte, headingLine, step int, state byte)`; the one line that writes a box becomes `lines[i] = tickBoxRe.ReplaceAllString(lines[i], "${1}"+string(state)+"${3}")`. Then:
 
@@ -367,12 +368,12 @@ func unique(paths []string) []string {
 
 If `bad`, `dirtyBefore` or `unique` clash with an existing name in the package, rename the new one and say so in the task report.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/write -v -run 'TestUntickText|TestMarkItem|TestTick'`
 Expected: PASS, and the old `TestTick*` tests still pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/write && go vet ./internal/write
@@ -667,7 +668,7 @@ git commit -m "tui: + marks a task or debt line done, - puts it back to open"
 - Consumes: nothing.
 - Produces: `helpLines` text, which the existing `helpText` lays out.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/tui/view_test.go`:
 
@@ -711,12 +712,12 @@ func TestHelpNamesOneKeyPerLine(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `go test ./internal/tui -run 'TestHelpNamesOneKeyPerLine' -v`
 Expected: FAIL, `key "s": got "", want ...`.
 
-- [ ] **Step 3: Write the code**
+- [x] **Step 3: Write the code**
 
 Replace `helpLines` in `internal/tui/view.go` with exactly this (24 lines; the gap between key and text is at least two spaces, which `helpText` splits on):
 
@@ -749,12 +750,12 @@ q                quit
 
 Before writing, read the key switch in `internal/tui/model.go` (`case "q", "ctrl+c":` and below). If it handles a key this list does not name, add a line for it and drop nothing else; say so in the report.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui -run 'TestHelp' -v`
 Expected: PASS, including `TestHelpListsTheSortKey`, `TestHelpKeysSitInARightAlignedColumn` and the `h l` and no-`0` checks in `model_test.go`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui

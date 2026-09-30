@@ -55,22 +55,31 @@ func (g geom) at(p pane) box {
 // hints is what the left of the status line says when nothing else is going on.
 const hints = "? help"
 
-// helpLines is the key map the ? popup shows, grouped by what the keys do.
-const helpLines = `1-6 ← →          open a tab, previous / next tab
-tab shift+tab    move between the panes of the tab
-[ ]              switch the Done tab, on the Done pane
-space enter      open or shut a plan row
-h l              shut or open a plan row, h on a task too
+// helpLines is the key map the ? popup shows, one key per line, so nobody
+// has to guess which key of a line does what.
+const helpLines = `1-6              open a tab
+← →              previous / next tab
+tab shift+tab    next / previous pane of the tab
+[ ]              previous / next Done tab, on the Done pane
+j k              move down / up a list, scroll the detail
+g G              go to the top / bottom
+ctrl+d ctrl+u    page down / up
+space            open or shut a plan row
+h l              shut / open a plan row, h on a task too
+enter            open or shut a plan row, or focus the detail
 z                expand the focused pane
 o                flip the sort: oldest / newest
-j k g G          move a list, scroll the detail
-ctrl+d ctrl+u    page down and up
-enter            focus the detail on the row
+/                search the rows
+r                reload the board from disk
 e                open the row in the editor
 y                copy the id of the row
-t s n            set a value, new bug
+s                set the status; dropped and wontfix close an item
+t                set the type: spec or bug
+n                new bug
++                mark the task or debt line done
+-                put the task or debt line back to open
 esc              back to the list, close this help
-/ r q            search, reload, quit
+q                quit
 ?                close this help`
 
 // helpText lays the key map out the way lazygit does: the keys in cyan, so
