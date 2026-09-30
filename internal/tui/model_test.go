@@ -692,16 +692,16 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	// the tab box.
 	m := press(sized(newModel(t), 120, 40), tabKey(tabPlans))
 	g := m.geometry()
-	if !g.wide || g.leftW != 36 {
+	if !g.wide || g.leftW != 40 {
 		t.Fatalf("wide %v leftW %d", g.wide, g.leftW)
 	}
-	want := [][4]int{{0, barRows, 36, 18}, {0, barRows + 18, 36, 18}}
+	want := [][4]int{{0, barRows, 40, 18}, {0, barRows + 18, 40, 18}}
 	for p, w := range want {
 		if got := g.side[pane(p)]; got.x != w[0] || got.y != w[1] || got.w != w[2] || got.h != w[3] {
 			t.Fatalf("pane %d %+v, want %v", p, got, w)
 		}
 	}
-	if g.detail.x != 36 || g.detail.y != barRows || g.detail.w != 84 || g.detail.h != 36 {
+	if g.detail.x != 40 || g.detail.y != barRows || g.detail.w != 80 || g.detail.h != 36 {
 		t.Fatalf("the detail box %+v", g.detail)
 	}
 	// The border takes two lines and a row one, so a box shows as many rows
@@ -723,9 +723,10 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	if len(a.side) != 1 || a.side[0].y != barRows || a.side[0].h != 36 {
 		t.Fatalf("the Activities box is %+v, want one box of the full height", a.side)
 	}
-	// The left column is 30% of the width, held between 28 and 48.
-	for _, w := range []int{60, 80, 100, 120, 200} {
-		if got := sized(newModel(t), w, 40).geometry().leftW; got != clamp(w*3/10, 28, 48) {
+	// The left column is a third of the width, the way lazygit sizes its
+	// side panels, and never under 28 columns.
+	for _, w := range []int{60, 80, 100, 120, 150, 200, 240} {
+		if got := sized(newModel(t), w, 40).geometry().leftW; got != max(w/3, 28) {
 			t.Errorf("at %d columns the left column is %d", w, got)
 		}
 	}
@@ -1033,7 +1034,7 @@ func TestNewBugSlugInput(t *testing.T) {
 func clickWidths() []int {
 	var out []int
 	for w := 60; w <= 200; w++ {
-		if w == 60 || clamp(w*3/10, 28, 48) != clamp((w-1)*3/10, 28, 48) {
+		if w == 60 || max(w/3, 28) != max((w-1)/3, 28) {
 			out = append(out, w)
 		}
 	}

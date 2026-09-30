@@ -2,6 +2,7 @@
 created: "2026-09-30"
 id: SPC-0046
 hash: nob0t94
+started: "2026-09-30"
 ---
 # Clickable top tabs, a lazygit-wide sidebar, and key hints for the focused pane
 

@@ -11,15 +11,16 @@ import (
 // bottom border.
 const barRows = 3
 
-// geometry measures the screen. The left column is 30% of the width, held
-// between 28 and 48 columns, and below 60 columns only the focused box is on
-// screen because two columns of a small terminal fit nothing.
+// geometry measures the screen. The left column is a third of the width, the
+// way lazygit sizes its side panels, and never under 28 columns. Below 60
+// columns only the focused box is on screen because two columns of a small
+// terminal fit nothing.
 func (m Model) geometry() geom {
 	// The tab box takes the top lines and the status line the last one, so
 	// the boxes share the rest. A terminal with fewer rows gets the rows it has.
 	bodyH := max(0, m.height-barRows-1)
 	panes := m.panes()
-	g := geom{wide: m.width >= 60, leftW: clamp(m.width*3/10, 28, 48), side: make([]box, len(panes))}
+	g := geom{wide: m.width >= 60, leftW: max(m.width/3, 28), side: make([]box, len(panes))}
 	y := barRows
 	for p, h := range m.leftHeights(bodyH) {
 		g.side[p] = m.box(pane(p), 0, y, g.leftW, h)

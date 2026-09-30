@@ -2,6 +2,7 @@
 id: PLN-0054
 created: "2026-09-30"
 hash: bq1x3uy
+started: "2026-09-30"
 ---
 # Clickable Top Tabs, Wider Sidebar and Pane Key Hints Implementation Plan
 
@@ -56,7 +57,7 @@ hash: bq1x3uy
 - Consumes: nothing.
 - Produces: `geom.leftW == max(m.width/3, 28)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `TestClickInsideAPaneOnlyFocusesIt` (`internal/tui/model_test.go`), change the width checks. At 120 columns the left column is now 40:
 
@@ -91,12 +92,12 @@ In `clickWidths`, compare with the new rule:
 		if w == 60 || max(w/3, 28) != max((w-1)/3, 28) {
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui -run 'TestClickInsideAPaneOnlyFocusesIt'`
 Expected: FAIL with `wide true leftW 36`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/frame.go`, replace the comment and the width in `geometry`:
 
@@ -111,12 +112,12 @@ In `internal/tui/frame.go`, replace the comment and the width in `geometry`:
 	g := geom{wide: m.width >= 60, leftW: max(m.width/3, 28), side: make([]box, len(panes))}
 ```
 
-- [ ] **Step 4: Run the package and fix tests that only hardcode the old width**
+- [x] **Step 4: Run the package and fix tests that only hardcode the old width**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS. A test that fails only because it expects the old column (36 at 120 columns, 48 on a wide screen, `clamp(w*3/10, 28, 48)`) gets its number changed to the new rule. A test that fails for any other reason is a real break: stop and report it.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui
