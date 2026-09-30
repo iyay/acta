@@ -1349,7 +1349,7 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 			// The theme background is under every line and after every
 			// reset. Take it off again, because what this test reads is
 			// the brush on the text and the frame has its own test.
-			frame := strings.TrimSuffix(pop.styles.paintFrame(""), "\x1b[K")
+			frame := strings.TrimSuffix(pop.styles.paintFrame("", pop.width), "\x1b[K")
 			after := strings.Split(pop.View(), "\n")
 			for y, drawn := range after {
 				ln := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(drawn, frame), "\x1b[K"), frame, "")
@@ -1377,6 +1377,36 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 			}
 		}
 	}
+}
+
+// TestFullLinesKeepTheirLastCell draws every tab at several sizes, with and
+// without a popup. A line as wide as the window must not end in erase-line,
+// or the terminal blanks the right wall.
+func TestFullLinesKeepTheirLastCell(t *testing.T) {
+	withTrueColor(func() {
+		for _, size := range [][2]int{{80, 30}, {120, 40}, {204, 58}} {
+			for tab := range topTabs {
+				for _, open := range []string{"", "?"} {
+					m := press(sized(newModel(t), size[0], size[1]), tabKey(tab))
+					if open != "" {
+						m = press(m, open)
+					}
+					for y, ln := range strings.Split(m.View(), "\n") {
+						txt := plain(ln)
+						if lipgloss.Width(txt) != m.width {
+							continue
+						}
+						if strings.HasSuffix(ln, "\x1b[K") {
+							t.Errorf("%dx%d tab %d popup %q line %d: full line ends in erase-line", size[0], size[1], tab, open, y)
+						}
+						if strings.HasSuffix(txt, " ") && y < size[1]-1 {
+							t.Errorf("%dx%d tab %d popup %q line %d: full line ends in a blank, not the wall: %q", size[0], size[1], tab, open, y, txt)
+						}
+					}
+				}
+			}
+		}
+	})
 }
 
 // atCell gives the first n cells of a plain line, whole runes only, so a test

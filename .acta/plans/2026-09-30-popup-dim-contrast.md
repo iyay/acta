@@ -4,6 +4,7 @@ created: "2026-09-30"
 id: PLN-0046
 hash: d9ep3ly
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Popup Dim Contrast Implementation Plan
 
@@ -316,7 +317,7 @@ git commit -m "tui: draw the help keys in the theme accent"
 - Consumes: `styles.bg`, `styles.fg`, `withTrueColor`, `plain`, `newModel`, `sized`, `press`, `tabKey`, `topTabs` (existing).
 - Produces: `func (s styles) paintFrame(out string, width int) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/tui/styles_test.go`:
 
@@ -382,12 +383,12 @@ The last line of the screen is the status line; it may end in a blank when its r
 
 If a pane line in some tab ends in a blank on purpose (a pane with no right wall at that size), look at what the view draws there before you change the assert, and report it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `scripts/test ./internal/tui/ -run 'TestPaintFrameErasesOnlyShortLines|TestFullLinesKeepTheirLastCell|TestPaintFrameKeepsBackgroundAfterResets|TestTerminalThemeUsesANSISlots|TestPopupDimsTheBackground'`
 Expected: FAIL to build with `too many arguments in call to s.paintFrame`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `internal/tui/styles.go`:
 
@@ -426,12 +427,12 @@ In `draw` (`internal/tui/view.go`), both calls pass the width:
 
 Before you finish, run `grep -rn "paintFrame(" internal/` and check that every caller passes a width.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `scripts/test ./internal/tui/`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l internal && go vet ./internal/tui/ && scripts/test ./internal/tui/

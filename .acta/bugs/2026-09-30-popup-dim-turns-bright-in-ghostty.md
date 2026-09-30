@@ -1,6 +1,7 @@
 ---
 id: BUG-0014
 hash: qu87ixv
+started: "2026-09-30"
 ---
 # Text behind a popup shows bright instead of dim
 

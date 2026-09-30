@@ -121,8 +121,11 @@ func (s styles) tabColor(k board.Kind) lipgloss.Color {
 
 // paintFrame lays the theme background under the whole screen. Every style
 // ends with a reset that drops the background, so the theme colors go back
-// on right after each reset and at the start of each line.
-func (s styles) paintFrame(out string) string {
+// on right after each reset and at the start of each line. A short line gets
+// an erase to the end, so the background reaches the right edge. A full line
+// gets none: the cursor still sits in its last column, and an erase there
+// would clear the last cell, which is the right wall.
+func (s styles) paintFrame(out string, width int) string {
 	if s.bg == "" {
 		return out
 	}
@@ -130,7 +133,11 @@ func (s styles) paintFrame(out string) string {
 	set := termenv.CSI + p.Color(s.bg).Sequence(true) + "m" + termenv.CSI + p.Color(s.fg).Sequence(false) + "m"
 	lines := strings.Split(out, "\n")
 	for i, ln := range lines {
-		lines[i] = set + strings.ReplaceAll(ln, "\x1b[0m", "\x1b[0m"+set) + "\x1b[K"
+		painted := set + strings.ReplaceAll(ln, "\x1b[0m", "\x1b[0m"+set)
+		if lipgloss.Width(ln) < width {
+			painted += "\x1b[K"
+		}
+		lines[i] = painted
 	}
 	return strings.Join(lines, "\n")
 }

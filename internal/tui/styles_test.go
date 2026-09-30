@@ -37,8 +37,8 @@ func TestTerminalThemeUsesANSISlots(t *testing.T) {
 			t.Fatal("terminal mode drew no color at all")
 		}
 	})
-	if s.paintFrame("a\nb") != "a\nb" {
-		t.Fatalf("terminal mode painted the frame: %q", s.paintFrame("a\nb"))
+	if s.paintFrame("a\nb", 1) != "a\nb" {
+		t.Fatalf("terminal mode painted the frame: %q", s.paintFrame("a\nb", 1))
 	}
 }
 
@@ -104,7 +104,7 @@ func TestPaintFrameKeepsBackgroundAfterResets(t *testing.T) {
 	th, _ := theme.Builtin("tokyo-night")
 	s := newStyles(th, true)
 	withTrueColor(func() {
-		out := s.paintFrame(s.accent.Render("a") + "b\n" + "c")
+		out := s.paintFrame(s.accent.Render("a")+"b\n"+"c", 10)
 		bg := "48;2;26;27;38"
 		lines := strings.Split(out, "\n")
 		if len(lines) != 2 {
@@ -124,6 +124,26 @@ func TestPaintFrameKeepsBackgroundAfterResets(t *testing.T) {
 					t.Fatalf("line %d piece %d after a reset has no background: %q", i, j+1, seg)
 				}
 			}
+		}
+	})
+}
+
+// TestPaintFrameErasesOnlyShortLines guards the right wall. Erase-line right
+// after a full line clears its last cell, because the cursor is still sitting
+// in the last column. So only a short line may get it.
+func TestPaintFrameErasesOnlyShortLines(t *testing.T) {
+	th, _ := theme.Builtin("tokyo-night")
+	s := newStyles(th, true)
+	withTrueColor(func() {
+		out := strings.Split(s.paintFrame("abcde\nab\n"+s.accent.Render("abcd")+"┐", 5), "\n")
+		if strings.HasSuffix(out[0], "\x1b[K") {
+			t.Errorf("full line got an erase: %q", out[0])
+		}
+		if !strings.HasSuffix(out[1], "\x1b[K") {
+			t.Errorf("short line lost its erase, so the background stops short: %q", out[1])
+		}
+		if strings.HasSuffix(out[2], "\x1b[K") {
+			t.Errorf("full line with colors and a wide rune edge got an erase: %q", out[2])
 		}
 	})
 }

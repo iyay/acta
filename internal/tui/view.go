@@ -136,9 +136,9 @@ func (m Model) draw() string {
 		// The box can be as tall as the screen, so it is laid over the body
 		// and the status line together. Cover greys every line it gets and
 		// strips the hyperlinks, which are off while a popup is open.
-		return m.styles.paintFrame(m.cover(body + "\n" + line))
+		return m.styles.paintFrame(m.cover(body+"\n"+line), m.width)
 	}
-	return m.styles.paintFrame(body + "\n" + line)
+	return m.styles.paintFrame(body+"\n"+line, m.width)
 }
 
 // tabRows draws the tabs in a box of their own, so they read as the top of
