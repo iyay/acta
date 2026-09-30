@@ -24,9 +24,13 @@ func TestSkillBuild(t *testing.T) {
 			"The spec and plan from acta:brainstorm and acta:plan stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
-			"the executor `acta config show` names, else asks which one",
+			"through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one",
 			"On omp, `dispatch` runs as `subagent`", "Dispatch is only for harnesses other than omp.",
 			"Copy in the house rules too",
+			"`/build <executor>`", "It is for this run only; never save it.",
+			"HERDR_ENV=1", "Build never refuses because herdr is missing.",
+			"hand it to omp in another tab or pane",
+			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
@@ -149,5 +153,20 @@ func TestImplementerPromptNoFullSuite(t *testing.T) {
 	}
 	if !strings.Contains(txt, "never the full suite") {
 		t.Error("implementer-prompt.md missing \"never the full suite\"")
+	}
+}
+
+// TestBuildExecutorOrder reads SKILL.md on its own. CheckSkill joins the
+// folder, and dispatch.md also talks about executors.
+func TestBuildExecutorOrder(t *testing.T) {
+	txt := readBuildFile(t, "SKILL.md")
+	arg := strings.Index(txt, "1. The argument of `/build <executor>`")
+	cfg := strings.Index(txt, "2. `build_executor: <name>` from `acta config show`")
+	ask := strings.Index(txt, "3. Neither: ask which executor to run")
+	if arg < 0 || cfg < 0 || ask < 0 || !(arg < cfg && cfg < ask) {
+		t.Errorf("build/SKILL.md must list the executor order argument, config, ask (got %d, %d, %d)", arg, cfg, ask)
+	}
+	if !strings.Contains(txt, "runs as `subagent`. Build never refuses because herdr is missing.") {
+		t.Error("build/SKILL.md missing the no-herdr fallback to subagent")
 	}
 }

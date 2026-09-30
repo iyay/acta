@@ -21,7 +21,7 @@ type Skill struct{ Name, When string }
 var Skills = []Skill{
 	{"brainstorm", "before any new feature, fix or behaviour change; design first, then wait for a yes"},
 	{"plan", "after the design is approved; tasks with verify lines and waves, then wait for a yes"},
-	{"build", "run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline"},
+	{"build", "run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline"},
 	{"tdd", "every code change; a failing test first"},
 	{"debug", "any bug, error, red test or wrong output, before touching code"},
 	{"review", "when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most"},

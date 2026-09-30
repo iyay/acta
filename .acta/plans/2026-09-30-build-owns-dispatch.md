@@ -3,6 +3,7 @@ id: PLN-0058
 created: "2026-09-30"
 hash: rr5so5y
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Build Owns Dispatch Implementation Plan
 
@@ -299,7 +300,7 @@ git commit -m "Move dispatch delivery into build and delete the dispatch skill"
 - Consumes: `plugin/skills/build/dispatch.md` from Task 1, and its `## Fix rounds` and `## Close the tab` sections.
 - Produces: nothing later tasks use.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/plugincheck/skill_build_test.go` (`TestSkillBuild`), replace in `Must`:
 - `"the executor `acta config show` names, else asks which one"` with `"through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one"`
@@ -339,12 +340,12 @@ In `internal/hook/hook_test.go`, the expected build line becomes:
 		"- acta:build: run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline",
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/plugincheck/ -run 'TestSkillBuild|TestBuildExecutorOrder' && go test ./internal/hook/ -run TestSessionStartListsSkillsAndRules`
 Expected: FAIL on the missing phrases and the old build line.
 
-- [ ] **Step 3: Rewrite the build text**
+- [x] **Step 3: Rewrite the build text**
 
 `description` in `plugin/skills/build/SKILL.md`:
 
@@ -385,6 +386,65 @@ Regenerate the rules file:
 go test ./internal/hook -run TestDefaultRulesFile -update
 ```
 
+- [x] **Step 4: Run the tests to verify they pass**
+
+Run: `go test ./internal/plugincheck/ ./internal/hook/`
+Expected: PASS.
+
+- [x] **Step 5: Format, vet, commit**
+
+```bash
+gofmt -l internal/ && go vet ./internal/plugincheck/ ./internal/hook/
+git add plugin/skills/build/SKILL.md internal/hook/hook.go internal/hook/hook_test.go plugin/hooks/default-rules.md internal/plugincheck/skill_build_test.go
+git commit -m "Build picks its executor from the argument, then config, then asks"
+```
+
+## Fix round 1
+
+### Task 3: Dispatch falls back to subagent whenever this session is not in a herdr pane
+
+**Files:**
+- Modify: `plugin/skills/build/SKILL.md` (the no-herdr fallback bullet in `## Executors`)
+- Modify: `.acta/specs/2026-09-30-build-owns-dispatch-design.md` (Build flow item 2, same wording)
+- Test: `internal/plugincheck/skill_build_test.go` (`TestSkillBuild`, `TestBuildExecutorOrder`)
+
+**BLOCKER (review round 1, Spec axis):** `plugin/skills/build/SKILL.md:31` falls back only when BOTH `HERDR_ENV=1` is missing AND `herdr` is not on PATH. Input: `build_executor: dispatch`, `herdr` installed on PATH, the session runs in a plain terminal (no `HERDR_ENV`, no `HERDR_PANE_ID`). Wrong: build follows `dispatch.md`, runs `MY_WS=${HERDR_PANE_ID%%:*}` with an empty value and `acta dispatch init --pane $HERDR_PANE_ID` with an empty pane, which `internal/cli/dispatch.go` rejects as `bad pane ""`; no record, no reply-back, no next step. Expected: the old skill stopped on anything but `HERDR_ENV=1`; the approved spec says build never refuses and always reaches an executor, so this case must run as `subagent`. Dispatch needs `$HERDR_PANE_ID`, so the only test that matters is `HERDR_ENV=1`; `herdr` on PATH alone is not enough.
+
+**verify:** Build follows `dispatch.md` only when the session itself is inside a herdr pane (`HERDR_ENV=1`). In every other setup (herdr missing; herdr on PATH but this session outside herdr; `HERDR_ENV` unset or any value but `1`) `dispatch` runs as `subagent` with a one-line note, and no text in `plugin/skills/build/` sends an agent into `dispatch.md` without `HERDR_ENV=1`. List every place in `plugin/skills/build/` that decides between dispatch and subagent, and what each says.
+
+**Interfaces:**
+- Consumes: the `## Executors` text from Task 2.
+- Produces: nothing later tasks use.
+
+- [ ] **Step 1: Write the failing test**
+
+In `internal/plugincheck/skill_build_test.go`, `TestSkillBuild`: add to `MustNot` the old wording `"and no `herdr` on PATH"`. In `TestBuildExecutorOrder`, replace the no-herdr check with:
+
+```go
+	const fallback = "`dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing."
+	if !strings.Contains(txt, fallback) {
+		t.Errorf("build/SKILL.md missing the herdr fallback %q", fallback)
+	}
+	if strings.Contains(txt, "no `herdr` on PATH") {
+		t.Error("build/SKILL.md still lets herdr on PATH alone pick dispatch; dispatch needs HERDR_ENV=1 and $HERDR_PANE_ID")
+	}
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `go test ./internal/plugincheck/ -run 'TestSkillBuild|TestBuildExecutorOrder'`
+Expected: FAIL on the missing fallback text and the old `and no `herdr` on PATH` wording.
+
+- [ ] **Step 3: Fix the text**
+
+In `plugin/skills/build/SKILL.md`, the second fallback bullet becomes:
+
+```markdown
+- `dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing. `herdr` on PATH is not enough: dispatch needs this session's own pane id, `$HERDR_PANE_ID`.
+```
+
+In `.acta/specs/2026-09-30-build-owns-dispatch-design.md`, Build flow item 2, replace `With `dispatch` and no herdr (no `HERDR_ENV=1` and no `herdr` on PATH), it also runs as `subagent`.` with `With `dispatch` and no `HERDR_ENV=1` (this session is not inside a herdr pane), it also runs as `subagent`; `herdr` on PATH is not enough.`
+
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/plugincheck/ ./internal/hook/`
@@ -393,7 +453,7 @@ Expected: PASS.
 - [ ] **Step 5: Format, vet, commit**
 
 ```bash
-gofmt -l internal/ && go vet ./internal/plugincheck/ ./internal/hook/
-git add plugin/skills/build/SKILL.md internal/hook/hook.go internal/hook/hook_test.go plugin/hooks/default-rules.md internal/plugincheck/skill_build_test.go
-git commit -m "Build picks its executor from the argument, then config, then asks"
+gofmt -l internal/ && go vet ./internal/plugincheck/
+git add plugin/skills/build/SKILL.md .acta/specs/2026-09-30-build-owns-dispatch-design.md internal/plugincheck/skill_build_test.go
+git commit -m "Dispatch runs only inside a herdr pane, else subagent"
 ```

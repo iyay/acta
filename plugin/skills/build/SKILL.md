@@ -1,6 +1,6 @@
 ---
 name: build
-description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta config show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through dispatch.md) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan, and when the user asks to dispatch a plan or hand it to omp in another tab or pane. Creates the worktree without asking, then runs every task with a failing test first through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through dispatch.md) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
@@ -19,8 +19,16 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
-Before you pick one, run `acta config show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
-On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
+Pick the executor in this order. When one of the first two gives an answer, do not ask.
+
+1. The argument of `/build <executor>`: `subagent`, `dispatch` or `inline`. It is for this run only; never save it.
+2. `build_executor: <name>` from `acta config show`.
+3. Neither: ask which executor to run, as the table above describes.
+
+Two fallbacks, each told to the user in one line:
+
+- On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
+- `dispatch` with no herdr (no `HERDR_ENV=1` in the environment and no `herdr` on PATH) runs as `subagent`. Build never refuses because herdr is missing.
 
 ## Models
 
@@ -209,6 +217,8 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 ## Close
 
 When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+
+Every executor closes this way. Only the fix round is sent differently: `subagent` gives the fix task to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent in its tab (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, after `acta:land` close the tab (`## Close the tab` in dispatch.md).
 
 ### Reply back when a dispatch record exists
 

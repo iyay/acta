@@ -35,7 +35,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Style (ADHD reader):",
 		`- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory`,
 		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
-		"- acta:build: run an approved plan in a worktree; executor from `acta config show`, else ask: subagent, dispatch or inline",
+		"- acta:build: run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
