@@ -1766,17 +1766,83 @@ func TestListRowsAreNotFaintAndWearKindColors(t *testing.T) {
 	})
 }
 
-// A row whose work is under way keeps the work color on the words around the
-// id, and the id itself wears the color of its kind.
-func TestListRowWithWorkKeepsTheWorkColor(t *testing.T) {
+// A row whose work is under way reads in the plain foreground, and its tree
+// dot is the pulse dot, so the view can make it pulse.
+func TestListRowWithWorkIsPlainWithAPulseDot(t *testing.T) {
 	withTrueColor(func() {
 		m := actModel(t).WithTheme("tokyo-night", true)
-		ln := listRow(t, m, "plans/2026-09-23-q#task-1")
-		if work := sgr.FindString(m.styles.work.Render("x")); !strings.Contains(ln, work) {
-			t.Errorf("work row lost the work color: %q", plain(ln))
+		ln := listRow(t, m, "plans/2026-09-23-q#task-1") // PLN-0004.01, under way, not the cursor row
+		id := m.styles.kind(board.KindTask).Render("PLN-0004.01")
+		// The id keeps the blue of its kind, so the words around it are the
+		// only ones that could still wear it.
+		if blue := sgr.FindString(m.styles.accent.Render("x")); strings.Contains(strings.Replace(ln, id, "", 1), blue) {
+			t.Errorf("work row is still blue: %q", ln)
 		}
-		if want := m.styles.kind(board.KindTask).Render("PLN-0004.01"); !strings.Contains(ln, want) {
-			t.Errorf("work row id is not in its kind color: %q", plain(ln))
+		if sgrHas(ln, "2") {
+			t.Errorf("work row is faint: %q", ln)
+		}
+		if !strings.Contains(ln, m.styles.goingDot) {
+			t.Errorf("work row has no pulse dot: %q", ln)
+		}
+		if !strings.Contains(ln, id) {
+			t.Errorf("work row id is not in its kind color: %q", ln)
+		}
+	})
+}
+
+func TestDoneListRowsAreGreen(t *testing.T) {
+	withTrueColor(func() {
+		cfg := treeCfg(t, map[string]string{
+			".acta/plans/2026-09-25-d.md": "---\nid: PLN-0009\n---\n# Plan D\n\n### Task 1: Finished\n- [x] a\n\n### Task 2: Open\n- [ ] b\n",
+		})
+		b, err := board.Load(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := press(sized(New(cfg, b, true).WithTheme("tokyo-night", true), 160, 40), tabKey(tabPlans))
+		m.setOpen("plans/2026-09-25-d", true)
+		rows := listRows(m)
+		done, ok := rows["plans/2026-09-25-d#task-1"]
+		if !ok {
+			t.Fatalf("no row for the done task in %q", plainLines(listLines(m)))
+		}
+		green := sgr.FindString(m.styles.done.Render("x"))
+		// The mark sits inside the green span of the row, with the indent in
+		// front of it, so the last code before the tick is the one that paints it.
+		before := done[:strings.Index(done, dotDone)]
+		if at := strings.LastIndex(before, green); at < 0 || strings.Contains(before[at:], "\x1b[0m") {
+			t.Errorf("done tick is not green: %q", done)
+		}
+		if !strings.Contains(done, green) || !strings.Contains(plain(done), "Finished") {
+			t.Errorf("done title is not green: %q", done)
+		}
+		if want := m.styles.kind(board.KindTask).Render("PLN-0009.01"); !strings.Contains(done, want) {
+			t.Errorf("done row id is not in its kind color: %q", done)
+		}
+		open := rows["plans/2026-09-25-d#task-2"]
+		id := m.styles.kind(board.KindTask).Render("PLN-0009.02")
+		if strings.Contains(strings.Replace(open, id, "", 1), green) {
+			t.Errorf("a row that is not done wears green: %q", open)
+		}
+	})
+}
+
+func TestCursorRowKeepsItsBandWithoutAPulseDot(t *testing.T) {
+	withTrueColor(func() {
+		m := actModel(t).WithTheme("tokyo-night", true)
+		const work = "plans/2026-09-23-q#task-1" // PLN-0004.01, under way
+		for i := 0; i < 10 && (m.Selected() == nil || m.Selected().ID != work); i++ {
+			m = press(m, "j")
+		}
+		if m.Selected() == nil || m.Selected().ID != work {
+			t.Fatalf("the cursor never reached %s; rows are %q", work, rowIDs(m))
+		}
+		ln := listRow(t, m, work)
+		if strings.Contains(ln, m.styles.goingDot) {
+			t.Errorf("the cursor row pulses its dot inside the band: %q", ln)
+		}
+		if !sgrHas(ln, "1") {
+			t.Errorf("the cursor row is not bold: %q", ln)
 		}
 	})
 }

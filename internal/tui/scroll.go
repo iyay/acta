@@ -149,10 +149,18 @@ func (m Model) listView(p pane, w int, b box) []string {
 			continue
 		}
 		base := lipgloss.NewStyle()
-		if inProgress(it) {
-			base = m.styles.work
+		if it != nil && dotOf(it) == dotDone {
+			// Done work reads green, so the eye skips it.
+			base = m.styles.done
 		}
-		out = append(out, m.paintID(text, it, base))
+		line := m.paintID(text, it, base)
+		if r := rows[n]; r.tree && r.depth > 0 && it != nil && dotOf(it) == dotGoing {
+			// The tree dot of work under way is the pulse dot, so the view can
+			// swap it for the frame of the moment. The mark comes before the
+			// title, so the first dot on the line is the mark.
+			line = strings.Replace(line, dotGoing, m.styles.goingDot, 1)
+		}
+		out = append(out, line)
 	}
 	return out
 }
