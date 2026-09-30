@@ -89,7 +89,7 @@ func (m Model) helpText() string {
 	}
 	lines := make([]string, len(pairs))
 	for i, p := range pairs {
-		lines[i] = m.styles.label.Render(p.key) + strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + " " + p.what
+		lines[i] = strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + m.styles.label.Render(p.key) + " " + p.what
 	}
 	return strings.Join(lines, "\n")
 }

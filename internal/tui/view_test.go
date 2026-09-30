@@ -2142,15 +2142,24 @@ func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 			accent := strings.TrimSuffix(m.styles.accent.Render("x"), "x\x1b[0m")
 			for i, ln := range strings.Split(text, "\n") {
 				p := want[i]
+				wantLine := strings.Repeat(" ", keyW-lipgloss.Width(p.key)) + m.styles.label.Render(p.key) + " " + p.what
+				if ln != wantLine {
+					t.Errorf("%s line %d:\n got %q\nwant %q", name, i, ln, wantLine)
+				}
 				cells := []rune(plain(ln))
 				if len(cells) < keyW+1 {
 					t.Errorf("%s line %d: line is %d cells, want %d: %q", name, i, len(cells), keyW+1, ln)
 					continue
 				}
-				// The key ends at the same cell on every line, which is the
-				// width of the widest key, and what it does starts right after.
-				if key := strings.TrimRight(string(cells[:keyW]), " "); key != p.key {
-					t.Errorf("%s line %d: key %q does not end at cell %d: %q", name, i, key, keyW, ln)
+				// Every key ends at the same cell, the width of the widest key,
+				// and what it does starts one cell later. The left edge moves
+				// with how long the key is, so a short key sits further right.
+				kw := lipgloss.Width(p.key)
+				if got := string(cells[keyW-kw : keyW]); got != p.key {
+					t.Errorf("%s line %d: key ends before cell %d: got %q want %q", name, i, keyW, got, p.key)
+				}
+				if pad := string(cells[:keyW-kw]); strings.TrimLeft(pad, " ") != "" {
+					t.Errorf("%s line %d: the gap before the key is not empty: %q", name, i, pad)
 				}
 				if got := string(cells[keyW+1:]); got != p.what {
 					t.Errorf("%s line %d: description is %q, want %q", name, i, got, p.what)
@@ -2158,10 +2167,10 @@ func TestHelpKeysSitInARightAlignedColumn(t *testing.T) {
 				// The key wears the label color and nothing else on the line
 				// does, so the border and the key never read the same.
 				worn := m.styles.label.Render(p.key)
-				if !strings.HasPrefix(ln, worn) {
+				if !strings.Contains(ln, worn) {
 					t.Errorf("%s line %d: key %q is not in the label color: %q", name, i, p.key, ln)
 				}
-				if rest := strings.TrimPrefix(ln, worn); strings.Contains(rest, "\x1b[") {
+				if rest := strings.Replace(ln, worn, "", 1); strings.Contains(rest, "\x1b[") {
 					t.Errorf("%s line %d: something past the key has a color: %q", name, i, ln)
 				}
 				if accent != "" && strings.Contains(ln, accent) {
