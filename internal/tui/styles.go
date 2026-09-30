@@ -51,8 +51,7 @@ const (
 // kindSlots gives each kind a color of its own, so an id tells what it is
 // before anyone reads it. A task is part of a plan, so it wears the plan color.
 var kindSlots = map[board.Kind]int{
-	board.KindScratch: slotGreen, board.KindBug: slotRed,
-	board.KindDebt: slotYellow, board.KindDebtItem: slotYellow,
+	board.KindBug: slotRed, board.KindDebt: slotYellow, board.KindDebtItem: slotYellow,
 	board.KindStory: slotMagenta, board.KindPlan: slotBlue, board.KindTask: slotBlue,
 }
 
@@ -77,6 +76,9 @@ func newStyles(t theme.Theme, dark bool) styles {
 	for k, i := range kindSlots {
 		kinds[k] = slot(i)
 	}
+	// Scratch has no slot, because green is done and every hue of the 16 slots
+	// is taken, so scratch wears a pink of its own.
+	kinds[board.KindScratch] = scratchColor(t, dark)
 	// The terminal theme has no background color, so text on a band takes
 	// slot 0, the dark end of its colors.
 	bandFG := slot(0)
@@ -111,6 +113,20 @@ func newStyles(t theme.Theme, dark bool) styles {
 		pulse:     pulse,
 		goingDot:  pulse[0].Render(dotGoing),
 	}
+}
+
+// scratchColor is the pink of a scratch id and the Scratches tab. Green means
+// done, and every hue of the 16 slots is taken, so scratch gets a pink of its
+// own. A light background needs a deeper pink to stay readable. The terminal
+// theme has no hex, so it asks for pink from the 256 colors.
+func scratchColor(t theme.Theme, dark bool) lipgloss.Color {
+	switch {
+	case t.BG == "":
+		return "212"
+	case t.Dark(dark):
+		return "#ff79c6"
+	}
+	return "#c2185b"
 }
 
 // pulseBrushes gives the frames of the pulse. A theme with its own colors

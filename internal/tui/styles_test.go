@@ -322,7 +322,7 @@ func TestKindAndRoleSlots(t *testing.T) {
 	} {
 		s := newStyles(c.th, true)
 		for k, slot := range map[board.Kind]int{
-			board.KindScratch: 2, board.KindBug: 1, board.KindDebt: 3, board.KindDebtItem: 3,
+			board.KindBug: 1, board.KindDebt: 3, board.KindDebtItem: 3,
 			board.KindStory: 5, board.KindPlan: 4, board.KindTask: 4,
 		} {
 			if got := s.kind(k).GetForeground(); got != c.at(slot) {
@@ -346,6 +346,36 @@ func TestKindAndRoleSlots(t *testing.T) {
 		} {
 			if got := r.brush.GetForeground(); got != c.at(r.slot) {
 				t.Errorf("%s: %s = %v, want slot %d", c.name, name, got, r.slot)
+			}
+		}
+	}
+}
+
+// TestScratchIsPink checks every built-in theme. A scratch id and the
+// Scratches tab must be pink, so a scratch never looks like finished work.
+// Done keeps green, so nothing else may take the pink.
+func TestScratchIsPink(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, _ := theme.Builtin(name)
+		for _, dark := range []bool{true, false} {
+			want := lipgloss.Color("#c2185b")
+			switch {
+			case th.BG == "":
+				want = "212"
+			case th.Dark(dark):
+				want = "#ff79c6"
+			}
+			s := newStyles(th, dark)
+			if got := s.kind(board.KindScratch).GetForeground(); got != want {
+				t.Errorf("%s dark=%v: scratch id = %v, want %v", name, dark, got, want)
+			}
+			if got := s.tabColor(board.KindScratch); got != want {
+				t.Errorf("%s dark=%v: Scratches tab = %v, want %v", name, dark, got, want)
+			}
+			if got := s.done.GetForeground(); got == want {
+				t.Errorf("%s dark=%v: done took the scratch pink", name, dark)
 			}
 		}
 	}
