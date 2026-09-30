@@ -2052,7 +2052,9 @@ func TestViewReusesTheFrameForANotchThatOnlyGathers(t *testing.T) {
 	// The first notch scrolls at once, so it draws. The second one waits for
 	// the tick and must not draw.
 	m = wheelOnly(m, b.x+1, b.y+2, false)
-	m.View()
+	if !drewNew(m) {
+		t.Error("a notch that scrolls at once did not draw the screen")
+	}
 	m = wheelOnly(m, b.x+1, b.y+2, false)
 	if drewNew(m) {
 		t.Error("a notch that only adds to the delta drew the screen again")

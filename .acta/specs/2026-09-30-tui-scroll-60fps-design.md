@@ -3,6 +3,7 @@ parent: scratch/2026-09-30-scroll-60fps
 created: "2026-09-30"
 id: SPC-0035
 hash: w97o6ps
+started: "2026-09-30"
 ---
 # TUI scroll at 60fps
 

@@ -2,6 +2,7 @@
 id: PLN-0045
 created: "2026-09-30"
 hash: mc42ys2
+started: "2026-09-30"
 ---
 # TUI Scroll at 60fps Implementation Plan
 
@@ -74,7 +75,7 @@ hash: mc42ys2
   - `func (t *Tracer) Summary() string` (nil-safe; "" when nil) returns the summary line without a newline
   - `func (t *Tracer) Close() error` (nil-safe) writes the summary line plus "\n" to the log
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```go
 package tui
@@ -245,12 +246,12 @@ func TestTraceOutputKeepsTheFileAndCountsWrites(t *testing.T) {
 
 Add `"os"` to the imports of the test file.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'Trace' -count=1`
 Expected: FAIL to build, `undefined: NewTracer`.
 
-- [ ] **Step 3: Write the tracer**
+- [x] **Step 3: Write the tracer**
 
 ```go
 package tui
@@ -419,12 +420,12 @@ func ms(d time.Duration) float64 { return float64(d) / float64(time.Millisecond)
 
 The first test's flushes sit at 10, 20, ... 100 ms, which all fall inside 0 to 100 ms, so frames is 10 and fps is 10 / 0.1 s = 100.0. The first notch at 0 ms reaches the screen at the 10 ms flush, so `first_p50_ms` is 10.0. If the numbers come out different, fix the test's arithmetic only after checking the rule in the spec's pass mark, never the rule.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -run 'Trace' -count=1 -race`
 Expected: PASS.
 
-- [ ] **Step 5: Format, vet and commit**
+- [x] **Step 5: Format, vet and commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui/
@@ -447,7 +448,7 @@ git commit -m "tui: add a tracer for notches, draws and screen writes"
 - Consumes: nothing from task 1.
 - Produces: `wheelFrame == 12 * time.Millisecond`. `Update(wheelTickMsg{})` returns a non-nil `tea.Cmd` when it scrolled and nil when it did not. Task 4 adds the tracer call at the spot this task marks `first`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `internal/tui/scroll_test.go`:
 
@@ -527,12 +528,12 @@ func TestViewReusesTheFrameForANotchThatOnlyGathers(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'Wheel|ViewReuses' -count=1`
 Expected: FAIL. `TestWheelFirstNotchScrollsAtOnce` says off is 0, `TestWheelTickRearmsOnlyWhileScrolling` says the tick did not arm, and `TestWheelFrameFitsTwoRendererWrites` says 16ms.
 
-- [ ] **Step 3: Change the wheel timing**
+- [x] **Step 3: Change the wheel timing**
 
 In `internal/tui/model.go`, change the const and its comment:
 
@@ -597,12 +598,12 @@ In `mouse`, the wheel branch keeps the focus check, the step sign, the mark rese
 
 `scrollPane` already leaves `m.same` false, since only the gather paths set it. Check that `m.same` is false after the first notch; if it is not, set `m.same = false` in that branch.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -run 'Wheel|ViewReuses|ViewDraws' -count=1`
 Expected: PASS. Then run the whole package the short way: `scripts/test ./internal/tui/`. Expected: PASS.
 
-- [ ] **Step 5: Format, vet and commit**
+- [x] **Step 5: Format, vet and commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui/
@@ -625,7 +626,7 @@ git commit -m "tui: scroll on the first wheel notch and keep the frame tick goin
 - Consumes: `Model.geometry()` fields `wide`, `leftW`, `side`, `detail`; `Model.paneView(pane, box) string`; `fit`, `tabRows`.
 - Produces: no new names. `draw()` keeps its signature.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/tui/draw_test.go`:
 
@@ -724,12 +725,12 @@ func BenchmarkWheelFrame(b *testing.B) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `go test ./internal/tui/ -run 'TestDraw' -count=1`
 Expected: FAIL to build, `m.frameFrom undefined`.
 
-- [ ] **Step 3: Change `draw`**
+- [x] **Step 3: Change `draw`**
 
 In `internal/tui/view.go`, `draw` becomes:
 
@@ -804,12 +805,12 @@ The two tests are the judges, and they are never loosened:
 - If `TestDrawEveryLineIsTheScreenWidth` fails, a box line is not exactly its box width. Find that box in `paneView` and pad the line there. Do not put a `fit` back on the wide body.
 - If `TestDrawJoinMatchesTheOldJoin` fails for one size (for example a box with no room, or columns of different heights), change the glue in `draw` until the bytes match. Do not change `oldBody`.
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/tui/ -run 'TestDraw|TestView' -count=1`
 Expected: PASS. Then `scripts/test ./internal/tui/`. Expected: PASS. Then run `go test ./internal/tui/ -run '^$' -bench BenchmarkWheelFrame -benchmem -count 3` and put the ns/op numbers from before and after this task in the commit body.
 
-- [ ] **Step 5: Format, vet and commit**
+- [x] **Step 5: Format, vet and commit**
 
 ```bash
 gofmt -l internal/tui && go vet ./internal/tui/
