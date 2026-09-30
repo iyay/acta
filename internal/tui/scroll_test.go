@@ -1827,6 +1827,65 @@ func TestDoneListRowsAreGreen(t *testing.T) {
 	})
 }
 
+// A done plan keeps its + or - mark in the plain foreground, so the reader can
+// still see the plan open or shut. Only the title and the id after it carry
+// the green, and a done task still keeps its green tick.
+func TestDonePlanRowKeepsItsMarkPlain(t *testing.T) {
+	withTrueColor(func() {
+		const name = "PLN-0010"
+		cfg := treeCfg(t, map[string]string{
+			".acta/plans/2026-09-26-e.md": "---\nid: PLN-0010\n---\n# Shipped E\n\n### Task 1: Shipped\n- [x] a\n\n### Task 2: Shipped too\n- [x] b\n",
+		})
+		b, err := board.Load(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The terminal theme has no hex colors, so every code is a plain ANSI
+		// number a reader can check by eye.
+		m := sized(New(cfg, b, true).WithTheme("terminal", true), 160, 40)
+		m = press(m, tabKey(tabPlans), "tab") // the Done box under Plans
+		m.setOpen("plans/2026-09-26-e", true)
+		m = press(m, "j", "j") // the cursor leaves the head row and its first task
+		rows := listRows(m)
+		head, ok := rows["plans/2026-09-26-e"]
+		if !ok {
+			t.Fatalf("no row for the done plan in %q", plainLines(listLines(m)))
+		}
+		green := sgr.FindString(m.styles.done.Render("x"))
+		// Between the start of the line and the id sit only the mark and the
+		// space behind it, so the last code in front of the mark is the one
+		// still in force when the mark is drawn.
+		mark := head[:strings.Index(head, name)]
+		if plain(mark) != "- " {
+			t.Fatalf("the done plan mark is %q, want the tree mark and its space", plain(mark))
+		}
+		codes := sgr.FindAllString(mark[:strings.IndexAny(mark, "+-")], -1)
+		if len(codes) > 0 && codes[len(codes)-1] == green {
+			t.Errorf("the done plan mark is green: %q", head)
+		}
+		// The title after the id takes the green of finished work.
+		tail := head[strings.Index(head, name)+len(name):]
+		at := strings.Index(tail, "Shipped")
+		if at < 0 {
+			t.Fatalf("the done plan row has no title: %q", head)
+		}
+		before := tail[:at]
+		if g := strings.LastIndex(before, green); g < 0 || strings.Contains(before[g:], "\x1b[0m") {
+			t.Errorf("the done plan title is not green: %q", head)
+		}
+		if want := m.styles.kind(board.KindPlan).Render(name); !strings.Contains(head, want) {
+			t.Errorf("the done plan id is not in its kind color: %q", head)
+		}
+		// A done task keeps its green tick: the last code before the tick is
+		// still in force when the tick is drawn.
+		task := listRow(t, m, "plans/2026-09-26-e#task-1")
+		tick := task[:strings.Index(task, dotDone)]
+		if g := strings.LastIndex(tick, green); g < 0 || strings.Contains(tick[g:], "\x1b[0m") {
+			t.Errorf("the done task tick is not green: %q", task)
+		}
+	})
+}
+
 func TestCursorRowKeepsItsBandWithoutAPulseDot(t *testing.T) {
 	withTrueColor(func() {
 		m := actModel(t).WithTheme("tokyo-night", true)

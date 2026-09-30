@@ -143,18 +143,31 @@ func (m Model) listView(p pane, w int, b box) []string {
 			break
 		}
 		it := m.board.Get(rows[n].id)
-		text := pad(m.rowText(rows[n], it, w), w)
+		r := rows[n]
+		text := pad(m.rowText(r, it, w), w)
 		if n == cur {
 			out = append(out, m.styles.selected.Render(text))
 			continue
 		}
 		base := lipgloss.NewStyle()
-		if it != nil && dotOf(it) == dotDone {
+		done := it != nil && dotOf(it) == dotDone
+		if done {
 			// Done work reads green, so the eye skips it.
 			base = m.styles.done
 		}
-		line := m.paintID(text, it, base)
-		if r := rows[n]; r.tree && r.depth > 0 && it != nil && dotOf(it) == dotGoing {
+		// A done plan keeps its + or - mark in the plain foreground, so the
+		// reader can still see at a glance whether the plan is open. Only the
+		// title after the mark says the work is done. The mark and the space
+		// behind it leave the row, so the id keeps the color of its kind and
+		// sits in the green part just as it does on any other done row.
+		mark := ""
+		if done && r.tree && r.depth == 0 {
+			if i := strings.IndexByte(text, ' '); i >= 0 {
+				mark, text = text[:i+1], text[i+1:]
+			}
+		}
+		line := lipgloss.NewStyle().Render(mark) + m.paintID(text, it, base)
+		if r.tree && r.depth > 0 && it != nil && dotOf(it) == dotGoing {
 			// The tree dot of work under way is the pulse dot, so the view can
 			// swap it for the frame of the moment. The mark comes before the
 			// title, so the first dot on the line is the mark.
