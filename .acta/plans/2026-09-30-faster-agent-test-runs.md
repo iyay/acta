@@ -3,6 +3,7 @@ created: "2026-09-30"
 id: PLN-0042
 hash: rxv1rsf
 status: approved
+started: "2026-09-30"
 ---
 # Faster Test Runs for Agents Implementation Plan
 
@@ -65,11 +66,11 @@ status: approved
 - Consumes: nothing.
 - Produces: the "before" rows that Task 7 compares against.
 
-- [ ] **Step 1: Wait for a quiet machine**
+- [x] **Step 1: Wait for a quiet machine**
 
 Run `uptime`. If the 1-minute load average is above 4, run it again every minute, for up to 10 minutes. After 10 minutes, measure anyway and write `busy` in the load column.
 
-- [ ] **Step 2: Run each command twice, fresh**
+- [x] **Step 2: Run each command twice, fresh**
 
 Run each line twice, one at a time, with `uptime` right before each run:
 
@@ -80,11 +81,11 @@ Run each line twice, one at a time, with `uptime` right before each run:
 
 Keep the `real` seconds, and from the full run keep the per-package time of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
 
-- [ ] **Step 3: Write the rows**
+- [x] **Step 3: Write the rows**
 
 Fill the before rows of the table in `## Timings` at the end of this file, one row per run, then the per-package line.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .acta/plans/2026-09-30-faster-agent-test-runs.md
@@ -942,7 +943,7 @@ git commit -m "Git test helpers set identity in the repo; run safe tests in para
 /usr/bin/time -p scripts/test --full -count=1 2>&1 | tail -20
 ```
 
-`scripts/test` runs the same `go test -short ./...` as the before row, and `scripts/test --full` runs the same `go test ./...` under `acta run-one`. Keep the `real` seconds and, from the full run, the per-package times of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
+`scripts/test` runs the same `go test -short ./...` as the before row, and `scripts/test --full` runs the same `go test ./...` under `acta run-one`. Keep the `real`, `user` and `sys` seconds and, from the full run, the per-package times of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
 
 - [ ] **Step 3: Run the race gate**
 
@@ -966,10 +967,10 @@ Filled by Task 1 (before) and Task 7 (after). Wall time in seconds, from `/usr/b
 
 | when | command | load (1 min) | wall (s) | result |
 |---|---|---|---|---|
-| before | `go test -count=1 -short ./...` | | | |
-| before | `go test -count=1 -short ./...` | | | |
-| before | `go test -count=1 ./...` | | | |
-| before | `go test -count=1 ./...` | | | |
+| before | `go test -count=1 -short ./...` | busy (9.46) | 39.36 | pass (1100 tests, 15 packages) |
+| before | `go test -count=1 -short ./...` | busy (21.79) | 63.55 | pass (1100 tests, 15 packages) |
+| before | `go test -count=1 ./...` | busy (64.40) | 90.72 | pass (all 14 test packages ok) |
+| before | `go test -count=1 ./...` | busy (47.34) | 128.76 | pass (all 14 test packages ok) |
 | after | `scripts/test -count=1` | | | |
 | after | `scripts/test -count=1` | | | |
 | after | `scripts/test --full -count=1` | | | |
@@ -977,5 +978,12 @@ Filled by Task 1 (before) and Task 7 (after). Wall time in seconds, from `/usr/b
 
 Per package, full run (tui / write / cli / cmd/acta):
 
-- before:
+- before: run 1: 86.502 / 35.849 / 34.618 / 33.149; run 2: 123.113 / 48.418 / 49.391 / 49.017 (the load stayed above 4 for the whole 10-minute wait, so every before run was busy)
 - after:
+
+CPU seconds (user / sys, from `/usr/bin/time -p`). The load was high for every before run, so CPU time is the fairer number to compare; wall time is still the one the user feels.
+
+- before, short: 57.17 / 72.81 and 57.26 / 72.60
+- before, full: 105.90 / 109.01 and 106.61 / 108.22
+- after, short:
+- after, full:

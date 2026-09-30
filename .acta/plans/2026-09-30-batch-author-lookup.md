@@ -2,6 +2,8 @@
 created: "2026-09-30"
 id: PLN-0040
 hash: bn76r8e
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Batch Author Lookup Implementation Plan
 
@@ -51,7 +53,7 @@ hash: bn76r8e
 - Consumes: `gitc.run(repo string, args ...string) (string, error)`, `gitc.inRepo(dir string) bool`, `gitc.UserName(repo string) string`, all already in `internal/gitc/gitc.go`.
 - Produces: `func Authors(repo string, paths []string) map[string]string` in package `gitc`. Keys are `filepath.Join(repo, <name git printed>)`, so a path that sits right inside `repo` comes back as the same string. `gitc.Author` is removed.
 
-- [ ] **Step 1: Write the failing tests in `internal/gitc/gitc_test.go`**
+- [x] **Step 1: Write the failing tests in `internal/gitc/gitc_test.go`**
 
 Delete `TestAuthorIsTheFirstCommit` and put these two tests in its place. Add `"reflect"` to the imports.
 
@@ -101,7 +103,7 @@ func TestAuthorsWithNothingToFind(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Write the failing tests in `internal/board/board_test.go`**
+- [x] **Step 2: Write the failing tests in `internal/board/board_test.go`**
 
 Replace `TestAuthorIsAskedOncePerFile` with this test:
 
@@ -177,12 +179,12 @@ func TestAuthorMixesCommittedAndNewFilesInOneFolder(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run the tests to see them fail**
+- [x] **Step 3: Run the tests to see them fail**
 
 Run: `go test ./internal/gitc/ ./internal/board/`
 Expected: FAIL to build, with `undefined: Authors` in `gitc` and `undefined: gitAuthors` in `board`.
 
-- [ ] **Step 4: Replace `Author` with `Authors` in `internal/gitc/gitc.go`**
+- [x] **Step 4: Replace `Author` with `Authors` in `internal/gitc/gitc.go`**
 
 Delete `func Author` and its comment. Put this in its place:
 
@@ -222,7 +224,7 @@ func Authors(repo string, paths []string) map[string]string {
 }
 ```
 
-- [ ] **Step 5: Rewrite `internal/board/closed.go`**
+- [x] **Step 5: Rewrite `internal/board/closed.go`**
 
 ```go
 package board
@@ -281,22 +283,22 @@ func (b *Board) fillAuthors(root string) {
 }
 ```
 
-- [ ] **Step 6: Run the tests to see them pass**
+- [x] **Step 6: Run the tests to see them pass**
 
 Run: `go test ./internal/gitc/ ./internal/board/ -run 'Author' -v`
 Expected: PASS for `TestAuthorsAsksOnceForManyFiles`, `TestAuthorsWithNothingToFind`, `TestAuthorIsAskedOncePerFolder`, `TestAuthorMixesCommittedAndNewFilesInOneFolder`, `TestAuthorComesFromTheFirstCommit`, `TestDebtItemTakesTheDebtFile`'s author check, and the TUI `TestDetailShowsTheAuthorUnderTheStatus` stays green in the full run below.
 
-- [ ] **Step 7: Run the full gates**
+- [x] **Step 7: Run the full gates**
 
 Run: `gofmt -l internal && go vet ./... && go test ./...`
 Expected: `gofmt` prints nothing, `go vet` is clean, every package passes.
 
-- [ ] **Step 8: Measure the speed**
+- [x] **Step 8: Measure the speed**
 
 Run: `d=$(mktemp -d) && go build -o "$d/acta" ./cmd/acta && time "$d/acta" show SCR-0013`
 Expected: the same output as main's `acta show SCR-0013`, in well under 0.5 s total (main takes about 2.9 s). Put the time in the task report.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add internal/gitc/gitc.go internal/gitc/gitc_test.go internal/board/closed.go internal/board/board_test.go
