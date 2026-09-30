@@ -331,10 +331,7 @@ func TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst(t *testing.T) {
 		t.Helper()
 		// The dates go to this one git child only, not to the whole test process.
 		cmd := exec.Command("git", append([]string{"-C", cfg.RepoRoot}, args...)...)
-		cmd.Env = os.Environ()
-		for _, who := range []string{"AUTHOR", "COMMITTER"} {
-			cmd.Env = append(cmd.Env, "GIT_"+who+"_DATE="+date)
-		}
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE="+date, "GIT_COMMITTER_DATE="+date)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
 		}

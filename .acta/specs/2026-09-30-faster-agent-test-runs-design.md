@@ -5,6 +5,7 @@ id: SPC-0033
 hash: zssi5lc
 status: approved
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Faster Test Runs for Agents
 

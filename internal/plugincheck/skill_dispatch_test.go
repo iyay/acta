@@ -16,11 +16,13 @@ func TestSkillDispatch(t *testing.T) {
 			"PROPERTY", "ultrathink orchestrate", "Never wait", ".acta/plans/", "herdr-delivery.md", ".acta/bugs",
 			"acta:bug", "already on the parent branch", "exactly one read", "checkpoint unconfirmed",
 			"never write NOTEs to memory",
+			"GATES (from the worktree): <the plan's fast test command>",
 		},
 		MustNot: []string{"superpowers:", "git-bug", "docs/superpowers", "/Users/", "herdr-pane-moves", "bugs.md", "Core Six",
 			"Important/Minor", "per-task reviewer", "fix round R of 5", "WORKTREE LANDING", "--Users-",
 			"until herdr agent read", "read it again", "--no-ff", "Contamination check", "git branch -d",
 			"<fixed-from>", "<new-head>",
+			"<one-shot test runner>",
 		},
 	})
 }

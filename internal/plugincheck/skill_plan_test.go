@@ -17,6 +17,7 @@ func TestSkillPlan(t *testing.T) {
 			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
 			"run `acta voice show`", "When it prints `build_executor: <name>`, that executor is chosen",
 			"do not ask",
+			"## Test commands", "Never `./...` in a task", "**Tests:**",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",

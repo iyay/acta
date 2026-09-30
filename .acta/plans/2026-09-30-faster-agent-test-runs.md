@@ -4,6 +4,7 @@ id: PLN-0042
 hash: rxv1rsf
 status: approved
 started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Faster Test Runs for Agents Implementation Plan
 
@@ -856,17 +857,17 @@ git commit -m "Split tui size sweeps into parallel subtests (before: <times>, af
 - Modify: `internal/trees/trees_test.go` (`setup`, a new `TestMain`)
 - Never: any `runone_test.go` (Task 2 owns them; they must stay serial)
 
-**verify:** No test in write, cmd/acta, cli or trees sets `GIT_AUTHOR_*` or `GIT_COMMITTER_*` any more (`grep -rn 'GIT_AUTHOR\|GIT_COMMITTER' internal/write internal/cli internal/trees cmd/acta` prints nothing), and no test leans on the user's own git identity: the four packages pass with `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`. A test gets `t.Parallel()` only when neither it nor any helper it calls uses `t.Setenv`, `os.Setenv`, `t.Chdir` or `os.Chdir`, or writes a package-level variable (such as `lockRoot` or `runTUI`); list for each package how many tests are parallel before and after, and name the reason each remaining serial test has to stay serial. `go test -race` passes for the four packages.
+**verify:** No test in write, cmd/acta, cli or trees sets `GIT_AUTHOR_*` or `GIT_COMMITTER_*` any more (`grep -rn 'GIT_AUTHOR\|GIT_COMMITTER' internal/write internal/cli internal/trees cmd/acta` prints nothing; build ruling: the one allowed hit is `internal/write/ids_test.go`, which sets `GIT_AUTHOR_DATE` and `GIT_COMMITTER_DATE` on one git child's `cmd.Env`, not on the test process), and no test leans on the user's own git identity: the four packages pass with `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`. A test gets `t.Parallel()` only when neither it nor any helper it calls uses `t.Setenv`, `os.Setenv`, `t.Chdir` or `os.Chdir`, or writes a package-level variable (such as `lockRoot` or `runTUI`); list for each package how many tests are parallel before and after, and name the reason each remaining serial test has to stay serial. `go test -race` passes for the four packages.
 
 **Interfaces:**
 - Consumes: the helpers named above; `gitRun(t, dir, args...)` in `internal/write`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Count the parallel tests before**
+- [x] **Step 1: Count the parallel tests before**
 
 Run, per package: `grep -c 't.Parallel()' <pkg>/*_test.go | awk -F: '{s+=$2} END {print s}'` and `grep -c '^func Test' <pkg>/*_test.go | awk -F: '{s+=$2} END {print s}'` for `internal/write`, `internal/cli`, `internal/trees`, `cmd/acta`. Keep the numbers for the commit message. This change edits tests only, so there is no red test; the proof is the green race run, the no-global-identity run and the counts.
 
-- [ ] **Step 2: Set identity in the repo, not in the env**
+- [x] **Step 2: Set identity in the repo, not in the env**
 
 In each helper, delete the `t.Setenv("GIT_AUTHOR_NAME", ...)` style lines (and loops) and, right after the helper's `git init`, set the identity inside that repo. In `repoWith`:
 
@@ -900,21 +901,21 @@ func TestMain(m *testing.M) {
 }
 ```
 
-- [ ] **Step 3: Prove no test leans on the user's git identity**
+- [x] **Step 3: Prove no test leans on the user's git identity**
 
 Run: `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 go test -count=1 ./internal/write/ ./internal/cli/ ./internal/trees/ ./cmd/acta/`
 Expected: PASS. A failure that is not about identity (for example a branch name) is reported in the task report, not patched here.
 
-- [ ] **Step 4: Add `t.Parallel()` where it is safe**
+- [x] **Step 4: Add `t.Parallel()` where it is safe**
 
 For each top-level test in the four packages, add `t.Parallel()` as the first line, followed by one blank line (the style the tui tests use), only when the rule in the verify line holds. Leave every other test as it is.
 
-- [ ] **Step 5: Run the four packages, with the race detector**
+- [x] **Step 5: Run the four packages, with the race detector**
 
 Run: `go test -count=1 -race ./internal/write/ ./internal/cli/ ./internal/trees/ ./cmd/acta/`
 Expected: PASS. Then count the parallel tests again as in Step 1.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 gofmt -l cmd internal scripts && go vet ./...
@@ -935,9 +936,9 @@ git commit -m "Git test helpers set identity in the repo; run safe tests in para
 - Consumes: the "before" rows from Task 1; `scripts/test` from Task 3.
 - Produces: the "after" rows the landing report quotes.
 
-- [ ] **Step 1: Wait for a quiet machine** (same rule as Task 1 Step 1)
+- [x] **Step 1: Wait for a quiet machine** (same rule as Task 1 Step 1)
 
-- [ ] **Step 2: Run each command twice**
+- [x] **Step 2: Run each command twice**
 
 ```bash
 /usr/bin/time -p scripts/test -count=1 2>&1 | tail -20
@@ -946,12 +947,12 @@ git commit -m "Git test helpers set identity in the repo; run safe tests in para
 
 `scripts/test` runs the same `go test -short ./...` as the before row, and `scripts/test --full` runs the same `go test ./...` under `acta run-one`. Keep the `real`, `user` and `sys` seconds and, from the full run, the per-package times of `internal/tui`, `internal/write`, `internal/cli` and `cmd/acta`.
 
-- [ ] **Step 3: Run the race gate**
+- [x] **Step 3: Run the race gate**
 
 Run: `go test -count=1 -race -short ./...`
 Expected: PASS.
 
-- [ ] **Step 4: Write the rows and commit**
+- [x] **Step 4: Write the rows and commit**
 
 Fill the after rows in `## Timings`, then:
 
@@ -972,19 +973,19 @@ Filled by Task 1 (before) and Task 7 (after). Wall time in seconds, from `/usr/b
 | before | `go test -count=1 -short ./...` | busy (21.79) | 63.55 | pass (1100 tests, 15 packages) |
 | before | `go test -count=1 ./...` | busy (64.40) | 90.72 | pass (all 14 test packages ok) |
 | before | `go test -count=1 ./...` | busy (47.34) | 128.76 | pass (all 14 test packages ok) |
-| after | `scripts/test -count=1` | | | |
-| after | `scripts/test -count=1` | | | |
-| after | `scripts/test --full -count=1` | | | |
-| after | `scripts/test --full -count=1` | | | |
+| after | `scripts/test -count=1` | busy (35.80) | 35.75 | pass (all 15 test packages ok) |
+| after | `scripts/test -count=1` | busy (40.60) | 34.37 | pass (all 15 test packages ok) |
+| after | `scripts/test --full -count=1` | busy (46.66) | 45.84 | pass (all 15 test packages ok, no run-one wait) |
+| after | `scripts/test --full -count=1` | busy (57.95) | 55.35 | pass (all 15 test packages ok, no run-one wait) |
 
 Per package, full run (tui / write / cli / cmd/acta):
 
 - before: run 1: 86.502 / 35.849 / 34.618 / 33.149; run 2: 123.113 / 48.418 / 49.391 / 49.017 (the load stayed above 4 for the whole 10-minute wait, so every before run was busy)
-- after:
+- after: run 1: 41.906 / 33.643 / 36.945 / 16.742; run 2: 51.188 / 39.946 / 43.218 / 17.638 (the load stayed above 4 for the whole 10-minute wait and jumped past 150 near its end, so every after run was busy too)
 
 CPU seconds (user / sys, from `/usr/bin/time -p`). The load was high for every before run, so CPU time is the fairer number to compare; wall time is still the one the user feels.
 
 - before, short: 57.17 / 72.81 and 57.26 / 72.60
 - before, full: 105.90 / 109.01 and 106.61 / 108.22
-- after, short:
-- after, full:
+- after, short: 50.85 / 68.39 and 50.07 / 70.49
+- after, full: 87.44 / 108.56 and 87.65 / 106.13

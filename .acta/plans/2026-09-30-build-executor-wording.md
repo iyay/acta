@@ -4,6 +4,8 @@ closes: [DBT-0032.01]
 created: "2026-09-30"
 id: PLN-0043
 hash: gh92td7
+started: "2026-09-30"
+finished: "2026-09-30"
 ---
 # Build Executor Wording Implementation Plan
 
@@ -48,7 +50,7 @@ hash: gh92td7
 - Consumes: `CheckSkill(t, SkillRule{Name, MaxLines, Must, MustNot})` from `internal/plugincheck`.
 - Produces: nothing other tasks use.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `internal/plugincheck/skill_build_test.go`, `TestSkillBuild`, add to `Must`:
 
@@ -62,12 +64,12 @@ and add to `MustNot`:
 			"subagent (default", "`subagent` (default)",
 ```
 
-- [ ] **Step 2: Run the test to see it fail**
+- [x] **Step 2: Run the test to see it fail**
 
 Run: `go test ./internal/plugincheck/ -run TestSkillBuild`
 Expected: FAIL, naming the missing "the executor `acta voice show` names" phrase and both banned "(default" phrases.
 
-- [ ] **Step 3: Change the skill text**
+- [x] **Step 3: Change the skill text**
 
 In `plugin/skills/build/SKILL.md`, line 3 becomes:
 
@@ -81,7 +83,7 @@ The first row of the Executors table becomes:
 | `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `go test ./internal/plugincheck/ && go test ./...`
 Expected: PASS.
@@ -89,7 +91,7 @@ Expected: PASS.
 Run: `grep -rn 'default' plugin/skills/build/`
 Expected: no line that ties "default" to an executor.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l cmd internal && go vet ./... && go test ./...

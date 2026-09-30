@@ -113,7 +113,7 @@ if [ -f go.mod ]; then go mod download; fi
 
 ### Step 3: Verify Clean Baseline
 
-Run the tests to make sure the workspace starts clean (`npm test`, `cargo test`, `pytest`, or `go test ./...`, whichever the project uses).
+Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`.
 
 If tests fail: report the failures, ask whether to proceed or investigate. If tests pass, report ready: worktree path, passing count, and what is next. A dirty baseline makes every later failure ambiguous, so proceeding past failures is your human partner's call.
 
@@ -205,7 +205,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 ## Close
 
-When every task is committed: run the full test suite and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 
 ### Reply back when a dispatch record exists
 
