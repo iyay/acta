@@ -620,6 +620,9 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.same = true
 		return m, nil
 	}
+	// True once this press has dropped a pick that was on the screen. The bar
+	// below has to know it, or it keeps a frame with a band nothing holds.
+	pressCleared := false
 	switch {
 	case msg.Action == tea.MouseActionMotion && m.drag.held:
 		next := m.drag.to(msg.X, msg.Y)
@@ -636,6 +639,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		return m, m.copyDrag()
 	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
 		// A new press ends the old pick, and starts a new one when it lands on words.
+		pressCleared = m.drag.on
 		m.drag = m.anchorAt(msg.X, msg.Y)
 	}
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft &&
@@ -661,7 +665,7 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		m.same = true
+		m.same = !pressCleared
 		return m, nil
 	}
 	p, rowIdx, tabIdx := m.hit(msg.X, msg.Y)

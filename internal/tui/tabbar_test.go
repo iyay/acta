@@ -59,3 +59,36 @@ func TestClickOnTheBarIsIgnoredUnderThePopups(t *testing.T) {
 		}
 	}
 }
+
+// TestClickOnTheBarTakesTheHighlightOff proves the press that ends a pick
+// also takes the band off the screen. The bar holds no words, so a press on
+// one of its blank cells drops the pick, and the frame has to be drawn again
+// or the band stays on with nothing picked under it.
+func TestClickOnTheBarTakesTheHighlightOff(t *testing.T) {
+	t.Parallel()
+
+	m := paneModel(t, paneDetail)
+	a, _ := scrollBox(m, paneDetail).textArea()
+	before := m.View()
+	m, _ = dragged(m, a.x0, a.y0, a.x0+4, a.y0)
+	if !m.drag.shown() || m.View() == before {
+		t.Fatal("the drag left no highlight on the screen to clear")
+	}
+	// The first cell after the bar's left wall is blank at every width, since
+	// the first name starts one cell further in.
+	m.View() // the frame on screen is the one with the band
+	next := click(m, 1, 1)
+	if next.drag.shown() {
+		t.Error("the press left the highlight on")
+	}
+	if next.same {
+		t.Error("the screen kept a highlight that is gone")
+	}
+	// A model that draws its own frame shows what the screen should be.
+	shown := next.View()
+	fresh := next
+	fresh.same = false
+	if want := fresh.View(); shown != want {
+		t.Errorf("the screen still shows the band:\n%s", shown)
+	}
+}

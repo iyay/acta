@@ -540,25 +540,25 @@ Findings:
 1. `internal/tui/model.go`, bar miss branch in `mouse`. The press has already run `m.drag = m.anchorAt(msg.X, msg.Y)`, which clears an old drag because the bar holds no words. The miss branch then sets `m.same = true`, so `View()` reuses the old frame and the old highlight stays on screen with nothing selected under it. Before this plan the same press fell through to `focusPane` and redrew. Expected: the screen redraws when the press cleared a drag. Take the pattern the wheel branch uses: remember `cleared := m.drag.on` before the press handling, then set `m.same = !cleared` on a miss.
 2. `internal/tui/hints.go`, the `own` gate in `hints`. It hides `Edit: e` and `Copy id: y` on worktree rows, legacy rows and rows not on disk. But `edit()` opens any item that is on disk, and `copyID()` only refuses a nil item. Repro: `worktreeModel`, Bugs tab, `j` onto the worktree bug (`Worktree == "feat"`, `OnDisk == true`). The hints are `[Detail: enter New bug: n Sort: o]`, but `y` copies and `e` opens the editor. Expected: `Edit: e` when `it != nil && it.OnDisk`, and `Copy id: y` when `it != nil`. `Status: s`, `Type: t` and the tick keys keep the `own` gate, because their code refuses those rows.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/tui/tabbar_test.go`, add a test. Start a drag across detail words the way `internal/tui/drag_test.go` does, until `m.drag.on` is true and the view shows the highlight. Then left-press a blank cell of bar line 1. The test asserts that `m.same` is false and that `m.View()` equals the view a fresh model in the same state draws, with no highlight.
 
 In `internal/tui/hints_test.go`, add a test. Use `worktreeModel(t)`, open the Bugs tab and press `j` onto the worktree bug. Assert that `Edit: e` and `Copy id: y` are in `hints()` and that `Status: s` and `Type: t` are not. Also assert that a row with an item that is not on disk shows `Copy id: y` and does not show `Edit: e`.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `scripts/test ./internal/tui -run 'TestClickOnTheBar|TestHints'`
 Expected: FAIL on the new tests only.
 
-- [ ] **Step 3: Fix both findings as the Findings list says**
+- [x] **Step 3: Fix both findings as the Findings list says**
 
-- [ ] **Step 4: Run the package**
+- [x] **Step 4: Run the package**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 gofmt -l . && go vet ./internal/tui

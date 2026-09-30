@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/iyay/acta/internal/board"
 )
 
 func TestHintsFollowTheFocusedPane(t *testing.T) {
@@ -116,5 +118,62 @@ func TestHintsSkipTheKeysARowRefuses(t *testing.T) {
 	}
 	if !slices.Contains(task.hints(), "Tick: +") {
 		t.Errorf("a task row should still offer the tick keys: %v", task.hints())
+	}
+}
+
+// TestHintsOnAWorktreeRowFollowTheKeysThatWork reads the hints the way a
+// person does: every key on the line has to do something on the row under the
+// cursor, and every key that does something there has to be on the line.
+func TestHintsOnAWorktreeRowFollowTheKeysThatWork(t *testing.T) {
+	t.Parallel()
+
+	// Oldest first, so the worktree bug of 09-24 is the second row.
+	m := press(worktreeModel(t), tabKey(tabBugs), "j")
+	it := m.Selected()
+	if it == nil || it.Worktree != "feat" || !it.OnDisk {
+		t.Fatalf("the row under the cursor is %+v, want a bug read from a worktree", it)
+	}
+	// The editor opens anything that is on disk and y copies any id, so both
+	// keys belong on a row shown from a worktree.
+	for _, h := range []string{"Edit: e", "Copy id: y"} {
+		if !slices.Contains(m.hints(), h) {
+			t.Errorf("a worktree row is missing %q: %v", h, m.hints())
+		}
+	}
+	// The status popup refuses that row, so those two keys stay off the line.
+	for _, h := range []string{"Status: s", "Type: t"} {
+		if slices.Contains(m.hints(), h) {
+			t.Errorf("a worktree row shows %q, which the popup refuses: %v", h, m.hints())
+		}
+	}
+}
+
+// TestHintsOnARowNotOnDiskOnlyCopyItsID keeps the editor hint off a row whose
+// branch is not checked out, because there is no file there to open, while y
+// still has an id to copy.
+func TestHintsOnARowNotOnDiskOnlyCopyItsID(t *testing.T) {
+	t.Parallel()
+
+	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
+	branch := board.Tree{Cfg: main, Branch: "feat-x", Files: map[string][]byte{
+		".acta/bugs/2026-09-25-branch.md": []byte("# Branch bug\n\n## Symptom\ny\n"),
+	}}
+	b, err := board.LoadTrees(main, []board.Tree{branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(main, b, true)
+	m.render = func(md string, _ int) string { return md }
+	// Oldest first, so the branch bug of 09-25 is the second row.
+	m = press(sized(m, 120, 40), tabKey(tabBugs), "j")
+	it := m.Selected()
+	if it == nil || it.OnDisk {
+		t.Fatalf("the row under the cursor is %+v, want a bug from a branch that is not checked out", it)
+	}
+	if !slices.Contains(m.hints(), "Copy id: y") {
+		t.Errorf("a row that is not on disk is missing Copy id: y: %v", m.hints())
+	}
+	if slices.Contains(m.hints(), "Edit: e") {
+		t.Errorf("a row that is not on disk shows Edit: e, which has no file to open: %v", m.hints())
 	}
 }

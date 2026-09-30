@@ -19,30 +19,41 @@ func (m Model) hints() []string {
 	// The status popup refuses tasks and debt lines, so those rows offer the
 	// tick keys in its place.
 	tick := it != nil && (it.Kind == board.KindTask || it.Kind == board.KindDebtItem)
-	// The popup and the editor also turn the group row, an item shown from
+	// The popup and the tick keys turn the group row, an item shown from
 	// another worktree, a legacy file and a branch that is not checked out
 	// away, so those rows get only the keys that work anywhere.
 	own := it != nil && it.OnDisk && it.Worktree == "" && !it.Legacy
+	// The editor opens anything that is on disk and the copy key takes the id
+	// of anything at all, so those two follow the item and not the tree it was
+	// read from.
+	editable := it != nil && it.OnDisk
+	copyable := it != nil
 	var out []string
 	if tick && own {
 		out = append(out, "Tick: +", "Untick: -")
 	}
 	if m.focus == paneDetail {
 		out = append(out, "Scroll: j k")
-		if own {
-			if !tick {
-				out = append(out, "Status: s")
-			}
-			out = append(out, "Edit: e", "Copy id: y")
+		if own && !tick {
+			out = append(out, "Status: s")
+		}
+		if editable {
+			out = append(out, "Edit: e")
+		}
+		if copyable {
+			out = append(out, "Copy id: y")
 		}
 		return append(out, "Back: esc")
 	}
 	out = append(out, "Detail: enter")
-	if own {
-		if !tick {
-			out = append(out, "Status: s", "Type: t")
-		}
-		out = append(out, "Edit: e", "Copy id: y")
+	if own && !tick {
+		out = append(out, "Status: s", "Type: t")
+	}
+	if editable {
+		out = append(out, "Edit: e")
+	}
+	if copyable {
+		out = append(out, "Copy id: y")
 	}
 	out = append(out, "New bug: n", "Sort: o")
 	if m.foldsRow() {
