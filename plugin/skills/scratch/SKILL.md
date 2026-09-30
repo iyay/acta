@@ -1,6 +1,6 @@
 ---
 name: scratch
-description: "acta: Use when the user drops a raw idea (catet, nanti, kepikiran, note this, later) or a side idea shows up during other work. Files it in Scratchpad with acta scratch new; never in agent memory."
+description: "acta: Use when the user drops a raw idea (note this, later, idea for later, or the same intent in any language) or a side idea shows up during other work. Files it in Scratchpad with acta scratch new; never in agent memory."
 ---
 
 # Filing Ideas
@@ -9,7 +9,7 @@ A scratch item is a written idea in the repo, not a thing you keep in your head.
 
 ## When to file
 
-- The user drops a raw idea: "catet", "nanti", "kepikiran", "note this", "later". File it at once. Do not ask first; the words are the idea.
+- The user drops a raw idea: "note this", "later", "idea for later", or the same intent in any language. File it at once. Do not ask first; the words are the idea.
 - A side idea shows up while you build or fix something. That one is your guess, so ask first: "File this in Scratchpad?" Wait for the yes.
 - Anything you must not forget, and the user did not ask for now.
 
