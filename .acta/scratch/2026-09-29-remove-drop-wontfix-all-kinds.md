@@ -4,6 +4,7 @@ hash: cwogc6x
 title: Remove, drop and wont-fix actions for every kind
 status: raw
 created: "2026-09-29"
+finished: "2026-09-30"
 ---
 kita juga belom ada opsi buat remove/delete, drop dam wont-fix  ya buat semua. scratch - tasks
 

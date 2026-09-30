@@ -7,8 +7,8 @@ func TestSkillSetup(t *testing.T) {
 		Name:     "setup",
 		MaxLines: 66,
 		Must: []string{
-			"acta voice set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
-			"acta voice show", "adhd", "plain", "full English name",
+			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
+			"acta config show", "adhd", "plain", "full English name",
 			"acta doctor", "acta doctor --fix", "--executor", "HERDR_ENV=1", "herdr",
 			"--subagent-models split", "Claude Code only",
 			"<!-- acta:begin -->", "<!-- acta:end -->",

@@ -116,7 +116,7 @@ NONE
 
 The rules I received are from the acta workflow plugin.
 
-Where this stands: nothing else is running, and acta voice setup is still pending.
+Where this stands: nothing else is running, and acta config setup is still pending.
 
 Next action (under 2 minutes): run `/acta:setup` to set the chat language and style.
 ```
@@ -188,7 +188,7 @@ plugin's own voice rule from `plugin/hooks/default-rules.md`, which is the
 plugin under test, not a global channel:
 
 ```
-acta voice: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules).
+acta config: not set up yet; reply in English, adhd style, and run /acta:setup once (see the session rules).
 ```
 
 ### The grader is not free

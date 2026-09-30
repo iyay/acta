@@ -10,7 +10,7 @@ The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM
 ## First run
 
 1. Run `acta doctor` and show its result. When a repo check failed, offer `acta doctor --fix`.
-2. Then ask, one question at a time, and only for what `acta voice show` says is not set yet.
+2. Then ask, one question at a time, and only for what `acta config show` says is not set yet.
 
 ### Voice
 
@@ -19,7 +19,7 @@ Which language should I use when I talk with you? (default: English) Style: `adh
 Save the answers, writing the language as its full English name (Korean, not ko):
 
 ```bash
-acta voice set --language Korean --style adhd --tone "Casual, short sentences."
+acta config set --language Korean --style adhd --tone "Casual, short sentences."
 ```
 
 From the next message on, talk in the chosen language.
@@ -29,12 +29,12 @@ From the next message on, talk in the chosen language.
 `subagent` (default) or `inline`. Offer `dispatch` only when herdr is there: `HERDR_ENV=1` in the environment, or `herdr` on PATH. Without herdr, do not offer `dispatch` at all.
 
 ```bash
-acta voice set --executor subagent
+acta config set --executor subagent
 ```
 
 ### Split subagent models
 
-Ask this one in Claude Code only. Default no. A yes saves `acta voice set --subagent-models split`; a no saves nothing and the user's own config wins.
+Ask this one in Claude Code only. Default no. A yes saves `acta config set --subagent-models split`; a no saves nothing and the user's own config wins.
 
 ### The acta block
 
@@ -55,7 +55,7 @@ Write only after a yes. When both files exist, ask which one. When only CLAUDE.m
 
 A later run asks which part to change, then changes only that part.
 
-Pass only the flags that change: `acta voice set --style plain`, `acta voice set --clear-tone`, `acta voice set --repo-language English`, `acta voice set --executor inline`, `acta voice set --clear-subagent-models`. `acta voice show` prints the current setting.
+Pass only the flags that change: `acta config set --style plain`, `acta config set --clear-tone`, `acta config set --repo-language English`, `acta config set --executor inline`, `acta config set --clear-subagent-models`. `acta config show` prints the current setting.
 
 ## Limits
 

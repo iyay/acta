@@ -86,7 +86,7 @@ one of:
 Plan, build, review and land for this brainstorm may continue in the
 same session. Only the brainstorm itself is one per session.
 
-**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 ## Anti-Pattern: "Too Simple To Need Approval"
 

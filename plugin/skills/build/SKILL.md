@@ -1,6 +1,6 @@
 ---
 name: build
-description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta voice show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan. Creates the worktree without asking, then runs every task with a failing test first through the executor `acta config show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through acta:dispatch) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
@@ -19,12 +19,12 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
-Before you pick one, run `acta voice show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
+Before you pick one, run `acta config show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
 On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
 
 ## Models
 
-**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 - Implementers and other workers: the model the paragraph above names, or none. On omp, `agent="task"` and its role config picks the model.
 - Reviewers (`acta:review`): your own model alias, never lower.

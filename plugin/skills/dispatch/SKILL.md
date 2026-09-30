@@ -295,7 +295,7 @@ Security, auth, data-migration and money paths keep the full bar — there, "a f
 
 **The recipient is an orchestrator, not a typist.** `acta:build` already forbids it from writing code and already says fresh subagent per task; this section makes it fan out as wide as the ticket list allows. A recipient that runs six tickets through one implementer subagent serially is the slowest and least reviewable shape available: one context accumulates every file and every failed attempt, and by ticket 5 it has compacted away ticket 1's constraints.
 
-**Subagent models.** Only when `acta voice show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
 The PARALLEL rules live in `references/house-rules.md` now, read before the todo list — no need to retype them into the brief. The `/goal` still has to carry the push: the `orchestrate` keyword's contract (decompose, dispatch subagents, parallelize disjoint work in ONE message, verify, never yield before closure) says the same thing, so put it in every `/goal` — it is skipped as often as the reply-back line.
 

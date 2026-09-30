@@ -24,6 +24,10 @@ var oldPmbRe = regexp.MustCompile(`\bpmb\b`)
 // moved under its own rename, file by file.
 var oldRootRe = regexp.MustCompile(`\.pm/`)
 
+// oldVoiceRe matches the old config command. The Go package and the
+// PM_VOICE_FILE variable keep the voice name, so only "acta voice" fails.
+var oldVoiceRe = regexp.MustCompile(`\bacta voice\b`)
+
 // aliasLines is the one old text the rename keeps: the README sentence that
 // tells users pmb still runs as an alias. Paths read as walkPlugin reports
 // them, values are 1-based line numbers, so a second old name anywhere else
@@ -45,6 +49,7 @@ func oldNameProblems(source, text string) []string {
 		{"old skill name", oldSkillRe},
 		{"old pmb command", oldPmbRe},
 		{"old .pm/ root", oldRootRe},
+		{"old acta voice command", oldVoiceRe},
 	}
 	var out []string
 	for i, line := range strings.Split(text, "\n") {
