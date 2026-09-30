@@ -14,12 +14,13 @@ Refuse to start without an approved spec and an approved plan. Say which one is 
 | Executor | Who writes the code | How |
 |---|---|---|
 | `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
-| `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr |
+| `dispatch` | an omp agent in its own herdr tab | follow `acta:dispatch`; it refuses without herdr. On omp, `dispatch` runs as `subagent` |
 | `inline` | you | only when the user says "inline" |
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
 Before you pick one, run `acta voice show`. When it prints `build_executor: <name>`, that executor is already chosen: use it and do not ask. When the line is missing, ask which executor to run, as the table above describes.
+On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
 
 ## Models
 

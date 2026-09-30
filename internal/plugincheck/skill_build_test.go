@@ -25,6 +25,7 @@ func TestSkillBuild(t *testing.T) {
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
 			"the executor `acta voice show` names, else asks which one",
+			"On omp, `dispatch` runs as `subagent`", "Dispatch is only for harnesses other than omp.",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees",
