@@ -140,6 +140,8 @@ Read the plan once, note its context and Global Constraints, and make a todo per
 
 Before dispatching, scan the plan once for tasks that contradict each other or the Global Constraints, and rule on what you find against the plan text. The spec wins over the plan; your judgment settles what neither answers.
 
+To find an item's file when you have only its id or hash, run `acta show <id|hash> --path` and it prints the path.
+
 ## The Task Loop
 
 ### 1. Dispatch the implementer

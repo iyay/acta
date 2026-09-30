@@ -176,3 +176,18 @@ func TestBuildExecutorOrder(t *testing.T) {
 		t.Error("build/SKILL.md still lets herdr on PATH alone pick dispatch; dispatch needs HERDR_ENV=1 and $HERDR_PANE_ID")
 	}
 }
+
+// TestShowPathLineInSkills reads both skill files on their own. A skill that
+// loses the line leaves its agents hunting for a file by hand, and the
+// folder-wide Must lists would not notice, so each file is checked here.
+func TestShowPathLineInSkills(t *testing.T) {
+	for _, skill := range []string{"build", "brainstorm"} {
+		b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", skill, "SKILL.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := "acta show <id|hash> --path"; !strings.Contains(string(b), want) {
+			t.Errorf("%s/SKILL.md missing %q", skill, want)
+		}
+	}
+}

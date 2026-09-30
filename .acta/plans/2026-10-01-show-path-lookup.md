@@ -3,6 +3,8 @@ parent: specs/2026-10-01-show-path-lookup-design
 id: PLN-0063
 created: "2026-10-01 05:08:45"
 hash: cmnpxkr
+started: "2026-10-01 05:11:41"
+finished: "2026-10-01 05:28:45"
 ---
 # acta show --path Implementation Plan
 
@@ -48,11 +50,11 @@ Approval: the user said "skip plan, langsung build" on 2026-10-01, so this plan 
 
 **verify:** In a temp repo, `acta show <x> --path` prints exactly one line, the path of the right file, for: a new id, a full hash, a sub-item id (`PLN-0001.01` gives the plan's path), an old id that only the board alias knows (through the fallback), a spec under a root moved with `ACTA_ROOT` or `--root`. An unknown id prints `unknown id X` and exits with bad input. A new id and a hash still resolve when PATH holds no git binary. Plain `acta show <id>` output is byte for byte what it was. List the cases checked.
 
-- [ ] **Step 1: Write the failing tests** in `internal/cli/cli_test.go`, following the setup the existing `show` tests use. One table test over the input forms above, one test that sets PATH to an empty temp dir for the fast cases, one unknown-id test.
-- [ ] **Step 2: Run the tests to see them fail.** Run: `scripts/test ./internal/cli -run Show`. Expected: FAIL, `--path` is an unknown flag.
-- [ ] **Step 3: Write the minimal code.** Add the `--path` flag and the frontmatter scan helper; wire the fallback; update the usage line to `usage: acta show <id> [--json] [--path]`.
-- [ ] **Step 4: Run the tests to see them pass.** Run: `scripts/test ./internal/cli`, then `go vet ./... && gofmt -l .` prints nothing. Then `go build -o /tmp/acta-path ./cmd/acta && time /tmp/acta-path show SCR-0028 --path` from the worktree and report the time (target under 0.05 s).
-- [ ] **Step 5: Commit** `internal/cli/cli.go internal/cli/cli_test.go` with message `acta show --path finds an item's file fast (PLN-0063)`.
+- [x] **Step 1: Write the failing tests** in `internal/cli/cli_test.go`, following the setup the existing `show` tests use. One table test over the input forms above, one test that sets PATH to an empty temp dir for the fast cases, one unknown-id test.
+- [x] **Step 2: Run the tests to see them fail.** Run: `scripts/test ./internal/cli -run Show`. Expected: FAIL, `--path` is an unknown flag.
+- [x] **Step 3: Write the minimal code.** Add the `--path` flag and the frontmatter scan helper; wire the fallback; update the usage line to `usage: acta show <id> [--json] [--path]`.
+- [x] **Step 4: Run the tests to see them pass.** Run: `scripts/test ./internal/cli`, then `go vet ./... && gofmt -l .` prints nothing. Then `go build -o /tmp/acta-path ./cmd/acta && time /tmp/acta-path show SCR-0028 --path` from the worktree and report the time (target under 0.05 s).
+- [x] **Step 5: Commit** `internal/cli/cli.go internal/cli/cli_test.go` with message `acta show --path finds an item's file fast (PLN-0063)`.
 
 ### Task 2: Skills point at acta show --path
 
@@ -61,8 +63,8 @@ Approval: the user said "skip plan, langsung build" on 2026-10-01, so this plan 
 
 **verify:** Each of the two skills holds one line saying that to find an item's file by id or hash, run `acta show <id|hash> --path`. `scripts/test ./internal/plugincheck` passes. List the two lines added.
 
-- [ ] **Step 1: Write the failing test.** Add a case to the required-rules check in `internal/plugincheck` (follow how it already requires phrases per skill) that both skills contain `acta show <id|hash> --path`.
-- [ ] **Step 2: Run it to see it fail.** Run: `scripts/test ./internal/plugincheck`. Expected: FAIL naming both skills.
-- [ ] **Step 3: Add the line** to each skill: in build, near the `## Setup` section; in brainstorm, under "Where files go". One sentence each.
-- [ ] **Step 4: Run it to see it pass.** Run: `scripts/test ./internal/plugincheck`.
-- [ ] **Step 5: Commit** the two skill files and the plugincheck test with message `Skills point agents at acta show --path (SPC-0054)`.
+- [x] **Step 1: Write the failing test.** Add a case to the required-rules check in `internal/plugincheck` (follow how it already requires phrases per skill) that both skills contain `acta show <id|hash> --path`.
+- [x] **Step 2: Run it to see it fail.** Run: `scripts/test ./internal/plugincheck`. Expected: FAIL naming both skills.
+- [x] **Step 3: Add the line** to each skill: in build, near the `## Setup` section; in brainstorm, under "Where files go". One sentence each.
+- [x] **Step 4: Run it to see it pass.** Run: `scripts/test ./internal/plugincheck`.
+- [x] **Step 5: Commit** the two skill files and the plugincheck test with message `Skills point agents at acta show --path (SPC-0054)`.

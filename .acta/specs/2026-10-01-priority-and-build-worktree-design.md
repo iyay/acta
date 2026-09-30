@@ -53,7 +53,7 @@ Status: design approved by the user in chat on 2026-10-01. Architectural for the
 
 ### TUI
 
-- Sort: a new `byPriority(items)` in `internal/tui/order.go` runs after `ordered()`. It is a stable sort: high, then medium, then low, then unset. Inside each group the id order stays, and `s` still flips old and new. It is used only in `openRows`, for the Bugs and Debts tabs. The Done pane (Fixed, Wontfix, Done) keeps plain id order.
+- Sort: a new `byPriority(items)` in `internal/tui/order.go` runs after `ordered()`. It is a stable sort: high, then medium, then low, then unset. Inside each group the id order stays, and `o` still flips old and new. It is used only in `openRows`, for the Bugs and Debts tabs. The Done pane (Fixed, Wontfix, Done) keeps plain id order.
 - Row tag: in `rowText` (`internal/tui/scroll.go`) an `H`, `M` or `L` right after the id, before the title, for example `BUG-0023 H Scroll resets…`. No tag when unset. Colors come from the ANSI slots that already exist: H bright red, M yellow, L dim. No new theme field.
 - Detail pane: a meta line `PRIORITY high` next to STATUS. No line when unset.
 - Search and the other tabs do not change.
@@ -65,7 +65,7 @@ Every test is written first and seen failing.
 - `internal/plugincheck`: fails when `plugin/skills/build/SKILL.md` names `EnterWorktree` or "native worktree".
 - `internal/board`: reads `priority:` on a bug and `(high)` on a debt line; the tag is gone from the Title; a bad bug value lands in Problems and counts as unset; `(hgh)` stays text.
 - `internal/write`: `bug new --priority` with a good and a bad value; `debt new` keeps the tag; `set priority` on a bug, on a debt item, and with `none`; other kinds refused.
-- `internal/tui`: sort order in Bugs and Debts with mixed levels and both `s` directions; Done pane order unchanged; the row tag; the PRIORITY meta line.
+- `internal/tui`: sort order in Bugs and Debts with mixed levels and both `o` directions; Done pane order unchanged; the row tag; the PRIORITY meta line.
 
 ## Out of scope
 

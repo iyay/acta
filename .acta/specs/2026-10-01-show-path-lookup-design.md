@@ -3,6 +3,8 @@ created: "2026-10-01 05:07:10"
 parent: scratch/2026-09-30-id-lookup-command
 id: SPC-0054
 hash: az0vfpu
+started: "2026-10-01 05:11:41"
+finished: "2026-10-01 05:28:45"
 ---
 # Find any item's file fast with acta show --path
 

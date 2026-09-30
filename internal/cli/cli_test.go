@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"io"
+
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/write"
 )
@@ -675,6 +677,144 @@ func TestShowJSONCarriesClosesAndClosedByAsLists(t *testing.T) {
 		if !slices.Equal(j.ClosedBy, c.closedB) {
 			t.Errorf("show %s --json closed_by = %v, want %v", c.id, j.ClosedBy, c.closedB)
 		}
+	}
+}
+
+// pathRepo makes a repo whose planning files cover every way of naming an
+// item: a new id, a hash, a sub-item number, an old id only the board alias
+// knows, and an id written in quotes. root picks the folder name, so a moved
+// root gets its own repo.
+func pathRepo(t *testing.T, root string) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"specs/2026-10-01-a.md":   "---\nid: SPC-0054\nhash: az0vfpu\n---\n# Design\n",
+		"plans/2026-10-01-b.md":   "---\nid: PLN-0001\nhash: bk4n2qp\n---\n# Plan\n\n### Task 1: Do it\n\n- [ ] **Step 1: Write the failing test**\n",
+		"plans/2026-10-01-c.md":   "---\nid: PLN-0003\n---\n# Old plan\n",
+		"scratch/2026-10-01-d.md": "---\nid: \"SCR-0028\"\n---\n# Idea\n",
+	}
+	for p, body := range files {
+		full := filepath.Join(dir, root, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// The path a reader gets from --path must be the same one the plain show
+// prints on its path line, so a reader can paste either one.
+func TestShowPathPrintsTheFileForEveryInputForm(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	for _, c := range []struct {
+		name, id, want string
+	}{
+		{"new id", "SPC-0054", ".acta/specs/2026-10-01-a.md"},
+		{"full hash", "az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"quoted id", "SCR-0028", ".acta/scratch/2026-10-01-d.md"},
+		{"sub item takes the plan file", "PLN-0001.01", ".acta/plans/2026-10-01-b.md"},
+		{"hash prefix falls back", "az0v", ".acta/specs/2026-10-01-a.md"},
+		{"prefixed hash falls back", "SPC-az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"old id falls back", "PLAN-3", ".acta/plans/2026-10-01-c.md"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out := mustRun(t, "show", c.id, "--path")
+			if out != c.want+"\n" {
+				t.Errorf("show %s --path = %q, want one line %q", c.id, out, c.want)
+			}
+			line, ok := showLine(t, mustRun(t, "show", c.id), "path: ")
+			if !ok || line != "path: "+c.want {
+				t.Errorf("show %s path line = %q, want %q", c.id, line, "path: "+c.want)
+			}
+		})
+	}
+}
+
+// The root can move, so the scan has to read where the config says the files
+// are, not where it expects them.
+func TestShowPathFollowsAMovedRoot(t *testing.T) {
+	dir := pathRepo(t, ".pm")
+	t.Chdir(dir)
+	want := ".pm/specs/2026-10-01-a.md\n"
+	t.Setenv("ACTA_ROOT", "")
+	if out := mustRun(t, "show", "SPC-0054", "--root", ".pm", "--path"); out != want {
+		t.Errorf("--root gave %q, want %q", out, want)
+	}
+	t.Setenv("ACTA_ROOT", ".pm")
+	if out := mustRun(t, "show", "SPC-0054", "--path"); out != want {
+		t.Errorf("ACTA_ROOT gave %q, want %q", out, want)
+	}
+}
+
+// A hit reads the folder, so it must work where there is no git to call.
+func TestShowPathFindsANewIDAndHashWithoutGit(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	t.Setenv("PATH", t.TempDir())
+	for id, want := range map[string]string{
+		"SPC-0054": ".acta/specs/2026-10-01-a.md\n",
+		"az0vfpu":  ".acta/specs/2026-10-01-a.md\n",
+	} {
+		if out := mustRun(t, "show", id, "--path"); out != want {
+			t.Errorf("show %s --path with no git = %q, want %q", id, out, want)
+		}
+	}
+}
+
+// The board answers every form, so only calling the scan tells us the fast
+// path is what runs. A hash prefix and an old id are the board's job: the scan
+// matches whole values only, so it says nothing for them.
+func TestScanPathMatchesWholeValuesOnly(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	cfg, code := loadConfig("", io.Discard)
+	if code != exitOK {
+		t.Fatalf("loadConfig exit %d", code)
+	}
+	for _, c := range []struct {
+		id, want string
+	}{
+		{"SPC-0054", ".acta/specs/2026-10-01-a.md"},
+		{"az0vfpu", ".acta/specs/2026-10-01-a.md"},
+		{"SCR-0028", ".acta/scratch/2026-10-01-d.md"},
+		{"PLN-0001.01", ".acta/plans/2026-10-01-b.md"},
+		{"az0v", ""},
+		{"SPC-az0vfpu", ""},
+		{"PLAN-3", ""},
+		{"PLN-0001.1", ".acta/plans/2026-10-01-b.md"},
+	} {
+		if got := scanPath(cfg, c.id); got != c.want {
+			t.Errorf("scanPath(%q) = %q, want %q", c.id, got, c.want)
+		}
+	}
+}
+
+func TestShowPathUnknownIDIsBadInput(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	var stdout, stderr strings.Builder
+	code := Run([]string{"show", "SPC-9999", "--path"}, strings.NewReader(""), false, &stdout, &stderr)
+	if code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	if stderr.String() != "unknown id SPC-9999\n" {
+		t.Errorf("stderr %q, want %q", stderr.String(), "unknown id SPC-9999\n")
+	}
+	if stdout.String() != "" {
+		t.Errorf("stdout %q, want nothing", stdout.String())
+	}
+}
+
+// --path asks for the path and nothing else, so it wins over --json.
+func TestShowPathBeatsJSON(t *testing.T) {
+	dir := pathRepo(t, ".acta")
+	t.Chdir(dir)
+	if out := mustRun(t, "show", "SPC-0054", "--json", "--path"); out != ".acta/specs/2026-10-01-a.md\n" {
+		t.Errorf("show --json --path = %q, want one path line", out)
 	}
 }
 

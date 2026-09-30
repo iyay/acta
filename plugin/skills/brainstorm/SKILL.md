@@ -252,6 +252,8 @@ plus a short spec is the whole process.
 
 **Where files go.** `.acta/` is the default root; `.acta.yaml`, the `ACTA_ROOT` variable or `acta --root` can move it. `acta list --json` shows the specs and plans that already exist. Write the spec and commit it on the branch that is checked out (usually main). No worktree yet: `acta:build` makes the worktree once the plan is approved.
 
+**Finding a file.** To find an item's file when you have only its id or hash, run `acta show <id|hash> --path` and it prints the path.
+
 **Debt items.** A plan that works a debt item sets `parent: debt/<stem>` and lists every DBT id it closes in `closes:`.
 
 **Scratch items.** A spec made from one scratch item sets `parent: scratch/<stem>` in its frontmatter. A spec made from several sets the first one as `parent:` and lists the rest in `closes:`, so no item is left dangling. `specced` then follows from either the parent link or the `closes:` list.
