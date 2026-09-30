@@ -3,6 +3,8 @@ parent: specs/2026-10-01-tui-debt-note-markdown-design
 id: PLN-0062
 created: "2026-10-01 04:46:10"
 hash: v5ya0xy
+started: "2026-10-01 04:46:48"
+finished: "2026-10-01 04:48:54"
 ---
 # Debt Note Rendered Like a Spec Body Implementation Plan
 
@@ -48,7 +50,7 @@ hash: v5ya0xy
 - Consumes: `Model.buildDetailParts(w int) (head, mid []string, foot string)`, `m.render func(string, int) string`, `xansi.Hardwrap(s string, limit int, preserveSpace bool) string`, test helpers `treeCfg`, `detailModel`, `onItem`, `plain`, `fit`.
 - Produces: nothing new.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `internal/tui/detail_test.go`, replace the body of `TestDetailDebtItemNoteLosesNothingAtAnyWidth` so it covers the new notes and skips the characters markdown styles away:
 
@@ -127,12 +129,12 @@ func TestDetailDebtItemNoteHasTheSpecBodyGaps(t *testing.T) {
 
 If `SPEC-1` with a body and no title has a different first line than expected, give it a `# Title` line above the text. The test compares only where the text starts.
 
-- [ ] **Step 2: Run the tests to see them fail**
+- [x] **Step 2: Run the tests to see them fail**
 
 Run: `scripts/test ./internal/tui -run 'TestDetailDebtItemNote'`
 Expected: FAIL. `TestDetailDebtItemNoteHasTheSpecBodyGaps` finds the note at column 0 with no blank line above it. `TestDetailDebtItemNoteLosesNothingAtAnyWidth` may already pass, because the plain wrap keeps every character.
 
-- [ ] **Step 3: Write the minimal code**
+- [x] **Step 3: Write the minimal code**
 
 In `buildDetailParts`, replace the debt item branch's wrap with:
 
@@ -151,14 +153,67 @@ In `buildDetailParts`, replace the debt item branch's wrap with:
 	}
 ```
 
-- [ ] **Step 4: Run the tests to see them pass**
+- [x] **Step 4: Run the tests to see them pass**
 
 Run: `scripts/test ./internal/tui`
 Expected: PASS, including the older debt item tests. They use a render stub that returns the text as it is, and `Hardwrap` still wraps it to the pane. Then run `go vet ./internal/tui && gofmt -l internal/tui` and expect no output.
+
+- [x] **Step 5: Commit**
+
+```bash
+git add internal/tui/detail.go internal/tui/detail_test.go
+git commit -m "Debt note renders like a spec body, with escaped tags (PLN-0062)"
+```
+
+## Fix round 1
+
+### Task 2: A backslash in a note is drawn as written
+
+Review round 1 found that markdown reads `\|` as an escaped pipe. The real note in `.acta/debt/2026-09-29-harness.md` that holds `(?:^|&&|;|\|\|)` draws as `(?:^|&&|;|||)`. The spec says every character the note holds is drawn as written.
+
+**Files:**
+- Modify: `internal/tui/detail.go` (the escape in the debt item branch of `buildDetailParts`)
+- Test: `internal/tui/detail_test.go`
+
+**verify:** For every pane width from 10 to 160, a note that holds backslashes before punctuation draws every backslash, and no other test note changes. List the notes and widths checked.
+
+**Interfaces:**
+- Consumes: the Task 1 test `TestDetailDebtItemNoteLosesNothingAtAnyWidth`.
+- Produces: nothing new.
+
+- [ ] **Step 1: Write the failing test**
+
+Add this note to the `notes` list of `TestDetailDebtItemNoteLosesNothingAtAnyWidth`:
+
+```go
+		`brainCmd: the (?:^|&&|;|\|\|) alternation is dead`,
+```
+
+- [ ] **Step 2: Run the test to see it fail**
+
+Run: `scripts/test ./internal/tui -run TestDetailDebtItemNoteLosesNothingAtAnyWidth`
+Expected: FAIL. The note reads `(?:^|&&|;|||)`.
+
+- [ ] **Step 3: Write the minimal code**
+
+Put the backslash first in the replacer, and name it in the comment:
+
+```go
+		// The renderer drops text that looks like an HTML tag, such as
+		// <uid>, and eats a backslash before a sign, so those are escaped
+		// first. It can also leave a line wider than the pane, and fit
+		// would cut it, so Hardwrap breaks it.
+		note := strings.NewReplacer(`\`, `\\`, "&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
+```
+
+- [ ] **Step 4: Run the tests to see them pass**
+
+Run: `scripts/test ./internal/tui`
+Expected: PASS. Then `go vet ./internal/tui && gofmt -l internal/tui` prints nothing.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add internal/tui/detail.go internal/tui/detail_test.go
-git commit -m "Debt note renders like a spec body, with escaped tags (PLN-0062)"
+git commit -m "Backslash in a debt note is drawn as written (PLN-0062 fix round 1)"
 ```

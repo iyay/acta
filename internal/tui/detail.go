@@ -151,11 +151,12 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 	}
 	if it.Kind == board.KindDebtItem {
 		// The list pane already names the other notes, so the middle is this
-		// note alone, wrapped so every word can be read.
-		// Wordwrap can leave a line wider than the pane when a "-" follows a
-		// space, and fit would then cut words off. Hardwrap breaks it again.
-		note := xansi.Hardwrap(xansi.Wordwrap(expandTabs(it.Title), w, ""), w, true)
-		for _, ln := range strings.Split(note, "\n") {
+		// note alone, drawn like the body of a spec so both look the same.
+		// The renderer drops text that looks like an HTML tag, such as
+		// <uid>, so those signs are escaped first. It can also leave a line
+		// wider than the pane, and fit would cut it, so Hardwrap breaks it.
+		note := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
+		for _, ln := range strings.Split(xansi.Hardwrap(m.render(note, w), w, true), "\n") {
 			mid = append(mid, fit(ln, w))
 		}
 		return head, mid, paintDates(m.styles, dateLine(it, w))

@@ -2,6 +2,8 @@
 created: "2026-10-01 04:43:52"
 id: SPC-0053
 hash: g0ov0fp
+started: "2026-10-01 04:46:48"
+finished: "2026-10-01 04:48:54"
 ---
 # Debt note in the detail looks like a spec or plan body
 

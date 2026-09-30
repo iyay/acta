@@ -295,7 +295,9 @@ func TestDetailDebtItemWrapsALongNote(t *testing.T) {
 	cfg := treeCfg(t, map[string]string{
 		".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
 	})
-	lines := plainLines(detailLines(t, cfg, "DEBT-1.1"))
+	// The real renderer, because the note is escaped for it and a stub that
+	// hands the text back would show the escapes.
+	lines := plainLines(onItem(t, detailModel(t, cfg), "DEBT-1.1").detailLines(100))
 	below := lines[ruleLine(t, lines):]
 	if got := strings.Join(strings.Fields(strings.Join(below, " ")), " "); !strings.Contains(got, note) {
 		t.Errorf("the detail does not hold the whole note %q:\n%s", note, strings.Join(below, "\n"))
@@ -317,8 +319,8 @@ func TestDetailDebtFileListsEveryLine(t *testing.T) {
 	wantInOrder(t, lines, "○ DBT-0001.01  first note", "✓ DBT-0001.02  second note")
 }
 
-// A note is wrapped to the pane at every width, and no wrapped line is cut,
-// so the reader never loses a word or a sign like a lone "-".
+// A note is drawn by the markdown renderer at every width, and no line is
+// cut, so the reader never loses a word, a lone "-" or a tag like <uid>.
 func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
 	t.Parallel()
 
@@ -327,22 +329,62 @@ func TestDetailDebtItemNoteLosesNothingAtAnyWidth(t *testing.T) {
 		`a checklist line gives "- [ ] - [ ] text".`,
 		"averyveryveryverylongwordwithnospacesatallthatrunsonandon then short",
 		"日本語のメモ and ünïcode words in one note",
+		"Another local user can pre-create /tmp/pmb-<uid>: a & b",
+		"view.go still runs `acta list --json` with *no* agent field",
 	}
+	// Markdown turns these into styling, so they are not drawn as text.
+	styled := strings.NewReplacer("`", "", "*", "")
 	for _, note := range notes {
 		cfg := treeCfg(t, map[string]string{
 			".acta/debt/2026-09-24-d.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + note + "\n",
 		})
 		m := onItem(t, detailModel(t, cfg), "DEBT-1.1")
-		want := strings.Join(strings.Fields(note), "")
+		want := strings.Join(strings.Fields(styled.Replace(note)), "")
 		for w := 10; w <= 160; w++ {
 			_, mid, _ := m.buildDetailParts(w)
 			var got strings.Builder
-			for _, ln := range mid {
+			for i, ln := range mid {
+				if lw := lipgloss.Width(ln); lw > w {
+					t.Errorf("at %d wide line %d is %d cells: %q", w, i, lw, plain(ln))
+				}
 				got.WriteString(strings.Join(strings.Fields(plain(ln)), ""))
 			}
 			if got.String() != want {
 				t.Errorf("at %d wide the note reads %q, want %q", w, got.String(), want)
 			}
+		}
+	}
+}
+
+// A note sits in the detail the way a spec body does: the same blank line
+// above it and the same gap on the left, so the two kinds look alike.
+func TestDetailDebtItemNoteHasTheSpecBodyGaps(t *testing.T) {
+	t.Parallel()
+
+	const text = "Tests that call lock without the base still leave lock files"
+	cfg := treeCfg(t, map[string]string{
+		".acta/debt/2026-09-24-d.md":  "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] " + text + "\n",
+		".acta/specs/2026-09-20-a.md": "---\nid: SPEC-1\n---\n" + text + "\n",
+	})
+	firstText := func(mid []string) (row, col int) {
+		for i, ln := range mid {
+			if c := strings.Index(plain(ln), "Tests"); c >= 0 {
+				return i, c
+			}
+		}
+		t.Fatalf("no line holds the text:\n%s", strings.Join(mid, "\n"))
+		return 0, 0
+	}
+	for _, w := range []int{40, 80, 120} {
+		_, debtMid, _ := onItem(t, detailModel(t, cfg), "DEBT-1.1").buildDetailParts(w)
+		_, specMid, _ := onItem(t, detailModel(t, cfg), "SPEC-1").buildDetailParts(w)
+		dr, dc := firstText(debtMid)
+		_, sc := firstText(specMid)
+		if dc != sc {
+			t.Errorf("at %d wide the note starts at column %d, a spec body at %d", w, dc, sc)
+		}
+		if dr == 0 || strings.TrimSpace(plain(debtMid[dr-1])) != "" {
+			t.Errorf("at %d wide the note has no blank line above it:\n%s", w, strings.Join(debtMid, "\n"))
 		}
 	}
 }
