@@ -165,10 +165,27 @@ func (m Model) frameFrom(body []string, exact bool) string {
 	if m.popupBox() != "" {
 		// The box can be as tall as the screen, so it is laid over the body
 		// and the status line together. Cover greys every line it gets and
-		// strips the hyperlinks, which are off while a popup is open.
+		// strips the hyperlinks, which are off while a popup is open. No dot
+		// can pulse behind it, so the tick has nothing to draw.
+		if m.frame != nil {
+			m.frame.dots = false
+		}
 		return m.styles.paintFrame(m.cover(out+"\n"+line), m.width)
 	}
-	return m.styles.paintFrame(out+"\n"+line, m.width)
+	return m.styles.paintFrame(m.pulseDots(out+"\n"+line), m.width)
+}
+
+// pulseDots swaps every dot of work under way for the frame of the moment, and
+// notes whether there was one, so the pulse tick knows if it has to draw.
+func (m Model) pulseDots(s string) string {
+	dots := m.styles.goingDot != "" && strings.Contains(s, m.styles.goingDot)
+	if m.frame != nil {
+		m.frame.dots = dots
+	}
+	if !dots || m.pulse == 0 {
+		return s
+	}
+	return strings.ReplaceAll(s, m.styles.goingDot, m.styles.pulse[m.pulse].Render(dotGoing))
 }
 
 // tabRows draws the tabs in a box of their own, so they read as the top of

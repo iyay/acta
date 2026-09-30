@@ -859,7 +859,7 @@ func paintedLine(v string, b box, i int) string {
 // TestTheSelectedRowWearsASubtleBand reads the brushes of the selected row
 // and of the rows around it. The cursor is a dark band across the whole row
 // with bright text, never reversed video; every other row is dim and carries
-// no background, and the in-progress one keeps the accent.
+// no background, and the in-progress one reads plain.
 func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 	withColors(func() {
 		// The rows are the board's own order, so the in-progress spec is the
@@ -884,11 +884,11 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 			t.Errorf("the band stops short of the row width %d: %q", want, sel)
 		}
 
-		// The in-progress row is not selected, so it keeps the accent and
-		// is not faint, so a row under way reads at full brightness.
+		// The in-progress row is not selected, so it carries no background of
+		// its own and no accent: work under way reads plain, not faint.
 		going := paintedLine(v, b, 2)
-		if wears(going, 2) || !wears(going, 38, 5, 111) {
-			t.Errorf("an unselected in-progress row should keep the accent without faint: %q", going)
+		if wears(going, 2) || wears(going, 38, 5, 111) {
+			t.Errorf("an unselected in-progress row should read plain, not faint and not the accent: %q", going)
 		}
 		if wears(going, 48, 5, 23) {
 			t.Errorf("an unselected row wears a background: %q", going)
@@ -1534,13 +1534,13 @@ func lastLine(v string) string {
 	return lines[len(lines)-1]
 }
 
-func TestViewInProgressRowsWearTheAccent(t *testing.T) {
+func TestInProgressListRowsReadPlain(t *testing.T) {
 	withColors(func() {
-		testViewInProgressRowsWearTheAccent(t)
+		testInProgressListRowsReadPlain(t)
 	})
 }
 
-func testViewInProgressRowsWearTheAccent(t *testing.T) {
+func testInProgressListRowsReadPlain(t *testing.T) {
 	// Step twice, so neither the in-progress row nor the not-started one
 	// shows the selected brush: both must show their own brush instead.
 	m := sized(press(splitModel(t), tabKey(tabSpecs), "j"), 200, 40)
@@ -1551,8 +1551,11 @@ func testViewInProgressRowsWearTheAccent(t *testing.T) {
 		switch {
 		case strings.Contains(ln, "specs/2026-09-20-alpha"):
 			seenGoing = true
-			if !wears(cell, 38, 5, 111) {
-				t.Errorf("the in-progress row wears no accent color: %q", cell)
+			if wears(cell, 38, 5, 111) {
+				t.Errorf("the in-progress row wears the accent color: %q", cell)
+			}
+			if wears(cell, 2) {
+				t.Errorf("the in-progress row is faint: %q", cell)
 			}
 		case strings.Contains(ln, "specs/2026-09-22-beta"):
 			seenWaiting = true
@@ -2183,6 +2186,38 @@ func TestOtherPopupsHaveNoAccentInside(t *testing.T) {
 					t.Errorf("popup %q row %d: accent inside the box: %q", open, i+1, inner)
 				}
 			}
+		}
+	})
+}
+
+func TestFrameShowsTheCurrentPulseFrame(t *testing.T) {
+	withTrueColor(func() {
+		m := sized(actModel(t).WithTheme("tokyo-night", true), 160, 40)
+		m.frame = &frameCache{}
+		out := m.View()
+		if !m.frame.dots {
+			t.Fatal("a screen with work under way recorded no pulse dot")
+		}
+		if !strings.Contains(out, m.styles.goingDot) {
+			t.Fatalf("frame 0 shows no pulse dot")
+		}
+		m.pulse = 3
+		m.same = false
+		out = m.View()
+		if strings.Contains(out, m.styles.goingDot) {
+			t.Error("frame 3 still shows the frame 0 dot")
+		}
+		if !strings.Contains(out, m.styles.pulse[3].Render(dotGoing)) {
+			t.Error("frame 3 is not on screen")
+		}
+		// The frame behind a popup still carries the dot of the last normal
+		// draw, so the popup path has to clear it, or the tick keeps drawing
+		// a screen the reader cannot see.
+		pop := press(m, "?")
+		pop.frame = &frameCache{dots: true}
+		pop.View()
+		if pop.frame.dots {
+			t.Error("a popup is open, yet a pulse dot was recorded, so the tick keeps drawing behind it")
 		}
 	})
 }

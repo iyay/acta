@@ -77,12 +77,52 @@ const wheelFrame = 12 * time.Millisecond
 // wheelTickMsg says the frame is over: scroll by what the wheel gathered.
 type wheelTickMsg struct{}
 
-// frameCache keeps the last frame View drew. A trackpad sends hundreds of
-// notches a second, and most of them only add to the pending delta, so the
-// screen stays the same. Drawing it again each time kept the TUI busy. The
-// model is copied on every update, so the frame sits behind a pointer that
-// all the copies share.
-type frameCache struct{ s string }
+// frameCache keeps the last frame View drew, and whether a pulse dot was on
+// it, so the pulse tick knows if drawing again would change anything. A
+// trackpad sends hundreds of notches a second, and most of them only add to
+// the pending delta, so the screen stays the same. Drawing it again each time
+// kept the TUI busy. The model is copied on every update, so the frame sits
+// behind a pointer that all the copies share.
+type frameCache struct {
+	s    string
+	dots bool
+}
+
+// pulseMsg moves the pulse of the dots of work under way one frame on.
+type pulseMsg struct{}
+
+// pulseStep is the time one pulse frame stays on screen, so eight frames make
+// one breath of about a second.
+const pulseStep = 120 * time.Millisecond
+
+// pulseAfter sends the next pulse once d has passed.
+func pulseAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return pulseMsg{} })
+}
+
+// hasWork says if any item on the board is under way, the only time a dot
+// can pulse at all.
+func (m Model) hasWork() bool {
+	if m.board == nil {
+		return false
+	}
+	for _, it := range m.board.Items {
+		if inProgress(it) {
+			return true
+		}
+	}
+	return false
+}
+
+// armPulse starts the pulse chain when there is work under way and no pulse
+// is on its way already, so two chains never run at once.
+func (m *Model) armPulse() tea.Cmd {
+	if m.pulsing || !m.hasWork() {
+		return nil
+	}
+	m.pulsing = true
+	return pulseAfter(pulseStep)
+}
 
 // wheelMark is the screen a frame of notches was gathered on: the open tab, its
 // Done sub-tab, the search and the row under the cursor. A tick scrolls only
@@ -146,6 +186,8 @@ type Model struct {
 	frame    *frameCache  // the last frame View drew, shared by every copy
 	trace    *Tracer      // notes wheel notches and draws; nil when off
 	same     bool         // true when the last message changed nothing on screen
+	pulse    int          // the pulse frame the dots of work under way wear now
+	pulsing  bool         // true while a pulse message is on its way
 	styles   styles       // the brushes every screen is painted with
 }
 
@@ -237,6 +279,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The renderer only paints the cells the new frame uses, so a window
 		// that shrinks leaves the rest of the old frame on screen. Wiping it
 		// is the only way to take those rows back.
+		if c := m.armPulse(); c != nil {
+			return m, tea.Batch(tea.ClearScreen, c)
+		}
 		return m, tea.ClearScreen
 	case reloadMsg:
 		if msg.err != nil {
@@ -245,6 +290,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.board = msg.b
 		m.moveTo(m.cursor())
+		return m, m.armPulse()
+	case pulseMsg:
+		m.pulsing = false
+		if !m.hasWork() {
+			m.same = true
+			return m, nil
+		}
+		m.pulsing = true
+		if m.frame == nil || !m.frame.dots {
+			// No dot on screen: nothing to draw, but work may show again.
+			m.same = true
+			return m, pulseAfter(pulseStep)
+		}
+		m.pulse = (m.pulse + 1) % pulseSteps
+		return m, pulseAfter(pulseStep)
 	case watchFailedMsg:
 		m.manual = true
 		m.status = "live reload off: " + msg.err.Error() + " (press r)"
