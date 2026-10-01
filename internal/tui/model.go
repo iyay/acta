@@ -362,7 +362,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.wheelMoved = false
 		m.wheelDelta, m.wheelArmed = 0, false
 	case editorDoneMsg:
-		return m.afterEditor(msg)
+		// The editor ran with the program suspended, so the terminal came
+		// back with mouse reporting off and nothing turned it back on.
+		next, cmd := m.afterEditor(msg)
+		return next, tea.Batch(cmd, tea.EnableMouseCellMotion)
 	case tea.KeyMsg:
 		return m.key(msg)
 	case tea.MouseMsg:

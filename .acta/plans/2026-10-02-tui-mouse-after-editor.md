@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0076
 created: "2026-10-02 05:50:16"
 hash: q7mdmi7
+started: "2026-10-02 05:51:34"
+finished: "2026-10-02 05:54:37"
 ---
 # TUI Mouse After The Editor Implementation Plan
 
@@ -35,6 +37,6 @@ hash: q7mdmi7
 
 **verify:** Every path that runs the editor and returns to the TUI leaves mouse reporting on, and a model that never ran the editor is untouched. List every path checked: `e` on a row, `n` for a new bug, an editor that exits with an error, and a plain key press that sends no `editorDoneMsg`.
 
-- [ ] Failing test: a test in `internal/tui/model_test.go` that sends `editorDoneMsg` through `Update`, runs the returned command and wants one of the messages to be the one `tea.EnableMouseCellMotion` produces; it fails because the case returns only what `afterEditor` returns, which carries no mouse message.
-- [ ] Code: in the `editorDoneMsg` case of `update`, batch `tea.EnableMouseCellMotion` with the command `afterEditor` returns, with a comment saying the editor left the terminal without mouse reporting; every other case of `update` stays as it is.
-- [ ] Commit: `fix(tui): turn the mouse back on after the editor`
+- [x] Failing test: a test in `internal/tui/model_test.go` that sends `editorDoneMsg` through `Update`, runs the returned command and wants one of the messages to be the one `tea.EnableMouseCellMotion` produces; it fails because the case returns only what `afterEditor` returns, which carries no mouse message.
+- [x] Code: in the `editorDoneMsg` case of `update`, batch `tea.EnableMouseCellMotion` with the command `afterEditor` returns, with a comment saying the editor left the terminal without mouse reporting; every other case of `update` stays as it is.
+- [x] Commit: `fix(tui): turn the mouse back on after the editor`
