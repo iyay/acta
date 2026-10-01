@@ -87,3 +87,14 @@ Ruling on fix round 1 (orchestrator, 2026-10-01): the code does not leave the te
 - [x] Failing test: in `internal/tui/markdown_test.go`, change the expected terminal codes for string and function name in `ansiToken` from `"92"` and `"94"` to `"32"` and `"34"`; it fails because `ansiChroma` maps `slotGreen` to `#ansigreen` and `slotBlue` to `#ansiblue`, which chroma treats as the bright `00ff00` and `0000ff`.
 - [x] Code: in `ansiChroma` use `#ansidarkgreen` for `slotGreen` and `#ansidarkblue` for `slotBlue`; in the same commit, fix the review comments in the two files: drop the `ponytail:` marker near `codeStyle` and finish its unfinished sentence in plain words; correct the comment above `ansiChroma` so it names the normal shades; correct the test comment that says termenv cuts the digits (chroma writes the hex bytes as they are); update the test comments that say tests skip `t.Parallel` because chroma keeps one style list; finish the comment that stops at "..., which" near the top of `markdown_test.go`; spell it "color" in the new code and comments (rename the `colour` helper to `color`-style naming that does not clash), to match the rest of `internal/tui`.
 - [x] Commit: `Terminal theme code tokens use the normal ANSI shades`
+
+## Review notes
+
+- The recipient filed BUG-0027 for a heading color defect in this branch's own code and deleted the file in the fix commit 305a5ef; net diff is zero.
+- `internal/tui/markdown.go` imports `glamour/ansi` under the name `glamour`, while `view.go` uses `glamour` for the root package.
+- The fnv hash in the chroma style name guards a theme file that changes between two picks, which cannot happen while `WithTheme` runs once per process; `"acta-" + t.Name` would do.
+- `cfg.HTMLSpan` has no visible effect because glamour strips inline tags; `TestAnInlineTagLosesItsTagsAndKeepsItsWords` passes on the base code too.
+- `TestNoGlamourPresetColorSurvives` looks for three preset codes only, not for any `38;5;`; a wider scan found none.
+- The bright-code scan in `markdown_test.go` reads every SGR part, so a truecolor `38;2;91;...` would trip it; the terminal theme never emits truecolor.
+- The polish dropped the sentence that said why drawing every theme in one process proves each keeps its own code colors.
+- The `chromaLock` comment names the Register call; the lock also covers the registry check just before it.

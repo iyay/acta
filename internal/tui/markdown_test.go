@@ -201,13 +201,9 @@ var ansiToken = map[string]string{
 
 // TestEachThemeKeepsItsOwnCodeColors walks every theme that ships with acta
 // and asks each one for the same code block, one after another in this one
-// process, because two themes drawn at once would fight over the code
-// colors and only one of them would be left standing. Every theme here has a
-// color of its own in every slot, so one registration can never satisfy this
-// test for two themes at once, and a registration left over from an earlier
-// test cannot satisfy it either. It runs without t.Parallel, because chroma
-// reads its style list with no lock of its own while it paints, and the race
-// detector calls that a race the moment a second theme draws beside it.
+// process. It runs without t.Parallel, because chroma reads its style list
+// with no lock of its own while it paints, and the race detector calls that a
+// race the moment a second theme draws beside it.
 func TestEachThemeKeepsItsOwnCodeColors(t *testing.T) {
 	for _, name := range theme.Names() {
 		t.Run(name, func(t *testing.T) {

@@ -131,13 +131,14 @@ func codeStyle(t theme.Theme, body *string) string {
 			chroma.NameFunction:  chromaSlot(t, slotBlue),
 		}))
 	}
-
 	return name
 }
 
-// chromaLock guards chroma's style list, which is a plain map with no lock of
-// its own. Nothing waits here in the TUI, because the theme is picked on one
-// goroutine; a test that draws two themes at once would without it.
+// chromaLock guards acta's own call that adds a theme to chroma's style list,
+// so that two themes drawn for the first time in the same moment cannot both
+// write that list at once. glamour reads the same list with no lock of its
+// own, so this lock does not cover that side. The TUI draws on one goroutine,
+// so nothing draws beside it today.
 var chromaLock sync.Mutex
 
 // chromaColor is a color as chroma reads it, and nothing at all when there is
