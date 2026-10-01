@@ -1,7 +1,9 @@
 #!/bin/sh
 # Runs this repo's Go tests. A plain run skips the slow screen-size sweeps.
-# --full runs every test, but first waits for any other full run on this
-# machine to end, so agents in other worktrees do not fight over the CPU.
+# Any run of the whole repo, short or full, first waits for another run on
+# this machine to end, so agents in other worktrees do not fight over the CPU.
+# A run that names packages skips that wait, so the tight test loop never
+# stands still.
 # With no package given, the whole repo is tested.
 set -eu
 cd "$(dirname "$0")/.."
@@ -17,10 +19,22 @@ if [ "${1:-}" = "--full" ]; then
 	shift
 fi
 pkgs=./...
+whole=1
 for a in "$@"; do
-	case $a in ./*) pkgs= ;; esac
+	case $a in
+	./...)
+		pkgs=
+		;;
+	./*)
+		pkgs=
+		whole=
+		;;
+	esac
 done
 if [ -n "$full" ]; then
 	exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+fi
+if [ -n "$whole" ]; then
+	exec go run ./cmd/acta run-one -- go test -short "$@" $pkgs
 fi
 exec go test -short "$@" $pkgs

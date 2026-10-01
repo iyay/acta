@@ -83,10 +83,13 @@ func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 		args []string
 		want string
 	}{
-		{nil, "test -short ./..."},
+		{nil, "run ./cmd/acta run-one -- go test -short ./..."},
 		{[]string{"./internal/tui/"}, "test -short ./internal/tui/"},
-		{[]string{"-count=1"}, "test -short -count=1 ./..."},
+		{[]string{"./internal/cli/", "./internal/hook/"}, "test -short ./internal/cli/ ./internal/hook/"},
+		{[]string{"-count=1"}, "run ./cmd/acta run-one -- go test -short -count=1 ./..."},
 		{[]string{"-run", "TestX", "./internal/tui/"}, "test -short -run TestX ./internal/tui/"},
+		{[]string{"./..."}, "run ./cmd/acta run-one -- go test -short ./..."},
+		{[]string{"-run", "TestX", "./..."}, "run ./cmd/acta run-one -- go test -short -run TestX ./..."},
 		{[]string{"--full"}, "run ./cmd/acta run-one -- go test ./..."},
 		{[]string{"--full", "-count=1"}, "run ./cmd/acta run-one -- go test -count=1 ./..."},
 		{[]string{"--full", "./internal/cli/"}, "run ./cmd/acta run-one -- go test ./internal/cli/"},
