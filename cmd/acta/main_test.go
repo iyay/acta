@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/iyay/acta/internal/testguard"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -46,6 +47,7 @@ var actaBin string
 var pmbBin string
 
 func TestMain(m *testing.M) {
+	testguard.Watch()
 	// An inherited PM_ROOT would point every test at the wrong board. Clear
 	// it once here, so no helper has to set env and block parallel tests.
 	os.Unsetenv("PM_ROOT")

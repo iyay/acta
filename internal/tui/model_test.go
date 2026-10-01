@@ -18,6 +18,7 @@ import (
 
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/testguard"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -69,6 +70,7 @@ func fixtureRoot(t *testing.T) string {
 }
 
 func TestMain(m *testing.M) {
+	testguard.Watch()
 	code := m.Run()
 	if fixtureDir != "" {
 		os.RemoveAll(filepath.Dir(fixtureDir))

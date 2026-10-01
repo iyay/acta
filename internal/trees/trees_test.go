@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/testguard"
 )
 
 // TestMain clears an inherited PM_ROOT once, so no helper has to set env
 // and block parallel tests.
 func TestMain(m *testing.M) {
+	testguard.Watch()
 	os.Unsetenv("PM_ROOT")
 	os.Exit(m.Run())
 }
