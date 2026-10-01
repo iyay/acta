@@ -18,7 +18,11 @@ func TestModelSendsNotchesAndDrawsToItsTracer(t *testing.T) {
 	m = wheelOnly(m, b.x+1, b.y+2, false) // gathers, keeps the frame
 	m.View()
 	lb := scrollBox(m, paneList)
-	m = wheelOnly(m, lb.x+1, lb.y+2, false) // over a pane without the focus
+	// A notch takes the focus the way a click does, so this one belongs to
+	// the list box. The notches gathered for the detail box land with it, and
+	// the notch itself only gathers, so the frame stays and the draw after it
+	// is not logged again.
+	m = wheelOnly(m, lb.x+1, lb.y+2, false)
 	var kinds []string
 	for _, ln := range strings.Split(strings.TrimSpace(log.String()), "\n") {
 		f := strings.Fields(ln)
@@ -30,7 +34,7 @@ func TestModelSendsNotchesAndDrawsToItsTracer(t *testing.T) {
 			kinds[i] = "view"
 		}
 	}
-	want := []string{"notch first", "view", "notch gathered"}
+	want := []string{"notch first", "view", "notch gathered", "notch gathered"}
 	if strings.Join(kinds, ",") != strings.Join(want, ",") {
 		t.Errorf("events are %v, want %v", kinds, want)
 	}

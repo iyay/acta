@@ -503,6 +503,18 @@ func (m *Model) focusPane(p pane) {
 	m.keepVisible(p)
 }
 
+// onPane says whether a cell sits inside the box a pane is drawn in. hit
+// answers the focused pane for a cell that lands on no pane at all, so the
+// notch asks the geometry again before it moves a word.
+func (m Model) onPane(p pane, x, y int) bool {
+	g := m.geometry()
+	b := g.full
+	if g.wide {
+		b = g.at(p)
+	}
+	return x >= b.x && x < b.x+b.w && y >= b.y && y < b.y+b.h
+}
+
 // cycleTab walks the Done pane along its sub-tabs and wraps around. The other
 // boxes have no sub-tabs, so [ and ] do nothing there.
 func (m *Model) cycleTab(step int) {
@@ -704,10 +716,21 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// The wheel moves the words, so the picked cells stop meaning anything.
 		cleared := m.drag.on
 		m.drag = drag{}
-		// The wheel belongs to the focused pane, the way the keys do, and it
-		// never takes the focus. A wheel over another pane is ignored, so the
-		// notches only ever gather for the box the reader is looking at.
+		// A notch belongs to the box under the pointer, so it takes the focus
+		// the way a click does and scrolls the pane it landed on. A pane the
+		// tab does not have refuses the focus, so a notch over one is ignored
+		// as before.
 		if p != m.focus {
+			m.focusPane(p)
+			if m.focus != p {
+				m.same = !cleared
+				return m, nil
+			}
+		}
+		// hit answers the focused pane for a cell that lands on no pane at
+		// all, like the tab bar or the status line, so the notch asks the
+		// geometry before it moves a word.
+		if !m.onPane(p, msg.X, msg.Y) {
 			m.same = !cleared
 			return m, nil
 		}
