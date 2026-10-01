@@ -37,8 +37,8 @@ The recipient is the main agent in its pane: writes zero code itself, **fans eve
 7. **Verify** from git. Verify ≠ review.
 8. Tab: nothing to do. A stray pane split beside you → move it to its own tab once.
 9. **Review** via `acta:review`, over the range and the plan path build's `## Close` sets, every round, no exceptions.
-10. BLOCKERs or unfinished tickets → the one fix round in "Fix rounds" below, **stop and yield**. One turn per round. Round 3 still BLOCKED → stop, ask the user (see `acta:review`).
-11. **Clean AND complete → build's `## Close` runs `acta:land`, then "Close the tab" below.** Never leave a reviewed branch parked.
+10. BLOCKERs or unfinished tickets → the one fix round in "Fix rounds" below, **stop and yield**. One turn per round. Round 3 still BLOCKED → stop, ask the user (see `acta:review`). No BLOCKER means no fix round: a CLEAN round runs the `## After a CLEAN round` flow of `acta:review`.
+11. **Clean AND complete → run `## After a CLEAN round`**; its `acta:land` is build's `## Close`, then "Close the tab" below. Never leave a reviewed branch parked.
 
 ## One tab per dispatch — HARD RULE
 
@@ -199,7 +199,7 @@ Reviewers get the same treatment: ask them to test a property, not to hunt. "Fin
 
 ## Stopping rule — what blocks, what gets logged
 
-**Blocking = a concrete input that produces a wrong result for a real user, today.** Same bar as `acta:review`: BLOCKER or NOTE, nothing between. Everything else is logged as one NOTE (memory) or one follow-up ticket, and the branch lands.
+**Blocking = a concrete input that produces a wrong result for a real user, today.** Same bar as `acta:review`: BLOCKER or NOTE, nothing between. Everything else is one NOTE, which `acta:review`'s `## After a CLEAN round` sorts into `[fix]`, `[debt]` or `[note]`, or one follow-up ticket; the branch lands.
 
 Not blocking, however tempting: test durability against hypothetical future edits, mock fidelity for props nothing passes, a substring that could be reworded around, naming, an assertion with no message. Those are real and they are cheap to log. Routing them as fix rounds is how a branch that was correct after round 2 reaches round 6.
 
@@ -259,7 +259,7 @@ TICKETS (anchor for your todo list — exactly these N):
   <TICKET-1> — <title> → verify: <the PROPERTY that must hold, over every path>
   <TICKET-2> — <title> → verify: <property>
 WORKTREE: <abs path> (branch <slug>, parent <production>, base <base-sha>) — cd there FIRST, work ONLY there. Main checkout stays clean. No git checkout, no cd out, NO git push.
-FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — once the round is CLEAN the orchestrator sorts them through `acta:review` into `[fix]`, `[debt]` and `[note]`; only the `[debt]` ones reach `acta debt new`.
+FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — once the round is CLEAN, `acta:review`'s `## After a CLEAN round` sorts them into `[fix]`, `[debt]` and `[note]`; only the `[debt]` ones reach acta debt new.
 HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from SKILL.md) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
 GATES (from the worktree): <the plan's fast test command>; typecheck; git diff --stat vs <base-sha> shows only plan files. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and every implementer shares one machine.
@@ -304,6 +304,8 @@ A round that comes back with BLOCKERs goes out **in this same turn, automaticall
 3. Fix brief = same format, TICKETS = the new ticket ids, run `acta dispatch init` again first, and the REPLY-BACK line is the same one sentence as in the brief. No range in it: the recipient reads the head off the branch.
 4. **Dispatch, then STOP and yield.** One turn per round.
 
+The polish commit goes out the same way, and the review skill's `## After a CLEAN round` owns what happens on reply-back.
+
 ## Close the tab
 
 `acta:land` did the merge and removed the worktree. One step a dispatch adds, and only now: `herdr pane close <pane-id>`, with the pane id resolved from the slug and never from memory. `acta:land` has no pane step.
@@ -312,4 +314,4 @@ Report after landing, ADHD shape: merge SHA first, post-merge gate numbers, what
 
 **Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--home-me-code-app-worktree--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic.
 
-Before you report done, sweep your own memory once: a gotcha that burned time or a dispatch mechanic that failed is a NOTE, and the orchestrator sorts it into `[fix]`, `[debt]` or `[note]` once the round is CLEAN (`acta:review` owns that routing; only `[debt]` reaches `acta debt new`), an agreed convention or a decision belongs in `CONTEXT.md` or an ADR (`acta:brainstorm` owns those), a runbook goes to `.okf/`. Diff play-by-play is noise.
+Before you report done, sweep your own memory once: a gotcha that burned time or a dispatch mechanic that failed is a NOTE, and once the round is CLEAN `acta:review`'s `## After a CLEAN round` sorts it into `[fix]`, `[debt]` or `[note]` (only `[debt]` reaches `acta debt new`), an agreed convention or a decision belongs in `CONTEXT.md` or an ADR (`acta:brainstorm` owns those), a runbook goes to `.okf/`. Diff play-by-play is noise.

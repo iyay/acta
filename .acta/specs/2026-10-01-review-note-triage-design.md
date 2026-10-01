@@ -25,7 +25,8 @@ The agent sorts each NOTE into one of three buckets. A NOTE that fails a bucket'
 
 **Flow.**
 - A round with BLOCKERs: the `[fix]` NOTEs join that round's one fix task, so the next round reviews them.
-- A CLEAN round: all `[fix]` NOTEs land as one polish commit. No new round. The agent reviews it itself: it reads the full diff and runs the full test suite with the output shown. When the polish fails or the tests go red, the agent reverts the commit and moves those items to `[debt]`.
+- A CLEAN round: all `[fix]` NOTEs land as one polish commit. No new round. The polish commit keeps no fix-round status and uses none of the three rounds, and it still gets the two reviewers over the polish range instead of a self-review: the agent runs the full test suite with the output shown, then the two reviewers read the full diff. When the polish fails or the tests go red, the agent reverts the commit and moves those items to `[debt]`.
+Changed 2026-10-01 at the user's ruling: the polish gets the two reviewers and never counts as a fix round.
 - Before `acta:land`: the `[debt]` NOTEs go to `acta debt new` as today. The `[note]` NOTEs go into a `## Review notes` section in the plan file. With no `[debt]` NOTEs, no debt file is written.
 - The three-round budget does not change. A round with no BLOCKER still does not start.
 

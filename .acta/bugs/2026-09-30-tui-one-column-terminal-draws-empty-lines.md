@@ -1,6 +1,8 @@
 ---
 id: BUG-0017
 hash: sdihchv
+status: wontfix
+finished: "2026-10-01 18:48:26"
 ---
 # In a terminal one column wide, the TUI draws empty lines
 

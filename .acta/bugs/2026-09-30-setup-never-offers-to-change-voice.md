@@ -2,6 +2,8 @@
 ref: SCR-0031
 id: BUG-0021
 hash: rgja94n
+fixed_in: dc48f00
+finished: "2026-10-01 18:46:59"
 ---
 # Setup never lets a user change the chat language once one is saved
 

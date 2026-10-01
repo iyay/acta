@@ -62,6 +62,14 @@ func TestBuildDispatchDelivery(t *testing.T) {
 			"acta:review", "acta:land", "herdr pane close", "Bugs found by recipient",
 			"Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent`",
 			"literal skill name, a review keyword, and the range", "sorts them",
+			// Each pointer names the review skill's section; none of them
+			// restates the rule.
+			"**Clean AND complete → run `## After a CLEAN round`**; its `acta:land` is build's `## Close`",
+			"The polish commit goes out the same way, and the review skill's `## After a CLEAN round` owns what happens on reply-back.",
+			"**Blocking = a concrete input that produces a wrong result for a real user, today.**",
+			"Everything else is one NOTE, which `acta:review`'s `## After a CLEAN round` sorts into `[fix]`, `[debt]` or `[note]`, or one follow-up ticket; the branch lands.",
+			"NOTES never write NOTEs to memory — once the round is CLEAN, `acta:review`'s `## After a CLEAN round` sorts them into",
+			"once the round is CLEAN `acta:review`'s `## After a CLEAN round` sorts it into `[fix]`, `[debt]` or `[note]`",
 		},
 		"herdr-delivery.md": {
 			"exactly one read", "checkpoint unconfirmed", "HARD RULE", "New session started", "🎯 Goal",
@@ -83,6 +91,21 @@ func TestBuildDispatchDelivery(t *testing.T) {
 	if n := strings.Count(txt, "checkpoint unconfirmed"); n < 2 {
 		t.Errorf("build/dispatch.md says \"checkpoint unconfirmed\" %d times; the loop item and the section both need it", n)
 	}
+
+	// One land on the loop: step 10 points at the CLEAN-round section, step 11
+	// says that section's acta:land is build's ## Close.
+	for _, line := range strings.Split(txt, "\n") {
+		switch {
+		case strings.HasPrefix(line, "10."):
+			if strings.Contains(line, "acta:land") {
+				t.Errorf("build/dispatch.md step 10 names a land of its own: %q", line)
+			}
+		case strings.HasPrefix(line, "11."):
+			if !strings.Contains(line, "acta:land") {
+				t.Errorf("build/dispatch.md step 11 must say the section's acta:land is build's ## Close: %q", line)
+			}
+		}
+	}
 	// These belong to build, acta:review and acta:land now. A second copy
 	// drifts, and drift is how duplicate ids once reached the parent branch.
 	for _, bad := range []string{
@@ -90,7 +113,12 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"## Autonomous loop", "## Landing", "NOTEs go to memory", "--no-ff", "git branch -d",
 		"files them with acta debt new", "files them with `acta debt new`",
 		"superpowers:", "git-bug", "/Users/", "<new-head-sha>", "fix round R of 5", "until herdr agent read",
+		"one NOTE (memory)",
+		"on reply-back the two reviewers review the polish range; it is not a fix round",
+		"orchestrator sorts them through",
+		"orchestrator sorts it through",
 		"read it again", "<one-shot test runner>",
+		"then build's `## Close` runs `acta:land`",
 	} {
 		if strings.Contains(txt, bad) {
 			t.Errorf("build/dispatch.md still carries %q", bad)

@@ -89,7 +89,7 @@ Subagent (general-purpose):
     Ranked, five at most. Each: `file:line`, the concrete input, the wrong output against the expected one, and how you proved it.
 
     ### NOTEs
-    A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then the note. See the review skill for the bucket rules: you suggest, the orchestrator decides.
+    A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then an optional `(high) `, `(medium) ` or `(low) ` priority tag, then the note. See the review skill for the bucket rules: you suggest, the orchestrator decides.
 
     ### Answers
     The three questions from the review skill, one short paragraph each.
