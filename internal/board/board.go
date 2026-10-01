@@ -618,6 +618,11 @@ func (b *Board) derive() {
 			// A scratch named in a closes list was turned into a spec just
 			// like one that hangs under a spec as its parent.
 			it.Status, it.StatusSource = scratchStatus(it.fmStatus, len(it.Children) > 0 || len(it.ClosedBy) > 0)
+		// A bug with a fixed_in has already been fixed, because that word is
+		// written only after the fix is merged. That is better proof than the
+		// ticks of a child plan, which can still be waiting to be ticked.
+		case it.Kind == KindBug && it.fmStatus == "" && it.FixedIn != "":
+			it.Status, it.StatusSource = "fixed", "derived"
 		case it.fmStatus == "":
 			if st, ok := closedByStatus(b, it); ok {
 				it.Status, it.StatusSource = st, "derived"

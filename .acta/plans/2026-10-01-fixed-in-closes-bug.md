@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0068
 created: "2026-10-01 14:24:09"
 hash: hbk550d
+started: "2026-10-01 14:27:21"
+finished: "2026-10-01 14:33:03"
 ---
 # Fixed In Closes Bug Implementation Plan
 
@@ -33,6 +35,6 @@ hash: hbk550d
 
 **verify:** A bug is `fixed` exactly when it has no written status and a non-empty `fixed_in`, on every path. List every case checked (fixed_in with no plan, fixed_in with a child plan that has an open task, fixed_in with a done child plan, fixed_in with `status: wontfix`, no fixed_in with no plan, no fixed_in with a done child plan) and the status and source each gives.
 
-- [ ] Failing test: a new table test loads a board for each case above and checks status and source; the fixed_in cases fail, because the status switch derives a bug's status only from its child plans and ignores `FixedIn`.
-- [ ] Code: in the status switch of the derive step, add one case before `it.fmStatus == ""` for `it.Kind == KindBug && it.fmStatus == "" && it.FixedIn != ""` that sets `fixed` and `derived`, with a short comment that says fixed_in is written only after a merge.
-- [ ] Commit: `bug with fixed_in shows as fixed (BUG fixed-in-does-not-close-bug)`
+- [x] Failing test: a new table test loads a board for each case above and checks status and source; the fixed_in cases fail, because the status switch derives a bug's status only from its child plans and ignores `FixedIn`.
+- [x] Code: in the status switch of the derive step, add one case before `it.fmStatus == ""` for `it.Kind == KindBug && it.fmStatus == "" && it.FixedIn != ""` that sets `fixed` and `derived`, with a short comment that says fixed_in is written only after a merge.
+- [x] Commit: `bug with fixed_in shows as fixed (BUG fixed-in-does-not-close-bug)`

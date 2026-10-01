@@ -3,6 +3,8 @@ parent: bugs/2026-10-01-fixed-in-does-not-close-bug
 id: SPC-0059
 created: "2026-10-01 14:21:04"
 hash: ohv7knd
+started: "2026-10-01 14:27:21"
+finished: "2026-10-01 14:33:03"
 ---
 Status: approved by the user on 2026-10-01 (Bounded). Fixes bug `.acta/bugs/2026-10-01-fixed-in-does-not-close-bug.md`.
 

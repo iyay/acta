@@ -1,6 +1,8 @@
 ---
 id: BUG-0023
 hash: ccjztcl
+fixed_in: a47e2f5
+finished: "2026-10-01 14:40:03"
 ---
 # A bug with fixed_in stays open when no plan has it as parent
 
