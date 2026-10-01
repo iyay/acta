@@ -1,6 +1,8 @@
 ---
 id: BUG-0001
 hash: hqd7ylj
+fixed_in: 080bc63
+finished: "2026-10-01 16:14:07"
 ---
 # TestFixDuplicatesKeepsTheFileThatReachedTheBranchFirst fails now and then
 

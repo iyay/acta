@@ -2,6 +2,8 @@
 ref: plans/2026-09-29-tui-scroll-performance#task-4
 id: BUG-0010
 hash: h319txx
+fixed_in: 080bc63
+finished: "2026-10-01 16:14:09"
 ---
 # The first reload throws away the scroll of a tab whose cursor was never moved
 

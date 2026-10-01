@@ -310,6 +310,13 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "reload failed: " + msg.err.Error()
 			return m, nil
 		}
+		// A tab whose cursor was never moved shows the row under it, so put
+		// that item down before the board changes. The reload can then tell
+		// the item the reader is on from another one, and keeps the scroll
+		// they made when the item on show really is the same.
+		if rows, sel, idx := m.slot(); *sel == "" && len(rows) > 0 {
+			*sel = rows[cursorOf(rows, *sel, *idx)].id
+		}
 		m.board = msg.b
 		m.moveTo(m.cursor())
 		return m, m.armPulse()

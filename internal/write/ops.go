@@ -52,6 +52,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return setPriority(cfg, it, id, value)
 	case it.Kind == board.KindTask:
 		return Outcome{}, bad("tasks take their status from their checkboxes")
+	case it.Kind == board.KindDebtItem:
+		return Outcome{}, bad("a debt item's title is its own line in the debt file; edit that line instead")
 	case it.Legacy:
 		return Outcome{}, bad("%s is a legacy file; move it into the root folder first", id)
 	}
@@ -150,6 +152,11 @@ func setTitle(src []byte, title string) ([]byte, error) {
 		// Stop at the newline, so the line keeps the file's own ending.
 		if j := strings.IndexByte(body[at:], '\n'); j >= 0 {
 			end = at + j
+			// A \r sits between the heading and that newline in a CRLF file,
+			// so leave it alone instead of swallowing it with the heading.
+			if end > at && body[end-1] == '\r' {
+				end--
+			}
 		}
 		return []byte(head + body[:at] + "# " + title + body[end:]), nil
 	}

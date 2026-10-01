@@ -3,6 +3,8 @@ parent: bugs/2026-09-27-flaky-fixduplicates-tempdir-cleanup
 id: SPC-0060
 created: "2026-10-01 15:08:47"
 hash: hri519m
+started: "2026-10-01 15:15:17"
+finished: "2026-10-01 15:38:54"
 ---
 Status: approved by the user on 2026-10-01 (Bounded). Fixes four bugs: BUG-0001 (`.acta/bugs/2026-09-27-flaky-fixduplicates-tempdir-cleanup.md`), BUG-0005 (`.acta/bugs/2026-09-29-doctor-stale-link-fix-hint-wrong.md`), BUG-0009 (`.acta/bugs/2026-09-29-set-cannot-change-title.md`) and BUG-0010 (`.acta/bugs/2026-09-29-wheel-notches-lost-when-a-reload-lands-before-the-frame-tick.md`).
 

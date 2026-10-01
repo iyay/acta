@@ -1,6 +1,8 @@
 ---
 id: BUG-0009
 hash: e330k3j
+fixed_in: 080bc63
+finished: "2026-10-01 16:14:08"
 ---
 # acta set cannot change an item title
 
