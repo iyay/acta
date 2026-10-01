@@ -2220,11 +2220,11 @@ func TestViewReusesTheFrameForIgnoredMouseAndEmptyTick(t *testing.T) {
 
 	m := paneModel(t, paneDetail)
 	m.View()
-	// A wheel over the list, while the detail box has the focus, is ignored.
-	lb := scrollBox(m, paneList)
-	m = wheelOnly(m, lb.x+1, lb.y+2, false)
+	// A notch that lands on no box at all, here the status line under the
+	// boxes, moves no word and draws nothing.
+	m = wheelOnly(m, 1, m.height-1, false)
 	if drewNew(m) {
-		t.Error("a wheel over a pane without the focus drew the screen again")
+		t.Error("a wheel over a cell that is on no box drew the screen again")
 	}
 	m = wheelTick(m)
 	if drewNew(m) {

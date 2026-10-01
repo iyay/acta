@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0075
 created: "2026-10-01 19:01:33"
 hash: yrf1d7z
+started: "2026-10-01 19:25:29"
 ---
 # TUI Detail Zoom, Wheel Focus, Copy Toast Implementation Plan
 
@@ -37,9 +38,9 @@ hash: yrf1d7z
 
 **verify:** While the detail pane is zoomed, no frame at any width and height shows a cell of the left column, the detail box spans the full width, and the mouse `hit` finds only the detail pane; every way out (second `z`, `tab`, `shift+tab`, a number key, a click) returns the exact frame from before the zoom. List every exit checked.
 
-- [ ] Failing test: flip the "z on the detail box does nothing" block in `TestZTogglesAndFocusRestores` to expect `expanded == int(paneDetail)`, a View whose lines carry no left-column border, and the old frame after a second `z`; it fails because `toggleExpand` returns early on `paneDetail`.
-- [ ] Code: drop the early return in `toggleExpand`, and in `geometry()` set `wide` to `m.width >= 60 && m.expanded != int(paneDetail)` so the zoom takes the `g.full` path; skip `clampOff` side effects that do not apply to the detail pane only if a test shows they break.
-- [ ] Commit: `feat(tui): z zooms the detail pane to the full body`
+- [x] Failing test: flip the "z on the detail box does nothing" block in `TestZTogglesAndFocusRestores` to expect `expanded == int(paneDetail)`, a View whose lines carry no left-column border, and the old frame after a second `z`; it fails because `toggleExpand` returns early on `paneDetail`.
+- [x] Code: drop the early return in `toggleExpand`, and in `geometry()` set `wide` to `m.width >= 60 && m.expanded != int(paneDetail)` so the zoom takes the `g.full` path; skip `clampOff` side effects that do not apply to the detail pane only if a test shows they break.
+- [x] Commit: `feat(tui): z zooms the detail pane to the full body`
 
 ### Task 2: the wheel focuses the pane under the pointer
 
@@ -49,9 +50,9 @@ hash: yrf1d7z
 
 **verify:** A wheel notch over any pane of the open tab ends with that pane focused and scrolled by exactly one wheel step, the same as a notch on an already focused pane, and a notch over no pane (top bar, status line, empty cell) changes neither focus nor any offset. List every pane pair and every no-pane spot checked.
 
-- [ ] Failing test: rewrite `TestWheelOverAnUnfocusedPaneDoesNothing` so for every pair (focused p, pointer q) the notch leaves `m.focus == q` and `q` scrolled one step, plus a case over the top bar and the status line that changes nothing; it fails because the branch returns when `p != m.focus`.
-- [ ] Code: in the wheel branch of `mouse()`, when `p != m.focus` call `m.focusPane(p)` and go on to the scroll; if `focusPane` refused (p is not a pane of the tab, so `m.focus` is still not `p`), keep the old ignore-and-return.
-- [ ] Commit: `feat(tui): a wheel notch focuses the pane under the pointer`
+- [x] Failing test: rewrite `TestWheelOverAnUnfocusedPaneDoesNothing` so for every pair (focused p, pointer q) the notch leaves `m.focus == q` and `q` scrolled one step, plus a case over the top bar and the status line that changes nothing; it fails because the branch returns when `p != m.focus`.
+- [x] Code: in the wheel branch of `mouse()`, when `p != m.focus` call `m.focusPane(p)` and go on to the scroll; if `focusPane` refused (p is not a pane of the tab, so `m.focus` is still not `p`), keep the old ignore-and-return.
+- [x] Commit: `feat(tui): a wheel notch focuses the pane under the pointer`
 
 ### Task 3: copy toast says "copied to clipboard"
 
