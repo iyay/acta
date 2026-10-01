@@ -1204,7 +1204,7 @@ func TestWheelOverAnUnfocusedPaneFocusesIt(t *testing.T) {
 		notchOnAWallWithNoRow(t)
 	})
 	t.Run("a wheel that takes the focus collapses a zoomed box", func(t *testing.T) {
-		wheelFocusCollasesAZoomedBox(t)
+		wheelFocusCollapsesAZoomedBox(t)
 	})
 }
 
@@ -1386,7 +1386,7 @@ func notchOnAWallWithNoRow(t *testing.T) {
 
 // The room belongs to the box that has the focus, so a wheel that takes the
 // focus collapses a zoomed list box the same way a click does.
-func wheelFocusCollasesAZoomedBox(t *testing.T) {
+func wheelFocusCollapsesAZoomedBox(t *testing.T) {
 	t.Helper()
 
 	m := press(paneModel(t, paneList), "z")
@@ -1403,6 +1403,208 @@ func wheelFocusCollasesAZoomedBox(t *testing.T) {
 	}
 	if got.expanded != -1 {
 		t.Errorf("the wheel left the zoom on, expanded is %d, want -1", got.expanded)
+	}
+}
+
+// Notches gathered for one box are that box's own, so a notch that takes the
+// focus somewhere else hands them over instead of dropping them. The control
+// run is the same two notches with no focus change, so the test says what
+// nothing lost is rather than a number written down here.
+func TestWheelKeepsGatheredNotchesWhenANotchTakesTheFocus(t *testing.T) {
+	t.Parallel()
+
+	// Every ordered pair of the three boxes of the Plans tab.
+	for _, from := range []pane{paneList, paneDone, paneDetail} {
+		for _, to := range []pane{paneList, paneDone, paneDetail} {
+			if from == to {
+				continue
+			}
+			t.Run(fmt.Sprintf("pane%d-gathers-pane%d-takes-the-focus", from+1, to+1), func(t *testing.T) {
+				gatheredNotchesSurviveAFocusChange(t, from, to)
+			})
+		}
+	}
+}
+
+// focusOnWithADoneRow is the long board with the Plans tab open, the Done box
+// holding a row of its own and the focus on p. That row is what makes a notch
+// which takes the focus there a real change of screen: with both list boxes on
+// the same row, the screen does not move and nothing can be lost.
+func focusOnWithADoneRow(t *testing.T, p pane) Model {
+	t.Helper()
+	m := press(longModel(t), tabKey(tabPlans), "tab", "j")
+	if m.focus != paneDone || len(m.sel) <= int(paneDone) {
+		t.Fatalf("the walk left the focus on pane %d and the selection %v, want pane %d holding a row of its own",
+			m.focus+1, m.sel, paneDone+1)
+	}
+	// The two list boxes have to show a different selection, or a notch that
+	// takes the focus moves no screen and there is nothing to lose.
+	if m.sel[paneList] == m.sel[paneDone] {
+		t.Fatalf("both list boxes show the selection %q, so a notch that takes the focus there changes no screen",
+			m.sel[paneDone])
+	}
+	return press(m, focusKeyFrom(paneDone, p))
+}
+
+// twoNotchesOn turns the wheel twice over the same box. The first notch
+// scrolls at once, the second one waits for the frame tick.
+func twoNotchesOn(t *testing.T, m Model, p pane) Model {
+	t.Helper()
+	b := scrollBox(m, p)
+	if b.w < 2 || b.h < 3 {
+		t.Fatalf("pane %d is a box of %d by %d cells, too small to take a notch", p+1, b.w, b.h)
+	}
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	return wheelOnly(m, b.x+1, b.y+2, false)
+}
+
+// gatheredNotchesSurviveAFocusChange walks one ordered pair: the reader
+// gathers two notches on the box p and then turns the wheel over the box q,
+// which takes the focus and closes the frame.
+func gatheredNotchesSurviveAFocusChange(t *testing.T, from, to pane) {
+	t.Helper()
+
+	// The control: the reader keeps the focus where it is, so both notches
+	// land on the box they were gathered for. It runs on a model of its own,
+	// because the offsets live in one slice that every copy of the model
+	// writes into.
+	control := wheelTick(twoNotchesOn(t, focusOnWithADoneRow(t, from), from))
+	want := min(2*wheelStep, control.lastOff(from))
+	if control.off[from] != want {
+		t.Fatalf("pane %d then pane %d: two notches with no focus change left pane %d at %d, two steps from the top is %d",
+			from+1, to+1, from+1, control.off[from], want)
+	}
+
+	m := twoNotchesOn(t, focusOnWithADoneRow(t, from), from)
+	if m.wheelDelta != wheelStep {
+		t.Fatalf("pane %d then pane %d: the second notch left %d lines waiting for the tick, one notch is %d",
+			from+1, to+1, m.wheelDelta, wheelStep)
+	}
+	b := scrollBox(m, to)
+	if p, _, _ := m.hit(b.x+1, b.y+2); p != to {
+		t.Fatalf("pane %d then pane %d: the cell %d,%d answers pane %d, want pane %d",
+			from+1, to+1, b.x+1, b.y+2, p+1, to+1)
+	}
+	m = wheelOnly(m, b.x+1, b.y+2, false)
+	if m.focus != to {
+		t.Fatalf("the notch over pane %d left the focus on pane %d", to+1, m.focus+1)
+	}
+	m = wheelTick(m)
+	if m.off[from] != want {
+		t.Errorf("pane %d gathers and a notch over pane %d takes the focus: pane %d ends at %d, the same two notches with no focus change end at %d, so %d lines were dropped",
+			from+1, to+1, from+1, m.off[from], want, want-m.off[from])
+	}
+	// The notch that took the focus is a notch of its own, so it moves the box
+	// it landed on by one step.
+	if step := min(wheelStep, m.lastOff(to)); m.off[to] != step {
+		t.Errorf("pane %d then pane %d: the notch that took the focus left pane %d at %d, one step from the top is %d",
+			from+1, to+1, to+1, m.off[to], step)
+	}
+}
+
+// The two hints that name the focused box on the frame: a list box offers the
+// key that opens the detail box, and the detail box offers the keys that
+// scroll it. Both lead the hint line, so a narrow line cannot drop them.
+const (
+	listFocusHint   = "Detail: enter"
+	detailFocusHint = "Scroll: j k"
+)
+
+// A notch that takes the focus shows a screen the reader has not seen, so it
+// can never leave the frame from before on the screen. The hint line names the
+// keys the focused box can use, so the frame says which box has the focus.
+func TestANotchThatTakesTheFocusDrawsTheNewFocus(t *testing.T) {
+	t.Parallel()
+
+	// Both frames here leave the wheel armed with nothing waiting for the
+	// tick, so the notch that lands on the detail box only gathers: there is
+	// nothing to hand over to the box it leaves, and the frame it holds is
+	// the only thing that can keep the old focus on screen.
+	t.Run("nothing waiting for the tick", func(t *testing.T) {
+		notchThatTakesTheFocusDrawsIt(t, false)
+	})
+	// Notches that cancel each other out leave the closing tick with nothing
+	// to land either, so that tick keeps the frame the notch left behind.
+	t.Run("notches that cancelled out", func(t *testing.T) {
+		notchThatTakesTheFocusDrawsIt(t, true)
+	})
+}
+
+// notchThatTakesTheFocusDrawsIt is one frame where the wheel is armed with
+// nothing waiting, so the notch that lands on the detail box has no notches
+// to hand over and the frame it holds is all it can keep. cancel adds notches
+// that cancel out, so the tick that closes the frame has nothing to land.
+func notchThatTakesTheFocusDrawsIt(t *testing.T, cancel bool) {
+	t.Helper()
+
+	// The program draws after every message, so the test does the same and the
+	// frame cache holds what the reader really has on screen.
+	draw := func(m Model) (Model, string) { return m, m.View() }
+
+	m := focusOnWithADoneRow(t, paneList)
+	lb := scrollBox(m, paneList)
+	if lb.w < 2 || lb.h < 3 {
+		t.Fatalf("the list box is %d by %d cells, too small to take a notch", lb.w, lb.h)
+	}
+	lx, ly := lb.x+1, lb.y+2
+	m, stale := draw(m)
+	if shown := plain(stale); !strings.Contains(shown, listFocusHint) || strings.Contains(shown, detailFocusHint) {
+		t.Fatalf("the list box should have the focus before the notch, the frame says:\n%s", shown)
+	}
+	// Two notches on the list box and the tick that lands them, so the wheel
+	// is still armed with nothing waiting.
+	m, _ = draw(wheelOnly(m, lx, ly, false))
+	m, _ = draw(wheelOnly(m, lx, ly, false))
+	m, _ = draw(wheelTick(m))
+	if !m.wheelArmed || m.wheelDelta != 0 {
+		t.Fatalf("the frame landed with %d lines waiting and armed %v, want the wheel armed with nothing waiting",
+			m.wheelDelta, m.wheelArmed)
+	}
+	if cancel {
+		// A notch down and a notch up leave the wheel with nothing to land.
+		m, _ = draw(wheelOnly(m, lx, ly, false))
+		m, _ = draw(wheelOnly(m, lx, ly, true))
+		if m.wheelDelta != 0 {
+			t.Fatalf("a notch down and a notch up left %d lines waiting, want nothing", m.wheelDelta)
+		}
+	}
+	db := scrollBox(m, paneDetail)
+	if db.w < 2 || db.h < 3 {
+		t.Fatalf("the detail box is %d by %d cells, too small to take a notch", db.w, db.h)
+	}
+	m, stale = draw(m)
+	if shown := plain(stale); strings.Contains(shown, detailFocusHint) {
+		t.Fatalf("the detail box has the focus before the notch, so the case proves nothing:\n%s", shown)
+	}
+
+	m, frame := draw(wheelOnly(m, db.x+1, db.y+2, false))
+	if m.focus != paneDetail {
+		t.Fatalf("the notch over the detail box left the focus on pane %d", m.focus+1)
+	}
+	if m.same {
+		t.Errorf("the notch that took the focus kept the frame from before, so the next frame shows the old focus")
+	}
+	if frame == stale {
+		t.Errorf("the frame drawn after the notch that took the focus is the one from before:\n%s", plain(frame))
+	}
+	drawn := plain(frame)
+	if !strings.Contains(drawn, detailFocusHint) {
+		t.Errorf("the frame drawn after the notch does not hold %q, so it does not show the detail box on focus:\n%s",
+			detailFocusHint, drawn)
+	}
+	if strings.Contains(drawn, listFocusHint) {
+		t.Errorf("the frame drawn after the notch still holds %q, so it still shows a list box on focus:\n%s",
+			listFocusHint, drawn)
+	}
+	if cancel {
+		// A notch back the other way leaves the closing tick with nothing to
+		// land, so that tick keeps the frame the notch left on screen.
+		m, _ = draw(wheelOnly(m, db.x+1, db.y+2, true))
+		m, frame = draw(wheelTick(m))
+		if drawn := plain(frame); !strings.Contains(drawn, detailFocusHint) {
+			t.Errorf("the frame kept after notches that cancelled out does not hold %q, so the tick kept the old focus:\n%s",
+				detailFocusHint, drawn)
+		}
 	}
 }
 

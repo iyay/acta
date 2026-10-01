@@ -157,7 +157,7 @@ type Model struct {
 	sel        []string
 	idx        []int // selected row number per pane, used when the id vanishes
 	query      string
-	expanded   int // the list pane that takes the room, -1 when none does
+	expanded   int // the pane that takes the room, a list box or the detail box, -1 when none does
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
@@ -716,6 +716,15 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// The wheel moves the words, so the picked cells stop meaning anything.
 		cleared := m.drag.on
 		m.drag = drag{}
+		// The frame the reader has goes stale as soon as the notch clears a
+		// drag, takes the focus or hands gathered notches to another box, so
+		// one flag carries all three.
+		stale := cleared
+		// The notches of a frame belong to the screen the reader had when the
+		// notch arrived, so that screen is read here. Taking the focus below
+		// shows another box's row, which is not a screen the reader asked for
+		// with a key, so the notches gathered for the old box are not lost.
+		screen := m.mark()
 		// A notch belongs to the box under the pointer, so it takes the focus
 		// the way a click does and scrolls the pane it landed on. A pane the
 		// tab does not have refuses the focus, so a notch over one is ignored
@@ -723,15 +732,18 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		if p != m.focus {
 			m.focusPane(p)
 			if m.focus != p {
-				m.same = !cleared
+				m.same = !stale
 				return m, nil
 			}
+			// A box with the focus wears another border, and the focus moves
+			// the room of a zoomed box, so the reader has a new frame to see.
+			stale = true
 		}
 		// hit answers the focused pane for a cell that lands on no pane at
 		// all, like the tab bar or the status line, so the notch asks the
 		// geometry before it moves a word.
 		if !m.onPane(p, msg.X, msg.Y) {
-			m.same = !cleared
+			m.same = !stale
 			return m, nil
 		}
 		// The notch got past the pane the reader is looking at, so it is part
@@ -745,16 +757,15 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		// The notches belong to the screen they were gathered on. A screen
 		// that is gone drops the delta it was given, so the next notch starts
 		// a new frame for the screen the reader is on now.
-		if m.wheelDelta != 0 && m.wheelMark != m.mark() {
+		if m.wheelDelta != 0 && m.wheelMark != screen {
 			m.wheelDelta = 0
 		}
 		// Notches for another pane cannot share one delta. Scroll the old
 		// pane now so its notches are not lost.
-		flushed := false
 		if m.wheelDelta != 0 && m.wheelPane != p {
 			m.scrollPane(m.wheelPane, m.wheelDelta)
 			m.wheelDelta = 0
-			flushed = true
+			stale = true
 		}
 		// With no tick waiting, the wheel had stopped. Scroll now, so the
 		// reader sees the pane move on the notch itself, and start a frame
@@ -773,9 +784,8 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		m.wheelPane = p
 		m.wheelDelta += step
-		// A flush to another pane moved that pane, so only a plain gather
-		// keeps the old frame.
-		m.same = !flushed && !cleared
+		// Only a notch that moved nothing keeps the frame the reader has.
+		m.same = !stale
 		return m, nil
 	}
 	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {

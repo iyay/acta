@@ -19,9 +19,10 @@ func TestModelSendsNotchesAndDrawsToItsTracer(t *testing.T) {
 	m.View()
 	lb := scrollBox(m, paneList)
 	// A notch takes the focus the way a click does, so this one belongs to
-	// the list box. The notches gathered for the detail box land with it, and
-	// the notch itself only gathers, so the frame stays and the draw after it
-	// is not logged again.
+	// the list box. The notches gathered for the detail box land on the
+	// detail box and move it, so the notch leaves the frame marked for a new
+	// draw. Nothing asks for that draw here, so the log ends on the notch and
+	// holds no view line behind it.
 	m = wheelOnly(m, lb.x+1, lb.y+2, false)
 	var kinds []string
 	for _, ln := range strings.Split(strings.TrimSpace(log.String()), "\n") {

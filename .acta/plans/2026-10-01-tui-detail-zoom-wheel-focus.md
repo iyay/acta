@@ -66,3 +66,13 @@ finished: "2026-10-01 19:57:45"
 - [x] Failing test: change the `y` cases and the drag case to expect the status `copied to clipboard` exactly, and the View to contain it; they fail because the status still carries the id or the picked text.
 - [x] Code: set `m.status = "copied to clipboard"` in `copyID` and in `copyPicked`, and remove the `lead` constant and the `xansi.Truncate` call it fed (drop the `xansi` import only if nothing else in `select.go` uses it).
 - [x] Commit: `feat(tui): copy toast says copied to clipboard`
+
+## Review notes
+
+- A notch over the tab bar or the status line used to scroll the focused pane, because hit falls back to the focus; it is now ignored. The spec word "stays" was wrong about the old behaviour.
+- The "focusPane refused" branch of the wheel path cannot be reached today, since hit only returns panes of the open tab.
+- A click inside the zoomed detail pane keeps the zoom, because every body cell belongs to it; only a click on the tab bar ends it.
+- The redraw test for a notch that takes the focus covers only List to detail on the plain gather path; the other paths rely on the reset in update.
+- If focusPane succeeded but the notch were off every pane, gathered notches would keep the old wheelMark; hit makes this unreachable today.
+- Detail notches flushed after a notch moves the focus to a list box land on the detail offset of the newly selected item, the same as a click carries it over.
+- The tracewire_test comment names the flush as the reason for the redraw; the focus change marks it too.
