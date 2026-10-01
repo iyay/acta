@@ -93,6 +93,11 @@ func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 		{[]string{"--full"}, "run ./cmd/acta run-one -- go test ./..."},
 		{[]string{"--full", "-count=1"}, "run ./cmd/acta run-one -- go test -count=1 ./..."},
 		{[]string{"--full", "./internal/cli/"}, "run ./cmd/acta run-one -- go test ./internal/cli/"},
+		{[]string{"./internal/..."}, "test -short ./internal/..."},
+		{[]string{"./internal/cli/", "./..."}, "run ./cmd/acta run-one -- go test -short ./internal/cli/ ./..."},
+		{[]string{"./...", "./internal/cli/"}, "run ./cmd/acta run-one -- go test -short ./... ./internal/cli/"},
+		{[]string{"-count=1", "./internal/cli/", "./internal/hook/", "./..."}, "run ./cmd/acta run-one -- go test -short -count=1 ./internal/cli/ ./internal/hook/ ./..."},
+		{[]string{"./internal/...", "./..."}, "run ./cmd/acta run-one -- go test -short ./internal/... ./..."},
 	} {
 		if got := callScript(t, tc.args...); got != root+" "+tc.want {
 			t.Errorf("%q: got %q, want %q", tc.args, got, root+" "+tc.want)

@@ -19,18 +19,27 @@ if [ "${1:-}" = "--full" ]; then
 	shift
 fi
 pkgs=./...
-whole=1
+whole=
+all=
+pkg=
 for a in "$@"; do
 	case $a in
 	./...)
 		pkgs=
+		all=1
 		;;
 	./*)
 		pkgs=
-		whole=
+		pkg=1
 		;;
 	esac
 done
+# A call with ./... runs the whole repo, so it takes the lock whatever
+# package sits next to it. Only a call that names a package and never ./...
+# skips the wait.
+if [ -n "$all" ] || [ -z "$pkg" ]; then
+	whole=1
+fi
 if [ -n "$full" ]; then
 	exec go run ./cmd/acta run-one -- go test "$@" $pkgs
 fi

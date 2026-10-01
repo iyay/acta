@@ -12,9 +12,61 @@ import (
 // names the same run through that script so the agent can just use it.
 const goTestBlockText = "acta: run tests with scripts/test, not go test. It adds -short and the machine-wide lock. Use: scripts/test%s"
 
-// goTestCut splits a command line where the shell starts its next command, so
-// a go test behind one of them is still a command of its own.
-var goTestCut = regexp.MustCompile(`&&|\|\||;|\||\(|\)`)
+// goTestSep holds the bytes where a shell line starts its next command, so a
+// go test behind one of them is still a command of its own.
+const goTestSep = "&|;()"
+
+// goTestSpace holds the bytes that end one word of a command.
+const goTestSpace = " \t\n"
+
+// goTestCut breaks s at every byte in at that sits outside quotes, because a
+// separator inside "..." or '...' is text the command carries, not the start
+// of a new command. The quotes stay in the words that come out, so a value
+// like 'TestA|TestB' survives whole into the message the agent reads.
+func goTestCut(s, at string) []string {
+	var out []string
+	var word strings.Builder
+	var quote byte
+	skip := false
+	for i := range len(s) {
+		c := s[i]
+		switch {
+		case skip:
+			skip = false
+			word.WriteByte(c)
+		case quote != 0:
+			if c == '\\' && quote == '"' {
+				// A backslash inside double quotes escapes the next byte,
+				// so \" is text and does not close the quoted value.
+				word.WriteByte(c)
+				skip = i+1 < len(s)
+				break
+			}
+			if c == quote {
+				quote = 0
+			}
+			word.WriteByte(c)
+		case c == '\'' || c == '"':
+			quote = c
+			word.WriteByte(c)
+		case c == '\\':
+			// An escaped byte is text, so it cannot end a quote either.
+			word.WriteByte(c)
+			skip = i+1 < len(s)
+		case strings.IndexByte(at, c) >= 0:
+			if word.Len() > 0 {
+				out = append(out, word.String())
+				word.Reset()
+			}
+		default:
+			word.WriteByte(c)
+		}
+	}
+	if word.Len() > 0 {
+		out = append(out, word.String())
+	}
+	return out
+}
 
 // goTestPrefix holds the words that can stand in front of a command without
 // changing which command runs.
@@ -37,7 +89,7 @@ func GoTestBlock(dir, command string) (bool, string) {
 	if !ok || !hasTestScript(top) {
 		return false, ""
 	}
-	for _, piece := range goTestCut.Split(command, -1) {
+	for _, piece := range goTestCut(command, goTestSep) {
 		words := goTestWords(piece)
 		if len(words) < 2 || words[0] != "go" || words[1] != "test" {
 			continue
@@ -88,7 +140,7 @@ func hasTestScript(top string) bool {
 // goTestWords drops the words that stand in front of a command, so
 // `env FOO=1 time go test` is seen as the go test it runs.
 func goTestWords(piece string) []string {
-	words := strings.Fields(piece)
+	words := goTestCut(piece, goTestSpace)
 	for len(words) > 0 {
 		head := words[0]
 		if goTestPrefix[head] || goTestAssign.MatchString(head) {

@@ -3,6 +3,7 @@ id: BUG-0024
 hash: cc1tx75
 priority: high
 status: fixed
+started: "2026-10-01 15:58:01"
 finished: "2026-10-01 16:15:39"
 ---
 # Test runs from many agents pin every CPU core at 100%
