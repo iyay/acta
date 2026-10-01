@@ -45,6 +45,7 @@ func TestRendererPaintsThemeColors(t *testing.T) {
 			t.Errorf("output has no theme green:\n%q", out)
 		}
 		// A 38;5; sequence would be glamour's own 256-color palette, which
+		// is no color a theme holds.
 		if strings.Contains(out, "38;5;") {
 			t.Errorf("output still carries a 256-color sequence:\n%q", out)
 		}
@@ -169,9 +170,11 @@ func hexByte(hex string, at int) int {
 // glamourCode gives the numbers glamour writes for an element it paints
 // itself, such as an image. It asks termenv, which is what glamour asks, and
 // termenv turns the hex back into numbers and cuts the fraction off, so the
-// last of the three can be one lower than the hex digit.
-func glamourCode(colour string) string {
-	return termenv.TrueColor.Color(colour).Sequence(false)
+// last of the three can be one lower than the hex digit. Code tokens are not
+// like this: chroma writes the hex bytes whole, which is what chromaCode
+// reads.
+func glamourCode(color string) string {
+	return termenv.TrueColor.Color(color).Sequence(false)
 }
 
 // plainCode is the plain code the terminal theme paints a slot with, because
@@ -184,27 +187,27 @@ func plainCode(slot int) string {
 	return strconv.Itoa(90 + slot - 8)
 }
 
-// ansiToken is the code chroma hands back for the name of an ANSI color,
-// which lands on the bright shade of that color in the sixteen a terminal
-// has. The map is keyed by the word of the code block, because that is what
-// a test looks the color up by.
+// ansiToken is the code chroma hands back for the name of an ANSI color, and
+// the shade is the normal one, because the rest of the terminal theme paints
+// its slots in the normal shades too. The map is keyed by the word of the code
+// block, because that is what a test looks the color up by.
 var ansiToken = map[string]string{
 	"// note": "90",
 	"func":    "35",
-	`"hi"`:    "92",
+	`"hi"`:    "32",
 	"42":      "33",
-	"main":    "94",
+	"main":    "34",
 }
 
 // TestEachThemeKeepsItsOwnCodeColors walks every theme that ships with acta
 // and asks each one for the same code block, one after another in this one
-// process. chroma keeps the colors of a code block in one list for the whole
-// process, so a theme drawn second can come out wearing the colors of the
-// theme drawn first. Every theme here has a color of its own in every slot,
-// so one registration can never satisfy this test for two themes at once,
-// and a registration left over from an earlier test cannot satisfy it
-// either. It runs without t.Parallel, because the order the themes are drawn
-// in is the thing under test.
+// process, because two themes drawn at once would fight over the code
+// colors and only one of them would be left standing. Every theme here has a
+// color of its own in every slot, so one registration can never satisfy this
+// test for two themes at once, and a registration left over from an earlier
+// test cannot satisfy it either. It runs without t.Parallel, because chroma
+// reads its style list with no lock of its own while it paints, and the race
+// detector calls that a race the moment a second theme draws beside it.
 func TestEachThemeKeepsItsOwnCodeColors(t *testing.T) {
 	for _, name := range theme.Names() {
 		t.Run(name, func(t *testing.T) {
@@ -293,10 +296,10 @@ func TestNoGlamourPresetColorSurvives(t *testing.T) {
 }
 
 // TestAnInlineTagLosesItsTagsAndKeepsItsWords says what actually happens to
-// an inline HTML tag, so nobody reads the dim colour of an HTML span as
+// an inline HTML tag, so nobody reads the dim color of an HTML span as
 // something the test proved. glamour strips the tag before it draws, so what
-// is left is ordinary text and it wears the body colour, not a colour of its
-// own and not a colour out of a glamour preset.
+// is left is ordinary text and it wears the body color, not a color of its
+// own and not a color out of a glamour preset.
 func TestAnInlineTagLosesItsTagsAndKeepsItsWords(t *testing.T) {
 	th, ok := theme.Builtin("tokyo-night")
 	if !ok {
@@ -315,14 +318,14 @@ func TestAnInlineTagLosesItsTagsAndKeepsItsWords(t *testing.T) {
 	// The words are body text, so they wear the theme foreground and
 	// nothing else.
 	if got := codeBefore(t, out, "bold"); got != glamourCode(th.FG) {
-		t.Errorf("the words inside the tag are painted %q, want the body colour %q:\n%q", got, glamourCode(th.FG), out)
+		t.Errorf("the words inside the tag are painted %q, want the body color %q:\n%q", got, glamourCode(th.FG), out)
 	}
 }
 
 // TestCodeBlockTakesThemeColors reads what a fenced code block paints for one
-// theme of each kind. It runs without t.Parallel, because the tests around it
-// draw the same themes in one process and chroma keeps one style list for the
-// whole of them.
+// theme of each kind. It runs without t.Parallel, because chroma reads its
+// style list with no lock of its own while it paints, and the race detector
+// calls that a race the moment another test draws a theme beside it.
 func TestCodeBlockTakesThemeColors(t *testing.T) {
 	hex, ok := theme.Builtin("tokyo-night")
 	if !ok {
@@ -341,9 +344,8 @@ func TestCodeBlockTakesThemeColors(t *testing.T) {
 			t.Errorf("code block still carries a 256-color sequence:\n%q", out)
 		}
 		// The comment wears the dim slot and the keyword the magenta slot,
-		// each as a truecolor sequence. The digits are the ones the render
-		// really emits: termenv turns the hex back into numbers and cuts the
-		// fraction off, so they are not the hex digits written out.
+		// each as a truecolor sequence. chroma writes the hex bytes whole,
+		// so the digits here are the hex digits of the theme itself.
 		for _, want := range []string{
 			"\x1b[38;2;65;72;104m// note",
 			"\x1b[38;2;187;154;247mfunc",
@@ -376,17 +378,28 @@ func TestCodeBlockTakesThemeColors(t *testing.T) {
 				t.Errorf("code block is missing %q:\n%q", want, out)
 			}
 		}
+		// A bright code is a shade no slot names, so no code in the block may
+		// be one. Tokens the table above does not name count too, which is
+		// why the whole block is read and not only those five words.
+		for _, code := range regexp.MustCompile(`\x1b\[([0-9;]*)m`).FindAllStringSubmatch(out, -1) {
+			for _, part := range strings.Split(code[1], ";") {
+				n, _ := strconv.Atoi(part)
+				if n >= 91 && n <= 97 {
+					t.Errorf("code block carries the bright code %d, which no slot names:\n%q", n, out)
+				}
+			}
+		}
 	})
 }
 
 // wantHex is the hex chroma ends up with for a color a theme asked for by the
 // name of an ANSI color, and the color itself when it asked by hex. An empty
 // color stays empty, because a token with no color of its own has none.
-func wantHex(colour string) string {
-	if colour == "" {
+func wantHex(color string) string {
+	if color == "" {
 		return ""
 	}
-	return chroma.ParseColour(colour).String()
+	return chroma.ParseColour(color).String()
 }
 
 func TestMarkdownStyleUsesThemeSlots(t *testing.T) {

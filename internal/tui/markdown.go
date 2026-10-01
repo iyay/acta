@@ -72,7 +72,7 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 
 	// An image is blue and the words that name it are dim, so nothing out of
 	// a glamour preset can reach the screen through them. Raw HTML is dim as
-	// well, because it is not text the pane knows how to colour.
+	// well, because it is not text the pane knows how to paint.
 	cfg.Image.Color = slot(slotBlue)
 	cfg.ImageText.Color = slot(slotDim)
 	cfg.HTMLBlock = glamour.StyleBlock{StylePrimitive: glamour.StylePrimitive{Color: slot(slotDim)}}
@@ -88,11 +88,11 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	cfg.CodeBlock.Color = body
 	// The code colors go into a chroma style of this theme's own, so nothing
 	// out of a glamour preset can reach the screen through a code block. The
-	// chroma the preset brought along is cleared, because a chroma left on the
-	// style is what makes glamour file these colors under one name of its own
-	// choosing, keep the first set for the whole process and hand it to every
-	// theme drawn after it. The code block points at the name of the style
-	// instead, and that name is the theme's own.
+	// chroma the preset brought along is cleared, because a chroma left on
+	// the style makes glamour pick one name for these colors on its own, keep
+	// the first set it is given for the whole process and hand the same set
+	// to every theme drawn after it. The code block points at the name of the
+	// style instead, and that name says which theme the colors belong to.
 	cfg.CodeBlock.Chroma = nil
 	cfg.CodeBlock.Theme = codeStyle(t, body)
 	return cfg
@@ -123,7 +123,7 @@ func codeStyle(t theme.Theme, body *string) string {
 		// Every token the spec does not name is left out of the style, and
 		// so wears the text color, which is the color of the body.
 		chromastyles.Register(chroma.MustNewStyle(name, chroma.StyleEntries{
-			chroma.Text:          colour(body),
+			chroma.Text:          chromaColor(body),
 			chroma.Comment:       chromaSlot(t, slotDim),
 			chroma.Keyword:       chromaSlot(t, slotMagenta),
 			chroma.LiteralString: chromaSlot(t, slotGreen),
@@ -131,17 +131,18 @@ func codeStyle(t theme.Theme, body *string) string {
 			chroma.NameFunction:  chromaSlot(t, slotBlue),
 		}))
 	}
+
 	return name
 }
 
 // chromaLock guards chroma's style list, which is a plain map with no lock of
-// its own. ponytail: the TUI picks its colors on one goroutine and so nothing
-// waits here; a test that draws two themes at once would without it.
+// its own. Nothing waits here in the TUI, because the theme is picked on one
+// goroutine; a test that draws two themes at once would without it.
 var chromaLock sync.Mutex
 
-// colour is a color as chroma reads it, and nothing at all when there is
+// chromaColor is a color as chroma reads it, and nothing at all when there is
 // none, which is the case for the body of the terminal theme.
-func colour(c *string) string {
+func chromaColor(c *string) string {
 	if c == nil {
 		return ""
 	}
@@ -161,12 +162,14 @@ func chromaSlot(t theme.Theme, i int) string {
 }
 
 // ansiChroma names the ANSI colors for chroma, which only takes hex values.
-// The names are the shades of the slots the code block uses.
+// The names must be the normal shade of the slot, because the terminal theme
+// paints the rest of the pane in the normal shades too, and a fenced block
+// that sits next to them may not pick the bright ones on its own.
 var ansiChroma = map[int]string{
 	slotDim:     "#ansidarkgray",
-	slotGreen:   "#ansigreen",
+	slotGreen:   "#ansidarkgreen",
 	slotYellow:  "#ansibrown",
-	slotBlue:    "#ansiblue",
+	slotBlue:    "#ansidarkblue",
 	slotMagenta: "#ansipurple",
 }
 
