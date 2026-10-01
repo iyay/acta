@@ -22,7 +22,7 @@ Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(g
 
 A **BLOCKER** is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
 
-Everything else is a **NOTE**: one line each, never a task. Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
+Everything else is a **NOTE**: one line each. A NOTE is not a task, unless it carries the `[fix]` tag: see "Where findings go". Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
 
 ## The three questions, and the deep lens
 
@@ -37,8 +37,10 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTE
 
 ## Budget: three rounds, then land or ask
 
+NOTEs are not one pile. Each one is sorted into a bucket: `[fix]`, `[debt]` or `[note]`. The budget does not change: three rounds at most, and a round with no BLOCKER does not start.
+
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: land now with `acta:land`.
-2. BLOCKERs: one fix task holding all of them, appended to the same plan as a `## Fix round <n>` section, in the same worktree, landing as one commit.
+2. BLOCKERs: one fix task holding all of them, appended to the same plan as a `## Fix round <n>` section, in the same worktree, landing as one commit. The `[fix]` NOTEs ride with it.
 3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: land. BLOCKER: one more fix task.
 4. Round 3 reviews the second fix range only. CLEAN: land. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head.
 
@@ -48,7 +50,19 @@ There is never a round 4. A round with no BLOCKER does not start. Findings in te
 
 - A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into the one fix task of this round (`## Fix round <n>` in the same plan), where it already shows on the board under the story.
 - A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
-- A NOTE stays a NOTE: one line. When the plan's final review round is CLEAN, collect every NOTE from all rounds of that plan and run `acta debt new <plan id>` on the branch (the NOTEs on stdin, one per line) before `acta:land`. The debt file merges with the branch. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset, which is fine.
+- A NOTE is one line, and it sorts into a bucket. A NOTE that fails the first test falls to the next one.
+  - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
+  - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff.
+  - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
+
+**Who sorts.** Reviewers stay read-only. Each NOTE they print starts with its suggested bucket tag. The orchestrator decides: it checks every tag against the code, the same way it checks any finding, and moves it when the tag does not hold.
+
+**The flow.**
+
+- A round with BLOCKERs: the `[fix]` NOTEs join that round's one fix task, so the next round reviews them.
+- A CLEAN round: no new round. Every `[fix]` NOTE lands as one polish commit. The agent reviews it itself: read the full diff, run the full test suite with the output shown. When the polish or the tests fail, revert that commit and it moves those items to `[debt]`.
+- Before `acta:land`: the `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (the NOTEs on stdin, one per line). The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
+- The `[note]` NOTEs go into a `## Review notes` section in the plan file, one line each. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset, which is fine.
 
 ## Small changes
 
