@@ -1,14 +1,18 @@
 package tui
 
 import (
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
-	glamour "github.com/charmbracelet/glamour/ansi"
-	preset "github.com/charmbracelet/glamour/styles"
-
+	"github.com/alecthomas/chroma/v2"
 	chromastyles "github.com/alecthomas/chroma/v2/styles"
+	glamour "github.com/charmbracelet/glamour/ansi"
+
+	"github.com/muesli/termenv"
+
 	"github.com/iyay/acta/internal/theme"
 )
 
@@ -120,10 +124,205 @@ func wantNoMarkers(t *testing.T, out string) {
 // comment, a keyword, a string, a number and a function name.
 const goBlock = "```go\n// note\nfunc main() { s := \"hi\"; n := 42 }\n```"
 
-// TestCodeBlockTakesThemeColors reads what a fenced code block paints. It runs
-// without t.Parallel because glamour registers the chroma style once per
-// process, so one theme's code block colors would reach the next theme drawn
-// in the same test run. forgetChroma clears that registration between them.
+// codeTokens names one word of the code block for each kind of token the
+// spec paints, and the slot that paints it. A test reads the color code in
+// front of the word, so it can say which token it is looking at.
+var codeTokens = []struct {
+	word string
+	slot int
+}{
+	{"// note", slotDim},
+	{"func", slotMagenta},
+	{`"hi"`, slotGreen},
+	{"42", slotYellow},
+	{"main", slotBlue},
+}
+
+// codeBefore gives the numbers inside the color code that sits right in
+// front of a word, so a test reads the color of that word and not another
+// color the same line happens to hold. A word can also turn up inside a
+// color code, as the 42 in 38;2;248;248;242 does, so the code and the word
+// have to sit next to each other for the pair to count. It is empty when
+// nothing colors the word.
+func codeBefore(t *testing.T, out, word string) string {
+	t.Helper()
+	found := regexp.MustCompile(`\x1b\[([0-9;]*)m`+regexp.QuoteMeta(word)).FindAllStringSubmatch(out, -1)
+	if len(found) == 0 {
+		return ""
+	}
+	return found[len(found)-1][1]
+}
+
+// chromaCode gives the numbers chroma writes for a code token. chroma reads a
+// theme hex as three bytes and writes those bytes as they are, so the numbers
+// are the hex digits themselves.
+func chromaCode(hex string) string {
+	return fmt.Sprintf("38;2;%d;%d;%d", hexByte(hex, 1), hexByte(hex, 3), hexByte(hex, 5))
+}
+
+// hexByte reads one pair of digits out of a hex color.
+func hexByte(hex string, at int) int {
+	n, _ := strconv.ParseUint(hex[at:at+2], 16, 8)
+	return int(n)
+}
+
+// glamourCode gives the numbers glamour writes for an element it paints
+// itself, such as an image. It asks termenv, which is what glamour asks, and
+// termenv turns the hex back into numbers and cuts the fraction off, so the
+// last of the three can be one lower than the hex digit.
+func glamourCode(colour string) string {
+	return termenv.TrueColor.Color(colour).Sequence(false)
+}
+
+// plainCode is the plain code the terminal theme paints a slot with, because
+// the terminal has no hex of its own and picks the shade. The first eight
+// slots are the dim ones and the rest are the bright ones.
+func plainCode(slot int) string {
+	if slot < 8 {
+		return strconv.Itoa(30 + slot)
+	}
+	return strconv.Itoa(90 + slot - 8)
+}
+
+// ansiToken is the code chroma hands back for the name of an ANSI color,
+// which lands on the bright shade of that color in the sixteen a terminal
+// has. The map is keyed by the word of the code block, because that is what
+// a test looks the color up by.
+var ansiToken = map[string]string{
+	"// note": "90",
+	"func":    "35",
+	`"hi"`:    "92",
+	"42":      "33",
+	"main":    "94",
+}
+
+// TestEachThemeKeepsItsOwnCodeColors walks every theme that ships with acta
+// and asks each one for the same code block, one after another in this one
+// process. chroma keeps the colors of a code block in one list for the whole
+// process, so a theme drawn second can come out wearing the colors of the
+// theme drawn first. Every theme here has a color of its own in every slot,
+// so one registration can never satisfy this test for two themes at once,
+// and a registration left over from an earlier test cannot satisfy it
+// either. It runs without t.Parallel, because the order the themes are drawn
+// in is the thing under test.
+func TestEachThemeKeepsItsOwnCodeColors(t *testing.T) {
+	for _, name := range theme.Names() {
+		t.Run(name, func(t *testing.T) {
+			th, ok := theme.Builtin(name)
+			if !ok {
+				t.Fatalf("%s theme is missing", name)
+			}
+			out := newRenderer(th, true)(goBlock, 80)
+			// A 38;5; sequence is glamour's own 256-color palette, which is
+			// no color a theme holds.
+			if strings.Contains(out, "38;5;") {
+				t.Errorf("code block still carries a 256-color sequence:\n%q", out)
+			}
+			for _, tok := range codeTokens {
+				// The terminal theme has no hex of its own, so the token
+				// has to ask for a plain code instead of a truecolor one.
+				want, plain := ansiToken[tok.word], true
+				if th.BG != "" {
+					want, plain = chromaCode(th.ANSI[tok.slot]), false
+				}
+				got := codeBefore(t, out, tok.word)
+				if !strings.HasPrefix(got, want) {
+					t.Errorf("code token %q is painted %q, want %q:\n%q", tok.word, got, want, out)
+				}
+				if plain && strings.Contains(got, ";") {
+					t.Errorf("code token %q is painted %q, which is not one plain code:\n%q", tok.word, got, out)
+				}
+			}
+		})
+	}
+}
+
+// TestNoGlamourPresetColorSurvives feeds the elements the spec does not map
+// through the renderer and reads the screen, because glamour's preset still
+// holds colors of its own for them and every color it paints is a color
+// reaching the pane. The dark preset and the light preset are both checked,
+// since they do not hold the same numbers, and the terminal theme with them.
+func TestNoGlamourPresetColorSurvives(t *testing.T) {
+	for _, tc := range []struct {
+		md string
+		// word is a piece of the output to read, and slot is the theme slot
+		// it has to wear. A word is only read when it is there, so an
+		// element glamour drops does not fail the test.
+		word string
+		slot int
+	}{
+		// The words that name an image are dim and the image itself is
+		// blue, both from the theme.
+		{"![alt](http://x)", "Image:", slotDim},
+		{"![alt](http://x)", "http://x", slotBlue},
+		// A block of raw HTML is dim. An inline tag is not readable here:
+		// glamour strips the tag before it draws anything, so the words
+		// inside it come out as ordinary text, and the test below says so.
+		{"<div>\nhi\n</div>\n", "hi", slotDim},
+	} {
+		for _, name := range []string{"tokyo-night", "catppuccin-latte", "terminal"} {
+			t.Run(name+"/"+tc.md, func(t *testing.T) {
+				th, ok := theme.Builtin(name)
+				if !ok {
+					t.Fatalf("%s theme is missing", name)
+				}
+				out := newRenderer(th, true)(tc.md, 80)
+				// The numbers below are glamour's own, out of its dark and
+				// its light preset: 212 and 205 for an image, 243 for the
+				// words that name it.
+				for _, presetColor := range []string{"38;5;212", "38;5;205", "38;5;243"} {
+					if strings.Contains(out, presetColor) {
+						t.Errorf("output still carries the glamour preset color %q:\n%q", presetColor, out)
+					}
+				}
+				// The terminal theme has no hex of its own, so the terminal
+				// picks the shade. Any other theme is drawn by glamour
+				// through termenv, which turns the hex back into numbers
+				// and cuts the fraction off.
+				want := plainCode(tc.slot)
+				if th.BG != "" {
+					want = glamourCode(th.ANSI[tc.slot])
+				}
+				got := codeBefore(t, out, tc.word)
+				if !strings.HasPrefix(got, want) {
+					t.Errorf("%q is painted %q, want the theme slot %d as %q:\n%q", tc.word, got, tc.slot, want, out)
+				}
+			})
+		}
+	}
+}
+
+// TestAnInlineTagLosesItsTagsAndKeepsItsWords says what actually happens to
+// an inline HTML tag, so nobody reads the dim colour of an HTML span as
+// something the test proved. glamour strips the tag before it draws, so what
+// is left is ordinary text and it wears the body colour, not a colour of its
+// own and not a colour out of a glamour preset.
+func TestAnInlineTagLosesItsTagsAndKeepsItsWords(t *testing.T) {
+	th, ok := theme.Builtin("tokyo-night")
+	if !ok {
+		t.Fatal("tokyo-night theme is missing")
+	}
+	out := newRenderer(th, true)("a <span class=\"x\">bold</span> c", 80)
+	for _, gone := range []string{"<span", "</span>", "class"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("the tag %q reached the screen:\n%q", gone, out)
+		}
+	}
+	// The pane draws a margin around the words, so it is cut off here.
+	if got := strings.TrimSpace(plain(lineWith(t, strings.Split(out, "\n"), "bold"))); got != "a bold c" {
+		t.Errorf("the words around the tag are %q, want %q", got, "a bold c")
+	}
+	// The words are body text, so they wear the theme foreground and
+	// nothing else.
+	if got := codeBefore(t, out, "bold"); got != glamourCode(th.FG) {
+		t.Errorf("the words inside the tag are painted %q, want the body colour %q:\n%q", got, glamourCode(th.FG), out)
+	}
+}
+
+// TestCodeBlockTakesThemeColors reads what a fenced code block paints for one
+// theme of each kind. It runs without t.Parallel, because the tests around it
+// draw the same themes in one process and chroma keeps one style list for the
+// whole of them.
 func TestCodeBlockTakesThemeColors(t *testing.T) {
 	hex, ok := theme.Builtin("tokyo-night")
 	if !ok {
@@ -135,7 +334,6 @@ func TestCodeBlockTakesThemeColors(t *testing.T) {
 	}
 
 	t.Run("hex theme", func(t *testing.T) {
-		forgetChroma()
 		out := newRenderer(hex, true)(goBlock, 80)
 		// A 38;5; sequence is glamour's own 256-color palette, which is no
 		// color the theme holds.
@@ -164,7 +362,6 @@ func TestCodeBlockTakesThemeColors(t *testing.T) {
 	})
 
 	t.Run("terminal theme", func(t *testing.T) {
-		forgetChroma()
 		out := newRenderer(plain, true)(goBlock, 80)
 		// The terminal theme has no hex, so the block must ask for plain
 		// sixteen-color codes and nothing else.
@@ -182,11 +379,14 @@ func TestCodeBlockTakesThemeColors(t *testing.T) {
 	})
 }
 
-// forgetChroma drops the chroma style glamour keeps under one name for the
-// whole process, so the next theme drawn in a test registers its own colors
-// instead of wearing the first one's.
-func forgetChroma() {
-	delete(chromastyles.Registry, "charm")
+// wantHex is the hex chroma ends up with for a color a theme asked for by the
+// name of an ANSI color, and the color itself when it asked by hex. An empty
+// color stays empty, because a token with no color of its own has none.
+func wantHex(colour string) string {
+	if colour == "" {
+		return ""
+	}
+	return chroma.ParseColour(colour).String()
 }
 
 func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
@@ -311,28 +511,43 @@ func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 			wantColor("block quote", cfg.BlockQuote.Color, tc.slot(slotDim))
 			wantColor("horizontal rule", cfg.HorizontalRule.Color, tc.slot(slotDim))
 
-			// Code blocks take their colors from a chroma of our own, because
-			// the preset's is shared with every other renderer in the process.
-			if cfg.CodeBlock.Chroma == nil {
-				t.Fatal("code block has no chroma")
+			// A code block names a chroma style of its own instead of
+			// carrying a chroma, because glamour files a chroma under one
+			// name it picks itself and keeps the first set for the whole
+			// process. Every token the spec names has to be in that style,
+			// in the theme's own slots.
+			if cfg.CodeBlock.Chroma != nil {
+				t.Errorf("code block carries a chroma, which glamour would file under one name for the whole process")
 			}
-			if cfg.CodeBlock.Chroma == preset.DarkStyleConfig.CodeBlock.Chroma ||
-				cfg.CodeBlock.Chroma == preset.LightStyleConfig.CodeBlock.Chroma {
-				t.Error("code block shares the preset chroma instead of its own")
+			if cfg.CodeBlock.Theme != codeChromaName(tc.th) {
+				t.Errorf("code block names the chroma style %q, want one of its own theme %q", cfg.CodeBlock.Theme, codeChromaName(tc.th))
+			}
+			style, ok := chromastyles.Registry[cfg.CodeBlock.Theme]
+			if !ok {
+				t.Fatalf("the chroma style %q is not registered", cfg.CodeBlock.Theme)
 			}
 			for _, tok := range []struct {
-				name string
-				got  glamour.StylePrimitive
-				want string
+				name  string
+				token chroma.TokenType
+				want  string
 			}{
-				{"chroma comment", cfg.CodeBlock.Chroma.Comment, tc.chromaSlot(slotDim)},
-				{"chroma keyword", cfg.CodeBlock.Chroma.Keyword, tc.chromaSlot(slotMagenta)},
-				{"chroma string", cfg.CodeBlock.Chroma.LiteralString, tc.chromaSlot(slotGreen)},
-				{"chroma number", cfg.CodeBlock.Chroma.LiteralNumber, tc.chromaSlot(slotYellow)},
-				{"chroma function", cfg.CodeBlock.Chroma.NameFunction, tc.chromaSlot(slotBlue)},
-				{"chroma other text", cfg.CodeBlock.Chroma.Text, tc.body},
+				{"chroma comment", chroma.Comment, tc.chromaSlot(slotDim)},
+				{"chroma keyword", chroma.Keyword, tc.chromaSlot(slotMagenta)},
+				{"chroma string", chroma.LiteralString, tc.chromaSlot(slotGreen)},
+				{"chroma number", chroma.LiteralNumber, tc.chromaSlot(slotYellow)},
+				{"chroma function", chroma.NameFunction, tc.chromaSlot(slotBlue)},
+				{"chroma other text", chroma.Text, tc.body},
 			} {
-				wantColor(tok.name, tok.got.Color, tok.want)
+				// chroma turns the name of an ANSI color into the hex of
+				// that color, so a token the terminal theme paints by name
+				// reads back as hex. A token with no color of its own has
+				// no color at all.
+				var got *string
+				if c := style.Get(tok.token).Colour; c.IsSet() {
+					hex := c.String()
+					got = &hex
+				}
+				wantColor(tok.name, got, wantHex(tok.want))
 			}
 		})
 	}

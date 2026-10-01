@@ -1,8 +1,13 @@
 package tui
 
 import (
+	"fmt"
+	"hash/fnv"
 	"strconv"
+	"sync"
 
+	"github.com/alecthomas/chroma/v2"
+	chromastyles "github.com/alecthomas/chroma/v2/styles"
 	glamour "github.com/charmbracelet/glamour/ansi"
 	preset "github.com/charmbracelet/glamour/styles"
 
@@ -27,18 +32,6 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 		s := strconv.Itoa(i)
 		if t.BG != "" {
 			s = t.ANSI[i]
-		}
-		return &s
-	}
-	// chroma reads a color as a hex value, so the plain ANSI number the
-	// terminal theme hands over would be read as a hex digit and rejected.
-	// The ANSI color names say the same sixteen colors in a way chroma
-	// understands, so a theme without a hex of its own still gets a code
-	// block in the slots the rest of the pane uses.
-	chromaSlot := func(i int) *string {
-		s := t.ANSI[i]
-		if s == "" {
-			s = ansiChroma[i]
 		}
 		return &s
 	}
@@ -77,6 +70,14 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	cfg.BlockQuote.Color = slot(slotDim)
 	cfg.HorizontalRule.Color = slot(slotDim)
 
+	// An image is blue and the words that name it are dim, so nothing out of
+	// a glamour preset can reach the screen through them. Raw HTML is dim as
+	// well, because it is not text the pane knows how to colour.
+	cfg.Image.Color = slot(slotBlue)
+	cfg.ImageText.Color = slot(slotDim)
+	cfg.HTMLBlock = glamour.StyleBlock{StylePrimitive: glamour.StylePrimitive{Color: slot(slotDim)}}
+	cfg.HTMLSpan = glamour.StyleBlock{StylePrimitive: glamour.StylePrimitive{Color: slot(slotDim)}}
+
 	// The whole document and the code block around it take the body color, so
 	// no preset gray from the glamour palette can reach the screen. A text
 	// node gets no color of its own: it wears the color of the block it sits
@@ -85,18 +86,78 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	// every heading in it the color of the paragraph.
 	cfg.Document.Color = body
 	cfg.CodeBlock.Color = body
-	// The preset's chroma is a pointer every renderer in the process shares, so
-	// a chroma of our own is the only way to give code blocks theme colors
-	// without recoloring somebody else's code block.
-	cfg.CodeBlock.Chroma = &glamour.Chroma{
-		Comment:       glamour.StylePrimitive{Color: chromaSlot(slotDim)},
-		Keyword:       glamour.StylePrimitive{Color: chromaSlot(slotMagenta)},
-		LiteralString: glamour.StylePrimitive{Color: chromaSlot(slotGreen)},
-		LiteralNumber: glamour.StylePrimitive{Color: chromaSlot(slotYellow)},
-		NameFunction:  glamour.StylePrimitive{Color: chromaSlot(slotBlue)},
-		Text:          glamour.StylePrimitive{Color: body},
-	}
+	// The code colors go into a chroma style of this theme's own, so nothing
+	// out of a glamour preset can reach the screen through a code block. The
+	// chroma the preset brought along is cleared, because a chroma left on the
+	// style is what makes glamour file these colors under one name of its own
+	// choosing, keep the first set for the whole process and hand it to every
+	// theme drawn after it. The code block points at the name of the style
+	// instead, and that name is the theme's own.
+	cfg.CodeBlock.Chroma = nil
+	cfg.CodeBlock.Theme = codeStyle(t, body)
 	return cfg
+}
+
+// codeChromaName is the name a theme's code colors are filed under in chroma's
+// style list. chroma keeps one list for the whole process, so the name has to
+// say which theme the colors belong to, or two themes would end up sharing
+// one set of them. The colors go into the name too, so a theme file that
+// changed between two picks of it gets a name of its own and never wears the
+// colors the file had before.
+func codeChromaName(t theme.Theme) string {
+	h := fnv.New32a()
+	fmt.Fprintf(h, "%s %s %v", t.BG, t.FG, t.ANSI)
+	return "acta-" + t.Name + "-" + strconv.FormatUint(uint64(h.Sum32()), 16)
+}
+
+// codeStyle registers the code colors of a theme as a chroma style of their
+// own and gives the name back. Registering the same name twice would be
+// harmless, because a name holds one set of colors, but the check keeps a
+// second pick of a theme from writing over a style another renderer is
+// reading right now.
+func codeStyle(t theme.Theme, body *string) string {
+	name := codeChromaName(t)
+	chromaLock.Lock()
+	defer chromaLock.Unlock()
+	if _, ok := chromastyles.Registry[name]; !ok {
+		// Every token the spec does not name is left out of the style, and
+		// so wears the text color, which is the color of the body.
+		chromastyles.Register(chroma.MustNewStyle(name, chroma.StyleEntries{
+			chroma.Text:          colour(body),
+			chroma.Comment:       chromaSlot(t, slotDim),
+			chroma.Keyword:       chromaSlot(t, slotMagenta),
+			chroma.LiteralString: chromaSlot(t, slotGreen),
+			chroma.LiteralNumber: chromaSlot(t, slotYellow),
+			chroma.NameFunction:  chromaSlot(t, slotBlue),
+		}))
+	}
+	return name
+}
+
+// chromaLock guards chroma's style list, which is a plain map with no lock of
+// its own. ponytail: the TUI picks its colors on one goroutine and so nothing
+// waits here; a test that draws two themes at once would without it.
+var chromaLock sync.Mutex
+
+// colour is a color as chroma reads it, and nothing at all when there is
+// none, which is the case for the body of the terminal theme.
+func colour(c *string) string {
+	if c == nil {
+		return ""
+	}
+	return *c
+}
+
+// chromaSlot is a slot as chroma reads a color. chroma takes a hex value, so
+// the plain ANSI number the terminal theme hands over would be read as a hex
+// digit and turned down. The ANSI color names say the same sixteen colors in
+// a way chroma understands, so a theme without a hex of its own still gets a
+// code block in the slots the rest of the pane uses.
+func chromaSlot(t theme.Theme, i int) string {
+	if s := t.ANSI[i]; s != "" {
+		return s
+	}
+	return ansiChroma[i]
 }
 
 // ansiChroma names the ANSI colors for chroma, which only takes hex values.
