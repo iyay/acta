@@ -56,3 +56,18 @@ finished: "2026-10-01 19:37:56"
 - [x] Failing test: `TestRendererPaintsThemeColors` renders `"# H\n\n**b** and `+"`c`"+`"` with `newRenderer(tokyo-night, true)` and expects the truecolor sequence for `#9ece6a` (`38;2;158;206;106`), no `38;5;`, and no `**`, backtick or `# `; a second case with the `terminal` theme expects a 16-color code such as `\x1b[32m` and no `38;2;`; it fails because `newRenderer` takes only a bool and uses the glamour preset.
 - [x] Code: change `newRenderer` to `newRenderer(t theme.Theme, dark bool)` and use `glamour.WithStyles(markdownStyle(t, dark))` in place of `glamour.WithStandardStyle`; update the two calls in `internal/tui/model.go` (`New` and `WithTheme`) to pass `t, dark`; fix any test that called the old signature.
 - [x] Commit: `Detail pane markdown uses the theme colors`
+
+## Fix round 1
+
+### Task 3: code blocks follow the theme and never crash
+
+**Files:**
+- Modify: `internal/tui/markdown.go`
+- Modify: `internal/tui/view.go`
+- Test: `internal/tui/markdown_test.go`
+
+**verify:** A fenced code block renders without a panic for every built-in theme, the `terminal` theme included, and for a theme with a `BG` every code token (comment, keyword, string, number, function name, other text) comes out as the truecolor sequence of its spec slot, with no `38;5;` anywhere in the output. No element glamour can draw (images, image text, HTML blocks and spans included) keeps a glamour preset color. List every theme and every element checked in the rendered output.
+
+- [ ] Failing test: add rendered cases to `internal/tui/markdown_test.go` that feed a ```` ```go ```` fence (a comment, a keyword, a string, a number and a function name) plus an image and an inline HTML span through `newRenderer` for `tokyo-night` and for `terminal`; the `terminal` case panics today (chroma only takes `#rrggbb`, `slot()` gives `"8"`), and the `tokyo-night` case fails because tokens come out as `38;5;` (glamour's default chroma formatter is `terminal256`); render the `tokyo-night` code block before any other hex theme in the test, because glamour registers its chroma style once per process under the name `charm`.
+- [ ] Code: in `markdownStyle`, leave `cfg.CodeBlock.Chroma` nil when `t.BG == ""` so the `terminal` theme draws code blocks as plain body text; in `newRenderer`, add `glamour.WithChromaFormatter("terminal16m")` when the theme has a `BG`; set `Image`, `ImageText`, `HTMLBlock` and `HTMLSpan` colors from theme slots (image slot 4, image text slot 8, HTML slot 8); rewrite the wrong comment above `cfg.CodeBlock.Chroma` (glamour registers the chroma once per process under `charm`, so the first theme that draws a code block sets the code colors for the process; today the TUI picks one theme per process, so that is fine); finish the comment that stops mid-sentence ("..., which") near the top of `markdown_test.go`.
+- [ ] Commit: `Code blocks in the detail pane follow the theme and never crash`

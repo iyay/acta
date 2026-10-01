@@ -66,7 +66,11 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	cfg.HorizontalRule.Color = slot(slotDim)
 
 	// The whole document and the code block around it take the body color, so
-	// no preset gray from the glamour palette can reach the screen.
+	// no preset gray from the glamour palette can reach the screen. A text
+	// node gets no color of its own: it wears the color of the block it sits
+	// in, so a heading keeps its yellow while a paragraph keeps the
+	// foreground. Giving a text node the body color instead would paint
+	// every heading in it the color of the paragraph.
 	cfg.Document.Color = body
 	cfg.CodeBlock.Color = body
 	// The preset's chroma is a pointer every renderer in the process shares, so
@@ -80,8 +84,5 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 		NameFunction:  glamour.StylePrimitive{Color: slot(slotBlue)},
 		Text:          glamour.StylePrimitive{Color: body},
 	}
-
-	cfg.Text.Color = body
-
 	return cfg
 }

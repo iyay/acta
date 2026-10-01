@@ -46,6 +46,47 @@ func TestRendererPaintsThemeColors(t *testing.T) {
 		wantNoMarkers(t, out)
 	})
 
+	t.Run("heading keeps the theme yellow", func(t *testing.T) {
+		t.Parallel()
+
+		out := newRenderer(hex, true)("# H\n\nplain body\n\n## Two", 80)
+
+		// The heading wears the theme yellow as a truecolor sequence. The
+		// last step is 104, not a rounded value, because the theme hex
+		// #e0af68 turns into those three numbers whole.
+		for _, word := range []string{"H", "Two"} {
+			want := "\x1b[38;2;224;175;104;1m" + word + "\x1b[0m"
+			if !strings.Contains(out, want) {
+				t.Errorf("heading %q is not painted %q:\n%q", word, want, out)
+			}
+		}
+		// Plain body text still wears the theme foreground, the same
+		// #c0caf5 the rest of the pane uses.
+		if !strings.Contains(out, "\x1b[38;2;192;202;245mplain") {
+			t.Errorf("body text is not painted the theme foreground:\n%q", out)
+		}
+	})
+
+	t.Run("terminal heading is plain yellow", func(t *testing.T) {
+		t.Parallel()
+
+		out := newRenderer(plain, true)("# H\n\nplain body\n\n## Two", 80)
+
+		// The terminal theme has no hex of its own, so the heading is the
+		// plain ANSI yellow and the terminal picks the shade.
+		for _, word := range []string{"H", "Two"} {
+			want := "\x1b[33;1m" + word + "\x1b[0m"
+			if !strings.Contains(out, want) {
+				t.Errorf("heading %q is not painted %q:\n%q", word, want, out)
+			}
+		}
+		// The terminal theme has no foreground either, so the body line
+		// carries no color of its own.
+		if line := lineWith(t, strings.Split(out, "\n"), "plain body"); strings.Contains(line, "\x1b[") {
+			t.Errorf("body text carries a color the terminal theme has no hex for: %q", line)
+		}
+	})
+
 	t.Run("terminal theme", func(t *testing.T) {
 		t.Parallel()
 
@@ -122,8 +163,15 @@ func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 			}
 
 			// Body text wears the theme foreground, or nothing at all on the
-			// terminal theme.
-			wantColor("body text", cfg.Text.Color, tc.body)
+			// terminal theme, and it wears the color of the block it sits in.
+			wantColor("document", cfg.Document.Color, tc.body)
+			wantColor("code block", cfg.CodeBlock.Color, tc.body)
+			// A text node must have no color of its own, because glamour lets
+			// the node's color win over the block around it. A body color
+			// here would paint every heading the color of a paragraph.
+			if cfg.Text.Color != nil {
+				t.Errorf("text color is %q, want none so a text node wears its block", *cfg.Text.Color)
+			}
 
 			// Every heading is yellow, bold and bare: no bar behind it and no
 			// # marker in front, because the color already says it is one.
