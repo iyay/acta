@@ -45,18 +45,30 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !ok {
 			return exitOK
 		}
-		root, ok := hookRoot()
-		if !ok {
-			return exitOK
-		}
+		// A repo with no planning root is still a repo with a scripts/test,
+		// so the go test check is asked even then. Only the brainstorm state
+		// needs the root.
+		root, hasRoot := hookRoot()
 		if args[0] == "post-tool" {
+			if !hasRoot {
+				return exitOK
+			}
 			// Both writes are dropped on purpose: a session that cannot
 			// remember its brainstorm must not be stopped for it.
 			_ = hook.EnsureGitignore(root, "state/")
 			_ = hook.RecordBrainstorm(root, ev)
 			return exitOK
 		}
-		if block, msg := hook.PreTool(root, ev); block {
+		if hasRoot {
+			if block, msg := hook.PreTool(root, ev); block {
+				fmt.Fprintln(stderr, msg)
+				return exitBlock
+			}
+		}
+		// The go test block reads the folder the agent works in, not the
+		// planning root, so it comes after the brainstorm one.
+		cwd, _ := os.Getwd()
+		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); block {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
