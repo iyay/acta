@@ -1627,7 +1627,8 @@ func TestViewHelpListsTheNewKeys(t *testing.T) {
 
 // TestZTogglesAndFocusRestores walks the whole life of the expand key: z gives
 // the focused box the room, z takes it back, moving to another box takes it
-// back, and z on the detail box does nothing at all.
+// back, and z on the detail box zooms it to the whole body, where no width or
+// height brings the left column back and every way out ends the zoom.
 func TestZTogglesAndFocusRestores(t *testing.T) {
 	t.Parallel()
 
@@ -1657,10 +1658,131 @@ func TestZTogglesAndFocusRestores(t *testing.T) {
 			t.Errorf("%v should give the room back, it reads %d", keys, m.expanded)
 		}
 	}
-	// The detail box has no room to give, so z there does nothing.
-	m = press(sized(newModel(t), 120, 40), tabKey(tabPlans), "z", "shift+tab", "z")
-	if m.expanded != -1 {
-		t.Fatalf("z on the detail box expanded %d, want nothing", m.expanded)
+	// z on the detail box zooms it: the detail box takes the whole body and
+	// the left column is not on screen, at any width and height.
+	//
+	// Each half of a comparison starts from its own model, so a shared slice
+	// the update writes cannot make the two frames equal by accident.
+	start := func(zoom bool) Model {
+		m := press(sized(newModel(t), 120, 40), tabKey(tabPlans), "shift+tab")
+		if zoom {
+			m = press(m, "z")
+		}
+		return m
+	}
+	// drawn is what the terminal shows, with the last frame thrown away so
+	// every exit is read by what it draws and not by what it remembered.
+	drawn := func(m Model) string {
+		m.same, m.frame = false, nil
+		return plain(m.View())
+	}
+	on, off := start(true), start(false)
+	if on.expanded != int(paneDetail) {
+		t.Fatalf("z on the detail box expanded %d, want %d", on.expanded, paneDetail)
+	}
+	for _, size := range [][2]int{{60, 10}, {80, 24}, {120, 40}, {200, 55}, {300, 12}} {
+		w, h := size[0], size[1]
+		zoom, bare := sized(on, w, h), sized(off, w, h)
+		g := zoom.geometry()
+		if g.wide {
+			t.Errorf("%dx%d: the left column is still on screen", w, h)
+		}
+		if g.full.x != 0 || g.full.y != barRows || g.full.w != w {
+			t.Errorf("%dx%d: the zoomed detail box sits at %d,%d and is %d cells wide, want the whole width of the screen",
+				w, h, g.full.x, g.full.y, g.full.w)
+		}
+		for p, b := range g.side {
+			if b.w != 0 || b.h != 0 {
+				t.Errorf("%dx%d: box %d of the left column keeps %d cells", w, h, p+1, b.w)
+			}
+		}
+		// The detail box is not one of the boxes of the left column, so the
+		// count of them never reaches its number and the split stays even.
+		body := max(0, h-barRows-1)
+		if a, b := zoom.leftHeights(body), bare.leftHeights(body); !slices.Equal(a, b) {
+			t.Errorf("%dx%d: the zoomed column splits into %v, want the %v of no zoom", w, h, a, b)
+		}
+		lines := strings.Split(drawn(zoom), "\n")
+		cell := make(map[string]bool, len(lines))
+		for _, ln := range lines {
+			cell[ln] = true
+		}
+		// Every body line opens with the wall of the detail box, so the
+		// first cell of the screen is its own.
+		for y := barRows; y < barRows+body && y < len(lines); y++ {
+			r := []rune(lines[y])
+			if len(r) == 0 || !strings.ContainsRune("│┃┌┐└┘", r[0]) {
+				t.Errorf("%dx%d: body line %d opens with %q, want the detail wall at the first cell", w, h, y, lines[y])
+			}
+		}
+		bareLines := strings.Split(drawn(bare), "\n")
+		if strings.Join(lines, "\n") == strings.Join(bareLines, "\n") {
+			t.Errorf("%dx%d: the zoom drew the frame of no zoom", w, h)
+		}
+		if len(bareLines) > barRows && cell[bareLines[barRows]] {
+			t.Errorf("%dx%d: the zoom still draws the top line of the left box: %q", w, h, bareLines[barRows])
+		}
+	}
+	// The mouse reads the same geometry, so the whole zoomed screen belongs
+	// to the detail box and no cell of it reaches a box of the left column.
+	zoom := sized(on, 120, 40)
+	full := zoom.geometry().full
+	for _, c := range [][2]int{
+		{0, barRows}, {1, barRows + 1}, {full.w / 2, barRows + full.h/2},
+		{full.w - 1, barRows + full.h - 1}, {2, 0}, {full.w - 1, 39},
+	} {
+		if p, _, _ := zoom.hit(c[0], c[1]); p != paneDetail {
+			t.Errorf("the cell %v lands on box %d, want the detail box", c, p+1)
+		}
+	}
+	for y := range zoom.height {
+		for x := range zoom.width {
+			if p, _, _ := zoom.hit(x, y); p == paneList || p == paneDone {
+				t.Fatalf("the cell %d,%d lands on box %d of the left column", x, y, p+1)
+			}
+		}
+	}
+	// Every way out gives the room back and leaves the frame the same journey
+	// would have drawn had it never been zoomed: one side zooms and leaves,
+	// the other only leaves.
+	_, spans := sized(off, 120, 40).barTabs(120 - 2)
+	byKey := func(k string) func(Model) Model { return func(m Model) Model { return press(m, k) } }
+	exits := []struct {
+		name string
+		// out leaves the zoom. bare is what the same journey does with no
+		// zoom in it, which is out itself for every way out but a second z:
+		// on a screen that was never zoomed that one would zoom it instead.
+		out, bare func(Model) Model
+	}{
+		{"a second z", byKey("z"), func(m Model) Model { return m }},
+		{"tab", byKey("tab"), byKey("tab")},
+		{"shift+tab", byKey("shift+tab"), byKey("shift+tab")},
+		{"the number key of another tab", byKey(tabKey(tabBugs)), byKey(tabKey(tabBugs))},
+		{"a click on the tab bar",
+			func(m Model) Model { return click(m, 1+spans[tabBugs].x, 1) },
+			func(m Model) Model { return click(m, 1+spans[tabBugs].x, 1) }},
+	}
+	for _, e := range exits {
+		got := e.out(start(true))
+		if got.expanded != -1 {
+			t.Errorf("%s left the zoom at %d, want it gone", e.name, got.expanded)
+		}
+		shown, unzoomed := drawn(got), drawn(e.bare(start(false)))
+		if shown != unzoomed {
+			t.Errorf("%s drew:\n%s\nwant the frame of the same journey without the zoom:\n%s", e.name, shown, unzoomed)
+		}
+	}
+	// The left column is not on screen, so a click where it was lands on the
+	// detail box, which already has the focus, and a stray click keeps the
+	// zoom instead of losing it.
+	bare := sized(off, 120, 40)
+	list := bare.geometry().side[paneList]
+	stray := click(sized(on, 120, 40), list.x+1, list.y+1)
+	if stray.expanded != int(paneDetail) || stray.focus != paneDetail {
+		t.Errorf("a click on cell %d,%d left the zoom at %d and the focus on box %d", list.x+1, list.y+1, stray.expanded, stray.focus+1)
+	}
+	if shown := drawn(stray); shown != drawn(sized(on, 120, 40)) {
+		t.Errorf("a click inside the zoomed body changed the frame:\n%s", shown)
 	}
 	// The box that has the room is the one that grew, and the other keeps 3
 	// lines on a screen tall enough to give it.

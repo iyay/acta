@@ -316,13 +316,11 @@ func (m Model) treeRows(plans []*board.Item) []row {
 }
 
 // toggleExpand gives the focused list box the room of the whole column, or
-// takes the room back when it already has it. The detail box sits outside the
-// column, so z there does nothing. The box that grows shows more rows, so its
-// offset goes back inside what it can really show.
+// takes the room back when it already has it. The detail box has a column of
+// its own to lose, so z there zooms it over the whole body instead. The box
+// that grows shows more rows, so its offset goes back inside what it can
+// really show.
 func (m *Model) toggleExpand() {
-	if m.focus == paneDetail {
-		return
-	}
 	if m.expanded == int(m.focus) {
 		m.expanded = -1
 	} else {
