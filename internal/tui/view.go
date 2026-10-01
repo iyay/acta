@@ -10,6 +10,7 @@ import (
 	xansi "github.com/charmbracelet/x/ansi"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/theme"
 )
 
 // tabBox is where one tab name sits in the top border of a pane, in screen
@@ -895,13 +896,11 @@ func truncate(s string, w int) string {
 	return string(r) + "…"
 }
 
-// newRenderer renders markdown with glamour and keeps the result, because
-// drawing a long spec on every key press is slow.
-func newRenderer(dark bool) func(string, int) string {
-	style := "light"
-	if dark {
-		style = "dark"
-	}
+// newRenderer renders markdown with glamour in the colors of the theme the
+// rest of the screen uses, and keeps the result, because drawing a long spec
+// on every key press is slow.
+func newRenderer(t theme.Theme, dark bool) func(string, int) string {
+	style := markdownStyle(t, dark)
 	cache := map[string]string{}
 	return func(md string, width int) string {
 		key := fmt.Sprintf("%d\x00%s", width, md)
@@ -909,7 +908,7 @@ func newRenderer(dark bool) func(string, int) string {
 			return out
 		}
 		out := md
-		if r, err := glamour.NewTermRenderer(glamour.WithStandardStyle(style), glamour.WithWordWrap(width)); err == nil {
+		if r, err := glamour.NewTermRenderer(glamour.WithStyles(style), glamour.WithWordWrap(width)); err == nil {
 			if s, err := r.Render(md); err == nil {
 				out = strings.TrimRight(s, "\n")
 			}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	glamour "github.com/charmbracelet/glamour/ansi"
@@ -9,6 +10,69 @@ import (
 
 	"github.com/iyay/acta/internal/theme"
 )
+
+// TestRendererPaintsThemeColors checks what the screen actually gets, not
+// what the style config says: the colors must come from the theme and the
+// markdown markers must be gone.
+func TestRendererPaintsThemeColors(t *testing.T) {
+	t.Parallel()
+
+	const md = "# H\n\n**b** and `c`"
+
+	hex, ok := theme.Builtin("tokyo-night")
+	if !ok {
+		t.Fatal("tokyo-night theme is missing")
+	}
+	plain, ok := theme.Builtin("terminal")
+	if !ok {
+		t.Fatal("terminal theme is missing")
+	}
+
+	t.Run("hex theme", func(t *testing.T) {
+		t.Parallel()
+
+		out := newRenderer(hex, true)(md, 80)
+
+		// The inline code wears the theme green as a truecolor sequence.
+		// The last step is 105, not the 106 of #9ece6a, because termenv turns
+		// the hex back into numbers and cuts the fraction off.
+		if !strings.Contains(out, "\x1b[38;2;158;206;105m") {
+			t.Errorf("output has no theme green:\n%q", out)
+		}
+		// A 38;5; sequence would be glamour's own 256-color palette, which
+		if strings.Contains(out, "38;5;") {
+			t.Errorf("output still carries a 256-color sequence:\n%q", out)
+		}
+		wantNoMarkers(t, out)
+	})
+
+	t.Run("terminal theme", func(t *testing.T) {
+		t.Parallel()
+
+		out := newRenderer(plain, true)(md, 80)
+
+		// The terminal theme hands over an ANSI number, so the inline code
+		// is plain green and the terminal picks the shade.
+		if !strings.Contains(out, "\x1b[32m") {
+			t.Errorf("output has no plain green:\n%q", out)
+		}
+		if strings.Contains(out, "38;2;") {
+			t.Errorf("output carries a truecolor sequence the terminal cannot use:\n%q", out)
+		}
+		wantNoMarkers(t, out)
+	})
+}
+
+// wantNoMarkers fails when the raw markdown reached the screen, because the
+// color of a thing already says what it is.
+func wantNoMarkers(t *testing.T, out string) {
+	t.Helper()
+	for _, mark := range []string{"**", "`", "# "} {
+		if strings.Contains(out, mark) {
+			t.Errorf("output still shows the marker %q:\n%q", mark, out)
+		}
+	}
+}
 
 func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 	t.Parallel()

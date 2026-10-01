@@ -229,7 +229,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 			return write.MarkItem(cfg, fresh, id, done)
 		},
 		styles: newStyles(t, dark),
-		render: newRenderer(t.Dark(dark)),
+		render: newRenderer(t, dark),
 		dcache: &detailCache{},
 		frame:  &frameCache{},
 	}
@@ -244,7 +244,7 @@ func (m Model) WithTheme(name string, dark bool) Model {
 		m.status = err.Error()
 	}
 	m.styles = newStyles(t, dark)
-	m.render = newRenderer(t.Dark(dark))
+	m.render = newRenderer(t, dark)
 	m.dcache = &detailCache{}
 	m.frame = &frameCache{}
 	return m

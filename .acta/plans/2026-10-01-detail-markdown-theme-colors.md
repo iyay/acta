@@ -5,6 +5,7 @@ id: PLN-0074
 created: "2026-10-01 18:59:07"
 hash: qgrmpcg
 started: "2026-10-01 19:06:02"
+finished: "2026-10-01 19:37:56"
 ---
 # Detail Markdown Theme Colors Implementation Plan
 
@@ -52,6 +53,6 @@ started: "2026-10-01 19:06:02"
 
 **verify:** No path that builds a renderer (`New`, `WithTheme`, and the fallback to the default theme in `WithTheme`) can paint markdown with a color outside the active theme, and rendered output never shows the `**`, backtick or `# ` markers. List every caller of `newRenderer` checked and the theme each one passes.
 
-- [ ] Failing test: `TestRendererPaintsThemeColors` renders `"# H\n\n**b** and `+"`c`"+`"` with `newRenderer(tokyo-night, true)` and expects the truecolor sequence for `#9ece6a` (`38;2;158;206;106`), no `38;5;`, and no `**`, backtick or `# `; a second case with the `terminal` theme expects a 16-color code such as `\x1b[32m` and no `38;2;`; it fails because `newRenderer` takes only a bool and uses the glamour preset.
-- [ ] Code: change `newRenderer` to `newRenderer(t theme.Theme, dark bool)` and use `glamour.WithStyles(markdownStyle(t, dark))` in place of `glamour.WithStandardStyle`; update the two calls in `internal/tui/model.go` (`New` and `WithTheme`) to pass `t, dark`; fix any test that called the old signature.
-- [ ] Commit: `Detail pane markdown uses the theme colors`
+- [x] Failing test: `TestRendererPaintsThemeColors` renders `"# H\n\n**b** and `+"`c`"+`"` with `newRenderer(tokyo-night, true)` and expects the truecolor sequence for `#9ece6a` (`38;2;158;206;106`), no `38;5;`, and no `**`, backtick or `# `; a second case with the `terminal` theme expects a 16-color code such as `\x1b[32m` and no `38;2;`; it fails because `newRenderer` takes only a bool and uses the glamour preset.
+- [x] Code: change `newRenderer` to `newRenderer(t theme.Theme, dark bool)` and use `glamour.WithStyles(markdownStyle(t, dark))` in place of `glamour.WithStandardStyle`; update the two calls in `internal/tui/model.go` (`New` and `WithTheme`) to pass `t, dark`; fix any test that called the old signature.
+- [x] Commit: `Detail pane markdown uses the theme colors`
