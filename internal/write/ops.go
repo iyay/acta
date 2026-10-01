@@ -79,8 +79,15 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if !refRe.MatchString(value) {
 			return Outcome{}, bad("ref %q must be one word of letters, digits and . _ / -, at most 40 characters", value)
 		}
+	case "title":
+		if strings.TrimSpace(value) == "" {
+			return Outcome{}, bad("title cannot be empty")
+		}
+		if strings.ContainsAny(value, "\r\n") {
+			return Outcome{}, bad("title must be one line, not %q", value)
+		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, fixed_in, ref or priority", field)
+		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref or priority", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -91,7 +98,14 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	if err != nil {
 		return Outcome{}, err
 	}
-	out, err := SetField(src, field, value)
+	var out []byte
+	if field == "title" {
+		// A title lives in the body, not in the frontmatter, so it cannot go
+		// through SetField the way the other fields do.
+		out, err = setTitle(src, value)
+	} else {
+		out, err = SetField(src, field, value)
+	}
 	if err != nil {
 		return Outcome{}, bad("%s: %v", id, err)
 	}
@@ -108,6 +122,58 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return Outcome{}, err
 	}
 	return finish(cfg, it.Path, fmt.Sprintf("acta: %s %s %s", id, field, value), dirty), nil
+}
+
+// setTitle changes the title of one item. The board reads a title from the
+// first "# " heading of the body, so that line is the one to rewrite. An old
+// item that keeps its title in its frontmatter has that field rewritten, and
+// an item with neither gets a heading at the top of its body. Every other
+// byte of the file is left alone.
+func setTitle(src []byte, title string) ([]byte, error) {
+	_, body, nl, ok, err := frontOf(src)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// A file without frontmatter is all body, and its line ending is
+		// whatever the frontmatter check could not see.
+		body = string(src)
+		if strings.Contains(body, "\r\n") {
+			nl = "\r\n"
+		}
+	}
+	// The frontmatter sits in front of the body in the same bytes, so keep it
+	// by cutting the file in two instead of rendering it again.
+	head := string(src[:len(src)-len(body)])
+	if at := titleHead(body); at >= 0 {
+		end := len(body)
+		// Stop at the newline, so the line keeps the file's own ending.
+		if j := strings.IndexByte(body[at:], '\n'); j >= 0 {
+			end = at + j
+		}
+		return []byte(head + body[:at] + "# " + title + body[end:]), nil
+	}
+	if hasField(src, "title") {
+		return SetField(src, "title", title)
+	}
+	return []byte(head + "# " + title + nl + body), nil
+}
+
+// titleHead gives where the first "# " heading starts in a body, or -1. A
+// heading inside a code block is an example, not the title, the same way the
+// board reads it.
+func titleHead(body string) int {
+	inFence := false
+	at := 0
+	for _, ln := range strings.SplitAfter(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "```") {
+			inFence = !inFence
+		} else if !inFence && strings.HasPrefix(ln, "# ") {
+			return at
+		}
+		at += len(ln)
+	}
+	return -1
 }
 
 // NewBug writes a bug file from a body an agent sent and commits it. The new

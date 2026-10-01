@@ -5,6 +5,12 @@
 # With no package given, the whole repo is tested.
 set -eu
 cd "$(dirname "$0")/.."
+# Git starts a background maintenance run after every commit, and that run
+# holds a lock inside .git/objects while a test is deleting its temp folder.
+# Turning it off keeps the tests from failing on a folder they cannot remove.
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=maintenance.auto
+export GIT_CONFIG_VALUE_0=false
 full=
 if [ "${1:-}" = "--full" ]; then
 	full=1

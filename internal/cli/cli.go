@@ -451,7 +451,7 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
-		fmt.Fprintln(stderr, "usage: acta set <id> status|type|fixed_in|ref|priority <value>")
+		fmt.Fprintln(stderr, "usage: acta set <id> status|type|title|fixed_in|ref|priority <value>")
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
