@@ -61,7 +61,7 @@ func TestBuildDispatchDelivery(t *testing.T) {
 			"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "then `/goal` only",
 			"acta:review", "acta:land", "herdr pane close", "Bugs found by recipient",
 			"Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent`",
-			"literal skill name, a review keyword, and the range",
+			"literal skill name, a review keyword, and the range", "sorts them",
 		},
 		"herdr-delivery.md": {
 			"exactly one read", "checkpoint unconfirmed", "HARD RULE", "New session started", "🎯 Goal",
@@ -88,6 +88,7 @@ func TestBuildDispatchDelivery(t *testing.T) {
 	for _, bad := range []string{
 		"acta:dispatch", "Step -3", "Refuse inside omp", "dispatch requires herdr", "## Entry gate",
 		"## Autonomous loop", "## Landing", "NOTEs go to memory", "--no-ff", "git branch -d",
+		"files them with acta debt new", "files them with `acta debt new`",
 		"superpowers:", "git-bug", "/Users/", "<new-head-sha>", "fix round R of 5", "until herdr agent read",
 		"read it again", "<one-shot test runner>",
 	} {

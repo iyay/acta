@@ -228,12 +228,12 @@ func TestWorkflowPluginsList(t *testing.T) {
 
 func TestHouseRules(t *testing.T) {
 	txt := readFile(t, "references", "house-rules.md")
-	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back", "never write NOTEs to memory"} {
+	for _, want := range []string{"acta:build", "acta:tdd", "acta:debug", "acta:land", "acta bug new", "acta tick", "acta tick plans/<stem>#task-N --step <n>", "PROPERTIES, NOT INSTANCES", "DO NOT REVIEW YOUR OWN WORK", "acta tick plans/<stem>#task-N --all", "progress.done", "before the reply-back", "never write NOTEs to memory", "sorts them"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("house-rules.md missing %q", want)
 		}
 	}
-	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md", "per-task reviewer", "acta tick <task-id>", "<its task id>"} {
+	for _, bad := range []string{"superpowers:", "/Users/", "CLAUDE.md Core Six", "bugs.md", "per-task reviewer", "acta tick <task-id>", "<its task id>", "files them with acta debt new"} {
 		if strings.Contains(txt, bad) {
 			t.Errorf("house-rules.md still has %q", bad)
 		}
