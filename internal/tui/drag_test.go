@@ -198,11 +198,11 @@ func TestNoDragWhileSomethingIsOpen(t *testing.T) {
 func TestAWheelThatClearsTheBandDrawsAgain(t *testing.T) {
 	t.Parallel()
 
-	// A wheel over another pane is ignored, and the notches that gather for
-	// the focused pane keep the frame. Both still have to draw, because the
-	// band on it is gone.
+	// A notch on another pane takes the focus the way a click does and scrolls
+	// that pane, and the notches that gather for the focused pane keep the
+	// frame. Both still have to draw, because the band on it is gone.
 	for name, turn := range map[string]func(Model, rect, rect) Model{
-		"an ignored wheel": func(m Model, a, other rect) Model {
+		"a wheel over another pane": func(m Model, a, other rect) Model {
 			return wheelOnly(m, other.x0, other.y0, false)
 		},
 		// The first notch of a frame arms the wheel and scrolls on the spot.
