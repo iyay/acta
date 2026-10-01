@@ -2,6 +2,8 @@
 id: SPC-0058
 created: "2026-10-01 06:45:44"
 hash: mq4pa6w
+started: "2026-10-01 06:50:22"
+finished: "2026-10-01 06:51:50"
 ---
 # config show marks plan_depth when it is only the default
 

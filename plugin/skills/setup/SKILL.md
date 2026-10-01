@@ -10,7 +10,7 @@ The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM
 ## First run
 
 1. Run `acta doctor` and show its result. When a repo check failed, offer `acta doctor --fix`.
-2. Then ask, one question at a time, and only for what `acta config show` says is not set yet.
+2. Then ask, one question at a time, and only for what `acta config show` says is not set yet. A value marked `(default)` is not set yet, so ask for it.
 
 ### Voice
 

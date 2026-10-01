@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0067
 created: "2026-10-01 06:46:37"
 hash: pfi9frt
+started: "2026-10-01 06:50:22"
+finished: "2026-10-01 06:51:50"
 ---
 # Config Show Default Mark Implementation Plan
 
@@ -23,7 +25,19 @@ hash: pfi9frt
 
 ## Waves
 
+- Wave 0: Task 0 (added at build start: the baseline was red).
 - Wave 1: Task 1, Task 2 (no shared files).
+
+### Task 0: Keep the executor test away from the repo's .acta.yaml
+
+**Files:**
+- Modify: `internal/cli/cli_test.go`
+
+**verify:** No config show test reads the real repo's `.acta.yaml`. List every config show test that runs without its own cwd and what cwd each gets.
+
+- [x] Failing test: `TestVoiceSetExecutorKeepsOtherFields` already fails on main, because it runs in the package folder and show reads `build_executor: dispatch` from the repo's `.acta.yaml`.
+- [x] Code: the test calls `t.Chdir(t.TempDir())` first, so show finds no repo file.
+- [x] Commit: `executor test runs outside the repo so .acta.yaml cannot leak in`
 
 ### Task 1: Mark an unset plan_depth in config show
 
@@ -33,9 +47,9 @@ hash: pfi9frt
 
 **verify:** The ` (default)` mark shows only when neither the user file nor `.acta.yaml` sets plan_depth. List every source checked (none, global full, global minimal, repo full, repo minimal) and the line each prints; JSON output never carries the mark.
 
-- [ ] Failing test: the "nothing set anywhere" test expects `plan_depth: full (default)` and a new test with global `plan_depth: full` expects no mark; both fail because show prints bare `full` for both.
-- [ ] Code: in the show branch, when `v.PlanDepth` is empty, add ` (default)` to the text line only.
-- [ ] Commit: `config show marks plan_depth when it is only the default`
+- [x] Failing test: the "nothing set anywhere" test expects `plan_depth: full (default)` and a new test with global `plan_depth: full` expects no mark; both fail because show prints bare `full` for both.
+- [x] Code: in the show branch, when `v.PlanDepth` is empty, add ` (default)` to the text line only.
+- [x] Commit: `config show marks plan_depth when it is only the default`
 
 ### Task 2: Setup asks for values marked (default)
 
@@ -44,6 +58,6 @@ hash: pfi9frt
 
 **verify:** No setup path treats a `(default)` value as already set. List every place the skill decides whether to ask.
 
-- [ ] Failing test: none needed for skill prose; `scripts/test ./internal/plugincheck` must stay green after the edit.
-- [ ] Code: First run step 2 adds that a value marked `(default)` is not set yet, so setup asks for it.
-- [ ] Commit: `setup asks for config values marked (default)`
+- [x] Failing test: none needed for skill prose; `scripts/test ./internal/plugincheck` must stay green after the edit.
+- [x] Code: First run step 2 adds that a value marked `(default)` is not set yet, so setup asks for it.
+- [x] Commit: `setup asks for config values marked (default)`
