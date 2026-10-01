@@ -880,9 +880,10 @@ func (m Model) markRow(done bool) (tea.Model, tea.Cmd) {
 	return m, m.reloadCmd()
 }
 
-// copyID puts the id of the row under the cursor on the clipboard, and the
-// status line says what was copied or why it could not be. Update starts the
-// timer that hides the message.
+// copyID puts the id of the row under the cursor on the clipboard. The status
+// line says the copy landed, or why it could not, but never the id itself:
+// the id is already on screen as row text. Update starts the timer that hides
+// the message.
 func (m *Model) copyID() tea.Cmd {
 	it := m.Selected()
 	if it == nil {
@@ -894,7 +895,7 @@ func (m *Model) copyID() tea.Cmd {
 		m.status = "copy failed: " + err.Error()
 		return nil
 	}
-	m.status = "copied " + id
+	m.status = "copied to clipboard"
 	return nil
 }
 

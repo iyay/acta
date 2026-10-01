@@ -128,8 +128,9 @@ func (m *Model) copyDrag() tea.Cmd {
 	return m.copyPicked(dragText(bare.draw(), m.drag))
 }
 
-// copyPicked puts text on the clipboard and says so the way y does. Text that
-// is only spaces copies nothing and says nothing.
+// copyPicked puts text on the clipboard and says so the way y does: the same
+// short toast, so the picked text stays off the status line. Text that is
+// only spaces copies nothing and says nothing.
 func (m *Model) copyPicked(text string) tea.Cmd {
 	if strings.TrimSpace(text) == "" {
 		return nil
@@ -138,7 +139,6 @@ func (m *Model) copyPicked(text string) tea.Cmd {
 		m.status = "copy failed: " + err.Error()
 		return nil
 	}
-	const lead = "copied "
-	m.status = lead + xansi.Truncate(strings.ReplaceAll(text, "\n", " "), max(1, m.width-len(lead)), "…")
+	m.status = "copied to clipboard"
 	return nil
 }

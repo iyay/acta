@@ -5,6 +5,7 @@ id: PLN-0075
 created: "2026-10-01 19:01:33"
 hash: yrf1d7z
 started: "2026-10-01 19:25:29"
+finished: "2026-10-01 19:57:45"
 ---
 # TUI Detail Zoom, Wheel Focus, Copy Toast Implementation Plan
 
@@ -62,6 +63,6 @@ started: "2026-10-01 19:25:29"
 
 **verify:** Every successful copy, by `y` or by drag-select, sets the status to exactly `copied to clipboard`, and no status or screen line after a copy shows the copied id or text; the failure and empty paths keep their old messages. List every copy path checked.
 
-- [ ] Failing test: change the `y` cases and the drag case to expect the status `copied to clipboard` exactly, and the View to contain it; they fail because the status still carries the id or the picked text.
-- [ ] Code: set `m.status = "copied to clipboard"` in `copyID` and in `copyPicked`, and remove the `lead` constant and the `xansi.Truncate` call it fed (drop the `xansi` import only if nothing else in `select.go` uses it).
-- [ ] Commit: `feat(tui): copy toast says copied to clipboard`
+- [x] Failing test: change the `y` cases and the drag case to expect the status `copied to clipboard` exactly, and the View to contain it; they fail because the status still carries the id or the picked text.
+- [x] Code: set `m.status = "copied to clipboard"` in `copyID` and in `copyPicked`, and remove the `lead` constant and the `xansi.Truncate` call it fed (drop the `xansi` import only if nothing else in `select.go` uses it).
+- [x] Commit: `feat(tui): copy toast says copied to clipboard`
