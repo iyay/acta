@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0074
 created: "2026-10-01 18:59:07"
 hash: qgrmpcg
+started: "2026-10-01 19:06:02"
 ---
 # Detail Markdown Theme Colors Implementation Plan
 
@@ -38,9 +39,9 @@ hash: qgrmpcg
 
 **verify:** Every element the spec maps (body, H1 to H6, bold, italic, inline code, links, block quote, rule, the code block tokens comment, keyword, string, number, function name, other text) gets its color only from the theme, for both a hex theme and the `terminal` theme, and no heading keeps a background, a `#` prefix, or the glamour preset color. List every element checked and the slot each one got.
 
-- [ ] Failing test: `TestMarkdownStyleUsesThemeSlots` builds `markdownStyle(theme tokyo-night, true)` and `markdownStyle(theme terminal, true)` and checks each mapped field against the spec slot (hex for tokyo-night, `"2"` style numbers for terminal), H1 `BackgroundColor` nil and every heading `Prefix` empty, inline code `BackgroundColor` nil with empty `Prefix`/`Suffix`; it fails because `markdownStyle` does not exist.
-- [ ] Code: add `func markdownStyle(t theme.Theme, dark bool) ansi.StyleConfig` in `internal/tui/markdown.go`; copy `styles.DarkStyleConfig` or `styles.LightStyleConfig` by `t.Dark(dark)`, then set the colors and markers from the spec mapping, with a fresh `&ansi.Chroma{...}` for code blocks.
-- [ ] Commit: `Build the detail markdown style from the theme palette`
+- [x] Failing test: `TestMarkdownStyleUsesThemeSlots` builds `markdownStyle(theme tokyo-night, true)` and `markdownStyle(theme terminal, true)` and checks each mapped field against the spec slot (hex for tokyo-night, `"2"` style numbers for terminal), H1 `BackgroundColor` nil and every heading `Prefix` empty, inline code `BackgroundColor` nil with empty `Prefix`/`Suffix`; it fails because `markdownStyle` does not exist.
+- [x] Code: add `func markdownStyle(t theme.Theme, dark bool) ansi.StyleConfig` in `internal/tui/markdown.go`; copy `styles.DarkStyleConfig` or `styles.LightStyleConfig` by `t.Dark(dark)`, then set the colors and markers from the spec mapping, with a fresh `&ansi.Chroma{...}` for code blocks.
+- [x] Commit: `Build the detail markdown style from the theme palette`
 
 ### Task 2: renderer uses the theme
 

@@ -1,0 +1,149 @@
+package tui
+
+import (
+	"strconv"
+	"testing"
+
+	glamour "github.com/charmbracelet/glamour/ansi"
+	preset "github.com/charmbracelet/glamour/styles"
+
+	"github.com/iyay/acta/internal/theme"
+)
+
+func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
+	t.Parallel()
+
+	hex, ok := theme.Builtin("tokyo-night")
+	if !ok {
+		t.Fatal("tokyo-night theme is missing")
+	}
+	plain, ok := theme.Builtin("terminal")
+	if !ok {
+		t.Fatal("terminal theme is missing")
+	}
+
+	for _, tc := range []struct {
+		name string
+		th   theme.Theme
+		// slot is the color the theme paints a slot with: its own hex, or the
+		// plain ANSI number when the theme has no hex of its own.
+		slot func(int) string
+		// body is the body color. Empty means the body gets no color at all,
+		// so whatever the terminal already paints shows through.
+		body string
+	}{
+		{"tokyo-night", hex, func(i int) string { return hex.ANSI[i] }, hex.FG},
+		{"terminal", plain, func(i int) string { return strconv.Itoa(i) }, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := markdownStyle(tc.th, true)
+
+			// wantColor reads a glamour color, which is a pointer so that no
+			// color at all is different from an empty one.
+			wantColor := func(what string, got *string, want string) {
+				t.Helper()
+				if want == "" {
+					if got != nil {
+						t.Errorf("%s color is %q, want no color", what, *got)
+					}
+					return
+				}
+				if got == nil {
+					t.Errorf("%s has no color, want %q", what, want)
+					return
+				}
+				if *got != want {
+					t.Errorf("%s color is %q, want %q", what, *got, want)
+				}
+			}
+
+			// Body text wears the theme foreground, or nothing at all on the
+			// terminal theme.
+			wantColor("body text", cfg.Text.Color, tc.body)
+
+			// Every heading is yellow, bold and bare: no bar behind it and no
+			// # marker in front, because the color already says it is one.
+			for _, h := range []struct {
+				name  string
+				block glamour.StyleBlock
+			}{
+				{"heading", cfg.Heading},
+				{"h1", cfg.H1},
+				{"h2", cfg.H2},
+				{"h3", cfg.H3},
+				{"h4", cfg.H4},
+				{"h5", cfg.H5},
+				{"h6", cfg.H6},
+			} {
+				wantColor(h.name, h.block.Color, tc.slot(slotYellow))
+				if h.block.BackgroundColor != nil {
+					t.Errorf("%s background is %q, want none", h.name, *h.block.BackgroundColor)
+				}
+				if h.block.Prefix != "" {
+					t.Errorf("%s prefix is %q, want empty", h.name, h.block.Prefix)
+				}
+				if h.block.Suffix != "" {
+					t.Errorf("%s suffix is %q, want empty", h.name, h.block.Suffix)
+				}
+				if h.block.Bold == nil || !*h.block.Bold {
+					t.Errorf("%s is not bold", h.name)
+				}
+			}
+
+			// Bold is red, the slot the rest of the TUI uses to say something
+			// matters.
+			wantColor("strong", cfg.Strong.Color, tc.slot(slotRed))
+			if cfg.Strong.Bold == nil || !*cfg.Strong.Bold {
+				t.Error("strong is not bold")
+			}
+
+			// Italic stays italic and wears the body color, so leaning on a
+			// word does not change what it means.
+			wantColor("emph", cfg.Emph.Color, tc.body)
+			if cfg.Emph.Italic == nil || !*cfg.Emph.Italic {
+				t.Error("emph is not italic")
+			}
+
+			// Inline code is green with no box and no padding spaces.
+			wantColor("code", cfg.Code.Color, tc.slot(slotGreen))
+			if cfg.Code.BackgroundColor != nil {
+				t.Errorf("code background is %q, want none", *cfg.Code.BackgroundColor)
+			}
+			if cfg.Code.Prefix != "" || cfg.Code.Suffix != "" {
+				t.Errorf("code padding is %q%q, want empty", cfg.Code.Prefix, cfg.Code.Suffix)
+			}
+
+			// A link and the words inside it are both blue.
+			wantColor("link", cfg.Link.Color, tc.slot(slotBlue))
+			wantColor("link text", cfg.LinkText.Color, tc.slot(slotBlue))
+
+			// A quote and a rule are dim, so they sit back behind the text.
+			wantColor("block quote", cfg.BlockQuote.Color, tc.slot(slotDim))
+			wantColor("horizontal rule", cfg.HorizontalRule.Color, tc.slot(slotDim))
+
+			// Code blocks take their colors from a chroma of our own, because
+			// the preset's is shared with every other renderer in the process.
+			if cfg.CodeBlock.Chroma == nil {
+				t.Fatal("code block has no chroma")
+			}
+			if cfg.CodeBlock.Chroma == preset.DarkStyleConfig.CodeBlock.Chroma ||
+				cfg.CodeBlock.Chroma == preset.LightStyleConfig.CodeBlock.Chroma {
+				t.Error("code block shares the preset chroma instead of its own")
+			}
+			for _, tok := range []struct {
+				name string
+				got  glamour.StylePrimitive
+				want string
+			}{
+				{"chroma comment", cfg.CodeBlock.Chroma.Comment, tc.slot(slotDim)},
+				{"chroma keyword", cfg.CodeBlock.Chroma.Keyword, tc.slot(slotMagenta)},
+				{"chroma string", cfg.CodeBlock.Chroma.LiteralString, tc.slot(slotGreen)},
+				{"chroma number", cfg.CodeBlock.Chroma.LiteralNumber, tc.slot(slotYellow)},
+				{"chroma function", cfg.CodeBlock.Chroma.NameFunction, tc.slot(slotBlue)},
+				{"chroma other text", cfg.CodeBlock.Chroma.Text, tc.body},
+			} {
+				wantColor(tok.name, tok.got.Color, tok.want)
+			}
+		})
+	}
+}

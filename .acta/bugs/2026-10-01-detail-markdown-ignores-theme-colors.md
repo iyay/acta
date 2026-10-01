@@ -1,6 +1,7 @@
 ---
 id: BUG-0026
 hash: fujb7ep
+started: "2026-10-01 19:06:02"
 ---
 # Detail pane markdown does not use the theme colors
 
