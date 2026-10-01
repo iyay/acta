@@ -1176,52 +1176,233 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 	}
 }
 
-// A wheel belongs to the pane that has the focus, the way the keys do. Over
-// any other pane it does nothing at all: no scroll, no focus change, so a
-// wheel can never move a pane the user is not looking at.
-func TestWheelOverAnUnfocusedPaneDoesNothing(t *testing.T) {
+// A wheel notch belongs to the box under the pointer, so it takes the focus
+// the way a click does and then scrolls that box by one step, exactly as a
+// notch on a box that already had the focus does. A notch that lands on no
+// pane at all changes nothing: no focus, no offset, no word on the screen.
+func TestWheelOverAnUnfocusedPaneFocusesIt(t *testing.T) {
 	t.Parallel()
 
+	// Every ordered pair of the three boxes of the Plans tab.
 	for _, p := range []pane{paneList, paneDone, paneDetail} {
 		for _, q := range []pane{paneList, paneDone, paneDetail} {
 			if q == p {
 				continue
 			}
-			// The pane under the pointer is scrolled away from the top first,
-			// so a wheel that ignored the focus would show on screen instead of
-			// hiding behind a clamp at zero.
-			m := press(paneModel(t, p), "G")
-			if k := focusKeyFrom(p, q); k != "" {
-				m = press(m, k)
-			}
-			sel := m.Selected()
-			before := m.off
-			shown := screenTops(m)
-			if before[p] == 0 || shows(m, p, 0) {
-				t.Fatalf("pane %d did not scroll before the wheel over it", p)
-			}
-			g := m.geometry()
-			target := g.at(p)
-			if target.w < 2 || target.h < 2 {
-				continue
-			}
-			// Both notches, so neither direction of the wheel can slip past.
-			for _, up := range []bool{false, true} {
-				m = wheel(m, target.x+1, target.y+2, up)
-				if m.focus != q {
-					t.Errorf("a wheel over pane %d took the focus off pane %d", p, q)
-				}
-				if !slices.Equal(m.off, before) {
-					t.Errorf("a wheel over unfocused pane %d moved something: %v, want %v", p, m.off, before)
-				}
-				if !slices.Equal(screenTops(m), shown) {
-					t.Errorf("a wheel over unfocused pane %d moved the screen: %v, want %v", p, screenTops(m), shown)
-				}
-				if got := m.Selected(); got == nil || sel == nil || got.ID != sel.ID {
-					t.Errorf("a wheel over unfocused pane %d changed the selection to %v", p, got)
-				}
+			t.Run(fmt.Sprintf("focus-pane%d-notches-pane%d", p+1, q+1), func(t *testing.T) {
+				notchOverPair(t, tabPlans, p, q)
+			})
+		}
+	}
+	t.Run("a tab with no Done box", func(t *testing.T) {
+		notchesOverATabWithoutADoneBox(t)
+	})
+	t.Run("a notch over no pane", func(t *testing.T) {
+		notchesOverNoPane(t)
+	})
+	t.Run("a notch on a wall with no row", func(t *testing.T) {
+		notchOnAWallWithNoRow(t)
+	})
+	t.Run("a wheel that takes the focus collapses a zoomed box", func(t *testing.T) {
+		wheelFocusCollasesAZoomedBox(t)
+	})
+}
+
+// notchOverPair is the whole rule for one pair of a tab: the pointer sits over
+// pane q while the focus is on pane p. A notch there must end with q focused
+// and scrolled by one step, on the same offsets and the same screen a notch
+// over q with q already focused ends on. Both runs start from the same screen,
+// and the second one reaches q with the same key the reader would, so the only
+// difference between them is the notch that takes the focus on the way.
+func notchOverPair(t *testing.T, tab int, p, q pane) {
+	t.Helper()
+
+	// Opening a tab leaves the focus on its first box, so the walk to any box
+	// starts there.
+	open := func() Model { return press(longModel(t), tabKey(tab)) }
+	on := func(m Model, from, to pane) Model {
+		if to == from {
+			return m
+		}
+		k := focusKeyFrom(from, to)
+		if k == "" {
+			t.Fatalf("pane %d is not part of tab %d, so there is no key from it to pane %d", from+1, tab+1, to+1)
+		}
+		return press(m, k)
+	}
+	onP := on(open(), paneList, p)
+	onQ := on(on(open(), paneList, p), p, q)
+	if onP.focus != p || onQ.focus != q {
+		t.Fatalf("the two starts sit on panes %d and %d, want %d and %d", onP.focus+1, onQ.focus+1, p+1, q+1)
+	}
+	if !slices.Equal(onP.off, onQ.off) {
+		t.Fatalf("the two starts hold offsets %v and %v, so they are not the same screen", onP.off, onQ.off)
+	}
+	// The offsets live in one slice the wheel writes into, so the screen as it
+	// was needs a copy of its own to be compared against.
+	start := onP
+	start.off = slices.Clone(onP.off)
+	b := scrollBox(onP, q)
+	if b.w < 2 || b.h < 2 {
+		t.Fatalf("pane %d is a box of %d by %d cells, too small to take a notch", q+1, b.w, b.h)
+	}
+	x, y := b.x+1, b.y+2
+	if got, _, _ := onP.hit(x, y); got != q {
+		t.Fatalf("the cell %d,%d answers pane %d, want pane %d", x, y, got+1, q+1)
+	}
+	for _, up := range []bool{false, true} {
+		got := wheel(onP, x, y, up)
+		want := wheel(onQ, x, y, up)
+		if got.focus != q {
+			t.Errorf("pane %d on pane %d: a notch over the unfocused pane left the focus on pane %d", p+1, q+1, got.focus+1)
+		}
+		if !slices.Equal(got.off, want.off) {
+			t.Errorf("pane %d on pane %d: a notch over the unfocused pane holds offsets %v, the same notch on the focused pane holds %v",
+				p+1, q+1, got.off, want.off)
+		}
+		if !slices.Equal(screenTops(got), screenTops(want)) {
+			t.Errorf("pane %d on pane %d: a notch over the unfocused pane drew %v, the same notch on the focused pane drew %v",
+				p+1, q+1, screenTops(got), screenTops(want))
+		}
+		// The pane under the pointer is the only one the notch moves.
+		for _, r := range []pane{paneList, paneDone, paneDetail} {
+			if r != q && got.off[r] != start.off[r] {
+				t.Errorf("pane %d on pane %d: a notch over pane %d moved pane %d from %d to %d",
+					p+1, q+1, q+1, r+1, start.off[r], got.off[r])
 			}
 		}
+		if up {
+			// Every pane starts on its first line, so a notch away from the
+			// reader leaves it there.
+			if got.off[q] != 0 {
+				t.Errorf("pane %d on pane %d: a notch up scrolled pane %d to %d, the top is 0", p+1, q+1, q+1, got.off[q])
+			}
+			continue
+		}
+		if step := min(wheelStep, got.lastOff(q)); got.off[q] != step {
+			t.Errorf("pane %d on pane %d: a notch scrolled pane %d to %d, one step from the top is %d",
+				p+1, q+1, q+1, got.off[q], step)
+		}
+		// The offset moved, so the words on screen have to move with it.
+		if q != paneDetail && got.lastOff(q) > 0 && drawnFirst(got, q) == drawnFirst(start, q) {
+			t.Errorf("pane %d on pane %d: pane %d scrolled to %d but the screen still shows %q",
+				p+1, q+1, q+1, got.off[q], drawnFirst(got, q))
+		}
+	}
+}
+
+// The Activities tab has no Done box. Only its two boxes can take a notch, and
+// no cell of that screen ever answers the pane the tab does not have, so the
+// two real pairs keep the rule and the missing box is named rather than
+// skipped in silence.
+func notchesOverATabWithoutADoneBox(t *testing.T) {
+	t.Helper()
+
+	onActivities := press(longModel(t), tabKey(tabActivities))
+	if got := onActivities.panes(); len(got) != 1 || got[0] != paneList {
+		t.Fatalf("the Activities tab holds panes %v, want only pane %d", got, paneList+1)
+	}
+	for y := range onActivities.height {
+		for x := range onActivities.width {
+			if p, _, _ := onActivities.hit(x, y); p == paneDone {
+				t.Fatalf("the cell %d,%d answers pane %d, which the Activities tab does not have", x, y, paneDone+1)
+			}
+		}
+	}
+	notchOverPair(t, tabActivities, paneList, paneDetail)
+	notchOverPair(t, tabActivities, paneDetail, paneList)
+}
+
+// A notch over no pane at all is not a notch of the scroll: the focus stays
+// where it is and every offset stays where it is. Every spot here answers the
+// focused pane with no row and no tab, which is how hit says nothing is there.
+func notchesOverNoPane(t *testing.T) {
+	for _, focus := range []pane{paneList, paneDetail} {
+		t.Run(fmt.Sprintf("focus-pane%d", focus+1), func(t *testing.T) {
+			// An item is selected first, so a box that has to hold still has
+			// something in it that could move.
+			m := paneModel(t, paneList)
+			if focus != paneList {
+				m = press(m, focusKeyFrom(paneList, focus))
+			}
+			if m.lastOff(focus) == 0 {
+				t.Fatalf("the focused box has nothing to scroll, so a notch over no pane would prove nothing")
+			}
+			// The offsets live in one slice the wheel writes into, so the screen
+			// as it was needs a copy of its own.
+			before := slices.Clone(m.off)
+			tops := screenTops(m)
+			for _, spot := range []struct {
+				name string
+				x, y int
+			}{
+				{"the tab bar", 5, 1},
+				{"the bottom border of the tab bar", 5, barRows - 1},
+				{"the status line", 5, m.height - 1},
+				{"a cell past the last column", m.width, 10},
+			} {
+				for _, up := range []bool{false, true} {
+					if p, row, tab := m.hit(spot.x, spot.y); p != m.focus || row != -1 || tab != -1 {
+						t.Fatalf("%s: the cell %d,%d answers pane %d, row %d, tab %d, so the spot is not on no pane",
+							spot.name, spot.x, spot.y, p+1, row, tab)
+					}
+					got := wheel(m, spot.x, spot.y, up)
+					if got.focus != m.focus {
+						t.Errorf("%s: a notch moved the focus to pane %d", spot.name, got.focus+1)
+					}
+					if !slices.Equal(got.off, before) {
+						t.Errorf("%s: a notch moved the offsets to %v, want %v", spot.name, got.off, before)
+					}
+					if !slices.Equal(screenTops(got), tops) {
+						t.Errorf("%s: a notch changed the screen to %v, want %v", spot.name, screenTops(got), tops)
+					}
+				}
+			}
+		})
+	}
+}
+
+// A cell with no row inside a box is not on no pane: it is on that box, on
+// its wall. The notch belongs to the pane it is drawn on, so it scrolls it
+// and leaves the focus alone, because the pane it lands on has the focus.
+func notchOnAWallWithNoRow(t *testing.T) {
+	t.Helper()
+
+	m := paneModel(t, paneList)
+	b := scrollBox(m, paneList)
+	x, y := b.x+1, b.y+b.h-1
+	if p, row, tab := m.hit(x, y); p != paneList || row != -1 || tab != -1 {
+		t.Fatalf("the wall cell %d,%d answers pane %d, row %d, tab %d, want pane %d with no row and no tab",
+			x, y, p+1, row, tab, paneList+1)
+	}
+	got := wheel(m, x, y, false)
+	if got.focus != paneList {
+		t.Errorf("a notch on the wall of the focused box moved the focus to pane %d", got.focus+1)
+	}
+	if step := min(wheelStep, got.lastOff(paneList)); got.off[paneList] != step {
+		t.Errorf("a notch on the wall scrolled the box to %d, one step from the top is %d", got.off[paneList], step)
+	}
+}
+
+// The room belongs to the box that has the focus, so a wheel that takes the
+// focus collapses a zoomed list box the same way a click does.
+func wheelFocusCollasesAZoomedBox(t *testing.T) {
+	t.Helper()
+
+	m := press(paneModel(t, paneList), "z")
+	if m.expanded != int(paneList) {
+		t.Fatalf("the zoom left expanded at %d, want pane %d", m.expanded, paneList+1)
+	}
+	b := scrollBox(m, paneDetail)
+	if b.w < 2 || b.h < 2 {
+		t.Fatalf("with the list box zoomed the detail box is %d by %d cells", b.w, b.h)
+	}
+	got := wheel(m, b.x+1, b.y+1, false)
+	if got.focus != paneDetail {
+		t.Errorf("a notch over the detail box left the focus on pane %d", got.focus+1)
+	}
+	if got.expanded != -1 {
+		t.Errorf("the wheel left the zoom on, expanded is %d, want -1", got.expanded)
 	}
 }
 
