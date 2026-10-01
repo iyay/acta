@@ -30,6 +30,18 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 		}
 		return &s
 	}
+	// chroma reads a color as a hex value, so the plain ANSI number the
+	// terminal theme hands over would be read as a hex digit and rejected.
+	// The ANSI color names say the same sixteen colors in a way chroma
+	// understands, so a theme without a hex of its own still gets a code
+	// block in the slots the rest of the pane uses.
+	chromaSlot := func(i int) *string {
+		s := t.ANSI[i]
+		if s == "" {
+			s = ansiChroma[i]
+		}
+		return &s
+	}
 	// body is the theme foreground, or no color at all for the terminal theme,
 	// because it has no foreground of its own either.
 	var body *string
@@ -77,12 +89,33 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	// a chroma of our own is the only way to give code blocks theme colors
 	// without recoloring somebody else's code block.
 	cfg.CodeBlock.Chroma = &glamour.Chroma{
-		Comment:       glamour.StylePrimitive{Color: slot(slotDim)},
-		Keyword:       glamour.StylePrimitive{Color: slot(slotMagenta)},
-		LiteralString: glamour.StylePrimitive{Color: slot(slotGreen)},
-		LiteralNumber: glamour.StylePrimitive{Color: slot(slotYellow)},
-		NameFunction:  glamour.StylePrimitive{Color: slot(slotBlue)},
+		Comment:       glamour.StylePrimitive{Color: chromaSlot(slotDim)},
+		Keyword:       glamour.StylePrimitive{Color: chromaSlot(slotMagenta)},
+		LiteralString: glamour.StylePrimitive{Color: chromaSlot(slotGreen)},
+		LiteralNumber: glamour.StylePrimitive{Color: chromaSlot(slotYellow)},
+		NameFunction:  glamour.StylePrimitive{Color: chromaSlot(slotBlue)},
 		Text:          glamour.StylePrimitive{Color: body},
 	}
 	return cfg
+}
+
+// ansiChroma names the ANSI colors for chroma, which only takes hex values.
+// The names are the shades of the slots the code block uses.
+var ansiChroma = map[int]string{
+	slotDim:     "#ansidarkgray",
+	slotGreen:   "#ansigreen",
+	slotYellow:  "#ansibrown",
+	slotBlue:    "#ansiblue",
+	slotMagenta: "#ansipurple",
+}
+
+// chromaFormatter picks the formatter that can carry the colors of this
+// theme. A theme with a hex of its own gets truecolor. The terminal theme
+// hands over ANSI names, and those come back as plain sixteen-color codes,
+// because a truecolor sequence is exactly what it has no colors for.
+func chromaFormatter(t theme.Theme) string {
+	if t.BG == "" {
+		return "terminal16"
+	}
+	return "terminal16m"
 }

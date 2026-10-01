@@ -8,6 +8,7 @@ import (
 	glamour "github.com/charmbracelet/glamour/ansi"
 	preset "github.com/charmbracelet/glamour/styles"
 
+	chromastyles "github.com/alecthomas/chroma/v2/styles"
 	"github.com/iyay/acta/internal/theme"
 )
 
@@ -115,6 +116,79 @@ func wantNoMarkers(t *testing.T, out string) {
 	}
 }
 
+// goBlock is a fenced Go block with one token of every kind the spec maps: a
+// comment, a keyword, a string, a number and a function name.
+const goBlock = "```go\n// note\nfunc main() { s := \"hi\"; n := 42 }\n```"
+
+// TestCodeBlockTakesThemeColors reads what a fenced code block paints. It runs
+// without t.Parallel because glamour registers the chroma style once per
+// process, so one theme's code block colors would reach the next theme drawn
+// in the same test run. forgetChroma clears that registration between them.
+func TestCodeBlockTakesThemeColors(t *testing.T) {
+	hex, ok := theme.Builtin("tokyo-night")
+	if !ok {
+		t.Fatal("tokyo-night theme is missing")
+	}
+	plain, ok := theme.Builtin("terminal")
+	if !ok {
+		t.Fatal("terminal theme is missing")
+	}
+
+	t.Run("hex theme", func(t *testing.T) {
+		forgetChroma()
+		out := newRenderer(hex, true)(goBlock, 80)
+		// A 38;5; sequence is glamour's own 256-color palette, which is no
+		// color the theme holds.
+		if strings.Contains(out, "38;5;") {
+			t.Errorf("code block still carries a 256-color sequence:\n%q", out)
+		}
+		// The comment wears the dim slot and the keyword the magenta slot,
+		// each as a truecolor sequence. The digits are the ones the render
+		// really emits: termenv turns the hex back into numbers and cuts the
+		// fraction off, so they are not the hex digits written out.
+		for _, want := range []string{
+			"\x1b[38;2;65;72;104m// note",
+			"\x1b[38;2;187;154;247mfunc",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("code block is missing %q:\n%q", want, out)
+			}
+		}
+		// The keyword and the function name on the same line wear different
+		// colors, so the block was token by token and not flattened to one.
+		line := lineWith(t, strings.Split(out, "\n"), "main")
+		if !strings.Contains(line, "\x1b[38;2;187;154;247mfunc") ||
+			!strings.Contains(line, "\x1b[38;2;122;162;247mmain") {
+			t.Errorf("keyword and function name are not two colors of their own: %q", line)
+		}
+	})
+
+	t.Run("terminal theme", func(t *testing.T) {
+		forgetChroma()
+		out := newRenderer(plain, true)(goBlock, 80)
+		// The terminal theme has no hex, so the block must ask for plain
+		// sixteen-color codes and nothing else.
+		for _, unwanted := range []string{"38;2;", "38;5;"} {
+			if strings.Contains(out, unwanted) {
+				t.Errorf("code block carries %q, which the terminal theme cannot use:\n%q", unwanted, out)
+			}
+		}
+		// The comment is dim and the keyword magenta, as plain codes.
+		for _, want := range []string{"\x1b[90m// note", "\x1b[35mfunc"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("code block is missing %q:\n%q", want, out)
+			}
+		}
+	})
+}
+
+// forgetChroma drops the chroma style glamour keeps under one name for the
+// whole process, so the next theme drawn in a test registers its own colors
+// instead of wearing the first one's.
+func forgetChroma() {
+	delete(chromastyles.Registry, "charm")
+}
+
 func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 	t.Parallel()
 
@@ -133,12 +207,16 @@ func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 		// slot is the color the theme paints a slot with: its own hex, or the
 		// plain ANSI number when the theme has no hex of its own.
 		slot func(int) string
+		// chromaSlot is the same slot as chroma takes it. chroma only reads
+		// hex values, so the terminal theme hands over the name of the ANSI
+		// color instead of its number.
+		chromaSlot func(int) string
 		// body is the body color. Empty means the body gets no color at all,
 		// so whatever the terminal already paints shows through.
 		body string
 	}{
-		{"tokyo-night", hex, func(i int) string { return hex.ANSI[i] }, hex.FG},
-		{"terminal", plain, func(i int) string { return strconv.Itoa(i) }, ""},
+		{"tokyo-night", hex, func(i int) string { return hex.ANSI[i] }, func(i int) string { return hex.ANSI[i] }, hex.FG},
+		{"terminal", plain, func(i int) string { return strconv.Itoa(i) }, func(i int) string { return ansiChroma[i] }, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := markdownStyle(tc.th, true)
@@ -247,11 +325,11 @@ func TestMarkdownStyleUsesThemeSlots(t *testing.T) {
 				got  glamour.StylePrimitive
 				want string
 			}{
-				{"chroma comment", cfg.CodeBlock.Chroma.Comment, tc.slot(slotDim)},
-				{"chroma keyword", cfg.CodeBlock.Chroma.Keyword, tc.slot(slotMagenta)},
-				{"chroma string", cfg.CodeBlock.Chroma.LiteralString, tc.slot(slotGreen)},
-				{"chroma number", cfg.CodeBlock.Chroma.LiteralNumber, tc.slot(slotYellow)},
-				{"chroma function", cfg.CodeBlock.Chroma.NameFunction, tc.slot(slotBlue)},
+				{"chroma comment", cfg.CodeBlock.Chroma.Comment, tc.chromaSlot(slotDim)},
+				{"chroma keyword", cfg.CodeBlock.Chroma.Keyword, tc.chromaSlot(slotMagenta)},
+				{"chroma string", cfg.CodeBlock.Chroma.LiteralString, tc.chromaSlot(slotGreen)},
+				{"chroma number", cfg.CodeBlock.Chroma.LiteralNumber, tc.chromaSlot(slotYellow)},
+				{"chroma function", cfg.CodeBlock.Chroma.NameFunction, tc.chromaSlot(slotBlue)},
 				{"chroma other text", cfg.CodeBlock.Chroma.Text, tc.body},
 			} {
 				wantColor(tok.name, tok.got.Color, tok.want)

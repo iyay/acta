@@ -908,7 +908,7 @@ func newRenderer(t theme.Theme, dark bool) func(string, int) string {
 			return out
 		}
 		out := md
-		if r, err := glamour.NewTermRenderer(glamour.WithStyles(style), glamour.WithWordWrap(width)); err == nil {
+		if r, err := glamour.NewTermRenderer(glamour.WithStyles(style), glamour.WithChromaFormatter(chromaFormatter(t)), glamour.WithWordWrap(width)); err == nil {
 			if s, err := r.Render(md); err == nil {
 				out = strings.TrimRight(s, "\n")
 			}
