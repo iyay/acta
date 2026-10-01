@@ -189,14 +189,29 @@ func TestDoctorHarness(t *testing.T) {
 }
 
 func TestDoctorStaleLinks(t *testing.T) {
+	// omp has no "unlink" action, so a hint naming one is a dead end. The
+	// dead link is just a file left in node_modules, so the fix removes it.
+	noUnlink := func(t *testing.T, rs []Result) {
+		t.Helper()
+		for _, r := range rs {
+			if strings.Contains(r.Fix, "omp plugin unlink") {
+				t.Fatalf("%s fix %q names an action omp does not have", r.Name, r.Fix)
+			}
+		}
+	}
 	t.Run("one dead link", func(t *testing.T) {
 		e := env(t)
 		link(t, filepath.Join(nodeModules(e), "pm"), filepath.Join(t.TempDir(), "gone"))
-		r := byName(Run(e), "stale-links")
-		wantLevel(t, r, Warn, "omp plugin unlink pm")
+		rs := Run(e)
+		r := byName(rs, "stale-links")
+		wantLevel(t, r, Warn, "rm "+filepath.Join(nodeModules(e), "pm"))
+		if r.Fix != "rm "+filepath.Join(nodeModules(e), "pm") {
+			t.Fatalf("fix %q wants only the one rm line", r.Fix)
+		}
 		if !strings.Contains(r.Msg, "pm") {
 			t.Fatalf("msg %q does not name pm", r.Msg)
 		}
+		noUnlink(t, rs)
 	})
 	t.Run("live link and folder beside it", func(t *testing.T) {
 		e := env(t)
@@ -204,18 +219,24 @@ func TestDoctorStaleLinks(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(nodeModules(e), "zeta"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		wantLevel(t, byName(Run(e), "stale-links"), OK, "")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), OK, "")
+		noUnlink(t, rs)
 	})
 	t.Run("no folder", func(t *testing.T) {
 		e := env(t)
-		wantLevel(t, byName(Run(e), "stale-links"), OK, "")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), OK, "")
+		noUnlink(t, rs)
 	})
 	t.Run("two dead links, one fix line each", func(t *testing.T) {
 		e := env(t)
 		link(t, filepath.Join(nodeModules(e), "pm"), filepath.Join(t.TempDir(), "gone"))
 		link(t, filepath.Join(nodeModules(e), "gstack"), filepath.Join(t.TempDir(), "gone2"))
-		r := byName(Run(e), "stale-links")
-		wantLevel(t, r, Warn, "omp plugin unlink gstack; omp plugin unlink pm")
+		rs := Run(e)
+		wantLevel(t, byName(rs, "stale-links"), Warn,
+			"rm "+filepath.Join(nodeModules(e), "gstack")+"; rm "+filepath.Join(nodeModules(e), "pm"))
+		noUnlink(t, rs)
 	})
 	t.Run("unreadable folder", func(t *testing.T) {
 		if os.Geteuid() == 0 {

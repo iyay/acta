@@ -232,7 +232,9 @@ func checkStaleLinks(e Env) Result {
 			continue
 		}
 		names = append(names, en.Name())
-		fixes = append(fixes, "omp plugin unlink "+en.Name())
+		// omp cannot unlink itself, and the dead link is only a leftover file
+		// in node_modules, so the fix is to remove that path.
+		fixes = append(fixes, "rm "+p)
 	}
 	if len(names) == 0 {
 		r.Msg = "no dead omp plugin links"
