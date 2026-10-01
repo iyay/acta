@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0072
 created: "2026-10-01 16:20:48"
 hash: wrakcdv
+started: "2026-10-01 16:23:35"
+finished: "2026-10-01 16:25:28"
 ---
 # A plan's written approved or in-progress follows its task boxes Implementation Plan
 
@@ -32,6 +34,6 @@ hash: wrakcdv
 
 **verify:** For every plan, the board status equals `parentStatus` of its boxes with source `derived` whenever the written status is `approved` or `in-progress`, and equals the written word with source `frontmatter` whenever it is `draft`, `done` or `dropped`; no other kind's status or problems change. List each written value checked and the status it gave.
 
-- [ ] Write a table test `TestPlanWrittenStatusFollowsBoxes` in `board_test.go` covering: written `approved` with 1/1 ticked gives `done`/`derived`; written `approved` with 1/2 ticked gives `in-progress`; written `in-progress` with 0/1 ticked gives `approved`; written `draft` and written `dropped` with all ticked keep their word with `frontmatter`; no plan gets a problem. It fails today because the `default:` branch keeps the written word.
-- [ ] Add a `case it.Kind == KindPlan && (it.fmStatus == "approved" || it.fmStatus == "in-progress"):` that sets `parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"`, with a short comment saying the written word is only the approval stamp, so the boxes decide; run `scripts/test ./internal/board` until green, plus `go vet ./internal/board && gofmt -l internal/board`.
-- [ ] Commit `board: a plan's written approved or in-progress follows its task boxes (BUG-0013)`.
+- [x] Write a table test `TestPlanWrittenStatusFollowsBoxes` in `board_test.go` covering: written `approved` with 1/1 ticked gives `done`/`derived`; written `approved` with 1/2 ticked gives `in-progress`; written `in-progress` with 0/1 ticked gives `approved`; written `draft` and written `dropped` with all ticked keep their word with `frontmatter`; no plan gets a problem. It fails today because the `default:` branch keeps the written word.
+- [x] Add a `case it.Kind == KindPlan && (it.fmStatus == "approved" || it.fmStatus == "in-progress"):` that sets `parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"`, with a short comment saying the written word is only the approval stamp, so the boxes decide; run `scripts/test ./internal/board` until green, plus `go vet ./internal/board && gofmt -l internal/board`.
+- [x] Commit `board: a plan's written approved or in-progress follows its task boxes (BUG-0013)`.

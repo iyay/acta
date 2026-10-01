@@ -638,6 +638,10 @@ func (b *Board) derive() {
 			if it.fmStatus != "" && it.fmStatus != it.Status {
 				it.Problems = append(it.Problems, "written status "+it.fmStatus+" ignored, derived "+it.Status)
 			}
+		// approved and in-progress on a plan are only the stamp that says the
+		// plan may start, so the task boxes decide where it stands now.
+		case it.Kind == KindPlan && (it.fmStatus == "approved" || it.fmStatus == "in-progress"):
+			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
 		default:
 			it.Status, it.StatusSource = it.fmStatus, "frontmatter"
 		}

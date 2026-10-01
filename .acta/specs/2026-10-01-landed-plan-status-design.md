@@ -3,6 +3,8 @@ parent: bugs/2026-09-30-landed-plan-stays-approved
 created: "2026-10-01 16:20:02"
 id: SPC-0063
 hash: xaknfg0
+started: "2026-10-01 16:23:35"
+finished: "2026-10-01 16:25:28"
 ---
 # A plan's written approved or in-progress follows its task boxes
 

@@ -675,3 +675,34 @@ func TestFileItemTitleFallback(t *testing.T) {
 		}
 	}
 }
+
+// TestPlanWrittenStatusFollowsBoxes: BUG-0013, a plan stayed approved after
+// every task was ticked because the written word beat the boxes.
+func TestPlanWrittenStatusFollowsBoxes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name, written, boxes, status, source string
+	}{
+		{"approved and all ticked", "approved", "- [x] a", "done", "derived"},
+		{"approved and half ticked", "approved", "- [x] a\n- [ ] b", "in-progress", "derived"},
+		{"in-progress and none ticked", "in-progress", "- [ ] a", "approved", "derived"},
+		{"draft keeps its word", "draft", "- [x] a", "draft", "frontmatter"},
+		{"dropped keeps its word", "dropped", "- [x] a", "dropped", "frontmatter"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			files := map[string]string{
+				"plans/2026-10-01-p.md": "---\nstatus: " + c.written + "\n---\n# P\n\n### Task 1: A\n\n" + c.boxes + "\n",
+			}
+			it := boardWith(t, files).Get("plans/2026-10-01-p")
+			if it.Status != c.status || it.StatusSource != c.source {
+				t.Errorf("written %s with %q = %s (%s), want %s (%s)",
+					c.written, c.boxes, it.Status, it.StatusSource, c.status, c.source)
+			}
+			if len(it.Problems) != 0 {
+				t.Errorf("written %s problems %v, want none", c.written, it.Problems)
+			}
+		})
+	}
+}
