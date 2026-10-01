@@ -3,6 +3,8 @@ parent: bugs/2026-09-30-setup-never-offers-to-change-voice
 id: SPC-0064
 created: "2026-10-01 18:30:00"
 hash: fe9now2
+started: "2026-10-01 18:33:13"
+finished: "2026-10-01 18:34:40"
 ---
 # Setup offers to change values that are already set
 
