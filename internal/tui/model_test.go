@@ -2486,6 +2486,39 @@ func TestEveryToastHidesByItself(t *testing.T) {
 	}
 }
 
+// The editor runs with the program suspended, so the terminal comes back
+// with mouse reporting off and nothing turns it back on. Every path that
+// runs the editor has to ask for the mouse again, or clicks and the wheel
+// stay dead until the TUI restarts.
+func TestMouseComesBackAfterTheEditor(t *testing.T) {
+	t.Parallel()
+
+	want := tea.EnableMouseCellMotion()
+	paths := []struct {
+		name string
+		msg  editorDoneMsg
+	}{
+		{"edit a row", editorDoneMsg{}},
+		{"new bug", editorDoneMsg{newBug: "no-such-bug.md"}},
+		{"editor error", editorDoneMsg{err: errors.New("boom")}},
+	}
+	for _, c := range paths {
+		_, cmd := actModel(t).Update(c.msg)
+		msgs := runNow(cmd, 200*time.Millisecond)
+		if !slices.Contains(msgs, want) {
+			t.Errorf("%s: the mouse stayed off after the editor, got %v", c.name, msgs)
+		}
+	}
+
+	// A model that never ran the editor must not touch the mouse.
+	_, cmd := actModel(t).Update(key("j"))
+	for _, msg := range runNow(cmd, 200*time.Millisecond) {
+		if msg == want {
+			t.Errorf("a key press with no editor behind it turned the mouse on")
+		}
+	}
+}
+
 // The search box is not a toast: typing there changes the list, not the
 // status line, so no timer is started for it.
 func TestSearchTextStartsNoTimer(t *testing.T) {

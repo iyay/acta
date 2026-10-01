@@ -2,6 +2,7 @@
 id: BUG-0027
 hash: btxr2zk
 priority: high
+started: "2026-10-02 05:51:34"
 ---
 # TUI mouse stops working after the editor runs, until the TUI restarts
 
