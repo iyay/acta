@@ -142,9 +142,9 @@ func TestCopyPickedToast(t *testing.T) {
 	if got != "abc\ndef" {
 		t.Fatalf("clipboard = %q", got)
 	}
-	// The status line says what was copied. The timer to hide it is started by
-	// Update, not here, so a toast never gets two.
-	if m.status != "copied abc def" {
+	// The status line says the copy landed, not what it was. The timer to
+	// hide it is started by Update, not here, so a toast never gets two.
+	if m.status != "copied to clipboard" {
 		t.Errorf("status = %q", m.status)
 	}
 	if cmd != nil {
@@ -156,10 +156,12 @@ func TestCopyPickedToast(t *testing.T) {
 		t.Errorf("the toast stayed: %q", s)
 	}
 
+	// A long copy says the same short thing, and it fits the width on its
+	// own, because the picked text no longer rides along on the line.
 	m.width = 20
 	m.copyPicked(strings.Repeat("x", 50))
-	if !strings.HasSuffix(m.status, "…") || lipgloss.Width(m.status) > m.width {
-		t.Errorf("a long copy was not cut to fit: %q", m.status)
+	if m.status != "copied to clipboard" || lipgloss.Width(m.status) > m.width {
+		t.Errorf("a long copy: status %q, width %d over %d", m.status, lipgloss.Width(m.status), m.width)
 	}
 
 	m.clip = func(string) error { return errors.New("no clipboard") }

@@ -49,6 +49,7 @@ func TestDragCopiesThePaneText(t *testing.T) {
 		m := paneModel(t, p)
 		a, _ := scrollBox(m, p).textArea()
 		want := screenText(m, a.x0+1, a.y0, a.x0+6, a.y0+1, a)
+		before := plain(m.View())
 		m, got := dragged(m, a.x0+1, a.y0, a.x0+6, a.y0+1)
 		if got == "" || got != want {
 			t.Errorf("pane %d: copied %q, want %q", p, got, want)
@@ -56,8 +57,19 @@ func TestDragCopiesThePaneText(t *testing.T) {
 		if strings.ContainsAny(got, "│─╭╮╰╯┌┐└┘") {
 			t.Errorf("pane %d: copy holds a wall: %q", p, got)
 		}
-		if !strings.HasPrefix(m.status, "copied ") {
+		if m.status != "copied to clipboard" {
 			t.Errorf("pane %d: status = %q", p, m.status)
+		}
+		// The picked words are pane text and sit on screen already, so the
+		// toast is free of them only when the copy adds no line that holds
+		// them. The first picked row is the needle: a copy can be more than
+		// one line, and a needle with a line break matches no line at all.
+		row := strings.SplitN(got, "\n", 2)[0]
+		if row == "" {
+			t.Fatalf("pane %d: the picked text %q starts with an empty row", p, got)
+		}
+		if leak := leakedLines(before, plain(m.View()), row); len(leak) != 0 {
+			t.Errorf("pane %d: the copy put the picked text on screen: %q", p, leak)
 		}
 	}
 }

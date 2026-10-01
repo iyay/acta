@@ -2068,8 +2068,25 @@ func TestHAndLLeaveAFlatListAlone(t *testing.T) {
 	}
 }
 
+// leakedLines gives the lines the after frame has that the before frame did
+// not, narrowed to the ones holding needle. A board prints its ids as row
+// text, so a copy is clean only when it adds no line that holds them.
+func leakedLines(before, after, needle string) []string {
+	old := make(map[string]bool)
+	for _, ln := range strings.Split(before, "\n") {
+		old[ln] = true
+	}
+	var out []string
+	for _, ln := range strings.Split(after, "\n") {
+		if strings.Contains(ln, needle) && !old[ln] {
+			out = append(out, ln)
+		}
+	}
+	return out
+}
+
 // y hands the clipboard the id the design names for the row under the cursor,
-// and the status line says what was copied.
+// and the status line says the copy landed, not what it was.
 func TestYCopiesTheIDOfTheRow(t *testing.T) {
 	t.Parallel()
 
@@ -2088,15 +2105,23 @@ func TestYCopiesTheIDOfTheRow(t *testing.T) {
 			var got []string
 			m := actModel(t)
 			m.clip = func(s string) error { got = append(got, s); return nil }
-			after := press(press(m, c.keys...), "y")
+			moved := press(m, c.keys...)
+			before := plain(moved.View())
+			after := press(moved, "y")
 			if len(got) != 1 || got[0] != c.want {
 				t.Fatalf("clipboard got %q, want %q", got, c.want)
 			}
-			if after.status != "copied "+c.want {
-				t.Errorf("status %q, want %q", after.status, "copied "+c.want)
+			if after.status != "copied to clipboard" {
+				t.Errorf("status %q, want %q", after.status, "copied to clipboard")
 			}
-			if !strings.Contains(plain(after.View()), "copied "+c.want) {
-				t.Errorf("the status line does not show %q", "copied "+c.want)
+			view := plain(after.View())
+			if !strings.Contains(view, "copied to clipboard") {
+				t.Errorf("the screen does not show %q", "copied to clipboard")
+			}
+			// The list prints the id as row text, so the toast is free of it
+			// only when the copy puts it on no line of its own.
+			if leak := leakedLines(before, view, c.want); len(leak) != 0 {
+				t.Errorf("the copy put %q on screen: %q", c.want, leak)
 			}
 		})
 	}
@@ -2123,8 +2148,11 @@ func TestYCopiesTheIDOfARowWithNoNumber(t *testing.T) {
 		var got []string
 		m.clip = func(s string) error { got = append(got, s); return nil }
 		after := press(m, "y")
-		if len(got) != 1 || got[0] != c.want || after.status != "copied "+c.want {
-			t.Errorf("%s: copied %q, status %q, want %q", c.file, got, after.status, c.want)
+		if len(got) != 1 || got[0] != c.want {
+			t.Errorf("%s: copied %q, want %q", c.file, got, c.want)
+		}
+		if after.status != "copied to clipboard" {
+			t.Errorf("%s: status %q", c.file, after.status)
 		}
 	}
 }
@@ -2388,10 +2416,10 @@ func TestCopyToastHidesByItself(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a copy started no timer, so the toast would stay")
 	}
-	if m.status != "copied BUG-0002" {
+	if m.status != "copied to clipboard" {
 		t.Fatalf("status %q", m.status)
 	}
-	next, _ = m.Update(clearStatusMsg{text: "copied BUG-0002"})
+	next, _ = m.Update(clearStatusMsg{text: "copied to clipboard"})
 	if got := next.(Model).status; got != "" {
 		t.Fatalf("toast did not hide: %q", got)
 	}
@@ -2402,7 +2430,7 @@ func TestCopyToastKeepsANewerMessage(t *testing.T) {
 
 	m := actModel(t)
 	m.status = "reload failed: disk"
-	next, _ := m.Update(clearStatusMsg{text: "copied BUG-0002"})
+	next, _ := m.Update(clearStatusMsg{text: "copied to clipboard"})
 	if got := next.(Model).status; got != "reload failed: disk" {
 		t.Fatalf("a newer message was cleared: %q", got)
 	}
