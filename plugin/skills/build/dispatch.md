@@ -262,7 +262,7 @@ WORKTREE: <abs path> (branch <slug>, parent <production>, base <base-sha>) — c
 FILES: the plan names the area; find the exact lines yourself with lsp and grep. Any line number here is a hint, never the boundary — the defect may sit beside it. Surgical: every changed line traces to a ticket. NOTES never write NOTEs to memory — the orchestrator files them with `acta debt new` once the round is CLEAN.
 HOUSE RULES: before the todo list, read `references/house-rules.md` of the acta plugin (two folders up from SKILL.md) and AGENTS.md in this worktree. Write that file's absolute path into the brief, because the recipient cannot resolve a relative path. The brief gives the job facts; those files give the rules.
 MEMORY: before the todo list, read ~/.claude/memory/MEMORY.md and <project memory>/MEMORY.md (<project memory> = ~/.claude/projects/<main checkout abs path with every / and . turned into ->/memory, the MAIN checkout, never the worktree). They are indexes: open a linked note only when its hook fits a ticket. Read-only — never write there; your own omp memory keeps what you learn.
-GATES (from the worktree): <the plan's fast test command>; typecheck; git diff --stat vs <base-sha> shows only plan files.
+GATES (from the worktree): <the plan's fast test command>; typecheck; git diff --stat vs <base-sha> shows only plan files. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and every implementer shares one machine.
 REPLY-BACK: after the last commit the build skill runs `acta reply-back`. Nothing else to hand-fill.
 ```
 

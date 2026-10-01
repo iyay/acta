@@ -196,3 +196,16 @@ func TestShowPathLineInSkills(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildSkillNoBareGoTest reads SKILL.md on its own. A bare `go test`
+// run uses every core on the machine, which is the bug this repo keeps
+// hitting, so the skill has to name it and say the hook stops it.
+func TestBuildSkillNoBareGoTest(t *testing.T) {
+	txt := readBuildFile(t, "SKILL.md")
+	if !strings.Contains(txt, "never run bare `go test`") {
+		t.Error("build/SKILL.md missing \"never run bare `go test`\"")
+	}
+	if !strings.Contains(txt, "the pre-tool hook blocks it") {
+		t.Error("build/SKILL.md does not say the pre-tool hook blocks it")
+	}
+}

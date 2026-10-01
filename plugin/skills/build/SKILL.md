@@ -112,7 +112,7 @@ if [ -f go.mod ]; then go mod download; fi
 
 ### Step 3: Verify Clean Baseline
 
-Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`.
+Run the project's fast tests to make sure the workspace starts clean: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command (a short mode such as `go test -short ./...`, or `npm test`, `cargo test`, `pytest` on the touched parts). The full suite waits for `acta:land`. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and a whole-repo run there spends every core on the machine.
 
 If tests fail: report the failures, ask whether to proceed or investigate. If tests pass, report ready: worktree path, passing count, and what is next. A dirty baseline makes every later failure ambiguous, so proceeding past failures is your human partner's call.
 

@@ -96,3 +96,16 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildDispatchGatesNoBareGoTest reads dispatch.md on its own. The GATES
+// line of the brief is where the recipient learns how to run tests, so the
+// bare `go test` ban and the hook that enforces it belong there.
+func TestBuildDispatchGatesNoBareGoTest(t *testing.T) {
+	txt := readBuildFile(t, "dispatch.md")
+	if !strings.Contains(txt, "never run bare `go test`") {
+		t.Error("build/dispatch.md missing \"never run bare `go test`\"")
+	}
+	if !strings.Contains(txt, "the pre-tool hook blocks it") {
+		t.Error("build/dispatch.md does not say the pre-tool hook blocks it")
+	}
+}
