@@ -26,7 +26,7 @@ Agents run `scripts/test --full` as the gate, not `-short`. The eval hooks call 
 
 ## Version
 
-Until the first release the version stays on 0.1.x. A plan that changes `plugin/`, `cmd/` or `internal/` ends with a task that adds 1 to the patch in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`. A plan that only changes docs or `.acta/` does not bump. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`.
+Until the first release the version stays on 0.1.x. Every plan that lands ends with a task that adds 1 to the patch in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`, with no exceptions. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`.
 
 ## Architecture
 

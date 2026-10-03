@@ -50,12 +50,43 @@ time with `/acta:setup` or `acta config set`. Files written to the repo stay in 
 repo language (English unless you set `--repo-language`). If your CLAUDE.md
 names a language, it wins.
 
+The reply rules behind `adhd` and `plain` live in an output style that ships
+with the plugin, also named `acta`. Its core rules keep every reply short and
+direct, and its ADHD block applies only when your style is `adhd`. In Claude
+Code the style is on whenever the plugin is on, and it replaces the
+`outputStyle` you picked yourself. Claude Code reads styles at start, so a
+change needs a restart. omp has no output styles, so the extension adds the
+same text to the session rules.
+
+## Lean coding guide
+
+`acta:lean` is a short coding guide: understand the code first, then make the
+smallest change that is still right, and never cut the checks that protect users
+or data. It is on by default. The session start text carries a short form of it,
+and `acta:slice` adds a lean line to every new plan.
+
+Turn it off for all your repos, or for one repo only:
+
+```bash
+acta config set --coding-guide off
+acta config set --repo --coding-guide off
+```
+
+`--repo` saves the choice in the repo's `.acta.yaml`. With the guide off, the
+short form and the plan line go away, and the skill stays installed.
+`acta config show` lists the value in force.
+
 ## Other workflow plugins
 
 `acta` is meant to be the only workflow plugin active in a repo. When
 superpowers, gstack, Matt Pocock's skills or another plugin listed in
 `hooks/workflow-plugins.txt` is enabled, the agent tells you once and shows how
 to turn it off for that repo. It never turns anything off itself.
+
+That file also lists two plugins that are not workflow plugins but overlap
+acta: caveman, which the `acta` output style replaces, and a coding-guide
+plugin, which `acta:lean` replaces. The agent names them once in the same way.
+Run next to acta, they load the same rules twice.
 
 `acta` itself works with any workflow: list another plugin's docs folder under
 `legacy` in `.acta.yaml` and the TUI shows it read-only.
