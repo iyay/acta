@@ -26,7 +26,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 Pick the depth in this order, and do not ask when one answers: the argument of `/slice minimal` or `/slice full` (this run only, never saved), then `plan_depth` from `acta config show`, then `full`.
 
 - `full`: everything below, with real code in every code step, and a wait for the user's yes.
-- `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the ponytail-lazy line plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, a property-shaped `**verify:**` and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 6 lines a task.
+- `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the lean line, unless coding_guide is off, plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, a property-shaped `**verify:**` and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 6 lines a task.
 
 The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
 
@@ -95,7 +95,7 @@ Group tasks into waves by file ownership. Two tasks in one wave never touch the 
 
 ## Keep it small
 
-Every plan's Global Constraints carry this line: "Implement ponytail-lazy: YAGNI, then existing code, then stdlib, then native, then an installed dependency, then one line, then the minimum; never cut validation, security or accessibility." Tasks come from the user's ask only: no task for a helper, probe or list the user did not ask for. Review findings never become tasks here, except the one fix task `acta:review` asks for.
+Unless `acta config show` says `coding_guide: off`, every plan's Global Constraints carry this line: "Follow acta:lean: understand the task and the code first; then skip it, reuse code here, stdlib, a native feature, an installed dependency, one line, the minimum; never cut validation, security or accessibility." Tasks come from the user's ask only: no task for a helper, probe or list the user did not ask for. Review findings never become tasks here, except the one fix task `acta:review` asks for.
 
 ## Bite-Sized Task Granularity
 

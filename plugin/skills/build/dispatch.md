@@ -172,7 +172,7 @@ Path inside the repo the recipient works in: `.claude/dispatch/<slug>-brief.md` 
 **What the brief is now.** With `acta:shape` + `acta:slice` upstream and `acta:build` downstream, the brief no longer restates tasks, decisions, or method. It is:
 
 - the pointer: design doc + plan path + ticket refs, worktree, base SHA, parent branch;
-- a pointer to `references/house-rules.md`, which carries the fixed rules every hand-off requires (TDD, ponytail, COMMENTS, PARALLEL); `ticket → verify` stays job-specific, in TICKETS;
+- a pointer to `references/house-rules.md`, which carries the fixed rules every hand-off requires (TDD, COMMENTS, PARALLEL); `ticket → verify` stays job-specific, in TICKETS;
 - the mechanics no skill supplies (gates, reply-back, stay-put).
 
 Locked decisions belong in the design doc or plan. If one is missing there, fix the plan first — do not patch it into the brief.

@@ -16,7 +16,7 @@ import (
 // Skills is the index printed every session: names only, because Claude Code
 // and omp already show each skill's description. The plugin's skill folders
 // must match these names exactly.
-var Skills = []string{"shape", "slice", "build", "tdd", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
+var Skills = []string{"shape", "slice", "build", "tdd", "lean", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
 
 // Input is everything the hook text depends on.
 type Input struct {

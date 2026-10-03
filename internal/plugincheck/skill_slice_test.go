@@ -7,7 +7,9 @@ func TestSkillSlice(t *testing.T) {
 		Name:     "slice",
 		MaxLines: 262,
 		Must: []string{
-			".acta/plans/", "acta:build", "verify:", "## Waves", "ponytail-lazy",
+			".acta/plans/", "acta:build", "verify:", "## Waves", "Follow acta:lean",
+			"the lean line, unless coding_guide is off",
+			"Unless `acta config show` says `coding_guide: off`, every plan's Global Constraints carry this line",
 			"never as the one case", "wait for a yes", "`subagent`", "`dispatch`", "`inline`",
 			"No Placeholders", "Global Constraints", "**Spec:** none (Bounded, approved in chat on <date>)",
 			"run `acta id` right after", "parent: debt/",

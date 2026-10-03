@@ -1,4 +1,4 @@
-acta plugin is active. Before each workflow step, load the matching acta skill with the Skill tool and follow it: shape, slice, build, tdd, debug, review, land, bug, scratch, setup, migrate. The rules live in the skills.
+acta plugin is active. Before each workflow step, load the matching acta skill with the Skill tool and follow it: shape, slice, build, tdd, lean, debug, review, land, bug, scratch, setup, migrate. The rules live in the skills.
 
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.

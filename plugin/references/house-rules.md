@@ -14,7 +14,6 @@ PARALLEL — spawn as many subagents as the tickets allow:
   - Declare the waves in your todo list BEFORE dispatching: "wave 1: T-1, T-3, T-4 parallel · wave 2: T-2 (needs T-1)".
   - Serial needs a stated reason. Six independent tickets run serially = you failed this brief.
   - Every subagent still does full acta:tdd + mutation-verify on its own slice and commits its own ticket. Parallel is not a licence to batch commits.
-PONYTAIL: YAGNI → stdlib → native → dep → one line → minimum; never cut validation/security/accessibility. Deferrals in chat or ticket, no markers in files.
 COMMENTS: plain English a 10-year-old reads back. WHY not what. No marker tags, no Latin, no emoji. Real names verbatim.
 MUTATION-VERIFY every test: revert the fix, re-run, confirm FAILS, git checkout --, confirm green. Assert the effect, never just a status or call count.
 COMMIT per ticket, todo marked done the moment it commits.

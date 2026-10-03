@@ -16,7 +16,16 @@ Adapted into:
 
 i-have-adhd - https://github.com/ayghri/i-have-adhd
 Copyright (c) 2026 Ayoub Ghriss
-Adapted into: the adhd style rules printed by acta hook session-start.
+Adapted into: the ADHD reader block of output-styles/acta.md.
+
+ponytail - https://github.com/DietrichGebert/ponytail
+Copyright (c) 2026 DietrichGebert
+Adapted into: skills/lean/ and the lean summary printed by acta hook session-start.
+
+caveman - https://github.com/JuliusBrussee/caveman
+Copyright (c) 2026 Julius Brussee
+MIT outside its engine folders; acta uses only its skill text.
+Adapted into: output-styles/acta.md.
 
 MIT License
 

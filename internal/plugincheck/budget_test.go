@@ -23,10 +23,10 @@ import (
 // output-styles/. The keys are paths as walkPlugin names them.
 var fileCaps = map[string]int{
 	"output-styles/acta.md":                         1773,
-	"references/house-rules.md":                     3954,
+	"references/house-rules.md":                     3787,
 	"skills/bug/SKILL.md":                           2327,
 	"skills/build/SKILL.md":                         15281,
-	"skills/build/dispatch.md":                      29691,
+	"skills/build/dispatch.md":                      29681,
 	"skills/build/herdr-delivery.md":                13797,
 	"skills/build/implementer-prompt.md":            7518,
 	"skills/debug/SKILL.md":                         10401,
@@ -34,14 +34,15 @@ var fileCaps = map[string]int{
 	"skills/debug/defense-in-depth.md":              3650,
 	"skills/debug/root-cause-tracing.md":            5316,
 	"skills/land/SKILL.md":                          5765,
+	"skills/lean/SKILL.md":                          1899,
 	"skills/migrate/SKILL.md":                       2329,
 	"skills/review/SKILL.md":                        11504,
 	"skills/review/code-reviewer.md":                4042,
 	"skills/scratch/SKILL.md":                       2358,
-	"skills/setup/SKILL.md":                         4423,
+	"skills/setup/SKILL.md":                         4556,
 	"skills/shape/SKILL.md":                         17458,
 	"skills/shape/spec-document-reviewer-prompt.md": 1736,
-	"skills/slice/SKILL.md":                         11969,
+	"skills/slice/SKILL.md":                         12063,
 	"skills/tdd/SKILL.md":                           10169,
 	"skills/tdd/writing-good-tests.md":              8239,
 }
@@ -53,6 +54,7 @@ var descriptionCaps = map[string]int{
 	"skills/build/SKILL.md":   541,
 	"skills/debug/SKILL.md":   277,
 	"skills/land/SKILL.md":    304,
+	"skills/lean/SKILL.md":    139,
 	"skills/migrate/SKILL.md": 258,
 	"skills/review/SKILL.md":  386,
 	"skills/scratch/SKILL.md": 223,
@@ -64,7 +66,7 @@ var descriptionCaps = map[string]int{
 
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too.
-const sessionStartCap = 2545
+const sessionStartCap = 2551
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

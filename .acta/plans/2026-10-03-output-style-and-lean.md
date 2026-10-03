@@ -105,9 +105,9 @@ started: "2026-10-03 15:21:15"
 
 **verify:** "ponytail" cannot come back, in any case, anywhere under `plugin/` except `NOTICE` and `hooks/workflow-plugins.txt`; the lean skill is at most 400 words, keeps every never-cut item from spec section 4, and has no level and no `ponytail:` marker; a plan gets the lean line unless coding_guide is off. List every ponytail hit removed and every file the scan covers.
 
-- [ ] Failing test: `skill_lean_test.go` uses `CheckSkill` with the ladder and never-cut words as `Must`, checks the 400-word cap, and scans every file under `plugin/` (no `node_modules`) for "ponytail" outside the two allowed files; with the slice and NOTICE pins it fails because the skill is missing and four ponytail lines remain.
-- [ ] Code: write the skill from spec section 4 in new words (description starts with `acta: ` and stays short), change the four lines, NOTICE and `Skills`, regenerate `default-rules.md`, and set the caps.
-- [ ] Commit: `add the lean skill and replace the ponytail lines`
+- [x] Failing test: `skill_lean_test.go` uses `CheckSkill` with the ladder and never-cut words as `Must`, checks the 400-word cap, and scans every file under `plugin/` (no `node_modules`) for "ponytail" outside the two allowed files; with the slice and NOTICE pins it fails because the skill is missing and four ponytail lines remain.
+- [x] Code: write the skill from spec section 4 in new words (description starts with `acta: ` and stays short), change the four lines, NOTICE and `Skills`, regenerate `default-rules.md`, and set the caps.
+- [x] Commit: `add the lean skill and replace the ponytail lines`
 
 ### Task 7: Style eval case
 
