@@ -20,6 +20,23 @@ function fakeRun(outputs: Record<string, Out | "throw">) {
   return { run, calls };
 }
 
+// No test reads the real style file. This stub stands in for it and gives no style.
+const noStyle = () => "";
+
+// A style file as Claude Code reads it: settings on top, the words below.
+const STYLE_FILE = "---\nname: acta\nkeep-coding-instructions: true\n---\n\n## Every reply\nOpen with the answer.\n";
+const STYLE_BODY = "## Every reply\nOpen with the answer.";
+
+// A style reader that always fails. Its count shows the code did try to read.
+function brokenStyle() {
+  const reader = () => {
+    reader.reads++;
+    throw new Error("no such file");
+  };
+  reader.reads = 0;
+  return reader;
+}
+
 describe("payload", () => {
   test("has the shape acta hook reads", () => {
     expect(JSON.parse(payload("S1", "ls"))).toEqual({ session_id: "S1", tool_input: { command: "ls" } });
@@ -33,7 +50,7 @@ describe("createState", () => {
       "acta hook session-start": { stdout: "RULES\n", code: 0 },
       "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
     });
-    const s = createState(run, () => "DEFAULTS");
+    const s = createState(run, () => "DEFAULTS", noStyle);
     expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
     expect(s.contextFor("S1")).toBe("REMINDER");
     s.reset();
@@ -42,13 +59,13 @@ describe("createState", () => {
 
   test("session-start passes the known-plugins file", () => {
     const { run, calls } = fakeRun({ "acta": { stdout: "X", code: 0 } });
-    createState(run, () => "").contextFor("S1");
+    createState(run, () => "", noStyle).contextFor("S1");
     expect(calls[0].key).toMatch(/^acta hook session-start --known .*hooks\/workflow-plugins\.txt$/);
   });
 
   test("prompt gets the session id on stdin, in the given cwd", () => {
     const { run, calls } = fakeRun({ "acta": { stdout: "X", code: 0 } });
-    createState(run, () => "").contextFor("S7", "/work");
+    createState(run, () => "", noStyle).contextFor("S7", "/work");
     const prompt = calls.find((c) => c.key === "acta hook prompt")!;
     expect(JSON.parse(prompt.stdin).session_id).toBe("S7");
     expect(prompt.cwd).toBe("/work");
@@ -56,7 +73,7 @@ describe("createState", () => {
 
   test("missing acta falls back to the default rules and no reminder", () => {
     const { run } = fakeRun({});
-    const out = createState(run, () => "DEFAULTS\n").contextFor("S1");
+    const out = createState(run, () => "DEFAULTS\n", noStyle).contextFor("S1");
     expect(out).toContain("DEFAULTS");
     expect(out).toContain("acta binary is not installed or failed");
   });
@@ -64,15 +81,76 @@ describe("createState", () => {
   test("failing or throwing acta counts as missing", () => {
     for (const out of [{ stdout: "partial", code: 1 }, "throw"] as const) {
       const { run } = fakeRun({ "acta": out });
-      const text = createState(run, () => "DEFAULTS").contextFor("S1");
+      const text = createState(run, () => "DEFAULTS", noStyle).contextFor("S1");
       expect(text.startsWith("DEFAULTS")).toBe(true);
       expect(text).not.toContain("partial");
     }
   });
 
+  test("acta ok: the style body follows the rules, with its settings block cut off", () => {
+    const { run } = fakeRun({
+      "acta hook session-start": { stdout: "RULES\n", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
+    });
+    const s = createState(run, () => "DEFAULTS", () => STYLE_FILE);
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+  });
+
+  test("acta failed: the style body follows the default rules and their note", () => {
+    const { run } = fakeRun({});
+    const out = createState(run, () => "DEFAULTS\n", () => STYLE_FILE).contextFor("S1");
+    expect(out.startsWith("DEFAULTS")).toBe(true);
+    expect(out).toContain("acta binary is not installed or failed");
+    expect(out.endsWith("\n\n" + STYLE_BODY)).toBe(true);
+    expect(out).not.toContain("keep-coding-instructions");
+  });
+
+  test("later messages carry the reminder only, never the style", () => {
+    const { run } = fakeRun({
+      "acta hook session-start": { stdout: "RULES\n", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
+    });
+    const s = createState(run, () => "DEFAULTS", () => STYLE_FILE);
+    expect(s.contextFor("S1")).toContain(STYLE_BODY);
+    expect(s.contextFor("S1")).toBe("REMINDER");
+    s.reset();
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+  });
+
+  test("reader throws, acta ok: the rules are as they were and the session goes on", () => {
+    const style = brokenStyle();
+    const { run } = fakeRun({
+      "acta hook session-start": { stdout: "RULES\n", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
+    });
+    const s = createState(run, () => "DEFAULTS", style);
+    expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
+    expect(style.reads).toBeGreaterThan(0);
+    expect(s.contextFor("S1")).toBe("REMINDER");
+  });
+
+  test("reader throws, acta failed: the default rules are as they were", () => {
+    const style = brokenStyle();
+    const before = createState(fakeRun({}).run, () => "DEFAULTS", noStyle).contextFor("S1");
+    const out = createState(fakeRun({}).run, () => "DEFAULTS", style).contextFor("S1");
+    expect(style.reads).toBeGreaterThan(0);
+    expect(out).toBe(before);
+  });
+
+  test.each([
+    ["no frontmatter: the whole file is used", "BODY\n", "RULES\n\nBODY"],
+    ["frontmatter that never closes: the whole file is used", "---\nname: acta\nBODY\n", "RULES\n\n---\nname: acta\nBODY"],
+    ["CRLF line ends: the frontmatter is still cut", "---\r\nname: acta\r\n---\r\nBODY\r\n", "RULES\n\nBODY"],
+    ["frontmatter and nothing below it: nothing is added", "---\nname: acta\n---\n\n", "RULES"],
+    ["empty file: nothing is added", "", "RULES"],
+  ])("style file shape, %s", (_name, file, want) => {
+    const { run } = fakeRun({ "acta hook session-start": { stdout: "RULES\n", code: 0 } });
+    expect(createState(run, () => "DEFAULTS", () => file).contextFor("S1")).toBe(want);
+  });
+
   test("onToolCall blocks only on exit 2, with stderr as the reason", () => {
     const blocked = fakeRun({ "acta hook pre-tool": { stderr: "acta: this session already brainstormed X.\n", code: 2 } });
-    expect(createState(blocked.run).onToolCall("S1", "acta set scratch/b status brainstorming")).toEqual({
+    expect(createState(blocked.run, undefined, noStyle).onToolCall("S1", "acta set scratch/b status brainstorming")).toEqual({
       block: true,
       reason: "acta: this session already brainstormed X.",
     });
@@ -82,27 +160,27 @@ describe("createState", () => {
     });
     for (const out of [{ code: 0 }, { code: 1, stderr: "oops" }, { code: 127 }, "throw"] as const) {
       const { run } = fakeRun({ "acta hook pre-tool": out });
-      expect(createState(run).onToolCall("S1", "ls")).toBeUndefined();
+      expect(createState(run, undefined, noStyle).onToolCall("S1", "ls")).toBeUndefined();
     }
   });
 
   test("onToolResult hands the command to post-tool and never throws", () => {
     const ok = fakeRun({ "acta hook post-tool": { code: 0 } });
-    createState(ok.run).onToolResult("S1", "acta set scratch/a status brainstorming", "/work");
+    createState(ok.run, undefined, noStyle).onToolResult("S1", "acta set scratch/a status brainstorming", "/work");
     expect(ok.calls[0].key).toBe("acta hook post-tool");
     expect(JSON.parse(ok.calls[0].stdin).tool_input.command).toBe("acta set scratch/a status brainstorming");
     expect(ok.calls[0].cwd).toBe("/work");
     const bad = fakeRun({ "acta hook post-tool": "throw" });
-    expect(() => createState(bad.run).onToolResult("S1", "ls")).not.toThrow();
+    expect(() => createState(bad.run, undefined, noStyle).onToolResult("S1", "ls")).not.toThrow();
   });
 });
 
 describe("extension", () => {
-  function load(outputs: Record<string, Out | "throw">) {
+  function load(outputs: Record<string, Out | "throw">, readStyle: () => string = noStyle) {
     const handlers: Record<string, Function> = {};
     const pi = { on: (event: string, fn: Function) => { handlers[event] = fn; } };
     const fake = fakeRun(outputs);
-    acta(pi, fake.run);
+    acta(pi, fake.run, readStyle);
     const ctx = { sessionManager: { getSessionId: () => "S9", getCwd: () => "/work" } };
     return { handlers, ctx, calls: fake.calls };
   }
@@ -130,6 +208,15 @@ describe("extension", () => {
     await handlers["session_compact"]({});
     const afterCompact = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
     expect(afterCompact.message.content).toBe("RULES\n\nREMINDER");
+  });
+
+  test("the extension hands its style reader on, so the style rides on the first message", async () => {
+    const { handlers, ctx } = load(
+      { "acta hook session-start": { stdout: "RULES", code: 0 }, "acta hook prompt": { stdout: "REMINDER", code: 0 } },
+      () => STYLE_FILE,
+    );
+    const r = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
+    expect(r.message.content).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
   });
 
   test("tool_call blocks a bash call when pre-tool exits 2", async () => {

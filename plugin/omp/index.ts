@@ -1,7 +1,8 @@
 // acta for omp. omp does not run Claude Code's shell hooks, so this extension
 // sends the same text through omp's own events: the session rules on the first
 // message and after compaction, the voice reminder on every message, and the
-// one-brainstorm-per-session check around every bash call.
+// one-brainstorm-per-session check around every bash call. omp has no output
+// styles, so the acta style rides along with the session rules.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -10,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const knownFile = join(pluginRoot, "hooks", "workflow-plugins.txt");
 const defaultsFile = join(pluginRoot, "hooks", "default-rules.md");
+const styleFile = join(pluginRoot, "output-styles", "acta.md");
 
 export type Run = (args: string[], stdin: string, cwd?: string) => { stdout: string; stderr: string; code: number };
 
@@ -36,7 +38,31 @@ function call(run: Run, args: string[], stdin: string, cwd?: string) {
   }
 }
 
-export function createState(run: Run, readDefaults: () => string = () => readFileSync(defaultsFile, "utf8")) {
+// styleBody cuts the settings block off the top of the style file. Claude Code
+// reads that block, and omp only needs the words below it. A block that never
+// closes is not settings, so the text stays whole.
+function styleBody(text: string): string {
+  const lines = text.split("\n");
+  if (lines[0].trimEnd() !== "---") return text.trim();
+  const close = lines.findIndex((line, i) => i > 0 && line.trimEnd() === "---");
+  return (close < 0 ? text : lines.slice(close + 1).join("\n")).trim();
+}
+
+// readStyleBody never throws. A style file that is missing or broken counts as
+// empty, so it cannot stop the session or change the rules.
+function readStyleBody(readStyle: () => string): string {
+  try {
+    return styleBody(readStyle());
+  } catch {
+    return "";
+  }
+}
+
+export function createState(
+  run: Run,
+  readDefaults: () => string = () => readFileSync(defaultsFile, "utf8"),
+  readStyle: () => string = () => readFileSync(styleFile, "utf8"),
+) {
   let rulesSent = false;
   return {
     reset() {
@@ -52,6 +78,9 @@ export function createState(run: Run, readDefaults: () => string = () => readFil
             : readDefaults().trim() +
                 "\n\nacta: the acta binary is not installed or failed, so these are the default rules (English, adhd style).",
         );
+        // The style goes once, with the rules. The reminder below never carries it.
+        const style = readStyleBody(readStyle);
+        if (style) parts.push(style);
         rulesSent = true;
       }
       const reminder = call(run, ["hook", "prompt"], payload(sessionId), cwd);
@@ -70,8 +99,8 @@ export function createState(run: Run, readDefaults: () => string = () => readFil
   };
 }
 
-export default function acta(pi: any, run: Run = realRun) {
-  const state = createState(run);
+export default function acta(pi: any, run: Run = realRun, readStyle?: () => string) {
+  const state = createState(run, undefined, readStyle);
   // acta finds its planning folder from the working dir, so every call runs
   // where the omp session runs.
   const where = (ctx: any) => ({
