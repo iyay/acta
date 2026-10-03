@@ -101,4 +101,8 @@ Plan 1 written: PLN-0079 .acta/plans/2026-10-03-dispatch-send.md (45fa750), 5 ta
 
 User approved PLN-0079 on 2026-10-03. Build starts with executor dispatch.
 
+### 2026-10-03
+
+PLN-0079 LANDED 000a130 on 2026-10-03 (R1 BLOCKED 1 + promoted close-order BLOCKER, fix round 1, R2 CLEAN both axes, polish 76594f9 + test widen 60a57bb CLEAN; full suite 16 ok, eval 7/7 with branch binary; debt DBT-0071 with 6 items, 21 Review notes). Version 0.1.3. Next: acta:slice for plan 2 (review diet).
+
 ## Open questions
