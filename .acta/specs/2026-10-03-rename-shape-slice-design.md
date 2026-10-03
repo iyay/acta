@@ -3,6 +3,7 @@ parent: scratch/2026-10-03-rename-shape-slice
 id: SPC-0067
 created: "2026-10-03 13:04:49"
 hash: x6gwy94
+started: "2026-10-03 13:37:21"
 ---
 # Rename brainstorm and plan to shape and slice, version policy, token budgets
 

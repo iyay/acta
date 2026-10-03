@@ -45,7 +45,7 @@ Use for ANY technical issue:
 
 You MUST complete each phase before proceeding to the next.
 
-**Read only until the hypothesis is proven.** Phases 1 to 3 change no file. When the fix needs code, it goes back to `acta:brainstorm` and gets its own worktree through `acta:build`; the reproduction becomes the regression test. Three failed fixes: stop, question the design, and tell the user.
+**Read only until the hypothesis is proven.** Phases 1 to 3 change no file. When the fix needs code, it goes back to `acta:shape` and gets its own worktree through `acta:build`; the reproduction becomes the regression test. Three failed fixes: stop, question the design, and tell the user.
 
 **A confirmed bug gets a file.** Once the root cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `acta:bug` before moving on.
 

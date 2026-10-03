@@ -1,5 +1,5 @@
 ---
-name: plan
+name: slice
 description: "acta: Use after a design is approved, before any code. Turns the spec into a task-by-task plan in .acta/plans/ - failing test first, exact files, a property-shaped verify line and a wave for every task - then waits for the user's yes."
 ---
 
@@ -11,7 +11,7 @@ Write comprehensive implementation plans assuming the engineer has zero context 
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
-**Announce at start:** "I'm using acta:plan to create the implementation plan."
+**Announce at start:** "I'm using acta:slice to create the implementation plan."
 
 **Context:** Write and commit a new plan on main, next to its spec. `acta:build` makes the worktree, only after the plan is approved.
 
@@ -23,7 +23,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Plan depth
 
-Pick the depth in this order, and do not ask when one answers: the argument of `/plan minimal` or `/plan full` (this run only, never saved), then `plan_depth` from `acta config show`, then `full`.
+Pick the depth in this order, and do not ask when one answers: the argument of `/slice minimal` or `/slice full` (this run only, never saved), then `plan_depth` from `acta config show`, then `full`.
 
 - `full`: everything below, with real code in every code step, and a wait for the user's yes.
 - `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the ponytail-lazy line plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, a property-shaped `**verify:**` and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 6 lines a task.

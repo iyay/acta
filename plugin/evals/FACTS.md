@@ -475,7 +475,7 @@ claude plugin eval --eval-dir evals --model sonnet --ablation none \
   with `--judge-model haiku` so a judge change does not look like a plugin
   regression.
 
-- Case 3 grants `allowed_tools: [Skill]` so the child can load the brainstorm
+- Case 3 grants `allowed_tools: [Skill]` so the child can load the shape
   skill and answer from it; with no tools it never reads the rule it is graded on.
 
 ## The same cases in omp

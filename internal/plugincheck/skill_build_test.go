@@ -21,7 +21,7 @@ func TestSkillBuild(t *testing.T) {
 			"acta show <plan id> --json", "progress.done",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
 			"acta config show", "build_executor",
-			"The spec and plan from acta:brainstorm and acta:plan stay on main",
+			"The spec and plan from acta:shape and acta:slice stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
 			"through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one",
@@ -186,7 +186,7 @@ func TestBuildExecutorOrder(t *testing.T) {
 // loses the line leaves its agents hunting for a file by hand, and the
 // folder-wide Must lists would not notice, so each file is checked here.
 func TestShowPathLineInSkills(t *testing.T) {
-	for _, skill := range []string{"build", "brainstorm"} {
+	for _, skill := range []string{"build", "shape"} {
 		b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", skill, "SKILL.md"))
 		if err != nil {
 			t.Fatal(err)

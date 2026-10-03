@@ -1,6 +1,6 @@
 ---
-name: brainstorm
-description: "acta: Use before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .acta/specs/. No code until the user says yes."
+name: shape
+description: "acta: Use to brainstorm before any creative or change work - a new feature, a fix that needs code, a behaviour change, or a decision. Classifies the work as Spike, Bounded or Architectural, refines it with the user one question at a time, and writes the approved design to .acta/specs/. No code until the user says yes."
 ---
 
 # Brainstorming Ideas Into Designs
@@ -44,12 +44,12 @@ can override it:
   On that yes, write a short spec (about half a page) to
   `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run
   `acta id`, commit, ask the user to review the file, and on
-  approval invoke the acta:plan skill. No 2-3 approaches, no
+  approval invoke the acta:slice skill. No 2-3 approaches, no
   per-section approval, no one-per-session limit.
 - **Architectural** — new projects, new subsystems, changes that
   restructure how components fit together or alter interfaces others
   depend on. Follow the full process: questions, approaches, sectioned
-  design, written spec, then the acta:plan skill.
+  design, written spec, then the acta:slice skill.
 
 When in doubt between two paths, take the heavier one. The ratchet is
 one-way: hidden complexity discovered mid-task upgrades the path —
@@ -128,7 +128,7 @@ your path and complete them in order.
 4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
 5. **Write short spec** — about half a page in `.acta/specs/`, run `acta id`, commit on main
 6. **User reviews spec** — ask them to read the file, then wait for the yes
-7. **Transition to implementation** — invoke acta:plan skill
+7. **Transition to implementation** — invoke acta:slice skill
 
 **Architectural:**
 0. **Scratch item** — find the item the request names, or file it with `acta scratch new`, then `acta set scratch/<stem> status brainstorming`
@@ -139,7 +139,7 @@ your path and complete them in order.
 5. **Write design doc** — save to `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPC number and hash, and commit
 6. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 7. **User reviews written spec** — ask user to review the spec file before proceeding
-8. **Transition to implementation** — invoke acta:plan skill to create implementation plan
+8. **Transition to implementation** — invoke acta:slice skill to create implementation plan
 
 ## Process Flow
 
@@ -161,7 +161,7 @@ digraph brainstorming {
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
     "User reviews short spec?" [shape=diamond];
-    "Invoke acta:plan skill" [shape=doublecircle];
+    "Invoke acta:slice skill" [shape=doublecircle];
     "Hidden complexity? Upgrade path" [shape=box];
 
     "Classify: spike / bounded / architectural" -> "Present question + probe (2-3 sentences)" [label="spike"];
@@ -183,16 +183,16 @@ digraph brainstorming {
     "Write design doc" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
     "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke acta:plan skill" [label="approved"];
+    "User reviews spec?" -> "Invoke acta:slice skill" [label="approved"];
     "User reviews short spec?" -> "Write short spec" [label="changes requested"];
-    "User reviews short spec?" -> "Invoke acta:plan skill" [label="approved"];
+    "User reviews short spec?" -> "Invoke acta:slice skill" [label="approved"];
 }
 ```
 
 **Terminal states are path-bound.** Architectural: the ONLY skill you
-invoke after brainstorming is acta:plan — never frontend-design,
+invoke after brainstorming is acta:slice — never frontend-design,
 mcp-builder, or any other implementation skill. Bounded: the same
-terminal state, acta:plan, once the user has approved the short spec.
+terminal state, acta:slice, once the user has approved the short spec.
 Spike: the terminal state is a reported recommendation.
 
 ## The Process
@@ -280,6 +280,6 @@ Wait for the user's response. If they request changes, make them and re-run the 
 **Implementation:**
 
 - Approval of the design does not approve the plan; each gets its own yes.
-- Invoke the acta:plan skill to create a detailed implementation plan
-- Do NOT invoke any other skill. acta:plan is the next step.
+- Invoke the acta:slice skill to create a detailed implementation plan
+- Do NOT invoke any other skill. acta:slice is the next step.
 

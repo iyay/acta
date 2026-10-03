@@ -123,7 +123,7 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	} {
 		out := SessionStart(in)
 		for _, want := range []string{
-			"acta:brainstorm",
+			"acta:shape",
 			"claude --bg 'brainstorm SCRATCH-n'",
 			"File the scratch item first",
 			"one acta scratch new call",
@@ -131,7 +131,7 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
 			"written, not committed",
 			"new session",
-			"load acta:brainstorm for that way",
+			"load acta:shape for that way",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: session start missing %q", name, want)
@@ -168,7 +168,7 @@ func TestSessionStartNoChoiceIsForbidden(t *testing.T) {
 		out := SessionStart(in)
 		for _, banned := range []string{
 			"another terminal or tab",
-			"never offer to load acta:brainstorm",
+			"never offer to load acta:shape",
 		} {
 			if strings.Contains(out, banned) {
 				t.Errorf("herdr=%v: session start forbids a choice another text offers, has %q", herdr, banned)
@@ -281,7 +281,7 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 	worst := korean()
 	worst.Conflicts = []string{"superpowers@a"}
 	mappings := []string{
-		"brainstorming→acta:brainstorm", "writing-plans→acta:plan",
+		"brainstorming→acta:shape", "writing-plans→acta:slice",
 		"subagent-driven-development→acta:build", "using-git-worktrees→acta:build",
 		"test-driven-development→acta:tdd", "systematic-debugging→acta:debug",
 		"requesting-code-review→acta:review", "receiving-code-review→acta:review",

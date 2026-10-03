@@ -6,8 +6,8 @@ projects. Their copyright and license notices follow.
 superpowers - https://github.com/obra/superpowers
 Copyright (c) 2025 Jesse Vincent
 Adapted into:
-  skills/brainstorm/  from skills/brainstorming/
-  skills/plan/        from skills/writing-plans/
+  skills/shape/       from skills/brainstorming/
+  skills/slice/       from skills/writing-plans/
   skills/build/       from skills/subagent-driven-development/, skills/using-git-worktrees/, skills/dispatching-parallel-agents/
   skills/tdd/         from skills/test-driven-development/
   skills/debug/       from skills/systematic-debugging/

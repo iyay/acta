@@ -243,7 +243,7 @@ func TestHouseRules(t *testing.T) {
 func TestNoticeAndReadme(t *testing.T) {
 	notice := readFile(t, "NOTICE")
 	for _, want := range []string{"Jesse Vincent", "Ayoub Ghriss", "MIT License", "Permission is hereby granted",
-		"skills/brainstorm/", "skills/plan/", "skills/build/", "skills/tdd/", "skills/debug/", "skills/review/", "skills/land/"} {
+		"skills/shape/", "skills/slice/", "skills/build/", "skills/tdd/", "skills/debug/", "skills/review/", "skills/land/"} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("NOTICE missing %q", want)
 		}

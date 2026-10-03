@@ -11,9 +11,10 @@ import (
 	"github.com/iyay/acta/internal/hook"
 )
 
-// oldSkillRe matches the eleven old skill names. A bare "pm" with no colon
-// is prose, so only pm:<name> fails.
-var oldSkillRe = regexp.MustCompile(`pm:(brainstorm|plan|build|tdd|debug|review|land|bug|dispatch|setup|migrate)\b`)
+// oldSkillRe matches the old skill names: the eleven pm: names, and the two
+// acta names that became shape and slice. A bare "pm" with no colon is prose,
+// and so is the word brainstorm or plan alone, so only the prefixed name fails.
+var oldSkillRe = regexp.MustCompile(`pm:(brainstorm|plan|build|tdd|debug|review|land|bug|dispatch|setup|migrate)\b|acta:(brainstorm|plan)\b`)
 
 // oldPmbRe matches the old command as its own word: "pmb tick", "`pmb`" or
 // "./cmd/pmb". It skips "pm-board", "PMB-EXEC-OK" and "PM_VOICE_FILE",

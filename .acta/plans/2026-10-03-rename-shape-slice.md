@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0077
 created: "2026-10-03 13:10:58"
 hash: o1exts7
+started: "2026-10-03 13:37:21"
 ---
 # Rename to Shape and Slice, Version Policy, Token Budgets Implementation Plan
 
@@ -42,9 +43,9 @@ hash: o1exts7
 
 **verify:** No live surface names the old skills in any form: no `acta:brainstorm`, `acta:plan`, `/acta:brainstorm`, `/acta:plan`, `skills/brainstorm` or `skills/plan` outside `.acta/` (paths, ids, slash commands, the rule 7 map, NOTICE paths, eval graders, test fixtures), and the hook text names `acta:shape` and `acta:slice`. Every `brainstorm` left names the activity or the `brainstorming` status, and every `plan` left names the file kind. List every file checked and each hit you kept, with its reason.
 
-- [ ] Failing test: point the plugincheck and hook tests at `shape` and `slice`, and add `acta:(brainstorm|plan)` to the old-name check in `no_old_names_test.go`; they fail because the skill folders and the hook text still use the old names.
-- [ ] Code: `git mv` both folders, set `name: shape` and `name: slice`, and change every live reference listed above.
-- [ ] Commit: `rename the brainstorm and plan skills to shape and slice`
+- [x] Failing test: point the plugincheck and hook tests at `shape` and `slice`, and add `acta:(brainstorm|plan)` to the old-name check in `no_old_names_test.go`; they fail because the skill folders and the hook text still use the old names.
+- [x] Code: `git mv` both folders, set `name: shape` and `name: slice`, and change every live reference listed above.
+- [x] Commit: `rename the brainstorm and plan skills to shape and slice`
 
 ### Task 2: Byte budgets for skills, descriptions and session start
 

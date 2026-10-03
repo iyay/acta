@@ -2,9 +2,9 @@ package plugincheck
 
 import "testing"
 
-func TestSkillPlan(t *testing.T) {
+func TestSkillSlice(t *testing.T) {
 	CheckSkill(t, SkillRule{
-		Name:     "plan",
+		Name:     "slice",
 		MaxLines: 262,
 		Must: []string{
 			".acta/plans/", "acta:build", "verify:", "## Waves", "ponytail-lazy",
@@ -15,10 +15,10 @@ func TestSkillPlan(t *testing.T) {
 			"closes:", "parent: debt/<stem>",
 			"Commit the plan on main", "only after the plan is approved",
 			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
-			"## Plan depth", "`/plan minimal`", "depth: minimal", "`plan_depth`",
+			"## Plan depth", "`/slice minimal`", "depth: minimal", "`plan_depth`",
 			"apply to `full` plans only",
 			"invoke `acta:build` in the same turn",
-			"`/plan full`", "do not ask when one answers", "then `full`.",
+			"`/slice full`", "do not ask when one answers", "then `full`.",
 			"no Architecture, Tech Stack, File map or Interfaces", "No code blocks.",
 			"run `acta config show`", "When it prints `build_executor: <name>`, that executor is chosen",
 			"do not ask",

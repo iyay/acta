@@ -2,7 +2,7 @@
 
 Read this only when `acta:build` runs the `dispatch` executor and this session is inside a herdr pane, `HERDR_ENV=1` set. Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent` (`## Executors` in SKILL.md), and everything below needs a real `$HERDR_PANE_ID`, so read no further. Build already made the worktree (`## Worktree` in SKILL.md) and picked this executor. This file says how to hand the plan to an omp agent in its own herdr tab, how to wait for it, and how to send a fix round back to it. Review and landing are build's `## Close`, `acta:review` and `acta:land`; only the steps a tab adds live here.
 
-**Skill notation.** Every `acta:name` here is a skill from the `acta` plugin. `mattpocock-skills:*`, `/to-spec`, `/to-tickets`, `/implement`, `/code-review` are gone; a brief still naming them is stale — rewrite it before sending. "Ticket" below = one `acta:plan` task, mirrored in the tracker when the repo has one.
+**Skill notation.** Every `acta:name` here is a skill from the `acta` plugin. `mattpocock-skills:*`, `/to-spec`, `/to-tickets`, `/implement`, `/code-review` are gone; a brief still naming them is stale — rewrite it before sending. "Ticket" below = one `acta:slice` task, mirrored in the tracker when the repo has one.
 
 ## Never wait for the recipient — HARD RULE
 
@@ -169,7 +169,7 @@ Instructions live in a file, never in the message. Multi-line pastes fragment in
 
 Path inside the repo the recipient works in: `.claude/dispatch/<slug>-brief.md` (git-excluded; check `git check-ignore -v .claude/`). Not `/tmp` — sandboxed harnesses cannot read outside their tree.
 
-**What the brief is now.** With `acta:brainstorm` + `acta:plan` upstream and `acta:build` downstream, the brief no longer restates tasks, decisions, or method. It is:
+**What the brief is now.** With `acta:shape` + `acta:slice` upstream and `acta:build` downstream, the brief no longer restates tasks, decisions, or method. It is:
 
 - the pointer: design doc + plan path + ticket refs, worktree, base SHA, parent branch;
 - a pointer to `references/house-rules.md`, which carries the fixed rules every hand-off requires (TDD, ponytail, COMMENTS, PARALLEL); `ticket → verify` stays job-specific, in TICKETS;
@@ -314,4 +314,4 @@ Report after landing, ADHD shape: merge SHA first, post-merge gate numbers, what
 
 **Harvest omp's memory (omp recipient only), after the pane is closed.** Read `~/.omp/agent/memories/--<worktree abs path with every / turned into ->--/learned.md`, for example `--home-me-code-app-worktree--`. For each point, apply the memory test ("fresh agent opens this tomorrow — does missing this fact cost time or repeat a mistake?"). Passes and not already in Claude memory → write it as one note: project-only fact in `~/.claude/projects/<main checkout sanitized>/memory/`, fact true in every project in `~/.claude/memory/`, plus one index line in that folder's `MEMORY.md`. Already covered → skip. No user question; this is automatic.
 
-Before you report done, sweep your own memory once: a gotcha that burned time or a dispatch mechanic that failed is a NOTE, and once the round is CLEAN `acta:review`'s `## After a CLEAN round` sorts it into `[fix]`, `[debt]` or `[note]` (only `[debt]` reaches `acta debt new`), an agreed convention or a decision belongs in `CONTEXT.md` or an ADR (`acta:brainstorm` owns those), a runbook goes to `.okf/`. Diff play-by-play is noise.
+Before you report done, sweep your own memory once: a gotcha that burned time or a dispatch mechanic that failed is a NOTE, and once the round is CLEAN `acta:review`'s `## After a CLEAN round` sorts it into `[fix]`, `[debt]` or `[note]` (only `[debt]` reaches `acta debt new`), an agreed convention or a decision belongs in `CONTEXT.md` or an ADR (`acta:shape` owns those), a runbook goes to `.okf/`. Diff play-by-play is noise.

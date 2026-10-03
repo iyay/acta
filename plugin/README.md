@@ -1,6 +1,6 @@
 # acta
 
-A lean workflow plugin for Claude Code and omp. It covers brainstorm, plan,
+A lean workflow plugin for Claude Code and omp. It covers shape, slice,
 build, test first, debug, review and land, and writes planning files to `.acta/`
 through `acta`, the acta CLI.
 
@@ -67,7 +67,7 @@ topics are covered by the plugin and can be removed from your file:
 
 | CLAUDE.md topic | Now in |
 |---|---|
-| Pipeline: brainstorm, plan, approval gates | `acta:brainstorm`, `acta:plan` |
+| Pipeline: shape, slice, approval gates | `acta:shape`, `acta:slice` |
 | Worktree for every change, created without asking | `acta:build` |
 | Subagent models and the orchestrator writing no code | `acta:build` |
 | TDD rules and the test quality bar | `acta:tdd` |

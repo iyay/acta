@@ -48,11 +48,11 @@ func read(t *testing.T, p string) string {
 
 func TestSkillNames(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "skills/plan/SKILL.md"), "x")
-	write(t, filepath.Join(dir, "skills/brainstorm/SKILL.md"), "x")
+	write(t, filepath.Join(dir, "skills/slice/SKILL.md"), "x")
+	write(t, filepath.Join(dir, "skills/shape/SKILL.md"), "x")
 	write(t, filepath.Join(dir, "skills/README.md"), "x")
 	got, err := SkillNames(dir)
-	if err != nil || strings.Join(got, ",") != "brainstorm,plan" {
+	if err != nil || strings.Join(got, ",") != "shape,slice" {
 		t.Errorf("SkillNames = %v, %v", got, err)
 	}
 }
@@ -82,12 +82,12 @@ func TestWithEnv(t *testing.T) {
 func TestRunCaseCommandLine(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	omp, logs := fakeOmp(t, fixture(t))
-	o := Options{Omp: omp, PluginDir: "/p/plugin", Skills: []string{"brainstorm", "plan"}}
+	o := Options{Omp: omp, PluginDir: "/p/plugin", Skills: []string{"shape", "slice"}}
 	w, err := RunCase(Case{Name: "c", Prompt: "Do it.", TimeoutSeconds: 30}, o)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "-p\n--mode\njson\n--no-session\n--no-extensions\n--no-rules\n--skills=brainstorm,plan\n" +
+	want := "-p\n--mode\njson\n--no-session\n--no-extensions\n--no-rules\n--skills=shape,slice\n" +
 		"--plugin-dir\n/p/plugin\n-e\n/p/plugin/omp/index.ts\nDo it.\n"
 	if got := read(t, filepath.Join(logs, "args")); got != want {
 		t.Errorf("args =\n%s\nwant\n%s", got, want)

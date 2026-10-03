@@ -18,10 +18,10 @@ var evalCases = []struct {
 }{
 	{"side-idea-to-scratch", "scratch", "never"},
 	{"note-to-scratch", "scratch", "note this"},
-	{"second-brainstorm-choices", "brainstorm", "One Architectural brainstorm per session"},
-	{"one-file-fix-no-brainstorm", "brainstorm", "Spike and Bounded"},
-	{"brainstorm-files-scratch-first", "brainstorm", "status brainstorming"},
-	{"answers-appended", "brainstorm", "acta scratch add"},
+	{"second-brainstorm-choices", "shape", "One Architectural brainstorm per session"},
+	{"one-file-fix-no-brainstorm", "shape", "Spike and Bounded"},
+	{"brainstorm-files-scratch-first", "shape", "status brainstorming"},
+	{"answers-appended", "shape", "acta scratch add"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the skill phrase
