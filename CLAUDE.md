@@ -24,6 +24,10 @@ go install ./cmd/acta             # rebuild the acta on PATH; hooks and the TUI 
 
 Agents run `scripts/test --full` as the gate, not `-short`. The eval hooks call the `acta` on PATH, so put the branch binary on PATH before `scripts/eval`.
 
+## Version
+
+Until the first release the version stays on 0.1.x. A plan that changes `plugin/`, `cmd/` or `internal/` ends with a task that adds 1 to the patch in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`. A plan that only changes docs or `.acta/` does not bump. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`.
+
 ## Architecture
 
 - `internal/cli`: command dispatch (`list`, `show`, `set`, `bug`, `debt`, `scratch`, `voice`, `hook`, `tick`, `id`, `doctor`, `dispatch`, `reply-back`, `run-one`). Both binaries call `cli.Run`.

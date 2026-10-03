@@ -66,9 +66,10 @@ func oldNameProblems(source, text string) []string {
 	return out
 }
 
-// TestNoOldNames fails when the old names come back: a pm: skill, a bare
-// pmb command, or .pm/ as the root in any plugin file, in the text the hook
-// really prints, or in the manifest and package names.
+// TestNoOldNames fails when the old names come back: a pm: skill, an
+// acta:brainstorm or acta:plan skill, a bare pmb command, or .pm/ as the
+// root in any plugin file, in the text the hook really prints, or in the
+// manifest and package names.
 func TestNoOldNames(t *testing.T) {
 	walkPlugin(t, func(rel, text string) {
 		for _, p := range oldNameProblems(rel, text) {

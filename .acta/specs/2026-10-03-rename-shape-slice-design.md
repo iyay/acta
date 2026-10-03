@@ -4,6 +4,7 @@ id: SPC-0067
 created: "2026-10-03 13:04:49"
 hash: x6gwy94
 started: "2026-10-03 13:37:21"
+finished: "2026-10-03 14:00:28"
 ---
 # Rename brainstorm and plan to shape and slice, version policy, token budgets
 

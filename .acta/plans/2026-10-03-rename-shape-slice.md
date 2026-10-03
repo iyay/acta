@@ -5,6 +5,7 @@ id: PLN-0077
 created: "2026-10-03 13:10:58"
 hash: o1exts7
 started: "2026-10-03 13:37:21"
+finished: "2026-10-03 14:00:28"
 ---
 # Rename to Shape and Slice, Version Policy, Token Budgets Implementation Plan
 
@@ -55,9 +56,9 @@ started: "2026-10-03 13:37:21"
 
 **verify:** No `.md` file under `plugin/skills/` or `plugin/references/`, no skill `description:` line and no `hook.SessionStart(hook.Input{Voice: config.UserDefault(), VoiceExists: true})` text can grow past its cap without plugincheck going red; no such file can exist without a cap, and no cap can name a file that is gone. Each failure names the file, its bytes, about how many tokens (bytes / 4) and the cap. List every file with its cap, and show one mutation (one byte added to a skill) that turned the test red.
 
-- [ ] Failing test: write `budget_test.go` with empty cap tables; it fails and lists every file, description and the session start text that has no cap.
-- [ ] Code: fill each cap with the size measured after Task 1, and delete `TestTotalSkillSize` from `final_test.go`.
-- [ ] Commit: `lock byte budgets for skills, descriptions and session start`
+- [x] Failing test: write `budget_test.go` with empty cap tables; it fails and lists every file, description and the session start text that has no cap.
+- [x] Code: fill each cap with the size measured after Task 1, and delete `TestTotalSkillSize` from `final_test.go`.
+- [x] Commit: `lock byte budgets for skills, descriptions and session start`
 
 ### Task 3: Version policy and the first patch bump
 
@@ -66,6 +67,17 @@ started: "2026-10-03 13:37:21"
 
 **verify:** plugincheck goes red whenever the three manifests disagree on the version or any of them is not `x.y.z`, and nothing outside `.acta/` pins `0.1.0` any more. List every place a version string lives.
 
-- [ ] Failing test: replace the `0.1.0` pin with a check that the three manifests agree and match `x.y.z`, then set only `plugin.json` to `0.1.1`; it fails because the other two still say `0.1.0`.
-- [ ] Code: set `marketplace.json` and `package.json` to `0.1.1`, and add the rule to `CLAUDE.md`: until the first release the version stays on 0.1.x, and a plan that changes `plugin/`, `cmd/` or `internal/` ends with a task that adds 1 to the patch in the three manifests; a plan that only changes docs or `.acta/` does not bump.
-- [ ] Commit: `version policy: one patch per landed plan, now 0.1.1`
+- [x] Failing test: replace the `0.1.0` pin with a check that the three manifests agree and match `x.y.z`, then set only `plugin.json` to `0.1.1`; it fails because the other two still say `0.1.0`.
+- [x] Code: set `marketplace.json` and `package.json` to `0.1.1`, and add the rule to `CLAUDE.md`: until the first release the version stays on 0.1.x, and a plan that changes `plugin/`, `cmd/` or `internal/` ends with a task that adds 1 to the patch in the three manifests; a plan that only changes docs or `.acta/` does not bump.
+- [x] Commit: `version policy: one patch per landed plan, now 0.1.1`
+
+## Review notes
+
+- `plugin/skills/shape/SKILL.md:86` "Plan, build, review and land for this brainstorm" names activities, so it stays, but it no longer matches the shape and slice step names in `plugin.json` and `README.md:3`.
+- `internal/plugincheck/no_old_names_test.go:91-99` never renders SessionStart with `Herdr: true`, so an old name added only to `herdrExtra` would pass; the `pm:` names had the same coverage.
+- `plugin/omp/FACTS.md:157-182` and `plugin/evals/FACTS.md:84` keep the old skill list and version `0.1.0` inside dated transcripts; nothing reads them.
+- The version rule in `CLAUDE.md` says nothing about a plan that changes only `scripts/` or `go.mod`; the spec has the same gap, and the user is weighing "every plan bumps".
+- `plugin/skills/shape/spec-document-reviewer-prompt.md` has a byte cap but no skill links it (dead since before this plan); delete it in the shape lean-down.
+- Putting all three manifests back to `0.1.0` at once keeps `TestManifests` green by design; only the `CLAUDE.md` rule makes the bump happen.
+- Until `go install ./cmd/acta` runs after land, the `acta` on PATH still prints `acta:brainstorm` and `acta:plan`.
+- `internal/plugincheck/no_old_names_test.go:69-72` doc comment leaves out the `acta voice` check (`oldVoiceRe`, a gap older than this plan) and chains two "or" lists in one sentence.

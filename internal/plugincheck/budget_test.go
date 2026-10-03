@@ -67,23 +67,24 @@ const sessionStartCap = 3591
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two
-// show the size in bytes and in tokens, so it is easy to judge the fix. what
-// goes after each name, so a description is not mistaken for its whole file.
-func budgetProblems(what string, sizes, caps map[string]int) []string {
+// show the size in bytes and in tokens, so it is easy to judge the fix. The
+// suffix goes after each name, so a description is not mistaken for its whole
+// file.
+func budgetProblems(suffix string, sizes, caps map[string]int) []string {
 	var out []string
 	for _, name := range slices.Sorted(maps.Keys(sizes)) {
 		n := sizes[name]
 		c, ok := caps[name]
 		switch {
 		case !ok:
-			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), has no cap", name, what, n, n/4))
+			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), has no cap", name, suffix, n, n/4))
 		case n > c:
-			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), cap %d", name, what, n, n/4, c))
+			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), cap %d", name, suffix, n, n/4, c))
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(caps)) {
 		if _, ok := sizes[name]; !ok {
-			out = append(out, fmt.Sprintf("%s%s: file is gone, remove its cap of %d", name, what, caps[name]))
+			out = append(out, fmt.Sprintf("%s%s: file is gone, remove its cap of %d", name, suffix, caps[name]))
 		}
 	}
 	return out
@@ -107,14 +108,22 @@ func TestBudgetFiles(t *testing.T) {
 // It measures the text the model reads, without the quotes of the YAML.
 func TestBudgetDescriptions(t *testing.T) {
 	sizes := map[string]int{}
+	// If a skill's frontmatter cannot be read, its description has no size. Its
+	// cap is dropped from this copy, so the test does not also say it is gone.
+	caps := maps.Clone(descriptionCaps)
 	walkPlugin(t, func(rel, text string) {
 		// The star matches one folder name, so a nested SKILL.md is not a skill.
 		if ok, _ := path.Match("skills/*/SKILL.md", rel); ok {
-			_, desc, _ := frontmatter([]byte(text))
+			_, desc, fmOK := frontmatter([]byte(text))
+			if !fmOK {
+				t.Errorf("%s: frontmatter cannot be read, so the description cannot be measured", rel)
+				delete(caps, rel)
+				return
+			}
 			sizes[rel] = len(desc)
 		}
 	})
-	for _, p := range budgetProblems(" description", sizes, descriptionCaps) {
+	for _, p := range budgetProblems(" description", sizes, caps) {
 		t.Error(p)
 	}
 }
