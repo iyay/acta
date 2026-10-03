@@ -10,26 +10,27 @@ Run it in the worktree:
 acta dispatch send --plan .acta/plans/<stem>.md --rules <abs path> [--note-file <path>|-]
 ```
 
-`--rules` is the absolute path of this skill's base dir plus `../../references/house-rules.md`. Job facts the plan lacks (a locked call, a trap) go in a note file, or `-` for stdin. A fact that belongs in the plan goes in the plan.
+`--rules` is the absolute path of this skill's base dir plus `../../references/house-rules.md`. Job facts the plan lacks (a locked call, a trap) go in a note file, or `-` for stdin.
 
 It writes the dispatch record and the brief, finds or makes the omp tab for the branch, sets the goal, waits about 20 seconds and reads the pane once. It prints `slug:`, `pane:`, `base:`, `brief:`, `checkpoint:` and `watcher:`. Read those lines and the exit code:
 
 - `0`: sent. `checkpoint: ok` means every task id is on the todo list. `unconfirmed` means no todo list yet: say so in the report. The reply-back is the real signal.
 - `1`: bad input, nothing sent. Fix the input and run it again.
 - `2`: delivery failed. Read herdr's reason. An agent still `working` is refused this way: an earlier round runs, so do not interleave. Report and stop.
-- `4`: drift. The pane text is printed. The agent made up its own tasks or missed some. Press `herdr agent send-keys <slug> esc`, put the real task ids in a note ("there is NO `<X>` in this plan") and send again.
+- `3`: a git read failed (a detached main checkout counts). Nothing sent. Report and stop.
+- `4`: drift. The pane text is printed. Read it first. Real drift: the list names work outside the plan or skips wave 1 tasks. Then press `herdr agent send-keys <slug> esc`, put the real task ids in a note ("there is NO `<X>` in this plan") and send again. A folded list (omp shows 8 rows) or an old round's card is no drift: yield.
 
 The omp harness needs `acta:build` installed too, because skills do not travel with the worktree. Missing: stop and report.
 
 ## Never wait for the recipient — HARD RULE
 
-After `send`, end your turn. Not allowed until the reply-back or the user's next message: a foreground `herdr agent wait`, polling loops, repeat pane reads, `sleep`, `Monitor` loops. The recipient takes minutes to hours, and waiting burns your context.
+After `send`, end your turn. Not allowed until the reply-back or the user's next message: a foreground `herdr agent wait`, polling loops, repeat pane reads, `sleep`, `Monitor` loops. Waiting burns your context.
 
-The report is short. First line is a fact: slug, pane, base, tasks sent, checkpoint. Last line is one next action: "on reply-back: verify, then `acta:review`, then land". Then yield.
+The report is short. First line is a fact: slug, pane, base, tasks sent, checkpoint. Last line is one next action: "on reply-back: verify, then `acta:review`, then land".
 
 ## Idle watcher
 
-The one background job. Start the printed `watcher:` command (`herdr agent wait <slug> --until idle --until done`) with `run_in_background`, then yield. Its exit comes as a notification:
+Start the printed `watcher:` command (`herdr agent wait <slug> --until idle --until done`) with `run_in_background`, then yield. Its exit comes as a notification:
 
 1. A reply-back already arrived: do nothing.
 2. Every task of the plan is ticked: start `acta:review`, like a reply-back.
@@ -51,8 +52,6 @@ git diff --name-only <base>..HEAD -- .acta/bugs
 ```
 
 Compare the commits with the task list. On security or destructive changes, re-run the decisive mutation yourself. Name each bug file of the last command under `Bugs found by recipient:` in the landing report, or write `none`.
-
-Verify asks "do the tests catch what we thought of?". Review asks "what did we not think of?".
 
 ## Review
 

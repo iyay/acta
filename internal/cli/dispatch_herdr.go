@@ -272,8 +272,9 @@ func dropGoal(slug string) error {
 // card with a header whose title is the word Todo, after a status glyph or a
 // frame edge, and the glyphs change with the theme. So the header is the word
 // Todo on its own, with only symbols before it. A word like Todos or mytodo,
-// or a sentence about a todo list, is not the card.
-var todoCardHeader = regexp.MustCompile(`(?m)^[^\p{L}\p{N}\n]*Todo(?:\s|$)`)
+// or a sentence about a todo list, is not the card. The ascii symbol preset
+// draws the icon as "[x]", and x is a letter, so that form is allowed first.
+var todoCardHeader = regexp.MustCompile(`(?m)^(?:\[x\])?[^\p{L}\p{N}\n]*Todo(?:\s|$)`)
 
 // checkpoint waits, then reads the pane once and looks for every task id.
 // With no todo card on screen the list is not written yet, which is
@@ -296,7 +297,7 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 	}
 	var missing []string
 	for _, id := range ids {
-		if !regexp.MustCompile(`(?i)\btask[ -]?` + regexp.QuoteMeta(id) + `\b`).MatchString(text) {
+		if !regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)` + regexp.QuoteMeta(id) + `\b`).MatchString(text) {
 			missing = append(missing, id)
 		}
 	}

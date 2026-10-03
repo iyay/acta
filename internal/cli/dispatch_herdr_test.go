@@ -523,6 +523,38 @@ func TestHerdrCheckpointCardInsideAFrame(t *testing.T) {
 	}
 }
 
+// omp's ascii symbol preset draws the todo icon as "[x]", and x is a letter.
+func TestHerdrCheckpointAsciiHeader(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", "[x] Todo 2 tasks\n- Task 1: a\n- Task 2: b\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "ok" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+}
+
+// The house rules show "T-1, T-3, T-4", so that form counts as naming the id.
+func TestHerdrCheckpointAcceptsTDashForm(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", todoCard+"- T-1 / T-2 / t-3\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2", "3"})
+	if verdict != "ok" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+}
+
+func TestHerdrCheckpointTDashTenIsNotOne(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", todoCard+"- T-10: other\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1"})
+	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1"}) {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+}
+
 func TestHerdrCheckpointReadFailureIsUnconfirmed(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
