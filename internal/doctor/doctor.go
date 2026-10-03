@@ -246,21 +246,21 @@ func checkStaleLinks(e Env) Result {
 	return r
 }
 
-// checkConflicts names the other workflow plugins that are enabled here, so
-// the user can turn them off for this repo.
+// checkConflicts names the enabled plugins that overlap acta, so the user can
+// turn them off for this repo.
 func checkConflicts(e Env) Result {
 	r := Result{Name: "conflicts", Level: OK}
 	if e.KnownFile == "" {
-		r.Msg = "no list of clashing plugins given"
+		r.Msg = "no list of plugins that overlap acta given"
 		return r
 	}
 	clashes := hook.Conflicts(hook.EnabledPlugins(e.ClaudeDir, e.RepoRoot), hook.LoadKnown(e.KnownFile))
 	if len(clashes) == 0 {
-		r.Msg = "no other workflow plugin enabled"
+		r.Msg = "no plugin that overlaps acta is enabled"
 		return r
 	}
 	r.Level = Warn
-	r.Msg = "another workflow plugin is enabled: " + strings.Join(clashes, ", ")
+	r.Msg = "a plugin that overlaps acta is enabled: " + strings.Join(clashes, ", ")
 	r.Fix = "turn it off for this repo: add its enabledPlugins entry set to false in .claude/settings.local.json"
 	return r
 }

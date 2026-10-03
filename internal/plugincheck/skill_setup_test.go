@@ -8,6 +8,7 @@ func TestSkillSetup(t *testing.T) {
 		MaxLines: 76,
 		Must: []string{
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
+			"Never ask about `coding_guide`",
 			"acta config show", "adhd", "plain", "full English name",
 			"acta doctor", "acta doctor --fix", "--executor", "HERDR_ENV=1", "herdr",
 			"Offer `dispatch` only when `HERDR_ENV=1` is in the environment",

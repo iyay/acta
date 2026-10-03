@@ -25,6 +25,9 @@ type User struct {
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
+	// CodingGuide says whether the agent gets the lean coding rules: lean or
+	// off. Empty means lean.
+	CodingGuide string `yaml:"coding_guide,omitempty"`
 	// Theme names the TUI colors. Empty means the default theme. It is not
 	// checked here: a theme file can be deleted or edited at any time, and
 	// the hooks read this file on every call, so they must keep working.
@@ -200,6 +203,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_depth must be minimal or full, not %q", ErrBadUser, v.PlanDepth)
 	}
+	switch v.CodingGuide {
+	case "", "lean", "off":
+	default:
+		return fmt.Errorf("%w: coding_guide must be lean or off, not %q", ErrBadUser, v.CodingGuide)
+	}
 	return nil
 }
 
@@ -213,6 +221,7 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
+	v.CodingGuide = strings.TrimSpace(v.CodingGuide)
 	if v.ChatLanguage == "" {
 		v.ChatLanguage = d.ChatLanguage
 	}

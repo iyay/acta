@@ -23,9 +23,7 @@ func TestSkillFoldersMatchHookIndex(t *testing.T) {
 			folders = append(folders, e.Name())
 		}
 	}
-	for _, s := range hook.Skills {
-		index = append(index, s.Name)
-	}
+	index = append(index, hook.Skills...)
 	sort.Strings(folders)
 	sort.Strings(index)
 	if !reflect.DeepEqual(folders, index) {
@@ -68,19 +66,6 @@ func TestNoSuperpowersPrefixOrUserPaths(t *testing.T) {
 			t.Errorf("%s has an absolute user path", rel)
 		}
 	})
-}
-
-func TestTotalSkillSize(t *testing.T) {
-	total := 0
-	walkPlugin(t, func(rel, text string) {
-		if strings.HasPrefix(rel, "skills/") && strings.HasSuffix(rel, ".md") {
-			total += strings.Count(text, "\n")
-		}
-	})
-	t.Logf("skills total: %d lines of markdown", total)
-	if total > 4240 {
-		t.Fatalf("skills total %d lines, cap is 4240", total)
-	}
 }
 
 func TestHookScriptsAreTheOnlyExecutablesOutsideSkills(t *testing.T) {

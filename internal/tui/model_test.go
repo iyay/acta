@@ -2487,9 +2487,10 @@ func TestEveryToastHidesByItself(t *testing.T) {
 }
 
 // The editor runs with the program suspended, so the terminal comes back
-// with mouse reporting off and nothing turns it back on. Every path that
-// runs the editor has to ask for the mouse again, or clicks and the wheel
-// stay dead until the TUI restarts.
+// with mouse reporting off and nothing turns it back on. Every editorDoneMsg
+// has to ask for the mouse again, or clicks and the wheel stay dead until
+// the TUI restarts. A message that never came from the editor must leave the
+// mouse alone.
 func TestMouseComesBackAfterTheEditor(t *testing.T) {
 	t.Parallel()
 
@@ -2498,9 +2499,9 @@ func TestMouseComesBackAfterTheEditor(t *testing.T) {
 		name string
 		msg  editorDoneMsg
 	}{
-		{"edit a row", editorDoneMsg{}},
-		{"new bug", editorDoneMsg{newBug: "no-such-bug.md"}},
-		{"editor error", editorDoneMsg{err: errors.New("boom")}},
+		{"no error", editorDoneMsg{}},
+		{"a new bug file", editorDoneMsg{newBug: "no-such-bug.md"}},
+		{"the editor failed", editorDoneMsg{err: errors.New("boom")}},
 	}
 	for _, c := range paths {
 		_, cmd := actModel(t).Update(c.msg)
@@ -2510,11 +2511,17 @@ func TestMouseComesBackAfterTheEditor(t *testing.T) {
 		}
 	}
 
-	// A model that never ran the editor must not touch the mouse.
-	_, cmd := actModel(t).Update(key("j"))
-	for _, msg := range runNow(cmd, 200*time.Millisecond) {
+	// "q" answers with a quit command, so there is a message to look at. A key
+	// that returns nothing would make this loop empty and the check below
+	// would never run.
+	_, cmd := actModel(t).Update(key("q"))
+	msgs := runNow(cmd, 200*time.Millisecond)
+	if len(msgs) == 0 {
+		t.Fatalf("the key press gave back no message, so nothing was checked")
+	}
+	for _, msg := range msgs {
 		if msg == want {
-			t.Errorf("a key press with no editor behind it turned the mouse on")
+			t.Errorf("a key press with no editor behind it turned the mouse on: %v", msgs)
 		}
 	}
 }

@@ -14,7 +14,7 @@ func evalPlugin(t *testing.T, want, said string) string {
 	t.Helper()
 	dir := t.TempDir()
 	files := map[string]string{
-		"skills/plan/SKILL.md":      "x",
+		"skills/slice/SKILL.md":     "x",
 		"evals/one/prompt.md":       "---\ntimeout_seconds: 30\n---\nHi",
 		"evals/one/graders/said.md": "---\ntype: regex\npattern: \"" + want + "\"\n---\n",
 		"bin/omp":                   "#!/bin/sh\necho '{\"type\":\"agent_end\",\"messages\":[{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"" + said + "\"}]}]}'\n",

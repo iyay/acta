@@ -76,7 +76,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "session-start":
 		fs := flag.NewFlagSet("hook session-start", flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		known := fs.String("known", "", "file listing workflow plugins that clash with pm")
+		known := fs.String("known", "", "file listing plugins that overlap acta")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, hookUsage)
 			return exitBadInput

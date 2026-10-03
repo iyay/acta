@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-func TestSkillBrainstorm(t *testing.T) {
+func TestSkillShape(t *testing.T) {
 	CheckSkill(t, SkillRule{
-		Name:     "brainstorm",
+		Name:     "shape",
 		MaxLines: 395,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
-			".acta/specs/", "acta:plan", "CONTEXT.md", "docs/adr/",
+			".acta/specs/", "acta:slice", "CONTEXT.md", "docs/adr/",
 			"trust boundary", "each gets its own yes", "acta list --json",
 			"run " + "`acta id`" + ` right after`, "parent: debt/",
 			"acta scratch new", "acta scratch add", "status brainstorming",
@@ -33,11 +33,25 @@ func TestSkillBrainstorm(t *testing.T) {
 	})
 }
 
-// TestBrainstormEveryScratchAddLogs catches one line that falls back to a
+// TestShapeDescriptionKeepsBrainstorm guards the word users still type.
+// "brainstorm SCR-0001" reaches this skill through its description, so a
+// rewrite that drops the word leaves the skill without its trigger.
+func TestShapeDescriptionKeepsBrainstorm(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, desc, _ := frontmatter(b)
+	if !strings.Contains(desc, "brainstorm") {
+		t.Errorf("shape description has no word brainstorm: %q", desc)
+	}
+}
+
+// TestShapeEveryScratchAddLogs catches one line that falls back to a
 // plain append. The Must list only proves the string exists somewhere, so a
 // single answer or section could quietly lose the section flag.
-func TestBrainstormEveryScratchAddLogs(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+func TestShapeEveryScratchAddLogs(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,22 +60,22 @@ func TestBrainstormEveryScratchAddLogs(t *testing.T) {
 			continue
 		}
 		if !strings.Contains(line, "--section log") {
-			t.Errorf("brainstorm/SKILL.md:%d appends without --section log: %q", i+1, line)
+			t.Errorf("shape/SKILL.md:%d appends without --section log: %q", i+1, line)
 		}
 	}
 }
 
-// TestBrainstormBoundedWritesSpec reads the brainstorm skill on its own.
+// TestShapeBoundedWritesSpec reads the shape skill on its own.
 // A Bounded design once lived only in chat, so the user never saw a spec.
-func TestBrainstormBoundedWritesSpec(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+func TestShapeBoundedWritesSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	txt := string(b)
 	for _, want := range []string{"Write short spec", "short spec (about half a page)"} {
 		if !strings.Contains(txt, want) {
-			t.Errorf("brainstorm/SKILL.md missing %q", want)
+			t.Errorf("shape/SKILL.md missing %q", want)
 		}
 	}
 	for _, old := range []string{
@@ -73,15 +87,15 @@ func TestBrainstormBoundedWritesSpec(t *testing.T) {
 		"short in-chat design",
 	} {
 		if strings.Contains(txt, old) {
-			t.Errorf("brainstorm/SKILL.md still says %q", old)
+			t.Errorf("shape/SKILL.md still says %q", old)
 		}
 	}
 }
 
-// TestBrainstormBoundedReviewLoopsToShortSpec reads the graph on its own.
+// TestShapeBoundedReviewLoopsToShortSpec reads the graph on its own.
 // A Bounded "changes requested" once led into the Architectural design doc.
-func TestBrainstormBoundedReviewLoopsToShortSpec(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "brainstorm", "SKILL.md"))
+func TestShapeBoundedReviewLoopsToShortSpec(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,10 +103,10 @@ func TestBrainstormBoundedReviewLoopsToShortSpec(t *testing.T) {
 	for _, want := range []string{
 		`"Write short spec" -> "User reviews short spec?"`,
 		`"User reviews short spec?" -> "Write short spec" [label="changes requested"]`,
-		`"User reviews short spec?" -> "Invoke acta:plan skill" [label="approved"]`,
+		`"User reviews short spec?" -> "Invoke acta:slice skill" [label="approved"]`,
 	} {
 		if !strings.Contains(txt, want) {
-			t.Errorf("brainstorm graph missing %s", want)
+			t.Errorf("shape graph missing %s", want)
 		}
 	}
 	if strings.Contains(txt, `"Write short spec" -> "User reviews spec?"`) {

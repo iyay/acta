@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,18 +25,37 @@ func TestManifests(t *testing.T) {
 	if err := json.Unmarshal([]byte(readFile(t, ".claude-plugin", "plugin.json")), &p); err != nil {
 		t.Fatal(err)
 	}
-	if p.Name != "acta" || p.Version != "0.1.0" || p.License != "MIT" {
+	if p.Name != "acta" || p.License != "MIT" {
 		t.Fatalf("plugin.json = %+v", p)
 	}
 	var m struct {
 		Name    string
-		Plugins []struct{ Name, Source string }
+		Plugins []struct{ Name, Source, Version string }
 	}
 	if err := json.Unmarshal([]byte(readFile(t, ".claude-plugin", "marketplace.json")), &m); err != nil {
 		t.Fatal(err)
 	}
 	if m.Name != "acta-local" || len(m.Plugins) != 1 || m.Plugins[0].Name != "acta" || m.Plugins[0].Source != "./" {
 		t.Fatalf("marketplace.json = %+v", m)
+	}
+	var pkg struct{ Version string }
+	if err := json.Unmarshal([]byte(readFile(t, "package.json")), &pkg); err != nil {
+		t.Fatal(err)
+	}
+	// The plugin has one version, and three files each keep a copy of it. A
+	// bump that skips one file, or a typo like 0.1, must fail here.
+	form := regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+	for _, f := range []struct{ file, version string }{
+		{"plugin.json", p.Version},
+		{"marketplace.json", m.Plugins[0].Version},
+		{"package.json", pkg.Version},
+	} {
+		if !form.MatchString(f.version) {
+			t.Errorf("%s version = %q, want x.y.z", f.file, f.version)
+		}
+		if f.version != p.Version {
+			t.Errorf("%s version = %q, but plugin.json says %q", f.file, f.version, p.Version)
+		}
 	}
 }
 
@@ -219,7 +239,7 @@ func TestPostToolScript(t *testing.T) {
 
 func TestWorkflowPluginsList(t *testing.T) {
 	txt := readFile(t, "hooks", "workflow-plugins.txt")
-	for _, want := range []string{"\nsuperpowers\n", "\ngstack\n", "\nmattpocock\n"} {
+	for _, want := range []string{"\nsuperpowers\n", "\ngstack\n", "\nmattpocock\n", "\ncaveman\n", "\nponytail\n"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("workflow-plugins.txt missing %q", strings.TrimSpace(want))
 		}
@@ -242,8 +262,9 @@ func TestHouseRules(t *testing.T) {
 
 func TestNoticeAndReadme(t *testing.T) {
 	notice := readFile(t, "NOTICE")
-	for _, want := range []string{"Jesse Vincent", "Ayoub Ghriss", "MIT License", "Permission is hereby granted",
-		"skills/brainstorm/", "skills/plan/", "skills/build/", "skills/tdd/", "skills/debug/", "skills/review/", "skills/land/"} {
+	for _, want := range []string{"Jesse Vincent", "Ayoub Ghriss", "DietrichGebert", "Julius Brussee", "MIT License", "Permission is hereby granted",
+		"skills/shape/", "skills/slice/", "skills/build/", "skills/tdd/", "skills/debug/", "skills/review/", "skills/land/",
+		"skills/lean/", "output-styles/acta.md"} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("NOTICE missing %q", want)
 		}
