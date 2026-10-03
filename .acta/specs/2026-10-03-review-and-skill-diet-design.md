@@ -5,6 +5,7 @@ id: SPC-0069
 created: "2026-10-03 20:58:15"
 hash: vt4gf9q
 started: "2026-10-03 21:05:18"
+finished: "2026-10-03 21:17:56"
 ---
 # Review diet, dispatch command and skill diet
 
