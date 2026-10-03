@@ -1,10 +1,13 @@
 package plugincheck
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/hook"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,5 +81,54 @@ func TestStyleBodyWordCap(t *testing.T) {
 	_, body := styleParts(t)
 	if n := len(strings.Fields(body)); n > styleWordCap {
 		t.Errorf("style body is %d words, cap %d", n, styleWordCap)
+	}
+}
+
+// adhdPhrase reads the words the session note must hold for the ADHD block to
+// apply: the text after "says" in the ADHD heading, up to its closing bracket.
+func adhdPhrase(t *testing.T, body string) string {
+	t.Helper()
+	for _, ln := range strings.Split(body, "\n") {
+		if !strings.HasPrefix(ln, "## ADHD") {
+			continue
+		}
+		_, rest, ok := strings.Cut(ln, "says ")
+		phrase, _, closed := strings.Cut(rest, ")")
+		if ok && closed && phrase != "" {
+			return phrase
+		}
+	}
+	t.Fatal("the ADHD heading does not say which words the session note holds")
+	return ""
+}
+
+// TestStyleHeadingMatchesHookLine keeps the hook and the style file in step.
+// The ADHD block applies only when the session note says the words in its
+// heading. If the hook line and the heading drift apart, the block silently
+// never applies, or applies to everyone.
+func TestStyleHeadingMatchesHookLine(t *testing.T) {
+	_, body := styleParts(t)
+	phrase := adhdPhrase(t, body)
+	adhd := config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
+	plain := adhd
+	plain.Style = "plain"
+	// First run and a broken config both fall back to adhd, so they must
+	// print the line the heading names too.
+	for name, in := range map[string]hook.Input{
+		"adhd":      {Voice: adhd, VoiceExists: true},
+		"first run": {Voice: config.UserDefault()},
+		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		out := hook.SessionStart(in)
+		if n := strings.Count(out, phrase); n != 1 {
+			t.Errorf("%s: the session text holds %q %d times, want once", name, phrase, n)
+		}
+		if !strings.Contains(out, "\n- "+phrase+".\n") {
+			t.Errorf("%s: the session text has no line %q", name, "- "+phrase+".")
+		}
+	}
+	out := hook.SessionStart(hook.Input{Voice: plain, VoiceExists: true})
+	if !strings.Contains(out, "\n- Style: plain.\n") || strings.Contains(out, phrase) {
+		t.Errorf("plain: the session text must say Style: plain and never %q:\n%s", phrase, out)
 	}
 }

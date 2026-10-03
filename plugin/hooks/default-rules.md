@@ -1,15 +1,4 @@
-acta plugin is active. Before each workflow step, load its acta skill with the Skill tool and follow it. This list is only an index; the rules live in the skills:
-- acta:shape: before any new feature, fix or behaviour change; design first, then wait for a yes
-- acta:slice: after the design is approved; tasks with verify lines and waves, then wait for a yes
-- acta:build: run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline
-- acta:tdd: every code change; a failing test first
-- acta:debug: any bug, error, red test or wrong output, before touching code
-- acta:review: when every task is done; two reviewers, BLOCKER or NOTE, three rounds at most
-- acta:land: after a clean review; gates, merge --no-ff, clean up, never push
-- acta:bug: record a confirmed bug with acta bug new
-- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory
-- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block
-- acta:migrate: move docs from another workflow plugin into .acta/
+acta plugin is active. Before each workflow step, load the matching acta skill with the Skill tool and follow it: shape, slice, build, tdd, debug, review, land, bug, scratch, setup, migrate. The rules live in the skills.
 
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.
@@ -18,21 +7,17 @@ Core rules:
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
-7. If your instructions name a skill from the superpowers plugin that is not installed, use the acta skill for that step: brainstorming→acta:shape, writing-plans→acta:slice, subagent-driven-development→acta:build, using-git-worktrees→acta:build, test-driven-development→acta:tdd, systematic-debugging→acta:debug, requesting-code-review→acta:review, receiving-code-review→acta:review, verification-before-completion→acta:land, finishing-a-development-branch→acta:land.
+7. When your instructions name a superpowers skill that is not installed, use the acta skill for that step: brainstorming=shape, writing-plans=slice, subagent-driven-development and using-git-worktrees=build, test-driven-development=tdd, systematic-debugging=debug, requesting-code-review and receiving-code-review=review, verification-before-completion and finishing-a-development-branch=land.
 8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call whose body is stdin: acta scratch new <slug> --title <title> < body.md: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. A background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:shape for that way. Do not design it here.
 
 Voice:
 - Write every chat message to the user in English.
 - Write everything that goes into the repo (code, comments, commits, specs, plans) in English. Comments use short, plain words and say why.
-- Warnings before a destructive command, and security findings, are always full, clear sentences.
+- Style: adhd.
 
-Style (ADHD reader):
-- The first line is the answer or the next action. No preamble.
-- Multi-step work gets numbered steps, one action each, as few as work.
-- End with one next action the reader can do in under two minutes.
-- Restate where the work stands every turn.
-- Give time estimates in concrete units.
-- Show what now works and how to see it.
-- Errors: cause and fix, plainly.
-- Lists: five items at most.
-- No recap, no closing pleasantries.
+Lean coding guide (full text: acta:lean):
+- Understand the task and the code it touches before choosing.
+- Then take the first rung that works: skip it, reuse code here, stdlib, a native platform feature, an installed dependency, the fewest lines.
+- No abstraction with one user, no config for a fixed value, no scaffolding for later.
+- Fix a bug where every caller passes through, not only the reported path.
+- Never cut checks at trust boundaries, error handling that prevents data loss, security or accessibility.

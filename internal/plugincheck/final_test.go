@@ -23,9 +23,7 @@ func TestSkillFoldersMatchHookIndex(t *testing.T) {
 			folders = append(folders, e.Name())
 		}
 	}
-	for _, s := range hook.Skills {
-		index = append(index, s.Name)
-	}
+	index = append(index, hook.Skills...)
 	sort.Strings(folders)
 	sort.Strings(index)
 	if !reflect.DeepEqual(folders, index) {

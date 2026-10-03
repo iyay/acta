@@ -92,9 +92,9 @@ started: "2026-10-03 15:21:15"
 
 **verify:** For every input shape (first run, broken config, adhd, plain, coding_guide unset, lean and off, herdr, conflicts) the text names every skill in `Skills`, holds exactly one style line, `Style: adhd` for adhd, first run and broken config and `Style: plain` for plain, has no adhd block and no destructive-warning line, keeps rules 1-6 and 8 byte for byte and all ten superpowers names in rule 7, prints the lean summary unless coding_guide is off, and fits the new cap. List each shape and what it printed.
 
-- [ ] Failing test: rewrite the `hook_test.go` checks for the new text (style line, no `Style (ADHD reader):`, lean on and off, names-only index, each superpowers pair, "overlaps acta") and add the hook-to-heading match in `style_test.go`; they fail because the hook still prints the old text.
-- [ ] Code: change `SessionStart` and `Skills`, regenerate `default-rules.md`, and set `sessionStartCap` to the new size.
-- [ ] Commit: `cut the session start text and move the chat rules to the style`
+- [x] Failing test: rewrite the `hook_test.go` checks for the new text (style line, no `Style (ADHD reader):`, lean on and off, names-only index, each superpowers pair, "overlaps acta") and add the hook-to-heading match in `style_test.go`; they fail because the hook still prints the old text.
+- [x] Code: change `SessionStart` and `Skills`, regenerate `default-rules.md`, and set `sessionStartCap` to the new size.
+- [x] Commit: `cut the session start text and move the chat rules to the style`
 
 ### Task 6: Lean skill replaces the ponytail lines
 

@@ -38,7 +38,7 @@ func TestHookCommands(t *testing.T) {
 		t.Fatalf("prompt after setup: %q", out)
 	}
 	out, _, _ = acta(t, dir, "", "hook", "session-start")
-	if !strings.Contains(out, "in Korean.") || strings.Contains(out, "Another workflow plugin") {
+	if !strings.Contains(out, "in Korean.") || strings.Contains(out, "overlaps acta") {
 		t.Fatalf("session-start without --known: %s", out)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,12 +19,56 @@ func korean() Input {
 	return Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
 }
 
+// skillNames are the skills the index must name. A skill added later joins the
+// index too, so this list only has to be a part of it.
+var skillNames = []string{"shape", "slice", "build", "tdd", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
+
+// leanHeading is the first line of the lean summary.
+const leanHeading = "Lean coding guide (full text: acta:lean):"
+
+// indexNames reads the skill names from the first line of the text.
+func indexNames(t *testing.T, out string) []string {
+	t.Helper()
+	first, _, _ := strings.Cut(out, "\n")
+	_, list, ok := strings.Cut(first, "follow it: ")
+	list, tail, ok2 := strings.Cut(list, ". The rules live in the skills.")
+	if !ok || !ok2 || tail != "" {
+		t.Fatalf("the first line is not the one-line skill index: %q", first)
+	}
+	return strings.Split(list, ", ")
+}
+
+// rule7 reads rule 7 into a map from each superpowers name to its acta skill.
+func rule7(t *testing.T, out string) map[string]string {
+	t.Helper()
+	_, rest, ok := strings.Cut(out, "\n7. ")
+	line, _, _ := strings.Cut(rest, "\n")
+	_, list, ok2 := strings.Cut(line, "use the acta skill for that step: ")
+	if !ok || !ok2 {
+		t.Fatalf("rule 7 is missing or has a new shape:\n%s", out)
+	}
+	got := map[string]string{}
+	for _, group := range strings.Split(strings.TrimSuffix(list, "."), ", ") {
+		names, skill, _ := strings.Cut(group, "=")
+		for _, name := range strings.Split(names, " and ") {
+			got[name] = skill
+		}
+	}
+	return got
+}
+
 func TestSessionStartListsSkillsAndRules(t *testing.T) {
 	out := SessionStart(korean())
-	for _, s := range Skills {
-		if !strings.Contains(out, "- acta:"+s.Name+": ") {
-			t.Errorf("skill %s missing", s.Name)
+	names := indexNames(t, out)
+	for _, want := range skillNames {
+		if !slices.Contains(names, want) {
+			t.Errorf("skill %s missing from the index", want)
 		}
+	}
+	// The index is one line of names. A line per skill with its hint is the
+	// old shape: the skill list of the harness already shows the hints.
+	if strings.Contains(out, "\n- acta:") {
+		t.Error("the index still has a line per skill")
 	}
 	for _, want := range []string{
 		"No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.",
@@ -31,21 +76,11 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"CLAUDE.md or AGENTS.md",
 		"Write every chat message to the user in Korean.",
 		"(code, comments, commits, specs, plans) in English.",
-		"full, clear sentences",
-		"Style (ADHD reader):",
-		`- acta:scratch: raw ideas ("note this", "later", side ideas, any language); file with acta scratch new, never memory`,
-		"- acta:setup: first-run setup and later changes: doctor, voice, build executor, subagent models, CLAUDE.md block",
-		"- acta:build: run an approved plan in a worktree; executor from `/build <executor>`, else `acta config show`, else ask: subagent, dispatch or inline",
+		"- Style: adhd.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
 		}
-	}
-	if strings.Contains(out, "executor subagent (default)") {
-		t.Error("the build line must not call subagent the default; the config picks the executor")
-	}
-	if len(Skills) != 11 {
-		t.Fatalf("%d skills, want 11", len(Skills))
 	}
 }
 
@@ -54,8 +89,8 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 	in.Voice.Style = "plain"
 	in.Voice.Tone = "Casual.\nNo jokes."
 	out := SessionStart(in)
-	if strings.Contains(out, "Style (ADHD reader):") {
-		t.Error("plain style still prints the ADHD rules")
+	if !strings.Contains(out, "\n- Style: plain.\n") || strings.Contains(out, "Style: adhd") {
+		t.Errorf("plain style line wrong:\n%s", out)
 	}
 	if !strings.Contains(out, "- Tone, in the user's words:\n  Casual.\n  No jokes.\n") {
 		t.Errorf("tone block wrong:\n%s", out)
@@ -64,7 +99,7 @@ func TestSessionStartPlainAndTone(t *testing.T) {
 
 func TestSessionStartFirstRun(t *testing.T) {
 	out := SessionStart(Input{Voice: config.UserDefault()})
-	for _, want := range []string{"Voice: not set up yet.", "/acta:setup", "acta doctor", "Style (ADHD reader):",
+	for _, want := range []string{"Voice: not set up yet.", "/acta:setup", "acta doctor", "\n- Style: adhd.\n",
 		"already names a chat language or style", "or the language CLAUDE.md names"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("first run missing %q", want)
@@ -77,7 +112,7 @@ func TestSessionStartFirstRun(t *testing.T) {
 
 func TestSessionStartBrokenVoice(t *testing.T) {
 	out := SessionStart(Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("style must be adhd")})
-	if !strings.Contains(out, "could not be read (style must be adhd)") || !strings.Contains(out, "Style (ADHD reader):") {
+	if !strings.Contains(out, "could not be read (style must be adhd)") || !strings.Contains(out, "\n- Style: adhd.\n") {
 		t.Errorf("broken voice text wrong:\n%s", out)
 	}
 }
@@ -86,9 +121,85 @@ func TestSessionStartConflicts(t *testing.T) {
 	in := korean()
 	in.Conflicts = []string{"superpowers@superpowers-dev"}
 	out := SessionStart(in)
-	if !strings.Contains(out, "Another workflow plugin is enabled here: superpowers@superpowers-dev.") ||
+	if !strings.Contains(out, "A plugin that overlaps acta is enabled here: superpowers@superpowers-dev.") ||
+		!strings.Contains(out, "two plugins that do the same job pull the agent two ways") ||
 		!strings.Contains(out, `{"enabledPlugins":{"superpowers@superpowers-dev":false}}`) {
 		t.Errorf("conflict text wrong:\n%s", out)
+	}
+	for _, old := range []string{"Another workflow plugin", "two workflow plugins"} {
+		if strings.Contains(out, old) {
+			t.Errorf("conflict text still says %q", old)
+		}
+	}
+}
+
+// Every input shape gets the same checks: one style line with the right word,
+// no ADHD block (the output style holds it), no destructive-warning line (the
+// output style holds that too), and the lean summary unless coding_guide is off.
+func TestSessionStartEveryShape(t *testing.T) {
+	plain, lean, off, herdr, conflicts := korean(), korean(), korean(), korean(), korean()
+	plain.Voice.Style = "plain"
+	lean.Voice.CodingGuide = "lean"
+	off.Voice.CodingGuide = "off"
+	herdr.Herdr = true
+	conflicts.Conflicts = []string{"superpowers@superpowers-dev"}
+	cases := map[string]struct {
+		in    Input
+		style string // the word after "- Style: "
+		lean  bool   // whether the lean summary is printed
+	}{
+		"first run": {Input{Voice: config.UserDefault()}, "adhd", true},
+		"broken":    {Input{Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")}, "adhd", true},
+		"adhd":      {korean(), "adhd", true},
+		"plain":     {plain, "plain", true},
+		"lean":      {lean, "adhd", true},
+		"off":       {off, "adhd", false},
+		"herdr":     {herdr, "adhd", true},
+		"conflicts": {conflicts, "adhd", true},
+	}
+	for name, c := range cases {
+		out := SessionStart(c.in)
+		if n := strings.Count(out, "\n- Style: "); n != 1 {
+			t.Errorf("%s: %d style lines, want 1", name, n)
+		}
+		other := map[string]string{"adhd": "plain", "plain": "adhd"}[c.style]
+		if !strings.Contains(out, "\n- Style: "+c.style+".\n") || strings.Contains(out, "Style: "+other) {
+			t.Errorf("%s: the style line is not %q:\n%s", name, c.style, out)
+		}
+		for _, gone := range []string{"Style (ADHD reader)", "The first line is the answer or the next action",
+			"Warnings before a destructive command", "full, clear sentences"} {
+			if strings.Contains(out, gone) {
+				t.Errorf("%s: still prints %q", name, gone)
+			}
+		}
+		if got := strings.Contains(out, leanHeading); got != c.lean {
+			t.Errorf("%s: lean summary printed = %v, want %v", name, got, c.lean)
+		}
+		if !c.lean && strings.Contains(out, "acta:lean") {
+			t.Errorf("%s: coding_guide is off but the text still names acta:lean", name)
+		}
+	}
+}
+
+// The lean summary sits after the voice lines and before the plugin note.
+func TestSessionStartLeanSummary(t *testing.T) {
+	in := korean()
+	in.Conflicts = []string{"superpowers@superpowers-dev"}
+	out := SessionStart(in)
+	voice, lean, note := strings.Index(out, "\nVoice:\n"), strings.Index(out, leanHeading), strings.Index(out, "A plugin that overlaps acta")
+	if voice < 0 || lean < 0 || note < 0 || !(voice < lean && lean < note) {
+		t.Fatalf("want voice < lean summary < plugin note, got %d %d %d:\n%s", voice, lean, note, out)
+	}
+	for _, want := range []string{
+		"- Understand the task and the code it touches before choosing.\n",
+		"- Then take the first rung that works: skip it, reuse code here, stdlib, a native platform feature, an installed dependency, the fewest lines.\n",
+		"- No abstraction with one user, no config for a fixed value, no scaffolding for later.\n",
+		"- Fix a bug where every caller passes through, not only the reported path.\n",
+		"- Never cut checks at trust boundaries, error handling that prevents data loss, security or accessibility.\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("lean summary missing %q", want)
+		}
 	}
 }
 
@@ -137,12 +248,12 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 				t.Errorf("%s: session start missing %q", name, want)
 			}
 		}
-		if !strings.Contains(out, "- acta:scratch: raw ideas (\"note this\", \"later\", side ideas, any language); file with acta scratch new, never memory") {
-			t.Errorf("%s: session start does not carry the plain scratch index line", name)
+		if !slices.Contains(indexNames(t, out), "scratch") {
+			t.Errorf("%s: the skill index does not name scratch", name)
 		}
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
-		// and the voice lines count: the skill index above them may name
-		// dispatch as an executor, and an index is not an offer of a tab.
+		// and the voice lines count: the header above them is an index, not an
+		// offer of a tab.
 		rules := out[strings.Index(out, "Core rules:"):]
 		if strings.Contains(strings.ToLower(rules), "herdr") {
 			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)
@@ -280,12 +391,12 @@ func TestDefaultRulesFile(t *testing.T) {
 func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 	worst := korean()
 	worst.Conflicts = []string{"superpowers@a"}
-	mappings := []string{
-		"brainstorming→acta:shape", "writing-plans→acta:slice",
-		"subagent-driven-development→acta:build", "using-git-worktrees→acta:build",
-		"test-driven-development→acta:tdd", "systematic-debugging→acta:debug",
-		"requesting-code-review→acta:review", "receiving-code-review→acta:review",
-		"verification-before-completion→acta:land", "finishing-a-development-branch→acta:land",
+	mappings := map[string]string{
+		"brainstorming": "shape", "writing-plans": "slice",
+		"subagent-driven-development": "build", "using-git-worktrees": "build",
+		"test-driven-development": "tdd", "systematic-debugging": "debug",
+		"requesting-code-review": "review", "receiving-code-review": "review",
+		"verification-before-completion": "land", "finishing-a-development-branch": "land",
 	}
 	for name, in := range map[string]Input{
 		"voice set": korean(),
@@ -294,13 +405,24 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
-		for _, want := range append([]string{
-			"load its acta skill with the Skill tool", "This list is only an index",
-			"skill from the superpowers plugin that is not installed",
-		}, mappings...) {
+		for _, want := range []string{
+			"load the matching acta skill with the Skill tool and follow it: ", "The rules live in the skills.",
+			"name a superpowers skill that is not installed",
+		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: missing %q", name, want)
 			}
+		}
+		// Each pair is checked on its own, so a name that falls out of the
+		// shorter rule cannot hide behind the others.
+		got := rule7(t, out)
+		for superpowers, skill := range mappings {
+			if got[superpowers] != skill {
+				t.Errorf("%s: rule 7 maps %q to %q, want %q", name, superpowers, got[superpowers], skill)
+			}
+		}
+		if len(got) != len(mappings) {
+			t.Errorf("%s: rule 7 holds %d names, want %d", name, len(got), len(mappings))
 		}
 	}
 }
