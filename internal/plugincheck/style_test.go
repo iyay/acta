@@ -84,6 +84,22 @@ func TestStyleBodyWordCap(t *testing.T) {
 	}
 }
 
+// TestStyleFullSentenceRule pins the rule that security findings and warnings
+// before a destructive step get full sentences. The session hook used to carry
+// this line, and its test now checks the line is gone. So this test is what
+// keeps the rule in the style.
+func TestStyleFullSentenceRule(t *testing.T) {
+	_, body := styleParts(t)
+	for _, want := range []string{
+		"Full, plain sentences for security findings",
+		"warnings before anything destructive or irreversible",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("style no longer says %q", want)
+		}
+	}
+}
+
 // adhdPhrase reads the words the session note must hold for the ADHD block to
 // apply: the text after "says" in the ADHD heading, up to its closing bracket.
 func adhdPhrase(t *testing.T, body string) string {

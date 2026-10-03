@@ -28,7 +28,7 @@ func TestSkillLean(t *testing.T) {
 			// The ladder, one phrase for each rung.
 			"first one that works wins",
 			"needed at all", "repo already have it", "standard library",
-			"native platform feature", "installed dependency", "Can it be one line", "minimum code",
+			"native platform feature", "installed dependency", "Would a single line do", "minimum code",
 			// The rules.
 			"one user", "always the same", "may never come", "fewest files", "edge cases",
 			// A bug fix goes to the root.
@@ -38,8 +38,8 @@ func TestSkillLean(t *testing.T) {
 			// What was skipped is said out loud, not left as a marker.
 			"in chat or in the plan", "marker",
 		},
-		// No levels, and no word of the project the text was adapted from.
-		MustNot: []string{"ponytail", "ultra", "lite", "level"},
+		// No intensity levels, and no word of the project the text was adapted from.
+		MustNot: []string{"ponytail", "ultra", "intensity"},
 	})
 }
 

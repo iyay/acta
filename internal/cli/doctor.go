@@ -140,8 +140,8 @@ func skipReason(e doctor.Env, dirty bool) string {
 	return ""
 }
 
-// linkedKnownFile finds the list of clashing plugins inside the plugin folder
-// omp links, so the conflicts check works without a flag. A missing link
+// linkedKnownFile finds the list of plugins that overlap acta inside the plugin
+// folder omp links, so the conflicts check works without a flag. A missing link
 // gives "", and the check then skips.
 func linkedKnownFile(home string) string {
 	link := filepath.Join(home, ".omp", "plugins", "node_modules", "acta")

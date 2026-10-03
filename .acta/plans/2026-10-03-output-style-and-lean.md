@@ -134,3 +134,16 @@ Skip this task when the Task 1 FACTS.md entry says the eval sandbox does not loa
 - [x] Failing test: bump `plugin.json` alone; `TestManifests` fails because the other two still say `0.1.1`.
 - [x] Code: bump the other two, rewrite the CLAUDE.md version rule, and add the README lines.
 - [x] Commit: `document the style and lean guide, bump every landed plan, 0.1.2`
+
+## Review notes
+
+- `internal/cli/hook_repo_test.go`: no end-to-end test runs `acta hook session-start` with `coding_guide: off` in `.acta.yaml` or in the user file; `MergeRepo` and `SessionStart` are tested on their own, and the `loadVoice` glue is tested end to end only for `repo_language`.
+- `internal/cli/hook.go`: with a broken user config, `loadVoice` returns before it merges `.acta.yaml`, so a repo that pins `coding_guide: off` still shows the lean summary until the user file is fixed. Every repo key already worked this way on main.
+- The Task 5 verify line says every shape fits the new cap, but `sessionStartCap` measures the default config only: first run is 2792 bytes, herdr 2673, conflicts 2870. On main these shapes were over the old cap too.
+- No test pins core rules 1-6 and 8 word for word: an edit plus `-update` of `default-rules.md` passes every test. The gap was already on main.
+- No test ties `plugin/output-styles/acta.md` to the approved spec appendix: an edit that keeps the same size passes, and only growth trips the byte cap.
+- `plugin/omp/index.test.ts`: the `noStyle` comment says "The rest use this stub", but seven tests pass `STYLE_FILE`, `brokenStyle()` or an inline file. Better: "The others pass a stub; this one gives no style."
+- `plugin/skills/lean/SKILL.md`: the bug-fix paragraph keeps ponytail's order of sentences in new words, and "trace the real flow" (held by the `Must` phrase `real flow`) is a four-word run ponytail also has.
+- The approved lean summary (`internal/hook/hook.go`, `plugin/hooks/default-rules.md`) keeps a ten-word run from ponytail ("at trust boundaries, error handling that prevents data loss, security") and says "prevents data loss" where the skill now says "stops data loss". Changing it needs a spec change by the user.
+- The session start text is 2551 bytes (about 638 tokens), over the spec estimate of about 2508 bytes and the scratch target of about 600 tokens. The header and rule 7 wording in the build brief cost the extra 43 bytes.
+- `config.SaveRepoUser` checks key names but not values, and a value in `.acta.yaml` that is not a string (`coding_guide: false`) is skipped without an error. Every repo key already worked this way; `setRepo` and `MergeRepo` check values on the way in and out.

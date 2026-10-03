@@ -20,7 +20,7 @@ function fakeRun(outputs: Record<string, Out | "throw">) {
   return { run, calls };
 }
 
-// No test reads the real style file. This stub stands in for it and gives no style.
+// Only one test reads the real style file. The rest use this stub, which gives no style.
 const noStyle = () => "";
 
 // A style file as Claude Code reads it: settings on top, the words below.
@@ -94,6 +94,16 @@ describe("createState", () => {
     });
     const s = createState(run, () => "DEFAULTS", () => STYLE_FILE);
     expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+  });
+
+  // No third argument, so the real reader runs on the committed style file. Every
+  // other test stubs the reader, so a wrong path in index.ts would pass them all.
+  test("the default reader finds the committed style file", () => {
+    const { run } = fakeRun({ "acta hook session-start": { stdout: "RULES\n", code: 0 } });
+    const out = createState(run, () => "DEFAULTS").contextFor("S1");
+    expect(out).toContain("## Every reply");
+    expect(out).not.toContain("force-for-plugin");
+    expect(out).not.toContain("name: acta");
   });
 
   test("acta failed: the style body follows the default rules and their note", () => {

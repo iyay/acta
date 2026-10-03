@@ -251,7 +251,7 @@ func checkStaleLinks(e Env) Result {
 func checkConflicts(e Env) Result {
 	r := Result{Name: "conflicts", Level: OK}
 	if e.KnownFile == "" {
-		r.Msg = "no list of clashing plugins given"
+		r.Msg = "no list of plugins that overlap acta given"
 		return r
 	}
 	clashes := hook.Conflicts(hook.EnabledPlugins(e.ClaudeDir, e.RepoRoot), hook.LoadKnown(e.KnownFile))

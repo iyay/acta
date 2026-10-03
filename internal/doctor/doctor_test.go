@@ -271,7 +271,11 @@ func TestDoctorConflicts(t *testing.T) {
 	t.Run("no known file", func(t *testing.T) {
 		e := env(t)
 		write(t, filepath.Join(e.ClaudeDir, "settings.json"), `{"enabledPlugins":{"superpowers@x":true}}`)
-		wantLevel(t, byName(Run(e), "conflicts"), OK, "")
+		r := byName(Run(e), "conflicts")
+		wantLevel(t, r, OK, "")
+		if want := "no list of plugins that overlap acta given"; r.Msg != want {
+			t.Fatalf("msg %q, want %q", r.Msg, want)
+		}
 	})
 	t.Run("known file missing", func(t *testing.T) {
 		e := env(t)

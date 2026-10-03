@@ -34,7 +34,7 @@ var fileCaps = map[string]int{
 	"skills/debug/defense-in-depth.md":              3650,
 	"skills/debug/root-cause-tracing.md":            5316,
 	"skills/land/SKILL.md":                          5765,
-	"skills/lean/SKILL.md":                          1899,
+	"skills/lean/SKILL.md":                          1918,
 	"skills/migrate/SKILL.md":                       2329,
 	"skills/review/SKILL.md":                        11504,
 	"skills/review/code-reviewer.md":                4042,

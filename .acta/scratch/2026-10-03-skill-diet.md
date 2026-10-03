@@ -26,4 +26,8 @@ Adapted text is rewritten, never copied 1:1, and costs fewer tokens without losi
 
 ## Log
 
+### 2026-10-03
+
+User ruling 2026-10-03: merged into the SCR-0038 brainstorm (review diet). One spec covers both; this item goes in its closes list. Status stays raw: the pre-tool hook blocks a second brainstorming status in one session.
+
 ## Open questions
