@@ -5,6 +5,7 @@ id: PLN-0078
 created: "2026-10-03 15:13:53"
 hash: ooo3dhj
 started: "2026-10-03 15:21:15"
+finished: "2026-10-03 16:04:49"
 ---
 # Output Style, Lean Coding Guide, Session Start Diet Implementation Plan
 
@@ -119,9 +120,9 @@ Skip this task when the Task 1 FACTS.md entry says the eval sandbox does not loa
 
 **verify:** The case can fail: a reply with an opener, a closing pleasantry, or a first line that does not answer breaks a grader, and a direct reply passes. It adds no llm grader (`TestEvalLLMGradersAreOnlyTheTwoJudgementCalls` stays as it is), sets max_turns and timeout_seconds, and guards a phrase the style file has. Show each regex against one bad and one good sample reply, and the case run with the branch binary on PATH.
 
-- [ ] Failing test: add the `evalCases` row with the file field; `TestEvalCases` fails because the case folder is missing.
-- [ ] Code: write the case with a simple question that has one short right answer, then run `scripts/eval --case style-short-answer` as the Global Constraints say.
-- [ ] Commit: `add an eval case for the acta style`
+- [x] Failing test: add the `evalCases` row with the file field; `TestEvalCases` fails because the case folder is missing.
+- [x] Code: write the case with a simple question that has one short right answer, then run `scripts/eval --case style-short-answer` as the Global Constraints say.
+- [x] Commit: `add an eval case for the acta style`
 
 ### Task 8: README, version rule and the 0.1.2 bump
 
@@ -130,6 +131,6 @@ Skip this task when the Task 1 FACTS.md entry says the eval sandbox does not loa
 
 **verify:** The three manifests agree on `0.1.2`; the CLAUDE.md version rule has no exception and no folder list left; the README tells a user every visible change of this plan (forced style and restart, the coding_guide flag in both forms, the lean skill, the two overlapping plugins) and no README line says the adhd rules come from the hook. List each README section checked.
 
-- [ ] Failing test: bump `plugin.json` alone; `TestManifests` fails because the other two still say `0.1.1`.
-- [ ] Code: bump the other two, rewrite the CLAUDE.md version rule, and add the README lines.
-- [ ] Commit: `document the style and lean guide, bump every landed plan, 0.1.2`
+- [x] Failing test: bump `plugin.json` alone; `TestManifests` fails because the other two still say `0.1.1`.
+- [x] Code: bump the other two, rewrite the CLAUDE.md version rule, and add the README lines.
+- [x] Commit: `document the style and lean guide, bump every landed plan, 0.1.2`

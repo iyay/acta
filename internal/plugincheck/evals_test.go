@@ -8,24 +8,26 @@ import (
 	"testing"
 )
 
-// evalCases ties each eval case to the one skill phrase it guards. When a skill
-// loses that phrase the case stops testing anything, so the case files and the
-// skill have to keep the same words.
+// evalCases ties each eval case to the one phrase it guards. The file is a path
+// inside the plugin folder: a skill, or the output style. When that file loses
+// the phrase the case stops testing anything, so the case files and that file
+// have to keep the same words.
 var evalCases = []struct {
 	folder string
-	skill  string
+	file   string
 	phrase string
 }{
-	{"side-idea-to-scratch", "scratch", "never"},
-	{"note-to-scratch", "scratch", "note this"},
-	{"second-brainstorm-choices", "shape", "One Architectural brainstorm per session"},
-	{"one-file-fix-no-brainstorm", "shape", "Spike and Bounded"},
-	{"brainstorm-files-scratch-first", "shape", "status brainstorming"},
-	{"answers-appended", "shape", "acta scratch add"},
+	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
+	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
+	{"second-brainstorm-choices", "skills/shape/SKILL.md", "One Architectural brainstorm per session"},
+	{"one-file-fix-no-brainstorm", "skills/shape/SKILL.md", "Spike and Bounded"},
+	{"brainstorm-files-scratch-first", "skills/shape/SKILL.md", "status brainstorming"},
+	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},
+	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 }
 
-// TestEvalCases checks every case folder: it exists, it names the skill phrase
-// it guards, and it caps its own quota.
+// TestEvalCases checks every case folder: it exists, it names the phrase it
+// guards, and it caps its own quota.
 func TestEvalCases(t *testing.T) {
 	for _, c := range evalCases {
 		t.Run(c.folder, func(t *testing.T) {
@@ -40,9 +42,9 @@ func TestEvalCases(t *testing.T) {
 			if !strings.Contains(text, "max_turns:") || !strings.Contains(text, "timeout_seconds:") {
 				t.Error("case must set max_turns and timeout_seconds, or one run eats the quota")
 			}
-			skill := readFile(t, "skills", c.skill, "SKILL.md")
-			if !strings.Contains(skill, c.phrase) {
-				t.Errorf("skills/%s/SKILL.md no longer says %q", c.skill, c.phrase)
+			guarded := readFile(t, c.file)
+			if !strings.Contains(guarded, c.phrase) {
+				t.Errorf("%s no longer says %q", c.file, c.phrase)
 			}
 		})
 	}
