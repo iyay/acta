@@ -278,6 +278,45 @@ func TestDoctorConflicts(t *testing.T) {
 		e.KnownFile = filepath.Join(t.TempDir(), "gone.txt")
 		wantLevel(t, byName(Run(e), "conflicts"), OK, "")
 	})
+
+	// These read the real list that ships in the plugin folder, so a name
+	// that drops out of it fails here.
+	realList := filepath.Join("..", "..", "plugin", "hooks", "workflow-plugins.txt")
+	msgHas := func(t *testing.T, r Result, wants ...string) {
+		t.Helper()
+		for _, want := range wants {
+			if !strings.Contains(r.Msg, want) {
+				t.Fatalf("msg %q does not hold %q", r.Msg, want)
+			}
+		}
+		if strings.Contains(r.Msg, "workflow") {
+			t.Fatalf("msg %q still says workflow", r.Msg)
+		}
+	}
+	t.Run("caveman and ponytail enabled", func(t *testing.T) {
+		e := env(t)
+		e.KnownFile = realList
+		write(t, filepath.Join(e.ClaudeDir, "settings.json"), `{"enabledPlugins":{"caveman@caveman":true,"ponytail@ponytail":true}}`)
+		r := byName(Run(e), "conflicts")
+		wantLevel(t, r, Warn, "settings.local.json")
+		msgHas(t, r, "caveman@caveman", "ponytail@ponytail", "overlaps acta")
+	})
+	t.Run("matched by plugin or marketplace name in any case", func(t *testing.T) {
+		e := env(t)
+		e.KnownFile = realList
+		write(t, filepath.Join(e.ClaudeDir, "settings.json"), `{"enabledPlugins":{"Caveman@some-market":true,"some-tool@PONYTAIL":true}}`)
+		r := byName(Run(e), "conflicts")
+		wantLevel(t, r, Warn, "settings.local.json")
+		msgHas(t, r, "Caveman@some-market", "some-tool@PONYTAIL", "overlaps acta")
+	})
+	t.Run("nothing that overlaps acta enabled", func(t *testing.T) {
+		e := env(t)
+		e.KnownFile = realList
+		write(t, filepath.Join(e.ClaudeDir, "settings.json"), `{"enabledPlugins":{"acta@acta-local":true,"other@market":true}}`)
+		r := byName(Run(e), "conflicts")
+		wantLevel(t, r, OK, "")
+		msgHas(t, r, "overlaps acta")
+	})
 }
 
 func TestDoctorRepo(t *testing.T) {

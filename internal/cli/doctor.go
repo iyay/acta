@@ -20,7 +20,7 @@ import (
 
 const doctorUsage = "usage: acta doctor [--fix] [--known <file>]"
 
-// The clashes list names the workflow plugins that pull an agent two ways.
+// The clashes list names plugins that overlap acta and pull an agent two ways.
 // It lives in the plugin folder, which an installed binary does not carry,
 // so --known names it.
 
@@ -28,7 +28,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fix := fs.Bool("fix", false, "fix repo problems (.acta folder, .gitignore)")
-	known := fs.String("known", "", "file listing workflow plugins that clash with acta")
+	known := fs.String("known", "", "file listing plugins that overlap acta")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, doctorUsage)
 		return exitBadInput

@@ -239,7 +239,7 @@ func TestPostToolScript(t *testing.T) {
 
 func TestWorkflowPluginsList(t *testing.T) {
 	txt := readFile(t, "hooks", "workflow-plugins.txt")
-	for _, want := range []string{"\nsuperpowers\n", "\ngstack\n", "\nmattpocock\n"} {
+	for _, want := range []string{"\nsuperpowers\n", "\ngstack\n", "\nmattpocock\n", "\ncaveman\n", "\nponytail\n"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("workflow-plugins.txt missing %q", strings.TrimSpace(want))
 		}
