@@ -48,7 +48,7 @@ func TestLeftHeightsFillAndExpand(t *testing.T) {
 	t.Parallel()
 
 	// The Plans tab has both boxes, so the walk covers the two box column and
-	// not the single box of Activities.
+	// not the single box of Activity.
 	m := press(newModel(t), tabKey(tabPlans))
 	n := len(m.panes())
 	others := n - 1

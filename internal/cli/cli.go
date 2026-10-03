@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,14 +42,8 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	}
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
-	// The version comes from the build info: a tag for go install, dev for a
-	// local build with no version stamped in.
-	version := "dev"
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		version = info.Main.Version
-	}
 	dark := lipgloss.HasDarkBackground()
-	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
+	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
 	// 120fps halves how long a new frame waits to reach the screen.
 	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
 	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
@@ -100,6 +93,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdShow(args[1:], stdout, stderr)
 	case "set":
 		return cmdSet(args[1:], stdout, stderr)
+	case "state":
+		return cmdState(args[1:], stdin, stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
 			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
@@ -133,6 +128,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdMigrateRoot(args[1:], stdout, stderr)
 	case "doctor":
 		return cmdDoctor(args[1:], stdout, stderr)
+	case "wiki":
+		return cmdWiki(args[1:], stdout, stderr)
 	case "dispatch":
 		if len(args) < 2 || (args[1] != "init" && args[1] != "send" && args[1] != "close") {
 			fmt.Fprintln(stderr, "usage: acta dispatch init --pane <id> --plan <path> [--round <slug>] | send --plan <path> --rules <path> [--round <slug>] [--note-file <path>|-] | close")
@@ -152,7 +149,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "eval-omp":
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, state, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
 		return exitBadInput
 	}
 }

@@ -107,3 +107,27 @@ Review round 1 (`c747698..d709b2c`): Spec axis BLOCKED, Standards axis CLEAN. Tw
 - [x] Failing test: add checkpoint cases for each pane shape in (1), a send test with the main checkout on `master`, an `isNotFound` case for "socket not found", and the two plugincheck pins for (2) and (4); they fail on today's code.
 - [x] Code: detect the `Todo` card line in `checkpoint`; read the parent with `gitIn(mainCheckout, "rev-parse", "--abbrev-ref", "HEAD")`; narrow `isNotFound`; reword the `## Close` sentence in build `SKILL.md` and the polish line in review `SKILL.md`; fix the `briefTasks` comment.
 - [x] Commit: `dispatch: fix round 1 (made-up todo list is drift, close before land, real parent)`
+
+## Review notes
+
+- deliverGoal retry: when the first /goal was accepted but its mark took longer than herdrGoalWait, a second /goal goes on top of the running goal.
+- exitDelivery = 2 shares its number with exitSkipped in cli.go.
+- acta dispatch close does not check HERDR_ENV; outside herdr it exits 2, which is harmless and matches reply-back.
+- waitIdle counts agent status done as ready; that matches herdr's meaning and TestHerdrDeliverGoalDoneAgentIsReady pins it.
+- The brief no longer carries the recipient-side "never write NOTEs to memory" line or the sandbox hint to copy house-rules.md next to the brief.
+- While omp still streams the todo call, the pane shows only the `Todo init` header, so a checkpoint read in that short window reports drift on every id.
+- An omp todo error card (`✗ Todo`) counts as a card, so it reports drift with every id missing.
+- A main checkout on a detached head refuses with exit 3, like the other git read failures.
+- newSendEnvOn in dispatch_send_test.go repeats git config the worktree already shares through the common dir.
+- Task 4's verify line says close after acta:land; Task 6 replaced that with close from the worktree right before land, and the code and skills follow Task 6.
+- dispatch.md "Close the tab first (below)" is vague on its own; the next lines make it clear.
+- dispatch.md drift line says real drift "skips wave 1 tasks"; a skipped later-wave task that is on screen is no longer named.
+- The ascii header regex matches lowercase `[x]` only; omp draws it lowercase today.
+- The drift line says "omp shows 8 rows"; it is 8 rows per phase.
+- The `t-` id branch also matches inside hyphenated words like commit-t-1; the cost is only a missed drift, never a false one.
+- An empty todo list drawn as unframed `[x] Todo 0 tasks` now reports drift, as the unicode presets already did.
+- The exit 3 line says "a git read failed", but exit 3 also comes from a missing home folder or a failed record or brief write; the action is the same.
+- dispatch.md exit 4 says "yield" without saying the printed watcher still starts.
+- The removed line "A fact that belongs in the plan goes in the plan." was the only steer of plan facts out of the note file.
+- In the two timing tests a wait that never stops fails only through the go test timeout, since the elapsed checks run after waitFor returns.
+- Full suite at 7aad762+polish first failed on TestHerdrFindOmpNeverStartsEndsAtTheLimit (30 ms ready limit, one shell per scripted herdr call under load); 60a57bb widened two timing tests, then `scripts/test --full -count=1` was green.

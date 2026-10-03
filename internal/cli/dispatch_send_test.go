@@ -234,7 +234,11 @@ func TestDispatchSendFixRoundReusesTab(t *testing.T) {
 
 func TestDispatchSendPolishNoteFromStdin(t *testing.T) {
 	e := newSendEnv(t)
-	e.herdrReady("never read")
+	// The demo plan gains a polish task, the way the review skill appends
+	// one after a CLEAN round.
+	writeSendFile(t, filepath.Join(e.dir, sendPlanPath), sendPlan+briefPolish)
+	sendGit(t, e.dir, "commit", "-qam", "add polish task")
+	e.herdrReady(todoCard + "working on Task 7 now")
 	code, stdout, stderr := e.send(t, "[fix] rename the helper\n", "--round", "polish", "--note-file", "-")
 	if code != exitOK {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
@@ -242,11 +246,16 @@ func TestDispatchSendPolishNoteFromStdin(t *testing.T) {
 	if !strings.Contains(stdout, "checkpoint: ok\n") {
 		t.Fatalf("stdout %q", stdout)
 	}
-	if !strings.Contains(e.readBrief(t), "NOTE: [fix] rename the helper") {
+	b := e.readBrief(t)
+	if !strings.Contains(b, "NOTE: [fix] rename the helper") {
 		t.Fatal("the note did not reach the brief")
 	}
-	if e.h.count("agent read dispatch-send --source recent") != 0 {
-		t.Fatalf("polish has no tasks, so no checkpoint read: %q", e.h.calls())
+	// The checkpoint watches the polish task id, not an empty list.
+	if !strings.Contains(b, "task-7") || strings.Contains(b, "task-1") {
+		t.Fatalf("polish brief names the wrong tasks\n%s", b)
+	}
+	if got := e.h.count("agent read dispatch-send --source recent"); got != 1 {
+		t.Fatalf("polish checkpoint read %d times, want 1: %q", got, e.h.calls())
 	}
 }
 

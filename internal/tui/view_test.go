@@ -93,7 +93,7 @@ func TestViewShowsTheTabBarAndTheDetail(t *testing.T) {
 	// after it, so the words are read without the color codes in between.
 	plainV := plain(v)
 	for _, want := range []string{
-		" 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities",
+		" 1 Scratchpad  2 Bugs  3 Debt  4 Specs  5 Plans  6 Activity",
 		"─Open", "─Done ─ Dropped", "─Detail",
 		"basic · live · 2026-09-27 20:46",
 		"plans/2026-09-21-alpha  Alpha plan",
@@ -949,14 +949,14 @@ func TestViewDebtDetail(t *testing.T) {
 	}
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
-	// The Debts tab of the bar lists the debt items of the board.
-	m = sized(press(m, tabKey(tabDebts)), 120, 40)
+	// The Debt tab of the bar lists the debt items of the board.
+	m = sized(press(m, tabKey(tabDebt)), 120, 40)
 
 	v := m.View()
-	// The tab bar names every tab in order, so Debts comes after Bugs and
+	// The tab bar names every tab in order, so Debt comes after Bugs and
 	// before the tab that is open.
-	if i, j := strings.Index(v, "Bugs"), strings.Index(v, "Debts"); i < 0 || j < i {
-		t.Fatalf("Debts should come after Bugs in the tab bar: %q", v)
+	if i, j := strings.Index(v, "Bugs"), strings.Index(v, "Debt"); i < 0 || j < i {
+		t.Fatalf("Debt should come after Bugs in the tab bar: %q", v)
 	}
 
 	g := m.geometry()
@@ -1014,10 +1014,10 @@ func TestViewDetailLeavesEmptyLinesOut(t *testing.T) {
 func TestViewDetailShowsTheSectionOfItsOwnItem(t *testing.T) {
 	t.Parallel()
 
-	// Activities lists the one task of the fixture that is under way under the
+	// Activity lists the one task of the fixture that is under way under the
 	// plan it belongs to, so one j step reaches the task and the detail of a
 	// task holds its own section and nothing else.
-	m := sized(press(newModel(t), tabKey(tabActivities), "j"), 120, 40)
+	m := sized(press(newModel(t), tabKey(tabActivity), "j"), 120, 40)
 	v := plain(m.View())
 	if !strings.Contains(v, "plans/2026-09-21-alpha#task-2") {
 		t.Error("the task row is missing")
@@ -1652,7 +1652,7 @@ func TestZTogglesAndFocusRestores(t *testing.T) {
 		t.Fatalf("a sub-tab change should keep the box expanded, it reads %d", m.expanded)
 	}
 	// Moving the focus to another box gives the room back, by key and by tab.
-	for _, keys := range [][]string{{tabKey(tabBugs)}, {"tab"}, {"shift+tab"}, {tabKey(tabScratches)}} {
+	for _, keys := range [][]string{{tabKey(tabBugs)}, {"tab"}, {"shift+tab"}, {tabKey(tabScratchpad)}} {
 		m = press(sized(newModel(t), 120, 40), append([]string{tabKey(tabPlans), "z"}, keys...)...)
 		if m.expanded != -1 {
 			t.Errorf("%v should give the room back, it reads %d", keys, m.expanded)
@@ -1865,7 +1865,7 @@ func TestCounterShowsSelectedItemNotLine(t *testing.T) {
 
 // thumbFixture gives every box more rows than either screen below can show,
 // and the detail body a whole screenful of lines, so every box has a thumb to
-// draw: thirty of every kind, work under way for the Activities tab, and
+// draw: thirty of every kind, work under way for the Activity tab, and
 // finished ones for the Done boxes.
 func thumbFixture(t *testing.T) Model {
 	t.Helper()
@@ -1881,7 +1881,7 @@ func thumbFixture(t *testing.T) Model {
 		files[".acta/specs/2026-09-18-going-"+n+".md"] = "---\nstatus: in-progress\n---\n# Going spec\n"
 		files[".acta/scratch/2026-09-20-idea-"+n+".md"] = "---\nstatus: brainstorming\n---\n# Idea\n"
 		files[".acta/plans/2026-09-20-open-"+n+".md"] = body
-		// A plan with a ticked box gives the Activities tab a task that is
+		// A plan with a ticked box gives the Activity tab a task that is
 		// under way, which is the only kind of row that tab lists.
 		files[".acta/plans/2026-09-17-going-"+n+".md"] = "# Going plan\n\n### Task 1: Under way\n\n- [x] a step\n- [ ] another step\n"
 		files[".acta/plans/2026-09-19-done-"+n+".md"] = "---\nstatus: done\n---\n" + body

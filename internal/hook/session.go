@@ -13,8 +13,13 @@ import (
 // ToolEvent is the part of a Claude Code tool hook payload this package needs.
 type ToolEvent struct {
 	SessionID string `json:"session_id"`
+	// AgentID is there only when the hook fires inside a subagent, so the main
+	// thread has none.
+	AgentID   string `json:"agent_id"`
+	ToolName  string `json:"tool_name"`
 	ToolInput struct {
-		Command string `json:"command"`
+		Command  string `json:"command"`
+		FilePath string `json:"file_path"`
 	} `json:"tool_input"`
 }
 
@@ -63,10 +68,15 @@ func BrainstormStem(command string) (string, bool) {
 
 // RecordBrainstorm notes the item this session brainstormed. A command that is
 // not a brainstorm is not a mistake, so it records nothing and returns no
-// error: the post-tool hook runs on every single Bash call.
+// error: the post-tool hook runs on every single Bash call. A stem with no
+// scratch file is a mistype acta itself refused, so it records nothing too:
+// counting it would block the real item that comes after it.
 func RecordBrainstorm(root string, ev ToolEvent) error {
 	stem, ok := BrainstormStem(ev.ToolInput.Command)
 	if !ok || ev.SessionID == "" {
+		return nil
+	}
+	if !scratchExists(root, stem) {
 		return nil
 	}
 	state := readState(root)
@@ -76,10 +86,11 @@ func RecordBrainstorm(root string, ev ToolEvent) error {
 
 // PreTool says whether to stop this command. Only a second, different
 // brainstorm in a session that already has one is stopped, because a hook that
-// guesses wrong stops real work the user asked for.
+// guesses wrong stops real work the user asked for. A stem with no scratch
+// file passes: acta refuses it itself, so the hook has nothing to add.
 func PreTool(root string, ev ToolEvent) (bool, string) {
 	stem, ok := BrainstormStem(ev.ToolInput.Command)
-	if !ok {
+	if !ok || !scratchExists(root, stem) {
 		return false, ""
 	}
 	done, ok := readState(root)[ev.SessionID]
@@ -87,6 +98,16 @@ func PreTool(root string, ev ToolEvent) (bool, string) {
 		return false, ""
 	}
 	return true, fmt.Sprintf(blockText, itemLabel(root, done))
+}
+
+// scratchExists says whether stem names a real scratch item file. The check
+// never follows links, so a link pointing outside scratch counts as missing.
+func scratchExists(root, stem string) bool {
+	fi, err := os.Lstat(filepath.Join(root, "scratch", stem+".md"))
+	if err != nil {
+		return false
+	}
+	return fi.Mode().IsRegular()
 }
 
 // Reminder is the line added to the prompt of a session that has already

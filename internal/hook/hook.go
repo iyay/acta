@@ -16,7 +16,7 @@ import (
 // Skills is the index printed every session: names only, because Claude Code
 // and omp already show each skill's description. The plugin's skill folders
 // must match these names exactly.
-var Skills = []string{"shape", "slice", "build", "tdd", "lean", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
+var Skills = []string{"shape", "frame", "slice", "build", "tdd", "lean", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
 
 // Input is everything the hook text depends on.
 type Input struct {
@@ -26,7 +26,21 @@ type Input struct {
 	RepoErr     error    // .acta.yaml could not be read; its repo keys are left out
 	Conflicts   []string // enabled plugins that overlap acta
 	Herdr       bool     // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
+	WikiPages   int      // pages in the project wiki; with none, the wiki line is left out
+	Running     []string // one block per plan with work going on, the lines already joined; with none, no block is printed
 }
+
+// maxRunningPlans and maxRunningLines keep the block short enough to be read
+// once, at the start of a session. A plan past the cap is counted, never left
+// out silently, so nothing is hidden from the agent.
+const (
+	maxRunningPlans = 3
+	maxRunningLines = 3
+)
+
+// runningRule tells the agent when to write the next step down, so a session
+// that dies leaves the next one something to go on from.
+const runningRule = "Before you stop, or when context runs low, run acta state set <plan> next so the next session starts where this one stopped."
 
 const coreRules = `
 Core rules:
@@ -46,6 +60,10 @@ Core rules:
 const herdrExtra = `
 herdr: this session runs in a herdr tab. For a second brainstorm, offer the user one more way to run it: a new herdr tab.
 `
+
+// wikiLine is the one line a repo with wiki pages adds. Only the count changes
+// from one repo to the next, so the line costs the same at 1 page and at 100.
+const wikiLine = "\nProject wiki. Pages: %d. When a `wiki:` line names a page, read it before you change the files it covers. Project knowledge goes to the wiki, not to agent memory.\n"
 
 // leanSummary is the short form of the coding guide. The skill acta:lean holds
 // the full text. It is left out when the config says coding_guide: off.
@@ -72,6 +90,12 @@ func SessionStart(in Input) string {
 	if in.Herdr {
 		b.WriteString(herdrExtra)
 	}
+	if len(in.Running) > 0 {
+		b.WriteString(runningBlock(in.Running))
+	}
+	if in.WikiPages > 0 {
+		fmt.Fprintf(&b, wikiLine, in.WikiPages)
+	}
 	switch {
 	case !in.VoiceExists:
 		b.WriteString(firstRun)
@@ -84,6 +108,9 @@ func SessionStart(in Input) string {
 		fmt.Fprintf(&b, "\nVoice:\n- Write every chat message to the user in %s.\n", v.ChatLanguage)
 		fmt.Fprintf(&b, "- Write everything that goes into the repo (code, comments, commits, specs, plans) in %s. Comments use short, plain words and say why.\n", v.RepoLanguage)
 		fmt.Fprintf(&b, "- Style: %s.\n", v.Style)
+		if v.Questions == "probe" {
+			b.WriteString("- Questions: probe.\n")
+		}
 		if v.Tone != "" {
 			b.WriteString("- Tone, in the user's words:\n")
 			for _, ln := range strings.Split(v.Tone, "\n") {
@@ -108,6 +135,30 @@ func SessionStart(in Input) string {
 		b.WriteString("Tell the user once, at the start: two plugins that do the same job pull the agent two ways. To turn it off in this repo only, add this to .claude/settings.local.json:\n")
 		fmt.Fprintf(&b, "%s\n", snippet)
 	}
+	return b.String()
+}
+
+// runningBlock is the summary of the plans with work going on. It is one
+// contiguous piece: the header, the blocks, the line that counts what did not
+// fit, then the rule. With no running plan nothing is written at all, so a
+// repo with no work in flight reads exactly as it did before.
+func runningBlock(running []string) string {
+	var b strings.Builder
+	b.WriteString("\nWork going on now:\n")
+	for _, block := range running[:min(len(running), maxRunningPlans)] {
+		for i, ln := range strings.Split(block, "\n") {
+			if i >= maxRunningLines {
+				break
+			}
+			if ln = strings.TrimSpace(ln); ln != "" {
+				fmt.Fprintf(&b, "  %s\n", ln)
+			}
+		}
+	}
+	if len(running) > maxRunningPlans {
+		fmt.Fprintf(&b, "+%d more, run acta state\n", len(running)-maxRunningPlans)
+	}
+	fmt.Fprintf(&b, "%s\n", runningRule)
 	return b.String()
 }
 

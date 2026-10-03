@@ -195,12 +195,12 @@ func TestEachTabHoldsItsOwnItems(t *testing.T) {
 		keys []string
 		rows string
 	}{
-		{tabScratches, nil, "scratch/2026-09-28-idea-brainstorm scratch/2026-09-28-idea-raw"},
+		{tabScratchpad, nil, "scratch/2026-09-28-idea-brainstorm scratch/2026-09-28-idea-raw"},
 		{tabBugs, nil, "specs/2026-09-15-really-bug bugs/2026-09-26-open bugs/2026-09-28-lag"},
-		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
+		{tabDebt, nil, "debt/2026-09-27-orphan-debt#item-1"},
 		{tabSpecs, nil, "specs/2026-09-17-broken specs/2026-09-18-weird specs/2026-09-20-alpha specs/2026-09-22-beta specs/2026-09-28-from-scratch-design " + groupRowID},
 		{tabPlans, nil, "plans/2026-09-21-alpha plans/2026-09-23-lonely"},
-		{tabActivities, nil, "plans/2026-09-21-alpha plans/2026-09-21-alpha#task-2"},
+		{tabActivity, nil, "plans/2026-09-21-alpha plans/2026-09-21-alpha#task-2"},
 	} {
 		m := press(newModel(t), append([]string{tabKey(tc.tab)}, tc.keys...)...)
 		if got := strings.Join(rowIDs(m), " "); got != tc.rows {
@@ -243,7 +243,7 @@ func debtModel(t *testing.T) Model {
 func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
 	t.Parallel()
 
-	m := press(debtModel(t), tabKey(tabDebts))
+	m := press(debtModel(t), tabKey(tabDebt))
 	if got := strings.Join(rowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-1" {
 		t.Fatalf("Debt open rows %q, want only the open line", got)
 	}
@@ -255,7 +255,7 @@ func TestDebtTabListsOnlyTheOpenLine(t *testing.T) {
 func TestDebtDonePaneSplitsDoneAndWontfix(t *testing.T) {
 	t.Parallel()
 
-	m := press(debtModel(t), tabKey(tabDebts), "tab")
+	m := press(debtModel(t), tabKey(tabDebt), "tab")
 	if got := strings.Join(doneRowIDs(m), " "); got != "debt/2026-09-27-short-ids#item-2" {
 		t.Fatalf("Debt Done rows %q", got)
 	}
@@ -286,7 +286,7 @@ func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
 		t.Fatal(err)
 	}
 	without.board = plain
-	for _, i := range []int{tabScratches, tabBugs, tabSpecs, tabPlans, tabActivities} {
+	for _, i := range []int{tabScratchpad, tabBugs, tabSpecs, tabPlans, tabActivity} {
 		a := strings.Join(rowIDs(press(withDebt, tabKey(i))), " ")
 		b := strings.Join(rowIDs(press(without, tabKey(i))), " ")
 		if a != b {
@@ -308,16 +308,16 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 	}{
 		{tabSpecs, 0, "specs/2026-09-16-finished"},
 		{tabSpecs, 1, "specs/2026-09-19-dropped"},
-		{tabScratches, 0, "scratch/2026-09-28-idea-used"},
-		{tabScratches, 1, "scratch/2026-09-28-idea-dropped"},
+		{tabScratchpad, 0, "scratch/2026-09-28-idea-used"},
+		{tabScratchpad, 1, "scratch/2026-09-28-idea-dropped"},
 		{tabPlans, 0, "plans/2026-09-16-finished plans/2026-09-25-crash-fix plans/2026-09-26-dash-tasks plans/2026-09-27-orphan plans/2026-09-28-dotted-tasks"},
 		{tabBugs, 0, "bugs/2026-09-24-crash"},
 		{tabBugs, 1, ""},
 		// The shared fixture's own debt file carries no finished line, so
-		// the Debts tab has none here. The Debts sub-tabs are read from
+		// the Debt tab has none here. The Debt sub-tabs are read from
 		// their own board in TestDebtDonePaneSplitsDoneAndWontfix.
-		{tabDebts, 0, ""},
-		{tabDebts, 1, ""},
+		{tabDebt, 0, ""},
+		{tabDebt, 1, ""},
 	} {
 		m := press(newModel(t), tabKey(tc.tab), "tab")
 		if tc.done > 0 {
@@ -609,7 +609,7 @@ func TestHelpSwallowsKeysUntilItCloses(t *testing.T) {
 	}
 	before := strings.Join(rowIDs(m), " ")
 	m = press(m, "j", "k", "]", "3", "/", "a", "t", "n")
-	if !m.help || m.focus != paneList || m.top != tabActivities || m.done != 0 || m.searching || m.slug != nil || m.popup != nil {
+	if !m.help || m.focus != paneList || m.top != tabActivity || m.done != 0 || m.searching || m.slug != nil || m.popup != nil {
 		t.Fatalf("a key got through the help: %+v", m)
 	}
 	if strings.Join(rowIDs(m), " ") != before {
@@ -684,7 +684,7 @@ func TestItemKeysUseTheFocusedListPane(t *testing.T) {
 
 // TestGeometryPlacesThePanes reads the screen a reader sees: the tab bar
 // owns the top line, the two boxes of a kind tab share the lines under it,
-// the detail box sits beside them, and Activities draws one box where a kind
+// the detail box sits beside them, and Activity draws one box where a kind
 // tab draws two.
 func TestGeometryPlacesThePanes(t *testing.T) {
 	t.Parallel()
@@ -719,11 +719,11 @@ func TestGeometryPlacesThePanes(t *testing.T) {
 	if title := strings.Split(plain(m.View()), "\n")[g.side[paneDone].y]; !strings.Contains(title, "Dropped") {
 		t.Fatalf("the Done title at 120 columns is missing Dropped: %q", title)
 	}
-	// Activities has no Done pane, so it draws one box where Plans draws
+	// Activity has no Done pane, so it draws one box where Plans draws
 	// two, and that box has the whole body height.
 	a := sized(newModel(t), 120, 40).geometry()
 	if len(a.side) != 1 || a.side[0].y != barRows || a.side[0].h != 36 {
-		t.Fatalf("the Activities box is %+v, want one box of the full height", a.side)
+		t.Fatalf("the Activity box is %+v, want one box of the full height", a.side)
 	}
 	// The left column is a third of the width, the way lazygit sizes its
 	// side panels, and never under 28 columns.
@@ -826,9 +826,9 @@ func TestSelectionIsPerTab(t *testing.T) {
 		{tabSpecs, []string{"j"}, "specs/2026-09-18-weird"},
 		{tabBugs, []string{"j"}, "bugs/2026-09-26-open"},
 		{tabPlans, []string{"tab", "j"}, "plans/2026-09-25-crash-fix"},
-		{tabScratches, []string{"j"}, "scratch/2026-09-28-idea-raw"},
-		{tabDebts, nil, "debt/2026-09-27-orphan-debt#item-1"},
-		{tabActivities, []string{"j"}, "plans/2026-09-21-alpha#task-2"},
+		{tabScratchpad, []string{"j"}, "scratch/2026-09-28-idea-raw"},
+		{tabDebt, nil, "debt/2026-09-27-orphan-debt#item-1"},
+		{tabActivity, []string{"j"}, "plans/2026-09-21-alpha#task-2"},
 	} {
 		m := press(newModel(t), append([]string{tabKey(tc.tab)}, tc.keys...)...)
 		// A walk over every other tab must not move this one.
@@ -1414,7 +1414,7 @@ func TestEveryTabHoldsItsOpenItemsInFileDateOrder(t *testing.T) {
 	for i := range topTabs {
 		kind := topTabs[i].kind
 		if kind == "" {
-			// Activities lists the tasks under way under a head, so the rows
+			// Activity lists the tasks under way under a head, so the rows
 			// that are a task or stand on their own are the ones to check.
 			var want []string
 			for _, it := range m.board.List(board.KindTask, true) {
@@ -1467,9 +1467,9 @@ func TestStartedTaskWithNoTicksCountsAsInProgress(t *testing.T) {
 	if len(rows) != 3 || !slices.Contains(rows, lonely.ID) {
 		t.Fatalf("the started task is missing from the Plans tree, rows %v", rows)
 	}
-	// A task under way is work in progress, so Activities lists it too.
-	if got := ids(press(m, tabKey(tabActivities)).rowsOf(paneList)); !slices.Contains(got, lonely.ID) {
-		t.Errorf("Activities does not list the started task: %v", got)
+	// A task under way is work in progress, so Activity lists it too.
+	if got := ids(press(m, tabKey(tabActivity)).rowsOf(paneList)); !slices.Contains(got, lonely.ID) {
+		t.Errorf("Activity does not list the started task: %v", got)
 	}
 }
 
@@ -1647,7 +1647,7 @@ func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
 			}
 			if it := m.Selected(); it != nil && it.Kind == board.KindTask {
 				// A task row has no detail of its own to open into either,
-				// so it is read from the Activities tab below.
+				// so it is read from the Activity tab below.
 				continue
 			}
 			id := m.Selected().ID
@@ -1900,7 +1900,7 @@ func activityFiles() map[string]string {
 	}
 }
 
-// actModel opens Activities over activityFiles.
+// actModel opens Activity over activityFiles.
 func actModel(t *testing.T) Model {
 	t.Helper()
 	cfg := treeCfg(t, activityFiles())
@@ -1910,12 +1910,12 @@ func actModel(t *testing.T) Model {
 	}
 	m := New(cfg, b, true)
 	m.render = func(md string, _ int) string { return md }
-	return press(sized(m, 160, 40), tabKey(tabActivities))
+	return press(sized(m, 160, 40), tabKey(tabActivity))
 }
 
 // A task under way sits under the plan it belongs to, or under the bug that
 // plan fixes, one level up only, and every other task is left out.
-func TestActivitiesGroupsTasksUnderTheirParent(t *testing.T) {
+func TestActivityGroupsTasksUnderTheirParent(t *testing.T) {
 	t.Parallel()
 
 	m := actModel(t)
@@ -1958,9 +1958,9 @@ func TestActivitiesGroupsTasksUnderTheirParent(t *testing.T) {
 	}
 }
 
-// enter shuts one Activities group and opens it again, and leaves the other
+// enter shuts one Activity group and opens it again, and leaves the other
 // groups and the Plans tab as they were.
-func TestEnterShutsOneActivitiesGroup(t *testing.T) {
+func TestEnterShutsOneActivityGroup(t *testing.T) {
 	t.Parallel()
 
 	m := press(actModel(t), "enter")
@@ -1979,7 +1979,7 @@ func TestEnterShutsOneActivitiesGroup(t *testing.T) {
 	if got := press(actModel(t), "G", "enter"); got.focus != paneDetail {
 		t.Error("enter on a task row did not open the detail")
 	}
-	// A group the reader shut on Activities leaves the Plans tab alone: no
+	// A group the reader shut on Activity leaves the Plans tab alone: no
 	// plan opens there on its own.
 	for _, r := range press(press(m, "j", "enter"), tabKey(tabPlans)).rowsOf(paneList) {
 		if r.depth > 0 {
@@ -2005,7 +2005,7 @@ func TestATaskWithNoPlanStandsOnItsOwnRow(t *testing.T) {
 	}
 }
 
-func TestHAndLFoldActivitiesGroups(t *testing.T) {
+func TestHAndLFoldActivityGroups(t *testing.T) {
 	t.Parallel()
 
 	m := press(actModel(t), "j") // the task under the bug
@@ -2204,9 +2204,9 @@ func TestYCopiesAnIDTheBoardTakesBack(t *testing.T) {
 		what string
 		m    Model
 	}{
-		{"scratches", press(newModel(t), tabKey(tabScratches))},
+		{"scratches", press(newModel(t), tabKey(tabScratchpad))},
 		{"bugs", press(newModel(t), tabKey(tabBugs))},
-		{"debts", press(newModel(t), tabKey(tabDebts))},
+		{"debts", press(newModel(t), tabKey(tabDebt))},
 		{"specs", press(newModel(t), tabKey(tabSpecs))},
 		{"the Specs group row", press(newModel(t), tabKey(tabSpecs), "G")},
 		{"plans", press(newModel(t), tabKey(tabPlans))},
@@ -2753,7 +2753,7 @@ func TestPlusMarksADebtLineRow(t *testing.T) {
 		got = id
 		return write.Outcome{Committed: true}, nil
 	}
-	m = press(m, tabKey(tabDebts))
+	m = press(m, tabKey(tabDebt))
 	it := m.Selected()
 	if it == nil || it.Kind != board.KindDebtItem {
 		t.Fatalf("not on a debt line row: %+v", it)

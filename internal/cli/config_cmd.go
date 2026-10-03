@@ -12,7 +12,7 @@ import (
 	"github.com/iyay/acta/internal/theme"
 )
 
-const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--coding-guide G]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--questions one|probe] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--coding-guide G]"
 
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -59,6 +59,12 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// Same here: an unset guide is lean, and show says so.
 			guide, guideMark = "lean", " (default)"
 		}
+		questions, questionsMark := v.Questions, ""
+		if questions == "" {
+			// Same here: no file sets it, and one question at a time is the
+			// default, so show says so.
+			questions, questionsMark = "one", " (default)"
+		}
 		// Name the values the repo set, so the user knows which file to edit.
 		mark := func(k string) string {
 			if from[k] {
@@ -77,7 +83,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "coding_guide": guide, "from_repo": fromRepo,
+				"theme": v.Theme, "plan_depth": depth, "questions": questions, "coding_guide": guide, "from_repo": fromRepo,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -95,6 +101,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
 		}
 		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
+		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
 		if v.SubagentModels != "" {
 			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
@@ -118,18 +125,19 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
+		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
 		if *repoOnly {
 			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "coding_guide": *guide},
-				*lang != "" || *style != "" || *tone != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme)
+				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme)
 		}
 		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
@@ -158,6 +166,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *depth != "" {
 			v.PlanDepth = *depth
+		}
+		if *questions != "" {
+			v.Questions = *questions
 		}
 		if *guide != "" {
 			v.CodingGuide = *guide

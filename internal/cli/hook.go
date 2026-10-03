@@ -1,13 +1,17 @@
 package cli
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/wiki"
 )
 
 const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt | acta hook pre-tool | acta hook post-tool"
@@ -15,6 +19,9 @@ const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook p
 // exitBlock is the code a tool hook uses to tell the agent the command is
 // stopped. It is the only non-zero code an acta hook ever returns.
 const exitBlock = 2
+
+// wikiHints is a variable so a test can make the hint path panic.
+var wikiHints = hook.WikiHints
 
 // cmdHook prints hook text. Every hook exits 0 whatever stdin holds, because a
 // hook that fails would get in the way of the user's session. The one
@@ -47,8 +54,9 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		// A repo with no planning root is still a repo with a scripts/test,
 		// so the go test check is asked even then. Only the brainstorm state
-		// needs the root.
-		root, hasRoot := hookRoot()
+		// and the wiki hints need the root.
+		cfg, hasRoot := hookConfig()
+		root := cfg.Root
 		if args[0] == "post-tool" {
 			if !hasRoot {
 				return exitOK
@@ -72,6 +80,12 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
+		// A hint is only an extra line for the agent, so it comes after the
+		// blocks and never changes the exit code. A hook that runs in no
+		// checkout has no repository to trust, so it gives none.
+		if lines := hintLines(cfg, ev); lines != "" {
+			fmt.Fprintln(stdout, hook.HintJSON(lines))
+		}
 		return exitOK
 	case "session-start":
 		fs := flag.NewFlagSet("hook session-start", flag.ContinueOnError)
@@ -81,6 +95,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, hookUsage)
 			return exitBadInput
 		}
+		sessionID, source := readSessionStart(stdin)
 		in := loadVoice()
 		in.Herdr = os.Getenv("HERDR_ENV") == "1"
 		repo, _ := os.Getwd()
@@ -89,6 +104,22 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			// Keep the agent record file out of git. A failure here is not
 			// worth a word to the user, so it is dropped.
 			_ = hook.EnsureGitignore(cfg.Root, ".agents.json")
+			// Pages that cannot load are for `acta wiki check` to report.
+			pages, _ := wiki.Load(cfg.Root)
+			in.WikiPages = len(pages)
+			// Plans with work going on, three lines each. Errors are
+			// dropped like the ones above: a session that cannot read the
+			// board must still start, just without the summary.
+			for _, r := range board.Running(cfg) {
+				in.Running = append(in.Running, strings.Join(r.Short(), "\n"))
+			}
+			// After a clear or a compaction the old hints are gone from the
+			// context, so the session must hear its pages again. The error is
+			// dropped on purpose: a state that cannot be saved must not stop
+			// a session from starting.
+			if source == "clear" || source == "compact" {
+				_ = hook.ResetHints(cfg.Root, sessionID)
+			}
 		}
 		in.Conflicts = hook.Conflicts(hook.EnabledPlugins(hook.ClaudeDir(), repo), hook.LoadKnown(*known))
 		fmt.Fprint(stdout, hook.SessionStart(in))
@@ -97,6 +128,24 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, hookUsage)
 		return exitBadInput
 	}
+}
+
+// hintLines asks for the wiki hints of one tool call. A hint is not worth a
+// failed call, and a Go panic exits 2, which is the code that blocks the tool.
+// So a panic is dropped here, and the call goes on as if it had no hint.
+func hintLines(cfg config.Config, ev hook.ToolEvent) (lines string) {
+	defer func() {
+		if recover() != nil {
+			lines = ""
+		}
+	}()
+	// The checkout the hook runs in is known already, so it is not looked up
+	// again. A folder that is no checkout has none, and then no hint comes.
+	root, repo := "", ""
+	if cfg.IsGit {
+		root, repo = cfg.Root, cfg.RepoRoot
+	}
+	return wikiHints(root, repo, ev)
 }
 
 // loadVoice reads the user config and lays this repo's .acta.yaml over it.
@@ -120,13 +169,39 @@ func loadVoice() hook.Input {
 // outside a project, because a hook must not make planning folders in a
 // folder that has none.
 func hookRoot() (string, bool) {
+	cfg, ok := hookConfig()
+	return cfg.Root, ok
+}
+
+// hookConfig is hookRoot with the whole config, for the hook that also needs
+// the repo root. It loads the config once, because every load asks git.
+func hookConfig() (config.Config, bool) {
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd, "")
 	if err != nil {
-		return "", false
+		return config.Config{}, false
 	}
 	fi, err := os.Stat(cfg.Root)
-	return cfg.Root, err == nil && fi.IsDir()
+	return cfg, err == nil && fi.IsDir()
+}
+
+// readSessionStart reads the two fields of the SessionStart payload this hook
+// uses: the session, and why it started. Stdin that is empty, broken or not what
+// was expected gives two empty strings, because a session must start whatever
+// the hook is handed.
+func readSessionStart(stdin io.Reader) (sessionID, source string) {
+	data, err := io.ReadAll(stdin)
+	if err != nil {
+		return "", ""
+	}
+	var ev struct {
+		SessionID string `json:"session_id"`
+		Source    string `json:"source"`
+	}
+	if json.Unmarshal(data, &ev) != nil {
+		return "", ""
+	}
+	return ev.SessionID, ev.Source
 }
 
 // sessionReminder is the one line a session that already brainstormed gets

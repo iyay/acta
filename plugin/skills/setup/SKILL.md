@@ -12,7 +12,7 @@ The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM
 1. Run `acta doctor` and show its result. When a repo check failed, offer `acta doctor --fix`.
 2. Run `acta config show` and read what it prints. Nothing is set (no config file, or every value marked `(default)`) means a first run: ask every question below, one at a time, in order. A value marked `(default)` is not set yet, so ask for it. Never ask about `coding_guide`: it stays `lean` unless the user brings it up, and `acta config set --coding-guide off` turns it off. Any other run: show the current setting first. Then:
    - When the user already said which part to change, change only that part and stop there.
-   - Otherwise ask only the parts not set yet, then ask once: "Change anything already set? (voice, executor, plan depth, subagent models, acta block)". A yes means the user names the parts to change, so change only those.
+   - Otherwise ask only the parts not set yet, then ask once: "Change anything already set? (voice, questions, executor, plan depth, subagent models, acta block)". A yes means the user names the parts to change, so change only those.
 
 Pass only the flags that change: `acta config set --style plain`, `acta config set --clear-tone`, `acta config set --repo-language English`, `acta config set --executor inline`, `acta config set --clear-subagent-models`. `acta config show` prints the current setting.
 
@@ -49,6 +49,14 @@ Then ask once whether to save the executor and the depth for every repo or this 
 ### Split subagent models
 
 Ask this one in Claude Code only, and only while `acta config show` has no `subagent_models` line. Default no. A yes saves `acta config set --subagent-models split`. A no saves `acta config set --subagent-models default`, so the question is not asked again; the user's own config wins.
+
+### Questions
+
+How should I ask you things: `one` (default, one question at a time) or `probe` (a round of questions, with a recommended answer each)? This is a user setting only, never a repo one.
+
+```bash
+acta config set --questions probe
+```
 
 ### The acta block
 

@@ -150,6 +150,79 @@ func TestConfigShowCodingGuideSet(t *testing.T) {
 	}
 }
 
+// Without --repo the questions value goes to the global file, one or probe,
+// and never to .acta.yaml. A bad value is refused before any write.
+func TestConfigSetQuestionsGlobal(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--questions", "probe")
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.Questions != "probe" {
+		t.Errorf("global file holds %+v, %v; want questions probe", v, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("set without --repo wrote .acta.yaml")
+	}
+	mustRun(t, "config", "set", "--questions", "one")
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.Questions != "one" {
+		t.Errorf("global file holds %+v, %v; want questions one", v, err)
+	}
+	before, _ := os.ReadFile(globalPath)
+	for _, bad := range []string{"maybe", "Probe", "one at a time"} {
+		if code, _, errs := runCodeOut("config", "set", "--questions", bad); code != exitBadInput || !strings.Contains(errs, "questions") {
+			t.Errorf("%q: exit %d stderr %q, want bad input naming questions", bad, code, errs)
+		}
+	}
+	if after, _ := os.ReadFile(globalPath); string(before) != string(after) {
+		t.Errorf("a bad value changed the global file:\n%s", after)
+	}
+}
+
+// With nothing set anywhere, questions still shows, as one, marked (default)
+// so setup knows it was never asked. A set value gets no mark, and no file
+// can put it there: questions is a user key only.
+func TestConfigShowQuestions(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "questions: one (default)\n") {
+		t.Errorf("show lacks questions: one (default):\n%s", out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["questions"] != "one" {
+		t.Errorf("json questions %v, want one", got["questions"])
+	}
+	for _, c := range []struct{ global, repo, want string }{
+		{"questions: probe\n", "", "questions: probe\n"},
+		{"questions: one\n", "", "questions: one\n"},
+	} {
+		repoWithGlobal(t, c.global, c.repo)
+		if out := mustRun(t, "config", "show"); !strings.Contains(out, c.want) {
+			t.Errorf("show lacks %q:\n%s", c.want, out)
+		}
+	}
+}
+
+// --repo takes no questions: how a person likes to be asked is their taste,
+// not a rule the repo puts on everyone who clones it.
+func TestConfigSetRepoQuestionsRefused(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "chat_language: English\nstyle: adhd\nrepo_language: English\n", "")
+	before, _ := os.ReadFile(globalPath)
+	if code, _, errs := runCodeOut("config", "set", "--repo", "--questions", "probe"); code != exitBadInput || !strings.Contains(errs, "without --repo") {
+		t.Errorf("exit %d stderr %q, want bad input sending questions back to the user file", code, errs)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("a refused --repo --questions wrote .acta.yaml")
+	}
+	if after, _ := os.ReadFile(globalPath); string(before) != string(after) {
+		t.Errorf("the global file changed:\n%s", after)
+	}
+	// The usage line names the flag on the user side only.
+	_, _, errs := runCodeOut("config", "set")
+	if !strings.Contains(errs, "[--questions one|probe]") {
+		t.Errorf("usage lacks [--questions one|probe]:\n%s", errs)
+	}
+}
+
 // set --repo writes .acta.yaml and never the global file.
 func TestConfigSetRepoWritesRepoFile(t *testing.T) {
 	dir, globalPath := repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n", "")

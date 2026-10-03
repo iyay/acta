@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -117,6 +118,41 @@ func TestSessionStartBrokenVoice(t *testing.T) {
 	}
 }
 
+// The session note tells shape that the user picked probe, and only that value
+// does. Any other voice path must stay as it was, byte for byte.
+func TestSessionStartQuestionsProbeLine(t *testing.T) {
+	probe := korean()
+	probe.Voice.Questions = "probe"
+	out := SessionStart(probe)
+	if !strings.Contains(out, "\n- Style: adhd.\n- Questions: probe.\n") {
+		t.Errorf("probe line must sit right after the style line:\n%s", out)
+	}
+	one, broken := korean(), Input{Voice: config.User{Questions: "probe"}, VoiceExists: true, VoiceErr: errors.New("x")}
+	one.Voice.Questions = "one"
+	for name, in := range map[string]Input{
+		"one":           one,
+		"key absent":    korean(),
+		"no voice file": {Voice: config.User{Questions: "probe"}},
+		"broken file":   broken,
+	} {
+		if got := SessionStart(in); strings.Contains(got, "Questions: probe") {
+			t.Errorf("%s: the probe line must be absent:\n%s", name, got)
+		}
+	}
+}
+
+// Not probe adds no text at all, so the default session start keeps its size.
+func TestSessionStartQuestionsAddsNoTextWhenNotProbe(t *testing.T) {
+	unset, one := korean(), korean()
+	one.Voice.Questions = "one"
+	if got, want := len(SessionStart(one)), len(SessionStart(unset)); got != want {
+		t.Errorf("questions: one made the session start %d bytes, unset is %d", got, want)
+	}
+	if got := SessionStart(Input{Voice: config.UserDefault(), VoiceExists: true}); strings.Contains(got, "Questions:") {
+		t.Errorf("the default session start now mentions Questions:\n%s", got)
+	}
+}
+
 func TestSessionStartConflicts(t *testing.T) {
 	in := korean()
 	in.Conflicts = []string{"superpowers@superpowers-dev"}
@@ -211,6 +247,8 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
 	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
 	worst.Herdr = true // the herdr line counts against the cap too
+	// The wiki line counts against the cap too.
+	worst.WikiPages = 100
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
@@ -218,6 +256,84 @@ func TestSessionStartStaysShort(t *testing.T) {
 	} {
 		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
+		}
+	}
+}
+
+// inserted gives what with holds on top of base, for a with that is base with
+// one piece put in. It fails the test when the two differ in any other way, so
+// a change to the old text cannot hide behind the new piece.
+func inserted(t *testing.T, base, with string) string {
+	t.Helper()
+	head := 0
+	for head < len(base) && head < len(with) && base[head] == with[head] {
+		head++
+	}
+	tail := 0
+	for tail < len(base)-head && tail < len(with)-head && base[len(base)-1-tail] == with[len(with)-1-tail] {
+		tail++
+	}
+	if head+tail != len(base) {
+		t.Fatalf("the text changed in more than one added piece:\nbefore: %q\nafter:  %q", base, with)
+	}
+	return with[head : len(with)-tail]
+}
+
+// A repo with no wiki pages gets the text it always got, byte for byte: the
+// fallback file was made before the wiki line, so it holds the old text. A repo
+// with pages gets one more line, and that line costs the same at 1 page and at
+// 100, because the count is one word.
+func TestSessionStartWikiLine(t *testing.T) {
+	old, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	none := Input{Voice: config.UserDefault(), VoiceExists: true, WikiPages: 0}
+	if got := SessionStart(none); got != string(old) {
+		t.Errorf("with 0 pages the text is not the old text:\n%s", got)
+	}
+
+	lean, everything := korean(), korean()
+	lean.Voice.CodingGuide = "off"
+	everything.Voice.Tone = "A tone line."
+	everything.Conflicts = []string{"superpowers@a"}
+	everything.Herdr = true
+	shapes := map[string]Input{
+		"default":    none,
+		"first run":  {Voice: config.UserDefault()},
+		"broken":     {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
+		"lean off":   lean,
+		"everything": everything,
+	}
+	// The line with its count cut out. Every shape and every count gives this one.
+	var shape string
+	for name, in := range shapes {
+		before := SessionStart(in)
+		for _, n := range []int{1, 100} {
+			in.WikiPages = n
+			line := strings.TrimSpace(inserted(t, before, SessionStart(in)))
+			if line == "" || strings.Contains(line, "\n") {
+				t.Fatalf("%s, %d pages: want one added line, got %q", name, n, line)
+			}
+			if words := len(strings.Fields(line)); words > 45 {
+				t.Errorf("%s, %d pages: the wiki line has %d words, the cap is 45", name, n, words)
+			}
+			count := strconv.Itoa(n)
+			if !strings.Contains(line, count) {
+				t.Errorf("%s, %d pages: the line does not give the count: %q", name, n, line)
+			}
+			cut := strings.Replace(line, count, "N", 1)
+			if shape == "" {
+				shape = cut
+			}
+			if cut != shape {
+				t.Errorf("%s, %d pages: the line changes with more than its count:\n got %q\nwant %q", name, n, cut, shape)
+			}
+		}
+	}
+	for _, want := range []string{"`wiki:` line names a page, read it before you change", "goes to the wiki, not to agent memory"} {
+		if !strings.Contains(shape, want) {
+			t.Errorf("the wiki line is missing %q: %q", want, shape)
 		}
 	}
 }
@@ -424,5 +540,118 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 		if len(got) != len(mappings) {
 			t.Errorf("%s: rule 7 holds %d names, want %d", name, len(got), len(mappings))
 		}
+	}
+}
+
+// runningBlock is one plan's short block as the caller hands it over: the
+// lines of board.RunState.Short joined with newlines.
+func planBlock(id, next string) string {
+	return strings.Join([]string{
+		"plans/" + id + "  The plan  task: plans/" + id + "#task-2",
+		"worktree: /tmp/acta/" + id + "  last commit: abc1234 state: view",
+		"next: " + next,
+	}, "\n")
+}
+
+// Four plans, three printed and the fourth counted. A session reads this once
+// at the start, so it gets a summary and the one line that says when to write
+// the next step down.
+func TestSessionStartListsThreeRunningPlansAndCountsTheRest(t *testing.T) {
+	in := korean()
+	in.Running = []string{
+		planBlock("one", "run the state test"),
+		planBlock("two", "write the hook test"),
+		planBlock("three", "bump the version"),
+		planBlock("four", "file the eval"),
+	}
+	out := SessionStart(in)
+	for _, gone := range []string{"plans/four", "file the eval"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("the fourth plan is in the text: %q", gone)
+		}
+	}
+	for _, want := range []string{"plans/one", "run the state test", "plans/two", "plans/three", "+1 more, run acta state"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if n := strings.Count(out, "+1 more, run acta state"); n != 1 {
+		t.Errorf("the more line appears %d times, want 1:\n%s", n, out)
+	}
+	if n := strings.Count(out, "acta state set <plan> next"); n != 1 {
+		t.Errorf("the rule line appears %d times, want 1:\n%s", n, out)
+	}
+}
+
+// Three plans fit, so nothing is held back and there is no more line.
+func TestSessionStartThreeRunningPlansNeedNoMoreLine(t *testing.T) {
+	in := korean()
+	in.Running = []string{planBlock("one", "run the state test"), planBlock("two", "write the hook test"), planBlock("three", "bump the version")}
+	out := SessionStart(in)
+	for _, want := range []string{"plans/one", "plans/two", "plans/three"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "more, run acta state") {
+		t.Errorf("three plans printed a more line:\n%s", out)
+	}
+}
+
+// Two plans print both and hold nothing back.
+func TestSessionStartTwoRunningPlansNeedNoMoreLine(t *testing.T) {
+	in := korean()
+	in.Running = []string{planBlock("one", "run the state test"), planBlock("two", "write the hook test")}
+	out := SessionStart(in)
+	for _, want := range []string{"plans/one", "run the state test", "plans/two", "write the hook test"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "more, run acta state") {
+		t.Errorf("two plans printed a more line:\n%s", out)
+	}
+}
+
+// A repo with no work going on gets the text it always got, byte for byte.
+func TestSessionStartNoRunningPlansKeepsTheOldText(t *testing.T) {
+	old, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, in := range map[string]Input{
+		"nil":   {Voice: config.UserDefault(), VoiceExists: true},
+		"empty": {Voice: config.UserDefault(), VoiceExists: true, Running: []string{}},
+	} {
+		if got := SessionStart(in); got != string(old) {
+			t.Errorf("%s: the text is not the old text:\n%s", name, got)
+		}
+	}
+}
+
+// A plan with a long title, a long worktree path and a long next line still
+// gets all three of its lines, and a block with more than three lines is cut
+// down to three. Cutting lines is fine; losing the plan is not.
+func TestSessionStartKeepsEveryPlanAndThreeLinesEach(t *testing.T) {
+	long := strings.Repeat("long word ", 40)
+	in := korean()
+	in.Running = []string{
+		"plans/one  " + long + "  task: plans/one#task-2\nworktree: /tmp/" + long + "\nnext: " + long + "\nfourth line\nfifth line",
+		planBlock("two", "write the hook test"),
+	}
+	out := SessionStart(in)
+	for _, gone := range []string{"fourth line", "fifth line"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("a line past the third is printed: %q", gone)
+		}
+	}
+	if !strings.Contains(out, "next: "+strings.TrimSpace(long)) {
+		t.Errorf("the long next line was cut:\n%s", out)
+	}
+	if n := strings.Count(out, "task: plans/one#task-2"); n != 1 {
+		t.Errorf("the long title line appears %d times, want 1", n)
+	}
+	if n := strings.Count(out, "acta state set <plan> next"); n != 1 {
+		t.Errorf("the rule line appears %d times, want 1:\n%s", n, out)
 	}
 }

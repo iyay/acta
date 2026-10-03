@@ -996,3 +996,18 @@ func TestConfigSetNamesBrokenUnmovableVoiceFile(t *testing.T) {
 		t.Errorf("set wrote config.yaml after a read error: %v", err)
 	}
 }
+
+// A word nobody typed gets the list of words that are commands. The bare
+// state command prints what is running, so it belongs in that list too.
+func TestUnknownCommandHelpListsState(t *testing.T) {
+	var out, errOut strings.Builder
+	if code := Run([]string{"frobnicate"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput {
+		t.Fatalf("exit %d, want %d", code, exitBadInput)
+	}
+	for _, cmd := range strings.Split(errOut.String(), ", ") {
+		if strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(cmd), "or ")) == "state" {
+			return
+		}
+	}
+	t.Fatalf("the help does not list the bare state command: %q", errOut.String())
+}

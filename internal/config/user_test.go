@@ -245,6 +245,65 @@ func TestCodingGuideRoundTripsAndStaysEmpty(t *testing.T) {
 	}
 }
 
+// questions says how the agent asks: one question at a time, or a round of
+// probe questions. Empty is fine, it means one. Anything else is refused by
+// name, and fill trims spaces like it does for the other keys.
+func TestValidateQuestions(t *testing.T) {
+	for _, tc := range []struct {
+		questions string
+		ok        bool
+	}{
+		{"", true},
+		{"one", true},
+		{"probe", true},
+		{"probe ", true}, // fill trims
+		{" one", true},
+		{"maybe", false},
+		{"Probe", false},
+		{"One", false},
+		{"grill", false},
+		{"one at a time", false},
+		{"full", false},
+	} {
+		v := UserDefault()
+		v.Questions = tc.questions
+		err := fill(v).Validate()
+		if (err == nil) != tc.ok {
+			t.Errorf("questions %q: err %v, want ok=%v", tc.questions, err, tc.ok)
+		}
+		if err != nil && !errors.Is(err, ErrBadUser) {
+			t.Errorf("questions %q: err %v is not ErrBadUser", tc.questions, err)
+		}
+		if err != nil && !strings.Contains(err.Error(), "questions") {
+			t.Errorf("questions %q: err %v does not name the key", tc.questions, err)
+		}
+	}
+}
+
+// A bad questions never loads from the user file and never lands in it.
+func TestQuestionsBadValueNeverStored(t *testing.T) {
+	for _, bad := range []string{"maybe", "Probe", "grill", "one at a time"} {
+		in := filepath.Join(t.TempDir(), "config.yaml")
+		body := "chat_language: English\nstyle: adhd\nrepo_language: English\nquestions: " + bad + "\n"
+		if err := os.WriteFile(in, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		v, exists, err := LoadUser(in)
+		if !exists || !errors.Is(err, ErrBadUser) || v != UserDefault() {
+			t.Errorf("load %q: got %+v %v %v, want defaults, exists, ErrBadUser", bad, v, exists, err)
+		}
+		out := filepath.Join(t.TempDir(), "config.yaml")
+		u := UserDefault()
+		u.Questions = bad
+		if err := SaveUserFile(out, u); !errors.Is(err, ErrBadUser) {
+			t.Errorf("save %q: err %v, want ErrBadUser", bad, err)
+		}
+		if _, err := os.Stat(out); !os.IsNotExist(err) {
+			t.Errorf("save %q: a bad value was written", bad)
+		}
+	}
+}
+
 // A saved theme must come back on the next read, or the TUI forgets it on
 // every restart.
 func TestThemeRoundTrips(t *testing.T) {

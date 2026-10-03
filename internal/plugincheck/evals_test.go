@@ -9,9 +9,9 @@ import (
 )
 
 // evalCases ties each eval case to the one phrase it guards. The file is a path
-// inside the plugin folder: a skill, or the output style. When that file loses
-// the phrase the case stops testing anything, so the case files and that file
-// have to keep the same words.
+// inside the plugin folder: a skill, the output style, or the hooks file. When
+// that file loses the phrase the case stops testing anything, so the case files
+// and that file have to keep the same words.
 var evalCases = []struct {
 	folder string
 	file   string
@@ -23,7 +23,12 @@ var evalCases = []struct {
 	{"one-file-fix-no-brainstorm", "skills/shape/SKILL.md", "Spike and Bounded"},
 	{"brainstorm-files-scratch-first", "skills/shape/SKILL.md", "status brainstorming"},
 	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},
+	{"frame-no-brainstorming-status", "skills/frame/SKILL.md", "the `brainstorming` status"},
+	{"probe-round", "skills/shape/probe.md", "five questions at most"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
+	{"wiki-hint", "hooks/hooks.json", "Bash|Read|Edit|Write|MultiEdit"},
+	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
+	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it

@@ -333,7 +333,7 @@ func TestKindAndRoleSlots(t *testing.T) {
 			}
 		}
 		if got := s.tabColor(""); got != c.at(6) {
-			t.Errorf("%s: Activities tab = %v, want slot 6", c.name, got)
+			t.Errorf("%s: Activity tab = %v, want slot 6", c.name, got)
 		}
 		for name, r := range map[string]struct {
 			brush lipgloss.Style
@@ -352,7 +352,7 @@ func TestKindAndRoleSlots(t *testing.T) {
 }
 
 // TestScratchIsPink checks every built-in theme. A scratch id and the
-// Scratches tab must be pink, so a scratch never looks like finished work.
+// Scratchpad tab must be pink, so a scratch never looks like finished work.
 // Done keeps green, so nothing else may take the pink.
 func TestScratchIsPink(t *testing.T) {
 	t.Parallel()
@@ -372,7 +372,7 @@ func TestScratchIsPink(t *testing.T) {
 				t.Errorf("%s dark=%v: scratch id = %v, want %v", name, dark, got, want)
 			}
 			if got := s.tabColor(board.KindScratch); got != want {
-				t.Errorf("%s dark=%v: Scratches tab = %v, want %v", name, dark, got, want)
+				t.Errorf("%s dark=%v: Scratchpad tab = %v, want %v", name, dark, got, want)
 			}
 			if got := s.done.GetForeground(); got == want {
 				t.Errorf("%s dark=%v: done took the scratch pink", name, dark)

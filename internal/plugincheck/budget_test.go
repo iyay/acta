@@ -22,28 +22,31 @@ import (
 // fileCaps holds the cap of every .md file under skills/, references/ and
 // output-styles/. The keys are paths as walkPlugin names them.
 var fileCaps = map[string]int{
-	"output-styles/acta.md":                         1773,
-	"references/house-rules.md":                     3787,
-	"skills/bug/SKILL.md":                           2327,
-	"skills/build/SKILL.md":                         15281,
-	"skills/build/dispatch.md":                      6338,
-	"skills/build/implementer-prompt.md":            7518,
-	"skills/debug/SKILL.md":                         10401,
-	"skills/debug/condition-based-waiting.md":       3516,
-	"skills/debug/defense-in-depth.md":              3650,
-	"skills/debug/root-cause-tracing.md":            5316,
-	"skills/land/SKILL.md":                          5765,
-	"skills/lean/SKILL.md":                          1918,
-	"skills/migrate/SKILL.md":                       2329,
-	"skills/review/SKILL.md":                        11494,
-	"skills/review/code-reviewer.md":                4042,
-	"skills/scratch/SKILL.md":                       2358,
-	"skills/setup/SKILL.md":                         4556,
-	"skills/shape/SKILL.md":                         17458,
-	"skills/shape/spec-document-reviewer-prompt.md": 1736,
-	"skills/slice/SKILL.md":                         12063,
-	"skills/tdd/SKILL.md":                           10169,
-	"skills/tdd/writing-good-tests.md":              8239,
+	"output-styles/acta.md":                   1773,
+	"references/house-rules.md":               3787,
+	"skills/bug/SKILL.md":                     2327,
+	"skills/build/SKILL.md":                   16215,
+	"skills/build/dispatch.md":                6371,
+	"skills/build/implementer-prompt.md":      7518,
+	"skills/build/wiki.md":                    2750,
+	"skills/debug/SKILL.md":                   10401,
+	"skills/debug/condition-based-waiting.md": 3516,
+	"skills/debug/defense-in-depth.md":        3650,
+	"skills/debug/root-cause-tracing.md":      5316,
+	"skills/frame/SKILL.md":                   4591,
+	"skills/frame/startup.md":                 4337,
+	"skills/land/SKILL.md":                    6471,
+	"skills/lean/SKILL.md":                    1918,
+	"skills/migrate/SKILL.md":                 2329,
+	"skills/review/SKILL.md":                  11948,
+	"skills/review/code-reviewer.md":          4042,
+	"skills/scratch/SKILL.md":                 2358,
+	"skills/setup/SKILL.md":                   4813,
+	"skills/shape/SKILL.md":                   7588,
+	"skills/shape/probe.md":                   1717,
+	"skills/slice/SKILL.md":                   12063,
+	"skills/tdd/SKILL.md":                     10169,
+	"skills/tdd/writing-good-tests.md":        8239,
 }
 
 // descriptionCaps holds the cap of the description line in each skill's
@@ -52,20 +55,21 @@ var descriptionCaps = map[string]int{
 	"skills/bug/SKILL.md":     311,
 	"skills/build/SKILL.md":   541,
 	"skills/debug/SKILL.md":   277,
+	"skills/frame/SKILL.md":   345,
 	"skills/land/SKILL.md":    304,
 	"skills/lean/SKILL.md":    139,
 	"skills/migrate/SKILL.md": 258,
 	"skills/review/SKILL.md":  386,
 	"skills/scratch/SKILL.md": 223,
 	"skills/setup/SKILL.md":   230,
-	"skills/shape/SKILL.md":   319,
+	"skills/shape/SKILL.md":   222,
 	"skills/slice/SKILL.md":   234,
 	"skills/tdd/SKILL.md":     208,
 }
 
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too.
-const sessionStartCap = 2551
+const sessionStartCap = 2558
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

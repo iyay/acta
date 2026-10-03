@@ -5,7 +5,7 @@ import "testing"
 func TestSkillSetup(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "setup",
-		MaxLines: 76,
+		MaxLines: 80,
 		Must: []string{
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
 			"Never ask about `coding_guide`",
@@ -20,7 +20,8 @@ func TestSkillSetup(t *testing.T) {
 			"show the current setting first",
 			"When the user already said which part to change, change only that part and stop there",
 			"ask only the parts not set yet",
-			"Change anything already set? (voice, executor, plan depth, subagent models, acta block)",
+			"Change anything already set? (voice, questions, executor, plan depth, subagent models, acta block)",
+			"acta config set --questions probe",
 			"`~/.acta/config.yaml`",
 			"When only AGENTS.md exists, write the block there",
 			"run `/init` first",

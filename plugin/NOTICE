@@ -14,6 +14,16 @@ Adapted into:
   skills/review/      from skills/requesting-code-review/, skills/receiving-code-review/
   skills/land/        from skills/verification-before-completion/, skills/finishing-a-development-branch/
 
+gstack - https://github.com/garrytan/gstack
+Copyright (c) 2026 Garry Tan
+Adapted into:
+  skills/frame/       from skills/office-hours/, rewritten and cut down
+
+mattpocock - https://github.com/mattpocock/skills
+Copyright (c) 2026 Matt Pocock
+Adapted into:
+  skills/shape/probe.md   from skills/grilling/, rewritten and cut down
+
 i-have-adhd - https://github.com/ayghri/i-have-adhd
 Copyright (c) 2026 Ayoub Ghriss
 Adapted into: the ADHD reader block of output-styles/acta.md.

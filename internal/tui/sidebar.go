@@ -16,7 +16,7 @@ type doneTab struct {
 
 // topTab is one tab of the bar on the top line: its name, the kind it lists,
 // the finished sub-tabs of its Done pane, and tree for the one tab whose lists
-// fold plans open to show their tasks. Activities has no kind and no Done pane.
+// fold plans open to show their tasks. Activity has no kind and no Done pane.
 type topTab struct {
 	name string
 	kind board.Kind
@@ -27,23 +27,23 @@ type topTab struct {
 // topTabs is the bar, left to right. Index i is key i+1. It is an array, so
 // len(topTabs) is a constant the Model can size its saved tabs with.
 var topTabs = [...]topTab{
-	{name: "Scratches", kind: board.KindScratch, done: []doneTab{{"Specced", "specced"}, {"Dropped", "dropped"}}},
+	{name: "Scratchpad", kind: board.KindScratch, done: []doneTab{{"Specced", "specced"}, {"Dropped", "dropped"}}},
 	{name: "Bugs", kind: board.KindBug, done: []doneTab{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}}},
-	{name: "Debts", kind: board.KindDebtItem, done: []doneTab{{"Done", "done"}, {"Wontfix", "wontfix"}}},
+	{name: "Debt", kind: board.KindDebtItem, done: []doneTab{{"Done", "done"}, {"Wontfix", "wontfix"}}},
 	{name: "Specs", kind: board.KindStory, done: []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}},
 	{name: "Plans", kind: board.KindPlan, done: []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}, tree: true},
-	{name: "Activities"},
+	{name: "Activity"},
 }
 
 // The tab numbers, in the order of topTabs, so code and tests name a tab
 // instead of counting.
 const (
-	tabScratches = iota
+	tabScratchpad = iota
 	tabBugs
-	tabDebts
+	tabDebt
 	tabSpecs
 	tabPlans
-	tabActivities
+	tabActivity
 )
 
 const (
@@ -104,7 +104,7 @@ func (m *Model) openTab(i int) {
 	m.keepVisible(m.listPane())
 }
 
-// panes gives the list boxes of the open tab, top to bottom. Activities has
+// panes gives the list boxes of the open tab, top to bottom. Activity has
 // no Done pane.
 func (m Model) panes() []pane {
 	if len(topTabs[m.top].done) == 0 {
@@ -144,7 +144,7 @@ func (m Model) doneTabNames() []string {
 func (m Model) tabsOf(p pane) []string {
 	switch p {
 	case paneList:
-		// Activities has no kind, so its box lists tasks and not the open
+		// Activity has no kind, so its box lists tasks and not the open
 		// items every other tab shows.
 		if topTabs[m.top].kind == "" {
 			return []string{"Tasks"}
@@ -166,7 +166,7 @@ func (m Model) onTab(p pane) int {
 }
 
 // rowsOf gives the rows a box shows: the finished items in Done, the tasks
-// under way on Activities, and the open items of the tab anywhere else.
+// under way on Activity, and the open items of the tab anywhere else.
 func (m Model) rowsOf(p pane) []row {
 	switch {
 	case p == paneDone:
@@ -183,7 +183,7 @@ func (m Model) searchRows() []row {
 	return toRows(m.board.Search(m.query), 0)
 }
 
-// activityRows gives Activities the tasks under way, each under its head: the
+// activityRows gives Activity the tasks under way, each under its head: the
 // plan it belongs to, or the bug that plan fixes. Heads and the tasks under
 // a head keep the order of the pane. A task whose plan is gone has no head,
 // so it stands on its own row at the end.
@@ -221,7 +221,7 @@ func (m Model) activityRows() []row {
 	return append(out, toRows(ordered(loose, newest), 0)...)
 }
 
-// headOf is the row a task under way sits under on Activities: its plan, or
+// headOf is the row a task under way sits under on Activity: its plan, or
 // the bug that plan fixes. It goes one level up only, so a spec above a plan
 // never becomes a head.
 func (m Model) headOf(t *board.Item) *board.Item {
@@ -236,7 +236,7 @@ func (m Model) headOf(t *board.Item) *board.Item {
 }
 
 // isOpen says whether a tree head shows its tasks. Plans start shut and
-// Activities groups start open, so each tab keeps the set that differs from
+// Activity groups start open, so each tab keeps the set that differs from
 // how it starts.
 func (m Model) isOpen(id string) bool {
 	if topTabs[m.top].kind == "" {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Result says whether the commit happened, and why not when it did not.
@@ -92,6 +93,85 @@ func FirstSeen(repo, path string) (int, error) {
 		}
 	}
 	return len(commits), nil
+}
+
+// LastChange is the commit time of the newest commit on the way back from HEAD
+// that touched one of the paths, or the zero time when none did. Each path is a
+// plain name from the repo root, and a folder ends in a slash. The paths are not
+// globs and not git path magic, since the wiki lists names and matches them by
+// prefix. git stops at the first commit it finds, which is the newest unless a
+// clock was set wrong.
+func LastChange(repo string, paths []string) (time.Time, error) {
+	// With no paths, git would answer with the newest commit of the whole repo.
+	if len(paths) == 0 {
+		return time.Time{}, nil
+	}
+	args := append([]string{"--literal-pathspecs", "log", "-1", "--format=%cI", "--"}, paths...)
+	out, err := run(repo, args...)
+	if err != nil {
+		return time.Time{}, err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, out)
+}
+
+// Changed lists the files that the commits in rng changed, from the repo root.
+// rng is a range like main..HEAD. A move shows as a file that left and a file
+// that came, so the folder a file moved out of counts as changed too. Names come
+// back as they are, with no quotes around the odd ones.
+func Changed(repo, rng string) ([]string, error) {
+	// A dash would make git read the range as an option, and some options write files.
+	if strings.HasPrefix(rng, "-") {
+		return nil, fmt.Errorf("bad range %q: it starts with a dash", rng)
+	}
+	// git diff a..b sets the two tips side by side. If a has moved on since b
+	// split from it, a's own changes would show up as b's. Three dots start at
+	// the point where they split, which is what a commit range means.
+	if left, right, ok := strings.Cut(rng, ".."); ok && !strings.HasPrefix(right, ".") {
+		rng = left + "..." + right
+	}
+	// The last -- says rng is a revision, never a file name that happens to match.
+	out, err := run(repo, "diff", "--no-renames", "--name-only", "-z", rng, "--")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, f := range strings.Split(out, "\x00") {
+		if f != "" {
+			files = append(files, f)
+		}
+	}
+	return files, nil
+}
+
+// Touched lists the files that the commits in rng changed, from the repo root.
+// It reads the commits themselves, not the two ends of the range, so a file a
+// commit wrote and a later commit put back still comes back. rng is a commit
+// range like main..live. Names come back as they are, with no quotes around
+// the odd ones.
+func Touched(repo, rng string) ([]string, error) {
+	// A dash would make git read the range as an option.
+	if strings.HasPrefix(rng, "-") {
+		return nil, fmt.Errorf("bad range %q: it starts with a dash", rng)
+	}
+	// The last -- says rng is a revision, never a file name that happens to match.
+	out, err := run(repo, "log", "--no-renames", "--name-only", "--format=", "-z", rng, "--")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	seen := map[string]bool{}
+	for _, f := range strings.Split(out, "\x00") {
+		// A file written by two commits on the branch comes back twice.
+		if f != "" && !seen[f] {
+			seen[f] = true
+			files = append(files, f)
+		}
+	}
+	return files, nil
 }
 
 // Authors gives, for each path git knows, the name of the person whose commit
@@ -312,4 +392,29 @@ func BranchFiles(repo, branch, dir string) (map[string][]byte, error) {
 func CommonDir(repo string) (string, error) {
 	out, err := run(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	return strings.TrimSpace(out), err
+}
+
+// NewestCommit gives the short hash and subject of the newest commit on ref.
+// When pre is not empty it only looks at commits whose subject starts with
+// pre, and a branch with none of those gives two empty strings and no error,
+// so a caller can tell "no such commit" from "no branch".
+func NewestCommit(repo, ref, pre string) (string, string, error) {
+	args := []string{"log", "--format=%h %s"}
+	if pre != "" {
+		// git greps the whole message, so the lines it gives back are
+		// checked here for the subject that really starts with pre.
+		args = append(args, "--fixed-strings", "--grep="+pre)
+	}
+	args = append(args, ref)
+	out, err := run(repo, args...)
+	if err != nil {
+		return "", "", err
+	}
+	for _, ln := range strings.Split(out, "\n") {
+		hash, subject, ok := strings.Cut(strings.TrimSpace(ln), " ")
+		if ok && strings.HasPrefix(subject, pre) {
+			return hash, subject, nil
+		}
+	}
+	return "", "", nil
 }

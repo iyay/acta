@@ -1055,7 +1055,7 @@ func TestDetailWithNothingSelectedFollowsTheList(t *testing.T) {
 		want  string
 	}{
 		{"the query", groupModel, func(m Model) Model { return press(m, "/", "zzzq") }, "No items"},
-		{"the open tab", groupModel, func(m Model) Model { return press(m, tabKey(tabDebts)) }, "No items"},
+		{"the open tab", groupModel, func(m Model) Model { return press(m, tabKey(tabDebt)) }, "No items"},
 		{"the focused box", groupModel, func(m Model) Model { return press(m, "tab") }, "No items"},
 		{"the Done sub-tab", wontfixModel, func(m Model) Model { return press(m, "[") }, "App crashes"},
 	} {

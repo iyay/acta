@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Stops a second brainstorm in one session, and a bare go test in a repo that
 # has scripts/test. acta exits 2 to block; that code and its message go back to
-# Claude. Any other failure must not get in the way.
+# Claude. When a call touches a file that a wiki page covers, acta prints a hint
+# as JSON on stdout, and it passes through here. Any other failure must not get
+# in the way.
 if command -v acta >/dev/null 2>&1; then
   acta hook pre-tool
   [ $? -eq 2 ] && exit 2

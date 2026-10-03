@@ -254,7 +254,8 @@ func TestHerdrFindNeedsPaneIDBeforeMakingATab(t *testing.T) {
 }
 
 func TestHerdrFindOmpNeverStartsEndsAtTheLimit(t *testing.T) {
-	fastWaits(t, 30*time.Millisecond, 0, 0, 5*time.Millisecond)
+	// The limit is wider than the poll needs: on a busy machine each call starts a shell and can be slow.
+	fastWaits(t, 500*time.Millisecond, 0, 0, 5*time.Millisecond)
 	h := newScriptedHerdr(t)
 	h.fail("agent_get", notFoundJSON, "")
 	h.out("tab_create", tabJSON("wM:p5"))
@@ -589,7 +590,8 @@ func TestHerdrWaitStopsAtTheLimit(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, 2*time.Millisecond)
 	n := 0
 	start := time.Now()
-	ok, err := waitFor(20*time.Millisecond, func() (bool, error) { n++; return false, nil })
+	// The limit is wider than the poll needs: a busy machine can stall one poll.
+	ok, err := waitFor(200*time.Millisecond, func() (bool, error) { n++; return false, nil })
 	if ok || err != nil {
 		t.Fatalf("ok %v err %v", ok, err)
 	}

@@ -83,6 +83,21 @@ func briefEnv(t *testing.T) briefInput {
 	}
 }
 
+// briefHasState checks the line every round kind carries: the recipient reads
+// the plan's State before anything else. It fails when the line is missing,
+// doubled, or placed after the tickets it must come before.
+func briefHasState(t *testing.T, got string) {
+	t.Helper()
+	const line = "STATE: read `acta state <plan>` FIRST, before the tickets"
+	if n := strings.Count(got, line); n != 1 {
+		t.Errorf("want one %q line, got %d\n%s", line, n, got)
+		return
+	}
+	if j := strings.Index(got, "TICKETS"); j >= 0 && strings.Index(got, line) > j {
+		t.Errorf("the state line sits after the tickets\n%s", got)
+	}
+}
+
 func TestBuildBriefFirstDispatch(t *testing.T) {
 	in := briefEnv(t)
 	in.Note = "mind the cache"
@@ -120,6 +135,7 @@ func TestBuildBriefFirstDispatch(t *testing.T) {
 	if n := strings.Count(got, "REPLY-BACK:"); n != 1 {
 		t.Errorf("want one REPLY-BACK line, got %d", n)
 	}
+	briefHasState(t, got)
 }
 
 func TestBuildBriefFixRounds(t *testing.T) {
@@ -148,12 +164,13 @@ func TestBuildBriefFixRounds(t *testing.T) {
 	if !strings.Contains(got, "task-4") || strings.Contains(got, "task-1") {
 		t.Errorf("single fix round wrong\n%s", got)
 	}
+	briefHasState(t, got)
 }
 
 func TestBuildBriefPolish(t *testing.T) {
 	in := briefEnv(t)
 	in.Round = "polish"
-	src := []byte(briefPlanHead + briefFixOne)
+	src := []byte(briefPlanHead + briefFixOne + briefPolish)
 
 	in.Note = "  \n"
 	if _, err := buildBrief("p.md", src, in); err == nil {
@@ -167,8 +184,57 @@ func TestBuildBriefPolish(t *testing.T) {
 	if !strings.Contains(got, "NOTE: [fix] rename the helper") {
 		t.Errorf("polish brief misses the note\n%s", got)
 	}
-	if strings.Contains(got, "TICKETS") || strings.Contains(got, "task-") {
-		t.Errorf("polish must take no tasks\n%s", got)
+	// The polish round hands over the plan's polish task, not an empty note.
+	if !strings.Contains(got, "TICKETS") || !strings.Contains(got, "task-7") {
+		t.Errorf("polish must name the polish task\n%s", got)
+	}
+	briefHasState(t, got)
+}
+
+// briefPolish is the review polish section: one task, applied after the fix
+// rounds, named exactly "## Polish".
+const briefPolish = `
+## Polish
+
+### Task 7: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+`
+
+func TestBuildBriefPolishNamesPolishTask(t *testing.T) {
+	in := briefEnv(t)
+	in.Round = "polish"
+	in.Note = "[fix] rename the helper"
+	src := []byte(briefPlanHead + briefFixOne + briefPolish)
+	got, err := buildBrief(".acta/plans/demo.md", src, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"task-7", "Review polish", "every NOTE below is applied"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("polish brief misses %q\n%s", want, got)
+		}
+	}
+	for _, bad := range []string{"task-1", "task-4", "property one", "fix one holds"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("polish brief took %q\n%s", bad, got)
+		}
+	}
+	briefHasState(t, got)
+	// The first dispatch leaves the polish task out, even with no fix round.
+	in.Round = ""
+	got, err = buildBrief(".acta/plans/demo.md", []byte(briefPlanHead+briefPolish), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "task-7") {
+		t.Errorf("first dispatch took the polish task\n%s", got)
+	}
+	// A polish round with no ## Polish section refuses naming the section.
+	in.Round = "polish"
+	_, err = buildBrief(".acta/plans/demo.md", []byte(briefPlanHead+briefFixOne), in)
+	if err == nil || !strings.Contains(err.Error(), "## Polish") {
+		t.Errorf("polish without the section must refuse naming it, got %v", err)
 	}
 }
 
@@ -240,5 +306,45 @@ func TestBriefTasksIgnoresFencedHeadings(t *testing.T) {
 	tasks, err := briefTasks([]byte(briefPlanHead+briefFixOne+briefFixTwo), "")
 	if err != nil || len(tasks) != 3 {
 		t.Errorf("first dispatch: got %d tasks, err %v", len(tasks), err)
+	}
+}
+
+// TestBriefTasksPolishStopsAtNextSection pins the polish round to the tasks
+// under "## Polish" up to the next "## " heading, whatever follows it.
+func TestBriefTasksPolishStopsAtNextSection(t *testing.T) {
+	head := "# P\n\n**Spec:** x\n\n### Task 1: base\n\n**verify:** base holds\n"
+	polish := "\n## Polish\n\n### Task 3: p\n\n**verify:** p holds\n"
+	fix := "\n## Fix round 1\n\n### Task 2: f\n\n**verify:** f holds\n"
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{"fix before polish", head + fix + polish},
+		{"polish before fix", head + polish + fix},
+		{"polish before State", head + polish + "\n## State\n\nleftovers\n"},
+		{"polish before Review notes", head + polish + "\n## Review notes\n\n- a note\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			tasks, err := briefTasks([]byte(c.src), "polish")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tasks) != 1 || tasks[0].Num != "3" {
+				var names []string
+				for _, task := range tasks {
+					names = append(names, task.Num+":"+task.Title)
+				}
+				t.Fatalf("polish took %q, want only the p task", names)
+			}
+		})
+	}
+	// The fix round next to a polish section keeps only its own task.
+	tasks, err := briefTasks([]byte(head+polish+fix), "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].Num != "2" {
+		t.Fatalf("fix round took the polish task: %+v", tasks)
 	}
 }

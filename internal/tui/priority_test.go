@@ -71,13 +71,13 @@ func TestBugsDonePaneKeepsIDOrder(t *testing.T) {
 	}
 }
 
-func TestDebtsSortByPriority(t *testing.T) {
+func TestDebtSortByPriority(t *testing.T) {
 	t.Parallel()
 
-	m := press(prioModel(t), tabKey(tabDebts))
+	m := press(prioModel(t), tabKey(tabDebt))
 	want := []string{"debt/2026-10-01-d#item-3", "debt/2026-10-01-d#item-2", "debt/2026-10-01-d#item-1"}
 	if got := rowIDs(m); !slices.Equal(got, want) {
-		t.Fatalf("Debts rows %v, want %v", got, want)
+		t.Fatalf("Debt rows %v, want %v", got, want)
 	}
 }
 
