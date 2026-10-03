@@ -22,22 +22,35 @@ type sendEnv struct {
 	h     *scriptedHerdr
 }
 
-func newSendEnv(t *testing.T) sendEnv {
+func newSendEnv(t *testing.T) sendEnv { return newSendEnvOn(t, "main") }
+
+// newSendEnvOn makes a main checkout on branch mainBranch and a worktree on
+// branch dispatch-send next to it. The test runs in the worktree, like the
+// real command does.
+func newSendEnvOn(t *testing.T, mainBranch string) sendEnv {
 	t.Helper()
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
-	dir := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	main := filepath.Join(root, "main")
+	dir := filepath.Join(root, "worktree")
 	git := func(args ...string) {
 		t.Helper()
-		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+		if out, err := exec.Command("git", append([]string{"-C", main}, args...)...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
 		}
 	}
-	writeSendFile(t, filepath.Join(dir, sendPlanPath), sendPlan)
-	git("init", "-q", "-b", "dispatch-send")
+	writeSendFile(t, filepath.Join(main, sendPlanPath), sendPlan)
+	git("init", "-q", "-b", mainBranch)
 	git("config", "user.name", "test")
 	git("config", "user.email", "test@example.com")
 	git("add", ".")
 	git("commit", "-q", "-m", "init")
+	git("worktree", "add", "-q", "-b", "dispatch-send", dir)
+	sendGit(t, dir, "config", "user.name", "test")
+	sendGit(t, dir, "config", "user.email", "test@example.com")
 	rules := filepath.Join(t.TempDir(), "house-rules.md")
 	writeSendFile(t, rules, "rules")
 	t.Setenv("HOME", t.TempDir())
@@ -122,7 +135,7 @@ func TestDispatchSendFirstRoundNewTab(t *testing.T) {
 	e.h.out("tab_create", tabJSON("wM:p5"))
 	e.h.out("agent_read_visible", "> ")
 	e.h.out("agent_read_visible", "🎯 Goal")
-	e.h.out("agent_read_recent-unwrapped", "todo: Task 1 first, Task 2 second, Task 3 third")
+	e.h.out("agent_read_recent-unwrapped", todoCard+"Task 1 first, Task 2 second, Task 3 third")
 
 	code, stdout, stderr := e.send(t, "")
 	if code != exitOK {
@@ -171,9 +184,35 @@ func TestDispatchSendFirstRoundNewTab(t *testing.T) {
 	}
 }
 
+// The main checkout is not always on main. The brief must name the branch it
+// is really on, because that is where the worktree gets merged.
+func TestDispatchSendParentIsTheMainCheckoutBranch(t *testing.T) {
+	e := newSendEnvOn(t, "master")
+	e.herdrReady(todoCard + "Task 1, Task 2, Task 3")
+	if code, _, stderr := e.send(t, ""); code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	b := e.readBrief(t)
+	if !strings.Contains(b, "parent master,") || strings.Contains(b, "parent main,") {
+		t.Fatalf("brief does not name master as the parent\n%s", b)
+	}
+}
+
+// A main checkout on a detached head has no branch to merge into: refuse
+// before anything is sent.
+func TestDispatchSendDetachedMainCheckoutExits3(t *testing.T) {
+	e := newSendEnv(t)
+	sendGit(t, filepath.Join(filepath.Dir(e.dir), "main"), "checkout", "-q", "--detach")
+	code, _, stderr := e.send(t, "")
+	if code != exitOther || !strings.Contains(stderr, "detached") {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	wantNothingSent(t, e)
+}
+
 func TestDispatchSendFixRoundReusesTab(t *testing.T) {
 	e := newSendEnv(t)
-	e.herdrReady("working on Task 4 now")
+	e.herdrReady(todoCard + "working on Task 4 now")
 	code, stdout, stderr := e.send(t, "", "--round", "r1")
 	if code != exitOK {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
@@ -213,7 +252,7 @@ func TestDispatchSendPolishNoteFromStdin(t *testing.T) {
 
 func TestDispatchSendNoteFromFile(t *testing.T) {
 	e := newSendEnv(t)
-	e.herdrReady("Task 4")
+	e.herdrReady(todoCard + "Task 4")
 	note := filepath.Join(t.TempDir(), "note.md")
 	writeSendFile(t, note, "mind the cache")
 	if code, _, stderr := e.send(t, "", "--round", "r1", "--note-file", note); code != exitOK {
@@ -298,7 +337,7 @@ func sendGit(t *testing.T, dir string, args ...string) {
 
 func TestDispatchSendDriftPrintsPaneAndExits4(t *testing.T) {
 	e := newSendEnv(t)
-	e.herdrReady("todo: Task 1 and Task 2 only")
+	e.herdrReady(todoCard + "Task 1 and Task 2 only")
 	code, stdout, stderr := e.send(t, "")
 	if code != exitDrift {
 		t.Fatalf("exit %d, want %d; stderr %q", code, exitDrift, stderr)
@@ -308,7 +347,7 @@ func TestDispatchSendDriftPrintsPaneAndExits4(t *testing.T) {
 		lines[5] != "watcher: herdr agent wait dispatch-send --until idle --until done" {
 		t.Fatalf("stdout %q", stdout)
 	}
-	if !strings.Contains(stdout, "todo: Task 1 and Task 2 only") {
+	if !strings.Contains(stdout, "Task 1 and Task 2 only") {
 		t.Fatalf("the pane text is not printed: %q", stdout)
 	}
 }

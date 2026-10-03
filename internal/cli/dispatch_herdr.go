@@ -76,7 +76,7 @@ func isNotFound(err error, stdout string) bool {
 		return false
 	}
 	text := strings.ToLower(stdout + " " + he.output)
-	return strings.Contains(text, "agent_not_found") || strings.Contains(text, "not found")
+	return strings.Contains(text, "agent_not_found")
 }
 
 type agentInfo struct {
@@ -268,10 +268,18 @@ func dropGoal(slug string) error {
 	return nil
 }
 
+// todoCardHeader finds the header line of omp's todo list card. omp 18 draws the
+// card with a header whose title is the word Todo, after a status glyph or a
+// frame edge, and the glyphs change with the theme. So the header is the word
+// Todo on its own, with only symbols before it. A word like Todos or mytodo,
+// or a sentence about a todo list, is not the card.
+var todoCardHeader = regexp.MustCompile(`(?m)^[^\p{L}\p{N}\n]*Todo(?:\s|$)`)
+
 // checkpoint waits, then reads the pane once and looks for every task id.
-// No id on screen means the todo list is not written yet, which is
-// "unconfirmed", not a failure. Some ids missing is "drift". The pane text
-// comes back so the caller can show it on drift. A failed read is
+// With no todo card on screen the list is not written yet, which is
+// "unconfirmed", not a failure. With a card, an id that is missing is
+// "drift", even when every id is missing: that is a made-up list. The pane
+// text comes back so the caller can show it on drift. A failed read is
 // "unconfirmed" too, with the failure in place of the text. With no ids
 // there is nothing to check: ok, and herdr is not called.
 func checkpoint(slug string, ids []string) (string, []string, string) {
@@ -283,16 +291,16 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 	if err != nil {
 		return checkpointUnconfirmed, nil, err.Error()
 	}
+	if !todoCardHeader.MatchString(text) {
+		return checkpointUnconfirmed, nil, text
+	}
 	var missing []string
 	for _, id := range ids {
 		if !regexp.MustCompile(`(?i)\btask[ -]?` + regexp.QuoteMeta(id) + `\b`).MatchString(text) {
 			missing = append(missing, id)
 		}
 	}
-	switch {
-	case len(missing) == len(ids):
-		return checkpointUnconfirmed, nil, text
-	case len(missing) > 0:
+	if len(missing) > 0 {
 		return checkpointDrift, missing, text
 	}
 	return checkpointOK, nil, text

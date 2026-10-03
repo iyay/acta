@@ -69,11 +69,11 @@ The polish commit counts as no round. Every commit gets the two reviewers. This 
 2. With `[fix]` NOTEs: one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range. When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
-5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (the NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag in the reviewer's line, so once the tag is gone the priority starts the line. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset, which is fine. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
+5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag so once the tag is gone the priority starts the line. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
 6. The `[note]` NOTEs go into a `## Review notes` section in the plan file, one line each, and that section is committed with the plan.
 7. Then `acta:land`.
 
-A polish sent to another agent goes out with `acta dispatch init --round polish`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward.
+A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward.
 
 ## Small changes
 

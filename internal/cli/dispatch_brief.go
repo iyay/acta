@@ -85,8 +85,8 @@ func scanPlan(src []byte) planMarks {
 	return m
 }
 
-// briefTasks picks the tasks one round covers, by heading line. Task 3 of the
-// send command also needs the ids for the checkpoint.
+// briefTasks picks the tasks one round covers, by heading line. The send
+// command also needs their ids for its checkpoint.
 func briefTasks(src []byte, round string) ([]board.TaskSec, error) {
 	if round == polishRound {
 		return nil, nil

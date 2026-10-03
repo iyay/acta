@@ -39,7 +39,7 @@ func TestSkillReview(t *testing.T) {
 			"a `## Review notes` section in the plan file",
 			"that section is committed with the plan",
 			"Then `acta:land`.",
-			"A polish sent to another agent goes out with `acta dispatch init --round polish`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward.",
+			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward.",
 			// Every other place names that section instead of restating it.
 			"A CLEAN round runs the polish flow in `## After a CLEAN round`.",
 			"run `## After a CLEAN round`, which ends in `acta:land`.",

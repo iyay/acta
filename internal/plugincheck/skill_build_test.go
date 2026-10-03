@@ -35,6 +35,9 @@ func TestSkillBuild(t *testing.T) {
 			"A native worktree tool puts the worktree inside the repo",
 			"or has `depth: minimal` in its frontmatter",
 			"Refuse to start unless the spec is approved",
+			// acta dispatch close reads the slug from the current branch, so it
+			// only works in the worktree, before land deletes the branch.
+			"With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land`",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
@@ -45,6 +48,7 @@ func TestSkillBuild(t *testing.T) {
 			"subagent (default", "`subagent` (default)",
 			"EnterWorktree", "Native Worktree Tools", "native worktree tool available", "Git Worktree Fallback", "Step 1a",
 			"Refuse to start without an approved spec and an approved plan. Say which one is missing.",
+			"after `acta:land` close the tab",
 		},
 	})
 }

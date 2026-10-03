@@ -18,11 +18,6 @@ const (
 	// exitDrift means the recipient's todo list misses some task ids. Exit 1
 	// already means bad input in this CLI, so drift gets its own number.
 	exitDrift = 4
-
-	// dispatchParent is the branch a dispatch worktree is merged back into.
-	// The repo records no parent branch anywhere, and every worktree here
-	// comes from main.
-	dispatchParent = "main"
 )
 
 // herdrNamePattern is what herdr accepts as an agent name.
@@ -113,6 +108,18 @@ func cmdDispatchSend(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "cannot find the main checkout:", err)
 		return exitOther
 	}
+	// The repo records no parent branch, so the parent is the branch the
+	// main checkout is on: that is where land merges the worktree.
+	mainCheckout := filepath.Dir(common)
+	parent, err := gitIn(mainCheckout, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		fmt.Fprintln(stderr, "cannot read the branch of the main checkout:", err)
+		return exitOther
+	}
+	if parent == "HEAD" {
+		fmt.Fprintln(stderr, "the main checkout is on a detached head, so there is no parent branch to merge into")
+		return exitOther
+	}
 	slug, ok := dispatchSlug(branch)
 	if !ok {
 		fmt.Fprintf(stderr, "cannot make an agent slug from branch %q: it must be a-z, 0-9, - or _, start with a letter, 32 characters at most\n", branch)
@@ -142,7 +149,7 @@ func cmdDispatchSend(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	// refuses leaves no record behind.
 	text, err := buildBrief(rec.Plan, src, briefInput{
 		Round: *round, Note: note, Rules: *rules, Worktree: cfg.RepoRoot, Branch: branch,
-		Parent: dispatchParent, Base: base, Home: home, MainCheckout: filepath.Dir(common),
+		Parent: parent, Base: base, Home: home, MainCheckout: mainCheckout,
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, err)

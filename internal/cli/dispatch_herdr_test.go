@@ -221,6 +221,19 @@ func TestHerdrFindHerdrErrorIsNotNotFound(t *testing.T) {
 	h.wantCalls([]string{getSlug}, h.calls())
 }
 
+// "not found" in a herdr failure that is not the agent_not_found answer is a
+// herdr error: acting on it would open a second tab next to a live one.
+func TestHerdrIsNotFoundOnlyForAgentNotFound(t *testing.T) {
+	fastWaits(t, 50*time.Millisecond, 0, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.fail("agent_get", "", "socket not found")
+	_, err := findOrMakeTab("round-1", "/w")
+	if err == nil || !strings.Contains(err.Error(), "socket not found") {
+		t.Fatalf("want herdr's stderr in the error, got %v", err)
+	}
+	h.wantCalls([]string{getSlug}, h.calls())
+}
+
 func TestHerdrFindHerdrMissingIsAnError(t *testing.T) {
 	fastWaits(t, 50*time.Millisecond, 0, 0, time.Millisecond)
 	t.Setenv("PATH", t.TempDir())
@@ -418,7 +431,7 @@ func TestHerdrDeliverGoalReadFailureStops(t *testing.T) {
 func TestHerdrCheckpointOK(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 20*time.Millisecond, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", "todo\n- Task 1: a\n- task-2 b\n- TASK 4 c\n")
+	h.out("agent_read_recent-unwrapped", todoCard+"- Task 1: a\n- task-2 b\n- TASK 4 c\n")
 	start := time.Now()
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2", "4"})
 	if verdict != "ok" || len(missing) != 0 {
@@ -437,7 +450,7 @@ func TestHerdrCheckpointDriftNamesMissingIDs(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
 	// Task 12 must not count as task 1, and task 3 is absent.
-	h.out("agent_read_recent-unwrapped", "- Task 12: other\n- Task 2: b\n")
+	h.out("agent_read_recent-unwrapped", todoCard+"- Task 12: other\n- Task 2: b\n")
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2", "3"})
 	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1", "3"}) {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -448,6 +461,10 @@ func TestHerdrCheckpointDriftNamesMissingIDs(t *testing.T) {
 	h.wantCalls([]string{readRecent}, h.calls())
 }
 
+// What omp draws for its todo list: a header line titled Todo. The glyph
+// and the colors depend on the theme, so the tests never rely on them.
+const todoCard = "\u23fa Todo 3 tasks\n"
+
 func TestHerdrCheckpointUnconfirmedWithNoTodoList(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
@@ -457,6 +474,53 @@ func TestHerdrCheckpointUnconfirmedWithNoTodoList(t *testing.T) {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
 	}
 	h.wantCalls([]string{readRecent}, h.calls())
+}
+
+// A made-up todo list is the case the checkpoint exists for: a card is on
+// screen and none of the ids is in it. That is drift, not "not written yet".
+func TestHerdrCheckpointCardWithNoIDsIsDrift(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", "\u23fa Todo 2 tasks\n\u2610 Build the auth module\n\u2610 Add the REST endpoints\n")
+	verdict, missing, pane := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1", "2"}) {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+	if !strings.Contains(pane, "auth module") {
+		t.Fatalf("pane text not returned: %q", pane)
+	}
+}
+
+// Ids that sit in plain text with no Todo card are not a todo list. The
+// words Todos, Todo-list and mytodo are not the card title either.
+func TestHerdrCheckpointIDsWithoutCardAreUnconfirmed(t *testing.T) {
+	for _, pane := range []string{
+		"Task 1: a\nTask 2: b\n",
+		"Todos\n- Task 1: a\n- Task 2: b\n",
+		"Todo-list\n- Task 1: a\n- Task 2: b\n",
+		"mytodo 3 tasks\n- Task 1: a\n- Task 2: b\n",
+		"I will make a todo list: Task 1, Task 2\n",
+	} {
+		fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+		h := newScriptedHerdr(t)
+		h.out("agent_read_recent-unwrapped", pane)
+		verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+		if verdict != "unconfirmed" || len(missing) != 0 {
+			t.Fatalf("pane %q: verdict %q missing %q", pane, verdict, missing)
+		}
+	}
+}
+
+// The card header may sit inside a frame, so glyphs and spaces before the
+// word Todo are allowed.
+func TestHerdrCheckpointCardInsideAFrame(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", "\u256d\u2500 \u23fa Todo 2/2\n\u2502 Task 1: a\n\u2502 Task 2: b\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "ok" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
 }
 
 func TestHerdrCheckpointReadFailureIsUnconfirmed(t *testing.T) {
