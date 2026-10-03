@@ -64,9 +64,9 @@ started: "2026-10-03 21:05:18"
 
 **verify:** `send` never sends anything to herdr until the record and the brief are both written and checked, and every refusal (no `HERDR_ENV=1`, no `$HERDR_PANE_ID`, not a git repo, bad plan, bad round, no rules file, bad slug, a brief error) exits 1 with nothing sent. On success it prints exactly these lines: slug, pane, base, brief path, checkpoint verdict, and the watcher command `herdr agent wait <slug> --until idle --until done`; drift prints the pane text and exits 4; a herdr failure exits 2 with herdr's reason. `close` resolves the pane from the slug and runs `herdr pane close <pane>`, and refuses when the slug does not resolve. `dispatch init` output and behaviour are unchanged. List every flag, every refusal and every exit code checked.
 
-- [ ] Failing test: end-to-end tests in a temp git repo with a plan and the Task 2 scripted fake herdr: first send, fix round send (no `tab create`, no `pane run`), polish with `--note-file -` from stdin, each refusal, drift, herdr failure, `close` found and not found; plus the existing `dispatch init` tests still pass; they fail because `send` and `close` do not exist.
-- [ ] Code: `cmdDispatchSend` with `--plan`, `--round`, `--note-file` (a path or `-`), `--rules` (absolute path of `house-rules.md`, must exist), then `writeRecord`, `buildBrief` to `.claude/dispatch/<slug>-brief.md`, `findOrMakeTab`, `deliverGoal` with the goal text (one-line plan title, `ultrathink orchestrate` as plain words, the brief path, the REPLY-BACK line), `checkpoint`, and the printed lines; `cmdDispatchClose` with no flags.
-- [ ] Commit: `dispatch: add send and close`
+- [x] Failing test: end-to-end tests in a temp git repo with a plan and the Task 2 scripted fake herdr: first send, fix round send (no `tab create`, no `pane run`), polish with `--note-file -` from stdin, each refusal, drift, herdr failure, `close` found and not found; plus the existing `dispatch init` tests still pass; they fail because `send` and `close` do not exist.
+- [x] Code: `cmdDispatchSend` with `--plan`, `--round`, `--note-file` (a path or `-`), `--rules` (absolute path of `house-rules.md`, must exist), then `writeRecord`, `buildBrief` to `.claude/dispatch/<slug>-brief.md`, `findOrMakeTab`, `deliverGoal` with the goal text (one-line plan title, `ultrathink orchestrate` as plain words, the brief path, the REPLY-BACK line), `checkpoint`, and the printed lines; `cmdDispatchClose` with no flags.
+- [x] Commit: `dispatch: add send and close`
 
 ### Task 4: One short dispatch.md
 
@@ -77,9 +77,9 @@ started: "2026-10-03 21:05:18"
 
 **verify:** No rule the old two files enforced is lost without a home: each one is either in the new `dispatch.md`, tested in Go by Tasks 1 to 3, or owned by the skill the spec names (`acta:slice` for property verify lines, `acta:review` for the stopping rule, `references/house-rules.md` for spreading work), and the only rules dropped are `/new`, the "New session started" check and the wave check, as the spec says. The new file says: it applies only with `HERDR_ENV=1`, else `dispatch` runs as `subagent`; run `acta dispatch send` with `--rules` set to this skill's base dir plus `../../references/house-rules.md`; read its lines and exit code; never wait, end the turn; start the printed watcher in the background and handle its four outcomes; verify from git; fix rounds and polish with `send --round`; `acta dispatch close` after `acta:land`; `Bugs found by recipient`; harvest omp memory; the advisor in one line. The file is at most 8000 bytes. List every pinned phrase of the old tests and where its rule lives now.
 
-- [ ] Failing test: rewrite the pins in `build_dispatch_test.go` to the new file (keep the bans list and add `herdr-delivery.md`, `New session started` and `/new` to it), drop the moved pins, and lower the caps; they fail because the old files still exist and are too big.
-- [ ] Code: write the new `dispatch.md` from scratch in plain short sentences, and `git rm` `herdr-delivery.md`.
-- [ ] Commit: `build: one short dispatch.md on top of acta dispatch send`
+- [x] Failing test: rewrite the pins in `build_dispatch_test.go` to the new file (keep the bans list and add `herdr-delivery.md`, `New session started` and `/new` to it), drop the moved pins, and lower the caps; they fail because the old files still exist and are too big.
+- [x] Code: write the new `dispatch.md` from scratch in plain short sentences, and `git rm` `herdr-delivery.md`.
+- [x] Commit: `build: one short dispatch.md on top of acta dispatch send`
 
 ### Task 5: Version 0.1.3
 
