@@ -5,6 +5,7 @@ id: PLN-0079
 created: "2026-10-03 21:01:58"
 hash: pv9qwfx
 started: "2026-10-03 21:05:18"
+finished: "2026-10-03 21:17:56"
 ---
 # Dispatch Send and Close Implementation Plan
 
@@ -64,9 +65,9 @@ started: "2026-10-03 21:05:18"
 
 **verify:** `send` never sends anything to herdr until the record and the brief are both written and checked, and every refusal (no `HERDR_ENV=1`, no `$HERDR_PANE_ID`, not a git repo, bad plan, bad round, no rules file, bad slug, a brief error) exits 1 with nothing sent. On success it prints exactly these lines: slug, pane, base, brief path, checkpoint verdict, and the watcher command `herdr agent wait <slug> --until idle --until done`; drift prints the pane text and exits 4; a herdr failure exits 2 with herdr's reason. `close` resolves the pane from the slug and runs `herdr pane close <pane>`, and refuses when the slug does not resolve. `dispatch init` output and behaviour are unchanged. List every flag, every refusal and every exit code checked.
 
-- [ ] Failing test: end-to-end tests in a temp git repo with a plan and the Task 2 scripted fake herdr: first send, fix round send (no `tab create`, no `pane run`), polish with `--note-file -` from stdin, each refusal, drift, herdr failure, `close` found and not found; plus the existing `dispatch init` tests still pass; they fail because `send` and `close` do not exist.
-- [ ] Code: `cmdDispatchSend` with `--plan`, `--round`, `--note-file` (a path or `-`), `--rules` (absolute path of `house-rules.md`, must exist), then `writeRecord`, `buildBrief` to `.claude/dispatch/<slug>-brief.md`, `findOrMakeTab`, `deliverGoal` with the goal text (one-line plan title, `ultrathink orchestrate` as plain words, the brief path, the REPLY-BACK line), `checkpoint`, and the printed lines; `cmdDispatchClose` with no flags.
-- [ ] Commit: `dispatch: add send and close`
+- [x] Failing test: end-to-end tests in a temp git repo with a plan and the Task 2 scripted fake herdr: first send, fix round send (no `tab create`, no `pane run`), polish with `--note-file -` from stdin, each refusal, drift, herdr failure, `close` found and not found; plus the existing `dispatch init` tests still pass; they fail because `send` and `close` do not exist.
+- [x] Code: `cmdDispatchSend` with `--plan`, `--round`, `--note-file` (a path or `-`), `--rules` (absolute path of `house-rules.md`, must exist), then `writeRecord`, `buildBrief` to `.claude/dispatch/<slug>-brief.md`, `findOrMakeTab`, `deliverGoal` with the goal text (one-line plan title, `ultrathink orchestrate` as plain words, the brief path, the REPLY-BACK line), `checkpoint`, and the printed lines; `cmdDispatchClose` with no flags.
+- [x] Commit: `dispatch: add send and close`
 
 ### Task 4: One short dispatch.md
 
@@ -77,9 +78,9 @@ started: "2026-10-03 21:05:18"
 
 **verify:** No rule the old two files enforced is lost without a home: each one is either in the new `dispatch.md`, tested in Go by Tasks 1 to 3, or owned by the skill the spec names (`acta:slice` for property verify lines, `acta:review` for the stopping rule, `references/house-rules.md` for spreading work), and the only rules dropped are `/new`, the "New session started" check and the wave check, as the spec says. The new file says: it applies only with `HERDR_ENV=1`, else `dispatch` runs as `subagent`; run `acta dispatch send` with `--rules` set to this skill's base dir plus `../../references/house-rules.md`; read its lines and exit code; never wait, end the turn; start the printed watcher in the background and handle its four outcomes; verify from git; fix rounds and polish with `send --round`; `acta dispatch close` after `acta:land`; `Bugs found by recipient`; harvest omp memory; the advisor in one line. The file is at most 8000 bytes. List every pinned phrase of the old tests and where its rule lives now.
 
-- [ ] Failing test: rewrite the pins in `build_dispatch_test.go` to the new file (keep the bans list and add `herdr-delivery.md`, `New session started` and `/new` to it), drop the moved pins, and lower the caps; they fail because the old files still exist and are too big.
-- [ ] Code: write the new `dispatch.md` from scratch in plain short sentences, and `git rm` `herdr-delivery.md`.
-- [ ] Commit: `build: one short dispatch.md on top of acta dispatch send`
+- [x] Failing test: rewrite the pins in `build_dispatch_test.go` to the new file (keep the bans list and add `herdr-delivery.md`, `New session started` and `/new` to it), drop the moved pins, and lower the caps; they fail because the old files still exist and are too big.
+- [x] Code: write the new `dispatch.md` from scratch in plain short sentences, and `git rm` `herdr-delivery.md`.
+- [x] Commit: `build: one short dispatch.md on top of acta dispatch send`
 
 ### Task 5: Version 0.1.3
 
@@ -88,6 +89,21 @@ started: "2026-10-03 21:05:18"
 
 **verify:** All three manifests say `0.1.3` and plugincheck's version test passes; no other file pins a version.
 
-- [ ] Failing test: none needed; plugincheck's existing version test is the check, run before and after.
-- [ ] Code: change `0.1.2` to `0.1.3` in the three files.
-- [ ] Commit: `version 0.1.3`
+- [x] Failing test: none needed; plugincheck's existing version test is the check, run before and after.
+- [x] Code: change `0.1.2` to `0.1.3` in the three files.
+- [x] Commit: `version 0.1.3`
+
+## Fix round 1
+
+Review round 1 (`c747698..d709b2c`): Spec axis BLOCKED, Standards axis CLEAN. Two BLOCKERs and four `[fix]` NOTEs, all in this one task.
+
+### Task 6: Checkpoint sees a made-up todo list, close runs before land, and four small fixes
+
+**Files:**
+- Modify: `internal/cli/dispatch_herdr.go`, `internal/cli/dispatch_herdr_test.go`, `internal/cli/dispatch_send.go`, `internal/cli/dispatch_send_test.go`, `internal/cli/dispatch_brief.go`, `plugin/skills/build/SKILL.md` (the `## Close` paragraph), `plugin/skills/review/SKILL.md` (the polish dispatch line), `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/build_dispatch_test.go` or `skill_build_test.go` (one pin for the close order), `internal/plugincheck/budget_test.go` (only if a cap must move; caps may only go down or stay)
+
+**verify:** (1) The checkpoint never reports `ok` or `unconfirmed` for a todo list that is on screen but leaves out task ids: `unconfirmed` only when the read shows no omp todo card (the card's title line is `Todo`, see `pi-tui/src/tools/todo.ts` in omp 18), and any missing id on a screen with that card is `drift` with the missing ids, including when every id is missing. List every pane shape checked (no card, card with all ids, card with some, card with none, ids in text but no card). (2) No skill text tells the orchestrator to run `acta dispatch close` after `acta:land`: build `SKILL.md` `## Close` and `dispatch.md` agree that close runs from the worktree before land, and a plugincheck pin guards it. (3) The brief's parent line names the branch the main checkout is on, not a fixed `main`; a main checkout on `master` gives `master`. (4) `review/SKILL.md` sends a dispatched polish with `acta dispatch send --round polish`, and its pin matches. (5) `isNotFound` treats only herdr's `agent_not_found` answer as a missing agent, as its comment says; any other "not found" text is a herdr error. (6) No comment in the diff names a plan task number. List every file changed.
+
+- [x] Failing test: add checkpoint cases for each pane shape in (1), a send test with the main checkout on `master`, an `isNotFound` case for "socket not found", and the two plugincheck pins for (2) and (4); they fail on today's code.
+- [x] Code: detect the `Todo` card line in `checkpoint`; read the parent with `gitIn(mainCheckout, "rev-parse", "--abbrev-ref", "HEAD")`; narrow `isNotFound`; reword the `## Close` sentence in build `SKILL.md` and the polish line in review `SKILL.md`; fix the `briefTasks` comment.
+- [x] Commit: `dispatch: fix round 1 (made-up todo list is drift, close before land, real parent)`

@@ -86,6 +86,27 @@ func gitIn(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// writeRecord saves a record that checkRecord already passed, and returns
+// where it went. Init and send both write through here.
+func writeRecord(cfg config.Config, r dispatchRecord, stderr io.Writer) (string, int) {
+	// A missing ignore line would put the record in the next commit, so say it
+	// out loud instead of failing: the record itself is already good.
+	if err := hook.EnsureGitignore(cfg.Root, ".dispatch.json"); err != nil {
+		fmt.Fprintln(stderr, "cannot add .dispatch.json to", filepath.Join(cfg.Root, ".gitignore")+":", err)
+	}
+	data, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return "", exitOther
+	}
+	path := recordPath(cfg)
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+		fmt.Fprintln(stderr, err)
+		return "", exitOther
+	}
+	return path, exitOK
+}
+
 func cmdDispatchInit(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("dispatch init", stderr)
 	pane := fs.String("pane", "", "orchestrator pane id, for example wM:pH")
@@ -126,20 +147,9 @@ func cmdDispatchInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return exitBadInput
 	}
-	// A missing ignore line would put the record in the next commit, so say it
-	// out loud instead of failing: the record itself is already good.
-	if err := hook.EnsureGitignore(cfg.Root, ".dispatch.json"); err != nil {
-		fmt.Fprintln(stderr, "cannot add .dispatch.json to", filepath.Join(cfg.Root, ".gitignore")+":", err)
-	}
-	data, err := json.MarshalIndent(r, "", "  ")
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitOther
-	}
-	path := recordPath(cfg)
-	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitOther
+	path, code := writeRecord(cfg, r, stderr)
+	if code != exitOK {
+		return code
 	}
 	fmt.Fprintf(stdout, "dispatch record: %s\n", path)
 	return exitOK

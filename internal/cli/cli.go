@@ -134,9 +134,15 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "doctor":
 		return cmdDoctor(args[1:], stdout, stderr)
 	case "dispatch":
-		if len(args) < 2 || args[1] != "init" {
-			fmt.Fprintln(stderr, "usage: acta dispatch init --pane <id> --plan <path> [--round <slug>]")
+		if len(args) < 2 || (args[1] != "init" && args[1] != "send" && args[1] != "close") {
+			fmt.Fprintln(stderr, "usage: acta dispatch init --pane <id> --plan <path> [--round <slug>] | send --plan <path> --rules <path> [--round <slug>] [--note-file <path>|-] | close")
 			return exitBadInput
+		}
+		switch args[1] {
+		case "send":
+			return cmdDispatchSend(args[2:], stdin, stdout, stderr)
+		case "close":
+			return cmdDispatchClose(args[2:], stdout, stderr)
 		}
 		return cmdDispatchInit(args[2:], stdout, stderr)
 	case "reply-back":
@@ -146,7 +152,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "eval-omp":
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, reply-back, run-one or eval-omp\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
 		return exitBadInput
 	}
 }

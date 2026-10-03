@@ -208,7 +208,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 
-Every executor closes this way. Only the fix round is sent differently: `subagent` gives the fix task to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent in its tab (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, after `acta:land` close the tab (`## Close the tab` in dispatch.md).
+Every executor closes this way; only the fix round differs: `subagent` gives the fix to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land` (`## Close the tab` there).
 
 ### Reply back when a dispatch record exists
 
