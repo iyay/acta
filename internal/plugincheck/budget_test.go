@@ -19,9 +19,10 @@ import (
 // lower its number in the same commit, so the gain cannot slip away. To add a
 // file, add its line here on purpose.
 
-// fileCaps holds the cap of every .md file under skills/ and references/.
-// The keys are paths as walkPlugin names them.
+// fileCaps holds the cap of every .md file under skills/, references/ and
+// output-styles/. The keys are paths as walkPlugin names them.
 var fileCaps = map[string]int{
+	"output-styles/acta.md":                         1773,
 	"references/house-rules.md":                     3954,
 	"skills/bug/SKILL.md":                           2327,
 	"skills/build/SKILL.md":                         15281,
@@ -90,12 +91,12 @@ func budgetProblems(suffix string, sizes, caps map[string]int) []string {
 	return out
 }
 
-// TestBudgetFiles fails when a skill or reference file grows past its cap, has
-// no cap, or has a cap but is gone. Every problem shows in one run.
+// TestBudgetFiles fails when a skill, reference or output style file grows past
+// its cap, has no cap, or has a cap but is gone. Every problem shows in one run.
 func TestBudgetFiles(t *testing.T) {
 	sizes := map[string]int{}
 	walkPlugin(t, func(rel, text string) {
-		if strings.HasSuffix(rel, ".md") && (strings.HasPrefix(rel, "skills/") || strings.HasPrefix(rel, "references/")) {
+		if strings.HasSuffix(rel, ".md") && (strings.HasPrefix(rel, "skills/") || strings.HasPrefix(rel, "references/") || strings.HasPrefix(rel, "output-styles/")) {
 			sizes[rel] = len(text)
 		}
 	})

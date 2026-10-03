@@ -478,6 +478,58 @@ claude plugin eval --eval-dir evals --model sonnet --ablation none \
 - Case 3 grants `allowed_tools: [Skill]` so the child can load the shape
   skill and answer from it; with no tools it never reads the rule it is graded on.
 
+## Plugin output styles load in the eval sandbox
+
+Measured on 2026-10-03 with Claude Code 2.1.288. The plugin ships an output
+style, `output-styles/acta.md`, with `force-for-plugin: true`. The question: does
+a `claude plugin eval` run load it?
+
+A throwaway case, never committed, asked the agent to quote any instruction
+under a heading named "Every reply", or say NONE. It had no tool and
+`max_turns: 1`. Its one `regex` grader looks for `Open with the answer`, a
+phrase only the style file has. The old session start text also prints
+`Style (ADHD reader):`, so that phrase would have proved nothing.
+
+The run, without the scaffold note, the kept-directory warning and the summary
+table:
+
+```
+$ scripts/eval --case zz-style-probe --trust-plugin --keep-temp
+Results will be written to <out>
+Plugin under test: "acta" version "0.1.1" at "<plugin>"
+  kept temp: <run>
+  zz-style-probe run 1/1: score 1.00  $0.06
+    ✓ loaded (weight 1): matched Open with the answer
+✓ zz-style-probe  score 1.00  (1 run)  $0.06
+```
+
+The reply, read out of `<run>/out/trace.jsonl` and trimmed:
+
+```
+Here is the "Every reply" section, word for word:
+
+- Open with the answer or the result. No opener, no restated request, no plan narration, no recap, no sign-off.
+- Run tools without announcing them. Write between tool calls only to warn, to ask, or to settle something unclear.
+...
+- Chat language and tone come from the acta session note; the tone wins over cutting words. Never name or describe this style unless asked.
+
+Where things stand: acta setup hasn't run yet, and I haven't run it because you asked me not to.
+
+Next action (under 2 minutes): type `/acta:setup` when you want it.
+```
+
+All nine bullets of the block came back word for word. The last two lines are
+the old ADHD block, which the `acta` on PATH still prints.
+
+The session log under `<run>/config/projects/` shows why. It holds an
+attachment of type `output_style_instructions` with the style name `acta:acta`
+and the body of the style file. The sandbox `settings.json` has no `outputStyle`
+key, so the plugin forced the style. The `init` line of `trace.jsonl` still says
+`"output_style": "default"`, so never decide from it.
+
+**Plugin output styles load in the `claude plugin eval` sandbox.** A case can
+grade the style by a phrase only the style file has.
+
 ## The same cases in omp
 
 `scripts/eval --omp` (or `acta eval-omp [--case <glob>] [plugin-dir]`) runs
