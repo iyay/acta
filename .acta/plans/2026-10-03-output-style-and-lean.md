@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0078
 created: "2026-10-03 15:13:53"
 hash: ooo3dhj
+started: "2026-10-03 15:21:15"
 ---
 # Output Style, Lean Coding Guide, Session Start Diet Implementation Plan
 
@@ -46,9 +47,9 @@ hash: ooo3dhj
 
 **verify:** The style file holds the approved text and nothing else: `name: acta`, `keep-coding-instructions: true`, `force-for-plugin: true`, both headings exactly as the spec appendix writes them, and a body of at most 300 words. The FACTS.md entry decides load or no load by a phrase only the style file has (`Open with the answer`), never by one the old hook text also prints (`ADHD reader`). List each key, each heading, and the probe command with its answer.
 
-- [ ] Failing test: `style_test.go` checks the three keys, both headings and the 300-word body cap, and the budget walk covers `output-styles/`; it fails because the file does not exist.
-- [ ] Code: write the file from the spec appendix with its cap; add a throwaway `zz-style-probe/prompt.md` (runs 1, max_turns 1, timeout_seconds 120, allowed_tools []) asking the agent to run no setup and no tool and to quote word for word any instruction under a heading named "Every reply", or say NONE; run `scripts/eval --case zz-style-probe`, write the date, the command and the answer to `plugin/evals/FACTS.md`, then delete the probe folder.
-- [ ] Commit: `add the acta output style and record whether evals load it`
+- [x] Failing test: `style_test.go` checks the three keys, both headings and the 300-word body cap, and the budget walk covers `output-styles/`; it fails because the file does not exist.
+- [x] Code: write the file from the spec appendix with its cap; add a throwaway `zz-style-probe/prompt.md` (runs 1, max_turns 1, timeout_seconds 120, allowed_tools []) asking the agent to run no setup and no tool and to quote word for word any instruction under a heading named "Every reply", or say NONE; run `scripts/eval --case zz-style-probe`, write the date, the command and the answer to `plugin/evals/FACTS.md`, then delete the probe folder.
+- [x] Commit: `add the acta output style and record whether evals load it`
 
 ### Task 2: Config key coding_guide
 
@@ -58,9 +59,9 @@ hash: ooo3dhj
 
 **verify:** No path stores or accepts a `coding_guide` other than `lean` or `off`: the user file, `.acta.yaml`, `config set`, `config set --repo`. An unset value reads as lean everywhere it is shown, and a repo value beats the user value and shows `(repo)`. List every read and write path checked.
 
-- [ ] Failing test: tests for `Validate`, `MergeRepo`, both `set` forms and `config show` in text and JSON; they fail because the key does not exist.
-- [ ] Code: add the field, the check, the repo key and the flag, following `PlanDepth` and `--plan-depth` line by line.
-- [ ] Commit: `add the coding_guide config key`
+- [x] Failing test: tests for `Validate`, `MergeRepo`, both `set` forms and `config show` in text and JSON; they fail because the key does not exist.
+- [x] Code: add the field, the check, the repo key and the flag, following `PlanDepth` and `--plan-depth` line by line.
+- [x] Commit: `add the coding_guide config key`
 
 ### Task 3: omp adds the style to the session rules
 
@@ -69,9 +70,9 @@ hash: ooo3dhj
 
 **verify:** Every session-start text omp sends, from acta or from the default rules, ends with the style body without its frontmatter, and no failure to read the style file stops the session or changes the rest of the text. The reminder never carries the style. List each path: acta ok, acta failed, reader throws, file with no frontmatter.
 
-- [ ] Failing test: every `createState` call in the tests passes a `readStyle` stub (none reads the real file, since Task 1 writes it in the same wave); new tests expect the body after RULES and after DEFAULTS, the frontmatter gone, and the old text when the stub throws; they fail because `index.ts` never reads the style.
-- [ ] Code: call `readStyle` inside a try/catch, drop a leading `---` to `---` block, and append the body after a blank line to the rules part only.
-- [ ] Commit: `omp: add the acta style to the session rules`
+- [x] Failing test: every `createState` call in the tests passes a `readStyle` stub (none reads the real file, since Task 1 writes it in the same wave); new tests expect the body after RULES and after DEFAULTS, the frontmatter gone, and the old text when the stub throws; they fail because `index.ts` never reads the style.
+- [x] Code: call `readStyle` inside a try/catch, drop a leading `---` to `---` block, and append the body after a blank line to the rules part only.
+- [x] Commit: `omp: add the acta style to the session rules`
 
 ### Task 4: caveman and ponytail overlap acta
 
@@ -80,9 +81,9 @@ hash: ooo3dhj
 
 **verify:** caveman and ponytail are flagged wherever doctor reads the list, matched by plugin or marketplace name in any case, and no doctor message or list comment still calls them workflow plugins or names pm. List each message and comment checked. The session start note changes in Task 5.
 
-- [ ] Failing test: a doctor test with `caveman@caveman` and `ponytail@ponytail` enabled, reading the real `plugin/hooks/workflow-plugins.txt`, expects a warn that names both and says "overlaps acta", and `TestWorkflowPluginsList` wants both names; they fail because the list lacks them.
-- [ ] Code: add the two names and the new wording.
-- [ ] Commit: `flag caveman and ponytail as plugins that overlap acta`
+- [x] Failing test: a doctor test with `caveman@caveman` and `ponytail@ponytail` enabled, reading the real `plugin/hooks/workflow-plugins.txt`, expects a warn that names both and says "overlaps acta", and `TestWorkflowPluginsList` wants both names; they fail because the list lacks them.
+- [x] Code: add the two names and the new wording.
+- [x] Commit: `flag caveman and ponytail as plugins that overlap acta`
 
 ### Task 5: Session start text
 
@@ -99,6 +100,7 @@ hash: ooo3dhj
 
 **Files:**
 - Create: `plugin/skills/lean/SKILL.md`, `internal/plugincheck/skill_lean_test.go`
+- Modify (added after Task 2): `plugin/skills/setup/SKILL.md` (setup asks for every value marked `(default)`, and `config show` now always prints `coding_guide: lean (default)`; one sentence says setup never asks about `coding_guide`, as spec section 3 says) and `internal/plugincheck/skill_setup_test.go` (pins that sentence); its cap in `budget_test.go` moves to the new size
 - Modify: `plugin/skills/slice/SKILL.md` (the `minimal` depth bullet says "the lean line"; the `## Keep it small` line becomes: unless `acta config show` says `coding_guide: off`, every plan's Global Constraints carry "Follow acta:lean: understand the task and the code first; then skip it, reuse code here, stdlib, a native feature, an installed dependency, one line, the minimum; never cut validation, security or accessibility."), `plugin/references/house-rules.md` (delete the PONYTAIL line), `plugin/skills/build/dispatch.md` (drop ponytail from "(TDD, ponytail, COMMENTS, PARALLEL)"), `plugin/NOTICE` (the ponytail and caveman entries from spec section 7; i-have-adhd points at the ADHD block of `output-styles/acta.md`), `internal/hook/hook.go` (`Skills` gains `lean`), `plugin/hooks/default-rules.md` (regenerate), `internal/plugincheck/skill_slice_test.go` ("ponytail-lazy" becomes "Follow acta:lean"), `internal/plugincheck/plugin_test.go` (`TestNoticeAndReadme` wants `DietrichGebert`, `Julius Brussee`, `skills/lean/`, `output-styles/acta.md`), `internal/plugincheck/budget_test.go` (caps for the lean file and description at real size; slice, house-rules and dispatch at their new sizes; `sessionStartCap` up by the bytes `lean` adds to the index)
 
 **verify:** "ponytail" cannot come back, in any case, anywhere under `plugin/` except `NOTICE` and `hooks/workflow-plugins.txt`; the lean skill is at most 400 words, keeps every never-cut item from spec section 4, and has no level and no `ponytail:` marker; a plan gets the lean line unless coding_guide is off. List every ponytail hit removed and every file the scan covers.

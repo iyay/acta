@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/iyay/acta/internal/config"
 )
 
 // repoWithGlobal makes a temp folder to run in and a temp global config, so
@@ -82,8 +84,68 @@ func TestConfigShowPlanDepthSetHasNoDefaultMark(t *testing.T) {
 	for _, c := range cases {
 		repoWithGlobal(t, c.global, c.repo)
 		out := mustRun(t, "config", "show")
-		if !strings.Contains(out, c.want) || strings.Contains(out, "(default)") {
+		// Only the plan_depth line is judged: an unset coding_guide shows (default) too.
+		var line string
+		for _, l := range strings.Split(out, "\n") {
+			if strings.HasPrefix(l, "plan_depth:") {
+				line = l
+			}
+		}
+		if !strings.Contains(out, c.want) || strings.Contains(line, "(default)") {
 			t.Errorf("global %q repo %q: want %q, no (default):\n%s", c.global, c.repo, c.want, out)
+		}
+	}
+}
+
+// With nothing set anywhere, coding_guide still shows, as lean, marked
+// (default). The JSON carries the plain value.
+func TestConfigShowCodingGuideDefault(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "coding_guide: lean (default)\n") {
+		t.Errorf("show lacks coding_guide: lean (default):\n%s", out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["coding_guide"] != "lean" {
+		t.Errorf("json coding_guide %v, want lean", got["coding_guide"])
+	}
+	if from, _ := got["from_repo"].([]any); len(from) != 0 {
+		t.Errorf("json from_repo %v, want nothing", got["from_repo"])
+	}
+}
+
+// A coding_guide set in either file, even to lean, gets no (default) mark. A
+// repo value beats the user value both ways and shows (repo), in the text and
+// in from_repo.
+func TestConfigShowCodingGuideSet(t *testing.T) {
+	cases := []struct {
+		global, repo, want, json string
+		fromRepo                 bool
+	}{
+		{"coding_guide: lean\n", "", "coding_guide: lean\n", "lean", false},
+		{"coding_guide: off\n", "", "coding_guide: off\n", "off", false},
+		{"", "coding_guide: lean\n", "coding_guide: lean (repo)\n", "lean", true},
+		{"", "coding_guide: off\n", "coding_guide: off (repo)\n", "off", true},
+		{"coding_guide: lean\n", "coding_guide: off\n", "coding_guide: off (repo)\n", "off", true},
+		{"coding_guide: off\n", "coding_guide: lean\n", "coding_guide: lean (repo)\n", "lean", true},
+	}
+	for _, c := range cases {
+		repoWithGlobal(t, c.global, c.repo)
+		if out := mustRun(t, "config", "show"); !strings.Contains(out, c.want) {
+			t.Errorf("global %q repo %q: show lacks %q:\n%s", c.global, c.repo, c.want, out)
+		}
+		var got map[string]any
+		if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got["coding_guide"] != c.json {
+			t.Errorf("global %q repo %q: json coding_guide %v, want %s", c.global, c.repo, got["coding_guide"], c.json)
+		}
+		from, _ := got["from_repo"].([]any)
+		if (len(from) == 1 && from[0] == "coding_guide") != c.fromRepo {
+			t.Errorf("global %q repo %q: json from_repo %v, want coding_guide=%v", c.global, c.repo, got["from_repo"], c.fromRepo)
 		}
 	}
 }
@@ -117,6 +179,9 @@ func TestConfigSetRepoRefuses(t *testing.T) {
 		{"config", "set", "--repo", "--subagent-models", "split"},
 		{"config", "set", "--repo", "--theme", "x"},
 		{"config", "set", "--repo", "--plan-depth", "deep"},
+		{"config", "set", "--repo", "--coding-guide", "deep"},
+		{"config", "set", "--repo", "--coding-guide", "Lean"},
+		{"config", "set", "--repo", "--coding-guide", "off", "--language", "Korean"},
 		{"config", "set", "--repo"},
 	} {
 		dir, _ := repoWithGlobal(t, "", "")
@@ -146,6 +211,120 @@ func TestConfigSetPlanDepthGlobal(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
 		t.Error("set without --repo wrote .acta.yaml")
+	}
+}
+
+// set --repo --coding-guide writes .acta.yaml and never the global file, and
+// show then marks the value (repo).
+func TestConfigSetRepoCodingGuide(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\ncoding_guide: lean\n", "")
+	before, _ := os.ReadFile(globalPath)
+	mustRun(t, "config", "set", "--repo", "--coding-guide", "off", "--plan-depth", "minimal")
+	after, _ := os.ReadFile(globalPath)
+	if string(before) != string(after) {
+		t.Errorf("global file changed:\n%s", after)
+	}
+	raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+	for _, want := range []string{"coding_guide: off", "plan_depth: minimal"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf(".acta.yaml lacks %q:\n%s", want, raw)
+		}
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "coding_guide: off (repo)\n") {
+		t.Errorf("show:\n%s", out)
+	}
+}
+
+// Without --repo the guide goes to the global file, alone or next to other
+// flags, and never to .acta.yaml.
+func TestConfigSetCodingGuideGlobal(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--coding-guide", "off")
+	// Read the file back through LoadUser: the yaml writer quotes off, so a
+	// text match on the raw file would test the writer, not the setting.
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.CodingGuide != "off" {
+		t.Errorf("global file holds %+v, %v; want coding_guide off", v, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("set without --repo wrote .acta.yaml")
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "coding_guide: off\n") {
+		t.Errorf("show:\n%s", out)
+	}
+	mustRun(t, "config", "set", "--coding-guide", "lean", "--plan-depth", "minimal")
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.CodingGuide != "lean" || v.PlanDepth != "minimal" {
+		t.Errorf("global file holds %+v, %v; want coding_guide lean and plan_depth minimal", v, err)
+	}
+}
+
+// A bad guide is refused with its name, and .acta.yaml keeps the bytes it had.
+func TestConfigSetRepoCodingGuideRefusesBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Lean", "on", "minimal", "lean off"} {
+		dir, _ := repoWithGlobal(t, "", "plan_depth: minimal\n")
+		path := filepath.Join(dir, ".acta.yaml")
+		before, _ := os.ReadFile(path)
+		if code, _, errs := runCodeOut("config", "set", "--repo", "--coding-guide", bad); code != exitBadInput || !strings.Contains(errs, "coding_guide must be lean or off") {
+			t.Errorf("%q: exit %d stderr %q, want bad input saying coding_guide must be lean or off", bad, code, errs)
+		}
+		if after, _ := os.ReadFile(path); string(before) != string(after) {
+			t.Errorf("%q changed .acta.yaml:\n%s", bad, after)
+		}
+	}
+}
+
+// A bad guide is refused before any write, so a file keeps the value it had
+// and a missing file stays missing.
+func TestConfigSetCodingGuideRefusesBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Lean", "on", "minimal"} {
+		_, globalPath := repoWithGlobal(t, "", "")
+		if code, _, errs := runCodeOut("config", "set", "--coding-guide", bad); code != exitBadInput || !strings.Contains(errs, "coding_guide") {
+			t.Errorf("%q: exit %d stderr %q, want bad input naming coding_guide", bad, code, errs)
+		}
+		if _, err := os.Stat(globalPath); err == nil {
+			t.Errorf("%q wrote the global file", bad)
+		}
+	}
+	_, globalPath := repoWithGlobal(t, "coding_guide: off\n", "")
+	before, _ := os.ReadFile(globalPath)
+	if code, _, _ := runCodeOut("config", "set", "--coding-guide", "deep"); code != exitBadInput {
+		t.Errorf("exit %d, want bad input", code)
+	}
+	if after, _ := os.ReadFile(globalPath); string(before) != string(after) {
+		t.Errorf("global file changed:\n%s", after)
+	}
+}
+
+// A bad guide already sitting in either file stops show, and the message names
+// the key and the file. Nothing falls back to lean by itself.
+func TestConfigShowRefusesBadCodingGuide(t *testing.T) {
+	for _, c := range []struct{ global, repo, file string }{
+		{"coding_guide: deep\n", "", "config.yaml"},
+		{"coding_guide: Lean\n", "", "config.yaml"},
+		{"", "coding_guide: deep\n", ".acta.yaml"},
+		{"", "coding_guide: OFF\n", ".acta.yaml"},
+	} {
+		repoWithGlobal(t, c.global, c.repo)
+		for _, args := range [][]string{{"config", "show"}, {"config", "show", "--json"}} {
+			code, out, errs := runCodeOut(args...)
+			if code != exitBadInput || out != "" || !strings.Contains(errs, "coding_guide") || !strings.Contains(errs, c.file) {
+				t.Errorf("global %q repo %q %v: exit %d stdout %q stderr %q", c.global, c.repo, args, code, out, errs)
+			}
+		}
+	}
+}
+
+// The usage line and the --repo refusal both name the new flag.
+func TestConfigUsageNamesCodingGuide(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	_, _, errs := runCodeOut("config", "set")
+	for _, want := range []string{"[--coding-guide lean|off]", "[--coding-guide G]"} {
+		if !strings.Contains(errs, want) {
+			t.Errorf("usage lacks %q:\n%s", want, errs)
+		}
+	}
+	_, _, errs = runCodeOut("config", "set", "--repo", "--language", "Korean")
+	if !strings.Contains(errs, "--coding-guide") {
+		t.Errorf("--repo refusal lacks --coding-guide:\n%s", errs)
 	}
 }
 

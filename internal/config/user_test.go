@@ -160,6 +160,91 @@ func TestSaveRefusesBadExecutorAndModels(t *testing.T) {
 	}
 }
 
+// coding_guide takes lean or off. Empty is fine, it means lean. Anything else
+// is refused by name, and fill trims spaces like it does for the other keys.
+func TestValidateCodingGuide(t *testing.T) {
+	for _, tc := range []struct {
+		guide string
+		ok    bool
+	}{
+		{"", true},
+		{"lean", true},
+		{"off", true},
+		{"lean ", true}, // fill trims
+		{"Lean", false},
+		{"OFF", false},
+		{"on", false},
+		{"full", false},
+		{"minimal", false},
+		{"lean off", false},
+	} {
+		v := UserDefault()
+		v.CodingGuide = tc.guide
+		err := fill(v).Validate()
+		if (err == nil) != tc.ok {
+			t.Errorf("coding_guide %q: err %v, want ok=%v", tc.guide, err, tc.ok)
+		}
+		if err != nil && !errors.Is(err, ErrBadUser) {
+			t.Errorf("coding_guide %q: err %v is not ErrBadUser", tc.guide, err)
+		}
+		if err != nil && !strings.Contains(err.Error(), "coding_guide") {
+			t.Errorf("coding_guide %q: err %v does not name the key", tc.guide, err)
+		}
+	}
+}
+
+// A bad coding_guide never loads from the user file and never lands in it.
+func TestCodingGuideBadValueNeverStored(t *testing.T) {
+	for _, bad := range []string{"deep", "Lean", "on", "full"} {
+		in := filepath.Join(t.TempDir(), "config.yaml")
+		body := "chat_language: English\nstyle: adhd\nrepo_language: English\ncoding_guide: " + bad + "\n"
+		if err := os.WriteFile(in, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		v, exists, err := LoadUser(in)
+		if !exists || !errors.Is(err, ErrBadUser) || v != UserDefault() {
+			t.Errorf("load %q: got %+v %v %v, want defaults, exists, ErrBadUser", bad, v, exists, err)
+		}
+		out := filepath.Join(t.TempDir(), "config.yaml")
+		u := UserDefault()
+		u.CodingGuide = bad
+		if err := SaveUserFile(out, u); !errors.Is(err, ErrBadUser) {
+			t.Errorf("save %q: err %v, want ErrBadUser", bad, err)
+		}
+		if _, err := os.Stat(out); !os.IsNotExist(err) {
+			t.Errorf("save %q: a bad value was written", bad)
+		}
+	}
+}
+
+// off comes back on the next read. An unset value is left out of the file and
+// stays empty, since empty already means lean.
+func TestCodingGuideRoundTripsAndStaysEmpty(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.yaml")
+	v := UserDefault()
+	v.CodingGuide = "off"
+	if err := SaveUserFile(p, v); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadUser(p)
+	if err != nil || got.CodingGuide != "off" {
+		t.Fatalf("off: got %+v, %v", got, err)
+	}
+	if err := SaveUserFile(p, UserDefault()); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "coding_guide") {
+		t.Fatalf("an unset coding_guide was written:\n%s", raw)
+	}
+	if got, _, err := LoadUser(p); err != nil || got.CodingGuide != "" {
+		t.Fatalf("unset: got %+v, %v", got, err)
+	}
+}
+
 // A saved theme must come back on the next read, or the TUI forgets it on
 // every restart.
 func TestThemeRoundTrips(t *testing.T) {

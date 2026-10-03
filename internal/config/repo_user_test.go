@@ -97,6 +97,84 @@ func TestPlanDepthBadValue(t *testing.T) {
 	}
 }
 
+// A coding_guide in .acta.yaml beats the user value both ways, and the set says
+// the repo gave it. A repo that says nothing, or says it the wrong way, leaves
+// the user value alone.
+func TestMergeRepoCodingGuide(t *testing.T) {
+	user := func(guide string) User {
+		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", CodingGuide: guide}
+	}
+	cases := []struct {
+		name, global, yaml, want string
+		fromRepo                 bool
+	}{
+		{"repo off beats user lean", "lean", "coding_guide: off\n", "off", true},
+		{"repo lean beats user off", "off", "coding_guide: lean\n", "lean", true},
+		{"repo off beats unset user", "", "coding_guide: off\n", "off", true},
+		{"spaces are trimmed", "", "coding_guide: \" off \"\n", "off", true},
+		{"repo silent, user off stays", "off", "root: .acta\n", "off", false},
+		{"repo silent, unset stays empty", "", "root: .acta\n", "", false},
+		{"empty text is ignored", "off", "coding_guide: \"\"\n", "off", false},
+		{"number is ignored", "off", "coding_guide: 3\n", "off", false},
+		{"yes or no is ignored", "off", "coding_guide: false\n", "off", false},
+		{"list is ignored", "off", "coding_guide:\n  - lean\n", "off", false},
+		{"plain off is the text off", "lean", "coding_guide: off\n", "off", true},
+		{"quoted off is the text off", "lean", "coding_guide: \"off\"\n", "off", true},
+	}
+	for _, c := range cases {
+		got, from, err := MergeRepo(user(c.global), writeRepoYAML(t, c.yaml))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got != user(c.want) {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, user(c.want))
+		}
+		if from["coding_guide"] != c.fromRepo || len(from) > 1 {
+			t.Errorf("%s: from %v, want coding_guide=%v and nothing else", c.name, from, c.fromRepo)
+		}
+	}
+}
+
+// A bad coding_guide in .acta.yaml is refused by name, so it is never used.
+func TestMergeRepoCodingGuideBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Lean", "on", "minimal", "lean off"} {
+		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, "coding_guide: "+bad+"\n"))
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "coding_guide") {
+			t.Errorf("coding_guide %q in .acta.yaml: err %v, want ErrBadUser naming the key", bad, err)
+		}
+	}
+}
+
+// coding_guide can be saved per repo. Comments and other keys stay, a second
+// save replaces the value, and a new file is made when there is none.
+func TestSaveRepoUserCodingGuide(t *testing.T) {
+	dir := writeRepoYAML(t, "# keep me\nroot: docs/acta\nplan_depth: minimal\n")
+	path, err := SaveRepoUser(dir, map[string]string{"coding_guide": "off"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	for _, want := range []string{"# keep me", "root: docs/acta", "plan_depth: minimal", "coding_guide: off"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("file lacks %q:\n%s", want, raw)
+		}
+	}
+	if _, err := SaveRepoUser(dir, map[string]string{"coding_guide": "lean"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = os.ReadFile(path)
+	if strings.Count(string(raw), "coding_guide") != 1 || !strings.Contains(string(raw), "coding_guide: lean") {
+		t.Errorf("second save did not replace the value:\n%s", raw)
+	}
+	fresh := t.TempDir()
+	if _, err := SaveRepoUser(fresh, map[string]string{"coding_guide": "off"}); err != nil {
+		t.Fatal(err)
+	}
+	if v, from, err := MergeRepo(UserDefault(), fresh); err != nil || v.CodingGuide != "off" || !from["coding_guide"] {
+		t.Errorf("fresh file: %+v %v %v", v, from, err)
+	}
+}
+
 // Saving keeps what the user already wrote in .acta.yaml, comments too.
 func TestSaveRepoUserKeepsOtherKeys(t *testing.T) {
 	dir := writeRepoYAML(t, "# where the planning files live\nroot: docs/acta\nplan_depth: full\n")
