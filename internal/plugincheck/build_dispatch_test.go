@@ -49,64 +49,39 @@ func TestNoDispatchSkill(t *testing.T) {
 	}
 }
 
-// TestBuildDispatchDelivery checks the delivery rules that came from the old
-// dispatch skill. Each file is read on its own.
+// TestBuildDispatchDelivery checks the rules the one short dispatch.md still
+// owns. The brief, the herdr steps and the goal text moved into Go, where
+// internal/cli tests them. The file is read on its own.
 func TestBuildDispatchDelivery(t *testing.T) {
-	for file, wants := range map[string][]string{
-		"dispatch.md": {
-			"/goal", "REPLY-BACK", "references/house-rules.md", "SKILL: load build", "Never wait",
-			"herdr-delivery.md", "PROPERTY", "ultrathink orchestrate", ".acta/plans/",
-			"GATES (from the worktree): <the plan's fast test command>",
-			"exactly one read", "checkpoint unconfirmed", "gets its own one read", "outside this rule",
-			"HARD RULE", "New session started", "🎯 Goal", "never in one prompt", "then `/goal` only",
-			"acta:review", "acta:land", "herdr pane close", "Bugs found by recipient",
-			"Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent`",
-			"literal skill name, a review keyword, and the range", "sorts them",
-			// Each pointer names the review skill's section; none of them
-			// restates the rule.
-			"**Clean AND complete → run `## After a CLEAN round`**; its `acta:land` is build's `## Close`",
-			"The polish commit goes out the same way, and the review skill's `## After a CLEAN round` owns what happens on reply-back.",
-			"**Blocking = a concrete input that produces a wrong result for a real user, today.**",
-			"Everything else is one NOTE, which `acta:review`'s `## After a CLEAN round` sorts into `[fix]`, `[debt]` or `[note]`, or one follow-up ticket; the branch lands.",
-			"NOTES never write NOTEs to memory — once the round is CLEAN, `acta:review`'s `## After a CLEAN round` sorts them into",
-			"once the round is CLEAN `acta:review`'s `## After a CLEAN round` sorts it into `[fix]`, `[debt]` or `[note]`",
-		},
-		"herdr-delivery.md": {
-			"exactly one read", "checkpoint unconfirmed", "HARD RULE", "New session started", "🎯 Goal",
-			"never in one prompt", "then `/goal` only", "--agent omp", "acta dispatch init", "herdr pane close",
-			"Reference for a dispatch already running",
-		},
-	} {
-		txt := readBuildFile(t, file)
-		for _, want := range wants {
-			if !strings.Contains(txt, want) {
-				t.Errorf("build/%s missing %q", file, want)
-			}
-		}
-		if strings.Contains(txt, "Back-to-back, no settle-wait") {
-			t.Errorf("build/%s still says \"Back-to-back, no settle-wait\"", file)
-		}
-	}
 	txt := readBuildFile(t, "dispatch.md")
-	if n := strings.Count(txt, "checkpoint unconfirmed"); n < 2 {
-		t.Errorf("build/dispatch.md says \"checkpoint unconfirmed\" %d times; the loop item and the section both need it", n)
-	}
-
-	// One land on the loop: step 10 points at the CLEAN-round section, step 11
-	// says that section's acta:land is build's ## Close.
-	for _, line := range strings.Split(txt, "\n") {
-		switch {
-		case strings.HasPrefix(line, "10."):
-			if strings.Contains(line, "acta:land") {
-				t.Errorf("build/dispatch.md step 10 names a land of its own: %q", line)
-			}
-		case strings.HasPrefix(line, "11."):
-			if !strings.Contains(line, "acta:land") {
-				t.Errorf("build/dispatch.md step 11 must say the section's acta:land is build's ## Close: %q", line)
-			}
+	for _, want := range []string{
+		"Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent`",
+		"acta dispatch send --plan .acta/plans/<stem>.md --rules <abs path>",
+		"this skill's base dir plus `../../references/house-rules.md`",
+		"Read those lines and the exit code",
+		"`checkpoint: ok`", "`unconfirmed`", "drift",
+		"## Never wait for the recipient — HARD RULE", "end your turn",
+		"herdr agent wait <slug> --until idle --until done", "run_in_background",
+		"1. A reply-back already arrived", "2. Every task of the plan is ticked",
+		"3. Tasks still open", "4. Idle again with no new commit",
+		"git log --oneline <base>..HEAD", "git diff --name-only <base>..HEAD      # only plan files",
+		"the plan's fast test command", "git diff --name-only <base>..HEAD -- .acta/bugs",
+		"Bugs found by recipient", "Harvested from omp", "omp memory: nothing to harvest", "learned.md",
+		"acta:review", "acta:land",
+		"Its small-change self-review never applies to a dispatch",
+		"literal skill name, a review keyword, and the range",
+		"NOTEs are never written to memory", "sorts them into `[fix]`, `[debt]` or `[note]`",
+		"## Fix rounds", "Append `## Fix round <n>`", "--round fix-<n>", "--round polish",
+		"The polish goes out the same way",
+		"`## After a CLEAN round` owns what happens on reply-back",
+		"Clean and complete: run `## After a CLEAN round`; its `acta:land` is build's `## Close`",
+		"## Close the tab", "acta dispatch close", "## Advisor", "`advisor` role",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("build/dispatch.md missing %q", want)
 		}
 	}
-	// These belong to build, acta:review and acta:land now. A second copy
+	// These belong to build, acta:review, acta:land or Go now. A second copy
 	// drifts, and drift is how duplicate ids once reached the parent branch.
 	for _, bad := range []string{
 		"acta:dispatch", "Step -3", "Refuse inside omp", "dispatch requires herdr", "## Entry gate",
@@ -119,22 +94,16 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"orchestrator sorts it through",
 		"read it again", "<one-shot test runner>",
 		"then build's `## Close` runs `acta:land`",
+		// The new send never sends /new: a fresh omp process is the new
+		// session. The two spellings are banned instead of "/new", which
+		// would also hit words like "/newest".
+		"herdr-delivery.md", "New session started", "`/new`", "send /new", "Back-to-back, no settle-wait",
 	} {
 		if strings.Contains(txt, bad) {
 			t.Errorf("build/dispatch.md still carries %q", bad)
 		}
 	}
-}
-
-// TestBuildDispatchGatesNoBareGoTest reads dispatch.md on its own. The GATES
-// line of the brief is where the recipient learns how to run tests, so the
-// bare `go test` ban and the hook that enforces it belong there.
-func TestBuildDispatchGatesNoBareGoTest(t *testing.T) {
-	txt := readBuildFile(t, "dispatch.md")
-	if !strings.Contains(txt, "never run bare `go test`") {
-		t.Error("build/dispatch.md missing \"never run bare `go test`\"")
-	}
-	if !strings.Contains(txt, "the pre-tool hook blocks it") {
-		t.Error("build/dispatch.md does not say the pre-tool hook blocks it")
+	if _, err := os.Stat(filepath.Join(pluginRoot(t), "skills", "build", "herdr-delivery.md")); !os.IsNotExist(err) {
+		t.Error("build/herdr-delivery.md still exists; dispatch.md is the one dispatch file")
 	}
 }
