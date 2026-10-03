@@ -4,6 +4,7 @@ closes: [SCR-0039]
 id: SPC-0069
 created: "2026-10-03 20:58:15"
 hash: vt4gf9q
+started: "2026-10-03 21:05:18"
 ---
 # Review diet, dispatch command and skill diet
 

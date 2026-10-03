@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0079
 created: "2026-10-03 21:01:58"
 hash: pv9qwfx
+started: "2026-10-03 21:05:18"
 ---
 # Dispatch Send and Close Implementation Plan
 
@@ -40,9 +41,9 @@ hash: pv9qwfx
 
 **verify:** For every plan the board can parse, the brief either names every task the round covers, each with its own `verify:` line, plus the plan's `## Waves` text as written, or the call returns an error and writes no file. No round ever picks a task outside its range: no `--round` takes the tasks before the first `## Fix round`, any other round takes only the tasks under the last `## Fix round <n>`, a missing fix round section is an error, and `polish` takes no tasks and needs a non-empty note. Every brief holds the plan and spec paths, worktree, branch, parent, base, the absolute `house-rules.md` path, each `MEMORY.md` path that exists (`~/.claude/memory/MEMORY.md` and `~/.claude/projects/<main checkout path with every / and . turned into ->/memory/MEMORY.md`), the plan's `**Tests:**` line, the note, `SKILL: load build`, the line "never run bare `go test`" with the pre-tool hook reason, and the one REPLY-BACK line. List every round kind and every refusal checked.
 
-- [ ] Failing test: table tests over small plan files in a temp dir (first dispatch, fix round, two fix rounds, missing fix round, polish with and without a note, a task with no `verify:`, a missing rules file) that call `buildBrief` and check the text and the errors; they fail because `buildBrief` does not exist.
-- [ ] Code: `buildBrief(planPath string, src []byte, in briefInput) (string, error)` reads tasks with `board.Parse`, picks the round's tasks by heading line, pulls each `**verify:**` line and the `## Waves` and `**Tests:**` text, and fills the brief; `briefInput` holds round, note, rules path, worktree, branch, parent, base and home.
-- [ ] Commit: `dispatch: build the brief from the plan`
+- [x] Failing test: table tests over small plan files in a temp dir (first dispatch, fix round, two fix rounds, missing fix round, polish with and without a note, a task with no `verify:`, a missing rules file) that call `buildBrief` and check the text and the errors; they fail because `buildBrief` does not exist.
+- [x] Code: `buildBrief(planPath string, src []byte, in briefInput) (string, error)` reads tasks with `board.Parse`, picks the round's tasks by heading line, pulls each `**verify:**` line and the `## Waves` and `**Tests:**` text, and fills the brief; `briefInput` holds round, note, rules path, worktree, branch, parent, base and home.
+- [x] Commit: `dispatch: build the brief from the plan`
 
 ### Task 2: herdr steps in Go
 
@@ -51,9 +52,9 @@ hash: pv9qwfx
 
 **verify:** No herdr path can send a goal to the wrong pane or wait forever. For every outcome of `herdr agent get <slug>` (found idle, found working, not found, herdr error), the steps either reuse the found pane, refuse a working agent with nothing sent, or make one tab with `--workspace` from `$HERDR_PANE_ID`, `--label <slug>`, `--no-focus` and `--cwd <worktree>`, run `omp` in it and rename it to the slug. `/new` is never sent. Every wait ends at its limit with a clear error: omp not ready, goal mark not shown after one retry. A held goal (`⏸ Goal` or "Resume the current goal first") is cleared with `/goal drop` and two enters before the goal is sent. The checkpoint read happens exactly once and gives `ok`, `drift` with the missing task ids, or `unconfirmed` when no todo list shows. List every herdr call sequence checked, with the calls in order.
 
-- [ ] Failing test: a scripted fake herdr that logs each call and answers `agent get`, `agent read` and `tab create` from numbered reply files, plus cases for each outcome above, all with millisecond waits; they fail because the functions do not exist.
-- [ ] Code: `findOrMakeTab(slug, worktree string) (pane string, err error)`, `deliverGoal(slug, goal string) error` (ready wait, held goal clear, prompt, goal mark check with one retry) and `checkpoint(slug string, ids []string) (verdict string, missing []string, pane string)`, each through one `herdr(args ...string) (string, error)` helper.
-- [ ] Commit: `dispatch: drive the herdr steps in Go`
+- [x] Failing test: a scripted fake herdr that logs each call and answers `agent get`, `agent read` and `tab create` from numbered reply files, plus cases for each outcome above, all with millisecond waits; they fail because the functions do not exist.
+- [x] Code: `findOrMakeTab(slug, worktree string) (pane string, err error)`, `deliverGoal(slug, goal string) error` (ready wait, held goal clear, prompt, goal mark check with one retry) and `checkpoint(slug string, ids []string) (verdict string, missing []string, pane string)`, each through one `herdr(args ...string) (string, error)` helper.
+- [x] Commit: `dispatch: drive the herdr steps in Go`
 
 ### Task 3: `acta dispatch send` and `acta dispatch close`
 
