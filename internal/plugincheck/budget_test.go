@@ -1,0 +1,128 @@
+package plugincheck
+
+import (
+	"fmt"
+	"maps"
+	"path"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/hook"
+)
+
+// The caps below are sizes in bytes. About 4 bytes make one token. A byte
+// count is the same on every run and needs no API, so the test stays steady.
+//
+// Each cap starts at the size the thing has today. To make a skill leaner,
+// lower its number in the same commit, so the gain cannot slip away. To add a
+// file, add its line here on purpose.
+
+// fileCaps holds the cap of every .md file under skills/ and references/.
+// The keys are paths as walkPlugin names them.
+var fileCaps = map[string]int{
+	"references/house-rules.md":                     3954,
+	"skills/bug/SKILL.md":                           2327,
+	"skills/build/SKILL.md":                         15281,
+	"skills/build/dispatch.md":                      29691,
+	"skills/build/herdr-delivery.md":                13797,
+	"skills/build/implementer-prompt.md":            7518,
+	"skills/debug/SKILL.md":                         10401,
+	"skills/debug/condition-based-waiting.md":       3516,
+	"skills/debug/defense-in-depth.md":              3650,
+	"skills/debug/root-cause-tracing.md":            5316,
+	"skills/land/SKILL.md":                          5765,
+	"skills/migrate/SKILL.md":                       2329,
+	"skills/review/SKILL.md":                        11504,
+	"skills/review/code-reviewer.md":                4042,
+	"skills/scratch/SKILL.md":                       2358,
+	"skills/setup/SKILL.md":                         4423,
+	"skills/shape/SKILL.md":                         17458,
+	"skills/shape/spec-document-reviewer-prompt.md": 1736,
+	"skills/slice/SKILL.md":                         11969,
+	"skills/tdd/SKILL.md":                           10169,
+	"skills/tdd/writing-good-tests.md":              8239,
+}
+
+// descriptionCaps holds the cap of the description line in each skill's
+// SKILL.md. Every session pays for these lines, so they stay short.
+var descriptionCaps = map[string]int{
+	"skills/bug/SKILL.md":     311,
+	"skills/build/SKILL.md":   541,
+	"skills/debug/SKILL.md":   277,
+	"skills/land/SKILL.md":    304,
+	"skills/migrate/SKILL.md": 258,
+	"skills/review/SKILL.md":  386,
+	"skills/scratch/SKILL.md": 223,
+	"skills/setup/SKILL.md":   230,
+	"skills/shape/SKILL.md":   319,
+	"skills/slice/SKILL.md":   234,
+	"skills/tdd/SKILL.md":     208,
+}
+
+// sessionStartCap is the cap of the text the session start hook prints for
+// the default user config with no herdr. Every session pays for it too.
+const sessionStartCap = 3591
+
+// budgetProblems lists what is wrong between sizes and caps: a size over its
+// cap, a size with no cap, and a cap for something that is gone. The first two
+// show the size in bytes and in tokens, so it is easy to judge the fix. what
+// goes after each name, so a description is not mistaken for its whole file.
+func budgetProblems(what string, sizes, caps map[string]int) []string {
+	var out []string
+	for _, name := range slices.Sorted(maps.Keys(sizes)) {
+		n := sizes[name]
+		c, ok := caps[name]
+		switch {
+		case !ok:
+			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), has no cap", name, what, n, n/4))
+		case n > c:
+			out = append(out, fmt.Sprintf("%s%s: %d bytes (~%d tokens), cap %d", name, what, n, n/4, c))
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(caps)) {
+		if _, ok := sizes[name]; !ok {
+			out = append(out, fmt.Sprintf("%s%s: file is gone, remove its cap of %d", name, what, caps[name]))
+		}
+	}
+	return out
+}
+
+// TestBudgetFiles fails when a skill or reference file grows past its cap, has
+// no cap, or has a cap but is gone. Every problem shows in one run.
+func TestBudgetFiles(t *testing.T) {
+	sizes := map[string]int{}
+	walkPlugin(t, func(rel, text string) {
+		if strings.HasSuffix(rel, ".md") && (strings.HasPrefix(rel, "skills/") || strings.HasPrefix(rel, "references/")) {
+			sizes[rel] = len(text)
+		}
+	})
+	for _, p := range budgetProblems("", sizes, fileCaps) {
+		t.Error(p)
+	}
+}
+
+// TestBudgetDescriptions does the same for the description line of each skill.
+// It measures the text the model reads, without the quotes of the YAML.
+func TestBudgetDescriptions(t *testing.T) {
+	sizes := map[string]int{}
+	walkPlugin(t, func(rel, text string) {
+		// The star matches one folder name, so a nested SKILL.md is not a skill.
+		if ok, _ := path.Match("skills/*/SKILL.md", rel); ok {
+			_, desc, _ := frontmatter([]byte(text))
+			sizes[rel] = len(desc)
+		}
+	})
+	for _, p := range budgetProblems(" description", sizes, descriptionCaps) {
+		t.Error(p)
+	}
+}
+
+// TestBudgetSessionStart fails when the session start text grows past its cap.
+func TestBudgetSessionStart(t *testing.T) {
+	n := len(hook.SessionStart(hook.Input{Voice: config.UserDefault(), VoiceExists: true}))
+	if n > sessionStartCap {
+		t.Errorf("session start text: %d bytes (~%d tokens), cap %d", n, n/4, sessionStartCap)
+	}
+}

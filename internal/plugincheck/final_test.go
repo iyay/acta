@@ -70,19 +70,6 @@ func TestNoSuperpowersPrefixOrUserPaths(t *testing.T) {
 	})
 }
 
-func TestTotalSkillSize(t *testing.T) {
-	total := 0
-	walkPlugin(t, func(rel, text string) {
-		if strings.HasPrefix(rel, "skills/") && strings.HasSuffix(rel, ".md") {
-			total += strings.Count(text, "\n")
-		}
-	})
-	t.Logf("skills total: %d lines of markdown", total)
-	if total > 4240 {
-		t.Fatalf("skills total %d lines, cap is 4240", total)
-	}
-}
-
 func TestHookScriptsAreTheOnlyExecutablesOutsideSkills(t *testing.T) {
 	walkPlugin(t, func(rel, _ string) {
 		st, err := os.Stat(filepath.Join(pluginRoot(t), rel))
