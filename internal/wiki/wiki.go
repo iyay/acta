@@ -118,9 +118,9 @@ func split(src string) (head, body string, ok bool) {
 
 // Match gives the pages that cover rel, in the order they were given. rel is a
 // path from the repo root, the way an agent or a shell command wrote it. A
-// folder entry covers what is inside it, and the folder itself when rel ends
-// in a slash. A folder written with no slash at the end is not matched, since
-// it could just as well be a file.
+// folder entry covers what is inside it, and the folder itself with or without
+// a slash at the end, since a shell word names a folder both ways, like
+// `go vet ./internal/tui`.
 func Match(pages []Page, rel string) []Page {
 	rel, ok := clean(rel)
 	if !ok {
@@ -136,10 +136,12 @@ func Match(pages []Page, rel string) []Page {
 }
 
 // covers says whether one entry of a page takes in rel: it is the same path,
-// or it sits inside a folder entry. Only an entry that ends in / is a folder,
-// so src/parse.py does not take in src/parse.pyc.
+// it sits inside a folder entry, or it is that folder with its slash left off.
+// Only an entry that ends in / is a folder, so src/parse.py does not take in
+// src/parse.pyc.
 func covers(entry, rel string) bool {
-	return rel == entry || (strings.HasSuffix(entry, "/") && strings.HasPrefix(rel, entry))
+	folder, isFolder := strings.CutSuffix(entry, "/")
+	return rel == entry || (isFolder && (rel == folder || strings.HasPrefix(rel, entry)))
 }
 
 // clean strips what a shell word adds to a path: quotes, a leading ./, doubled

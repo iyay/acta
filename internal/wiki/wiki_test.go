@@ -140,6 +140,10 @@ func TestMatch(t *testing.T) {
 		{"folder equals its own entry", "internal/tui/", []string{"tui"}},
 		{"second entry of a page", "docs/a.md", []string{"parser"}},
 		{"second entry, folder itself", "docs/", []string{"parser"}},
+		// A shell word names a folder without the slash, like `go vet ./internal/tui`.
+		{"folder named without its slash", "internal/tui", []string{"tui"}},
+		{"folder without its slash, leading ./", "./internal/tui", []string{"tui"}},
+		{"second entry, folder without its slash", "docs", []string{"parser"}},
 
 		// What a shell word adds is cut first.
 		{"double quotes", `"internal/tui/model.go"`, []string{"tui"}},
@@ -168,7 +172,6 @@ func TestMatch(t *testing.T) {
 		{"parent folder with slash", "internal/", nil},
 		{"parent folder bare", "internal", nil},
 		{"parent of a file entry", "src/", nil},
-		{"folder named without its slash", "internal/tui", nil},
 
 		// A path outside the repo is not a match, even when a page lists it.
 		{"climbs out first", "../internal/tui/x.go", nil},

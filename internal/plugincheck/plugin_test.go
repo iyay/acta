@@ -77,7 +77,8 @@ func TestHooksJSON(t *testing.T) {
 		t.Fatalf("UserPromptSubmit = %+v", up)
 	}
 	pre, post := h.Hooks["PreToolUse"], h.Hooks["PostToolUse"]
-	if len(pre) != 1 || pre[0].Matcher != "Bash" || pre[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool"` {
+	// The wiki hint needs the file tools too; the post-tool hook stays on Bash.
+	if len(pre) != 1 || pre[0].Matcher != "Bash|Read|Edit|Write|MultiEdit" || pre[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool"` {
 		t.Fatalf("PreToolUse = %+v", pre)
 	}
 	if len(post) != 1 || post[0].Matcher != "Bash" || post[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool"` {

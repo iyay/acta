@@ -47,8 +47,9 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		// A repo with no planning root is still a repo with a scripts/test,
 		// so the go test check is asked even then. Only the brainstorm state
-		// needs the root.
-		root, hasRoot := hookRoot()
+		// and the wiki hints need the root.
+		cfg, hasRoot := hookConfig()
+		root := cfg.Root
 		if args[0] == "post-tool" {
 			if !hasRoot {
 				return exitOK
@@ -71,6 +72,13 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); block {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
+		}
+		// A hint is only an extra line for the agent, so it comes after the
+		// blocks and never changes the exit code.
+		if hasRoot {
+			if lines := hook.WikiHints(root, cfg.RepoRoot, ev); lines != "" {
+				fmt.Fprintln(stdout, hook.HintJSON(lines))
+			}
 		}
 		return exitOK
 	case "session-start":
@@ -120,13 +128,20 @@ func loadVoice() hook.Input {
 // outside a project, because a hook must not make planning folders in a
 // folder that has none.
 func hookRoot() (string, bool) {
+	cfg, ok := hookConfig()
+	return cfg.Root, ok
+}
+
+// hookConfig is hookRoot with the whole config, for the hook that also needs
+// the repo root. It loads the config once, because every load asks git.
+func hookConfig() (config.Config, bool) {
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd, "")
 	if err != nil {
-		return "", false
+		return config.Config{}, false
 	}
 	fi, err := os.Stat(cfg.Root)
-	return cfg.Root, err == nil && fi.IsDir()
+	return cfg, err == nil && fi.IsDir()
 }
 
 // sessionReminder is the one line a session that already brainstormed gets
