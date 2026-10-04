@@ -25,6 +25,9 @@ type User struct {
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
+	// Questions says how the agent asks: one question at a time, or a round
+	// of probe questions. Empty means one. It is a user key, never a repo one.
+	Questions string `yaml:"questions,omitempty"`
 	// CodingGuide says whether the agent gets the lean coding rules: lean or
 	// off. Empty means lean.
 	CodingGuide string `yaml:"coding_guide,omitempty"`
@@ -203,6 +206,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_depth must be minimal or full, not %q", ErrBadUser, v.PlanDepth)
 	}
+	switch v.Questions {
+	case "", "one", "probe":
+	default:
+		return fmt.Errorf("%w: questions must be one or probe, not %q", ErrBadUser, v.Questions)
+	}
 	switch v.CodingGuide {
 	case "", "lean", "off":
 	default:
@@ -221,6 +229,7 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
+	v.Questions = strings.TrimSpace(v.Questions)
 	v.CodingGuide = strings.TrimSpace(v.CodingGuide)
 	if v.ChatLanguage == "" {
 		v.ChatLanguage = d.ChatLanguage
