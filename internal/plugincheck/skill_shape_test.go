@@ -10,7 +10,7 @@ import (
 func TestSkillShape(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "shape",
-		MaxLines: 395,
+		MaxLines: 200,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:slice", "CONTEXT.md", "docs/adr/",
@@ -92,24 +92,71 @@ func TestShapeBoundedWritesSpec(t *testing.T) {
 	}
 }
 
-// TestShapeBoundedReviewLoopsToShortSpec reads the graph on its own.
-// A Bounded "changes requested" once led into the Architectural design doc.
+// TestShapeBoundedReviewLoopsToShortSpec reads the Bounded checklist on its
+// own. A Bounded "changes requested" once led into the Architectural design
+// doc. The dot graph is gone, so the checklist is where the edge lives.
 func TestShapeBoundedReviewLoopsToShortSpec(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	txt := string(b)
-	for _, want := range []string{
-		`"Write short spec" -> "User reviews short spec?"`,
-		`"User reviews short spec?" -> "Write short spec" [label="changes requested"]`,
-		`"User reviews short spec?" -> "Invoke acta:slice skill" [label="approved"]`,
-	} {
-		if !strings.Contains(txt, want) {
-			t.Errorf("shape graph missing %s", want)
+	if strings.Contains(txt, "digraph") {
+		t.Error("shape text carries a dot graph; the checklists are the flow")
+	}
+	bounded := shapeChecklist(t, txt, "**Bounded:**", "**Architectural:**")
+	if !strings.Contains(bounded, "changes requested") {
+		t.Error("the Bounded checklist has no changes-requested step")
+	}
+	for _, line := range strings.Split(bounded, "\n") {
+		if strings.Contains(line, "changes requested") && !strings.Contains(line, "short spec") {
+			t.Errorf("Bounded changes requested leaves the short spec: %q", line)
 		}
 	}
-	if strings.Contains(txt, `"Write short spec" -> "User reviews spec?"`) {
-		t.Error("Bounded still joins the Architectural review node")
+	for _, old := range []string{"Write design doc", "spec review loop", "re-run the spec"} {
+		if strings.Contains(bounded, old) {
+			t.Errorf("Bounded review still points at the Architectural %q", old)
+		}
+	}
+}
+
+// shapeChecklist returns the slice of the shape skill between two markers. The
+// checklist per path is the only flow text, so a rule has to live in the slice
+// of its own path to count.
+func shapeChecklist(t *testing.T, txt, from, to string) string {
+	t.Helper()
+	i := strings.Index(txt, from)
+	if i < 0 {
+		t.Fatalf("shape skill has no %s block", from)
+	}
+	rest := txt[i:]
+	j := strings.Index(rest, to)
+	if j < 0 {
+		t.Fatalf("shape skill has no %s block after %s", to, from)
+	}
+	return rest[:j]
+}
+
+// TestShapeProbeModeNamesProbeFile guards the two hooks that open probe mode:
+// the user says "probe" or "grill me", or the session note says
+// `Questions: probe`. The file itself has to exist and carry the round shape.
+func TestShapeProbeModeNamesProbeFile(t *testing.T) {
+	skill, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"probe.md", "grill me", "Questions: probe"} {
+		if !strings.Contains(string(skill), want) {
+			t.Errorf("shape/SKILL.md missing %q", want)
+		}
+	}
+	probe, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "shape", "probe.md"))
+	if err != nil {
+		t.Fatalf("shape/probe.md: %v", err)
+	}
+	for _, want := range []string{"five", "Recommended:", "--section log", "**Q1."} {
+		if !strings.Contains(string(probe), want) {
+			t.Errorf("shape/probe.md missing %q", want)
+		}
 	}
 }
