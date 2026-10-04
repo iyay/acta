@@ -314,3 +314,206 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 		}
 	})
 }
+
+// wikiLineHead is how the session start wiki line begins, up to its count.
+const wikiLineHead = "Project wiki. Pages: "
+
+// sessionStartEvent is the payload Claude Code sends a SessionStart hook. An
+// empty source is left out, like a payload that has none.
+func sessionStartEvent(t *testing.T, session, source string) string {
+	t.Helper()
+	ev := map[string]any{"session_id": session, "hook_event_name": "SessionStart"}
+	if source != "" {
+		ev["source"] = source
+	}
+	b, err := json.Marshal(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// putShownPages writes the shown-pages file by hand, with spaces and a line
+// break that the hook would never write, so a file the hook left alone can be
+// told from one it rewrote. It gives the path.
+func putShownPages(t *testing.T, dir, body string) string {
+	t.Helper()
+	file := filepath.Join(dir, ".acta", "state", "wiki-hints.json")
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return file
+}
+
+// s1 and its subagent, and s2, have been shown the page.
+const shownByThree = "{\"s1/\": [\"tui-wrap\"], \"s1/agent-1\": [\"tui-wrap\"], \"s2/\": [\"tui-wrap\"]}\n"
+
+// A session that starts after a clear or a compaction lost the hints it was
+// shown, so its pages are forgotten for the main thread and every subagent. Any
+// other session keeps what it was shown.
+func TestHookSessionStartForgetsShownPagesAfterClearOrCompact(t *testing.T) {
+	for _, source := range []string{"clear", "compact"} {
+		t.Run(source, func(t *testing.T) {
+			dir := hintRepo(t, "internal/tui/")
+			t.Chdir(dir)
+			file := putShownPages(t, dir, shownByThree)
+			code, out, errb := runHook(t, "session-start", sessionStartEvent(t, "s1", source))
+			if code != exitOK || errb != "" {
+				t.Fatalf("exit %d, stderr %q, want exit 0 and no stderr", code, errb)
+			}
+			if !strings.Contains(out, wikiLineHead) {
+				t.Error("the session text has no wiki line")
+			}
+			got, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := `{"s2/":["tui-wrap"]}`; string(got) != want {
+				t.Errorf("shown pages = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+// Anything that is not a clear or a compaction leaves the shown pages alone, and
+// so does a payload the hook cannot use. The session text still prints and the
+// hook still exits 0, because a hook must never get in the way of a session.
+func TestHookSessionStartKeepsShownPagesOtherwise(t *testing.T) {
+	cases := []struct{ name, stdin string }{
+		{"startup", sessionStartEvent(t, "s1", "startup")},
+		{"resume", sessionStartEvent(t, "s1", "resume")},
+		{"fork", sessionStartEvent(t, "s1", "fork")},
+		{"a source nobody knows", sessionStartEvent(t, "s1", "other")},
+		{"a capital letter", sessionStartEvent(t, "s1", "Clear")},
+		{"no source", sessionStartEvent(t, "s1", "")},
+		{"clear with no session", `{"source":"clear"}`},
+		{"clear with an empty session", sessionStartEvent(t, "", "clear")},
+		{"a source that is not text", `{"session_id":"s1","source":5}`},
+		{"bad json", "{bad"},
+		{"empty stdin", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := hintRepo(t, "internal/tui/")
+			t.Chdir(dir)
+			file := putShownPages(t, dir, shownByThree)
+			code, out, errb := runHook(t, "session-start", c.stdin)
+			if code != exitOK || errb != "" {
+				t.Fatalf("exit %d, stderr %q, want exit 0 and no stderr", code, errb)
+			}
+			if !strings.Contains(out, wikiLineHead) {
+				t.Error("the session text has no wiki line")
+			}
+			if got, err := os.ReadFile(file); err != nil || string(got) != shownByThree {
+				t.Errorf("shown pages = %q (%v), want them left as they were", got, err)
+			}
+		})
+	}
+}
+
+// After a compaction the agent must hear a page again when it touches the files
+// that page covers, in the main thread and in a subagent, and a session that was
+// not compacted must stay quiet. This goes through the real command line from
+// the first hint to the second.
+func TestHookSessionStartAfterCompactHintsAgain(t *testing.T) {
+	dir := hintRepo(t, "internal/tui/")
+	t.Chdir(dir)
+	file := map[string]string{"file_path": filepath.Join(dir, "internal", "tui", "model.go")}
+	steps := []struct {
+		name, hook, stdin, want string
+	}{
+		{"main thread", "pre-tool", toolEvent(t, "s1", "", "Read", file), tuiHint},
+		{"a subagent", "pre-tool", toolEvent(t, "s1", "agent-1", "Read", file), tuiHint},
+		{"another session", "pre-tool", toolEvent(t, "s2", "", "Read", file), tuiHint},
+		{"main thread again", "pre-tool", toolEvent(t, "s1", "", "Read", file), ""},
+		{"s1 compacts", "session-start", sessionStartEvent(t, "s1", "compact"), "*"},
+		{"main thread after the compaction", "pre-tool", toolEvent(t, "s1", "", "Read", file), tuiHint},
+		{"a subagent after the compaction", "pre-tool", toolEvent(t, "s1", "agent-1", "Read", file), tuiHint},
+		{"main thread once more", "pre-tool", toolEvent(t, "s1", "", "Read", file), ""},
+		{"the other session after it", "pre-tool", toolEvent(t, "s2", "", "Read", file), ""},
+	}
+	for _, s := range steps {
+		code, out, errb := runHook(t, s.hook, s.stdin)
+		if code != exitOK || errb != "" {
+			t.Fatalf("%s: exit %d, stderr %q", s.name, code, errb)
+		}
+		if s.want == "*" {
+			continue
+		}
+		if out != s.want {
+			t.Errorf("%s: stdout %q, want %q", s.name, out, s.want)
+		}
+	}
+}
+
+// The line names the number of pages the wiki holds. A page that cannot load is
+// for acta wiki check to report, so it is not counted, and a repo with no pages
+// has no line at all.
+func TestHookSessionStartCountsWikiPages(t *testing.T) {
+	dir := hintRepo(t, "internal/tui/")
+	t.Chdir(dir)
+	wikiDir := filepath.Join(dir, ".acta", "wiki")
+	put := func(name, body string) {
+		t.Helper()
+		file := filepath.Join(wikiDir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(file, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	line := func(t *testing.T) string {
+		t.Helper()
+		code, out, errb := runHook(t, "session-start", "")
+		if code != exitOK || errb != "" {
+			t.Fatalf("exit %d, stderr %q", code, errb)
+		}
+		for _, l := range strings.Split(out, "\n") {
+			if strings.HasPrefix(l, wikiLineHead) {
+				return l
+			}
+		}
+		return ""
+	}
+	if got := line(t); !strings.HasPrefix(got, wikiLineHead+"1.") {
+		t.Errorf("one page: line %q", got)
+	}
+	put("sub/two.md", "---\ntype: Runbook\ntitle: Two\ndescription: A page in a folder\npaths: []\ntimestamp: 2026-10-04T10:00:00Z\n---\nbody\n")
+	if got := line(t); !strings.HasPrefix(got, wikiLineHead+"2.") {
+		t.Errorf("two pages, one in a folder: line %q", got)
+	}
+	put("broken.md", "no frontmatter at all\n")
+	if got := line(t); !strings.HasPrefix(got, wikiLineHead+"2.") {
+		t.Errorf("two pages and a broken one: line %q", got)
+	}
+
+	// No pages: a wiki folder with nothing loadable in it, and no wiki folder.
+	for name, setup := range map[string]func(t *testing.T) string{
+		"only a broken page": func(t *testing.T) string {
+			d := hintRepo(t, "internal/tui/")
+			if err := os.WriteFile(filepath.Join(d, ".acta", "wiki", "tui-wrap.md"), []byte("no frontmatter\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return d
+		},
+		"no wiki folder": func(t *testing.T) string {
+			t.Setenv("HOME", t.TempDir())
+			return hookRepo(t)
+		},
+		"outside a project": func(t *testing.T) string {
+			t.Setenv("HOME", t.TempDir())
+			return t.TempDir()
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Chdir(setup(t))
+			if got := line(t); got != "" {
+				t.Errorf("a repo with no pages got the line %q", got)
+			}
+		})
+	}
+}

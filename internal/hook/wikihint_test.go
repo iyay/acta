@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 const (
@@ -432,6 +433,124 @@ func TestHintJSON(t *testing.T) {
 	want := `{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"wiki: a.md: one\nwiki: b.md: two"}}`
 	if got != want {
 		t.Errorf("HintJSON = %s, want %s", got, want)
+	}
+}
+
+// A clear or a compaction takes the old hints out of the context, so the session
+// must hear them again. Every context of that session goes: the main thread and
+// each subagent. Another session, and one whose name only starts the same way,
+// keep what they were shown.
+func TestResetHintsDropsOneSessionForEveryAgent(t *testing.T) {
+	root, repo := hintWiki(t)
+	tui := filepath.Join(repo, "internal/tui/a.go")
+	contexts := []ToolEvent{
+		fileEv("Read", "s1", "", tui),
+		fileEv("Read", "s1", "agent-1", tui),
+		fileEv("Read", "s1", "agent-2", tui),
+	}
+	others := []ToolEvent{fileEv("Read", "s10", "", tui), fileEv("Read", "s2", "", tui)}
+	for _, ev := range append(slices.Clone(contexts), others...) {
+		if got := WikiHints(root, repo, ev); got != tuiLine {
+			t.Fatalf("setup, %s/%s: hint = %q, want %q", ev.SessionID, ev.AgentID, got, tuiLine)
+		}
+	}
+
+	if err := ResetHints(root, "s1"); err != nil {
+		t.Fatalf("ResetHints: %v", err)
+	}
+	if got := mustRead(t, filepath.Join(root, "state", "wiki-hints.json")); got != `{"s10/":["tui-wrap"],"s2/":["tui-wrap"]}` {
+		t.Errorf("state after the reset = %s, want only s10 and s2 left", got)
+	}
+	// The file is replaced in one move, so no temp file may be left beside it.
+	entries, err := os.ReadDir(filepath.Join(root, "state"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	if want := []string{"wiki-hints.json", "wiki-hints.lock"}; !slices.Equal(names, want) {
+		t.Errorf("state folder holds %v, want %v", names, want)
+	}
+	for _, ev := range contexts {
+		if got := WikiHints(root, repo, ev); got != tuiLine {
+			t.Errorf("after the reset, %s/%s: hint = %q, want %q", ev.SessionID, ev.AgentID, got, tuiLine)
+		}
+	}
+	for _, ev := range others {
+		if got := WikiHints(root, repo, ev); got != "" {
+			t.Errorf("after the reset of s1, %s heard the hint again: %q", ev.SessionID, got)
+		}
+	}
+}
+
+// Every session start in a project asks for a reset when the source is clear or
+// compact, and most sessions have shown nothing. Then there is nothing to forget,
+// so no folder, no lock and no new file may appear.
+func TestResetHintsWritesNothingWhenThereIsNothingToForget(t *testing.T) {
+	cases := []struct {
+		name, session string
+		state         string // the shown-pages file to start from; empty means no file
+	}{
+		{"no state file", "s1", ""},
+		{"only other sessions", "s1", "{\"s2/\": [\"tui-wrap\"]}\n"},
+		{"a session whose name starts the same way", "s1", "{\"s10/\": [\"tui-wrap\"]}\n"},
+		{"an empty session name", "", "{\"s1/\": [\"tui-wrap\"], \"s1/agent-1\": [\"tui-wrap\"]}\n"},
+		{"a broken file", "s1", "{not json"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root, _ := hintWiki(t)
+			if c.state != "" {
+				putHintState(t, root, c.state)
+			}
+			if err := ResetHints(root, c.session); err != nil {
+				t.Fatalf("ResetHints: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "state", "wiki-hints.lock")); err == nil {
+				t.Error("a reset with nothing to forget made the lock file")
+			}
+			file := filepath.Join(root, "state", "wiki-hints.json")
+			if c.state == "" {
+				if _, err := os.Stat(filepath.Join(root, "state")); err == nil {
+					t.Error("a reset with nothing to forget made the state folder")
+				}
+			} else if got := mustRead(t, file); got != c.state {
+				t.Errorf("state = %q, want it left as %q", got, c.state)
+			}
+		})
+	}
+}
+
+// The reset and the hints share one lock. Without it, a hint that is saved at
+// the same moment can bring back a page the reset just dropped.
+func TestResetHintsWaitsForTheHintLock(t *testing.T) {
+	root, repo := hintWiki(t)
+	WikiHints(root, repo, fileEv("Read", "s1", "", filepath.Join(repo, "internal/tui/a.go")))
+	unlock, ok := lockHints(root)
+	if !ok {
+		t.Fatal("could not take the lock")
+	}
+	done := make(chan error, 1)
+	go func() { done <- ResetHints(root, "s1") }()
+	select {
+	case <-done:
+		unlock()
+		t.Fatal("the reset went on while another hook held the lock")
+	case <-time.After(100 * time.Millisecond):
+	}
+	unlock()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("ResetHints: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the reset did not finish after the lock was let go")
+	}
+	if got := mustRead(t, filepath.Join(root, "state", "wiki-hints.json")); got != `{}` {
+		t.Errorf("state after the reset = %s, want {}", got)
 	}
 }
 

@@ -180,6 +180,43 @@ func claim(root, key string, pages []wiki.Page) []wiki.Page {
 	return fresh
 }
 
+// ResetHints makes one session hear its pages again, in the main thread and in
+// every subagent. A clear or a compaction takes the old hints out of the
+// context, so the list of what was shown is no longer true. It takes the lock
+// the hints take, so a hint saved at the same moment cannot bring a page back.
+//
+// A state that cannot be saved comes back as an error, and the caller drops it:
+// a reset that fails only leaves the pages quiet, and must never fail a session.
+func ResetHints(root, sessionID string) error {
+	// A key is a session id, a slash and an agent id, and a hint needs a session
+	// id. So an empty one matches no key and drops nothing.
+	prefix := sessionID + "/"
+	// Most session starts follow no hint at all. Look first, so they lock and
+	// write nothing.
+	if shown := readHints(root); len(withoutSession(shown, prefix)) == len(shown) {
+		return nil
+	}
+	// A lock that cannot be had does not stop the reset: a reset that does
+	// nothing would leave every page quiet, which is what it is here to undo.
+	if unlock, ok := lockHints(root); ok {
+		defer unlock()
+	}
+	// The look above took no lock, so the file is read again now that it is held.
+	return writeHints(root, withoutSession(readHints(root), prefix))
+}
+
+// withoutSession gives the shown pages minus every context whose key starts with
+// prefix, which is one session and all of its subagents.
+func withoutSession(shown map[string][]string, prefix string) map[string][]string {
+	kept := make(map[string][]string, len(shown))
+	for key, ids := range shown {
+		if !strings.HasPrefix(key, prefix) {
+			kept[key] = ids
+		}
+	}
+	return kept
+}
+
 // unseen keeps the pages whose id is not in ids.
 func unseen(pages []wiki.Page, ids []string) []wiki.Page {
 	var out []wiki.Page

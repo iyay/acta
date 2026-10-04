@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/wiki"
 )
 
 const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt | acta hook pre-tool | acta hook post-tool"
@@ -89,6 +91,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, hookUsage)
 			return exitBadInput
 		}
+		sessionID, source := readSessionStart(stdin)
 		in := loadVoice()
 		in.Herdr = os.Getenv("HERDR_ENV") == "1"
 		repo, _ := os.Getwd()
@@ -97,6 +100,16 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			// Keep the agent record file out of git. A failure here is not
 			// worth a word to the user, so it is dropped.
 			_ = hook.EnsureGitignore(cfg.Root, ".agents.json")
+			// Pages that cannot load are for `acta wiki check` to report.
+			pages, _ := wiki.Load(cfg.Root)
+			in.WikiPages = len(pages)
+			// After a clear or a compaction the old hints are gone from the
+			// context, so the session must hear its pages again. The error is
+			// dropped on purpose: a state that cannot be saved must not stop
+			// a session from starting.
+			if source == "clear" || source == "compact" {
+				_ = hook.ResetHints(cfg.Root, sessionID)
+			}
 		}
 		in.Conflicts = hook.Conflicts(hook.EnabledPlugins(hook.ClaudeDir(), repo), hook.LoadKnown(*known))
 		fmt.Fprint(stdout, hook.SessionStart(in))
@@ -142,6 +155,25 @@ func hookConfig() (config.Config, bool) {
 	}
 	fi, err := os.Stat(cfg.Root)
 	return cfg, err == nil && fi.IsDir()
+}
+
+// readSessionStart reads the two fields of the SessionStart payload this hook
+// uses: the session, and why it started. Stdin that is empty, broken or not what
+// was expected gives two empty strings, because a session must start whatever
+// the hook is handed.
+func readSessionStart(stdin io.Reader) (sessionID, source string) {
+	data, err := io.ReadAll(stdin)
+	if err != nil {
+		return "", ""
+	}
+	var ev struct {
+		SessionID string `json:"session_id"`
+		Source    string `json:"source"`
+	}
+	if json.Unmarshal(data, &ev) != nil {
+		return "", ""
+	}
+	return ev.SessionID, ev.Source
 }
 
 // sessionReminder is the one line a session that already brainstormed gets

@@ -26,6 +26,7 @@ type Input struct {
 	RepoErr     error    // .acta.yaml could not be read; its repo keys are left out
 	Conflicts   []string // enabled plugins that overlap acta
 	Herdr       bool     // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
+	WikiPages   int      // pages in the project wiki; with none, the wiki line is left out
 }
 
 const coreRules = `
@@ -46,6 +47,10 @@ Core rules:
 const herdrExtra = `
 herdr: this session runs in a herdr tab. For a second brainstorm, offer the user one more way to run it: a new herdr tab.
 `
+
+// wikiLine is the one line a repo with wiki pages adds. Only the count changes
+// from one repo to the next, so the line costs the same at 1 page and at 100.
+const wikiLine = "\nProject wiki. Pages: %d. When a `wiki:` line names a page, read it before you change the files it covers. Project knowledge goes to the wiki, not to agent memory.\n"
 
 // leanSummary is the short form of the coding guide. The skill acta:lean holds
 // the full text. It is left out when the config says coding_guide: off.
@@ -71,6 +76,9 @@ func SessionStart(in Input) string {
 	b.WriteString(coreRules)
 	if in.Herdr {
 		b.WriteString(herdrExtra)
+	}
+	if in.WikiPages > 0 {
+		fmt.Fprintf(&b, wikiLine, in.WikiPages)
 	}
 	switch {
 	case !in.VoiceExists:

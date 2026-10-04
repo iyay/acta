@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -246,6 +247,8 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
 	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
 	worst.Herdr = true // the herdr line counts against the cap too
+	// The wiki line counts against the cap too.
+	worst.WikiPages = 100
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
@@ -253,6 +256,84 @@ func TestSessionStartStaysShort(t *testing.T) {
 	} {
 		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
+		}
+	}
+}
+
+// inserted gives what with holds on top of base, for a with that is base with
+// one piece put in. It fails the test when the two differ in any other way, so
+// a change to the old text cannot hide behind the new piece.
+func inserted(t *testing.T, base, with string) string {
+	t.Helper()
+	head := 0
+	for head < len(base) && head < len(with) && base[head] == with[head] {
+		head++
+	}
+	tail := 0
+	for tail < len(base)-head && tail < len(with)-head && base[len(base)-1-tail] == with[len(with)-1-tail] {
+		tail++
+	}
+	if head+tail != len(base) {
+		t.Fatalf("the text changed in more than one added piece:\nbefore: %q\nafter:  %q", base, with)
+	}
+	return with[head : len(with)-tail]
+}
+
+// A repo with no wiki pages gets the text it always got, byte for byte: the
+// fallback file was made before the wiki line, so it holds the old text. A repo
+// with pages gets one more line, and that line costs the same at 1 page and at
+// 100, because the count is one word.
+func TestSessionStartWikiLine(t *testing.T) {
+	old, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	none := Input{Voice: config.UserDefault(), VoiceExists: true, WikiPages: 0}
+	if got := SessionStart(none); got != string(old) {
+		t.Errorf("with 0 pages the text is not the old text:\n%s", got)
+	}
+
+	lean, everything := korean(), korean()
+	lean.Voice.CodingGuide = "off"
+	everything.Voice.Tone = "A tone line."
+	everything.Conflicts = []string{"superpowers@a"}
+	everything.Herdr = true
+	shapes := map[string]Input{
+		"default":    none,
+		"first run":  {Voice: config.UserDefault()},
+		"broken":     {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
+		"lean off":   lean,
+		"everything": everything,
+	}
+	// The line with its count cut out. Every shape and every count gives this one.
+	var shape string
+	for name, in := range shapes {
+		before := SessionStart(in)
+		for _, n := range []int{1, 100} {
+			in.WikiPages = n
+			line := strings.TrimSpace(inserted(t, before, SessionStart(in)))
+			if line == "" || strings.Contains(line, "\n") {
+				t.Fatalf("%s, %d pages: want one added line, got %q", name, n, line)
+			}
+			if words := len(strings.Fields(line)); words > 45 {
+				t.Errorf("%s, %d pages: the wiki line has %d words, the cap is 45", name, n, words)
+			}
+			count := strconv.Itoa(n)
+			if !strings.Contains(line, count) {
+				t.Errorf("%s, %d pages: the line does not give the count: %q", name, n, line)
+			}
+			cut := strings.Replace(line, count, "N", 1)
+			if shape == "" {
+				shape = cut
+			}
+			if cut != shape {
+				t.Errorf("%s, %d pages: the line changes with more than its count:\n got %q\nwant %q", name, n, cut, shape)
+			}
+		}
+	}
+	for _, want := range []string{"`wiki:` line names a page, read it before you change", "goes to the wiki, not to agent memory"} {
+		if !strings.Contains(shape, want) {
+			t.Errorf("the wiki line is missing %q: %q", want, shape)
 		}
 	}
 }
