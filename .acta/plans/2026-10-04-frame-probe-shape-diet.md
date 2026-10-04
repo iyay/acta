@@ -58,9 +58,9 @@ started: "2026-10-04 07:04:13"
 
 **verify:** The session-start text has `- Questions: probe.` exactly when the stored value is `probe`, on every voice path (set up, not set up, unreadable file). List each path and what it prints. The default config's session-start size does not change.
 
-- [ ] Failing tests: session start with `questions: probe` holds `- Questions: probe.`; with `one`, empty, no voice file and a broken voice file it does not. They fail because the hook does not read the field.
-- [ ] Write the line in the Voice block of `hook.go` after the Style line; add `questions` to the setup skill's "Change anything already set?" list and a short "Questions" part with `acta config set --questions probe`; raise only the setup cap by what the text costs.
-- [ ] Commit: `hook: tell shape when the user picked probe; setup asks for it`
+- [x] Failing tests: session start with `questions: probe` holds `- Questions: probe.`; with `one`, empty, no voice file and a broken voice file it does not. They fail because the hook does not read the field.
+- [x] Write the line in the Voice block of `hook.go` after the Style line; add `questions` to the setup skill's "Change anything already set?" list and a short "Questions" part with `acta config set --questions probe`; raise only the setup cap by what the text costs.
+- [x] Commit: `hook: tell shape when the user picked probe; setup asks for it`
 
 ### Task 4: The frame skill
 

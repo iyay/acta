@@ -84,6 +84,9 @@ func SessionStart(in Input) string {
 		fmt.Fprintf(&b, "\nVoice:\n- Write every chat message to the user in %s.\n", v.ChatLanguage)
 		fmt.Fprintf(&b, "- Write everything that goes into the repo (code, comments, commits, specs, plans) in %s. Comments use short, plain words and say why.\n", v.RepoLanguage)
 		fmt.Fprintf(&b, "- Style: %s.\n", v.Style)
+		if v.Questions == "probe" {
+			b.WriteString("- Questions: probe.\n")
+		}
 		if v.Tone != "" {
 			b.WriteString("- Tone, in the user's words:\n")
 			for _, ln := range strings.Split(v.Tone, "\n") {

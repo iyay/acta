@@ -117,6 +117,41 @@ func TestSessionStartBrokenVoice(t *testing.T) {
 	}
 }
 
+// The session note tells shape that the user picked probe, and only that value
+// does. Any other voice path must stay as it was, byte for byte.
+func TestSessionStartQuestionsProbeLine(t *testing.T) {
+	probe := korean()
+	probe.Voice.Questions = "probe"
+	out := SessionStart(probe)
+	if !strings.Contains(out, "\n- Style: adhd.\n- Questions: probe.\n") {
+		t.Errorf("probe line must sit right after the style line:\n%s", out)
+	}
+	one, broken := korean(), Input{Voice: config.User{Questions: "probe"}, VoiceExists: true, VoiceErr: errors.New("x")}
+	one.Voice.Questions = "one"
+	for name, in := range map[string]Input{
+		"one":           one,
+		"key absent":    korean(),
+		"no voice file": {Voice: config.User{Questions: "probe"}},
+		"broken file":   broken,
+	} {
+		if got := SessionStart(in); strings.Contains(got, "Questions: probe") {
+			t.Errorf("%s: the probe line must be absent:\n%s", name, got)
+		}
+	}
+}
+
+// Not probe adds no text at all, so the default session start keeps its size.
+func TestSessionStartQuestionsAddsNoTextWhenNotProbe(t *testing.T) {
+	unset, one := korean(), korean()
+	one.Voice.Questions = "one"
+	if got, want := len(SessionStart(one)), len(SessionStart(unset)); got != want {
+		t.Errorf("questions: one made the session start %d bytes, unset is %d", got, want)
+	}
+	if got := SessionStart(Input{Voice: config.UserDefault(), VoiceExists: true}); strings.Contains(got, "Questions:") {
+		t.Errorf("the default session start now mentions Questions:\n%s", got)
+	}
+}
+
 func TestSessionStartConflicts(t *testing.T) {
 	in := korean()
 	in.Conflicts = []string{"superpowers@superpowers-dev"}
