@@ -5,6 +5,7 @@ id: PLN-0080
 created: "2026-10-04 06:59:06"
 hash: lt31wik
 started: "2026-10-04 07:04:13"
+finished: "2026-10-04 07:22:25"
 ---
 # Frame, Probe and Shape Diet Implementation Plan
 
@@ -78,9 +79,9 @@ started: "2026-10-04 07:04:13"
 
 **verify:** Each new case fails when its rule breaks: list for each grader the bad reply it rejects (frame: status set to brainstorming, a first question that is not the goal question; probe: more than five questions, a question with no recommended answer, any code written).
 
-- [ ] Failing test: `evals_test.go` rows for both cases, tied to `skills/frame/SKILL.md` and `skills/shape/probe.md`; it fails because the case folders do not exist.
-- [ ] Write both cases in the layout of `plugin/evals/answers-appended/`: frame gets a new product idea in a scaffolded repo with a scratch item; probe gets "grill me" on a short design.
-- [ ] Commit: `evals: frame keeps the brainstorm slot, probe asks one capped round`
+- [x] Failing test: `evals_test.go` rows for both cases, tied to `skills/frame/SKILL.md` and `skills/shape/probe.md`; it fails because the case folders do not exist.
+- [x] Write both cases in the layout of `plugin/evals/answers-appended/`: frame gets a new product idea in a scaffolded repo with a scratch item; probe gets "grill me" on a short design.
+- [x] Commit: `evals: frame keeps the brainstorm slot, probe asks one capped round`
 
 ### Task 6: Version bump
 
@@ -88,6 +89,24 @@ started: "2026-10-04 07:04:13"
 
 **verify:** The three manifests agree on one version that is one patch above main's at branch time, and no other field changed.
 
-- [ ] Failing test: none new; `internal/plugincheck` already fails when the three disagree, so bump one file first and watch it fail.
-- [ ] Add 1 to the patch in all three files.
-- [ ] Commit: `plugin: version <new version>`, with the real number (0.1.4 when main is still on 0.1.3).
+- [x] Failing test: none new; `internal/plugincheck` already fails when the three disagree, so bump one file first and watch it fail.
+- [x] Add 1 to the patch in all three files.
+- [x] Commit: `plugin: version <new version>`, with the real number (0.1.4 when main is still on 0.1.3).
+
+## Review notes
+
+- R1: TestFrameNeverSetsBrainstormingStatus skips lines with "never" or "no "; the MustNot `status brainstorming` still catches the command form.
+- R1: the five-questions-max grader with the m flag fires on any numbered list that reaches 6, not only on a sixth question.
+- R1: shape no longer says specced comes from the parent link; harmless, internal/write/ops.go refuses specced as a status.
+- R1: `config show --json` prints one for both unset and set-to-one, the same as plan_depth.
+- R1: the shape description lost its trigger list (new feature, fix that needs code, behaviour change, decision); the four old shape evals guard triggering at land.
+- R1: the early "decompose a multi-subsystem request" guidance is gone; only the self-review scope check covers it, under the spec's drop of general design advice.
+- R1: startup.md shares 41 of 740 seven-word runs with gstack and probe.md 27 of 277 with grilling; both are rewritten overall and shorter than their sources.
+- R1: Task 2 landed as two commits with the same message (d61e8b0, b2b4f0d).
+- R1: the out-of-plan edits to skill_setup_test.go and plugin/hooks/default-rules.md are needed (a Must string, TestDefaultRulesFile).
+- R1: probe.md uses SCR-0001 as its placeholder id while frame uses SCR-xxxx.
+- Polish: every-question-has-a-recommendation no longer checks a heading with italic in it (`**Q1. Use *Postgres* here?**`).
+- Polish: the looser goal grader also passes a reply where "what" and "goal" come before a first question that is not the goal question.
+- Polish: both new max_turns comments still open with "The floor is three turns", which is now stale, and 7 has no measured runs behind it; add turn counts after the first eval runs.
+- Polish: without the fence, the probe.md heading and body lines render as one markdown paragraph; still readable.
+- Polish: the first `--round polish` send was skipped by omp (plan-title goal looked done); recorded as BUG-0028 on main.

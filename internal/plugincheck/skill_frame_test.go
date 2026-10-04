@@ -10,7 +10,7 @@ import (
 func TestSkillFrame(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "frame",
-		MaxLines: 260,
+		MaxLines: 197,
 		Must: []string{
 			"what's your goal with this?", "startup.md", "premises", "assignment",
 			"acta scratch add", "--section context", "--section log", "--section questions",

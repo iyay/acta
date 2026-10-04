@@ -4,6 +4,7 @@ id: SPC-0070
 created: "2026-10-04 06:51:08"
 hash: wz6nf5o
 started: "2026-10-04 07:04:13"
+finished: "2026-10-04 07:22:25"
 ---
 # Frame skill, probe mode and shape diet
 

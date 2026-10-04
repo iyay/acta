@@ -16,16 +16,15 @@ round waits too. Then stop and wait for the answers.
 Each answer reshapes the tree: settled decisions push the frontier
 outward. Recompute it after every round.
 
-**Format each question** as a title, the body, then your answer:
+**Format each question** as a title, the body, then your answer, with no
+code fence around the round:
 
-```
 **Q1. Scope of the retry**
 Store the attempt count in Postgres, not in memory, so a restart does
 not lose it. Which fits the deployment here?
 
 Recommended: Postgres. The box restarts on deploy and an in-memory
 count would hand the user a fresh budget every time.
-```
 
 **Facts are your job, never the user's.** When a frontier question
 needs a fact from the environment (files, tools, config), dispatch a

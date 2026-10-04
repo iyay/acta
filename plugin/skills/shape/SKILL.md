@@ -90,7 +90,7 @@ Classify, announce the path, then do these in order.
 3. Present short design in chat — approach, files touched, testing
 4. Get approval — STOP and wait for an explicit yes; presenting the design and starting in the same breath skips the gate
 5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit on the checked-out branch
-6. User reviews spec — ask them to read the file, then wait. On changes requested, go back to step 3 and the short spec, never the Architectural flow
+6. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
 7. Transition — invoke acta:slice
 
 **Architectural:**
@@ -125,7 +125,8 @@ sets `parent: debt/<stem>` and lists every DBT id it closes in
 **Shared language.** While refining, keep `CONTEXT.md` (one domain term
 per line, in English) and `docs/adr/` (one file per hard-to-explain
 decision: the decision, why, the alternatives rejected) up to date.
-Propose a new term and wait for a yes.
+Propose a new term and wait for a yes. Both change only while the
+session is brainstorming.
 
 **Self-review, four checks.** Placeholders left in; sections that
 contradict each other; scope too wide for one plan; any requirement a

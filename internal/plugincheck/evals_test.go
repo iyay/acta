@@ -23,6 +23,8 @@ var evalCases = []struct {
 	{"one-file-fix-no-brainstorm", "skills/shape/SKILL.md", "Spike and Bounded"},
 	{"brainstorm-files-scratch-first", "skills/shape/SKILL.md", "status brainstorming"},
 	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},
+	{"frame-no-brainstorming-status", "skills/frame/SKILL.md", "the `brainstorming` status"},
+	{"probe-round", "skills/shape/probe.md", "five questions at most"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 }
 

@@ -10,7 +10,7 @@ import (
 func TestSkillShape(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "shape",
-		MaxLines: 200,
+		MaxLines: 177,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:slice", "CONTEXT.md", "docs/adr/",
