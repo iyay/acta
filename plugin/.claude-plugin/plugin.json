@@ -1,7 +1,7 @@
 {
   "name": "acta",
   "description": "A lean workflow for Claude Code and omp: shape, slice, build, test first, debug, review, land. Planning files go to .acta/ through acta.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": { "name": "Rian" },
   "license": "MIT",
   "keywords": ["workflow", "tdd", "review", "planning"]
