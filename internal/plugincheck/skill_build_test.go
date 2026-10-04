@@ -38,8 +38,13 @@ func TestSkillBuild(t *testing.T) {
 			// acta dispatch close reads the slug from the current branch, so it
 			// only works in the worktree, before land deletes the branch.
 			"With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land`",
+			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 		},
 		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
+			// The wiki is the one home for project knowledge. The old files stay
+			// out of the skill text, and so does the name of the format its
+			// fields came from.
+			"CONTEXT.md", "docs/adr", "okf", "OKF",
 			"default to `.worktrees/`", "Step 0 consent", "ls -d .worktrees", "acta:dispatch",
 			"and no `herdr` on PATH",
 			`"$LOCATION/$BRANCH_NAME"`, "acta tick <task-id>", "run it again with --all",
@@ -211,5 +216,92 @@ func TestBuildSkillNoBareGoTest(t *testing.T) {
 	}
 	if !strings.Contains(txt, "the pre-tool hook blocks it") {
 		t.Error("build/SKILL.md does not say the pre-tool hook blocks it")
+	}
+}
+
+// TestBuildCloseWritesWikiFirst reads SKILL.md on its own. CheckSkill joins
+// the whole folder, and wiki.md says "acta wiki check" too, so a revert of
+// SKILL.md alone could stay green. The wiki step has to come before the fast
+// tests and the review, or the review cannot see the wiki diff.
+func TestBuildCloseWritesWikiFirst(t *testing.T) {
+	_, closing, ok := strings.Cut(readBuildFile(t, "SKILL.md"), "\n## Close\n")
+	if !ok {
+		t.Fatal("build/SKILL.md has no ## Close section")
+	}
+	last := -1
+	for _, step := range []string{
+		"[wiki.md](wiki.md)",
+		"acta wiki check <parent>..HEAD",
+		"fix each touched page and bump its `timestamp`",
+		"add a page only for a lesson a fresh agent would lose time without",
+		"one commit",
+		"run the fast tests and the type checks",
+		"then use `acta:review` over `<parent>..HEAD`",
+	} {
+		i := strings.Index(closing, step)
+		switch {
+		case i < 0:
+			t.Errorf("build/SKILL.md ## Close is missing %q", step)
+		case i < last:
+			t.Errorf("build/SKILL.md ## Close names %q before an earlier step", step)
+		default:
+			last = i
+		}
+	}
+	// A dispatch recipient replies back, and the review reads what it sent.
+	// So its wiki commit has to come before the reply.
+	if !strings.Contains(closing, "`acta reply-back` after the last task commit and the wiki step") {
+		t.Error("build/SKILL.md ## Close lets a dispatch recipient reply back before the wiki step")
+	}
+}
+
+// TestBuildWikiFileHoldsTheRules reads wiki.md on its own. It is the one place
+// that says how a page looks and when one is written, so each rule of the
+// design has to be in it. The words are joined first, since a line may wrap.
+func TestBuildWikiFileHoldsTheRules(t *testing.T) {
+	txt := strings.Join(strings.Fields(readBuildFile(t, "wiki.md")), " ")
+	for _, r := range []struct{ rule, want string }{
+		{"where pages live", "`.acta/wiki/` under the acta root"},
+		{"one concept per file", "One concept per file"},
+		{"subfolders", "Subfolders are fine"},
+		{"page id", "its path minus `.md`"},
+		{"no acta id, no status", "no acta id and no status"},
+		{"the board skips it", "the board skips the wiki"},
+		{"frontmatter type", "type: Gotcha"},
+		{"frontmatter title", "title: "},
+		{"frontmatter description", "description: "},
+		{"frontmatter paths", "paths: ["},
+		{"frontmatter timestamp", "timestamp: "},
+		{"the five types", "`Decision`"},
+		{"the five types", "`Gotcha`"},
+		{"the five types", "`Runbook`"},
+		{"the five types", "`Reference`"},
+		{"the five types", "`Glossary`"},
+		{"one glossary page", "`glossary.md`"},
+		{"description size", "one line, 120 characters at most"},
+		{"description is the hint", "the hint text"},
+		{"folder paths", "A folder ends with `/`"},
+		{"prefix, no globs", "by prefix, with no globs"},
+		{"timestamp format", "ISO 8601"},
+		{"timestamp bumps", "on every change and on every re-check"},
+		{"body size", "250 words at most"},
+		{"split long pages", "Split a longer page"},
+		{"no index or log", "no `index.md` and no `log.md`"},
+		{"feature off with no wiki", "pays 0 tokens"},
+		{"when pages are written", "last step of `acta:build`, before review"},
+		{"who writes them", "The agent that ran the plan"},
+		{"the check", "`acta wiki check <parent>..HEAD`"},
+		{"fix lines that are now wrong", "fix every line that is now wrong"},
+		{"bump the timestamp", "Bump `timestamp`"},
+		{"when to add a page", "a lesson a fresh agent would lose time without"},
+		{"one commit", "one commit in the worktree"},
+		{"no wiki task in a plan", "A plan has no wiki task"},
+		{"once per plan", "at most once per plan"},
+		{"update changes lines", "An update changes lines. It does not rewrite the page."},
+		{"nothing git already holds", "no LANDED status and no review NOTEs"},
+	} {
+		if !strings.Contains(txt, r.want) {
+			t.Errorf("build/wiki.md is missing the rule %q: %q", r.rule, r.want)
+		}
 	}
 }

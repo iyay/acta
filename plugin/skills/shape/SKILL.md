@@ -122,11 +122,11 @@ A spec from several sets the first as `parent:` and lists the rest in
 sets `parent: debt/<stem>` and lists every DBT id it closes in
 `closes:`.
 
-**Shared language.** While refining, keep `CONTEXT.md` (one domain term
-per line, in English) and `docs/adr/` (one file per hard-to-explain
-decision: the decision, why, the alternatives rejected) up to date.
-Propose a new term and wait for a yes. Both change only while the
-session is brainstorming.
+**Shared language.** Before the questions, if `.acta/wiki/` exists,
+read its `glossary.md` (if any) and run `acta wiki ls --type Decision`.
+Propose a new term or decision as a wiki page and wait for a yes. Note
+each yes in the spec: `acta:build` writes the page, in the format of
+`../build/wiki.md`.
 
 **Self-review, four checks.** Placeholders left in; sections that
 contradict each other; scope too wide for one plan; any requirement a

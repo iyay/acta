@@ -5,8 +5,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func setupRepo(t *testing.T) string {
@@ -349,4 +351,163 @@ func firstCommitRepo(t *testing.T, name string) string {
 	git(t, dir, "add", ".")
 	git(t, dir, "commit", "-q", "-m", "first")
 	return dir
+}
+
+// repoAt is setupRepo with its first commit made at when, so a test can say
+// how old a commit is.
+func repoAt(t *testing.T, when string) string {
+	t.Helper()
+	t.Setenv("GIT_AUTHOR_DATE", when)
+	t.Setenv("GIT_COMMITTER_DATE", when)
+	return setupRepo(t)
+}
+
+// commitAllAt commits every change in the repo with both git dates at when.
+func commitAllAt(t *testing.T, repo, when, msg string) {
+	t.Helper()
+	t.Setenv("GIT_AUTHOR_DATE", when)
+	t.Setenv("GIT_COMMITTER_DATE", when)
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-q", "-m", msg)
+}
+
+// LastChange is the commit time of the newest commit that touched one of the
+// paths. A path is a plain name: no glob and no git path magic, since a page
+// lists names and the wiki matches them by prefix.
+func TestLastChange(t *testing.T) {
+	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
+	if err := os.MkdirAll(filepath.Join(repo, "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "dir", "c.md"), "c\n")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "add dir/c.md")
+	writeFile(t, filepath.Join(repo, "a.md"), "a again\n")
+	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "edit a.md")
+	writeFile(t, filepath.Join(repo, "dir", "c.md"), "c again\n")
+	// Seven hours ahead of UTC: the same moment as midnight UTC.
+	commitAllAt(t, repo, "2023-01-01T07:00:00+07:00", "edit dir/c.md")
+
+	year := func(y int) time.Time { return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC) }
+	tests := []struct {
+		name  string
+		paths []string
+		want  time.Time
+	}{
+		{"a file only the first commit touched", []string{"b.md"}, year(2020)},
+		{"a file edited later", []string{"a.md"}, year(2022)},
+		{"the newest of several paths", []string{"b.md", "a.md"}, year(2022)},
+		{"a folder is the files in it", []string{"dir/"}, year(2023)},
+		{"a path no commit touched", []string{"nothing.md"}, time.Time{}},
+		{"no paths is not the whole repo", nil, time.Time{}},
+		{"a glob is a name, not a pattern", []string{"*.md"}, time.Time{}},
+		{"git path magic is a name, not magic", []string{":(top)a.md"}, time.Time{}},
+	}
+	for _, tt := range tests {
+		got, err := LastChange(repo, tt.paths)
+		if err != nil || !got.Equal(tt.want) {
+			t.Errorf("%s: LastChange(%v) = %v, %v, want %v", tt.name, tt.paths, got, err, tt.want)
+		}
+	}
+	if got, err := LastChange(t.TempDir(), []string{"a.md"}); err == nil {
+		t.Errorf("a folder that is no checkout gave %v and no error", got)
+	}
+}
+
+// A clean merge brings no change of its own. Landing a branch must not turn
+// every page that covers its files into a stale one, so the answer is the commit
+// that made the change and not the merge that carried it.
+func TestLastChangeSeesPastACleanMerge(t *testing.T) {
+	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
+	git(t, repo, "checkout", "-q", "-b", "side")
+	writeFile(t, filepath.Join(repo, "a.md"), "side edits a\n")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "side edits a.md")
+	git(t, repo, "checkout", "-q", "main")
+	writeFile(t, filepath.Join(repo, "b.md"), "main edits b\n")
+	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "main edits b.md")
+	t.Setenv("GIT_AUTHOR_DATE", "2023-01-01T00:00:00Z")
+	t.Setenv("GIT_COMMITTER_DATE", "2023-01-01T00:00:00Z")
+	git(t, repo, "merge", "-q", "--no-ff", "-m", "merge side", "side")
+
+	year := func(y int) time.Time { return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC) }
+	for path, want := range map[string]time.Time{"a.md": year(2021), "b.md": year(2022)} {
+		if got, err := LastChange(repo, []string{path}); err != nil || !got.Equal(want) {
+			t.Errorf("LastChange(%s) = %v, %v, want %v, the commit before the merge", path, got, err, want)
+		}
+	}
+}
+
+// Changed lists the files that differ across a range. A move counts as a file
+// that left and a file that came, so a folder a file moved out of is changed.
+func TestChanged(t *testing.T) {
+	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
+	first := git(t, repo, "rev-parse", "HEAD")
+	if err := os.MkdirAll(filepath.Join(repo, "dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "a.md"), "a again\n")
+	writeFile(t, filepath.Join(repo, "dir", "c.md"), "c\n")
+	writeFile(t, filepath.Join(repo, "café é.md"), "a name with spaces and a letter past ASCII\n")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "edit one, add two")
+	second := git(t, repo, "rev-parse", "HEAD")
+	git(t, repo, "mv", "b.md", "dir/b.md")
+	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "move b.md")
+	third := git(t, repo, "rev-parse", "HEAD")
+	git(t, repo, "rm", "-q", "a.md")
+	commitAllAt(t, repo, "2023-01-01T00:00:00Z", "delete a.md")
+	fourth := git(t, repo, "rev-parse", "HEAD")
+
+	tests := []struct {
+		name string
+		rng  string
+		want []string
+	}{
+		{"an edit and two adds", first + ".." + second, []string{"a.md", "café é.md", "dir/c.md"}},
+		{"a move", second + ".." + third, []string{"b.md", "dir/b.md"}},
+		{"a delete", third + ".." + fourth, []string{"a.md"}},
+		{"three dots", first + "..." + second, []string{"a.md", "café é.md", "dir/c.md"}},
+		{"a range with no change", second + ".." + second, nil},
+	}
+	for _, tt := range tests {
+		got, err := Changed(repo, tt.rng)
+		slices.Sort(got)
+		if err != nil || !slices.Equal(got, tt.want) {
+			t.Errorf("%s: Changed(%s) = %q, %v, want %q", tt.name, tt.rng, got, err, tt.want)
+		}
+	}
+
+	// A range that is not one must not be read as something else: a file name
+	// is no revision, and a dash would start a git option. --output writes a
+	// file, which a read-only check must never do.
+	out := filepath.Join(t.TempDir(), "out.txt")
+	for _, rng := range []string{"", "no-such-ref..HEAD", "dir/c.md", "--output=" + out} {
+		if got, err := Changed(repo, rng); err == nil {
+			t.Errorf("Changed(%q) = %q and no error, want an error", rng, got)
+		}
+	}
+	if _, err := os.Stat(out); err == nil {
+		t.Error("a range that starts with a dash made git write a file")
+	}
+}
+
+// A branch is checked against main while main keeps moving. What main changed
+// after the branch left it is not what the branch changed.
+func TestChangedStartsWhereTheSidesSplit(t *testing.T) {
+	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
+	git(t, repo, "checkout", "-q", "-b", "side")
+	writeFile(t, filepath.Join(repo, "side.md"), "side\n")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "side adds a file")
+	git(t, repo, "checkout", "-q", "main")
+	writeFile(t, filepath.Join(repo, "a.md"), "main moved on\n")
+	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "main edits a file")
+	git(t, repo, "checkout", "-q", "side")
+
+	for _, rng := range []string{"main..HEAD", "main...HEAD", "main..", "..main"} {
+		want := []string{"side.md"}
+		if rng == "..main" { // the other way round: what main did, seen from side
+			want = []string{"a.md"}
+		}
+		if got, err := Changed(repo, rng); err != nil || !slices.Equal(got, want) {
+			t.Errorf("Changed(%q) = %q, %v, want %q", rng, got, err, want)
+		}
+	}
 }

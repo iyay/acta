@@ -13,7 +13,8 @@ func TestSkillShape(t *testing.T) {
 		MaxLines: 177,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
-			".acta/specs/", "acta:slice", "CONTEXT.md", "docs/adr/",
+			".acta/specs/", "acta:slice",
+			"glossary.md", "acta wiki ls --type Decision", "../build/wiki.md",
 			"trust boundary", "each gets its own yes", "acta list --json",
 			"run " + "`acta id`" + ` right after`, "parent: debt/",
 			"acta scratch new", "acta scratch add", "status brainstorming",
@@ -29,8 +30,30 @@ func TestSkillShape(t *testing.T) {
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
 			"HERDR_ENV",
 			"names the DEBT ids it closes",
-			"in the worktree", "create its worktree now", "as the first commit"},
+			"in the worktree", "create its worktree now", "as the first commit",
+			// The wiki is the one home for project knowledge. The old files stay
+			// out of the skill text, and so does the name of the format its
+			// fields came from.
+			"CONTEXT.md", "docs/adr", "okf", "OKF"},
 	})
+}
+
+// TestNoSkillNamesTheOldKnowledgeFiles walks every skill file. Three skill
+// tests refuse these names for their own skill. This one covers all of them,
+// so no skill sends an agent to a place the wiki replaced.
+func TestNoSkillNamesTheOldKnowledgeFiles(t *testing.T) {
+	for _, p := range skillFiles(t, "skills") {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rel, _ := filepath.Rel(pluginRoot(t), p)
+		for _, bad := range []string{"CONTEXT.md", "docs/adr", "okf", "OKF"} {
+			if strings.Contains(string(b), bad) {
+				t.Errorf("%s names %q", rel, bad)
+			}
+		}
+	}
 }
 
 // TestShapeDescriptionKeepsBrainstorm guards the word users still type.

@@ -206,10 +206,12 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 ## Close
 
-When every task is committed: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+When every task is committed, write the wiki first. Read [wiki.md](wiki.md), run `acta wiki check <parent>..HEAD`, fix each touched page and bump its `timestamp`, add a page only for a lesson a fresh agent would lose time without, and make one commit if anything changed. Review then sees the wiki diff. The agent that ran the plan does this: you, or under `dispatch` the omp agent.
+
+After the wiki step: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 
 Every executor closes this way; only the fix round differs: `subagent` gives the fix to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land` (`## Close the tab` there).
 
 ### Reply back when a dispatch record exists
 
-When `<acta root>/.dispatch.json` exists, a dispatch handed you this branch, so the pane that sent it waits to hear from you. Run `acta reply-back` after the last task commit. Exit 1 lists the open tasks: finish them and run it again. A real blocker is `acta reply-back --blocked "<reason>"`. A dispatch recipient does not stop before `acta reply-back` exits 0.
+When `<acta root>/.dispatch.json` exists, a dispatch handed you this branch, so the pane that sent it waits to hear from you. Run `acta reply-back` after the last task commit and the wiki step. Exit 1 lists the open tasks: finish them and run it again. A real blocker is `acta reply-back --blocked "<reason>"`. A dispatch recipient does not stop before `acta reply-back` exits 0.

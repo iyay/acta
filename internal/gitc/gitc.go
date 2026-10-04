@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Result says whether the commit happened, and why not when it did not.
@@ -92,6 +93,58 @@ func FirstSeen(repo, path string) (int, error) {
 		}
 	}
 	return len(commits), nil
+}
+
+// LastChange is the commit time of the newest commit on the way back from HEAD
+// that touched one of the paths, or the zero time when none did. Each path is a
+// plain name from the repo root, and a folder ends in a slash. The paths are not
+// globs and not git path magic, since the wiki lists names and matches them by
+// prefix. git stops at the first commit it finds, which is the newest unless a
+// clock was set wrong.
+func LastChange(repo string, paths []string) (time.Time, error) {
+	// With no paths, git would answer with the newest commit of the whole repo.
+	if len(paths) == 0 {
+		return time.Time{}, nil
+	}
+	args := append([]string{"--literal-pathspecs", "log", "-1", "--format=%cI", "--"}, paths...)
+	out, err := run(repo, args...)
+	if err != nil {
+		return time.Time{}, err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, out)
+}
+
+// Changed lists the files that the commits in rng changed, from the repo root.
+// rng is a range like main..HEAD. A move shows as a file that left and a file
+// that came, so the folder a file moved out of counts as changed too. Names come
+// back as they are, with no quotes around the odd ones.
+func Changed(repo, rng string) ([]string, error) {
+	// A dash would make git read the range as an option, and some options write files.
+	if strings.HasPrefix(rng, "-") {
+		return nil, fmt.Errorf("bad range %q: it starts with a dash", rng)
+	}
+	// git diff a..b sets the two tips side by side. If a has moved on since b
+	// split from it, a's own changes would show up as b's. Three dots start at
+	// the point where they split, which is what a commit range means.
+	if left, right, ok := strings.Cut(rng, ".."); ok && !strings.HasPrefix(right, ".") {
+		rng = left + "..." + right
+	}
+	// The last -- says rng is a revision, never a file name that happens to match.
+	out, err := run(repo, "diff", "--no-renames", "--name-only", "-z", rng, "--")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, f := range strings.Split(out, "\x00") {
+		if f != "" {
+			files = append(files, f)
+		}
+	}
+	return files, nil
 }
 
 // Authors gives, for each path git knows, the name of the person whose commit
