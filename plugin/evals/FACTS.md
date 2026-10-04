@@ -469,6 +469,14 @@ claude plugin eval --eval-dir evals --model sonnet --ablation none \
   reach it another way.
 - A case that needs a scratch repo with `acta` available needs a
   `scaffold_script` and `--scaffold`, since the workspace starts empty.
+- 2026-10-04: with Bash granted, the system `git` (a stub in `/usr/bin`) exits 72
+  with `git: error: couldn't create cache file '<user temp dir>/xcrun_db-...'
+  (errno=Operation not permitted)`. The `wiki-close` scaffold copies the real
+  binary (`xcrun --find git`) into `bin/`, because a link would point into the
+  developer tools folder, where `ls` gives `Operation not permitted`. It also
+  wraps `bin/acta` so `./bin` comes first on `PATH`, and sets
+  `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`. The case then
+  passed 1.00. The two git settings were never tried alone.
 - `--no-publish` on every run. No `--max-cost-usd`; the user is on a
   subscription.
 - Only cases 3 and 4 use an `llm` grader. The judge defaults to `haiku`; pin it
