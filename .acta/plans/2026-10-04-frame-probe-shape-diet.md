@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0080
 created: "2026-10-04 06:59:06"
 hash: lt31wik
+started: "2026-10-04 07:04:13"
 ---
 # Frame, Probe and Shape Diet Implementation Plan
 
@@ -37,9 +38,9 @@ hash: lt31wik
 
 **verify:** The only values a stored config can hold for `questions` are empty, `one` and `probe`. List every way a value gets in (file load, `acta config set --questions`, `--repo`) and what each does with a bad value or a repo attempt.
 
-- [ ] Failing tests: a config with `questions: maybe` is refused like a bad `plan_depth`; `acta config set --questions probe` stores it; `acta config show` prints `questions: one` with the default mark when unset; `--repo --questions` is refused because the key is user only. They fail because the field does not exist.
-- [ ] Add a `Questions` field (`yaml:"questions,omitempty"`) with its check and trim next to `PlanDepth`, and the `--questions` flag plus the show line in `config_cmd.go`; not in `RepoKeys`.
-- [ ] Commit: `config: questions setting picks one-at-a-time or probe`
+- [x] Failing tests: a config with `questions: maybe` is refused like a bad `plan_depth`; `acta config set --questions probe` stores it; `acta config show` prints `questions: one` with the default mark when unset; `--repo --questions` is refused because the key is user only. They fail because the field does not exist.
+- [x] Add a `Questions` field (`yaml:"questions,omitempty"`) with its check and trim next to `PlanDepth`, and the `--questions` flag plus the show line in `config_cmd.go`; not in `RepoKeys`.
+- [x] Commit: `config: questions setting picks one-at-a-time or probe`
 
 ### Task 2: Shape diet and probe mode
 
@@ -47,9 +48,9 @@ hash: lt31wik
 
 **verify:** No rule the old shape enforced is lost: every Must string still holds, the Bounded "changes requested" step can only lead back to the short spec, every `acta scratch add` line in shape and probe has `--section log`, and the dot graph cannot come back. List each removed section and where its rule now lives, or why the model needs no text for it.
 
-- [ ] Failing tests: `TestShapeBoundedReviewLoopsToShortSpec` rewritten to read the Bounded checklist (changes requested goes back to the short spec, never to the design doc) and to fail when a `digraph` is present; a new test that shape names `probe.md` and `Questions: probe` and that `probe.md` has "five", "Recommended:" and `--section log`; `MaxLines` and the shape byte and description caps lowered to the new sizes. They fail on today's long file and the missing probe file.
-- [ ] Rewrite shape per spec section 3 (about 1300 words, description keeps "brainstorm", frame offer line, probe line that fires on "probe", "grill me" or the session note `Questions: probe`, and "one at a time" turns it off); write `probe.md` per spec section 2 (about 250 words); delete the reviewer prompt and its cap line; add the `shape/probe.md` cap.
-- [ ] Commit: `shape: cut to one flow, add probe mode, drop unused reviewer prompt`
+- [x] Failing tests: `TestShapeBoundedReviewLoopsToShortSpec` rewritten to read the Bounded checklist (changes requested goes back to the short spec, never to the design doc) and to fail when a `digraph` is present; a new test that shape names `probe.md` and `Questions: probe` and that `probe.md` has "five", "Recommended:" and `--section log`; `MaxLines` and the shape byte and description caps lowered to the new sizes. They fail on today's long file and the missing probe file.
+- [x] Rewrite shape per spec section 3 (about 1300 words, description keeps "brainstorm", frame offer line, probe line that fires on "probe", "grill me" or the session note `Questions: probe`, and "one at a time" turns it off); write `probe.md` per spec section 2 (about 250 words); delete the reviewer prompt and its cap line; add the `shape/probe.md` cap.
+- [x] Commit: `shape: cut to one flow, add probe mode, drop unused reviewer prompt`
 
 ### Task 3: Session note line and setup question
 
