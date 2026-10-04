@@ -37,10 +37,36 @@ function brokenStyle() {
   return reader;
 }
 
+// What acta prints when a wiki page covers a file: one JSON object with the text.
+const HINT = "wiki: .acta/wiki/tui-wrap.md: Wrap long lines with Hardwrap, not Wrap.";
+const hintJson = (text: string) =>
+  JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: text } });
+
+// One input for each tool the extension hands to acta.
+const CALLS: [string, Record<string, unknown>][] = [
+  ["read", { path: "a.go" }],
+  ["edit", { path: "a.go" }],
+  ["write", { path: "a.go" }],
+  ["bash", { command: "ls" }],
+];
+
 describe("payload", () => {
   test("has the shape acta hook reads", () => {
     expect(JSON.parse(payload("S1", "ls"))).toEqual({ session_id: "S1", tool_input: { command: "ls" } });
     expect(JSON.parse(payload("S1"))).toEqual({ session_id: "S1", tool_input: { command: "" } });
+  });
+
+  test("carries the tool name, the file path and the reason a session starts, only when given", () => {
+    expect(JSON.parse(payload("S1", "", { toolName: "read", filePath: "a.go" }))).toEqual({
+      session_id: "S1",
+      tool_name: "read",
+      tool_input: { command: "", file_path: "a.go" },
+    });
+    expect(JSON.parse(payload("S1", "", { source: "compact" }))).toEqual({
+      session_id: "S1",
+      source: "compact",
+      tool_input: { command: "" },
+    });
   });
 });
 
@@ -53,7 +79,7 @@ describe("createState", () => {
     const s = createState(run, () => "DEFAULTS", noStyle);
     expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
     expect(s.contextFor("S1")).toBe("REMINDER");
-    s.reset();
+    s.reset("S1", "compact");
     expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
   });
 
@@ -123,7 +149,7 @@ describe("createState", () => {
     const s = createState(run, () => "DEFAULTS", () => STYLE_FILE);
     expect(s.contextFor("S1")).toContain(STYLE_BODY);
     expect(s.contextFor("S1")).toBe("REMINDER");
-    s.reset();
+    s.reset("S1", "compact");
     expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
   });
 
@@ -160,18 +186,78 @@ describe("createState", () => {
 
   test("onToolCall blocks only on exit 2, with stderr as the reason", () => {
     const blocked = fakeRun({ "acta hook pre-tool": { stderr: "acta: this session already brainstormed X.\n", code: 2 } });
-    expect(createState(blocked.run, undefined, noStyle).onToolCall("S1", "acta set scratch/b status brainstorming")).toEqual({
+    expect(
+      createState(blocked.run, undefined, noStyle).onToolCall("S1", "bash", { command: "acta set scratch/b status brainstorming" }),
+    ).toEqual({
       block: true,
       reason: "acta: this session already brainstormed X.",
     });
     expect(JSON.parse(blocked.calls[0].stdin)).toEqual({
       session_id: "S1",
+      tool_name: "bash",
       tool_input: { command: "acta set scratch/b status brainstorming" },
     });
     for (const out of [{ code: 0 }, { code: 1, stderr: "oops" }, { code: 127 }, "throw"] as const) {
       const { run } = fakeRun({ "acta hook pre-tool": out });
-      expect(createState(run, undefined, noStyle).onToolCall("S1", "ls")).toBeUndefined();
+      expect(createState(run, undefined, noStyle).onToolCall("S1", "bash", { command: "ls" })).toBeUndefined();
     }
+  });
+
+  // This run answers by the file in the payload, so each path can get its own answer.
+  function perFile(answer: (file: string) => { stdout: string; stderr: string; code: number }) {
+    const asked: string[] = [];
+    const run: Run = (_args, stdin) => {
+      const file = JSON.parse(stdin).tool_input.file_path;
+      asked.push(file);
+      return answer(file);
+    };
+    return { run, asked };
+  }
+
+  test("onToolCall asks once for each file, in order, and joins the hints", () => {
+    const { run, asked } = perFile((file) => ({ stdout: hintJson("page for " + file), stderr: "", code: 0 }));
+    const out = createState(run, undefined, noStyle).onToolCall("S1", "edit", { paths: ["a.go", "b.go"] });
+    expect(asked).toEqual(["a.go", "b.go"]);
+    expect(out).toEqual({ additionalContext: "page for a.go\npage for b.go" });
+  });
+
+  test("onToolCall stops at the first block, and the block wins over hints found before it", () => {
+    const { run, asked } = perFile((file) =>
+      file === "stop.go"
+        ? { stdout: "", stderr: "NO\n", code: 2 }
+        : { stdout: hintJson("page for " + file), stderr: "", code: 0 },
+    );
+    const out = createState(run, undefined, noStyle).onToolCall("S1", "edit", {
+      paths: ["a.go", "stop.go", "c.go"],
+    });
+    expect(out).toEqual({ block: true, reason: "NO" });
+    expect(asked).toEqual(["a.go", "stop.go"]);
+  });
+
+  test("reset tells acta the session id and why at once, in the given cwd, and the next message reuses the answer", () => {
+    const { run, calls } = fakeRun({ "acta hook session-start": { stdout: "RULES", code: 0 } });
+    const s = createState(run, () => "", noStyle);
+    s.reset("S1", "compact", "/work");
+    expect(calls.map((c) => c.key.split(" --known")[0])).toEqual(["acta hook session-start"]);
+    expect(JSON.parse(calls[0].stdin)).toEqual({ session_id: "S1", source: "compact", tool_input: { command: "" } });
+    expect(calls[0].cwd).toBe("/work");
+    expect(s.contextFor("S1", "/work")).toBe("RULES");
+    expect(calls.filter((c) => c.key.startsWith("acta hook session-start")).length).toBe(1);
+  });
+
+  test("a first message with no reset asks acta with source startup, and only once", () => {
+    const { run, calls } = fakeRun({ "acta hook session-start": { stdout: "RULES", code: 0 } });
+    const s = createState(run, () => "", noStyle);
+    s.contextFor("S1");
+    s.contextFor("S1");
+    const starts = calls.filter((c) => c.key.startsWith("acta hook session-start")).map((c) => JSON.parse(c.stdin));
+    expect(starts).toEqual([{ session_id: "S1", source: "startup", tool_input: { command: "" } }]);
+  });
+
+  test("a reset that acta fails to answer still lets the next message carry the default rules", () => {
+    const s = createState(fakeRun({}).run, () => "DEFAULTS", noStyle);
+    s.reset("S1", "compact");
+    expect(s.contextFor("S1")).toContain("DEFAULTS");
   });
 
   test("onToolResult hands the command to post-tool and never throws", () => {
@@ -237,11 +323,128 @@ describe("extension", () => {
     expect(JSON.parse(calls[0].stdin).session_id).toBe("S9");
   });
 
-  test("tools other than bash never call acta", async () => {
+  test.each(["read", "edit", "write"])("tool_call: a %s call hands acta its path and returns the hint as additionalContext", async (tool) => {
+    const { handlers, ctx, calls } = load({ "acta hook pre-tool": { stdout: hintJson(HINT) + "\n", code: 0 } });
+    const r = await handlers["tool_call"]({ type: "tool_call", toolName: tool, input: { path: "internal/tui/wrap.go" } }, ctx);
+    expect(r).toEqual({ additionalContext: HINT });
+    expect(calls.map((c) => c.key)).toEqual(["acta hook pre-tool"]);
+    expect(calls[0].cwd).toBe("/work");
+    expect(JSON.parse(calls[0].stdin)).toEqual({
+      session_id: "S9",
+      tool_name: tool,
+      tool_input: { command: "", file_path: "internal/tui/wrap.go" },
+    });
+  });
+
+  test("tool_call: a bash call gets the hint too, and acta is handed the command", async () => {
+    const { handlers, ctx, calls } = load({ "acta hook pre-tool": { stdout: hintJson(HINT) + "\n", code: 0 } });
+    const r = await handlers["tool_call"]({ type: "tool_call", toolName: "bash", input: { command: "go vet ./internal/tui" } }, ctx);
+    expect(r).toEqual({ additionalContext: HINT });
+    expect(JSON.parse(calls[0].stdin)).toEqual({
+      session_id: "S9",
+      tool_name: "bash",
+      tool_input: { command: "go vet ./internal/tui" },
+    });
+  });
+
+  test.each([
+    ["paths", { paths: ["a.go", "dir/b.go"] }, ["a.go", "dir/b.go"]],
+    ["the same file in path and in paths", { path: "a.go", paths: ["a.go"] }, ["a.go"]],
+    ["blank and non-string entries", { path: "", paths: ["", 7, null, "c.go"] }, ["c.go"]],
+    ["no path at all", {}, []],
+  ])("tool_call: an edit with %s asks acta for these files: %j", async (_name, input, files) => {
+    const { handlers, ctx, calls } = load({ "acta hook pre-tool": { stdout: hintJson(HINT), code: 0 } });
+    const r = await handlers["tool_call"]({ type: "tool_call", toolName: "edit", input }, ctx);
+    expect(calls.map((c) => JSON.parse(c.stdin).tool_input.file_path)).toEqual(files);
+    expect(r).toEqual(files.length ? { additionalContext: files.map(() => HINT).join("\n") } : undefined);
+  });
+
+  // omp reads a.go:10-20 as the file a.go, lines 10 to 20. acta only knows the file.
+  test.each([
+    ["a line range", "a.go:10-20", "a.go"],
+    ["a tail count", "dir/a.go:-30", "dir/a.go"],
+    ["a single line with an L", "a.go:L10", "a.go"],
+    ["raw", "a.go:raw", "a.go"],
+    ["a range and raw", "a.go:10-20:raw", "a.go"],
+    ["conflicts, in capitals", "a.go:CONFLICTS", "a.go"],
+    ["no selector", "dir/a.go", "dir/a.go"],
+    ["a colon that is not a selector", "dir/a:b.go", "dir/a:b.go"],
+    ["a name that ends in a colon and a letter L", "dir/a:L", "dir/a:L"],
+  ])("tool_call: a read path with %s asks acta about %j", async (_name, path, file) => {
+    const { handlers, ctx, calls } = load({ "acta hook pre-tool": { code: 0 } });
+    await handlers["tool_call"]({ type: "tool_call", toolName: "read", input: { path } }, ctx);
+    expect(calls.map((c) => JSON.parse(c.stdin).tool_input.file_path)).toEqual([file]);
+  });
+
+  test("tool_call: edit and write paths are sent whole, since only read takes a selector", async () => {
+    for (const toolName of ["edit", "write"]) {
+      const { handlers, ctx, calls } = load({ "acta hook pre-tool": { code: 0 } });
+      await handlers["tool_call"]({ type: "tool_call", toolName, input: { path: "a.go:10-20" } }, ctx);
+      expect(calls.map((c) => JSON.parse(c.stdin).tool_input.file_path)).toEqual(["a.go:10-20"]);
+    }
+  });
+
+  test.each(CALLS)("tool_call: a %s call that acta blocks stays blocked, with its reason", async (tool, input) => {
+    const { handlers, ctx } = load({ "acta hook pre-tool": { stderr: "NO\n", code: 2 } });
+    expect(await handlers["tool_call"]({ type: "tool_call", toolName: tool, input }, ctx)).toEqual({ block: true, reason: "NO" });
+  });
+
+  test.each([
+    ["empty", ""],
+    ["text with no JSON around it", "wiki: a hint that is not wrapped"],
+    ["JSON null", "null"],
+    ["a JSON list", "[]"],
+    ["an object with no hint", "{}"],
+    ["a hook object with no text", '{"hookSpecificOutput":{"hookEventName":"PreToolUse"}}'],
+    ["text that is not a string", '{"hookSpecificOutput":{"additionalContext":42}}'],
+    ["blank text", hintJson("  \n")],
+  ])("tool_call: acta output that is %s adds nothing, for every tool", async (_name, stdout) => {
+    for (const [tool, input] of CALLS) {
+      const { handlers, ctx } = load({ "acta hook pre-tool": { stdout, code: 0 } });
+      expect(await handlers["tool_call"]({ type: "tool_call", toolName: tool, input }, ctx)).toBeUndefined();
+    }
+  });
+
+  test("tool_call: a hint counts only on exit 0, and a failing or throwing acta adds nothing", async () => {
+    for (const out of [{ stdout: hintJson(HINT), code: 1 }, { stdout: hintJson(HINT), code: 127 }, "throw"] as const) {
+      for (const [tool, input] of CALLS) {
+        const { handlers, ctx } = load({ "acta hook pre-tool": out });
+        expect(await handlers["tool_call"]({ type: "tool_call", toolName: tool, input }, ctx)).toBeUndefined();
+      }
+    }
+  });
+
+  test("tools acta does not watch never call acta", async () => {
     const { handlers, ctx, calls } = load({ "acta": { stderr: "NO", code: 2 } });
-    expect(await handlers["tool_call"]({ type: "tool_call", toolName: "read", input: { path: "x" } }, ctx)).toBeUndefined();
+    for (const toolName of ["grep", "glob"]) {
+      expect(await handlers["tool_call"]({ type: "tool_call", toolName, input: { pattern: "x" } }, ctx)).toBeUndefined();
+    }
     await handlers["tool_result"]({ type: "tool_result", toolName: "edit", input: {}, isError: false }, ctx);
     expect(calls.length).toBe(0);
+  });
+
+  test("session_start and session_compact tell acta the session id and why at once, so a compaction resets the shown pages", async () => {
+    const { handlers, ctx, calls } = load({
+      "acta hook session-start": { stdout: "RULES", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER", code: 0 },
+    });
+    const prompt = () => handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
+    const starts = () =>
+      calls.filter((c) => c.key.startsWith("acta hook session-start")).map((c) => JSON.parse(c.stdin));
+    await handlers["session_start"]({ type: "session_start" }, ctx);
+    expect(starts().map((e) => [e.session_id, e.source])).toEqual([["S9", "startup"]]);
+    const first = await prompt();
+    expect(first.message.content).toBe("RULES\n\nREMINDER");
+    // The compaction reaches acta before any new message, since omp can go on without one.
+    await handlers["session_compact"]({ type: "session_compact" }, ctx);
+    expect(starts().map((e) => [e.session_id, e.source])).toEqual([
+      ["S9", "startup"],
+      ["S9", "compact"],
+    ]);
+    expect(calls.filter((c) => c.key.startsWith("acta hook session-start")).every((c) => c.cwd === "/work")).toBe(true);
+    const after = await prompt();
+    expect(after.message.content).toBe("RULES\n\nREMINDER");
+    expect(starts().length).toBe(2);
   });
 
   test("tool_result records a bash call that worked, and skips one that failed", async () => {
@@ -256,8 +459,9 @@ describe("extension", () => {
     const handlers: Record<string, Function> = {};
     const { run, calls } = fakeRun({ "acta": { stderr: "NO", code: 2 } });
     acta({ on: (e: string, fn: Function) => { handlers[e] = fn; } }, run);
-    const r = await handlers["tool_call"]({ type: "tool_call", toolName: "bash", input: { command: "ls" } }, {});
-    expect(r).toBeUndefined();
+    for (const [tool, input] of CALLS) {
+      expect(await handlers["tool_call"]({ type: "tool_call", toolName: tool, input }, {})).toBeUndefined();
+    }
     expect(calls.length).toBe(0);
   });
 });
