@@ -68,9 +68,9 @@ started: "2026-10-04 07:04:13"
 
 **verify:** frame can never use up the session's one brainstorm and can never be hidden from the user: no line in frame sets status `brainstorming`, and its frontmatter never says `user-invocable: false`. List every place frame writes to the scratch item and the command it uses.
 
-- [ ] Failing test `skill_frame_test.go`: `CheckSkill` with Must strings for the goal question, `startup.md`, premises, "assignment", `acta scratch add` with `--section context`, `--section log` and `--section questions`, `acta:shape`, and MustNot `status brainstorming`, `office hours`, `user-invocable: false`; `startup.md` names the six forcing questions; the description has `frame` and "worth building". It fails because the skill does not exist.
-- [ ] Write both files per spec section 1 (about 900 and 700 words), add `frame` to `hook.Skills`, add caps for both files and the frame description, raise `sessionStartCap` by the bytes the new name adds, and credit gstack (Garry Tan) and mattpocock (Matt Pocock) in `plugin/NOTICE` with what each was adapted into.
-- [ ] Commit: `frame: optional skill for why, for whom and what before shape`
+- [x] Failing test `skill_frame_test.go`: `CheckSkill` with Must strings for the goal question, `startup.md`, premises, "assignment", `acta scratch add` with `--section context`, `--section log` and `--section questions`, `acta:shape`, and MustNot `status brainstorming`, `office hours`, `user-invocable: false`; `startup.md` names the six forcing questions; the description has `frame` and "worth building". It fails because the skill does not exist.
+- [x] Write both files per spec section 1 (about 900 and 700 words), add `frame` to `hook.Skills`, add caps for both files and the frame description, raise `sessionStartCap` by the bytes the new name adds, and credit gstack (Garry Tan) and mattpocock (Matt Pocock) in `plugin/NOTICE` with what each was adapted into.
+- [x] Commit: `frame: optional skill for why, for whom and what before shape`
 
 ### Task 5: Eval cases for frame and probe
 

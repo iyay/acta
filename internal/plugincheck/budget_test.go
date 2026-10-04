@@ -32,6 +32,8 @@ var fileCaps = map[string]int{
 	"skills/debug/condition-based-waiting.md": 3516,
 	"skills/debug/defense-in-depth.md":        3650,
 	"skills/debug/root-cause-tracing.md":      5316,
+	"skills/frame/SKILL.md":                   4590,
+	"skills/frame/startup.md":                 4336,
 	"skills/land/SKILL.md":                    5765,
 	"skills/lean/SKILL.md":                    1918,
 	"skills/migrate/SKILL.md":                 2329,
@@ -52,6 +54,7 @@ var descriptionCaps = map[string]int{
 	"skills/bug/SKILL.md":     311,
 	"skills/build/SKILL.md":   541,
 	"skills/debug/SKILL.md":   277,
+	"skills/frame/SKILL.md":   345,
 	"skills/land/SKILL.md":    304,
 	"skills/lean/SKILL.md":    139,
 	"skills/migrate/SKILL.md": 258,
@@ -65,7 +68,7 @@ var descriptionCaps = map[string]int{
 
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too.
-const sessionStartCap = 2551
+const sessionStartCap = 2558
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two
