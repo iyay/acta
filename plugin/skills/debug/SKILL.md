@@ -77,7 +77,7 @@ You MUST complete each phase before proceeding to the next.
 
    **WHEN system has multiple components (CI → build → signing, API → service → database):**
 
-   **BEFORE proposing fixes, add diagnostic instrumentation:**
+   **BEFORE proposing fixes, instrument a scratch copy:**
    ```
    For EACH component boundary:
      - Log what data enters component
@@ -156,7 +156,7 @@ You MUST complete each phase before proceeding to the next.
    - Be specific, not vague
 
 2. **Test Minimally**
-   - Make the SMALLEST possible change to test hypothesis
+   - Test it with the SMALLEST probe, in a scratch copy
    - One variable at a time
    - Don't fix multiple things at once
 
