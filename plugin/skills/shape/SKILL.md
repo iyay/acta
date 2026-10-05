@@ -132,6 +132,6 @@ each yes in the spec: `acta:build` writes the page, in the format of
 contradict each other; scope too wide for one plan; any requirement a
 reader could take two ways. Fix them inline, no second pass.
 
-**User review gate.** "Spec written and committed to `<path>`. Please review it and let me know if you want changes before we write the plan." Then wait. On changes requested, make them and run the four checks again. Approval of the design does not approve the plan; each gets its own yes.
+**User review gate.** In the user's chat language, give the spec path, say it is committed, and ask for a review before the plan. Then wait. On changes requested, make them and run the four checks again. Approval of the design does not approve the plan; each gets its own yes.
 
 **Next.** Invoke acta:slice to write the implementation plan.

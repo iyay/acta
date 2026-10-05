@@ -29,6 +29,7 @@ func TestSkillShape(t *testing.T) {
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
 			"HERDR_ENV",
+			"Please review it and let me know",
 			"names the DEBT ids it closes",
 			"in the worktree", "create its worktree now", "as the first commit",
 			// The wiki is the one home for project knowledge. The old files stay
