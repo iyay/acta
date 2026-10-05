@@ -2,6 +2,8 @@
 id: SPC-0081
 created: "2026-10-05 15:52:56"
 hash: m3t6jn9
+started: "2026-10-05 15:57:21"
+finished: "2026-10-05 15:58:57"
 ---
 # Land reuses the gates when only planning files differ
 
