@@ -224,3 +224,71 @@ func TestRecordAgentNamedTickReplacesTheOlderName(t *testing.T) {
 		t.Fatalf("record = %+v, want agent omp at %s", r, later.Format(time.RFC3339))
 	}
 }
+
+// A tick with no name falls back to the worktree default a dispatch left
+// under "*", so a dispatched tick still names its agent.
+func TestRecordAgentFallsBackToDefaultAgent(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	def := `{"*": {"agent": "omp", "at": "2026-10-06T00:00:00Z"}}`
+	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte(def), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 6, 9, 0, 0, 0, time.UTC)
+	if err := RecordAgent(root, taskID, "", at, true); err != nil {
+		t.Fatal(err)
+	}
+	r := readAgents(t, root)[taskID]
+	if r.Agent != "omp" || !r.Started || r.At != at.Format(time.RFC3339) {
+		t.Fatalf("record = %+v, want agent omp, started, at %s", r, at.Format(time.RFC3339))
+	}
+}
+
+// A plain tick with no name falls back to the default too, not just a start.
+func TestRecordAgentPlainTickFallsBackToDefault(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	def := `{"*": {"agent": "omp", "at": "2026-10-06T00:00:00Z"}}`
+	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte(def), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "", time.Now(), false); err != nil {
+		t.Fatal(err)
+	}
+	if r := readAgents(t, root)[taskID]; r.Agent != "omp" {
+		t.Fatalf("record = %+v, want agent omp from the default", r)
+	}
+}
+
+// The task's own name beats the default: an earlier tick is more exact
+// than the whole worktree's name.
+func TestRecordAgentKeepsTaskNameOverDefault(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	def := "{\"*\": {\"agent\": \"omp\", \"at\": \"2026-10-06T00:00:00Z\"}, \"" + taskID + "\": {\"agent\": \"claude\", \"at\": \"2026-10-06T08:00:00Z\"}}"
+	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte(def), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "", time.Now(), true); err != nil {
+		t.Fatal(err)
+	}
+	if r := readAgents(t, root)[taskID]; r.Agent != "claude" {
+		t.Fatalf("record = %+v, want agent claude kept over the default", r)
+	}
+}
+
+// A tick that names someone beats the default outright.
+func TestRecordAgentNamedTickBeatsTheDefault(t *testing.T) {
+	useLockBase(t)
+	root := t.TempDir()
+	def := `{"*": {"agent": "omp", "at": "2026-10-06T00:00:00Z"}}`
+	if err := os.WriteFile(filepath.Join(root, ".agents.json"), []byte(def), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordAgent(root, taskID, "claude", time.Now(), false); err != nil {
+		t.Fatal(err)
+	}
+	if r := readAgents(t, root)[taskID]; r.Agent != "claude" {
+		t.Fatalf("record = %+v, want agent claude, not the default", r)
+	}
+}

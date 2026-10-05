@@ -33,6 +33,10 @@ func readAgents(roots []string) map[string]agentRec {
 			continue
 		}
 		for id, rec := range recs {
+			// "*" is the worktree default a dispatch left, not a task.
+			if id == "*" {
+				continue
+			}
 			if old, ok := out[id]; ok && !newer(rec, old) {
 				continue
 			}

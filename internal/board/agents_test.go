@@ -287,3 +287,39 @@ func TestDoneTaskWithStartedRecordShowsNoAgent(t *testing.T) {
 		t.Fatalf("done task agent = %q, want none", it.Agent)
 	}
 }
+
+// The "*" default is a worktree name, not a task: it must never show up
+// as an item, but tasks around it still read their own names.
+func TestDefaultAgentKeyNeverShowsAsTask(t *testing.T) {
+	t.Parallel()
+
+	main := tree(t, map[string]string{
+		".acta/specs/2026-09-20-a.md": specA,
+		".acta/plans/2026-09-21-a.md": planAgents,
+		".acta/.agents.json": `{
+  "*": {"agent": "omp", "at": "2026-10-06T00:00:00+07:00"},
+  "plans/2026-09-21-a#task-2": {"agent": "claude", "at": "2026-09-26T10:00:00+07:00"}
+}`,
+	})
+	b, err := Load(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if it := b.Get("*"); it != nil {
+		t.Fatalf("board shows a task for the default key: %+v", it)
+	}
+	for _, it := range b.Items {
+		if it.ID == "*" {
+			t.Fatalf("board lists the default key as an item: %+v", it)
+		}
+	}
+	if recs := readAgents([]string{main.Root}); recs["*"].Agent != "" {
+		t.Fatalf("readAgents keeps the default key: %v", recs)
+	}
+	if it := b.Get("plans/2026-09-21-a#task-2"); it == nil || it.Agent != "claude" {
+		t.Fatalf("task next to the default = %+v, want agent claude", it)
+	}
+	if it := b.Get("plans/2026-09-21-a"); it == nil || it.Agent != "claude" {
+		t.Fatalf("plan next to the default = %+v, want agent claude, not omp", it)
+	}
+}
