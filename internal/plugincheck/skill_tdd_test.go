@@ -11,6 +11,6 @@ func TestSkillTDD(t *testing.T) {
 			"reverted", "regression test", "flag-off", "Test tooling", "writing-good-tests.md",
 			"the full suite runs in `acta:land`",
 		},
-		MustNot: []string{"superpowers:", "- [ ] All tests pass"},
+		MustNot: []string{"superpowers:", "- [ ] All tests pass", "- Configuration files", "## Final Rule", "Add tests for existing code"},
 	})
 }
