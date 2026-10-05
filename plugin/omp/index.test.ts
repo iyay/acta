@@ -281,10 +281,10 @@ describe("extension", () => {
     return { handlers, ctx, calls: fake.calls };
   }
 
-  test("registers the five events", () => {
+  test("registers the six events", () => {
     const { handlers } = load({});
     expect(Object.keys(handlers).sort()).toEqual([
-      "before_agent_start", "session_compact", "session_start", "tool_call", "tool_result",
+      "before_agent_start", "session_compact", "session_start", "session_switch", "tool_call", "tool_result",
     ]);
   });
 
@@ -445,6 +445,20 @@ describe("extension", () => {
     const after = await prompt();
     expect(after.message.content).toBe("RULES\n\nREMINDER");
     expect(starts().length).toBe(2);
+  });
+
+  test.each(["new", "resume", "fork"])("session_switch with reason %s sends the rules again on the next turn, once", async (reason: string) => {
+    const { handlers, ctx } = load({
+      "acta hook session-start": { stdout: "RULES", code: 0 },
+      "acta hook prompt": { stdout: "REMINDER", code: 0 },
+    });
+    const prompt = () => handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
+    await handlers["session_start"]({ type: "session_start" }, ctx);
+    expect((await prompt()).message.content).toBe("RULES\n\nREMINDER");
+    expect((await prompt()).message.content).toBe("REMINDER");
+    await handlers["session_switch"]({ type: "session_switch", reason }, ctx);
+    expect((await prompt()).message.content).toBe("RULES\n\nREMINDER");
+    expect((await prompt()).message.content).toBe("REMINDER");
   });
 
   test("tool_result records a bash call that worked, and skips one that failed", async () => {

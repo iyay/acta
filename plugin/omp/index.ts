@@ -178,6 +178,9 @@ export default function acta(pi: any, run: Run = realRun, readStyle?: () => stri
     state.reset(w.id, source, w.cwd);
   };
   pi.on("session_start", restart("startup"));
+  // /new, resume and fork fire session_switch, not session_start, so the new
+  // session gets the rules the same way a fresh start does.
+  pi.on("session_switch", restart("startup"));
   pi.on("session_compact", restart("compact"));
   pi.on("before_agent_start", async (_event: any, ctx: any) => {
     const w = where(ctx);
