@@ -564,3 +564,11 @@ Only the graders the suite uses are supported: `file_exists`, `regex` on
 `last_message` or `{ source: file, path }`, `tool_used`, and `llm`. Anything
 else fails with a message that names it, and `TestRealSuiteRunsInOmp` fails
 when a new case uses one without the `claude-only` tag.
+
+## 2026-10-05: evals grant Read
+
+`scripts/eval` passes `--allow-tools Bash Read` so cases can open sibling
+skill files with the Read tool. Before this, a run where the agent picked
+Read over Bash hit `Permission to use Read denied` in don't-ask mode and
+failed for a reason unrelated to the case; granting Read makes the
+probe-round result depend on the case, not on which tool the agent picks.
