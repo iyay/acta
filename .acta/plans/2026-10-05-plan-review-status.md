@@ -5,6 +5,7 @@ id: PLN-0095
 created: "2026-10-05 21:15:31"
 hash: hhm9v3s
 started: "2026-10-05 21:25:45"
+finished: "2026-10-05 22:07:21"
 ---
 # Plan review status Implementation Plan
 
@@ -48,9 +49,9 @@ started: "2026-10-05 21:25:45"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
 
 ## State
 
@@ -62,3 +63,17 @@ Task 3 starts from:
 - no board logic touched; theme/* untouched (slot reuse, no new hex)
 - next: bump patch in 3 plugin json files, run internal/plugincheck
   verify: version files agree, plugincheck green
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Put back the two comments the diff deleted with no task behind it: the comment above the dot constants in internal/tui/detail.go (near line 14) and "Each role always takes the same slot..." in internal/tui/styles.go (near line 31), as they read at 97634b1.
+- [x] Commit: `polish: review notes for PLN-0095`
+
+## Review notes
+
+- slotReview = 3 sits out of number order with the other slots.
+- The plan's own acta show inside the worktree reads done, since a worktree reads itself as the main tree; review shows from the main checkout.

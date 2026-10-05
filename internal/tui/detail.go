@@ -11,6 +11,9 @@ import (
 	"github.com/iyay/acta/internal/board"
 )
 
+// The dots of the list between the header and the body: work under way wears
+// the accent, work not begun and work finished wear nothing, so a long list
+// reads at a glance.
 const (
 	dotGoing   = "●"
 	dotWaiting = "○"

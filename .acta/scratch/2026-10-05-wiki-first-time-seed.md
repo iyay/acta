@@ -5,6 +5,7 @@ title: Generate the wiki for the first time in an existing project
 status: raw
 created: "2026-10-05 07:08:34"
 schema: "1"
+finished: "2026-10-05 22:21:32"
 ---
 # Generate the wiki for the first time in an existing project
 
@@ -50,5 +51,18 @@ Open questions:
 ### 2026-10-05
 
 2026-10-05 user: do this before changing the dispatch brief. The brief still tells omp to read the Claude memory indexes (internal/cli/dispatch_brief.go:255) and has no wiki line; this repo has no .acta/wiki/ pages yet. Once the wiki is seeded, a Bounded change swaps the brief's MEMORY line for an `acta wiki ls` line. Seed sources here: the project memory folder holds many lasting facts (eval gotchas, land rules, commit format) that belong in wiki pages.
+
+### 2026-10-05
+
+2026-10-05 shaped in the same session as SCR-0041, on the user's explicit ruling ("di sini aja", take every recommendation, no confirmations). The pre-tool hook blocks `acta set ... brainstorming` for a second item, so the status was not set; this is noted on purpose, not worked around.
+Rulings (recommendations, user pre-approved):
+- Home: a "Seed the wiki" section in acta:migrate (migrate already brings existing knowledge into acta); acta:setup offers it in one line when the repo has code and no wiki pages.
+- Generator: the host agent with a built-in prompt only. No third-party tool by default: no installs, no model keys, no temp clone to delete. OKF importer and Repowise ideas are out of scope for this plan.
+- Hosted generators: never.
+- Sources by convention: ADR folders, CHANGELOG, README, AGENTS.md / CLAUDE.md / .cursorrules, commits that record a decision, WHY:/HACK: comments, and the harness's own memory for this project when it has one (read-only).
+- Filter: only facts the code cannot tell; show a table first (source, type, page path, paths, or drop with reason); after the yes, write pages in a worktree, pass acta wiki check, review, land.
+- No generated/verified fields: the page format stays as it is; review checks the seed.
+- Cost: say how many sources will be read before starting.
+- This plan also seeds the acta repo itself from its project memory, and then swaps the dispatch brief's MEMORY line for a wiki line.
 
 ## Open questions

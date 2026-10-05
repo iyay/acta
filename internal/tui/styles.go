@@ -28,6 +28,7 @@ type styles struct {
 	priority                                               map[string]lipgloss.Style // the one letter a row shows for its level
 }
 
+// Each role always takes the same slot, so any theme with 16 colors works.
 const (
 	slotAccent      = 12
 	slotDim         = 8
