@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0093
 created: "2026-10-05 20:11:40"
 hash: cr78yrn
+started: "2026-10-05 20:17:16"
+finished: "2026-10-05 20:24:02"
 ---
 # write tests clock race Implementation Plan
 
@@ -29,14 +31,19 @@ hash: cr78yrn
 
 **Files:** Modify `internal/write/subject_test.go`.
 **verify:** No test in `internal/write` both calls `t.Parallel()` and swaps `Now` (fixNow or fixNowAt), and `scripts/test ./internal/write -race -count=3` reports no data race and no failure. List each test that swaps `Now` and whether it is parallel.
-- [ ] Failing test: `scripts/test ./internal/write -race -count=3` reports `DATA RACE` at fixNow from subject_test.go.
-- [ ] Code: remove `t.Parallel()` from the two tests in subject_test.go, with a one-line comment saying why.
-- [ ] Commit: `test: clock-swapping write tests do not run in parallel`.
+- [x] Failing test: `scripts/test ./internal/write -race -count=3` reports `DATA RACE` at fixNow from subject_test.go.
+- [x] Code: remove `t.Parallel()` from the two tests in subject_test.go, with a one-line comment saying why.
+- [x] Commit: `test: clock-swapping write tests do not run in parallel`.
 
 ### Task 2: version bump
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- The same "No Parallel here" comment sits in two tests; a third copy would mean the reason belongs on fixNow.
+- The TUI flake TestClickOnTheBarTakesTheHighlightOff stays open under SCR-0046.

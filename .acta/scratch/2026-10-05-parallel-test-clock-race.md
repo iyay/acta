@@ -24,4 +24,15 @@ Idea, not decided: tests that swap Now must not run in parallel, or Now becomes 
 
 ## Log
 
+### 2026-10-05
+
+2026-10-05 debug of the TUI flake, no root cause yet:
+- TestClickOnTheBarTakesTheHighlightOff alone: 300 runs at -parallel 8, all pass. With TestThumbSitsOnTheBorderNotInside (parallel, flips the global lipgloss color profile): 40 runs pass. With TestPaintDragOnlyTouchesTheSpans (same): 40 runs pass. Full package -race x4 in a clean clone: pass. It failed twice on main: once in a full run, once in `-race -count=2`.
+- Ruled out: the status clock (View reads m.now, not time.Now); the two profile-flipping parallel tests (not reproduced, still a hazard).
+- Lead not checked: the failing dump showed "copied to clipboard" and a 40-row plans board, which matches the drag tests' state; frameCache is a pointer shared by model copies (model.go:81-90), so a cache shared across tests would explain a foreign frame. longModel builds a fresh model per test, so this needs a trace of which frame View returned.
+
+### 2026-10-05
+
+User ruling 2026-10-05: leave the TUI flake for now; when it fails again in a land, capture the frame (shown vs want) right then.
+
 ## Open questions

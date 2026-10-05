@@ -47,4 +47,8 @@ Open questions:
 
 ## Log
 
+### 2026-10-05
+
+2026-10-05 user: do this before changing the dispatch brief. The brief still tells omp to read the Claude memory indexes (internal/cli/dispatch_brief.go:255) and has no wiki line; this repo has no .acta/wiki/ pages yet. Once the wiki is seeded, a Bounded change swaps the brief's MEMORY line for an `acta wiki ls` line. Seed sources here: the project memory folder holds many lasting facts (eval gotchas, land rules, commit format) that belong in wiki pages.
+
 ## Open questions
