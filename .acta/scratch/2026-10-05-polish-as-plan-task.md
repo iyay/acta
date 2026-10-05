@@ -5,6 +5,7 @@ title: Show a polish round as a task in the plan
 status: raw
 created: "2026-10-05 11:20:51"
 schema: "1"
+finished: "2026-10-05 13:48:17"
 ---
 # Show a polish round as a task in the plan
 

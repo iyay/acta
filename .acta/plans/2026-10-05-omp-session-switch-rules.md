@@ -51,3 +51,9 @@ finished: "2026-10-05 13:16:30"
 - [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
 - [x] Code: add 1 to the patch in all three files.
 - [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- A future plan with no `### Task` heading gets the "not a plan" warn; right by the spec, but the words may confuse a user.
+- hasTaskHeading matches `### Task` at line start only; `##` or `####` task headings count as not a plan, the same as today's convention.
+- The internal/cli doctor test now looks for "skipped" on the repo line only, since the files check can also print "skipped".

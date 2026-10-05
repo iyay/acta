@@ -395,8 +395,10 @@ func TestDoctorCLIFailsOnBrokenActaYaml(t *testing.T) {
 	if !strings.Contains(stdout.String(), ".acta.yaml") {
 		t.Fatalf("stdout %q does not carry the parse error", stdout.String())
 	}
-	if strings.Contains(stdout.String(), "skipped") {
-		t.Fatalf("stdout %q skipped the repo check", stdout.String())
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		if strings.Contains(line, "repo:") && strings.Contains(line, "skipped") {
+			t.Fatalf("stdout %q skipped the repo check", stdout.String())
+		}
 	}
 }
 
