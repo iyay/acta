@@ -222,7 +222,9 @@ func TestBuildSkillNoBareGoTest(t *testing.T) {
 // TestBuildCloseWritesWikiFirst reads SKILL.md on its own. CheckSkill joins
 // the whole folder, and wiki.md says "acta wiki check" too, so a revert of
 // SKILL.md alone could stay green. The wiki step has to come before the fast
-// tests and the review, or the review cannot see the wiki diff.
+// tests and the review, or the review cannot see the wiki diff. The check runs
+// first, in the worktree, and wiki.md is read only after it, when a page has
+// to be fixed or added.
 func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	_, closing, ok := strings.Cut(readBuildFile(t, "SKILL.md"), "\n## Close\n")
 	if !ok {
@@ -230,11 +232,12 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	}
 	last := -1
 	for _, step := range []string{
-		"[wiki.md](wiki.md)",
-		"acta wiki check <parent>..HEAD",
-		"fix each touched page and bump its `timestamp`",
-		"add a page only for a lesson a fresh agent would lose time without",
-		"one commit",
+		"In the worktree, run `acta wiki check <parent>..HEAD`",
+		"Read [wiki.md](wiki.md) only when you will fix or add a page",
+		"Fix each touched page and bump its `timestamp`",
+		"Write each page the spec approved (shape notes each yes in the spec)",
+		"Add any other page only for a lesson a fresh agent would lose time without",
+		"Make one commit",
 		"run the fast tests and the type checks",
 		"then use `acta:review` over `<parent>..HEAD`",
 	} {
@@ -293,6 +296,8 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		{"the check", "`acta wiki check <parent>..HEAD`"},
 		{"fix lines that are now wrong", "fix every line that is now wrong"},
 		{"bump the timestamp", "Bump `timestamp`"},
+		{"the pages the spec approved", "Write each page the spec approved"},
+		{"shape notes each yes", "Shape notes each yes in the spec"},
 		{"when to add a page", "a lesson a fresh agent would lose time without"},
 		{"one commit", "one commit in the worktree"},
 		{"no wiki task in a plan", "A plan has no wiki task"},

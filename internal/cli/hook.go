@@ -18,6 +18,9 @@ const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook p
 // stopped. It is the only non-zero code an acta hook ever returns.
 const exitBlock = 2
 
+// wikiHints is a variable so a test can make the hint path panic.
+var wikiHints = hook.WikiHints
+
 // cmdHook prints hook text. Every hook exits 0 whatever stdin holds, because a
 // hook that fails would get in the way of the user's session. The one
 // exception is pre-tool stopping a second brainstorm, which exits 2 with the
@@ -76,11 +79,10 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return exitBlock
 		}
 		// A hint is only an extra line for the agent, so it comes after the
-		// blocks and never changes the exit code.
-		if hasRoot {
-			if lines := hook.WikiHints(root, cfg.RepoRoot, ev); lines != "" {
-				fmt.Fprintln(stdout, hook.HintJSON(lines))
-			}
+		// blocks and never changes the exit code. A hook that runs in no
+		// checkout has no repository to trust, so it gives none.
+		if lines := hintLines(cfg, ev); lines != "" {
+			fmt.Fprintln(stdout, hook.HintJSON(lines))
 		}
 		return exitOK
 	case "session-start":
@@ -118,6 +120,24 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, hookUsage)
 		return exitBadInput
 	}
+}
+
+// hintLines asks for the wiki hints of one tool call. A hint is not worth a
+// failed call, and a Go panic exits 2, which is the code that blocks the tool.
+// So a panic is dropped here, and the call goes on as if it had no hint.
+func hintLines(cfg config.Config, ev hook.ToolEvent) (lines string) {
+	defer func() {
+		if recover() != nil {
+			lines = ""
+		}
+	}()
+	// The checkout the hook runs in is known already, so it is not looked up
+	// again. A folder that is no checkout has none, and then no hint comes.
+	root, repo := "", ""
+	if cfg.IsGit {
+		root, repo = cfg.Root, cfg.RepoRoot
+	}
+	return wikiHints(root, repo, ev)
 }
 
 // loadVoice reads the user config and lays this repo's .acta.yaml over it.

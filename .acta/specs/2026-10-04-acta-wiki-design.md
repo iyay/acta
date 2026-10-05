@@ -4,6 +4,7 @@ id: SPC-0071
 created: "2026-10-04 18:59:24"
 hash: qemt9le
 started: "2026-10-04 19:27:20"
+finished: "2026-10-04 21:36:27"
 ---
 # Project wiki under .acta/wiki
 
@@ -39,8 +40,8 @@ timestamp: 2026-10-04T14:05:00+07:00
 ## 2. Reading
 
 1. Session start. Only when `.acta/wiki/` holds pages, `acta hook session-start` adds 45 words at most (about 60 tokens). The size does not grow with the page count. The text says how many pages exist. It tells the agent to read a page that a `wiki:` line names before it changes those files. It says project knowledge goes to the wiki, not to agent memory.
-2. Hints. The PreToolUse matcher in `plugin/hooks/hooks.json` widens from `Bash` to `Bash|Read|Edit|Write|MultiEdit`. `acta hook pre-tool` takes the file path, or each word of a Bash command with a leading `./` and a trailing `/...` cut off. It makes each one relative to the root of the checkout the agent works in. Then it matches them by prefix against every page's `paths`. A match prints one line through `additionalContext`: `wiki: .acta/wiki/tui-wrap.md: <description>`. A hint always exits 0. Exit 2 stays for the blocks that exist today.
-3. Once per context. Pages already shown are kept in `.acta/state/` (gitignored), keyed by `session_id` plus `agent_id`. Claude Code sends `agent_id` only when a hook fires inside a subagent, so the main thread and each subagent count as their own context. The list for a session resets when session start fires with source `clear` or `compact`, since the old hints left the context.
+2. Hints. The PreToolUse matcher in `plugin/hooks/hooks.json` widens from `Bash` to `Bash|Read|Edit|Write|MultiEdit`. `acta hook pre-tool` takes the file path, or each word of a Bash command with a leading `./` and a trailing `/...` cut off. It makes each one relative to the root of the checkout the agent works in: the repo the session runs in, or one of that repo's own worktrees. A path in any other repository gets no hint, and the hook writes nothing there. Then it matches them by prefix against every page's `paths`. A match prints one line through `additionalContext`: `wiki: .acta/wiki/tui-wrap.md: <description>`. A hint always exits 0. Exit 2 stays for the blocks that exist today.
+3. Once per context. Pages already shown are kept in the session checkout's `.acta/state/` (gitignored), keyed by `session_id` plus `agent_id`, pages from a worktree included. Claude Code sends `agent_id` only when a hook fires inside a subagent, so the main thread and each subagent count as their own context. The list for a session resets when session start fires with source `clear` or `compact`, since the old hints left the context.
 4. omp. The extension's `tool_call` handler can return `additionalContext` (checked in omp's `shared-events.d.ts` on 2026-10-04). omp's file tools are `read`, `edit` and `write`, with the path in `event.input.path` or `event.input.paths`. So omp gets the same hints through `acta hook pre-tool`, and no fallback is needed.
 5. Shape. The Shared language section of `acta:shape` changes. Before its questions, shape reads `glossary.md` and `acta wiki ls --type Decision`. A new term or decision is proposed as a page and waits for a yes, as today.
 

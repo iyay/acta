@@ -28,6 +28,18 @@ type Page struct {
 	Words       int // words in the body, which is the text after the frontmatter
 }
 
+// LoadError is a file or folder under the wiki that could not be loaded. File is
+// where it lies on disk, so a caller can show it from the repo root. Err is the
+// reason, and it does not repeat the file.
+type LoadError struct {
+	File string
+	Err  error
+}
+
+func (e *LoadError) Error() string { return e.File + ": " + e.Err.Error() }
+
+func (e *LoadError) Unwrap() error { return e.Err }
+
 // front is the frontmatter as written. The time stays text here so that a
 // date with no clock time is refused, not read as midnight.
 type front struct {
@@ -40,7 +52,7 @@ type front struct {
 
 // Load reads every .md file under <root>/wiki, folders inside it too, in the
 // order of the walk: by name, one folder after another. A file that cannot be
-// read comes back as an error that names it, and the other pages still load.
+// read comes back as a *LoadError that names it, and the other pages still load.
 // A missing wiki folder is no pages and no error.
 func Load(root string) ([]Page, []error) {
 	dir := filepath.Join(root, "wiki")
@@ -51,7 +63,9 @@ func Load(root string) ([]Page, []error) {
 	_ = fs.WalkDir(os.DirFS(dir), ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if name != "." || !errors.Is(err, fs.ErrNotExist) {
-				errs = append(errs, err)
+				// The walk names a folder from inside the wiki, like "." or "sub",
+				// so the error is rebuilt with the folder's own path.
+				errs = append(errs, &LoadError{File: filepath.Join(dir, filepath.FromSlash(name)), Err: reason(err)})
 			}
 			return nil
 		}
@@ -70,19 +84,31 @@ func Load(root string) ([]Page, []error) {
 	return pages, errs
 }
 
-// read loads one page file. Every error it gives names the file.
+// reason is why a file or folder failed, without the name the system put in
+// front of it: "permission denied", not "open <file>: permission denied". The
+// *LoadError that holds it says the file once.
+func reason(err error) error {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err
+	}
+	return err
+}
+
+// read loads one page file. Every error it gives is a *LoadError that names the
+// file.
 func read(file string) (Page, error) {
 	raw, err := os.ReadFile(file)
 	if err != nil {
-		return Page{}, err
+		return Page{}, &LoadError{File: file, Err: reason(err)}
 	}
 	head, body, ok := split(string(raw))
 	if !ok {
-		return Page{}, fmt.Errorf("%s: no frontmatter between two --- lines", file)
+		return Page{}, &LoadError{File: file, Err: errors.New("no frontmatter between two --- lines")}
 	}
 	var f front
 	if err := yaml.Unmarshal([]byte(head), &f); err != nil {
-		return Page{}, fmt.Errorf("%s: %w", file, err)
+		return Page{}, &LoadError{File: file, Err: err}
 	}
 	page := Page{
 		Path:        file,
@@ -94,7 +120,7 @@ func read(file string) (Page, error) {
 	}
 	if f.Timestamp != "" {
 		if page.Timestamp, err = time.Parse(time.RFC3339, f.Timestamp); err != nil {
-			return Page{}, fmt.Errorf("%s: timestamp: %w", file, err)
+			return Page{}, &LoadError{File: file, Err: fmt.Errorf("timestamp: %w", err)}
 		}
 	}
 	return page, nil

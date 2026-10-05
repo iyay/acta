@@ -27,9 +27,10 @@ timestamp: 2026-10-04T14:05:00+07:00
 
 Pages are written in the last step of `acta:build`, before review, so review sees the wiki diff. The agent that ran the plan writes them: the main agent, or omp under `dispatch`. A plan has no wiki task. All of it is one commit in the worktree, and none when nothing changed.
 
-1. Run `acta wiki check <parent>..HEAD`. It checks the pages whose `paths` cover a file the branch changed, and prints one line per problem: a stale page (a commit changed a file under its `paths` after its `timestamp`), or a rule above broken.
+1. `acta wiki check <parent>..HEAD`, run in the worktree before you open this file, checks the pages whose `paths` cover a file the branch changed. It prints one line per problem: a stale page (a commit changed a file under its `paths` after its `timestamp`), or a rule above broken.
 2. Fix each touched page: read it, read the branch diff under its `paths`, and fix every line that is now wrong. Bump `timestamp` even when nothing was wrong.
-3. Add a page only for a lesson a fresh agent would lose time without.
-4. Run the check again until it prints nothing, then commit what changed.
+3. Write each page the spec approved. Shape notes each yes in the spec: a term or decision it proposed as a page.
+4. Add any other page only for a lesson a fresh agent would lose time without.
+5. Run the check again until it prints nothing, then commit what changed.
 
 A page is written at most once per plan. An update changes lines. It does not rewrite the page. Nothing that git, plans or debt already hold gets a page, so no LANDED status and no review NOTEs.

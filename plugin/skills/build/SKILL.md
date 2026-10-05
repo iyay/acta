@@ -206,7 +206,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 
 ## Close
 
-When every task is committed, write the wiki first. Read [wiki.md](wiki.md), run `acta wiki check <parent>..HEAD`, fix each touched page and bump its `timestamp`, add a page only for a lesson a fresh agent would lose time without, and make one commit if anything changed. Review then sees the wiki diff. The agent that ran the plan does this: you, or under `dispatch` the omp agent.
+When every task is committed, write the wiki first. In the worktree, run `acta wiki check <parent>..HEAD`. Read [wiki.md](wiki.md) only when you will fix or add a page. Fix each touched page and bump its `timestamp`. Write each page the spec approved (shape notes each yes in the spec). Add any other page only for a lesson a fresh agent would lose time without. Make one commit if anything changed. Review then sees the wiki diff. The agent that ran the plan does this: you, or under `dispatch` the omp agent.
 
 After the wiki step: run the fast tests and the type checks, show the output, then use `acta:review` over `<parent>..HEAD`. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, tick it with `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 

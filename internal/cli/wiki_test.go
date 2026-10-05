@@ -205,15 +205,57 @@ func TestWikiLoadErrors(t *testing.T) {
 	if code != exitBadInput || errOut != "" || len(lines) != 2 {
 		t.Fatalf("check: exit %d, stdout %q, stderr %q; want exit %d and two lines", code, out, errOut, exitBadInput)
 	}
-	if want := repo + "/.acta/wiki/broken.md: no frontmatter between two --- lines"; lines[0] != want {
+	// The page is named from the repo root, the way a problem names it, so an
+	// agent can open it from any checkout.
+	if want := ".acta/wiki/broken.md: no frontmatter between two --- lines"; lines[0] != want {
 		t.Errorf("first line %q, want %q", lines[0], want)
 	}
-	if want := repo + "/.acta/wiki/not-a-list.md: "; !strings.HasPrefix(lines[1], want) {
+	if want := ".acta/wiki/not-a-list.md: "; !strings.HasPrefix(lines[1], want) {
 		t.Errorf("second line %q, want it to start with %q", lines[1], want)
+	}
+	if strings.Contains(out, repo) {
+		t.Errorf("check names the full path of the checkout: %q", out)
 	}
 
 	wikiWants(t, repo, []string{"ls"}, exitOK, glossaryLine+lockLine+wrapLine)
 	wikiWants(t, repo, []string{"match", "internal/tui/model.go"}, exitOK, wrapLine)
+}
+
+// Every way a page can fail to load names the page from the repo root: a file
+// that cannot be read, and a folder or a wiki folder that cannot be walked. The
+// files in a subfolder too.
+func TestWikiLoadErrorsNameThePageFromTheRepoRoot(t *testing.T) {
+	files := wikiFiles()
+	files[".acta/wiki/sub/deep/broken.md"] = "no frontmatter here\n"
+	files[".acta/wiki/bad-time.md"] = "---\ntype: Gotcha\ntitle: A page\ndescription: x\npaths: []\ntimestamp: yesterday\n---\nbody\n"
+	repo := wikiRepo(t, files)
+	// A link that points nowhere cannot be read.
+	if err := os.Symlink("nowhere", filepath.Join(repo, ".acta", "wiki", "dead.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, errOut := runWiki(t, repo, "check")
+	want := []string{
+		".acta/wiki/bad-time.md: timestamp: ",
+		".acta/wiki/dead.md: ",
+		".acta/wiki/sub/deep/broken.md: no frontmatter between two --- lines",
+	}
+	lines := outLines(out)
+	if code != exitBadInput || errOut != "" || len(lines) != len(want) {
+		t.Fatalf("check: exit %d, stdout %q, stderr %q; want exit %d and %d lines", code, out, errOut, exitBadInput, len(want))
+	}
+	for i, prefix := range want {
+		if !strings.HasPrefix(lines[i], prefix) {
+			t.Errorf("line %d is %q, want it to start with %q", i, lines[i], prefix)
+		}
+	}
+	if strings.Contains(out, repo) {
+		t.Errorf("check names the full path of the checkout: %q", out)
+	}
+
+	// A wiki that is a file, not a folder, cannot be walked. The line names the wiki.
+	fileWiki := wikiRepo(t, map[string]string{".acta/wiki": "not a folder\n"})
+	wikiWants(t, fileWiki, []string{"check"}, exitBadInput, ".acta/wiki: not a directory\n")
 }
 
 // The land gate: a branch that changes a covered file leaves its page stale, the

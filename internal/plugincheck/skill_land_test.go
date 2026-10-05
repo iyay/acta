@@ -23,10 +23,14 @@ func TestSkillLand(t *testing.T) {
 			"git status --porcelain -- <plan path>",
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
 			"acta wiki check <base>..<head>", "the wiki pages the branch added or changed",
+			"git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
 			"Build never commits the plan file", "First commit the plan file",
 			"each DEBT id the plan names as closed",
+			// Once the branch is merged, main already holds all of it, so this
+			// range is empty and the report would list no page.
+			"<base>..<head> -- .acta/wiki/",
 			// The wiki is the one home for project knowledge. The old files stay
 			// out of the skill text, and so does the name of the format its
 			// fields came from.
@@ -48,12 +52,18 @@ func TestLandWikiGate(t *testing.T) {
 		}
 	}
 	// Step 1 already says a red eval stops the land, so the stop has to sit in
-	// the wiki sentence itself.
-	const gate = "run `acta wiki check <base>..<head>` with the output shown; a problem stops the land the same as a red test"
+	// the wiki sentence itself. The check reads the pages of the checkout it runs
+	// in, so it runs in the worktree, where the pages of the branch are, and
+	// before the merge, since it is a gate.
+	const gate = "Wiki gate: from the worktree, before the merge, run `acta wiki check <base>..<head>` with the output shown; a problem stops the land the same as a red test"
 	if !strings.Contains(step1, gate) {
-		t.Errorf("land step 1 does not stop the merge on acta wiki check, want %q in %q", gate, step1)
+		t.Errorf("land step 1 does not stop the merge on acta wiki check from the worktree, want %q in %q", gate, step1)
 	}
-	if !strings.Contains(report, "the wiki pages the branch added or changed") {
-		t.Errorf("the landing report does not list the wiki pages: %q", report)
+	// The branch is gone and main may have moved by the time the report is
+	// written, so the pages come from the merge commit itself: its first parent
+	// is main as it was, and the merge is main with the branch in it.
+	const pages = "the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none)"
+	if !strings.Contains(report, pages) {
+		t.Errorf("the landing report does not list the wiki pages from the merge commit, want %q in %q", pages, report)
 	}
 }

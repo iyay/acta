@@ -1,6 +1,7 @@
 package wiki
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -103,6 +104,81 @@ one two three four five six seven
 			t.Errorf("error %d = %q, want it to name %s", i, errs[i], name)
 		}
 	}
+}
+
+// A load error says which file it is about, apart from its text, so a caller can
+// show the file its own way. Its text starts with that file.
+func TestLoadErrorsKeepTheFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writePage(t, root, "sub/deep/bad.md", "---\ntype: [unclosed\n---\nbody\n")
+	writePage(t, root, "no-front.md", "just words\n")
+	writePage(t, root, "bad-time.md", "---\ntype: Gotcha\ntitle: t\ndescription: d\npaths: []\ntimestamp: yesterday\n---\nbody\n")
+	if err := os.Symlink("nowhere", filepath.Join(root, "wiki", "dead.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	_, errs := Load(root)
+	want := []struct{ name, text string }{
+		{"bad-time.md", "timestamp: "},
+		{"dead.md", "no such file or directory"},
+		{"no-front.md", "no frontmatter between two --- lines"},
+		{"sub/deep/bad.md", "yaml: "},
+	}
+	if len(errs) != len(want) {
+		t.Fatalf("got %d errors, want %d: %v", len(errs), len(want), errs)
+	}
+	for i, w := range want {
+		file := filepath.Join(root, "wiki", filepath.FromSlash(w.name))
+		var le *LoadError
+		if !errors.As(errs[i], &le) {
+			t.Errorf("error %d = %v, want a *LoadError", i, errs[i])
+			continue
+		}
+		if le.File != file {
+			t.Errorf("error %d is about %q, want %q", i, le.File, file)
+		}
+		// The file stands once at the front. The reason after it does not repeat it.
+		if !strings.HasPrefix(errs[i].Error(), file+": "+w.text) || strings.Contains(le.Err.Error(), file) {
+			t.Errorf("error %d = %q, want %q followed by %q", i, errs[i], file+": ", w.text)
+		}
+	}
+}
+
+// A wiki folder or a folder inside it that cannot be walked is a load error too,
+// and it names that folder, not a name from inside it.
+func TestLoadErrorsForFoldersThatCannotBeWalked(t *testing.T) {
+	t.Parallel()
+	t.Run("the wiki is a file", func(t *testing.T) {
+		root := t.TempDir()
+		file := filepath.Join(root, "wiki")
+		if err := os.WriteFile(file, []byte("not a folder\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		pages, errs := Load(root)
+		if len(pages) != 0 || len(errs) != 1 || errs[0].Error() != file+": not a directory" {
+			t.Errorf("pages = %v, errors = %v, want no pages and %q", pages, errs, file+": not a directory")
+		}
+	})
+	t.Run("a folder with no permission", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root can read anywhere")
+		}
+		root := t.TempDir()
+		writePage(t, root, "ok.md", "---\ntype: Gotcha\ntitle: t\ndescription: d\npaths: []\ntimestamp: 2026-10-04T00:00:00Z\n---\nbody\n")
+		locked := filepath.Join(root, "wiki", "locked")
+		if err := os.Mkdir(locked, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+		pages, errs := Load(root)
+		if got, want := ids(pages), []string{"ok"}; !slices.Equal(got, want) {
+			t.Errorf("page ids = %v, want %v", got, want)
+		}
+		if len(errs) != 1 || errs[0].Error() != locked+": permission denied" {
+			t.Errorf("errors = %v, want one: %q", errs, locked+": permission denied")
+		}
+	})
 }
 
 func TestLoadMissingFolder(t *testing.T) {

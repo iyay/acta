@@ -62,8 +62,8 @@ func Check(repo string, pages []Page, rng string) []Problem {
 	return out
 }
 
-// pageName is the page file from the repo root. A file outside the repo, which
-// has no such name, keeps the path it was loaded from.
+// pageName is the page file from the repo root. A file outside the repo comes
+// out as a path that climbs out with ../.
 func pageName(repo string, p Page) string {
 	if rel, err := filepath.Rel(repo, p.Path); err == nil {
 		return filepath.ToSlash(rel)

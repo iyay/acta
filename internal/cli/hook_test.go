@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/iyay/acta/internal/hook"
 )
 
 // The hook reads HERDR_ENV, so the session text can name a herdr tab as the
@@ -313,6 +315,165 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 			t.Fatal("a blocked call was recorded as a shown page")
 		}
 	})
+}
+
+// branchHint is the hint of the page tui-wrap as the worktree branch has it.
+const branchHint = `{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":` +
+	`"wiki: .acta/wiki/tui-wrap.md: On the branch: wrap is fixed"}}` + "\n"
+
+// hintWorktree is hintRepo with its page committed, and a linked worktree beside
+// it, the way acta:build makes one. The branch has changed the page text. It
+// gives the main checkout and the worktree.
+func hintWorktree(t *testing.T) (dir, tree string) {
+	t.Helper()
+	dir = hintRepo(t, "internal/tui/")
+	git := func(args ...string) {
+		t.Helper()
+		full := append([]string{"-C", dir, "-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)
+		if out, err := exec.Command("git", full...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "init")
+	tree = filepath.Join(t.TempDir(), "tree")
+	git("worktree", "add", "-q", "-b", "feature", tree)
+	page := "---\ntype: Gotcha\ntitle: Wrap overflows\ndescription: \"On the branch: wrap is fixed\"\n" +
+		"paths: [internal/tui/]\ntimestamp: 2026-10-04T10:00:00Z\n---\nbody\n"
+	if err := os.WriteFile(filepath.Join(tree, ".acta", "wiki", "tui-wrap.md"), []byte(page), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir, tree
+}
+
+// A Claude Code build keeps the session in the main checkout, so the hook runs
+// there, while the implementers read and edit the worktree by its full path. The
+// hint has to come from the checkout that holds the file.
+func TestHookPreToolHintsFromTheFilesOwnCheckout(t *testing.T) {
+	cases := []struct {
+		name, tool string
+		input      func(dir, tree string) map[string]string
+		want       string
+	}{
+		{"a Read of a worktree file", "Read", func(dir, tree string) map[string]string {
+			return map[string]string{"file_path": filepath.Join(tree, "internal", "tui", "model.go")}
+		}, branchHint},
+		{"a Write of a new file in a new worktree folder", "Write", func(dir, tree string) map[string]string {
+			return map[string]string{"file_path": filepath.Join(tree, "internal", "tui", "new", "x.go")}
+		}, branchHint},
+		{"a Bash cd into the worktree and a relative word", "Bash", func(dir, tree string) map[string]string {
+			return map[string]string{"command": "cd " + tree + " && cat internal/tui/model.go"}
+		}, branchHint},
+		{"a Bash word with the full path of a worktree file", "Bash", func(dir, tree string) map[string]string {
+			return map[string]string{"command": "cat " + filepath.Join(tree, "internal", "tui", "model.go")}
+		}, branchHint},
+		{"a Read of a file in the checkout the hook runs in", "Read", func(dir, tree string) map[string]string {
+			return map[string]string{"file_path": filepath.Join(dir, "internal", "tui", "model.go")}
+		}, tuiHint},
+		{"a Bash relative word with no cd", "Bash", func(dir, tree string) map[string]string {
+			return map[string]string{"command": "cat internal/tui/model.go"}
+		}, tuiHint},
+		{"a path in no git checkout", "Read", func(dir, tree string) map[string]string {
+			return map[string]string{"file_path": "/etc/hosts"}
+		}, ""},
+		{"a cd into no git checkout", "Bash", func(dir, tree string) map[string]string {
+			return map[string]string{"command": "cd /etc && cat internal/tui/model.go"}
+		}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir, tree := hintWorktree(t)
+			t.Chdir(dir)
+			code, out, errb := runHook(t, "pre-tool", toolEvent(t, "s1", "", c.tool, c.input(dir, tree)))
+			if code != exitOK || out != c.want || errb != "" {
+				t.Fatalf("exit %d, stdout %q, stderr %q, want exit 0, stdout %q and no stderr", code, out, errb, c.want)
+			}
+			// What was shown is kept in the session checkout, whichever checkout
+			// gave the hint. The worktree is left alone.
+			keeps := map[string]bool{dir: c.want != "", tree: false}
+			for checkout, want := range keeps {
+				_, err := os.Stat(filepath.Join(checkout, ".acta", "state", "wiki-hints.json"))
+				if (err == nil) != want {
+					t.Errorf("%s keeps shown pages = %v, want %v", checkout, err == nil, want)
+				}
+			}
+		})
+	}
+}
+
+// The hook can run in a folder that is no checkout at all, like a session that
+// was started above a few repos. It has no repository of its own to trust, so
+// no file gets a hint and nothing is written in any repo.
+func TestHookPreToolHintsWhenTheHookRunsOutsideEveryCheckout(t *testing.T) {
+	dir, tree := hintWorktree(t)
+	t.Chdir(t.TempDir())
+	for _, c := range []struct{ name, file string }{
+		{"a file of the main checkout", filepath.Join(dir, "internal", "tui", "model.go")},
+		{"a file of the worktree", filepath.Join(tree, "internal", "tui", "model.go")},
+	} {
+		stdin := toolEvent(t, "s1", "", "Read", map[string]string{"file_path": c.file})
+		if code, out, errb := runHook(t, "pre-tool", stdin); code != exitOK || out != "" || errb != "" {
+			t.Errorf("%s: exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", c.name, code, out, errb)
+		}
+	}
+	for _, d := range []string{dir, tree} {
+		if _, err := os.Stat(filepath.Join(d, ".acta", "state")); err == nil {
+			t.Errorf("a hook outside every checkout made a state folder in %s", d)
+		}
+	}
+}
+
+// A hint is an extra line. Whatever goes wrong while it is made, even a panic,
+// must leave the call as it would be with no wiki: exit 0 and nothing printed.
+// A Go panic exits 2, which is the code that blocks the tool.
+func TestHookPreToolHintFailureNeverBlocks(t *testing.T) {
+	saved := wikiHints
+	wikiHints = func(string, string, hook.ToolEvent) string { panic("forced failure in the hint path") }
+	t.Cleanup(func() { wikiHints = saved })
+
+	// A panic that nothing caught fails this test with a message, instead of
+	// killing the whole test run.
+	run := func(t *testing.T, stdin string) (code int, out, errb string) {
+		t.Helper()
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("pre-tool let a panic out: %v", r)
+			}
+		}()
+		return runHook(t, "pre-tool", stdin)
+	}
+
+	dir := hintRepo(t, "internal/tui/")
+	t.Chdir(dir)
+	for _, tool := range []string{"Read", "Edit", "Write", "MultiEdit"} {
+		stdin := toolEvent(t, "s1", "", tool, map[string]string{"file_path": filepath.Join(dir, "internal", "tui", "model.go")})
+		if code, out, errb := run(t, stdin); code != exitOK || out != "" || errb != "" {
+			t.Errorf("%s: exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", tool, code, out, errb)
+		}
+	}
+	stdin := toolEvent(t, "s1", "", "Bash", map[string]string{"command": "go vet ./internal/tui/..."})
+	if code, out, errb := run(t, stdin); code != exitOK || out != "" || errb != "" {
+		t.Errorf("Bash: exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
+	}
+
+	// The two blocks run before the hint, so they still exit 2 with their reason.
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "test"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stdin = toolEvent(t, "s1", "", "Bash", map[string]string{"command": "go test ./internal/tui/..."})
+	if code, out, errb := run(t, stdin); code != exitBlock || out != "" || !strings.Contains(errb, "run tests with scripts/test") {
+		t.Errorf("a bare go test: exit %d, stdout %q, stderr %q, want exit 2 and the block reason", code, out, errb)
+	}
+	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
+		t.Fatalf("recording the first brainstorm: exit %d", code)
+	}
+	stdin = toolEvent(t, "s1", "", "Bash", map[string]string{"command": "acta set scratch/two status brainstorming"})
+	if code, out, errb := run(t, stdin); code != exitBlock || out != "" || !strings.Contains(errb, "already brainstormed") {
+		t.Errorf("a second brainstorm: exit %d, stdout %q, stderr %q, want exit 2 and the block reason", code, out, errb)
+	}
 }
 
 // wikiLineHead is how the session start wiki line begins, up to its count.

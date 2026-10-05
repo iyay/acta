@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -95,7 +96,7 @@ func wikiMatch(stdout io.Writer, cfg config.Config, pages []wiki.Page, files []s
 func wikiCheck(stdout io.Writer, cfg config.Config, pages []wiki.Page, loadErrs []error, rng string) int {
 	var lines []string
 	for _, err := range loadErrs {
-		lines = append(lines, err.Error())
+		lines = append(lines, loadLine(cfg, err))
 	}
 	for _, p := range wiki.Check(cfg.RepoRoot, pages, rng) {
 		// A problem with no page, like a range git cannot read, stands alone.
@@ -114,14 +115,30 @@ func wikiCheck(stdout io.Writer, cfg config.Config, pages []wiki.Page, loadErrs 
 	return exitOK
 }
 
+// loadLine is one load error as one line: the file from the repo root, like a
+// problem names its page, then the reason. An error that names no file stays as
+// it is.
+func loadLine(cfg config.Config, err error) string {
+	var le *wiki.LoadError
+	if !errors.As(err, &le) {
+		return err.Error()
+	}
+	return repoPath(cfg, le.File) + ": " + le.Err.Error()
+}
+
 // wikiLine is one page as one line: its file from the repo root, then its
 // description.
 func wikiLine(cfg config.Config, p wiki.Page) string {
-	name := p.Path
-	if rel, err := filepath.Rel(cfg.RepoRoot, p.Path); err == nil {
-		name = filepath.ToSlash(rel)
+	return repoPath(cfg, p.Path) + ": " + oneLine(p.Description)
+}
+
+// repoPath is a file from the repo root, with forward slashes. A file outside
+// the repo comes out as a path that climbs out with ../.
+func repoPath(cfg config.Config, file string) string {
+	if rel, err := filepath.Rel(cfg.RepoRoot, file); err == nil {
+		return filepath.ToSlash(rel)
 	}
-	return name + ": " + oneLine(p.Description)
+	return file
 }
 
 // oneLine turns every break and run of spaces into one space, so a page or a

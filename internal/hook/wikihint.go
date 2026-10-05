@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/wiki"
 )
 
@@ -23,56 +24,241 @@ const (
 
 // WikiHints gives one `wiki: <path>: <description>` line for each wiki page
 // that covers a file this tool call touches, and nothing for a page this
-// context has been shown already. root is the planning folder and repo is the
-// repo root. A file tool gives its file path; a Bash command gives each of its
-// words, since any word may be a path.
+// context has been shown already. A file tool gives its file path; a Bash
+// command gives each of its words, since any word may be a path.
+//
+// Only the session's own repository is trusted: the checkout the hook runs in,
+// and the worktrees of that same repository. A Claude Code build keeps its
+// session in the main checkout while the work is done in a worktree, and the
+// pages of the branch are only in the worktree, so a file of a worktree gets the
+// pages of that worktree. A file of any other repository gets nothing, because
+// its pages and its settings are not the user's to trust, and the hook must
+// write nothing there. A repository inside the session checkout that is not one
+// of its worktrees, like a vendored clone, counts as part of the session
+// checkout.
+//
+// The list of what was shown is kept in the session checkout only, so one reset
+// covers every worktree. root is the planning folder and repo the repo root of
+// the checkout the hook runs in. Both are empty when the hook runs in none, and
+// then there are no hints at all.
+//
+// A path that is not a full one is read from the folder the hook runs in, or
+// from the folder of the last `cd` word before it in the same command.
 //
 // Nothing here can fail the hook. A page that cannot load, a state file that
 // cannot be read or saved, and a lock that cannot be had only mean fewer hints,
 // or the same hint twice.
 func WikiHints(root, repo string, ev ToolEvent) string {
-	words := hintWords(ev)
-	if len(words) == 0 {
+	if root == "" || repo == "" {
 		return ""
 	}
-	// Pages that cannot load are for `acta wiki check` to report.
-	pages, _ := wiki.Load(root)
-	if len(pages) == 0 {
+	cwd, _ := os.Getwd()
+	files := hintFiles(ev, cwd)
+	if len(files) == 0 {
 		return ""
 	}
-	rel := repoRel(repo)
-	hit := map[string]bool{}
-	for _, w := range words {
-		w = strings.Trim(w, `"'`)
-		if w == "" {
+	look := &lookup{root: root, repo: repo, common: commonDir(repo), byTop: map[string]*checkout{}, byDir: map[string]*checkout{}}
+	// The checkouts that have a hint, in the order the words reached them.
+	var touched []*checkout
+	for _, file := range files {
+		c := look.of(file)
+		if c == nil {
 			continue
 		}
-		if path, ok := rel(w); ok {
-			for _, p := range wiki.Match(pages, path) {
-				hit[p.ID] = true
-			}
+		rel, ok := c.rel(file)
+		if !ok {
+			continue
+		}
+		covering := wiki.Match(c.pages, rel)
+		if len(covering) > 0 && !slices.Contains(touched, c) {
+			touched = append(touched, c)
+		}
+		for _, p := range covering {
+			c.hit[p.ID] = true
 		}
 	}
+	var lines []string
+	for _, c := range touched {
+		lines = append(lines, c.lines(root, ev.SessionID+"/"+ev.AgentID)...)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// checkout is one git checkout a tool call touches, with the pages it holds.
+type checkout struct {
+	repo, root string
+	// real is repo with its links followed.
+	real  string
+	pages []wiki.Page
+	// prefix names the pages of this checkout in the shown list. The session
+	// checkout has none. A worktree has its own path, since its pages can share
+	// an id with the pages of the session checkout.
+	prefix string
+	// hit holds the ids of the pages that cover a file the call touched.
+	hit map[string]bool
+}
+
+// rel says where a file sits in the checkout, as a slash path from its repo
+// root. It says no for a file outside it.
+//
+// One folder can have two names when a link is in the way. macOS keeps /tmp and
+// /var behind links, so the agent, the shell and git may not agree on the name.
+// So a path is tried as written first, and then with its links followed.
+func (c *checkout) rel(file string) (string, bool) {
+	if rel, ok := under(c.repo, file); ok {
+		return rel, true
+	}
+	return under(c.real, resolve(file))
+}
+
+// lines gives the hint line for each page that covers a touched file and that
+// this context has not been shown. The page file is named from the repo root,
+// so the agent can open it from its checkout. What was shown is kept in the
+// session root.
+func (c *checkout) lines(sessionRoot, key string) []string {
 	// Page order, not word order, so the same call always reads the same.
 	var covering []wiki.Page
-	for _, p := range pages {
-		if hit[p.ID] {
+	for _, p := range c.pages {
+		if c.hit[p.ID] {
 			covering = append(covering, p)
 		}
 	}
-	if len(covering) == 0 {
-		return ""
-	}
-	var lines []string
-	for _, p := range claim(root, ev.SessionID+"/"+ev.AgentID, covering) {
-		name, ok := rel(p.Path)
+	var out []string
+	for _, p := range claim(sessionRoot, key, c.prefix, covering) {
+		name, ok := c.rel(p.Path)
 		if !ok {
 			name = p.Path
 		}
 		// One line each: a description with a line break would cut the hint.
-		lines = append(lines, "wiki: "+name+": "+strings.Join(strings.Fields(p.Description), " "))
+		out = append(out, "wiki: "+name+": "+strings.Join(strings.Fields(p.Description), " "))
 	}
-	return strings.Join(lines, "\n")
+	return out
+}
+
+// lookup finds the checkout of a file. Asking git for one costs a few
+// milliseconds, so a call asks once for each checkout it meets. A command can
+// name thousands of words, so each folder is walked once too.
+type lookup struct {
+	// root and repo are the checkout the hook runs in, which is known already.
+	root, repo string
+	// common is the git folder that checkout shares with its worktrees.
+	common string
+	// own is the checkout the hook runs in, once it is read.
+	own *checkout
+	// byTop holds each checkout by the folder its .git was found in. A checkout
+	// with no usable pages is nil: it has nothing to hint.
+	byTop map[string]*checkout
+	// byDir holds the checkout of each folder that was asked about.
+	byDir map[string]*checkout
+}
+
+// of gives the checkout that holds file, or nil when no git checkout holds it or
+// it has no pages. The file can be a path that is not there yet: the walk up for
+// the checkout starts at its folder, and a folder that is missing has no .git.
+func (l *lookup) of(file string) *checkout {
+	dir := filepath.Dir(file)
+	c, done := l.byDir[dir]
+	if !done {
+		c = l.find(dir)
+		l.byDir[dir] = c
+	}
+	return c
+}
+
+// find walks up from dir to the checkout that holds it.
+func (l *lookup) find(dir string) *checkout {
+	top, ok := gitTopDir(dir)
+	if !ok {
+		return nil
+	}
+	c, done := l.byTop[top]
+	if !done {
+		c = l.open(top)
+		l.byTop[top] = c
+	}
+	return c
+}
+
+// open reads the pages of the checkout that has its top at top. The checkout the
+// hook runs in comes from the caller. A worktree of the same repository is asked
+// of config, which knows where its planning folder is. Any other repository has
+// no pages: a nested one is read as part of the checkout the hook runs in, and an
+// unrelated one is not read at all.
+func (l *lookup) open(top string) *checkout {
+	if resolve(top) == resolve(l.repo) {
+		return l.session()
+	}
+	if l.common != "" && commonDir(top) == l.common {
+		cfg, err := config.Load(top, "")
+		if err != nil || !cfg.IsGit {
+			return nil
+		}
+		return load(cfg.Root, cfg.RepoRoot, resolve(top)+"|")
+	}
+	if _, ok := under(l.repo, top); ok {
+		return l.session()
+	}
+	if _, ok := under(resolve(l.repo), resolve(top)); ok {
+		return l.session()
+	}
+	return nil
+}
+
+// session gives the checkout the hook runs in, read once.
+func (l *lookup) session() *checkout {
+	if l.own == nil {
+		l.own = load(l.root, l.repo, "")
+	}
+	return l.own
+}
+
+// load reads the pages of one checkout. A checkout with none is nil.
+func load(root, repo, prefix string) *checkout {
+	// Pages that cannot load are for `acta wiki check` to report.
+	pages, _ := wiki.Load(root)
+	if len(pages) == 0 {
+		return nil
+	}
+	return &checkout{repo: repo, root: root, real: resolve(repo), prefix: prefix, pages: pages, hit: map[string]bool{}}
+}
+
+// commonDir gives the git folder a checkout shares with its worktrees, read from
+// its .git and not from git, so no process is started. A .git folder is the
+// common folder. A .git file names the folder of its worktree, and that folder
+// names the common one in a commondir file, as git writes it. A folder with no
+// commondir file, like a submodule one, has no common folder here. A worktree
+// folder that does not point back at this .git is no worktree of it, and gets
+// none: a repository must not be able to claim a folder that is not its own.
+// Nothing here can be read gives an empty string.
+func commonDir(top string) string {
+	dotGit := filepath.Join(top, ".git")
+	fi, err := os.Lstat(dotGit)
+	if err != nil {
+		return ""
+	}
+	if fi.IsDir() {
+		return resolve(dotGit)
+	}
+	data, err := os.ReadFile(dotGit)
+	if err != nil {
+		return ""
+	}
+	gitdir, ok := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir:")
+	if !ok {
+		return ""
+	}
+	gitdir = fromDir(top, strings.TrimSpace(gitdir))
+	rel, err := os.ReadFile(filepath.Join(gitdir, "commondir"))
+	if err != nil {
+		// No commondir file means no linked worktree. Anyone can write a .git
+		// file that names the session's .git, so it must claim nothing.
+		return ""
+	}
+	back, err := os.ReadFile(filepath.Join(gitdir, "gitdir"))
+	if err != nil || resolve(strings.TrimSpace(string(back))) != resolve(dotGit) {
+		return ""
+	}
+	return resolve(fromDir(gitdir, strings.TrimSpace(string(rel))))
 }
 
 // hintOutput is the one JSON object Claude Code reads from a PreToolUse hook
@@ -93,37 +279,49 @@ func HintJSON(lines string) string {
 	return string(data)
 }
 
-// hintWords lists what one tool call names as a file: the path of a file tool,
-// or each word of a Bash command.
-func hintWords(ev ToolEvent) []string {
-	if ev.ToolInput.FilePath != "" {
-		return []string{ev.ToolInput.FilePath}
+// hintFiles lists what one tool call names as a file, each as a full path: the
+// path of a file tool, or each word of a Bash command. A path that is not a full
+// one is read from cwd, since that is where a shell command runs, or from the
+// folder of the last `cd` word before it. A `cd` inside parentheses is read as a
+// `cd` of the rest of the command. The shell would not, but it costs at most one
+// hint too many or too few.
+func hintFiles(ev ToolEvent, cwd string) []string {
+	if p := ev.ToolInput.FilePath; p != "" {
+		return hintWord(nil, cwd, p)
 	}
-	return goTestCut(ev.ToolInput.Command, goTestSep+goTestSpace)
+	var files []string
+	dir := cwd
+	for _, piece := range goTestCut(ev.ToolInput.Command, goTestSep+"\n") {
+		words := goTestCut(piece, goTestSpace)
+		for _, w := range words {
+			files = hintWord(files, dir, w)
+		}
+		// The next piece runs in the folder this one moved to. A folder that is
+		// not a plain name, like $WT or ~, leads to a folder that is not there,
+		// so the words after it get no hint, which is better than a wrong one.
+		if len(words) > 1 && words[0] == "cd" {
+			dir = fromDir(dir, strings.Trim(words[1], `"'`))
+		}
+	}
+	return files
 }
 
-// repoRel gives a function that turns a path an agent wrote into a slash path
-// from the repo root. It says no for a path outside the repo. A path with no
-// start is read from the folder the hook runs in, since that is where a shell
-// command runs.
-//
-// One folder can have two names when a link is in the way. macOS keeps /tmp and
-// /var behind links, so the agent, the shell and git may not agree on the name.
-// So a path is tried as written first, and then with its links followed.
-func repoRel(repo string) func(string) (string, bool) {
-	realRepo := resolve(repo)
-	cwd, _ := os.Getwd()
-	realCwd := resolve(cwd)
-	return func(p string) (string, bool) {
-		if !filepath.IsAbs(p) {
-			return under(realRepo, filepath.Join(realCwd, p))
-		}
-		p = filepath.Clean(p)
-		if rel, ok := under(repo, p); ok {
-			return rel, true
-		}
-		return under(realRepo, resolve(p))
+// hintWord adds one word to files as a full path, unless the word is empty once
+// its quotes are cut.
+func hintWord(files []string, dir, w string) []string {
+	if w = strings.Trim(w, `"'`); w == "" {
+		return files
 	}
+	return append(files, fromDir(dir, w))
+}
+
+// fromDir makes a full path of a word: a full one stays, and any other is read
+// from dir.
+func fromDir(dir, w string) string {
+	if filepath.IsAbs(w) {
+		return filepath.Clean(w)
+	}
+	return filepath.Join(dir, w)
 }
 
 // under says where p sits inside base, as a slash path from base. It says no
@@ -151,11 +349,14 @@ func resolve(p string) string {
 
 // claim marks the pages as shown to one context, and gives back only the ones
 // it had not been shown before.
-func claim(root, key string, pages []wiki.Page) []wiki.Page {
+//
+// The ids are kept as prefix+id, so the pages of two checkouts that share an id
+// are two pages.
+func claim(root, key, prefix string, pages []wiki.Page) []wiki.Page {
 	// Most calls end here: the pages are known already, and nothing is locked or
 	// written. The file is replaced in one move, so this read never sees half a
 	// file, and a read that is wrong only sends the call on to the check below.
-	if len(unseen(pages, readHints(root)[key])) == 0 {
+	if len(unseen(pages, prefix, readHints(root)[key])) == 0 {
 		return nil
 	}
 	// Dropped on purpose, like the other state writes: a root that cannot be
@@ -167,12 +368,12 @@ func claim(root, key string, pages []wiki.Page) []wiki.Page {
 		defer unlock()
 	}
 	shown := readHints(root)
-	fresh := unseen(pages, shown[key])
+	fresh := unseen(pages, prefix, shown[key])
 	if len(fresh) == 0 {
 		return nil
 	}
 	for _, p := range fresh {
-		shown[key] = append(shown[key], p.ID)
+		shown[key] = append(shown[key], prefix+p.ID)
 	}
 	// A hook that cannot save what it showed still shows it. The hint then comes
 	// back on every touch, which is how the user finds out the state is broken.
@@ -217,11 +418,11 @@ func withoutSession(shown map[string][]string, prefix string) map[string][]strin
 	return kept
 }
 
-// unseen keeps the pages whose id is not in ids.
-func unseen(pages []wiki.Page, ids []string) []wiki.Page {
+// unseen keeps the pages whose id, with the prefix in front, is not in ids.
+func unseen(pages []wiki.Page, prefix string, ids []string) []wiki.Page {
 	var out []wiki.Page
 	for _, p := range pages {
-		if !slices.Contains(ids, p.ID) {
+		if !slices.Contains(ids, prefix+p.ID) {
 			out = append(out, p)
 		}
 	}
