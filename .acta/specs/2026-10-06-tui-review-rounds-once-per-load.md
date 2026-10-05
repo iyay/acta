@@ -3,6 +3,7 @@ parent: bugs/2026-10-06-tui-review-plan-detail-lags
 id: SPC-0089
 created: "2026-10-06 05:33:52"
 hash: cq1flgb
+started: "2026-10-06 05:37:45"
 ---
 # TUI reads review rounds once per board load, not on every render
 

@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 )
 
@@ -30,7 +29,7 @@ func WatchDirs(cfg config.Config) []string {
 // Watch reloads the board after files change and hands the result to send.
 // dirs is asked again after every reload, so a folder or worktree that appears
 // later is watched from then on. Missing folders are skipped.
-func Watch(dirs func() []string, load func() (*board.Board, error), send func(tea.Msg)) (func(), error) {
+func Watch(dirs func() []string, reload func() tea.Msg, send func(tea.Msg)) (func(), error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -77,9 +76,9 @@ func Watch(dirs func() []string, load func() (*board.Board, error), send func(te
 				}
 				send(watchFailedMsg{err: err})
 			case <-fire:
-				b, err := load()
+				msg := reload()
 				addAll()
-				send(reloadMsg{b: b, err: err})
+				send(msg)
 			}
 		}
 	}()

@@ -447,17 +447,15 @@ func (m Model) fromText(it *board.Item) string {
 }
 
 // roundText names the newest review round of a plan that waits for merge,
-// read from the branch the way acta state reads it. A plan with no round
-// yet says none, and anything that is not a plan in review says nothing, so
-// the line stays out of its header.
+// from the rounds the last load read. A plan with no round yet says none,
+// and anything that is not a plan in review says nothing, so the line stays
+// out of its header. Before the first load lands there are no rounds yet,
+// so a plan in review says none.
 func (m Model) roundText(it *board.Item) string {
 	if it == nil || it.Kind != board.KindPlan || it.Status != "review" {
 		return ""
 	}
-	if rounds == nil {
-		return "(none)"
-	}
-	for _, r := range rounds(m.cfg) {
+	for _, r := range m.states {
 		if r.Plan != nil && r.Plan.ID == it.ID {
 			if r.Round == "" {
 				return "(none)"
