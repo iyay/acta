@@ -3,7 +3,7 @@ type: Gotcha
 title: glamour and chroma theme traps
 description: Charm registers once per process, chroma needs hex or ansi names, and Text.Color kills heading colors
 paths: [internal/tui/]
-timestamp: 2026-10-05T15:28:00Z
+timestamp: 2026-10-05T23:18:53Z
 ---
 
 - `StyleCodeBlock.Chroma != nil` registers code colors once per process under the fixed name `charm`; the first theme to draw a code block owns them. Fix: Chroma nil, set `CodeBlock.Theme` to a per-theme name registered in chroma's registry yourself.

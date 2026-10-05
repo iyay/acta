@@ -1,6 +1,8 @@
 ---
 id: BUG-0032
 hash: aer6v2y
+fixed_in: e0c24ec
+finished: "2026-10-06 06:19:06"
 ---
 # Switching to the Plans tab lags when a plan is in review
 

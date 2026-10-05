@@ -4,6 +4,7 @@ id: SPC-0089
 created: "2026-10-06 05:33:52"
 hash: cq1flgb
 started: "2026-10-06 05:37:45"
+finished: "2026-10-06 06:04:20"
 ---
 # TUI reads review rounds once per board load, not on every render
 

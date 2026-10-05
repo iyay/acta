@@ -1,6 +1,8 @@
 ---
 id: BUG-0033
 hash: gf2xwrb
+fixed_in: e0c24ec
+finished: "2026-10-06 06:19:07"
 ---
 # Tasks run by a dispatched omp agent show no agent name
 

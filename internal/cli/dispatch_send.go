@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/write"
 )
 
 const (
@@ -186,6 +188,15 @@ func cmdDispatchSend(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	if err != nil {
 		fmt.Fprintln(stderr, "delivery failed:", err)
 		return exitDelivery
+	}
+	// The goal is out, so later ticks in this worktree name the recipient
+	// even when the harness sets no agent. A write error only gets a word:
+	// the send itself already went through.
+	if err := hook.EnsureGitignore(cfg.Root, ".agents.json"); err != nil {
+		fmt.Fprintln(stderr, "cannot ignore .agents.json:", err)
+	}
+	if err := write.SetDefaultAgent(cfg.Root, "omp"); err != nil {
+		fmt.Fprintln(stderr, "cannot record the default agent:", err)
 	}
 	verdict, missing, paneText := checkpoint(slug, ids)
 	line := verdict
