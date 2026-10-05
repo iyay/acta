@@ -32,13 +32,13 @@ func TestWatchGathersEventsIntoOneReload(t *testing.T) {
 	var mu sync.Mutex
 	loads := 0
 	msgs := make(chan tea.Msg, 10)
-	load := func() (*board.Board, error) {
+	reload := func() tea.Msg {
 		mu.Lock()
 		loads++
 		mu.Unlock()
-		return &board.Board{}, nil
+		return reloadMsg{b: &board.Board{}}
 	}
-	stop, err := Watch(func() []string { return []string{dir, filepath.Join(dir, "missing")} }, load, func(m tea.Msg) { msgs <- m })
+	stop, err := Watch(func() []string { return []string{dir, filepath.Join(dir, "missing")} }, reload, func(m tea.Msg) { msgs <- m })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestWatchPicksUpFoldersCreatedLater(t *testing.T) {
 	later := filepath.Join(dir, "later")
 	msgs := make(chan tea.Msg, 10)
 	stop, err := Watch(func() []string { return []string{dir, later} },
-		func() (*board.Board, error) { return &board.Board{}, nil }, func(m tea.Msg) { msgs <- m })
+		func() tea.Msg { return reloadMsg{b: &board.Board{}} }, func(m tea.Msg) { msgs <- m })
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -50,7 +50,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	defer traceDone()
 	m = m.WithTrace(tr)
 	p := tea.NewProgram(m, append(opts, traceOpts...)...)
-	load := func() (*board.Board, error) { return trees.Load(cfg) }
+	load := m.Reload()
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
 	if stop, err := tui.Watch(dirs, load, p.Send); err != nil {
 		go p.Send(tui.WatchFailed(err))

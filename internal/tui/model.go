@@ -44,8 +44,9 @@ type popup struct {
 }
 
 type reloadMsg struct {
-	b   *board.Board
-	err error
+	b      *board.Board
+	states []board.RunState
+	err    error
 }
 
 type watchFailedMsg struct{ err error }
@@ -152,6 +153,7 @@ func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
 type Model struct {
 	cfg        config.Config
 	board      *board.Board
+	states     []board.RunState       // review rounds read with the last load, for the detail box
 	focus      pane                   // the box with the focus
 	last       pane                   // the list pane that had it last, for the detail box
 	top        int                    // the open tab, an index into topTabs
@@ -268,13 +270,15 @@ func (m Model) WithTrace(t *Tracer) Model {
 	return m
 }
 
-// Init starts the clock, and the hide timer for a message the model was built
-// with, such as a theme that did not load, because no Update saw it.
+// Init starts the clock, fires the first board load so the screen fills in,
+// and starts the hide timer for a message the model was built with, such as
+// a theme that did not load, because no Update saw it.
 func (m Model) Init() tea.Cmd {
+	first := m.reloadCmd()
 	if m.status == "" {
-		return nextMinute()
+		return tea.Batch(nextMinute(), first)
 	}
-	return tea.Batch(nextMinute(), clearStatusAfter(toastFor, m.status))
+	return tea.Batch(nextMinute(), first, clearStatusAfter(toastFor, m.status))
 }
 
 // nextMinute waits for the next minute to start and sends the time then, so
@@ -322,6 +326,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			*sel = rows[cursorOf(rows, *sel, *idx)].id
 		}
 		m.board = msg.b
+		m.states = msg.states
 		m.moveTo(m.cursor())
 		return m, m.armPulse()
 	case pulseMsg:
@@ -1096,11 +1101,19 @@ func (m Model) afterEditor(msg editorDoneMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) reloadCmd() tea.Cmd {
 	load := m.load
+	cfg := m.cfg
 	return func() tea.Msg {
 		b, err := load()
-		return reloadMsg{b: b, err: err}
+		if err != nil {
+			return reloadMsg{err: err}
+		}
+		return reloadMsg{b: b, states: rounds(cfg)}
 	}
 }
+
+// Reload loads the board and its review rounds off the UI goroutine, for
+// the file watcher to send in. Sharing it keeps every reload on one path.
+func (m Model) Reload() func() tea.Msg { return m.reloadCmd() }
 
 func outcomeText(label string, o write.Outcome, err error) string {
 	switch {

@@ -5,6 +5,7 @@ depth: minimal
 id: PLN-0098
 created: "2026-10-06 05:34:45"
 hash: wcciscq
+started: "2026-10-06 05:37:45"
 ---
 # Review rounds once per load and dispatch agent name Implementation Plan
 
@@ -32,17 +33,17 @@ hash: wcciscq
 
 **Files:** Modify `internal/tui/model.go`, `internal/tui/detail.go`; test in `internal/tui`.
 **verify:** No render path calls the `rounds` hook: it runs only inside the load command (start, fsnotify reload, reload after a write), off the UI goroutine. List every caller of `rounds` and every place `roundText` gets its data; a plan in review still shows its round, and `(none)` before the first load.
-- [ ] Failing test: a counting fake `rounds` hook sees more than one call when the detail of a plan in review is rendered several times after one load.
-- [ ] Code: `reloadCmd` (and the first load) call `rounds(cfg)` next to `load()` and carry the result in `reloadMsg`; `Model` keeps it; `roundText` reads the stored list.
-- [ ] Commit: `fix(tui): read review rounds once per board load (BUG-0032)`.
+- [x] Failing test: a counting fake `rounds` hook sees more than one call when the detail of a plan in review is rendered several times after one load.
+- [x] Code: `reloadCmd` (and the first load) call `rounds(cfg)` next to `load()` and carry the result in `reloadMsg`; `Model` keeps it; `roundText` reads the stored list.
+- [x] Commit: `fix(tui): read review rounds once per board load (BUG-0032)`.
 
 ### Task 2: default agent name in .agents.json
 
 **Files:** Modify `internal/write/agents.go`, `internal/board/agents.go`; tests in `internal/write`, `internal/board`.
 **verify:** A tick with no flag and no `AI_AGENT` records the `"*"` name, unless the task already has a name; a flag or `AI_AGENT` always wins; no reader shows `"*"` as a task; a file with no `"*"` key behaves as before. List every reader of `.agents.json` and every way `RecordAgent` picks a name.
-- [ ] Failing test: after writing a default `omp`, `RecordAgent(root, id, "", now, true)` records `""`, and the board lists a task for key `"*"`.
-- [ ] Code: add `SetDefaultAgent(root, agent string) error` in `internal/write/agents.go` under the same lock and rename; `RecordAgent` falls back to `recs["*"].Agent` after `prev.Agent`; `readAgents` skips `"*"`.
-- [ ] Commit: `fix(write): ticks fall back to the worktree default agent (BUG-0033)`.
+- [x] Failing test: after writing a default `omp`, `RecordAgent(root, id, "", now, true)` records `""`, and the board lists a task for key `"*"`.
+- [x] Code: add `SetDefaultAgent(root, agent string) error` in `internal/write/agents.go` under the same lock and rename; `RecordAgent` falls back to `recs["*"].Agent` after `prev.Agent`; `readAgents` skips `"*"`.
+- [x] Commit: `fix(write): ticks fall back to the worktree default agent (BUG-0033)`.
 
 ### Task 3: dispatch send records the recipient
 

@@ -118,6 +118,9 @@ func TestReviewDetailNamesRound(t *testing.T) {
 	}
 	defer func() { rounds = old }()
 	m := reviewBoard(t)
+	m = m.WithLoad(func() (*board.Board, error) { return m.board, nil })
+	next, _ := m.Update(m.reloadCmd()())
+	m = next.(Model)
 	m.openPlans = everyPlanOpen(m.board)
 	m.openTab(tabPlans)
 	rows, sel, idx := m.slotOf(paneList)
@@ -133,4 +136,63 @@ func TestReviewDetailNamesRound(t *testing.T) {
 		}
 	}
 	t.Fatal("no row for the review plan, so this test proves nothing")
+}
+
+func TestReviewRoundsReadOncePerLoad(t *testing.T) {
+	// No t.Parallel: this test swaps the rounds hook.
+	calls := 0
+	old := rounds
+	rounds = func(config.Config) []board.RunState {
+		calls++
+		return []board.RunState{{Plan: &board.Item{ID: "plans/2026-09-21-a"}, Round: "3"}}
+	}
+	defer func() { rounds = old }()
+	m := reviewBoard(t)
+	m.openPlans = everyPlanOpen(m.board)
+	m.openTab(tabPlans)
+	rows, sel, idx := m.slotOf(paneList)
+	found := false
+	for _, r := range rows {
+		if r.id == "plans/2026-09-21-a" {
+			*sel, *idx = r.id, 0
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no row for the review plan, so this test proves nothing")
+	}
+	// Before any load lands, the plan shows none and no scan ran.
+	if got := strings.Join(plainLines(m.detailLines(100)), "\n"); !strings.Contains(got, "(none)") {
+		t.Errorf("detail before the first load shows no (none):\n%s", got)
+	}
+	if calls != 0 {
+		t.Fatalf("rounds ran %d times before any load, want 0", calls)
+	}
+	// One load over the same board, then many renders at many widths so
+	// no cache can hide a scan per render.
+	m = m.WithLoad(func() (*board.Board, error) { return m.board, nil })
+	msg, ok := m.reloadCmd()().(reloadMsg)
+	if !ok {
+		t.Fatal("reload command sent no reload")
+	}
+	next, _ := m.Update(msg)
+	m = next.(Model)
+	m.openPlans = everyPlanOpen(m.board)
+	m.openTab(tabPlans)
+	rows, sel, idx = m.slotOf(paneList)
+	for _, r := range rows {
+		if r.id == "plans/2026-09-21-a" {
+			*sel, *idx = r.id, 0
+		}
+	}
+	shown := ""
+	for w := 100; w < 105; w++ {
+		shown = strings.Join(plainLines(m.detailLines(w)), "\n")
+	}
+	if !strings.Contains(shown, "ROUND") || !strings.Contains(shown, "3") {
+		t.Errorf("review detail names no round 3 after one load:\n%s", shown)
+	}
+	if calls != 1 {
+		t.Errorf("rounds ran %d times for one load and five renders, want 1", calls)
+	}
 }
