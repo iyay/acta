@@ -5,6 +5,7 @@ id: PLN-0094
 created: "2026-10-05 20:55:01"
 hash: mqu4822
 started: "2026-10-05 21:00:30"
+finished: "2026-10-05 21:03:23"
 ---
 # Implementer reply instead of report file Implementation Plan
 
@@ -39,9 +40,9 @@ started: "2026-10-05 21:00:30"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
 
 ## State
 
@@ -50,3 +51,8 @@ started: "2026-10-05 21:00:30"
 plan task-2 unblocked: capped-reply template landed in 345a265
 guard TestImplementerPromptNoReportFile fails on REPORT_FILE + report-file step
 next: version patch bump task
+
+## Review notes
+
+- The RED and GREEN checks in the new test match any all-caps RED or GREEN in the file.
+- Line 141 says "no report file" in passing; the test bans only the old phrases.

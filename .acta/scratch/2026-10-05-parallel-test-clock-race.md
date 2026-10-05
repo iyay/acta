@@ -35,4 +35,8 @@ Idea, not decided: tests that swap Now must not run in parallel, or Now becomes 
 
 User ruling 2026-10-05: leave the TUI flake for now; when it fails again in a land, capture the frame (shown vs want) right then.
 
+### 2026-10-05
+
+2026-10-05: eval answers-appended scored 0.50 twice today in full runs (answer-in-body grader once) and 1.00 on every rerun; branch changes did not touch the scratch skill. Flaky eval, cause not checked.
+
 ## Open questions

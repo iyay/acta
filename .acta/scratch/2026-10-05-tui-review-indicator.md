@@ -5,6 +5,7 @@ title: TUI indicator for a plan under review
 status: raw
 created: "2026-10-05 07:14:13"
 schema: "1"
+finished: "2026-10-05 21:15:31"
 ---
 # TUI indicator for a plan under review
 
