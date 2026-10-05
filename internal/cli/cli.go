@@ -100,6 +100,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdShow(args[1:], stdout, stderr)
 	case "set":
 		return cmdSet(args[1:], stdout, stderr)
+	case "state":
+		return cmdState(args[1:], stdin, stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
 			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
@@ -154,7 +156,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "eval-omp":
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
 		return exitBadInput
 	}
 }

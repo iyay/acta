@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0082
 created: "2026-10-05 08:18:43"
 hash: j3kgvms
+started: "2026-10-05 08:32:15"
 ---
 # Live work state Implementation Plan
 
@@ -35,9 +36,9 @@ hash: j3kgvms
 
 **Files:** Create `internal/write/state.go`, `internal/write/state_test.go`; modify `internal/cli/cli.go` (new `state` case), create `internal/cli/state.go`, `internal/cli/state_test.go`.
 **verify:** No call to `acta state set` ever changes any byte of the plan outside the one named subsection, and no body over 10 lines is ever written. List every path checked: missing `## State`, missing subsection, existing subsection, empty body, over-cap body, unknown subsection name, unknown plan.
-- [ ] Failing test: setting `next` on a plan with no `## State` creates it with only `### Next`; it fails because `write.SetState` does not exist.
-- [ ] Code: `write.SetState(cfg, b, planID, part string, body []byte) (Outcome, error)` replaces or creates the subsection, empty body clears it, over 10 lines errors with the limit named; the CLI reads stdin and commits `acta: state <plan id>`.
-- [ ] Commit: `state: acta state set writes one State subsection in a plan`.
+- [x] Failing test: setting `next` on a plan with no `## State` creates it with only `### Next`; it fails because `write.SetState` does not exist.
+- [x] Code: `write.SetState(cfg, b, planID, part string, body []byte) (Outcome, error)` replaces or creates the subsection, empty body clears it, over 10 lines errors with the limit named; the CLI reads stdin and commits `acta: state <plan id>`.
+- [x] Commit: `state: acta state set writes one State subsection in a plan`.
 
 ### Task 2: acta state view
 
