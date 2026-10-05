@@ -40,9 +40,9 @@ started: "2026-10-05 21:25:45"
 
 **Files:** Modify the TUI files that map a status to a color and draw the detail header (`internal/tui/styles.go`, `internal/tui/view.go` or `internal/tui/detail.go`, whichever holds them), `internal/theme` if status colors live there, and their tests.
 **verify:** Every place the TUI colors a status gives `review` its own color, distinct from in-progress and done, in every theme; the detail of a plan in review shows its branch and last review round (or none); no other status changes color. List each place and theme checked.
-- [ ] Failing test: a rendered frame with a plan in review shows the review color on its row and a branch line in the detail; fails because review has no color today.
-- [ ] Code: add the review color to the status map and the detail line, reusing the round lookup from `internal/board` that `acta state` uses.
-- [ ] Commit: `tui: plans in review get their own color and a branch line`.
+- [x] Failing test: a rendered frame with a plan in review shows the review color on its row and a branch line in the detail; fails because review has no color today.
+- [x] Code: add the review color to the status map and the detail line, reusing the round lookup from `internal/board` that `acta state` uses.
+- [x] Commit: `tui: plans in review get their own color and a branch line`.
 
 ### Task 3: version bump
 
@@ -56,8 +56,9 @@ started: "2026-10-05 21:25:45"
 
 ### Next
 
-Task 2 starts from:
-- plan Status review + Worktree set; read both, change no board logic
-- review excluded from Closed(); spec/bug in review stays going
-- new tests in internal/board/review_test.go; trees_test updated
-- commit d91f2ad on branch review-status
+Task 3 starts from:
+- review yellow (slot 3) on rows, workLine, dot ◐; detail WORKTREE + ROUND via board.PlanStates
+- commit 016eb88 on review-status; tests internal/tui/review_test.go green
+- no board logic touched; theme/* untouched (slot reuse, no new hex)
+- next: bump patch in 3 plugin json files, run internal/plugincheck
+  verify: version files agree, plugincheck green

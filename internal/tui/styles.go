@@ -16,19 +16,18 @@ import (
 // styles are the brushes the TUI paints with. They come from one theme, so
 // changing the theme changes every color at once.
 type styles struct {
-	accent, faint, dim, selected                   lipgloss.Style
-	label, footLabel, done, waiting, problem, live lipgloss.Style
-	accentColor                                    lipgloss.TerminalColor
-	kinds                                          map[board.Kind]lipgloss.Color
-	cyan                                           lipgloss.Color            // the Activity tab, which holds no one kind
-	bandFG                                         lipgloss.Color            // text on a colored band
-	pulse                                          []lipgloss.Style          // the frames of the dot of work under way
-	goingDot                                       string                    // that dot drawn in frame 0, as every view draws it
-	bg, fg                                         string                    // empty for the terminal theme
-	priority                                       map[string]lipgloss.Style // the one letter a row shows for its level
+	accent, faint, dim, selected                           lipgloss.Style
+	label, footLabel, done, review, waiting, problem, live lipgloss.Style
+	accentColor                                            lipgloss.TerminalColor
+	kinds                                                  map[board.Kind]lipgloss.Color
+	cyan                                                   lipgloss.Color            // the Activity tab, which holds no one kind
+	bandFG                                                 lipgloss.Color            // text on a colored band
+	pulse                                                  []lipgloss.Style          // the frames of the dot of work under way
+	goingDot                                               string                    // that dot drawn in frame 0, as every view draws it
+	bg, fg                                                 string                    // empty for the terminal theme
+	priority                                               map[string]lipgloss.Style // the one letter a row shows for its level
 }
 
-// Each role always takes the same slot, so any theme with 16 colors works.
 const (
 	slotAccent      = 12
 	slotDim         = 8
@@ -38,6 +37,7 @@ const (
 	slotBlue        = 4
 	slotMagenta     = 5
 	slotCyan        = 6
+	slotReview      = 3
 	slotBrightGreen = 10
 	slotBrightRed   = 9
 )
@@ -104,10 +104,12 @@ func newStyles(t theme.Theme, dark bool) styles {
 		label:     lipgloss.NewStyle().Foreground(slot(slotCyan)),
 		footLabel: lipgloss.NewStyle().Foreground(slot(slotMagenta)),
 		done:      lipgloss.NewStyle().Foreground(slot(slotGreen)),
-		waiting:   lipgloss.NewStyle().Foreground(slot(slotDim)),
-		problem:   lipgloss.NewStyle().Foreground(slot(slotRed)),
-		live:      lipgloss.NewStyle().Foreground(slot(slotGreen)),
-		kinds:     kinds,
+		// Plans waiting for merge read yellow: not done green, not plain.
+		review:  lipgloss.NewStyle().Foreground(slot(slotReview)),
+		waiting: lipgloss.NewStyle().Foreground(slot(slotDim)),
+		problem: lipgloss.NewStyle().Foreground(slot(slotRed)),
+		live:    lipgloss.NewStyle().Foreground(slot(slotGreen)),
+		kinds:   kinds,
 		// High is the one level that should catch the eye, so it gets the
 		// bright red. Low only needs to be there, so it is dim.
 		priority: map[string]lipgloss.Style{

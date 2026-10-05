@@ -11,13 +11,11 @@ import (
 	"github.com/iyay/acta/internal/board"
 )
 
-// The dots of the list between the header and the body: work under way wears
-// the accent, work not begun and work finished wear nothing, so a long list
-// reads at a glance.
 const (
 	dotGoing   = "●"
 	dotWaiting = "○"
 	dotDone    = "✓"
+	dotReview  = "◐"
 )
 
 // footLines is how tall the detail footer is: the rule and the date line.
@@ -28,12 +26,15 @@ func (m Model) rule(w int) string {
 	return m.styles.faint.Render(strings.Repeat("─", max(1, w)))
 }
 
-// dot is the brush of a status dot: green when done, the first frame of the
-// pulse while the work is under way, grey while it waits.
+// dot is the brush of a status dot: green when done, yellow while a plan
+// waits for merge, the first frame of the pulse while the work is under
+// way, grey while it waits.
 func (s styles) dot(mark string) lipgloss.Style {
 	switch mark {
 	case dotDone:
 		return s.done
+	case dotReview:
+		return s.review
 	case dotGoing:
 		return s.pulse[0]
 	}
@@ -120,6 +121,7 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		linkField("CLOSES", m.closesText(it.Closes)),
 		linkField("CLOSED BY", m.closesText(it.ClosedBy)),
 		{"WORKTREE", worktreeText(it)},
+		{"ROUND", m.roundText(it)},
 		{"AGENT", it.Agent},
 		{"FILE", m.fileText(it)},
 		{tasksLabel(it.Kind), progressText(it)},
@@ -349,12 +351,15 @@ func (m Model) stepLines(it *board.Item, w int) []string {
 	return out
 }
 
-// dotOf is the status dot of an item: finished, under way, or waiting. The
-// tree rows and the detail lists both wear it, so the two always agree.
+// dotOf is the status dot of an item: finished, waiting for merge, under
+// way, or waiting. The tree rows and the detail lists both wear it, so the
+// two always agree.
 func dotOf(it *board.Item) string {
 	switch {
 	case board.Closed(it.Status):
 		return dotDone
+	case it.Status == "review":
+		return dotReview
 	case inProgress(it):
 		return dotGoing
 	}
@@ -363,14 +368,18 @@ func dotOf(it *board.Item) string {
 
 // workLine is one line of the list: the dot, the short ID, the title, and for
 // work under way its count and its agent, the same tail a list row wears. A
-// finished line reads green so the eye skips it, the ID keeps the color of
-// its kind, the line the reader is on is bold, and the dot wears the color of
-// its state.
+// finished line reads green so the eye skips it, a plan waiting for merge
+// reads yellow, the ID keeps the color of its kind, the line the reader is
+// on is bold, and the dot wears the color of its state.
 func workLine(s styles, it *board.Item, on bool, w int) string {
 	mark, brush := dotOf(it), lipgloss.NewStyle()
-	if mark == dotDone {
+	switch mark {
+	case dotDone:
 		// Done work reads green, so the eye skips it.
 		brush = s.done
+	case dotReview:
+		// Plans waiting for merge read yellow: not done, not plain.
+		brush = s.review
 	}
 	if on {
 		brush = brush.Bold(true)
@@ -432,6 +441,28 @@ func (m Model) fromText(it *board.Item) string {
 		return shortRef(p) + " · " + p.Title
 	}
 	return planID
+}
+
+// roundText names the newest review round of a plan that waits for merge,
+// read from the branch the way acta state reads it. A plan with no round
+// yet says none, and anything that is not a plan in review says nothing, so
+// the line stays out of its header.
+func (m Model) roundText(it *board.Item) string {
+	if it == nil || it.Kind != board.KindPlan || it.Status != "review" {
+		return ""
+	}
+	if rounds == nil {
+		return "(none)"
+	}
+	for _, r := range rounds(m.cfg) {
+		if r.Plan != nil && r.Plan.ID == it.ID {
+			if r.Round == "" {
+				return "(none)"
+			}
+			return r.Round
+		}
+	}
+	return "(none)"
 }
 
 // expandTabs turns every tab into spaces, so a line is as wide as the screen
