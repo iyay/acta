@@ -16,7 +16,7 @@ func TestSkillBuild(t *testing.T) {
 			`model: "sonnet"`, `agent="task"`, "Do not ask whether to create a worktree",
 			"../<repo>-<slug>", "git rev-parse --show-toplevel", "git add -A",
 			"acta:tdd", "acta:review", "acta:land", "no per-task reviewer",
-			"acta tick plans/<stem>#task-N --step <n>", "acta tick [TASK_ID] --step <n>", "acta: tick wave",
+			"acta tick plans/<stem>#task-N --step <n>", "acta tick [TASK_ID] --step <n>", "chore(plan): tick wave",
 			"acta tick plans/<stem>#task-N --all",
 			"acta show <plan id> --json", "progress.done",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
