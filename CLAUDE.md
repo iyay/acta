@@ -45,9 +45,9 @@ Skill text is cached per session: edits to `plugin/skills/*/SKILL.md` show up on
 <!-- acta:begin -->
 ## acta
 This repo uses the acta plugin. Before each workflow step, load the matching acta skill and follow it.
-Specs, plans, bugs, debt and scratch items live in `.acta/`.
-Raw ideas go to Scratchpad with `acta scratch new`, not to agent memory.
-Project knowledge (gotchas, runbooks, decisions with their why) goes to `.acta/wiki/`, never to agent memory. Ask before writing a page: "would a fresh agent lose time or repeat a mistake without this?" Skip diff play-by-play and anything greppable. When a fact changes, rewrite its page and bump `timestamp`.
-Agent memory keeps only the user's own setup and work that is still open across sessions.
-If context runs out mid-plan, write `.acta/handoff/YYYY-MM-DD-<slug>.md` (state, done, next, open rulings, worktree path) first.
+Specs, plans, bugs, debt, scratch items and the wiki live in `.acta/`.
+Project knowledge (gotchas, runbooks, decisions with their why) goes to `.acta/wiki/`, never to agent memory. Write a page only when a fresh agent would lose time or repeat a mistake without it. When a fact changes, rewrite its page.
+Before changing a file, run `acta wiki match <file>` and read each page it names.
+Work in flight goes to `acta state <plan id>`, not to agent memory. Agent memory keeps only the user's own setup.
+Raw ideas go to Scratchpad with `acta scratch new`. A finished scratch item is specced, never dropped; dropped means not done or not valid.
 <!-- acta:end -->
