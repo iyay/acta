@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -392,6 +393,42 @@ func TestDispatchSendHerdrFailureExits2(t *testing.T) {
 		t.Fatalf("no record before the send: %v", err)
 	}
 	e.readBrief(t)
+}
+
+// A send that delivers names omp as the worktree default agent, so later
+// ticks with no name of their own fall back to it. A failed send writes
+// nothing new: refusal helpers already cover the bad-input paths.
+func TestDispatchSendNamesOmpAsDefaultAgent(t *testing.T) {
+	e := newSendEnv(t)
+	e.herdrReady(todoCard + "Task 1 first, Task 2 second, Task 3 third")
+	if code, _, stderr := e.send(t, ""); code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	b, err := os.ReadFile(filepath.Join(e.dir, ".acta", ".agents.json"))
+	if err != nil {
+		t.Fatalf("no .agents.json after send: %v", err)
+	}
+	var recs map[string]struct {
+		Agent string `json:"agent"`
+	}
+	if err := json.Unmarshal(b, &recs); err != nil {
+		t.Fatalf(".agents.json is not JSON: %v (%s)", err, b)
+	}
+	if recs["*"].Agent != "omp" {
+		t.Fatalf(".agents.json misses \"*\": omp: %s", b)
+	}
+}
+
+func TestDispatchSendDeliveryFailureWritesNoDefaultAgent(t *testing.T) {
+	e := newSendEnv(t)
+	e.h.fail("agent_get", "", "socket exploded")
+	code, _, _ := e.send(t, "")
+	if code != exitDelivery {
+		t.Fatalf("exit %d, want %d", code, exitDelivery)
+	}
+	if _, err := os.Stat(filepath.Join(e.dir, ".acta", ".agents.json")); !os.IsNotExist(err) {
+		t.Fatalf(".agents.json was written on a failed send: %v", err)
+	}
 }
 
 func TestDispatchSendDeliveryFailuresExit2(t *testing.T) {

@@ -49,9 +49,9 @@ started: "2026-10-06 05:37:45"
 
 **Files:** Modify `internal/cli/dispatch_send.go`; test in `internal/cli/dispatch_send_test.go`.
 **verify:** Every successful `acta dispatch send` leaves `"*": omp` in the worktree's `.acta/.agents.json`, and a failed send writes nothing new. List each exit path of `cmdDispatchSend` and what it writes.
-- [ ] Failing test: a send through the existing fake herdr leaves no `"*"` key in the worktree `.agents.json`.
-- [ ] Code: after delivery succeeds, call `write.SetDefaultAgent(<worktree acta root>, "omp")`; an error there is reported on stderr and does not undo the send.
-- [ ] Commit: `fix(dispatch): send names omp as the worktree default agent (BUG-0033)`.
+- [x] Failing test: a send through the existing fake herdr leaves no `"*"` key in the worktree `.agents.json`.
+- [x] Code: after delivery succeeds, call `write.SetDefaultAgent(<worktree acta root>, "omp")`; an error there is reported on stderr and does not undo the send.
+- [x] Commit: `fix(dispatch): send names omp as the worktree default agent (BUG-0033)`.
 
 ### Task 4: version bump
 
