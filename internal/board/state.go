@@ -33,8 +33,9 @@ type RunState struct {
 }
 
 // Running gives the plans of this repo that work is going on right now: one
-// that has started, has not finished, and has a worktree of its own. A plan
-// in the main tree, or one that already landed, is not running.
+// that has started, has not finished, and has a worktree of its own where the
+// branch committed something on the plan file. A plan in the main tree, or one
+// that already landed, is not running.
 func Running(cfg config.Config) []RunState {
 	wts, err := gitc.Worktrees(cfg.RepoRoot)
 	if err != nil {
@@ -56,14 +57,46 @@ func Running(cfg config.Config) []RunState {
 		if err != nil {
 			continue
 		}
+		// Git copies every plan file into a new worktree, so a plan that
+		// only lives in the main tree shows up here too. Only the files the
+		// branch committed say that the work is going on in this worktree.
+		worked := branchFiles(cfg.RepoRoot, wts[0].Branch, w.Branch)
 		for _, it := range b.Items {
 			if it.Kind != KindPlan || it.StartedOn == "" || it.Finished != "" {
+				continue
+			}
+			if !worked[planName(c, it.Path)] {
 				continue
 			}
 			out = append(out, runState(cfg.RepoRoot, b, it, w))
 		}
 	}
 	return out
+}
+
+// branchFiles gives the files the commits of branch made after it left main.
+// It asks git once for the whole branch. A branch git cannot answer for gives
+// nothing, so nothing is called running rather than everything.
+func branchFiles(repo, main, branch string) map[string]bool {
+	out := map[string]bool{}
+	files, err := gitc.Touched(repo, main+".."+branch)
+	if err != nil {
+		return out
+	}
+	for _, f := range files {
+		out[f] = true
+	}
+	return out
+}
+
+// planName gives the plan file's name from the repo root, the way git names
+// it, so it can be looked up in the list of files the branch wrote.
+func planName(c config.Config, path string) string {
+	rel, err := filepath.Rel(c.RepoRoot, path)
+	if err != nil {
+		return ""
+	}
+	return filepath.ToSlash(rel)
 }
 
 // runState fills in the facts of one running plan. The current task comes from

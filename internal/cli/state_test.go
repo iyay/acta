@@ -126,12 +126,19 @@ func TestCmdStateSetRefusesAndChangesNothing(t *testing.T) {
 }
 
 // stateWorktreeRepo makes a git repo holding the given plan and a worktree on
-// a branch, so the plan counts as running.
+// a branch, so the plan counts as running. The branch commits the plan file,
+// because that is the work: a plan git only copied into the worktree is not
+// running there.
 func stateWorktreeRepo(t *testing.T, plan string) (dir, wt string) {
 	t.Helper()
 	dir = stateRepo(t, plan)
 	wt = filepath.Join(t.TempDir(), "live")
 	gitOut(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	if err := os.WriteFile(stateFile(wt), []byte(strings.Replace(plan, "- [ ] hook it", "- [x] hook it", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, wt, "add", "-A")
+	gitOut(t, wt, "commit", "-q", "-m", "state: the agent works on the plan")
 	return dir, wt
 }
 

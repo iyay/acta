@@ -147,6 +147,33 @@ func Changed(repo, rng string) ([]string, error) {
 	return files, nil
 }
 
+// Touched lists the files that the commits in rng changed, from the repo root.
+// It reads the commits themselves, not the two ends of the range, so a file a
+// commit wrote and a later commit put back still comes back. rng is a commit
+// range like main..live. Names come back as they are, with no quotes around
+// the odd ones.
+func Touched(repo, rng string) ([]string, error) {
+	// A dash would make git read the range as an option.
+	if strings.HasPrefix(rng, "-") {
+		return nil, fmt.Errorf("bad range %q: it starts with a dash", rng)
+	}
+	// The last -- says rng is a revision, never a file name that happens to match.
+	out, err := run(repo, "log", "--no-renames", "--name-only", "--format=", "-z", rng, "--")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	seen := map[string]bool{}
+	for _, f := range strings.Split(out, "\x00") {
+		// A file written by two commits on the branch comes back twice.
+		if f != "" && !seen[f] {
+			seen[f] = true
+			files = append(files, f)
+		}
+	}
+	return files, nil
+}
+
 // Authors gives, for each path git knows, the name of the person whose commit
 // first added it. It asks git once for all the paths, since one call per file
 // made every board load take seconds. The paths sit right inside repo. A path

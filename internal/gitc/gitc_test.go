@@ -512,6 +512,49 @@ func TestChangedStartsWhereTheSidesSplit(t *testing.T) {
 	}
 }
 
+// Touched reads the commits, not the two ends, so a file a commit wrote and a
+// later commit put back still comes back. That is what tells a file the branch
+// worked on from one git only copied into the worktree.
+func TestTouched(t *testing.T) {
+	repo := setupRepo(t)
+	git(t, repo, "checkout", "-q", "-b", "side")
+	writeFile(t, filepath.Join(repo, "b.md"), "b on the side\n")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "side writes b.md")
+	// Put b.md back the way main holds it, in its own commit.
+	git(t, repo, "checkout", "-q", "main", "--", "b.md")
+	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "side puts b.md back")
+
+	got, err := Touched(repo, "main..side")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Changed reads the two ends and would not see b.md here.
+	if want := []string{"b.md"}; !slices.Equal(got, want) {
+		t.Errorf("Touched(main..side) = %q, want %q even though the bytes are back", got, want)
+	}
+	if diff, err := Changed(repo, "main..side"); err != nil || len(diff) != 0 {
+		t.Errorf("Changed(main..side) = %q, %v, want nothing: the bytes are back", diff, err)
+	}
+
+	// A range that is not a revision must not be read as one. A dash would
+	// start a git option, and a file name is not a commit range.
+	for _, rng := range []string{"--help", "b.md..HEAD"} {
+		if got, err := Touched(repo, rng); err == nil {
+			t.Errorf("Touched(%q) = %q and no error, want an error", rng, got)
+		}
+	}
+}
+
+// A branch that committed nothing has no file of its own, so Touched gives
+// nothing rather than every file the branch holds.
+func TestTouchedOnABranchWithNoCommits(t *testing.T) {
+	repo := setupRepo(t)
+	got, err := Touched(repo, "main..side")
+	if err == nil && len(got) != 0 {
+		t.Errorf("Touched on a branch with no commits = %q, want nothing", got)
+	}
+}
+
 // The newest commit on a branch is read by its short hash and subject, and a
 // prefix picks the newest commit that says something with it. A prefix no
 // commit says gives nothing, so a caller can tell "none" from a branch that

@@ -3,6 +3,8 @@ parent: scratch/2026-10-04-live-work-state
 id: SPC-0072
 created: "2026-10-05 08:14:43"
 hash: pu9pr01
+started: "2026-10-05 08:32:15"
+finished: "2026-10-05 10:31:11"
 ---
 # Live work state for running plans
 

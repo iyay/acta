@@ -1,6 +1,7 @@
 package board
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,26 +10,28 @@ import (
 	"github.com/iyay/acta/internal/config"
 )
 
-// runRepo makes a git repo with the given planning files and a worktree on a
-// branch called live. It gives the config of the main tree and the path of the
-// worktree as git writes it.
-func runRepo(t *testing.T, files map[string]string) (config.Config, string) {
+// runRepo makes a git repo with a worktree on a branch called live. The main
+// files are committed on main, the worktree files on live, so a plan that only
+// the branch works on is written there. It gives the config of the main tree
+// and the path of the worktree as git writes it.
+func runRepo(t *testing.T, main, live map[string]string) (config.Config, string) {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "repo")
-	for rel, body := range files {
-		p := filepath.Join(dir, ".acta", rel)
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
 	}
 	gitRun(t, dir, "init", "-q", "-b", "main")
-	gitRun(t, dir, "add", ".")
+	writeFile(t, filepath.Join(dir, "README.md"), "a repo\n")
+	for rel, body := range main {
+		writeFile(t, filepath.Join(dir, ".acta", rel), body)
+	}
+	gitRun(t, dir, "add", "-A")
 	gitRun(t, dir, "commit", "-q", "-m", "init")
 	wt := filepath.Join(t.TempDir(), "live")
 	gitRun(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	if len(live) > 0 {
+		commitFiles(t, wt, "live work", live)
+	}
 	real, err := filepath.EvalSymlinks(wt)
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +41,17 @@ func runRepo(t *testing.T, files map[string]string) (config.Config, string) {
 		t.Fatal(err)
 	}
 	return cfg, real
+}
+
+// commitFiles writes the given planning files in dir and commits them, the way
+// an agent writes in its own worktree.
+func commitFiles(t *testing.T, dir, msg string, files map[string]string) {
+	t.Helper()
+	for rel, body := range files {
+		writeFile(t, filepath.Join(dir, ".acta", rel), body)
+	}
+	gitRun(t, dir, "add", "-A")
+	gitRun(t, dir, "commit", "-q", "-m", msg)
 }
 
 // runIds gives the ids of the running plans, so a test can ask who is running.
@@ -68,7 +82,7 @@ const (
 func TestRunningNeedsStartNoFinishAndAWorktree(t *testing.T) {
 	t.Parallel()
 
-	cfg, _ := runRepo(t, map[string]string{
+	cfg, _ := runRepo(t, nil, map[string]string{
 		"plans/2026-10-05-live.md":   startedPlan,
 		"plans/2026-10-06-landed.md": finishedPlan,
 		"plans/2026-10-07-fresh.md":  untouchedPlan,
@@ -103,7 +117,7 @@ func TestRunningKeepsAPlanWithEveryBoxTicked(t *testing.T) {
 	t.Parallel()
 
 	ticked := strings.ReplaceAll(startedPlan, "- [ ]", "- [x]")
-	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": ticked})
+	cfg, _ := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": ticked})
 	runs := Running(cfg)
 	if got := runIds(runs); len(got) != 1 {
 		t.Fatalf("running = %v, want the fully ticked plan to stay running", got)
@@ -118,7 +132,7 @@ func TestRunningKeepsAPlanWithEveryBoxTicked(t *testing.T) {
 func TestRunningTaskIsTheFirstOneStillOpen(t *testing.T) {
 	t.Parallel()
 
-	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, _ := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	runs := Running(cfg)
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
@@ -136,7 +150,7 @@ func TestRunningTaskIsTheFirstOneStillOpen(t *testing.T) {
 func TestRunningCommitIsTheBranchTipNotTheFileText(t *testing.T) {
 	t.Parallel()
 
-	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	lie := strings.Replace(startedPlan, "### Next\n", "### Next\n\nlast commit: 9999999 the file lies\n", 1)
 	if err := os.WriteFile(filepath.Join(wt, ".acta", "plans", "2026-10-05-live.md"), []byte(lie), 0o644); err != nil {
 		t.Fatal(err)
@@ -161,7 +175,7 @@ func TestRunningCommitIsTheBranchTipNotTheFileText(t *testing.T) {
 func TestRunningRoundIsTheNewestFixRound(t *testing.T) {
 	t.Parallel()
 
-	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	for _, msg := range []string{"acta: tick fix round 1", "acta: tick fix round 3"} {
 		gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", msg)
 	}
@@ -179,7 +193,7 @@ func TestRunningRoundIsTheNewestFixRound(t *testing.T) {
 func TestRunningRoundIsNoneWithoutAFixRound(t *testing.T) {
 	t.Parallel()
 
-	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, _ := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	runs := Running(cfg)
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
@@ -198,7 +212,7 @@ func TestRunningRoundIsNoneWithoutAFixRound(t *testing.T) {
 func TestShortHoldsThreeLines(t *testing.T) {
 	t.Parallel()
 
-	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, _ := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	runs := Running(cfg)
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
@@ -218,7 +232,7 @@ func TestShortHoldsThreeLines(t *testing.T) {
 func TestFullShowsTheFactsAndTheThreeSubsections(t *testing.T) {
 	t.Parallel()
 
-	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
 	runs := Running(cfg)
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
@@ -247,7 +261,7 @@ func TestFullShowsOnlyTheSubsectionsTheFileHolds(t *testing.T) {
 	t.Parallel()
 
 	two := strings.Replace(startedPlan, "### Open rulings\n\nnone yet\n", "", 1)
-	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": two})
+	cfg, _ := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": two})
 	runs := Running(cfg)
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
@@ -269,13 +283,10 @@ func TestFullShowsOnlyTheSubsectionsTheFileHolds(t *testing.T) {
 func TestRunningCountsEveryWorktreeButTheMainOne(t *testing.T) {
 	t.Parallel()
 
-	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan})
-	// The worktree starts as a copy of the main tree, so the main tree's plan
-	// has to go before the two trees hold different plans.
-	gitRun(t, wt, "rm", "-q", ".acta/plans/2026-10-05-in-main.md")
-	writeFile(t, filepath.Join(wt, ".acta", "plans", "2026-10-05-live.md"), startedPlan)
-	gitRun(t, wt, "add", "-A")
-	gitRun(t, wt, "commit", "-q", "-m", "live work")
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan},
+		map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	// The worktree also holds a copy of the main tree's plan. Nobody worked on
+	// that copy there, so it is not running in the worktree.
 	inWt, err := config.Load(wt, "")
 	if err != nil {
 		t.Fatal(err)
@@ -301,10 +312,8 @@ func TestRunningCountsEveryWorktreeButTheMainOne(t *testing.T) {
 func TestRunningNeverCountsAMainTreePlan(t *testing.T) {
 	t.Parallel()
 
-	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan})
-	gitRun(t, wt, "rm", "-q", ".acta/plans/2026-10-05-in-main.md")
-	gitRun(t, wt, "add", "-A")
-	gitRun(t, wt, "commit", "-q", "-m", "drop it")
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan}, nil)
+	// The worktree holds the same bytes, so it is not running there either.
 	inWt, err := config.Load(wt, "")
 	if err != nil {
 		t.Fatal(err)
@@ -315,5 +324,136 @@ func TestRunningNeverCountsAMainTreePlan(t *testing.T) {
 	}
 	if got := runIds(Running(inWt)); len(got) != 0 {
 		t.Errorf("from the worktree: running = %v, want none", got)
+	}
+}
+
+// Git copies every tracked file into a new worktree, so a started plan that
+// only lives in the main tree shows up in the worktree byte for byte. That
+// copy is not work in progress: nobody built it there, so it is not running.
+// The plan the branch really works on stays running from both folders.
+func TestRunningSkipsAPlanTheBranchNeverTouched(t *testing.T) {
+	t.Parallel()
+
+	// The main tree holds a plan that has started. The branch never writes it,
+	// so its copy in the worktree holds the same bytes.
+	main, wt := runRepo(t, map[string]string{
+		"plans/2026-10-05-mainonly.md": mainTreePlan,
+		"plans/2026-10-05-live.md":     untouchedPlan,
+	}, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The two copies are the same file, which is why the file alone cannot
+	// answer whether the branch worked on it.
+	a, err := os.ReadFile(filepath.Join(main.RepoRoot, ".acta", "plans", "2026-10-05-mainonly.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(wt, ".acta", "plans", "2026-10-05-mainonly.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a, b) {
+		t.Fatal("the fixture is wrong: the two copies differ")
+	}
+
+	for _, c := range []config.Config{main, inWt} {
+		if got := runIds(Running(c)); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+			t.Errorf("running = %v, want only the plan the branch works on", got)
+		}
+	}
+}
+
+// A branch that works on a plan only works on it in its own worktree. A
+// second linked worktree that never wrote the plan keeps the same bytes, so
+// only the worktree that built it lists the plan as running.
+func TestRunningOnlyCountsTheWorktreeThatBuiltThePlan(t *testing.T) {
+	t.Parallel()
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-shared.md": mainTreePlan},
+		map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	// A second worktree on its own branch. It holds the shared plan as a copy
+	// and never touches it.
+	other := filepath.Join(t.TempDir(), "other")
+	gitRun(t, main.RepoRoot, "worktree", "add", "-q", "-b", "other", other)
+
+	runs := Running(main)
+	if got := runIds(runs); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Fatalf("running = %v, want only the plan the live branch works on", got)
+	}
+	if !sameDir(runs[0].Worktree, wt) {
+		t.Errorf("the plan was counted in %s, want the worktree that built it %s", runs[0].Worktree, wt)
+	}
+}
+
+// A branch that has no commits past the scaffold has done nothing yet, so it
+// has no running plan even when the plan file in it says it started.
+func TestRunningSkipsAWorktreeWithNoBranchWork(t *testing.T) {
+	t.Parallel()
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-shared.md": mainTreePlan}, nil)
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []config.Config{main, inWt} {
+		if got := runIds(Running(c)); len(got) != 0 {
+			t.Errorf("running = %v, want none: the branch wrote nothing", got)
+		}
+	}
+}
+
+// The main tree is the yardstick for the plan files, so a main checkout that
+// cannot be read must not crash and must not turn its plans into running ones.
+func TestRunningSurvivesAMainCheckoutItCannotRead(t *testing.T) {
+	t.Parallel()
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every file, so an unreadable folder is not one here")
+	}
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-mainonly.md": mainTreePlan},
+		map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	// Hide the main checkout's plan folder. The worktree still holds a copy of
+	// the plan, and the main checkout no longer answers for it.
+	if err := os.Chmod(filepath.Join(main.RepoRoot, ".acta", "plans"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(filepath.Join(main.RepoRoot, ".acta", "plans"), 0o755)
+	})
+
+	if got := runIds(Running(main)); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Errorf("running = %v, want only the plan the branch works on", got)
+	}
+
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := runIds(Running(inWt)); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Errorf("from the worktree: running = %v, want only the plan the branch works on", got)
+	}
+}
+
+// A branch that wrote the plan and then put the old bytes back leaves the plan
+// looking untouched. The commits are still there, so the work is still running
+// and the view has to keep showing it.
+func TestRunningKeepsAPlanTheBranchWroteAndReverted(t *testing.T) {
+	t.Parallel()
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-shared.md": mainTreePlan}, nil)
+	commitFiles(t, wt, "tick the plan", map[string]string{"plans/2026-10-05-shared.md": startedPlan})
+	// Put the plan back the way the main tree holds it.
+	commitFiles(t, wt, "revert the plan", map[string]string{"plans/2026-10-05-shared.md": mainTreePlan})
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range []config.Config{main, inWt} {
+		if got := runIds(Running(c)); len(got) != 1 || got[0] != "plans/2026-10-05-shared" {
+			t.Errorf("running = %v, want the plan the branch wrote", got)
+		}
 	}
 }
