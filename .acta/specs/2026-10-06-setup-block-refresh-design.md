@@ -18,7 +18,7 @@ Why: the block `acta:setup` writes into CLAUDE.md or AGENTS.md was last changed 
 1. `.acta/` holds specs, plans, bugs, debt, scratch items and the wiki.
 2. Project knowledge (gotchas, runbooks, decisions with their why) goes to `.acta/wiki/`, never to agent memory. Write a page only when a fresh agent would lose time or repeat a mistake without it. When a fact changes, rewrite its page.
 3. Before changing a file, run `acta wiki match <file>` and read each page it names.
-4. Work in flight goes to `acta state <plan id>`, not to agent memory. Agent memory keeps only the user's own setup.
+4. Work in flight goes to `acta state set <plan id> next` with the text on stdin (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.
 5. Raw ideas go to Scratchpad with `acta scratch new`. A finished scratch item is specced, never dropped; dropped means not done or not valid.
 
 The first line ("This repo uses the acta plugin...") stays. Every line fits any user and any repo: no acta-repo paths, no user names.

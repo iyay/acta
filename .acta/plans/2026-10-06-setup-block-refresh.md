@@ -57,6 +57,23 @@ finished: "2026-10-06 05:07:49"
 
 **verify:** No copy of the block (setup skill template, repo `CLAUDE.md`, spec rule 4) tells an agent to save work with a command that does not save; every rule of the block has a Must string that fails when that rule alone is removed. List each copy and each Must checked.
 
-- [ ] Failing test: in `skill_setup_test.go` replace the Must `"acta state <plan id>"` with ``"`acta state set <plan id> next`"``, replace the Must `".acta/wiki/"` (old skill text already has it, so it guards nothing) with `"Project knowledge (gotchas, runbooks, decisions with their why)"`, and add `"acta scratch new"` to the block Musts; it fails because the block names only the read form.
-- [ ] Code: rule 4 in the setup skill block, the repo `CLAUDE.md` block and spec rule 4 all become word for word: ``Work in flight goes to `acta state set <plan id> next` (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.`` Set the `skills/setup/SKILL.md` byte cap in `budget_test.go` to the new file size.
-- [ ] Commit: `fix(setup): acta block names acta state set for saving work (PLN-0097 fix round 1)`
+- [x] Failing test: in `skill_setup_test.go` replace the Must `"acta state <plan id>"` with ``"`acta state set <plan id> next`"``, replace the Must `".acta/wiki/"` (old skill text already has it, so it guards nothing) with `"Project knowledge (gotchas, runbooks, decisions with their why)"`, and add `"acta scratch new"` to the block Musts; it fails because the block names only the read form.
+- [x] Code: rule 4 in the setup skill block, the repo `CLAUDE.md` block and spec rule 4 all become word for word: ``Work in flight goes to `acta state set <plan id> next` (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.`` Set the `skills/setup/SKILL.md` byte cap in `budget_test.go` to the new file size.
+- [x] Commit: `fix(setup): acta block names acta state set for saving work (PLN-0097 fix round 1)`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Rule 4 says the text comes on stdin, word for word in the setup skill block, the repo `CLAUDE.md` block and spec rule 4: ``Work in flight goes to `acta state set <plan id> next` with the text on stdin (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.`` Update the rule 4 Must in `skill_setup_test.go` to ``"`acta state set <plan id> next` with the text on stdin"`` and set the setup skill byte cap in `budget_test.go` to the new file size.
+- [x] Commit: `polish: review notes for PLN-0097`
+
+## Review notes
+
+- MaxLines is 84 while the setup skill has 83 lines; the plan said four new lines, the real change was three.
+- Must strings match anywhere in the setup skill, not only inside the block, so a later mention elsewhere could hide a removed rule.
+- The phrase "(read it back with `acta state <plan id>`)" has no Must of its own.
+- The round-1 dispatch note said CLAUDE.md had no acta markers; it does, and the implementer handled it right.
+- A round-2 reviewer ran bare go test inside its temp clone, not scripts/test; nothing outside the clone was touched.
