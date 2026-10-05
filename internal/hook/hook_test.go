@@ -542,3 +542,116 @@ func TestSessionStartMakesAgentsLoadSkills(t *testing.T) {
 		}
 	}
 }
+
+// runningBlock is one plan's short block as the caller hands it over: the
+// lines of board.RunState.Short joined with newlines.
+func planBlock(id, next string) string {
+	return strings.Join([]string{
+		"plans/" + id + "  The plan  task: plans/" + id + "#task-2",
+		"worktree: /tmp/acta/" + id + "  last commit: abc1234 state: view",
+		"next: " + next,
+	}, "\n")
+}
+
+// Four plans, three printed and the fourth counted. A session reads this once
+// at the start, so it gets a summary and the one line that says when to write
+// the next step down.
+func TestSessionStartListsThreeRunningPlansAndCountsTheRest(t *testing.T) {
+	in := korean()
+	in.Running = []string{
+		planBlock("one", "run the state test"),
+		planBlock("two", "write the hook test"),
+		planBlock("three", "bump the version"),
+		planBlock("four", "file the eval"),
+	}
+	out := SessionStart(in)
+	for _, gone := range []string{"plans/four", "file the eval"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("the fourth plan is in the text: %q", gone)
+		}
+	}
+	for _, want := range []string{"plans/one", "run the state test", "plans/two", "plans/three", "+1 more, run acta state"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if n := strings.Count(out, "+1 more, run acta state"); n != 1 {
+		t.Errorf("the more line appears %d times, want 1:\n%s", n, out)
+	}
+	if n := strings.Count(out, "acta state set <plan> next"); n != 1 {
+		t.Errorf("the rule line appears %d times, want 1:\n%s", n, out)
+	}
+}
+
+// Three plans fit, so nothing is held back and there is no more line.
+func TestSessionStartThreeRunningPlansNeedNoMoreLine(t *testing.T) {
+	in := korean()
+	in.Running = []string{planBlock("one", "run the state test"), planBlock("two", "write the hook test"), planBlock("three", "bump the version")}
+	out := SessionStart(in)
+	for _, want := range []string{"plans/one", "plans/two", "plans/three"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "more, run acta state") {
+		t.Errorf("three plans printed a more line:\n%s", out)
+	}
+}
+
+// Two plans print both and hold nothing back.
+func TestSessionStartTwoRunningPlansNeedNoMoreLine(t *testing.T) {
+	in := korean()
+	in.Running = []string{planBlock("one", "run the state test"), planBlock("two", "write the hook test")}
+	out := SessionStart(in)
+	for _, want := range []string{"plans/one", "run the state test", "plans/two", "write the hook test"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "more, run acta state") {
+		t.Errorf("two plans printed a more line:\n%s", out)
+	}
+}
+
+// A repo with no work going on gets the text it always got, byte for byte.
+func TestSessionStartNoRunningPlansKeepsTheOldText(t *testing.T) {
+	old, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, in := range map[string]Input{
+		"nil":   {Voice: config.UserDefault(), VoiceExists: true},
+		"empty": {Voice: config.UserDefault(), VoiceExists: true, Running: []string{}},
+	} {
+		if got := SessionStart(in); got != string(old) {
+			t.Errorf("%s: the text is not the old text:\n%s", name, got)
+		}
+	}
+}
+
+// A plan with a long title, a long worktree path and a long next line still
+// gets all three of its lines, and a block with more than three lines is cut
+// down to three. Cutting lines is fine; losing the plan is not.
+func TestSessionStartKeepsEveryPlanAndThreeLinesEach(t *testing.T) {
+	long := strings.Repeat("long word ", 40)
+	in := korean()
+	in.Running = []string{
+		"plans/one  " + long + "  task: plans/one#task-2\nworktree: /tmp/" + long + "\nnext: " + long + "\nfourth line\nfifth line",
+		planBlock("two", "write the hook test"),
+	}
+	out := SessionStart(in)
+	for _, gone := range []string{"fourth line", "fifth line"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("a line past the third is printed: %q", gone)
+		}
+	}
+	if !strings.Contains(out, "next: "+strings.TrimSpace(long)) {
+		t.Errorf("the long next line was cut:\n%s", out)
+	}
+	if n := strings.Count(out, "task: plans/one#task-2"); n != 1 {
+		t.Errorf("the long title line appears %d times, want 1", n)
+	}
+	if n := strings.Count(out, "acta state set <plan> next"); n != 1 {
+		t.Errorf("the rule line appears %d times, want 1:\n%s", n, out)
+	}
+}

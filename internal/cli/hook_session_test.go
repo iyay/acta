@@ -244,3 +244,94 @@ func TestHookSessionArgs(t *testing.T) {
 		})
 	}
 }
+
+// sessionStart runs the session start hook in dir and hands back its text.
+func sessionStart(t *testing.T, dir string) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", home)
+	t.Chdir(dir)
+	code, out, errb := runHook(t, "session-start", "")
+	if code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, errb)
+	}
+	if !strings.Contains(out, "acta plugin is active.") {
+		t.Fatalf("the normal session text is missing:\n%s", out)
+	}
+	return out
+}
+
+// A session that starts on a half done plan is told where the work stands,
+// without asking the user.
+func TestHookSessionStartNamesRunningPlans(t *testing.T) {
+	dir, wt := stateWorktreeRepo(t, startedStatePlan)
+	gitOut(t, wt, "commit", "-q", "--allow-empty", "-m", "state: show the view")
+	out := sessionStart(t, dir)
+	for _, want := range []string{
+		"plans/2026-10-05-live-work-state",
+		"#task-2",
+		wt,
+		"state: show the view",
+		"next: run the state test",
+		"acta state set <plan> next",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("session text does not hold %q:\n%s", want, out)
+		}
+	}
+}
+
+// A repo with a started plan but no worktree has no work going on, so the
+// session text is the text it always got.
+func TestHookSessionStartWithNoRunningPlanAddsNothing(t *testing.T) {
+	out := sessionStart(t, stateRepo(t, startedStatePlan))
+	for _, gone := range []string{"live-work-state#task", "worktree:", "acta state set <plan> next"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("a repo with no worktree got %q in the session text:\n%s", gone, out)
+		}
+	}
+}
+
+// Another repo's plans are another repo's work. A plan running next door on
+// the same machine must not turn up in this session.
+func TestHookSessionStartLeavesOtherReposPlansOut(t *testing.T) {
+	other, otherWt := stateWorktreeRepo(t, startedStatePlan)
+	gitOut(t, otherWt, "commit", "-q", "--allow-empty", "-m", "other: state view")
+	dir, _ := stateWorktreeRepo(t, startedStatePlan)
+
+	if out := sessionStart(t, dir); !strings.Contains(out, "plans/2026-10-05-live-work-state") {
+		t.Fatalf("this repo's own running plan is missing:\n%s", out)
+	} else if strings.Contains(out, otherWt) || strings.Contains(out, "other: state view") {
+		t.Errorf("the other repo's plan is in this session text:\n%s", out)
+	}
+	if out := sessionStart(t, other); !strings.Contains(out, "plans/2026-10-05-live-work-state") {
+		t.Errorf("the other repo does not see its own plan:\n%s", out)
+	}
+}
+
+// A folder that is not a planning repo, or one whose planning folder cannot
+// be read, still starts its session: the hook exits 0 with the normal text
+// and adds nothing.
+func TestHookSessionStartQuietOnUnreadablePlanningRoot(t *testing.T) {
+	dir := hookRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".acta", "plans"), []byte("not a folder\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := sessionStart(t, dir)
+	for _, gone := range []string{"worktree:", "acta state set <plan> next", "more, run acta state"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("a broken planning root got %q in the session text:\n%s", gone, out)
+		}
+	}
+}
+
+// A git repo with no planning folder at all is the same: a session starts.
+func TestHookSessionStartQuietOutsideAPlanningRepo(t *testing.T) {
+	dir := t.TempDir()
+	gitOut(t, dir, "init", "-q")
+	out := sessionStart(t, dir)
+	if strings.Contains(out, "acta state set <plan> next") {
+		t.Errorf("a repo with no planning folder got the running plans text:\n%s", out)
+	}
+}

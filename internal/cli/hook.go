@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/wiki"
@@ -105,6 +107,12 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			// Pages that cannot load are for `acta wiki check` to report.
 			pages, _ := wiki.Load(cfg.Root)
 			in.WikiPages = len(pages)
+			// Plans with work going on, three lines each. Errors are
+			// dropped like the ones above: a session that cannot read the
+			// board must still start, just without the summary.
+			for _, r := range board.Running(cfg) {
+				in.Running = append(in.Running, strings.Join(r.Short(), "\n"))
+			}
 			// After a clear or a compaction the old hints are gone from the
 			// context, so the session must hear its pages again. The error is
 			// dropped on purpose: a state that cannot be saved must not stop
