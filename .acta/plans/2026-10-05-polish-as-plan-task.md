@@ -5,6 +5,7 @@ id: PLN-0087
 created: "2026-10-05 13:48:17"
 hash: l6ezwmx
 started: "2026-10-05 13:55:00"
+finished: "2026-10-05 14:04:15"
 ---
 # Polish as a plan task Implementation Plan
 
@@ -47,17 +48,26 @@ started: "2026-10-05 13:55:00"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
 
 ## State
 
 ### Findings
 
-Checked all 14 polish lines in both skills; each run-a-polish line names the task.
-Step 2 appends the spec's Polish block before any commit.
-Both --round polish sends hand over the Polish task.
-No line says polish has no task or skips reviewers.
-Byte caps raised on purpose: review 11494>11874, dispatch 6338>6371.
-plugincheck fresh run green.
+All three files agree on 0.1.11, one patch above main 0.1.10.
+plugincheck green before and after the bump.
+Polish tasks 1-2 already landed on this branch.
+Commit holds only the three version files.
+Plan file ticks stay uncommitted per contract.
+
+## Fix round 1
+
+### Task 4: polish round stops at the next section
+
+**Files:** Modify `internal/cli/dispatch_brief.go`, `internal/cli/dispatch_brief_test.go`, `plugin/skills/review/SKILL.md`.
+**verify:** For every plan shape (fix rounds before polish, polish before a fix round, polish followed by `## State` or `## Review notes`), `--round polish` names only the tasks under `## Polish` up to the next `## ` heading; and the review skill says what happens to the `## Polish` task when the polish commit is reverted. List each shape checked.
+- [ ] Failing test: plan `### Task 1`, `## Polish` with `### Task 3: p`, `## Fix round 1` with `### Task 2: f`; `briefTasks(src, "polish")` returns p and f, so it fails.
+- [ ] Code: record where the polish section ends (next `## ` heading) in `scanPlan` and use it as the upper bound for the polish round; remove the clamp in the fix-round branch at dispatch_brief.go:121-124 if it can never change the result, else say in its comment it is only a safety net; in review SKILL.md step 2 or 3, one short sentence: on revert, tick the `## Polish` task boxes and note that its items moved to debt.
+- [ ] Commit: `dispatch: polish round stops at the next section; review says what a revert does to the polish task`.
