@@ -14,11 +14,11 @@ acta dispatch send --plan .acta/plans/<stem>.md --rules <abs path> [--note-file 
 
 It writes the dispatch record and the brief, finds or makes the omp tab for the branch, sets the goal, waits about 20 seconds and reads the pane once. It prints `slug:`, `pane:`, `base:`, `brief:`, `checkpoint:` and `watcher:`. Read those lines and the exit code:
 
-- `0`: sent. `checkpoint: ok` means every task id is on the todo list. `unconfirmed` means no todo list yet: say so in the report. The reply-back is the real signal.
+- `0`: sent. `checkpoint: ok` means every task id is on the todo list. `unconfirmed` means no todo list yet or a card naming none of the task ids: say so in the report. The reply-back is the real signal.
 - `1`: bad input, nothing sent. Fix the input and run it again.
 - `2`: delivery failed. Read herdr's reason. An agent still `working` is refused this way: an earlier round runs, so do not interleave. Report and stop.
 - `3`: a git read failed (a detached main checkout counts). Nothing sent. Report and stop.
-- `4`: drift. The pane text is printed. Read it first. Real drift: the list names work outside the plan or skips wave 1 tasks. Then press `herdr agent send-keys <slug> esc`, put the real task ids in a note ("there is NO `<X>` in this plan") and send again. A folded list (omp shows 8 rows) or an old round's card is no drift: yield.
+- `4`: drift. The pane text is printed. Read it first. Real drift: the list names work outside the plan, or a card that names some task ids and skips others. Then press `herdr agent send-keys <slug> esc`, put the real task ids in a note ("there is NO `<X>` in this plan") and send again. A folded list (omp shows 8 rows), an old round's card, or a card naming none of the task ids is no drift: yield.
 
 The omp harness needs `acta:build` installed too, because skills do not travel with the worktree. Missing: stop and report.
 
