@@ -23,14 +23,15 @@ func cmdState(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if code != exitOK {
 		return code
 	}
-	runs := board.Running(cfg)
 	if len(args) == 0 {
-		for _, r := range runs {
+		for _, r := range board.Running(cfg) {
 			fmt.Fprintln(stdout, r.Short()[0])
 		}
 		return exitOK
 	}
-	for _, r := range runs {
+	// A plan named on the command line gets its view whether or not work is
+	// still going on: land reads a plan after the last box is ticked.
+	for _, r := range board.PlanStates(cfg) {
 		if namesPlan(r.Plan, args[0]) {
 			fmt.Fprint(stdout, r.Full())
 			return exitOK

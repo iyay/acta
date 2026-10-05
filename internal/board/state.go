@@ -37,6 +37,21 @@ type RunState struct {
 // branch committed something on the plan file. A plan in the main tree, or one
 // that already landed, is not running.
 func Running(cfg config.Config) []RunState {
+	return planStates(cfg, func(it *Item) bool { return it.StartedOn != "" && it.Finished == "" })
+}
+
+// PlanStates gives the plans that live in a linked worktree and that its
+// branch worked on, whatever their stamps say. Land reads a plan after the
+// last box is ticked, so the per-plan view asks for these and not for the
+// running ones.
+func PlanStates(cfg config.Config) []RunState {
+	return planStates(cfg, nil)
+}
+
+// planStates walks the linked worktrees and gives the plan items keep takes,
+// with the facts of each worked out on read. A nil keep takes every plan the
+// branch worked on.
+func planStates(cfg config.Config, keep func(*Item) bool) []RunState {
 	wts, err := gitc.Worktrees(cfg.RepoRoot)
 	if err != nil {
 		return nil
@@ -62,10 +77,13 @@ func Running(cfg config.Config) []RunState {
 		// branch committed say that the work is going on in this worktree.
 		worked := branchFiles(cfg.RepoRoot, wts[0].Branch, w.Branch)
 		for _, it := range b.Items {
-			if it.Kind != KindPlan || it.StartedOn == "" || it.Finished != "" {
+			if it.Kind != KindPlan {
 				continue
 			}
 			if !worked[planName(c, it.Path)] {
+				continue
+			}
+			if keep != nil && !keep(it) {
 				continue
 			}
 			out = append(out, runState(cfg.RepoRoot, b, it, w))

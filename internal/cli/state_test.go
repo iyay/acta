@@ -55,6 +55,35 @@ const startedStatePlan = "---\nid: PLN-0082\nstarted: \"2026-10-05 08:32:15\"\n-
 	"## State\n\n### Next\n\nrun the state test\n\n### Findings\n\nthe hook is cheap\n\n" +
 	"### Open rulings\n\nnone yet\n"
 
+// stateFreshPlan is the plan before any work: no stamp and every box open.
+const stateFreshPlan = "---\nid: PLN-0082\n---\n# Live work state\n\n" +
+	"### Task 1: acta state set\n\n- [ ] write it\n\n" +
+	"### Task 2: acta state view\n\n- [ ] read it\n\n### Task 3: session start\n\n- [ ] hook it\n"
+
+// stateFinishedPlan is that plan after the last build: started, finished,
+// every box ticked, and a Findings line. Land runs at that moment, so this is
+// the shape of the plan the land gate has to read.
+const stateFinishedPlan = "---\nid: PLN-0082\nstarted: \"2026-10-05 08:32:15\"\nfinished: \"2026-10-05 09:00:00\"\n---\n" +
+	"# Live work state\n\n### Task 1: acta state set\n\n- [x] write it\n\n" +
+	"### Task 2: acta state view\n\n- [x] read it\n\n### Task 3: session start\n\n- [x] hook it\n\n" +
+	"## State\n\n### Findings\n\nThe row is comma separated, so a price cannot hold a comma.\n"
+
+// stateWorktreePlan makes a git repo holding the given plan and a worktree on a
+// branch that commits inWt as the work. The main file is what git copied into
+// the worktree; the branch commit is what says the work was done there.
+func stateWorktreePlan(t *testing.T, plan, inWt string) (dir, wt string) {
+	t.Helper()
+	dir = stateRepo(t, plan)
+	wt = filepath.Join(t.TempDir(), "live")
+	gitOut(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	if err := os.WriteFile(stateFile(wt), []byte(inWt), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, wt, "add", "-A")
+	gitOut(t, wt, "commit", "-q", "-m", "state: the agent works on the plan")
+	return dir, wt
+}
+
 // The body comes from stdin and the plan file gets the subsection under it.
 func TestCmdStateSetReadsStdin(t *testing.T) {
 	dir := stateRepo(t, cliStatePlan)
@@ -131,15 +160,7 @@ func TestCmdStateSetRefusesAndChangesNothing(t *testing.T) {
 // running there.
 func stateWorktreeRepo(t *testing.T, plan string) (dir, wt string) {
 	t.Helper()
-	dir = stateRepo(t, plan)
-	wt = filepath.Join(t.TempDir(), "live")
-	gitOut(t, dir, "worktree", "add", "-q", "-b", "live", wt)
-	if err := os.WriteFile(stateFile(wt), []byte(strings.Replace(plan, "- [ ] hook it", "- [x] hook it", 1)), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	gitOut(t, wt, "add", "-A")
-	gitOut(t, wt, "commit", "-q", "-m", "state: the agent works on the plan")
-	return dir, wt
+	return stateWorktreePlan(t, plan, strings.Replace(plan, "- [ ] hook it", "- [x] hook it", 1))
 }
 
 // A started plan with a worktree shows what the work is standing on: the
@@ -219,6 +240,66 @@ func TestCmdStateSetUsage(t *testing.T) {
 		code, _, stderr := runState(t, dir, "x\n", args...)
 		if code != exitBadInput || !strings.Contains(stderr, "usage: acta state set") {
 			t.Fatalf("%v: exit %d stderr %q", args, code, stderr)
+		}
+	}
+}
+
+// Land runs after the last box is ticked, so the plan it lands carries a
+// finished stamp. Asking that plan for its view still has to print, because
+// the land gate reads it there and then. The bare list and the session start
+// hook leave it out, because work on it is over.
+func TestCmdStateShowsAFinishedPlanInAWorktree(t *testing.T) {
+	_, wt := stateWorktreePlan(t, stateFreshPlan, stateFinishedPlan)
+	gitOut(t, wt, "commit", "-q", "--allow-empty", "-m", "state: the last task landed")
+
+	code, out, stderr := runState(t, wt, "", "plans/2026-10-05-live-work-state")
+	if code != exitOK {
+		t.Fatalf("exit %d stderr %q, want the finished plan to print", code, stderr)
+	}
+	for _, want := range []string{
+		"plans/2026-10-05-live-work-state  Live work state",
+		"task: none, every box is ticked",
+		"state: the last task landed",
+		wt,
+		"round: none",
+		"### Findings\n\nThe row is comma separated, so a price cannot hold a comma.",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stdout does not hold %q\n%s", want, out)
+		}
+	}
+
+	if code, bare, stderr := runState(t, wt, ""); code != exitOK || bare != "" {
+		t.Errorf("bare listing = %q (exit %d, stderr %q), want nothing: the plan is finished", bare, code, stderr)
+	}
+	if hook := sessionStart(t, wt); strings.Contains(hook, "plans/2026-10-05-live-work-state") {
+		t.Errorf("the session start names a finished plan:\n%s", hook)
+	}
+
+	code, out, stderr = runState(t, wt, "", "plans/2026-10-06-nope")
+	if code != exitBadInput || out != "" || !strings.Contains(stderr, "no running plan") {
+		t.Errorf("an id the board never knew: exit %d stdout %q stderr %q, want bad input and nothing on stdout", code, out, stderr)
+	}
+}
+
+// A plan in a worktree that has no State section yet still has a view: the
+// four facts print and the three subsections stay out, so a missing section
+// is not a failed command.
+func TestCmdStateShowsAWorktreePlanWithNoStateSection(t *testing.T) {
+	plan := "---\nid: PLN-0082\nstarted: \"2026-10-05 08:32:15\"\n---\n# Live work state\n\n" +
+		"### Task 1: acta state set\n\n- [x] write it\n\n### Task 2: acta state view\n\n- [ ] read it\n"
+	_, wt := stateWorktreePlan(t, plan, strings.Replace(plan, "- [ ] read it", "- [x] read it", 1))
+
+	code, out, stderr := runState(t, wt, "", "plans/2026-10-05-live-work-state")
+	if code != exitOK {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	if !strings.Contains(out, "task: none, every box is ticked") {
+		t.Errorf("stdout does not hold the facts\n%s", out)
+	}
+	for _, gone := range []string{"### Next", "### Findings", "### Open rulings"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("a plan with no State section printed %q\n%s", gone, out)
 		}
 	}
 }
