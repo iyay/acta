@@ -15,5 +15,5 @@ if [ "${1:-}" = "--omp" ]; then
 fi
 out="$(mktemp -d)"
 echo "Results will be written to $out"
-exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash \
+exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash Read \
   --scaffold --judge-model haiku --output-dir "$out" "$@" plugin

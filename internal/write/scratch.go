@@ -57,7 +57,7 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 	if err := os.WriteFile(path, content, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	o := finish(cfg, path, "acta: new scratch "+stem(path), false)
+	o := finish(cfg, path, Subject(cfg, []string{path}, "new "+stem(path)), false)
 	o.ShortID = shortID
 	return o, nil
 }
@@ -125,7 +125,7 @@ func AppendScratch(cfg config.Config, b *board.Board, id, section string, text [
 	if err := os.WriteFile(it.Path, []byte(out), 0o644); err != nil {
 		return Outcome{}, err
 	}
-	o := finish(cfg, it.Path, "acta: add to scratch "+stem(it.Path), dirty)
+	o := finish(cfg, it.Path, Subject(cfg, []string{it.Path}, "add to "+stem(it.Path)), dirty)
 	o.ShortID = it.ShortID
 	return o, nil
 }

@@ -303,6 +303,7 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 	t.Run("a second brainstorm", func(t *testing.T) {
 		dir := hintRepo(t, "scratch/")
 		t.Chdir(dir)
+		hookScratch(t, dir)
 		if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
 			t.Fatalf("recording the first brainstorm: exit %d", code)
 		}
@@ -467,6 +468,7 @@ func TestHookPreToolHintFailureNeverBlocks(t *testing.T) {
 	if code, out, errb := run(t, stdin); code != exitBlock || out != "" || !strings.Contains(errb, "run tests with scripts/test") {
 		t.Errorf("a bare go test: exit %d, stdout %q, stderr %q, want exit 2 and the block reason", code, out, errb)
 	}
+	hookScratch(t, dir)
 	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
 		t.Fatalf("recording the first brainstorm: exit %d", code)
 	}

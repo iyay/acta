@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0088
 created: "2026-10-05 14:25:27"
 hash: zeb4nps
+started: "2026-10-05 14:36:45"
+finished: "2026-10-05 14:46:16"
 ---
 # Hand-off language and eval Read Implementation Plan
 
@@ -30,22 +32,30 @@ hash: zeb4nps
 
 **Files:** Modify `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`.
 **verify:** Every session start text that names a repo language (set voice, voice read error fallback, no voice yet, the default-rules.md fallback) tells the agent which language to use for prompts to subagents and other agents, and it is always the repo language, never the chat language. List each path checked.
-- [ ] Failing test: session start with chat Indonesian and repo English must hold `- Write prompts and hand-offs to subagents or other agents in English.`; fails because the line does not exist.
-- [ ] Code: add the line after the repo language line in SessionStart; regenerate default-rules.md the way hook_test.go's update flag does.
-- [ ] Commit: `hook: prompts to subagents use the repo language`.
+- [x] Failing test: session start with chat Indonesian and repo English must hold `- Write prompts and hand-offs to subagents or other agents in English.`; fails because the line does not exist.
+- [x] Code: add the line after the repo language line in SessionStart; regenerate default-rules.md the way hook_test.go's update flag does.
+- [x] Commit: `hook: prompts to subagents use the repo language`.
 
 ### Task 2: evals may use Read
 
 **Files:** Modify `scripts/eval`, `plugin/evals/FACTS.md`.
 **verify:** The probe-round case can read sibling skill files with the Read tool, so its result no longer depends on which tool the agent picks; three runs of `scripts/eval --case probe-round` are all green.
-- [ ] Failing test: `scripts/eval --case probe-round` with the branch binary on PATH; a run where the agent uses Read on probe.md shows the denial in the trace.
-- [ ] Code: `--allow-tools Bash Read` in scripts/eval; one dated FACTS.md line saying why.
-- [ ] Commit: `eval: grant Read so cases can open sibling skill files`.
+- [x] Failing test: `scripts/eval --case probe-round` with the branch binary on PATH; a run where the agent uses Read on probe.md shows the denial in the trace.
+- [x] Code: `--allow-tools Bash Read` in scripts/eval; one dated FACTS.md line saying why.
+- [x] Commit: `eval: grant Read so cases can open sibling skill files`.
 
 ### Task 3: version bump
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- The session-start cap went up 71 bytes for the hand-off line, the length of that line.
+- `claude plugin eval --help` lists Bash, Write, Edit, WebFetch and mcp__* as gated tools, not Read; the traces prove the grant works: Read of probe.md succeeded after it, and was denied before.
+- No test pins the `--allow-tools Bash Read` line in scripts/eval.
+- The new hook test is 50 lines; a table test would be shorter.
+- probe-round after the fix and BUG-0031: 1.00 three times out of three.

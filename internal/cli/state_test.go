@@ -95,7 +95,7 @@ func TestCmdStateSetReadsStdin(t *testing.T) {
 	if got := read(t, stateFile(dir)); got != want {
 		t.Fatalf("file = %q\nwant %q", got, want)
 	}
-	if got := gitOut(t, dir, "log", "-1", "--format=%s"); got != "acta: state plans/2026-10-05-live-work-state" {
+	if got := gitOut(t, dir, "log", "-1", "--format=%s"); got != "chore(plan): state plans/2026-10-05-live-work-state" {
 		t.Fatalf("commit subject %q", got)
 	}
 }

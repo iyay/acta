@@ -95,7 +95,7 @@ func TestDebtNewWritesFileAndCommits(t *testing.T) {
 	if !strings.Contains(string(body), "- [ ] x\n") {
 		t.Fatalf("file lost its note: %q", body)
 	}
-	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil || !strings.HasPrefix(strings.TrimSpace(string(out)), "acta: new debt ") {
+	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil || !strings.HasPrefix(strings.TrimSpace(string(out)), "chore(debt): new debt ") {
 		t.Fatalf("commit message %q err %v", out, err)
 	}
 }
@@ -171,7 +171,7 @@ func TestScratchNewWritesFileAndCommits(t *testing.T) {
 		t.Fatalf("body %q want %q", doc.Body, want)
 	}
 	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil ||
-		!strings.HasPrefix(strings.TrimSpace(string(out)), "acta: new scratch ") {
+		!strings.HasPrefix(strings.TrimSpace(string(out)), "chore(scratch): new ") {
 		t.Fatalf("commit message %q err %v", out, err)
 	}
 }
@@ -198,7 +198,7 @@ func TestScratchAddAppendsAndCommits(t *testing.T) {
 	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note\n\n### 2026-09-26\n\nanswer ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(src).Body != want {
 		t.Fatalf("body %q want %q", src, want)
 	}
-	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "acta: add to scratch ") {
+	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "chore(scratch): add to ") {
 		t.Fatalf("commit message %q", msg)
 	}
 }
@@ -261,7 +261,7 @@ func TestScratchAddBadSectionExitsBadInput(t *testing.T) {
 	if body := board.Parse(src).Body; strings.Contains(body, "more") {
 		t.Fatalf("the refused write changed the body: %q", body)
 	}
-	if n, _ := exec.Command("git", "-C", dir, "log", "--format=%s").Output(); !strings.HasPrefix(strings.TrimSpace(string(n)), "acta: new scratch") {
+	if n, _ := exec.Command("git", "-C", dir, "log", "--format=%s").Output(); !strings.HasPrefix(strings.TrimSpace(string(n)), "chore(scratch): new ") {
 		t.Fatalf("the refused write made a commit: %q", n)
 	}
 }

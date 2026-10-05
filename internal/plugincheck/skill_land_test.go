@@ -19,7 +19,7 @@ func TestSkillLand(t *testing.T) {
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
-			"acta: tick <plan>", "before the merge, so the ticks reach main",
+			"chore(plan): tick <plan>", "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
 			"acta wiki check <base>..<head>", "the wiki pages the branch added or changed",

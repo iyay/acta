@@ -5,6 +5,7 @@ id: PLN-0089
 created: "2026-10-05 14:54:48"
 hash: rdjobo4
 started: "2026-10-05 14:57:26"
+finished: "2026-10-05 15:03:23"
 ---
 # Brainstorm hook real items Implementation Plan
 
@@ -39,6 +40,12 @@ started: "2026-10-05 14:57:26"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- No test covers a directory named `<stem>.md`; the IsRegular check handles it.
+- TestReminderNamesItem now accepts "one" or "SCRATCH-1"; TestBlockAndReminderNameScratchID still pins the id.
+- A scratch file deleted after it was recorded no longer matters to the record or block paths; acta refuses the command itself.

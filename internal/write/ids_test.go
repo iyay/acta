@@ -613,7 +613,7 @@ func TestAssignIDsFinishesTheScratchParent(t *testing.T) {
 	if doc.Front["finished"] != "2026-09-26 10:00:00" {
 		t.Errorf("the scratch parent did not get finished = %v", doc.Front["finished"])
 	}
-	if n := gitRun(t, cfg.RepoRoot, "log", "--format=%s", "-1"); n != "acta: assign short ids" {
+	if n := gitRun(t, cfg.RepoRoot, "log", "--format=%s", "-1"); n != "chore: assign short ids" {
 		t.Errorf("the date must ride the id commit, last commit %q", n)
 	}
 }
@@ -858,8 +858,8 @@ func TestAssignIDsCommitMessageSaysWhatChanged(t *testing.T) {
 	for _, c := range []struct {
 		name, body, msg string
 	}{
-		{"new", "# C\n", "acta: assign short ids"},
-		{"old", "---\nid: BUG-7\n---\n# C\n", "acta: migrate ids to 3-letter prefix"},
+		{"new", "# C\n", "chore(bug): assign short ids"},
+		{"old", "---\nid: BUG-7\n---\n# C\n", "chore(bug): migrate ids to 3-letter prefix"},
 	} {
 		cfg := repoWith(t, map[string]string{".acta/bugs/2026-09-23-c.md": c.body})
 		if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {

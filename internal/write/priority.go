@@ -38,7 +38,7 @@ func setPriority(cfg config.Config, it *board.Item, id, value string) (Outcome, 
 	if err != nil {
 		return Outcome{}, bad("%s: %v", id, err)
 	}
-	return finish(cfg, it.Path, fmt.Sprintf("acta: %s priority %s", id, value), dirty), nil
+	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, "priority", value)), dirty), nil
 }
 
 // setBugPriority writes the priority field, or takes it out for none.

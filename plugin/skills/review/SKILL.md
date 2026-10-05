@@ -75,7 +75,7 @@ The polish commit counts as no round. Every commit gets the two reviewers. This 
    **verify:** every NOTE below is applied, and nothing else changes.
 
    - [ ] <one box per [fix] NOTE>
-   - [ ] Commit: `polish: review notes for <plan id>`
+   - [ ] Commit: `chore(plan): review notes for <plan id>`
    ```
    N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range. When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.

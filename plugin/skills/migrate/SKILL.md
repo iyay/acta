@@ -27,4 +27,4 @@ If the installed `acta` has no `migrate` command yet, use the route below for su
    - a bug: `# <symptom>`, then `## Symptom` and whichever of `## Root cause`, `## Repro` and `## Found in` the source has.
 4. Leave the source files where they are. The user decides when to delete them.
 5. Check with `acta list --all --json` that every new item shows and has no `problems`.
-6. Commit the new files in one commit, staged by path: `acta: migrate <source> into .acta`. Never push.
+6. Commit the new files in one commit, staged by path: `chore: migrate <source> into .acta`. Never push.
