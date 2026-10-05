@@ -161,7 +161,7 @@ type Model struct {
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
-	shutActs   map[string]bool // the groups the reader shut on Activities; every group starts open
+	shutActs   map[string]bool // the groups the reader shut on Activity; every group starts open
 	popup      *popup
 	slug       *string // non-nil while typing the slug of a new bug
 	help       bool
@@ -203,7 +203,7 @@ func New(cfg config.Config, b *board.Board, dark bool) Model {
 		cfg: cfg, board: b, width: 120, height: 40, now: time.Now(), version: "dev",
 		open:     defaultOpen,
 		clip:     copyText,
-		top:      tabActivities,
+		top:      tabActivity,
 		focus:    s.focus,
 		last:     s.last,
 		sel:      s.sel,

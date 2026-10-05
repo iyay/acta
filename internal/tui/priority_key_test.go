@@ -29,7 +29,7 @@ func TestPriorityPopupOnABugStartsOnItsValue(t *testing.T) {
 func TestPriorityPopupOnADebtLine(t *testing.T) {
 	t.Parallel()
 
-	m := press(prioModel(t), tabKey(tabDebts), "p")
+	m := press(prioModel(t), tabKey(tabDebt), "p")
 	if it := m.Selected(); it == nil || it.Kind != board.KindDebtItem {
 		t.Fatalf("selected %+v, want a debt item", it)
 	}
@@ -70,7 +70,7 @@ func TestPriorityKeyRefusesOtherKinds(t *testing.T) {
 		keys []string
 		kind board.Kind
 	}{
-		{"scratch", []string{tabKey(tabScratches)}, board.KindScratch},
+		{"scratch", []string{tabKey(tabScratchpad)}, board.KindScratch},
 		{"spec", []string{tabKey(tabSpecs)}, board.KindStory},
 		{"plan", []string{tabKey(tabPlans)}, board.KindPlan},
 		{"task", []string{tabKey(tabPlans), " ", "j"}, board.KindTask},
@@ -95,8 +95,8 @@ func TestPriorityHintOnBugsAndDebtLines(t *testing.T) {
 	for _, keys := range [][]string{
 		{tabKey(tabBugs)},
 		{tabKey(tabBugs), "enter"},
-		{tabKey(tabDebts)},
-		{tabKey(tabDebts), "enter"},
+		{tabKey(tabDebt)},
+		{tabKey(tabDebt), "enter"},
 	} {
 		m := press(sized(prioModel(t), 200, 40), keys...)
 		if !slices.Contains(m.hints(), "Priority: p") {

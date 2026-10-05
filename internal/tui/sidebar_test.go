@@ -31,12 +31,12 @@ func TestTopTabsTable(t *testing.T) {
 		done string
 		tree bool
 	}{
-		{"Scratches", board.KindScratch, "Specced Dropped", false},
+		{"Scratchpad", board.KindScratch, "Specced Dropped", false},
 		{"Bugs", board.KindBug, "Fixed Wontfix", false},
-		{"Debts", board.KindDebtItem, "Done Wontfix", false},
+		{"Debt", board.KindDebtItem, "Done Wontfix", false},
 		{"Specs", board.KindStory, "Done Dropped", false},
 		{"Plans", board.KindPlan, "Done Dropped", true},
-		{"Activities", "", "", false},
+		{"Activity", "", "", false},
 	}
 	if len(topTabs) != len(want) {
 		t.Fatalf("%d tabs, want %d", len(topTabs), len(want))
@@ -55,19 +55,19 @@ func TestTopTabsTable(t *testing.T) {
 			t.Errorf("tab %d is %+v, want %+v", i, tab, w)
 		}
 	}
-	if topTabs[tabScratches].name != "Scratches" || topTabs[tabPlans].name != "Plans" || topTabs[tabActivities].name != "Activities" {
+	if topTabs[tabScratchpad].name != "Scratchpad" || topTabs[tabPlans].name != "Plans" || topTabs[tabActivity].name != "Activity" {
 		t.Error("the tab constants do not match the table")
 	}
 }
 
-func TestTUIOpensOnActivities(t *testing.T) {
+func TestTUIOpensOnActivity(t *testing.T) {
 	t.Parallel()
 
 	m := sized(newModel(t), 160, 50)
-	if m.top != tabActivities || m.focus != paneList {
-		t.Fatalf("opens on tab %d pane %d, want Activities and its List", m.top, m.focus)
+	if m.top != tabActivity || m.focus != paneList {
+		t.Fatalf("opens on tab %d pane %d, want Activity and its List", m.top, m.focus)
 	}
-	// Activities opens on the head of the group, and the task under way sits
+	// Activity opens on the head of the group, and the task under way sits
 	// one row below it.
 	if it := m.Selected(); it == nil || it.ID != "plans/2026-09-21-alpha" || it.Kind != board.KindPlan {
 		t.Errorf("opens on %v, want the plan the task under way belongs to", it)
@@ -76,8 +76,8 @@ func TestTUIOpensOnActivities(t *testing.T) {
 		t.Errorf("one row down is %v, want the one task in progress", it)
 	}
 	bar := plain(strings.Split(m.View(), "\n")[1])
-	if !strings.HasPrefix(bar, "│ 1 Scratches  2 Bugs  3 Debts  4 Specs  5 Plans  6 Activities") {
-		t.Errorf("the names line is %q, want the tab box with Activities marked", bar)
+	if !strings.HasPrefix(bar, "│ 1 Scratchpad  2 Bugs  3 Debt  4 Specs  5 Plans  6 Activity") {
+		t.Errorf("the names line is %q, want the tab box with Activity marked", bar)
 	}
 }
 
@@ -93,7 +93,7 @@ func TestNumberKeysOpenTheirTab(t *testing.T) {
 			}
 		}
 	}
-	if got := press(m, "7").top; got != tabActivities {
+	if got := press(m, "7").top; got != tabActivity {
 		t.Errorf("7 is no tab but moved to tab %d", got)
 	}
 }
@@ -102,22 +102,22 @@ func TestLeftRightWalkTheTabs(t *testing.T) {
 	t.Parallel()
 
 	m := sized(newModel(t), 160, 50)
-	if got := press(m, "right").top; got != tabScratches {
-		t.Errorf("right from Activities opens tab %d, want Scratches", got)
+	if got := press(m, "right").top; got != tabScratchpad {
+		t.Errorf("right from Activity opens tab %d, want Scratchpad", got)
 	}
 	if got := press(m, "left").top; got != tabPlans {
-		t.Errorf("left from Activities opens tab %d, want Plans", got)
+		t.Errorf("left from Activity opens tab %d, want Plans", got)
 	}
 	walked := m
 	for i := range topTabs {
 		walked = press(walked, "right")
-		if want := (tabActivities + 1 + i) % len(topTabs); walked.top != want {
+		if want := (tabActivity + 1 + i) % len(topTabs); walked.top != want {
 			t.Fatalf("right %d times: tab %d, want %d", i+1, walked.top, want)
 		}
 	}
 	for i := range topTabs {
 		walked = press(walked, "left")
-		if want := (tabActivities - 1 - i + 2*len(topTabs)) % len(topTabs); walked.top != want {
+		if want := (tabActivity - 1 - i + 2*len(topTabs)) % len(topTabs); walked.top != want {
 			t.Fatalf("left %d times: tab %d, want %d", i+1, walked.top, want)
 		}
 	}
@@ -143,15 +143,15 @@ func TestTabCyclesOnlyTheOpenTabsPanes(t *testing.T) {
 	for i := range 4 {
 		a = press(a, "tab")
 		if a.focus == paneDone {
-			t.Fatalf("tab %d times on Activities focused a Done pane", i+1)
+			t.Fatalf("tab %d times on Activity focused a Done pane", i+1)
 		}
 	}
 	a.focusPane(paneDone)
 	if a.focus == paneDone {
-		t.Error("Activities took the focus into a Done pane it does not have")
+		t.Error("Activity took the focus into a Done pane it does not have")
 	}
 	if got := len(a.geometry().side); got != 1 {
-		t.Errorf("Activities draws %d list panes, want 1", got)
+		t.Errorf("Activity draws %d list panes, want 1", got)
 	}
 }
 
@@ -280,7 +280,7 @@ func TestAnEmptyListShowsNoItems(t *testing.T) {
 
 	cfg := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-only.md": "# Only bug\n\n## Symptom\nx\n"})
 	m := sized(detailModel(t, cfg), 160, 50)
-	for _, i := range []int{tabActivities, tabScratches} {
+	for _, i := range []int{tabActivity, tabScratchpad} {
 		m = press(m, tabKey(i))
 		if got := plainLines(m.detailLines(80)); len(got) != 1 || got[0] != "No items" {
 			t.Errorf("tab %s with no rows shows %q, want No items", topTabs[i].name, got)
@@ -288,7 +288,7 @@ func TestAnEmptyListShowsNoItems(t *testing.T) {
 	}
 }
 
-// activityTaskIDs gives the ids of the Activities rows that are tasks, so a
+// activityTaskIDs gives the ids of the Activity rows that are tasks, so a
 // test reads the work under way and leaves the group heads out.
 func activityTaskIDs(m Model) []string {
 	var out []string
@@ -300,7 +300,7 @@ func activityTaskIDs(m Model) []string {
 	return out
 }
 
-func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
+func TestActivityListsOnlyInProgressTasks(t *testing.T) {
 	t.Parallel()
 
 	cfg := treeCfg(t, map[string]string{
@@ -313,7 +313,7 @@ func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 	slices.Sort(got)
 	want := []string{"plans/2026-09-20-one#task-1", "plans/2026-09-21-two#task-1"}
 	if !slices.Equal(got, want) {
-		t.Errorf("Activities holds %q, want the in-progress task of each plan %q", got, want)
+		t.Errorf("Activity holds %q, want the in-progress task of each plan %q", got, want)
 	}
 	// Every top level row of the list is a head the tasks hang under, so a
 	// task never stands on its own here.
@@ -338,7 +338,7 @@ func TestActivitiesListsOnlyInProgressTasks(t *testing.T) {
 	listed := activityTaskIDs(full)
 	slices.Sort(listed)
 	if !slices.Equal(listed, wantAll) {
-		t.Errorf("Activities holds %q, want %q", listed, wantAll)
+		t.Errorf("Activity holds %q, want %q", listed, wantAll)
 	}
 }
 

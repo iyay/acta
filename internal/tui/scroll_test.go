@@ -1291,26 +1291,26 @@ func notchOverPair(t *testing.T, tab int, p, q pane) {
 	}
 }
 
-// The Activities tab has no Done box. Only its two boxes can take a notch, and
+// The Activity tab has no Done box. Only its two boxes can take a notch, and
 // no cell of that screen ever answers the pane the tab does not have, so the
 // two real pairs keep the rule and the missing box is named rather than
 // skipped in silence.
 func notchesOverATabWithoutADoneBox(t *testing.T) {
 	t.Helper()
 
-	onActivities := press(longModel(t), tabKey(tabActivities))
-	if got := onActivities.panes(); len(got) != 1 || got[0] != paneList {
-		t.Fatalf("the Activities tab holds panes %v, want only pane %d", got, paneList+1)
+	onActivity := press(longModel(t), tabKey(tabActivity))
+	if got := onActivity.panes(); len(got) != 1 || got[0] != paneList {
+		t.Fatalf("the Activity tab holds panes %v, want only pane %d", got, paneList+1)
 	}
-	for y := range onActivities.height {
-		for x := range onActivities.width {
-			if p, _, _ := onActivities.hit(x, y); p == paneDone {
-				t.Fatalf("the cell %d,%d answers pane %d, which the Activities tab does not have", x, y, paneDone+1)
+	for y := range onActivity.height {
+		for x := range onActivity.width {
+			if p, _, _ := onActivity.hit(x, y); p == paneDone {
+				t.Fatalf("the cell %d,%d answers pane %d, which the Activity tab does not have", x, y, paneDone+1)
 			}
 		}
 	}
-	notchOverPair(t, tabActivities, paneList, paneDetail)
-	notchOverPair(t, tabActivities, paneDetail, paneList)
+	notchOverPair(t, tabActivity, paneList, paneDetail)
+	notchOverPair(t, tabActivity, paneDetail, paneList)
 }
 
 // A notch over no pane at all is not a notch of the scroll: the focus stays
@@ -2110,7 +2110,7 @@ func listRow(t *testing.T, m Model, id string) string {
 func TestListRowsAreNotFaintAndWearKindColors(t *testing.T) {
 	withTrueColor(func() {
 		// Three lists between them hold every kind of row: plans and their
-		// tasks under Activities, a plan whose work has not begun on Plans,
+		// tasks under Activity, a plan whose work has not begun on Plans,
 		// and the folded group of untyped files on Specs.
 		for _, m := range []Model{
 			actModel(t).WithTheme("tokyo-night", true),

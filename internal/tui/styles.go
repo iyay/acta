@@ -20,7 +20,7 @@ type styles struct {
 	label, footLabel, done, waiting, problem, live lipgloss.Style
 	accentColor                                    lipgloss.TerminalColor
 	kinds                                          map[board.Kind]lipgloss.Color
-	cyan                                           lipgloss.Color            // the Activities tab, which holds no one kind
+	cyan                                           lipgloss.Color            // the Activity tab, which holds no one kind
 	bandFG                                         lipgloss.Color            // text on a colored band
 	pulse                                          []lipgloss.Style          // the frames of the dot of work under way
 	goingDot                                       string                    // that dot drawn in frame 0, as every view draws it
@@ -124,7 +124,7 @@ func newStyles(t theme.Theme, dark bool) styles {
 	}
 }
 
-// scratchColor is the pink of a scratch id and the Scratches tab. Green means
+// scratchColor is the pink of a scratch id and the Scratchpad tab. Green means
 // done, and every hue of the 16 slots is taken, so scratch gets a pink of its
 // own. A light background needs a deeper pink to stay readable. The terminal
 // theme has no hex, so it asks for pink from the 256 colors.
@@ -249,7 +249,7 @@ func (s styles) kind(k board.Kind) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(c)
 }
 
-// tabColor is the color of a top tab. The Activities tab has no kind, so it
+// tabColor is the color of a top tab. The Activity tab has no kind, so it
 // takes cyan.
 func (s styles) tabColor(k board.Kind) lipgloss.Color {
 	if c, ok := s.kinds[k]; ok {
