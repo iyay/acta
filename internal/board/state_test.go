@@ -58,6 +58,8 @@ const (
 	finishedPlan = "---\nid: PLN-0083\nstarted: \"2026-10-05 08:32:15\"\nfinished: \"2026-10-05 09:00:00\"\n---\n" +
 		"# Landed plan\n\n### Task 1: acta state set\n\n- [x] write it\n"
 	untouchedPlan = "---\nid: PLN-0084\n---\n# Fresh plan\n\n### Task 1: acta state set\n\n- [ ] write it\n"
+	mainTreePlan  = "---\nid: PLN-0090\nstarted: \"2026-10-05 07:00:00\"\n---\n" +
+		"# Main tree plan\n\n### Task 1: acta state set\n\n- [x] write it\n\n### Task 2: read it\n\n- [ ] read it\n"
 )
 
 // A plan counts as running only when it has started, has not finished, and has
@@ -256,5 +258,62 @@ func TestFullShowsOnlyTheSubsectionsTheFileHolds(t *testing.T) {
 	}
 	if strings.Contains(full, "### Open rulings") {
 		t.Errorf("the full view printed a subsection the file does not hold\n%s", full)
+	}
+}
+
+// The main tree and a linked worktree each hold a started plan of their own. Git
+// lists the main checkout first, so a running plan is every worktree but that
+// first one. The answer is the same from both sides: a session started inside
+// the worktree finds the plan it was building, the main tree still sees that
+// plan, and neither sees the plan that only lives in the main tree.
+func TestRunningCountsEveryWorktreeButTheMainOne(t *testing.T) {
+	t.Parallel()
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan})
+	// The worktree starts as a copy of the main tree, so the main tree's plan
+	// has to go before the two trees hold different plans.
+	gitRun(t, wt, "rm", "-q", ".acta/plans/2026-10-05-in-main.md")
+	writeFile(t, filepath.Join(wt, ".acta", "plans", "2026-10-05-live.md"), startedPlan)
+	gitRun(t, wt, "add", "-A")
+	gitRun(t, wt, "commit", "-q", "-m", "live work")
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := runIds(Running(inWt)); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Errorf("from the worktree: running = %v, want only the plan of that worktree", got)
+	}
+	if got := runIds(Running(main)); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Errorf("from the main tree: running = %v, want only the plan of the worktree", got)
+	}
+	for _, runs := range [][]RunState{Running(inWt), Running(main)} {
+		for _, r := range runs {
+			if sameDir(r.Worktree, main.RepoRoot) {
+				t.Errorf("the main checkout was counted as a worktree: %s", r.Worktree)
+			}
+		}
+	}
+}
+
+// A started plan that lives only in the main tree is never running, from either
+// folder. The main checkout is not a worktree of itself.
+func TestRunningNeverCountsAMainTreePlan(t *testing.T) {
+	t.Parallel()
+
+	main, wt := runRepo(t, map[string]string{"plans/2026-10-05-in-main.md": mainTreePlan})
+	gitRun(t, wt, "rm", "-q", ".acta/plans/2026-10-05-in-main.md")
+	gitRun(t, wt, "add", "-A")
+	gitRun(t, wt, "commit", "-q", "-m", "drop it")
+	inWt, err := config.Load(wt, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := runIds(Running(main)); len(got) != 0 {
+		t.Errorf("from the main tree: running = %v, want none", got)
+	}
+	if got := runIds(Running(inWt)); len(got) != 0 {
+		t.Errorf("from the worktree: running = %v, want none", got)
 	}
 }

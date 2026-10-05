@@ -44,25 +44,25 @@ started: "2026-10-05 08:32:15"
 
 **Files:** Modify `internal/cli/state.go`, `internal/cli/state_test.go`; create `internal/board/state.go`, `internal/board/state_test.go`.
 **verify:** A plan counts as running only when it has `started`, no `finished`, and a worktree from `internal/trees`; every derived fact (current task, last commit, worktree, review round) comes from the plan ticks and git, never from the file text. List each fact and its source, plus the case where none exists.
-- [ ] Failing test: `acta state <plan>` in a temp clone with a worktree prints the first unticked task, the branch's last commit, the worktree path, `round: none`, then the three subsections; it fails because the view does not exist.
-- [ ] Code: `board.Running(cfg) []RunState` and `RunState.Full() string` and `RunState.Short() []string` (max 3 lines); review round from the newest `acta: tick fix round N` commit on the branch; `acta state` alone prints one line per running plan.
-- [ ] Commit: `state: acta state shows running plans with derived facts`.
+- [x] Failing test: `acta state <plan>` in a temp clone with a worktree prints the first unticked task, the branch's last commit, the worktree path, `round: none`, then the three subsections; it fails because the view does not exist.
+- [x] Code: `board.Running(cfg) []RunState` and `RunState.Full() string` and `RunState.Short() []string` (max 3 lines); review round from the newest `acta: tick fix round N` commit on the branch; `acta state` alone prints one line per running plan.
+- [x] Commit: `state: acta state shows running plans with derived facts`.
 
 ### Task 3: session start summary
 
 **Files:** Modify `internal/hook/hook.go`, `internal/hook/hook_test.go`, `internal/cli/hook.go`, `internal/cli/hook_session_test.go`.
 **verify:** The session start text never shows more than 3 plans or more than 3 lines per plan, never shows a plan from another repo, and on every error path adds nothing. List each error path checked.
-- [ ] Failing test: with 4 running plans, `hook.SessionStart` output holds 3 short blocks, one `+1 more, run acta state` line and the rule line; it fails because `Input` has no running plans field.
-- [ ] Code: `Input.Running []string` blocks filled in `cmdHook` session-start from `board.Running` for the session repo and its worktrees, errors dropped; rule line: before you stop, or when context runs low, run `acta state set <plan> next`.
-- [ ] Commit: `hook: session start lists running plans and their Next`.
+- [x] Failing test: with 4 running plans, `hook.SessionStart` output holds 3 short blocks, one `+1 more, run acta state` line and the rule line; it fails because `Input` has no running plans field.
+- [x] Code: `Input.Running []string` blocks filled in `cmdHook` session-start from `board.Running` for the session repo and its worktrees, errors dropped; rule line: before you stop, or when context runs low, run `acta state set <plan> next`.
+- [x] Commit: `hook: session start lists running plans and their Next`.
 
 ### Task 4: skills and dispatch brief
 
 **Files:** Modify `plugin/skills/build/SKILL.md`, `plugin/skills/land/SKILL.md`, `internal/cli/dispatch_brief.go`, `internal/cli/dispatch_brief_test.go`.
 **verify:** Every brief round tells the recipient to read `acta state <plan>` first, and the build and land skills each name when State is written or read; `internal/plugincheck` stays green. List every brief round kind checked.
-- [ ] Failing test: a built brief for each round kind contains `acta state`; it fails because the brief has no such line.
-- [ ] Code: one brief line; build: update Next after each task commit, Findings for a finding that cost time, Open rulings for a question waiting on the user; land: before the merge read Findings and move each lasting one to a wiki page or a debt item.
-- [ ] Commit: `skills: build writes plan State, land drains Findings, brief reads it`.
+- [x] Failing test: a built brief for each round kind contains `acta state`; it fails because the brief has no such line.
+- [x] Code: one brief line; build: update Next after each task commit, Findings for a finding that cost time, Open rulings for a question waiting on the user; land: before the merge read Findings and move each lasting one to a wiki page or a debt item.
+- [x] Commit: `skills: build writes plan State, land drains Findings, brief reads it`.
 
 ### Task 5: resume eval and version
 

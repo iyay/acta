@@ -41,8 +41,11 @@ func Running(cfg config.Config) []RunState {
 		return nil
 	}
 	var out []RunState
-	for _, w := range wts {
-		if sameDir(w.Path, cfg.RepoRoot) || strings.HasPrefix(w.Branch, "(") {
+	for i, w := range wts {
+		// Git lists the main checkout first, so index 0 is the one folder
+		// that is not a worktree of itself. Skipping the folder the command
+		// runs in instead would hide the worktree a session was started in.
+		if i == 0 || strings.HasPrefix(w.Branch, "(") {
 			continue
 		}
 		c, err := config.Load(w.Path, "")
