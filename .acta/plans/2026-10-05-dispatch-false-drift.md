@@ -5,6 +5,7 @@ id: PLN-0092
 created: "2026-10-05 19:15:46"
 hash: eea59pz
 started: "2026-10-05 19:28:54"
+finished: "2026-10-05 19:33:53"
 ---
 # Dispatch false drift Implementation Plan
 
@@ -46,6 +47,12 @@ started: "2026-10-05 19:28:54"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- dispatch.md sits exactly at its plugincheck cap, so the next edit that grows it must raise the cap.
+- `found == 0` could be written as `len(missing) == len(ids)`; style only.
+- The id search reads the whole pane read, not only the todo card; that was true before this change.
