@@ -27,7 +27,7 @@ func TestSkillReview(t *testing.T) {
 			"The `[fix]` NOTEs join that fix task.",
 			// The whole CLEAN-round flow, in the one section that owns it.
 			"\n## After a CLEAN round\n",
-			"The polish commit counts as no round. Every commit gets the two reviewers.",
+			"The polish commit counts as no round. Every polish commit gets the two reviewers.",
 			"Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.",
 			"one polish commit holding all of them",
 			"The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range.",
@@ -51,7 +51,7 @@ func TestSkillReview(t *testing.T) {
 			"and over a polish commit",
 			"A CLEAN round: no new round, no new fix task. Run `## After a CLEAN round`.",
 		},
-		MustNot: []string{"superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
+		MustNot: []string{"explicit instruction-file violation", "Acknowledge strengths", "Production readiness", "superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
 			"land now with",
 			`Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE.`,
 			"CLEAN: land.",

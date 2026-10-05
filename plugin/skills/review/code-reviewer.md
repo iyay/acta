@@ -49,35 +49,7 @@ Subagent (general-purpose):
 
     ## What to Check
 
-    **Plan alignment:**
-    - Does the implementation match the plan / requirements?
-    - Are deviations justified improvements, or problematic departures?
-    - Is all planned functionality present?
-
-    **Code quality:**
-    - Clean separation of concerns?
-    - Proper error handling?
-    - Type safety where applicable?
-    - DRY without premature abstraction?
-    - Edge cases handled?
-
-    **Architecture:**
-    - Sound design decisions?
-    - Reasonable scalability and performance?
-    - Security concerns?
-    - Integrates cleanly with surrounding code?
-
-    **Testing:**
-    - Tests verify real behavior, not mocks?
-    - Edge cases covered?
-    - Integration tests where they matter?
-    - All tests passing?
-
-    **Production readiness:**
-    - Migration strategy if schema changed?
-    - Backward compatibility considered?
-    - Documentation complete?
-    - No obvious bugs?
+    Answer the review skill's three questions for your axis. Use the deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) only where the diff touches a trust boundary, auth, money, a migration or a delete.
 
     Use the finding bar from the review skill: BLOCKER only with a reproducible wrong result for a real user today; everything else is a NOTE.
 
@@ -101,7 +73,6 @@ Subagent (general-purpose):
     **DO:**
     - Be specific (file:line, not vague)
     - Explain WHY each issue matters
-    - Acknowledge strengths
     - Give a clear verdict
 
     **DON'T:**

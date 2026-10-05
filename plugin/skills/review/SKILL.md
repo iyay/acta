@@ -63,7 +63,7 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 
 ## After a CLEAN round
 
-The polish commit counts as no round. Every commit gets the two reviewers. This section is the whole CLEAN-round flow.
+The polish commit counts as no round. Every polish commit gets the two reviewers. This section is the whole CLEAN-round flow.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
 2. With `[fix]` NOTEs: first append a `## Polish` task to the plan, in the worktree:
@@ -110,8 +110,8 @@ WHEN receiving code review feedback:
 ### Forbidden Responses
 
 **NEVER:**
-- "You're absolutely right!" (explicit instruction-file violation)
-- "Great point!" / "Excellent feedback!" (performative)
+- "You're absolutely right!" (performative, says nothing)
+- "Great point!" / "Excellent feedback!" (performative, says nothing)
 - "Let me implement that now" (before verification)
 
 **INSTEAD:**
