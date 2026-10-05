@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0092
 created: "2026-10-05 19:15:46"
 hash: eea59pz
+started: "2026-10-05 19:28:54"
 ---
 # Dispatch false drift Implementation Plan
 
@@ -29,17 +30,17 @@ hash: eea59pz
 
 **Files:** Modify `internal/cli/dispatch_herdr.go`, `internal/cli/dispatch_herdr_test.go`, and `internal/cli/dispatch_send_test.go` if a send test pins the old verdict.
 **verify:** For every pane text (no card, card with no task ids, card with some ids, card with all ids) the verdict is exactly unconfirmed, unconfirmed, drift with the missing ids, ok; no card that names no task id ever gives drift. List each pane text checked.
-- [ ] Failing test: pane text with a todo card of generic steps and no task ids; checkpoint returns drift today, so the test wanting unconfirmed fails.
-- [ ] Code: count the ids found; zero found gives unconfirmed, some but not all gives drift, all gives ok.
-- [ ] Commit: `dispatch: a todo card with no task ids is unconfirmed, not drift`.
+- [x] Failing test: pane text with a todo card of generic steps and no task ids; checkpoint returns drift today, so the test wanting unconfirmed fails.
+- [x] Code: count the ids found; zero found gives unconfirmed, some but not all gives drift, all gives ok.
+- [x] Commit: `dispatch: a todo card with no task ids is unconfirmed, not drift`.
 
 ### Task 2: dispatch skill text
 
 **Files:** Modify `plugin/skills/build/dispatch.md`, and `internal/plugincheck/budget_test.go` only if the cap needs it.
 **verify:** Every line in dispatch.md that explains exit 4 or `unconfirmed` matches the new verdicts; `internal/plugincheck` passes. List each line checked.
-- [ ] Failing test: `scripts/test ./internal/plugincheck` green before; read the exit 4 lines and see they treat any missing id as drift.
-- [ ] Code: say exit 4 means a card that names some task ids and skips others; a card with no ids comes back as unconfirmed.
-- [ ] Commit: `skills: dispatch drift means a card that skips some task ids`.
+- [x] Failing test: `scripts/test ./internal/plugincheck` green before; read the exit 4 lines and see they treat any missing id as drift.
+- [x] Code: say exit 4 means a card that names some task ids and skips others; a card with no ids comes back as unconfirmed.
+- [x] Commit: `skills: dispatch drift means a card that skips some task ids`.
 
 ### Task 3: version bump
 

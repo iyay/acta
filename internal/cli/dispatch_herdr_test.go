@@ -477,14 +477,14 @@ func TestHerdrCheckpointUnconfirmedWithNoTodoList(t *testing.T) {
 	h.wantCalls([]string{readRecent}, h.calls())
 }
 
-// A made-up todo list is the case the checkpoint exists for: a card is on
-// screen and none of the ids is in it. That is drift, not "not written yet".
-func TestHerdrCheckpointCardWithNoIDsIsDrift(t *testing.T) {
+// A generic todo list names none of the plan's task ids: the real list is
+// not written yet, so that is unconfirmed, not drift.
+func TestHerdrCheckpointCardWithNoIDsIsUnconfirmed(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
 	h.out("agent_read_recent-unwrapped", "\u23fa Todo 2 tasks\n\u2610 Build the auth module\n\u2610 Add the REST endpoints\n")
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2"})
-	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1", "2"}) {
+	if verdict != "unconfirmed" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
 	}
 	if !strings.Contains(pane, "auth module") {
@@ -550,8 +550,9 @@ func TestHerdrCheckpointTDashTenIsNotOne(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
 	h.out("agent_read_recent-unwrapped", todoCard+"- T-10: other\n")
+	// T-10 names no id here, so the card is still unwritten, not drift.
 	verdict, missing, _ := checkpoint("round-1", []string{"1"})
-	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1"}) {
+	if verdict != "unconfirmed" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
 	}
 }

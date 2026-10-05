@@ -278,11 +278,12 @@ var todoCardHeader = regexp.MustCompile(`(?m)^(?:\[x\])?[^\p{L}\p{N}\n]*Todo(?:\
 
 // checkpoint waits, then reads the pane once and looks for every task id.
 // With no todo card on screen the list is not written yet, which is
-// "unconfirmed", not a failure. With a card, an id that is missing is
-// "drift", even when every id is missing: that is a made-up list. The pane
-// text comes back so the caller can show it on drift. A failed read is
-// "unconfirmed" too, with the failure in place of the text. With no ids
-// there is nothing to check: ok, and herdr is not called.
+// "unconfirmed", not a failure. A card that names none of the ids is the
+// same: the real list is still not written. Only a card that names some ids
+// but skips others is "drift". The pane text comes back so the caller can
+// show it on drift. A failed read is "unconfirmed" too, with the failure in
+// place of the text. With no ids there is nothing to check: ok, and herdr
+// is not called.
 func checkpoint(slug string, ids []string) (string, []string, string) {
 	if len(ids) == 0 {
 		return checkpointOK, nil, ""
@@ -296,10 +297,16 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 		return checkpointUnconfirmed, nil, text
 	}
 	var missing []string
+	found := 0
 	for _, id := range ids {
 		if !regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)` + regexp.QuoteMeta(id) + `\b`).MatchString(text) {
 			missing = append(missing, id)
+		} else {
+			found++
 		}
+	}
+	if found == 0 {
+		return checkpointUnconfirmed, nil, text
 	}
 	if len(missing) > 0 {
 		return checkpointDrift, missing, text

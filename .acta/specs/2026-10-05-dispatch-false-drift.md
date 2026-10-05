@@ -3,6 +3,7 @@ parent: scratch/2026-10-05-dispatch-false-drift
 id: SPC-0082
 created: "2026-10-05 19:15:46"
 hash: sid8mui
+started: "2026-10-05 19:28:54"
 ---
 # Dispatch checkpoint: a todo list with no task ids is unconfirmed, not drift
 
