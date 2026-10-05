@@ -156,7 +156,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "eval-omp":
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, id, list, show, set, state, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one or eval-omp\n", args[0])
 		return exitBadInput
 	}
 }

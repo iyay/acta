@@ -12,6 +12,14 @@ import (
 // statePlan is a plan with two tasks and no State section yet.
 const statePlan = "---\nstatus: in-progress\n---\n# Live work state\n\n### Task 1: acta state set\n- [ ] test\n- [ ] code\n"
 
+// statePlanWithID is the same plan with the number id a real plan carries, so
+// the commit can name it the way a person would.
+const statePlanWithID = "---\nid: PLN-0082\nstatus: in-progress\n---\n# Live work state\n\n### Task 1: acta state set\n- [ ] test\n- [ ] code\n"
+
+// statePlanNoID has a hash but no number id, so the board has no short id to
+// name and the commit has to fall back.
+const statePlanNoID = "---\nhash: k3f2\nstatus: in-progress\n---\n# Live work state\n\n### Task 1: acta state set\n- [ ] test\n- [ ] code\n"
+
 // stateRepo makes a git repo with one plan and gives the config and the path
 // the plan file has on disk.
 func stateRepo(t *testing.T, plan string) (config.Config, string) {
@@ -103,12 +111,12 @@ func TestSetStateEmptyBodyClearsTheSubsection(t *testing.T) {
 // The commit says which plan the state belongs to, and the file is the only
 // thing in it.
 func TestSetStateCommitsWithTheStateSubject(t *testing.T) {
-	cfg, path := stateRepo(t, statePlan)
+	cfg, path := stateRepo(t, statePlanWithID)
 	before := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
 	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: state plans/2026-10-05-live-work-state" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: state PLN-0082" {
 		t.Fatalf("commit subject %q", got)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "show", "--name-only", "--format=", "HEAD"); got != ".acta/plans/2026-10-05-live-work-state.md" {
@@ -119,6 +127,18 @@ func TestSetStateCommitsWithTheStateSubject(t *testing.T) {
 	}
 	if got := stateBody(t, path); !strings.Contains(got, "### Open rulings\n\nwhich side?\n") {
 		t.Fatalf("rulings not written under the Open rulings heading: %q", got)
+	}
+}
+
+// A plan file with no number id has no short id to name, so the commit says
+// the id it was given instead of failing.
+func TestSetStateFallsBackToTheIdWhenThePlanHasNoShortID(t *testing.T) {
+	cfg, _ := stateRepo(t, statePlanNoID)
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
+		t.Fatal(err)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: state plans/2026-10-05-live-work-state" {
+		t.Fatalf("commit subject %q", got)
 	}
 }
 

@@ -72,3 +72,26 @@ finished: "2026-10-05 10:31:11"
 - [x] Failing test: the eval case layout check in `internal/plugincheck` and the eval itself on a scaffold with a half done plan and a Next line; red before the case exists.
 - [x] Code: scaffold a repo with a running plan, worktree and Next; graders check the agent acts on Next without a question; bump the patch in all three files.
 - [x] Commit: `eval: fresh session resumes from plan State; version 0.1.6`.
+
+## Review notes
+
+- runningBlock applies the 3-line cap before blank lines are dropped, so a block with a blank line in the middle shows fewer lines.
+- planStates takes index 0 of `git worktree list` as the main checkout; it leans on git's output order.
+- The dispatch brief line names `acta state <plan>`; nothing checks the plan argument form.
+- The spec says the worktree comes from internal/trees; the code uses gitc.Worktrees with the same effect.
+- `acta state <plan>` also shows a finished plan still in a worktree, on purpose, so land can read Findings.
+- sameDir in internal/board/state.go is used only by tests.
+- The build skill line is looser in wording than the spec's three triggers, but names all three.
+- The help test splits the help text on ", ", so a change to a newline list breaks it.
+
+## Fix round 1
+
+### Task 6: state-resume graders read the worktree
+
+**Files:** Modify `plugin/evals/state-resume/graders/followed-next.md`, `plugin/evals/state-resume/graders/read-the-price.md`, and `plugin/evals/state-resume/scaffold.sh` only if a comment there names the graded path.
+**verify:** The state-resume case passes when the agent makes the Next change in the plan's worktree (`wt/src/invoice.py`) whether or not the merge to main happens, and still fails when the agent only reads the state and changes no file. List the graded paths and both outcomes checked.
+- [x] Failing test: `scripts/eval --case state-resume` with the branch binary on PATH scores 0.50; the run trace shows the agent wrote `wt/src/invoice.py` and the sandbox blocked the merge, so `src/invoice.py` stayed unchanged.
+- [x] Code: point both file graders at `wt/src/invoice.py`; keep their patterns as they are.
+- [x] Commit: `eval: state-resume grades the worktree file the build changes`.
+- Fix round 1: a run that edits only main's src/invoice.py and never the worktree now fails the state-resume file graders, on purpose.
+- The state-resume grader files end with no newline, as before.

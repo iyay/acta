@@ -73,7 +73,13 @@ func SetState(cfg config.Config, b *board.Board, planID, part string, body []byt
 	if err := os.WriteFile(it.Path, out, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, it.Path, "acta: state "+planID, dirty), nil
+	// A plan with no number id has no short id to name, so the commit says
+	// the id it was given.
+	name := it.ShortID
+	if name == "" {
+		name = it.ID
+	}
+	return finish(cfg, it.Path, "acta: state "+name, dirty), nil
 }
 
 // putState writes text under the heading the State parts name at index at. A
