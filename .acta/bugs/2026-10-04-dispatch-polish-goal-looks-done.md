@@ -1,6 +1,8 @@
 ---
 id: BUG-0028
 hash: b86e4y3
+fixed_in: d255ea23a428487667e30f014e50f5f116f2436b
+finished: "2026-10-05 14:34:24"
 ---
 # A polish dispatch is skipped: omp says the goal is done and makes no commit
 

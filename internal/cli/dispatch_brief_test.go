@@ -308,3 +308,43 @@ func TestBriefTasksIgnoresFencedHeadings(t *testing.T) {
 		t.Errorf("first dispatch: got %d tasks, err %v", len(tasks), err)
 	}
 }
+
+// TestBriefTasksPolishStopsAtNextSection pins the polish round to the tasks
+// under "## Polish" up to the next "## " heading, whatever follows it.
+func TestBriefTasksPolishStopsAtNextSection(t *testing.T) {
+	head := "# P\n\n**Spec:** x\n\n### Task 1: base\n\n**verify:** base holds\n"
+	polish := "\n## Polish\n\n### Task 3: p\n\n**verify:** p holds\n"
+	fix := "\n## Fix round 1\n\n### Task 2: f\n\n**verify:** f holds\n"
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{"fix before polish", head + fix + polish},
+		{"polish before fix", head + polish + fix},
+		{"polish before State", head + polish + "\n## State\n\nleftovers\n"},
+		{"polish before Review notes", head + polish + "\n## Review notes\n\n- a note\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			tasks, err := briefTasks([]byte(c.src), "polish")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tasks) != 1 || tasks[0].Num != "3" {
+				var names []string
+				for _, task := range tasks {
+					names = append(names, task.Num+":"+task.Title)
+				}
+				t.Fatalf("polish took %q, want only the p task", names)
+			}
+		})
+	}
+	// The fix round next to a polish section keeps only its own task.
+	tasks, err := briefTasks([]byte(head+polish+fix), "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].Num != "2" {
+		t.Fatalf("fix round took the polish task: %+v", tasks)
+	}
+}

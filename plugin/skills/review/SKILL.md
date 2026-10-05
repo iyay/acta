@@ -77,7 +77,7 @@ The polish commit counts as no round. Every commit gets the two reviewers. This 
    - [ ] <one box per [fix] NOTE>
    - [ ] Commit: `polish: review notes for <plan id>`
    ```
-   N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range. When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. The polish commit uses no round.
+   N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range. When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
 5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.

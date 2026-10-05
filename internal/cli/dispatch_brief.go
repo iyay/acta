@@ -39,6 +39,7 @@ type planMarks struct {
 	fixLines   []int // 1-based lines of the "## Fix round" headings
 	fixEnd     int   // line after the last fix round section ends, 0 = end of file
 	polishLine int   // 1-based line of the "## Polish" heading, 0 = none
+	polishEnd  int   // line after the polish section ends, 0 = end of file
 	waves      string
 	hasWaves   bool
 	tests      string // text after "**Tests:**"
@@ -62,6 +63,12 @@ func scanPlan(src []byte) planMarks {
 			// later "## Fix round" ends an earlier one.
 			if afterFix && !fixHeadRe.MatchString(ln) && m.fixEnd == 0 {
 				m.fixEnd = i + 1
+			}
+			// Any later "## " heading ends the polish section, so a fix
+			// round or State below it stays out of the polish round. A
+			// second "## Polish" is a plan typo, not the end.
+			if m.polishLine > 0 && m.polishEnd == 0 && !polishHeadRe.MatchString(strings.TrimSpace(ln)) {
+				m.polishEnd = i + 1
 			}
 			if fixHeadRe.MatchString(ln) {
 				m.fixLines = append(m.fixLines, i+1)
@@ -106,7 +113,7 @@ func briefTasks(src []byte, round string) ([]board.TaskSec, error) {
 		if marks.polishLine == 0 {
 			return nil, fmt.Errorf("round %q needs a \"## Polish\" section in the plan, found none", round)
 		}
-		lo = marks.polishLine
+		lo, hi = marks.polishLine, marks.polishEnd
 	} else if round == "" {
 		// The first dispatch stops at whichever section comes first.
 		hi = firstSectionLine(marks)
@@ -117,11 +124,10 @@ func briefTasks(src []byte, round string) ([]board.TaskSec, error) {
 		if len(marks.fixLines) == 0 {
 			return nil, fmt.Errorf("round %q needs a \"## Fix round\" section in the plan, found none", round)
 		}
+		// fixEnd already stops at the next "## " heading, so a polish
+		// section after the last fix round stays out on its own. No extra
+		// clamp: it could never change the result.
 		lo, hi = marks.fixLines[len(marks.fixLines)-1], marks.fixEnd
-		// A polish section after the last fix round is not a fix task.
-		if marks.polishLine > lo && (hi == 0 || marks.polishLine < hi) {
-			hi = marks.polishLine
-		}
 	}
 	var out []board.TaskSec
 	for _, t := range all {

@@ -56,11 +56,12 @@ finished: "2026-10-05 14:04:15"
 
 ### Findings
 
-All three files agree on 0.1.11, one patch above main 0.1.10.
-plugincheck green before and after the bump.
-Polish tasks 1-2 already landed on this branch.
-Commit holds only the three version files.
-Plan file ticks stay uncommitted per contract.
+Polish round now ends at next ## heading (scanPlan polishEnd).
+Fix-round clamp removed as dead: fixEnd already stops there.
+Shapes: fix-before-polish, polish-before-fix, polish+State, polish+Review notes.
+--round polish names only the p task in all four; r1 keeps only f.
+Review SKILL step 2: revert ticks Polish boxes, notes move to debt.
+Commit holds brief+test+skill+cap; plan ticks uncommitted.
 
 ## Fix round 1
 
@@ -68,6 +69,13 @@ Plan file ticks stay uncommitted per contract.
 
 **Files:** Modify `internal/cli/dispatch_brief.go`, `internal/cli/dispatch_brief_test.go`, `plugin/skills/review/SKILL.md`.
 **verify:** For every plan shape (fix rounds before polish, polish before a fix round, polish followed by `## State` or `## Review notes`), `--round polish` names only the tasks under `## Polish` up to the next `## ` heading; and the review skill says what happens to the `## Polish` task when the polish commit is reverted. List each shape checked.
-- [ ] Failing test: plan `### Task 1`, `## Polish` with `### Task 3: p`, `## Fix round 1` with `### Task 2: f`; `briefTasks(src, "polish")` returns p and f, so it fails.
-- [ ] Code: record where the polish section ends (next `## ` heading) in `scanPlan` and use it as the upper bound for the polish round; remove the clamp in the fix-round branch at dispatch_brief.go:121-124 if it can never change the result, else say in its comment it is only a safety net; in review SKILL.md step 2 or 3, one short sentence: on revert, tick the `## Polish` task boxes and note that its items moved to debt.
-- [ ] Commit: `dispatch: polish round stops at the next section; review says what a revert does to the polish task`.
+- [x] Failing test: plan `### Task 1`, `## Polish` with `### Task 3: p`, `## Fix round 1` with `### Task 2: f`; `briefTasks(src, "polish")` returns p and f, so it fails.
+- [x] Code: record where the polish section ends (next `## ` heading) in `scanPlan` and use it as the upper bound for the polish round; remove the clamp in the fix-round branch at dispatch_brief.go:121-124 if it can never change the result, else say in its comment it is only a safety net; in review SKILL.md step 2 or 3, one short sentence: on revert, tick the `## Polish` task boxes and note that its items moved to debt.
+- [x] Commit: `dispatch: polish round stops at the next section; review says what a revert does to the polish task`.
+
+## Review notes
+
+- planMarks.waves lost its comment when the struct was re-aligned.
+- The plan's State Findings line says "Polish tasks 1-2 already landed"; it means plan tasks 1-2.
+- The review skill's revert sentence does not say who ticks the `## Polish` boxes; the orchestrator does.
+- The fix round also raised the review SKILL.md cap in internal/plugincheck/budget_test.go, which Task 4 did not list; it follows from the added sentence.
