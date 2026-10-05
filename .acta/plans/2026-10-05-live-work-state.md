@@ -5,6 +5,7 @@ id: PLN-0082
 created: "2026-10-05 08:18:43"
 hash: j3kgvms
 started: "2026-10-05 08:32:15"
+finished: "2026-10-05 10:31:11"
 ---
 # Live work state Implementation Plan
 
@@ -68,6 +69,6 @@ started: "2026-10-05 08:32:15"
 
 **Files:** Create `plugin/evals/state-resume/` (`case.yaml`, `prompt.md`, `scaffold.sh`, `graders/`); modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The eval passes only when the agent's first work step follows Next and fails when it asks the user where things stand; the three version files agree on 0.1.6.
-- [ ] Failing test: the eval case layout check in `internal/plugincheck` and the eval itself on a scaffold with a half done plan and a Next line; red before the case exists.
-- [ ] Code: scaffold a repo with a running plan, worktree and Next; graders check the agent acts on Next without a question; bump the patch in all three files.
-- [ ] Commit: `eval: fresh session resumes from plan State; version 0.1.6`.
+- [x] Failing test: the eval case layout check in `internal/plugincheck` and the eval itself on a scaffold with a half done plan and a Next line; red before the case exists.
+- [x] Code: scaffold a repo with a running plan, worktree and Next; graders check the agent acts on Next without a question; bump the patch in all three files.
+- [x] Commit: `eval: fresh session resumes from plan State; version 0.1.6`.

@@ -28,6 +28,7 @@ var evalCases = []struct {
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 	{"wiki-hint", "hooks/hooks.json", "Bash|Read|Edit|Write|MultiEdit"},
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
+	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it
