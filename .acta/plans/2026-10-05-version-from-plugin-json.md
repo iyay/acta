@@ -5,6 +5,7 @@ id: PLN-0083
 created: "2026-10-05 08:37:30"
 hash: leucc00
 started: "2026-10-05 11:55:05"
+finished: "2026-10-05 12:02:52"
 ---
 # Version from plugin.json Implementation Plan
 
@@ -39,6 +40,6 @@ started: "2026-10-05 11:55:05"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck ./plugin` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck ./plugin` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
