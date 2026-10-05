@@ -26,7 +26,7 @@ var fileCaps = map[string]int{
 	"references/house-rules.md":               3787,
 	"skills/bug/SKILL.md":                     2327,
 	"skills/build/SKILL.md":                   16222,
-	"skills/build/dispatch.md":                6371,
+	"skills/build/dispatch.md":                6477,
 	"skills/build/implementer-prompt.md":      7518,
 	"skills/build/wiki.md":                    2750,
 	"skills/debug/SKILL.md":                   10401,
