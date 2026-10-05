@@ -274,6 +274,8 @@ func (m Model) WithTrace(t *Tracer) Model {
 // and starts the hide timer for a message the model was built with, such as
 // a theme that did not load, because no Update saw it.
 func (m Model) Init() tea.Cmd {
+	// The board is already here from New, but its review rounds are not,
+	// so load once more here, off the UI goroutine, to keep the screen fast.
 	first := m.reloadCmd()
 	if m.status == "" {
 		return tea.Batch(nextMinute(), first)

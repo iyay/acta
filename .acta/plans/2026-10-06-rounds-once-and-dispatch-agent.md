@@ -6,6 +6,7 @@ id: PLN-0098
 created: "2026-10-06 05:34:45"
 hash: wcciscq
 started: "2026-10-06 05:37:45"
+finished: "2026-10-06 06:04:20"
 ---
 # Review rounds once per load and dispatch agent name Implementation Plan
 
@@ -57,6 +58,23 @@ started: "2026-10-06 05:37:45"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Add one plain comment in `Init` (`internal/tui/model.go`) saying why the board loads again there: the second load fills the review rounds off the UI goroutine.
+- [x] In `internal/cli/dispatch_send.go`, print the error from `hook.EnsureGitignore` on stderr the same way the `SetDefaultAgent` error is printed; the send still counts.
+- [x] Commit: `polish: review notes for PLN-0098`
+
+## Review notes
+
+- Init starts its own board load on top of the one runTUI does, so the TUI loads the board twice at start; the second load is what fills the review rounds.
+- Reload reads m.load and m.cfg when called; a later WithLoad on another copy would not reach the watcher. No caller does that today.
+- SetDefaultAgent stamps time.Now() directly, while RecordAgent takes now as a parameter, so tests cannot pin the time on the "*" record.
+- The formatting-only commit omp made in round 1 was folded into its task commit with a rebase before landing.
