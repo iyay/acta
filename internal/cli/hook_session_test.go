@@ -38,6 +38,21 @@ func hookEvent(session, command string) string {
 
 const brainstormOne = "acta set scratch/one status brainstorming"
 
+// hookScratch writes the two scratch items the brainstorm fixtures name, so
+// the record and block paths see real items instead of mistyped stems.
+func hookScratch(t *testing.T, dir string) {
+	t.Helper()
+	for stem, id := range map[string]string{"one": "SCRATCH-1", "two": "SCRATCH-2"} {
+		path := filepath.Join(dir, ".acta", "scratch", stem+".md")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("---\nid: "+id+"\n---\n# "+stem+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func readState(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(dir, ".acta", "state", "sessions.json"))
@@ -56,6 +71,7 @@ func readState(t *testing.T, dir string) map[string]string {
 func TestHookSessionPostToolRecords(t *testing.T) {
 	dir := hookRepo(t)
 	t.Chdir(dir)
+	hookScratch(t, dir)
 
 	if code, out, errb := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK || out != "" || errb != "" {
 		t.Fatalf("recording a brainstorm: exit %d, stdout %q, stderr %q", code, out, errb)
@@ -119,6 +135,7 @@ func TestHookSessionPostToolUnwritableRoot(t *testing.T) {
 func TestHookSessionPreToolBlocksSecondItem(t *testing.T) {
 	dir := hookRepo(t)
 	t.Chdir(dir)
+	hookScratch(t, dir)
 	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
 		t.Fatalf("recording the first brainstorm: exit %d", code)
 	}
@@ -186,6 +203,7 @@ func TestHookSessionOutsideAnyRepo(t *testing.T) {
 func TestHookSessionPromptReminder(t *testing.T) {
 	dir := hookRepo(t)
 	t.Chdir(dir)
+	hookScratch(t, dir)
 	// A voice file that is not there makes the voice line the same on every
 	// machine, so the test does not read the developer's own voice.
 	t.Setenv("PM_VOICE_FILE", filepath.Join(dir, "voice.yaml"))
