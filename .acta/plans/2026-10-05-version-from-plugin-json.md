@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0083
 created: "2026-10-05 08:37:30"
 hash: leucc00
+started: "2026-10-05 11:55:05"
 ---
 # Version from plugin.json Implementation Plan
 
@@ -30,9 +31,9 @@ hash: leucc00
 
 **Files:** Create `plugin/version.go`, `plugin/version_test.go`; modify `internal/cli/cli.go`, `internal/cli/doctor.go`, `internal/cli/doctor_test.go`.
 **verify:** No version text acta shows (TUI header, doctor) ever comes from the Go module pseudo-version; each reads the plugin.json version, and every bad input (empty field, bad JSON, missing field) gives `dev`. List every place that shows a version and every bad input checked.
-- [ ] Failing test: `plugin.Version()` equals the `version` in `.claude-plugin/plugin.json`, and a parse helper given bad JSON or an empty field returns `dev`; fails because the package does not exist.
-- [ ] Code: `plugin/version.go` embeds `.claude-plugin/plugin.json` with `go:embed` and parses `version`; `cli.go` passes `"v" + plugin.Version()` (or `dev`) to `WithVersion`; `buildVersion` in `doctor.go` uses `plugin.Version()` and keeps the commit in brackets when the build stamped one.
-- [ ] Commit: `version: TUI and doctor show the plugin.json version`.
+- [x] Failing test: `plugin.Version()` equals the `version` in `.claude-plugin/plugin.json`, and a parse helper given bad JSON or an empty field returns `dev`; fails because the package does not exist.
+- [x] Code: `plugin/version.go` embeds `.claude-plugin/plugin.json` with `go:embed` and parses `version`; `cli.go` passes `"v" + plugin.Version()` (or `dev`) to `WithVersion`; `buildVersion` in `doctor.go` uses `plugin.Version()` and keeps the commit in brackets when the build stamped one.
+- [x] Commit: `version: TUI and doctor show the plugin.json version`.
 
 ### Task 2: version bump
 

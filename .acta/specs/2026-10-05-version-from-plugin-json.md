@@ -3,6 +3,7 @@ parent: none
 id: SPC-0073
 created: "2026-10-05 08:36:24"
 hash: wpf1svc
+started: "2026-10-05 11:55:05"
 ---
 # Show the plugin version in the TUI and doctor
 

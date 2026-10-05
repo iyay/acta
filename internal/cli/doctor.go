@@ -16,6 +16,7 @@ import (
 	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/theme"
+	"github.com/iyay/acta/plugin"
 )
 
 const doctorUsage = "usage: acta doctor [--fix] [--known <file>]"
@@ -163,16 +164,19 @@ func homeDir() string {
 	return home
 }
 
-// buildVersion is the version the binary was built with, with the commit
-// appended when the build stamped one, so a stale binary is easy to name.
+// tuiVersion is the version text the TUI header shows: v plus the plugin
+// version, so the board footer never shows a Go pseudo-version.
+func tuiVersion() string {
+	return "v" + plugin.Version()
+}
+
+// buildVersion is the plugin version, with the commit appended when the
+// build stamped one, so a stale binary is easy to name.
 func buildVersion() string {
-	version := "dev"
+	version := plugin.Version()
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return version
-	}
-	if v := info.Main.Version; v != "" && v != "(devel)" {
-		version = v
 	}
 	for _, s := range info.Settings {
 		if s.Key == "vcs.revision" && s.Value != "" {

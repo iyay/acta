@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -728,4 +729,42 @@ func TestDoctorCLISchemaCheck(t *testing.T) {
 			t.Fatalf("stdout %q has no %q", got, want)
 		}
 	})
+}
+
+// pluginFileVersion reads the version field straight from the plugin file
+// on disk, so these tests track the real file instead of a copy.
+func pluginFileVersion(t *testing.T) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", ".claude-plugin", "plugin.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Version == "" || got.Version == "dev" {
+		t.Fatalf("plugin.json version = %q, test needs the real version", got.Version)
+	}
+	return got.Version
+}
+
+// buildVersion must show the version from plugin.json, with the build-stamped
+// commit in brackets when there is one, so a stale binary is easy to name.
+func TestBuildVersionShowsPluginVersion(t *testing.T) {
+	want := pluginFileVersion(t)
+	got := buildVersion()
+	if !strings.HasPrefix(got, want) {
+		t.Fatalf("buildVersion() = %q, want it to start with %q", got, want)
+	}
+}
+
+// tuiVersion is the version text the TUI header shows: v plus the plugin
+// version, so the board footer never shows a Go pseudo-version.
+func TestTUIVersionShowsPluginVersion(t *testing.T) {
+	if got, want := tuiVersion(), "v"+pluginFileVersion(t); got != want {
+		t.Fatalf("tuiVersion() = %q, want %q", got, want)
+	}
 }

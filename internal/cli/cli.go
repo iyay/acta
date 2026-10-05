@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,14 +42,8 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	}
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
-	// The version comes from the build info: a tag for go install, dev for a
-	// local build with no version stamped in.
-	version := "dev"
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		version = info.Main.Version
-	}
 	dark := lipgloss.HasDarkBackground()
-	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(version).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
+	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
 	// 120fps halves how long a new frame waits to reach the screen.
 	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
 	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
