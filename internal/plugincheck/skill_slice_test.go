@@ -30,6 +30,7 @@ func TestSkillSlice(t *testing.T) {
 			"names the DEBT ids it closes",
 			"If working in an isolated worktree",
 			"Ask which executor only if the user has not said",
+			"Every plan MUST start", "Announce at start", "questionable taste", "Frequent commits",
 		},
 	})
 }

@@ -7,11 +7,7 @@ description: "acta: Use after a design is approved, before any code. Turns the s
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
-
-Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
-
-**Announce at start:** "I'm using acta:slice to create the implementation plan."
+Write the plan for a skilled implementer who knows nothing about this codebase, its tools or its domain, and who sees only their own task. Each task names the files to touch, the code, the tests and how to run them. Bite-sized tasks. DRY. YAGNI. TDD. One commit per task.
 
 **Context:** Write and commit a new plan on main, next to its spec. `acta:build` makes the worktree, only after the plan is approved.
 
@@ -108,7 +104,7 @@ Unless `acta config show` says `coding_guide: off`, every plan's Global Constrai
 
 ## Plan Document Header
 
-**Every plan MUST start with this header:**
+**Every `full` plan starts with this header** (a `minimal` plan uses the shorter one in Plan depth):
 
 ```markdown
 # [Feature Name] Implementation Plan
