@@ -5,6 +5,7 @@ id: PLN-0084
 created: "2026-10-05 10:14:33"
 hash: lq4fw29
 started: "2026-10-05 12:21:42"
+finished: "2026-10-05 12:29:58"
 ---
 # TUI tab names Implementation Plan
 
@@ -39,6 +40,13 @@ started: "2026-10-05 12:21:42"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- The new test renders the Activity tab and the help popup only; the detail, status line and empty-state text are covered by grep.
+- Test case labels "scratches" and "debts" in model_test.go stay as they were; nothing reads them.
+- The "Debt comes after Bugs" order check in view_test.go also matches "Debt" inside other text; the exact bar line check covers it.
+- "Key Activities" in plugin/skills/debug/SKILL.md is skill text, not a TUI name, and stays.
