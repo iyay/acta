@@ -21,4 +21,4 @@ PROGRESS: right after each step of a ticket, run acta tick plans/<stem>#task-N -
 NO repo-wide formatter, NO npm install, NO git push, NO database migration.
 DO NOT REVIEW YOUR OWN WORK — no acta:review, no findings, no verdict. Commit the last ticket, fire REPLY-BACK.
 STAY WHERE YOU ARE — you have your own tab. Do NOT move, park, close, or create any pane, tab, or workspace.
-MEMORY: the Claude memory paths named in the brief are read-only. Never write there — your own omp memory keeps what you learn.
+MEMORY: wiki pages named by `acta wiki ls` are read-only for the recipient. Never write there.

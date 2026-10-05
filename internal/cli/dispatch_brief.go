@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/wiki"
 )
 
 // polishRound is the round name for the commit that applies the review NOTEs.
@@ -23,15 +24,13 @@ var (
 
 // briefInput is everything the brief needs besides the plan text.
 type briefInput struct {
-	Round        string // "" first dispatch, "polish", or any other name for the last fix round
-	Note         string
-	Rules        string // absolute path of house-rules.md
-	Worktree     string
-	Branch       string
-	Parent       string
-	Base         string
-	Home         string // user home, where the Claude memory lives
-	MainCheckout string // the main checkout, never the worktree
+	Round    string // "" first dispatch, "polish", or any other name for the last fix round
+	Note     string
+	Rules    string // absolute path of house-rules.md
+	Worktree string
+	Branch   string
+	Parent   string
+	Base     string
 }
 
 // planMarks is what one pass over the plan text finds outside code blocks.
@@ -172,12 +171,6 @@ func taskVerify(t board.TaskSec) (string, bool) {
 	return "", false
 }
 
-// projectMemoryDir is how Claude Code names a project folder: every slash and
-// dot of the main checkout path becomes a dash.
-func projectMemoryDir(main string) string {
-	return strings.NewReplacer("/", "-", ".", "-").Replace(main)
-}
-
 func (in briefInput) check() error {
 	if !filepath.IsAbs(in.Rules) {
 		return fmt.Errorf("house rules path %q is not absolute", in.Rules)
@@ -252,8 +245,8 @@ func buildBrief(planPath string, src []byte, in briefInput) (string, error) {
 	fmt.Fprintf(&b, "WORKTREE: %s (branch %s, parent %s, base %s) — cd there FIRST, work ONLY there. The main checkout stays clean. No git checkout, no cd out, no git push.\n", in.Worktree, in.Branch, in.Parent, in.Base)
 	b.WriteString("FILES: the plan names the area; find the exact lines yourself. A line number is a hint, never the edge. Surgical: every changed line traces to a ticket.\n")
 	fmt.Fprintf(&b, "HOUSE RULES: before the todo list, read %s and AGENTS.md in this worktree.\n", in.Rules)
-	if mem := memoryPaths(in); len(mem) > 0 {
-		fmt.Fprintf(&b, "MEMORY: before the todo list, read %s. They are indexes: open a linked note only when its hook fits a ticket. Read-only, never write there.\n", strings.Join(mem, " and "))
+	if pages, _ := wiki.Load(filepath.Join(in.Worktree, ".acta")); len(pages) > 0 {
+		b.WriteString("WIKI: run `acta wiki ls`, then open the pages whose `paths` cover the plan's files. Read-only, never write there.\n")
 	}
 	fmt.Fprintf(&b, "GATES (from the worktree): %s; typecheck; git diff --stat vs %s shows only plan files. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and every implementer shares one machine.\n", marks.tests, in.Base)
 	if n := strings.TrimSpace(in.Note); n != "" {
@@ -261,19 +254,4 @@ func buildBrief(planPath string, src []byte, in briefInput) (string, error) {
 	}
 	b.WriteString("REPLY-BACK: after the last commit the build skill runs `acta reply-back`. Nothing else to hand-fill.\n")
 	return b.String(), nil
-}
-
-// memoryPaths lists the Claude memory indexes that exist: the user one and the
-// one of the main checkout.
-func memoryPaths(in briefInput) []string {
-	var out []string
-	for _, p := range []string{
-		filepath.Join(in.Home, ".claude", "memory", "MEMORY.md"),
-		filepath.Join(in.Home, ".claude", "projects", projectMemoryDir(in.MainCheckout), "memory", "MEMORY.md"),
-	} {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			out = append(out, p)
-		}
-	}
-	return out
 }

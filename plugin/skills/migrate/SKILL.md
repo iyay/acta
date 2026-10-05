@@ -28,3 +28,13 @@ If the installed `acta` has no `migrate` command yet, use the route below for su
 4. Leave the source files where they are. The user decides when to delete them.
 5. Check with `acta list --all --json` that every new item shows and has no `problems`.
 6. Commit the new files in one commit, staged by path: `chore: migrate <source> into .acta`. Never push.
+
+## Seed the wiki
+
+Seeds an empty `.acta/wiki/` from an existing project. Runs when the user asks, or when `acta:setup` offers it. Never runs without a yes.
+
+1. Say how many sources will be read, so the user sees the cost first.
+2. Read sources by convention, read-only: ADR folders, CHANGELOG, README, agent rule files, commits whose message records a decision, `WHY:` and `HACK:` comments, and the harness's own memory for this project when it has one.
+3. Keep only facts the code cannot tell: decisions and why, gotchas, runbooks, reference facts, domain terms. Drop what git or the plans already hold.
+4. Show one table: source, page type, page path, `paths`, or drop with the reason. Wait for a yes. Write nothing before that.
+5. After the yes, write the pages in a worktree in the format of `../build/wiki.md`, pass `acta wiki check`, then review and land like any plan.

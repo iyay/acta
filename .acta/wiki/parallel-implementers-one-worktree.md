@@ -3,7 +3,7 @@ type: Gotcha
 title: Parallel implementers in one worktree
 description: Lock errors and sibling half-written files are noise; wait and retry, never reset or touch sibling files
 paths: [plugin/references/house-rules.md]
-timestamp: 2026-10-05T15:28:00Z
+timestamp: 2026-10-05T15:49:00Z
 ---
 
 Two agents committing at once collide on `.git/index.lock` or ref locks. A sibling's half-written Go file breaks `go test` for the whole package, so red or green may not be yours.

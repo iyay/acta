@@ -140,16 +140,11 @@ func cmdDispatchSend(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "cannot read the plan:", err)
 		return exitBadInput
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Fprintln(stderr, "cannot find the home folder:", err)
-		return exitOther
-	}
 	// The brief is built before the record is written, so a plan the brief
 	// refuses leaves no record behind.
 	text, err := buildBrief(rec.Plan, src, briefInput{
 		Round: *round, Note: note, Rules: *rules, Worktree: cfg.RepoRoot, Branch: branch,
-		Parent: parent, Base: base, Home: home, MainCheckout: mainCheckout,
+		Parent: parent, Base: base,
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, err)

@@ -3,6 +3,8 @@ parent: scratch/2026-10-05-wiki-first-time-seed
 id: SPC-0086
 created: "2026-10-05 22:21:32"
 hash: a5dq1dj
+started: "2026-10-05 22:24:19"
+finished: "2026-10-05 22:40:40"
 ---
 # Seed the wiki for the first time in an existing project
 
