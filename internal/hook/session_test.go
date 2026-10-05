@@ -77,6 +77,8 @@ func putState(t *testing.T, root, body string) {
 
 func TestPreToolBlocksSecondItemOnly(t *testing.T) {
 	root := t.TempDir()
+	scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
+	scratchFile(t, root, "two", "---\nid: SCRATCH-2\n---\n# Two\n")
 	first := ev("s1", "acta set scratch/one status brainstorming")
 	if block, _ := PreTool(root, first); block {
 		t.Fatal("first brainstorm must pass")
@@ -96,9 +98,88 @@ func TestPreToolBlocksSecondItemOnly(t *testing.T) {
 	}
 }
 
+// A stem with no scratch file is a mistype, not a brainstorm. It is never
+// recorded and never blocks, so a failed set cannot block the real one.
+func TestMistypedStemCountsForNothing(t *testing.T) {
+	makeRoot := func(t *testing.T) string {
+		t.Helper()
+		root := t.TempDir()
+		scratchFile(t, root, "2026-10-05-x", "---\nid: SCRATCH-1\n---\n# X\n")
+		scratchFile(t, root, "2026-10-05-y", "---\nid: SCRATCH-2\n---\n# Y\n")
+		return root
+	}
+	brain := func(stem string) string { return "acta set scratch/" + stem + " status brainstorming" }
+	// Mistyped then real: neither recorded nor blocked.
+	t.Run("mistyped then real", func(t *testing.T) {
+		root := makeRoot(t)
+		if err := RecordBrainstorm(root, ev("s1", brain("x"))); err != nil {
+			t.Fatal(err)
+		}
+		if got := Reminder(root, "s1"); got != "" {
+			t.Fatalf("mistyped stem was recorded: reminder=%q", got)
+		}
+		if block, msg := PreTool(root, ev("s1", brain("2026-10-05-x"))); block {
+			t.Fatalf("real item after a mistype blocked: msg=%q", msg)
+		}
+	})
+	// Real then mistyped: the late mistype changes nothing.
+	t.Run("real then mistyped", func(t *testing.T) {
+		root := makeRoot(t)
+		if err := RecordBrainstorm(root, ev("s1", brain("2026-10-05-x"))); err != nil {
+			t.Fatal(err)
+		}
+		if err := RecordBrainstorm(root, ev("s1", brain("x"))); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := Reminder(root, "s1"), "SCRATCH-1"; !strings.Contains(got, want) {
+			t.Fatalf("reminder=%q, want it to still name %s", got, want)
+		}
+		if block, _ := PreTool(root, ev("s1", brain("x"))); block {
+			t.Fatal("mistype after the real item must pass")
+		}
+	})
+	// Same real item twice: still one brainstorm.
+	t.Run("same real twice", func(t *testing.T) {
+		root := makeRoot(t)
+		if err := RecordBrainstorm(root, ev("s1", brain("2026-10-05-x"))); err != nil {
+			t.Fatal(err)
+		}
+		if block, _ := PreTool(root, ev("s1", brain("2026-10-05-x"))); block {
+			t.Fatal("same item again must pass")
+		}
+	})
+	// Two different real items: still blocked.
+	t.Run("two different real items", func(t *testing.T) {
+		root := makeRoot(t)
+		if err := RecordBrainstorm(root, ev("s1", brain("2026-10-05-x"))); err != nil {
+			t.Fatal(err)
+		}
+		if block, _ := PreTool(root, ev("s1", brain("2026-10-05-y"))); !block {
+			t.Fatal("two different real items must still block")
+		}
+	})
+	// A link is not a file: following it would read outside scratch.
+	t.Run("link is not a file", func(t *testing.T) {
+		root := makeRoot(t)
+		if err := os.Symlink("2026-10-05-x.md", filepath.Join(root, "scratch", "linked.md")); err != nil {
+			t.Fatal(err)
+		}
+		if err := RecordBrainstorm(root, ev("s1", brain("linked"))); err != nil {
+			t.Fatal(err)
+		}
+		if got := Reminder(root, "s1"); got != "" {
+			t.Fatalf("linked stem was recorded: reminder=%q", got)
+		}
+		if block, _ := PreTool(root, ev("s1", brain("linked"))); block {
+			t.Fatal("linked stem must pass")
+		}
+	})
+}
+
 func TestBlockAndReminderNameScratchID(t *testing.T) {
 	root := t.TempDir()
 	scratchFile(t, root, "one", "---\nid: SCRATCH-6\nhash: a1b2\nstatus: brainstorming\n---\n# One\n")
+	scratchFile(t, root, "two", "---\nid: SCRATCH-7\n---\n# Two\n")
 	one := ev("s1", "acta set scratch/one status brainstorming")
 	if err := RecordBrainstorm(root, one); err != nil {
 		t.Fatal(err)
@@ -131,6 +212,7 @@ func TestLabelFallsBackToStem(t *testing.T) {
 	if err := RecordBrainstorm(root, ev("s2", "acta set scratch/two status brainstorming")); err != nil {
 		t.Fatal(err)
 	}
+	scratchFile(t, root, "three", "---\nid: SCRATCH-8\n---\n# Three\n")
 	_, msg := PreTool(root, ev("s1", "acta set scratch/three status brainstorming"))
 	if !strings.Contains(msg, "brainstormed one.") {
 		t.Errorf("missing file: block message = %q, want the stem 'one'", msg)
@@ -148,6 +230,8 @@ func TestBrokenStateNeverBlocks(t *testing.T) {
 	for _, broken := range []string{"{not json", "", "null", `{"s1":42,"s2":"two"}`, `["one"]`} {
 		t.Run(broken, func(t *testing.T) {
 			root := t.TempDir()
+			scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
+			scratchFile(t, root, "two", "---\nid: SCRATCH-2\n---\n# Two\n")
 			putState(t, root, broken)
 			if block, msg := PreTool(root, ev("s1", "acta set scratch/two status brainstorming")); block {
 				t.Errorf("blocked on a broken state file: msg=%q", msg)
@@ -233,6 +317,9 @@ func TestEmptyEventNeverBlocks(t *testing.T) {
 
 func TestRecordBrainstormKeepsOtherSessions(t *testing.T) {
 	root := t.TempDir()
+	scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
+	scratchFile(t, root, "two", "---\nid: SCRATCH-2\n---\n# Two\n")
+	scratchFile(t, root, "three", "---\nid: SCRATCH-3\n---\n# Three\n")
 	if err := RecordBrainstorm(root, ev("s1", "acta set scratch/one status brainstorming")); err != nil {
 		t.Fatal(err)
 	}
@@ -282,10 +369,11 @@ func TestParseEvent(t *testing.T) {
 
 func TestReminderNamesItem(t *testing.T) {
 	root := t.TempDir()
+	scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
 	if err := RecordBrainstorm(root, ev("s1", "acta set scratch/one status brainstorming")); err != nil {
 		t.Fatal(err)
 	}
-	if r := Reminder(root, "s1"); !strings.Contains(r, "one") {
+	if r := Reminder(root, "s1"); !strings.Contains(r, "one") && !strings.Contains(r, "SCRATCH-1") {
 		t.Fatalf("Reminder = %q", r)
 	}
 	if Reminder(root, "s2") != "" {
