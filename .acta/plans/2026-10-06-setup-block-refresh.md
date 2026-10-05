@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0097
 created: "2026-10-06 05:03:29"
 hash: z2a2jjb
+started: "2026-10-06 05:05:28"
 ---
 # Setup block refresh Implementation Plan
 
@@ -33,9 +34,9 @@ hash: z2a2jjb
 
 **verify:** No copy of the acta block in the repo (setup skill template, this repo's `CLAUDE.md`) can differ from the other or miss any of the five spec rules; list every place the block text lives and what each holds.
 
-- [ ] Failing test: add `.acta/` holds-the-wiki line, `acta wiki match`, `acta state`, `acta scratch new` and "never dropped" to the setup skill's `Must` list; it fails because the template has none of them but `acta scratch new`.
-- [ ] Code: replace the lines between `<!-- acta:begin -->` and `<!-- acta:end -->` in the setup skill with the first line plus the five spec rules, raise `MaxLines` to 84, and replace this repo's `CLAUDE.md` acta section with the same text word for word (drop its hand-off line).
-- [ ] Commit: `feat(setup): acta block names the wiki, live state and scratch triage (SPC-0087)`
+- [x] Failing test: add `.acta/` holds-the-wiki line, `acta wiki match`, `acta state`, `acta scratch new` and "never dropped" to the setup skill's `Must` list; it fails because the template has none of them but `acta scratch new`.
+- [x] Code: replace the lines between `<!-- acta:begin -->` and `<!-- acta:end -->` in the setup skill with the first line plus the five spec rules, raise `MaxLines` to 84, and replace this repo's `CLAUDE.md` acta section with the same text word for word (drop its hand-off line).
+- [x] Commit: `feat(setup): acta block names the wiki, live state and scratch triage (SPC-0087)`
 
 ### Task 2: Version bump
 

@@ -5,7 +5,7 @@ import "testing"
 func TestSkillSetup(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "setup",
-		MaxLines: 80,
+		MaxLines: 84,
 		Must: []string{
 			"acta config set", "--language", "--style", "--tone", "--clear-tone", "--repo-language",
 			"Never ask about `coding_guide`",
@@ -29,6 +29,11 @@ func TestSkillSetup(t *testing.T) {
 			"--plan-depth minimal", "--plan-depth full", "acta config set --repo",
 			"every repo or this repo only",
 			"acta config set --repo --executor inline --plan-depth minimal",
+			"the wiki live in `.acta/`",
+			".acta/wiki/",
+			"acta wiki match",
+			"acta state <plan id>",
+			"never dropped",
 		},
 		MustNot: []string{"superpowers:", "It never edits CLAUDE.md",
 			"only for what `acta config show` says is not set yet",
