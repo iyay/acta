@@ -205,6 +205,24 @@ func TestRunningRoundReadsBothSubjects(t *testing.T) {
 	}
 }
 
+// When both round subjects exist but their order cannot be told, the round
+// comes from the new subject, so a branch with mixed history still reports
+// the new form.
+func TestRunningRoundPrefersNewSubjectWithoutOrder(t *testing.T) {
+	t.Parallel()
+
+	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", "chore(plan): tick fix round 5")
+	gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", "acta: tick fix round 2")
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if runs[0].Round != "5" {
+		t.Errorf("round = %q, want 5, the new subject when the order is unknown", runs[0].Round)
+	}
+}
+
 // A branch with no fix round commit has no round, and the view says so instead
 // of leaving the line out or printing an empty number.
 func TestRunningRoundIsNoneWithoutAFixRound(t *testing.T) {
