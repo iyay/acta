@@ -435,21 +435,38 @@ func TestDoctorAgentsView(t *testing.T) {
 	})
 }
 
+// The setup check must tell a healthy setup from a missing one, so a user
+// who skipped picking an executor knows that is fine and not broken.
 func TestDoctorSetup(t *testing.T) {
-	t.Run("no voice file", func(t *testing.T) {
-		e := env(t)
-		e.VoiceExists = false
-		wantLevel(t, byName(Run(e), "setup"), Warn, "/acta:setup")
-	})
-	t.Run("no build executor", func(t *testing.T) {
-		e := env(t)
-		e.Voice = config.User{}
-		wantLevel(t, byName(Run(e), "setup"), Warn, "/acta:setup")
-	})
-	t.Run("all set", func(t *testing.T) {
-		e := env(t)
-		wantLevel(t, byName(Run(e), "setup"), OK, "")
-	})
+	tests := []struct {
+		name        string
+		voiceExists bool
+		executor    string
+		level       Level
+		msg         string
+		fix         string
+	}{
+		{"no voice file", false, "", Warn, "no voice file yet", "/acta:setup"},
+		{"voice with no executor", true, "", OK, "voice is set; build executor not set, build asks each time", ""},
+		{"voice with executor", true, "subagent", OK, "voice and build executor are set", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := env(t)
+			e.VoiceExists = tt.voiceExists
+			e.Voice = config.User{BuildExecutor: tt.executor}
+			r := byName(Run(e), "setup")
+			if r.Level != tt.level {
+				t.Fatalf("level=%q want %q (msg %q fix %q)", r.Level, tt.level, r.Msg, r.Fix)
+			}
+			if r.Msg != tt.msg {
+				t.Fatalf("msg=%q want %q", r.Msg, tt.msg)
+			}
+			if r.Fix != tt.fix {
+				t.Fatalf("fix=%q want %q", r.Fix, tt.fix)
+			}
+		})
+	}
 }
 
 // TestDoctorFixTwice is the point of --fix: it must be safe to run again.

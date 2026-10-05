@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0085
 created: "2026-10-05 12:26:29"
 hash: cqy1o86
+started: "2026-10-05 12:50:42"
 ---
 # Doctor executor not set Implementation Plan
 
@@ -30,9 +31,9 @@ hash: cqy1o86
 
 **Files:** Modify `internal/doctor/doctor.go`, `internal/doctor/doctor_test.go`.
 **verify:** For every voice and executor state (no voice file, voice with no executor, voice with executor) the setup check gives the level, message and fix line the spec names, and no state with a voice file ever gives `warn`. List the three states checked.
-- [ ] Failing test: a table test over the three states; the unset executor case fails because it gives `warn` with the `/acta:setup` fix.
-- [ ] Code: in `checkSetup`, the empty executor case gives `OK` with the spec message and no fix; the other two cases stay as they are.
-- [ ] Commit: `doctor: an unset build executor is fine, build asks each time`.
+- [x] Failing test: a table test over the three states; the unset executor case fails because it gives `warn` with the `/acta:setup` fix.
+- [x] Code: in `checkSetup`, the empty executor case gives `OK` with the spec message and no fix; the other two cases stay as they are.
+- [x] Commit: `doctor: an unset build executor is fine, build asks each time`.
 
 ### Task 2: version bump
 
