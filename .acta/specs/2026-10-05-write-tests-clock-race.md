@@ -3,6 +3,8 @@ parent: scratch/2026-10-05-parallel-test-clock-race
 id: SPC-0083
 created: "2026-10-05 20:11:40"
 hash: xcoefvd
+started: "2026-10-05 20:17:16"
+finished: "2026-10-05 20:24:02"
 ---
 # write tests that swap the clock do not run in parallel
 

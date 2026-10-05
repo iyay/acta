@@ -5,7 +5,7 @@ description: "acta: Use on first run and whenever the user asks to change setup:
 
 # Setup
 
-The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM_VOICE_FILE` names). An old `voice.yaml` in the same folder moves there on its own. `acta` reads it at the start of every session and before every message.
+The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM_VOICE_FILE` names). An old `voice.yaml` in the same folder moves there on its own. `acta` reads it at the start of every session and before every message. When the repo has code and `.acta/wiki/` holds no page yet, offer in one line to seed the wiki with `acta:migrate`, and only start on a yes.
 
 ## First run
 

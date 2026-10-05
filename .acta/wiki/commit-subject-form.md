@@ -1,0 +1,9 @@
+---
+type: Decision
+title: Commit subject form
+description: Planning auto-commits read chore(kind) with no acta prefix; the merge commit may name the version
+paths: [internal/gitc/]
+timestamp: 2026-10-05T15:28:00Z
+---
+
+Planning write commands commit as `chore(<kind>): ...`, never `acta: ...`. Orchestrator hand-off commits read `chore(plan): ...`; the review polish commit stays `polish: review notes for <id>`. The PATH acta must be rebuilt for CLI commits to use the new form. After parallel merges, check the version files: same-number bumps merge silently and can leave the version behind.

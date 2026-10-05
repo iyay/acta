@@ -150,23 +150,32 @@ func (m Model) listView(p pane, w int, b box) []string {
 			continue
 		}
 		base := lipgloss.NewStyle()
-		done := it != nil && dotOf(it) == dotDone
-		if done {
+		mark := dotWaiting
+		if it != nil {
+			mark = dotOf(it)
+		}
+		switch mark {
+		case dotDone:
 			// Done work reads green, so the eye skips it.
 			base = m.styles.done
+		case dotReview:
+			// Plans waiting for merge read yellow: not done, not plain.
+			base = m.styles.review
 		}
-		// A done plan keeps its + or - mark in the plain foreground, so the
-		// reader can still see at a glance whether the plan is open. Only the
-		// title after the mark says the work is done. The mark and the space
-		// behind it leave the row, so the id keeps the color of its kind and
-		// sits in the green part just as it does on any other done row.
-		mark := ""
-		if done && r.tree && r.depth == 0 {
+		// A finished plan keeps its + or - mark in the plain foreground, so
+		// the reader can still see at a glance whether the plan is open.
+		// Only the title after the mark says the work is done. The mark and
+		// the space behind it leave the row, so the id keeps the color of
+		// its kind and sits in the green part just as it does on any other
+		// done row. A plan waiting for merge keeps its mark for the same
+		// read, with the title in yellow instead.
+		treeMark := ""
+		if (mark == dotDone || mark == dotReview) && r.tree && r.depth == 0 {
 			if i := strings.IndexByte(text, ' '); i >= 0 {
-				mark, text = text[:i+1], text[i+1:]
+				treeMark, text = text[:i+1], text[i+1:]
 			}
 		}
-		line := lipgloss.NewStyle().Render(mark) + m.paintID(text, it, base)
+		line := lipgloss.NewStyle().Render(treeMark) + m.paintID(text, it, base)
 		if r.tree && r.depth > 0 && it != nil && dotOf(it) == dotGoing {
 			// The tree dot of work under way is the pulse dot, so the view can
 			// swap it for the frame of the moment. The mark comes before the

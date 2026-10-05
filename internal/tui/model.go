@@ -61,6 +61,10 @@ type clearStatusMsg struct{ text string }
 // so the key hints behind it come back by themselves.
 const toastFor = 2 * time.Second
 
+// rounds lists the review rounds of the repo's worktrees, the way acta state
+// reads them. It is a hook so tests can point it at a fake branch.
+var rounds = board.PlanStates
+
 // clearStatusAfter sends the clear message for text once d has passed.
 func clearStatusAfter(d time.Duration, text string) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg { return clearStatusMsg{text: text} })

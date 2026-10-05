@@ -138,28 +138,21 @@ Subagent (general-purpose):
 
     ## Report Format
 
-    Write your full report to [REPORT_FILE]:
-    - What you implemented (or what you attempted, if blocked)
-    - What you tested and test results
-    - **TDD Evidence** (if TDD was required for this task):
-      - RED: command run, relevant failing output before implementation, and why the failure was expected
-      - GREEN: command run and relevant passing output after implementation
+    Send ONE reply of at most 25 lines, no report file. It holds exactly:
+    - Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+    - Commits made (short SHA + subject)
+    - TDD evidence, one RED line (command + key failing line) and one GREEN
+      line (command + passing output)
     - Files changed
-    - Self-review findings (if any)
-    - Any issues or concerns
+    - Self-review findings
+    - Concerns, if any
 
-    Then report back with ONLY (under 15 lines — the detail lives in the
-    report file):
-    - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - Commits created (short SHA + subject)
-    - One-line test summary (e.g. "14/14 passing, output pristine")
-    - Your concerns, if any
-    - The report file path
+    When BLOCKED or NEEDS_CONTEXT, put the specifics in that same reply —
+    what you are stuck on, what you tried, what help you need. The
+    controller acts on it directly.
 
-    If BLOCKED or NEEDS_CONTEXT, put the specifics in the final message
-    itself — the controller acts on it directly.
+    Use DONE_WITH_CONCERNS if you finished the work but doubt it is right.
+    Use BLOCKED if you cannot finish the task. Use NEEDS_CONTEXT if facts
+    you need were never given. Never send work you doubt in silence.
 
-    Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
-    Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
-    information that wasn't provided. Never silently produce work you're unsure about.
 ```

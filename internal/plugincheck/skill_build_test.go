@@ -310,3 +310,32 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		}
 	}
 }
+
+// TestImplementerPromptNoReportFile reads implementer-prompt.md on its own. The
+// implementer only reads this file, so no report-file step may live in it. A
+// subagent write to a report file gets refused, and the whole report then
+// floods the orchestrator reply instead.
+func TestImplementerPromptNoReportFile(t *testing.T) {
+	txt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
+	for _, bad := range []string{
+		"[REPORT_FILE]",
+		"Write your full report to",
+		"report file path",
+		"detail lives in the report file",
+	} {
+		if strings.Contains(txt, bad) {
+			t.Errorf("implementer-prompt.md still names a report file: %q", bad)
+		}
+	}
+	for _, want := range []string{
+		"at most 25 lines",
+		"RED",
+		"GREEN",
+		"Files changed",
+		"Self-review",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("implementer-prompt.md is missing the capped-reply ask %q", want)
+		}
+	}
+}

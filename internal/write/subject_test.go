@@ -7,7 +7,7 @@ import (
 // A scratch write must commit under the chore form with the scratch scope,
 // so the log reads as a conventional commit and never names the tool.
 func TestNewScratchCommitsChoreScope(t *testing.T) {
-	t.Parallel()
+	// No Parallel here because fixNow swaps the shared clock.
 
 	fixNow(t)
 	cfg := repoWith(t, baseFiles)
@@ -23,7 +23,7 @@ func TestNewScratchCommitsChoreScope(t *testing.T) {
 // A commit over files of more than one kind carries no scope, so a mixed
 // run never claims to be one kind.
 func TestSubjectDropsScopeForMixedKinds(t *testing.T) {
-	t.Parallel()
+	// No Parallel here because fixNow swaps the shared clock.
 
 	fixNow(t)
 	cfg := repoWith(t, baseFiles)
