@@ -5,6 +5,7 @@ id: PLN-0097
 created: "2026-10-06 05:03:29"
 hash: z2a2jjb
 started: "2026-10-06 05:05:28"
+finished: "2026-10-06 05:07:49"
 ---
 # Setup block refresh Implementation Plan
 
@@ -44,6 +45,18 @@ started: "2026-10-06 05:05:28"
 
 **verify:** The three version files agree on 0.1.20 and `internal/plugincheck` passes; list each file and its version.
 
-- [ ] Failing test: none new; `scripts/test ./internal/plugincheck` already fails if the three files disagree, so bump all three in one edit and run it.
-- [ ] Code: change 0.1.19 to 0.1.20 in all three files.
-- [ ] Commit: `chore(plugin): version 0.1.20`
+- [x] Failing test: none new; `scripts/test ./internal/plugincheck` already fails if the three files disagree, so bump all three in one edit and run it.
+- [x] Code: change 0.1.19 to 0.1.20 in all three files.
+- [x] Commit: `chore(plugin): version 0.1.20`
+
+## Fix round 1
+
+### Task 3: Block names the write form of acta state
+
+**Files:** `plugin/skills/setup/SKILL.md`, `CLAUDE.md`, `internal/plugincheck/skill_setup_test.go`, `internal/plugincheck/budget_test.go`, `.acta/specs/2026-10-06-setup-block-refresh-design.md`
+
+**verify:** No copy of the block (setup skill template, repo `CLAUDE.md`, spec rule 4) tells an agent to save work with a command that does not save; every rule of the block has a Must string that fails when that rule alone is removed. List each copy and each Must checked.
+
+- [ ] Failing test: in `skill_setup_test.go` replace the Must `"acta state <plan id>"` with ``"`acta state set <plan id> next`"``, replace the Must `".acta/wiki/"` (old skill text already has it, so it guards nothing) with `"Project knowledge (gotchas, runbooks, decisions with their why)"`, and add `"acta scratch new"` to the block Musts; it fails because the block names only the read form.
+- [ ] Code: rule 4 in the setup skill block, the repo `CLAUDE.md` block and spec rule 4 all become word for word: ``Work in flight goes to `acta state set <plan id> next` (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.`` Set the `skills/setup/SKILL.md` byte cap in `budget_test.go` to the new file size.
+- [ ] Commit: `fix(setup): acta block names acta state set for saving work (PLN-0097 fix round 1)`
