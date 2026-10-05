@@ -47,6 +47,14 @@ func stateFile(dir string) string {
 
 const cliStatePlan = "---\nstatus: in-progress\n---\n# Live work state\n\n### Task 1: acta state set\n- [ ] test\n"
 
+// startedStatePlan is a plan with work going on: started, some boxes ticked,
+// some open, and a State section with all three subsections.
+const startedStatePlan = "---\nid: PLN-0082\nstarted: \"2026-10-05 08:32:15\"\n---\n" +
+	"# Live work state\n\n### Task 1: acta state set\n\n- [x] write it\n\n" +
+	"### Task 2: acta state view\n\n- [ ] read it\n\n### Task 3: session start\n\n- [ ] hook it\n\n" +
+	"## State\n\n### Next\n\nrun the state test\n\n### Findings\n\nthe hook is cheap\n\n" +
+	"### Open rulings\n\nnone yet\n"
+
 // The body comes from stdin and the plan file gets the subsection under it.
 func TestCmdStateSetReadsStdin(t *testing.T) {
 	dir := stateRepo(t, cliStatePlan)
@@ -117,20 +125,82 @@ func TestCmdStateSetRefusesAndChangesNothing(t *testing.T) {
 	}
 }
 
-// The bare view is not built yet, so it says so and exits bad input instead of
-// printing nothing a reader could mistake for an answer.
-func TestCmdStateBareSaysItIsNotBuiltYet(t *testing.T) {
-	dir := stateRepo(t, cliStatePlan)
-	for _, args := range [][]string{nil, {"plans/2026-10-05-live-work-state"}, {"set"}} {
-		code, out, stderr := runState(t, dir, "", args...)
+// stateWorktreeRepo makes a git repo holding the given plan and a worktree on
+// a branch, so the plan counts as running.
+func stateWorktreeRepo(t *testing.T, plan string) (dir, wt string) {
+	t.Helper()
+	dir = stateRepo(t, plan)
+	wt = filepath.Join(t.TempDir(), "live")
+	gitOut(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	return dir, wt
+}
+
+// A started plan with a worktree shows what the work is standing on: the
+// first task with an open box, the branch's last commit, the worktree path,
+// the review round, and then the three subsections as the file holds them.
+func TestCmdStatePrintsTheRunningPlan(t *testing.T) {
+	dir, wt := stateWorktreeRepo(t, startedStatePlan)
+	gitOut(t, wt, "commit", "-q", "--allow-empty", "-m", "state: show the view")
+	code, out, stderr := runState(t, dir, "", "plans/2026-10-05-live-work-state")
+	if code != exitOK {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	for _, want := range []string{
+		"plans/2026-10-05-live-work-state#task-2",
+		"state: show the view",
+		wt,
+		"round: none",
+		"### Next\n\nrun the state test",
+		"### Findings\n\nthe hook is cheap",
+		"### Open rulings\n\nnone yet",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stdout does not hold %q\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "#task-1") || strings.Contains(out, "#task-3") {
+		t.Errorf("stdout names a task that is not the first open one\n%s", out)
+	}
+}
+
+// The bare command prints one line per running plan, and nothing at all in a
+// repo where no plan is running, so an empty answer means an empty board.
+func TestCmdStateBarePrintsOneLinePerRunningPlan(t *testing.T) {
+	dir, _ := stateWorktreeRepo(t, startedStatePlan)
+	code, out, stderr := runState(t, dir, "")
+	if code != exitOK {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	if lines := strings.Split(strings.TrimRight(out, "\n"), "\n"); len(lines) != 1 ||
+		!strings.Contains(lines[0], "plans/2026-10-05-live-work-state") {
+		t.Fatalf("bare stdout = %q, want one line naming the running plan", out)
+	}
+
+	bare := stateRepo(t, startedStatePlan)
+	code, out, stderr = runState(t, bare, "")
+	if code != exitOK {
+		t.Fatalf("repo with no worktree: exit %d stderr %q", code, stderr)
+	}
+	if out != "" {
+		t.Errorf("repo with no worktree printed %q, want nothing", out)
+	}
+}
+
+// A plan that is not running, and an id the board never knew, both fail with
+// the reason on stderr and print nothing, so a caller cannot mistake silence
+// for an answer.
+func TestCmdStateRefusesAPlanThatIsNotRunning(t *testing.T) {
+	dir := stateRepo(t, startedStatePlan)
+	for _, id := range []string{"plans/2026-10-05-live-work-state", "plans/2026-10-06-nope"} {
+		code, out, stderr := runState(t, dir, "", id)
 		if code != exitBadInput {
-			t.Fatalf("%v: exit %d, want bad input", args, code)
+			t.Errorf("%s: exit %d, want bad input", id, code)
 		}
 		if out != "" {
-			t.Errorf("%v: stdout %q, want nothing", args, out)
+			t.Errorf("%s: stdout %q, want nothing", id, out)
 		}
-		if !strings.Contains(stderr, "acta state set") {
-			t.Errorf("%v: stderr %q does not point at acta state set", args, stderr)
+		if !strings.Contains(stderr, "no running plan") {
+			t.Errorf("%s: stderr %q does not say the plan is not running", id, stderr)
 		}
 	}
 }

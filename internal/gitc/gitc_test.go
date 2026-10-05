@@ -367,8 +367,8 @@ func commitAllAt(t *testing.T, repo, when, msg string) {
 	t.Helper()
 	t.Setenv("GIT_AUTHOR_DATE", when)
 	t.Setenv("GIT_COMMITTER_DATE", when)
-	git(t, repo, "add", ".")
-	git(t, repo, "commit", "-q", "-m", msg)
+	git(t, repo, "add", "-A")
+	git(t, repo, "commit", "-q", "--allow-empty", "-m", msg)
 }
 
 // LastChange is the commit time of the newest commit that touched one of the
@@ -509,5 +509,35 @@ func TestChangedStartsWhereTheSidesSplit(t *testing.T) {
 		if got, err := Changed(repo, rng); err != nil || !slices.Equal(got, want) {
 			t.Errorf("Changed(%q) = %q, %v, want %q", rng, got, err, want)
 		}
+	}
+}
+
+// The newest commit on a branch is read by its short hash and subject, and a
+// prefix picks the newest commit that says something with it. A prefix no
+// commit says gives nothing, so a caller can tell "none" from a branch that
+// has no commits at all.
+func TestNewestCommit(t *testing.T) {
+	repo := setupRepo(t)
+	git(t, repo, "checkout", "-q", "-b", "side")
+	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "acta: tick fix round 1")
+	commitAllAt(t, repo, "2021-02-01T00:00:00Z", "state: write Next")
+	commitAllAt(t, repo, "2021-03-01T00:00:00Z", "acta: tick fix round 2")
+
+	hash, subject, err := NewestCommit(repo, "side", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subject != "acta: tick fix round 2" || len(hash) != 7 {
+		t.Errorf("newest commit = %q %q, want a 7 char hash and the round 2 subject", hash, subject)
+	}
+	if _, subject, err := NewestCommit(repo, "side", "acta: tick fix round "); err != nil {
+		t.Fatal(err)
+	} else if subject != "acta: tick fix round 2" {
+		t.Errorf("prefix gave %q, want the round 2 subject", subject)
+	}
+	if _, subject, err := NewestCommit(repo, "side", "acta: tick fix round 7"); err != nil {
+		t.Fatalf("a prefix no commit says must not fail: %v", err)
+	} else if subject != "" {
+		t.Errorf("a prefix no commit says gave %q, want nothing", subject)
 	}
 }

@@ -366,3 +366,28 @@ func CommonDir(repo string) (string, error) {
 	out, err := run(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	return strings.TrimSpace(out), err
 }
+
+// NewestCommit gives the short hash and subject of the newest commit on ref.
+// When pre is not empty it only looks at commits whose subject starts with
+// pre, and a branch with none of those gives two empty strings and no error,
+// so a caller can tell "no such commit" from "no branch".
+func NewestCommit(repo, ref, pre string) (string, string, error) {
+	args := []string{"log", "--format=%h %s"}
+	if pre != "" {
+		// git greps the whole message, so the lines it gives back are
+		// checked here for the subject that really starts with pre.
+		args = append(args, "--fixed-strings", "--grep="+pre)
+	}
+	args = append(args, ref)
+	out, err := run(repo, args...)
+	if err != nil {
+		return "", "", err
+	}
+	for _, ln := range strings.Split(out, "\n") {
+		hash, subject, ok := strings.Cut(strings.TrimSpace(ln), " ")
+		if ok && strings.HasPrefix(subject, pre) {
+			return hash, subject, nil
+		}
+	}
+	return "", "", nil
+}

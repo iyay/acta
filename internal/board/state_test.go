@@ -1,0 +1,260 @@
+package board
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/iyay/acta/internal/config"
+)
+
+// runRepo makes a git repo with the given planning files and a worktree on a
+// branch called live. It gives the config of the main tree and the path of the
+// worktree as git writes it.
+func runRepo(t *testing.T, files map[string]string) (config.Config, string) {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "repo")
+	for rel, body := range files {
+		p := filepath.Join(dir, ".acta", rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitRun(t, dir, "init", "-q", "-b", "main")
+	gitRun(t, dir, "add", ".")
+	gitRun(t, dir, "commit", "-q", "-m", "init")
+	wt := filepath.Join(t.TempDir(), "live")
+	gitRun(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	real, err := filepath.EvalSymlinks(wt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg, real
+}
+
+// runIds gives the ids of the running plans, so a test can ask who is running.
+func runIds(runs []RunState) []string {
+	var out []string
+	for _, r := range runs {
+		out = append(out, r.Plan.ID)
+	}
+	return out
+}
+
+const (
+	startedPlan = "---\nid: PLN-0082\nstarted: \"2026-10-05 08:32:15\"\n---\n" +
+		"# Live work state\n\n### Task 1: acta state set\n\n- [x] write it\n\n" +
+		"### Task 2: acta state view\n\n- [ ] read it\n\n### Task 3: session start\n\n- [ ] hook it\n\n" +
+		"## State\n\n### Next\n\nrun the state test\n\n### Findings\n\nthe hook is cheap\n\n" +
+		"### Open rulings\n\nnone yet\n"
+	finishedPlan = "---\nid: PLN-0083\nstarted: \"2026-10-05 08:32:15\"\nfinished: \"2026-10-05 09:00:00\"\n---\n" +
+		"# Landed plan\n\n### Task 1: acta state set\n\n- [x] write it\n"
+	untouchedPlan = "---\nid: PLN-0084\n---\n# Fresh plan\n\n### Task 1: acta state set\n\n- [ ] write it\n"
+)
+
+// A plan counts as running only when it has started, has not finished, and has
+// a worktree. Each of the three missing on its own keeps it out of the list,
+// and a repo with nothing started has no running plans at all.
+func TestRunningNeedsStartNoFinishAndAWorktree(t *testing.T) {
+	t.Parallel()
+
+	cfg, _ := runRepo(t, map[string]string{
+		"plans/2026-10-05-live.md":   startedPlan,
+		"plans/2026-10-06-landed.md": finishedPlan,
+		"plans/2026-10-07-fresh.md":  untouchedPlan,
+	})
+	runs := Running(cfg)
+	if got := runIds(runs); len(got) != 1 || got[0] != "plans/2026-10-05-live" {
+		t.Fatalf("running = %v, want only the started plan in the worktree", got)
+	}
+
+	bare := filepath.Join(t.TempDir(), "solo")
+	if err := os.MkdirAll(filepath.Join(bare, ".acta", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bare, ".acta", "plans", "2026-10-05-live.md"), []byte(startedPlan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, bare, "init", "-q", "-b", "main")
+	gitRun(t, bare, "add", ".")
+	gitRun(t, bare, "commit", "-q", "-m", "init")
+	sole, err := config.Load(bare, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Running(sole); len(got) != 0 {
+		t.Errorf("a started plan with no worktree is running: %v", runIds(got))
+	}
+}
+
+// A plan whose every box is ticked is still running: the State section is the
+// last record of the work, so it stays on show after the last task lands.
+func TestRunningKeepsAPlanWithEveryBoxTicked(t *testing.T) {
+	t.Parallel()
+
+	ticked := strings.ReplaceAll(startedPlan, "- [ ]", "- [x]")
+	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": ticked})
+	runs := Running(cfg)
+	if got := runIds(runs); len(got) != 1 {
+		t.Fatalf("running = %v, want the fully ticked plan to stay running", got)
+	}
+	if runs[0].Task != nil {
+		t.Errorf("current task = %q, want none when every box is ticked", runs[0].Task.ID)
+	}
+}
+
+// The current task is the first one with an open box, so the view points at the
+// work a fresh session takes over, not at the last task that was left.
+func TestRunningTaskIsTheFirstOneStillOpen(t *testing.T) {
+	t.Parallel()
+
+	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if runs[0].Task == nil {
+		t.Fatal("the running plan has no current task")
+	}
+	if got := runs[0].Task.ID; got != "plans/2026-10-05-live#task-2" {
+		t.Errorf("current task = %q, want task-2, the first task with an open box", got)
+	}
+}
+
+// The last commit comes from the branch, not from the plan file. A plan whose
+// body names a different commit does not change what the view prints.
+func TestRunningCommitIsTheBranchTipNotTheFileText(t *testing.T) {
+	t.Parallel()
+
+	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	lie := strings.Replace(startedPlan, "### Next\n", "### Next\n\nlast commit: 9999999 the file lies\n", 1)
+	if err := os.WriteFile(filepath.Join(wt, ".acta", "plans", "2026-10-05-live.md"), []byte(lie), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, wt, "add", ".")
+	gitRun(t, wt, "commit", "-q", "-m", "state: plant a lie in the plan")
+
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if !strings.Contains(runs[0].Commit, "plant a lie in the plan") {
+		t.Errorf("last commit = %q, want the newest commit on the branch", runs[0].Commit)
+	}
+	if strings.Contains(runs[0].Commit, "the file lies") {
+		t.Errorf("last commit came from the file text: %q", runs[0].Commit)
+	}
+}
+
+// The review round is the newest commit that opens one, so a branch with two
+// rounds reports the later one.
+func TestRunningRoundIsTheNewestFixRound(t *testing.T) {
+	t.Parallel()
+
+	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	for _, msg := range []string{"acta: tick fix round 1", "acta: tick fix round 3"} {
+		gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", msg)
+	}
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if runs[0].Round != "3" {
+		t.Errorf("round = %q, want 3, the newest fix round on the branch", runs[0].Round)
+	}
+}
+
+// A branch with no fix round commit has no round, and the view says so instead
+// of leaving the line out or printing an empty number.
+func TestRunningRoundIsNoneWithoutAFixRound(t *testing.T) {
+	t.Parallel()
+
+	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if runs[0].Round != "" {
+		t.Errorf("round = %q, want none", runs[0].Round)
+	}
+	if !strings.Contains(runs[0].Full(), "round: none") {
+		t.Errorf("the full view does not say round: none\n%s", runs[0].Full())
+	}
+}
+
+// The short view is what a session start hook prints, so it never takes more
+// than three lines however long the plan id, the worktree path and the commit
+// subject are.
+func TestShortHoldsThreeLines(t *testing.T) {
+	t.Parallel()
+
+	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	if got := len(runs[0].Short()); got > 3 {
+		t.Errorf("Short() gave %d lines, want at most 3\n%q", got, runs[0].Short())
+	}
+	for _, want := range []string{"plans/2026-10-05-live", "#task-2", "run the state test"} {
+		if !strings.Contains(strings.Join(runs[0].Short(), "\n"), want) {
+			t.Errorf("Short() does not name %q\n%q", want, runs[0].Short())
+		}
+	}
+}
+
+// The full view prints the four facts and then the three subsections as the
+// file holds them, so a session reads back what the last one wrote.
+func TestFullShowsTheFactsAndTheThreeSubsections(t *testing.T) {
+	t.Parallel()
+
+	cfg, wt := runRepo(t, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	full := runs[0].Full()
+	for _, want := range []string{
+		"task: plans/2026-10-05-live#task-2",
+		"worktree: " + wt,
+		"round: none",
+		"### Next\n\nrun the state test",
+		"### Findings\n\nthe hook is cheap",
+		"### Open rulings\n\nnone yet",
+	} {
+		if !strings.Contains(full, want) {
+			t.Errorf("the full view does not hold %q\n%s", want, full)
+		}
+	}
+	if !strings.Contains(full, "last commit: ") {
+		t.Errorf("the full view does not name the last commit\n%s", full)
+	}
+}
+
+// A plan whose State section holds two of the three subsections shows those
+// two, so a part nobody wrote is not printed as an empty heading.
+func TestFullShowsOnlyTheSubsectionsTheFileHolds(t *testing.T) {
+	t.Parallel()
+
+	two := strings.Replace(startedPlan, "### Open rulings\n\nnone yet\n", "", 1)
+	cfg, _ := runRepo(t, map[string]string{"plans/2026-10-05-live.md": two})
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
+	full := runs[0].Full()
+	if !strings.Contains(full, "### Next") || !strings.Contains(full, "### Findings") {
+		t.Errorf("the full view lost a subsection the file holds\n%s", full)
+	}
+	if strings.Contains(full, "### Open rulings") {
+		t.Errorf("the full view printed a subsection the file does not hold\n%s", full)
+	}
+}
