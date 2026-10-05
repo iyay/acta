@@ -11,13 +11,14 @@ import (
 )
 
 // polishRound is the round name for the commit that applies the review NOTEs.
-// It has no tasks, only the note.
+// Its tasks come from the "## Polish" section of the plan.
 const polishRound = "polish"
 
 var (
-	fixHeadRe = regexp.MustCompile(`^## Fix round(\s|$)`)
-	verifyRe  = regexp.MustCompile(`^\*\*verify:\*\*\s*(.*\S)\s*$`)
-	testsRe   = regexp.MustCompile(`^\*\*Tests:\*\*\s*(.*\S)\s*$`)
+	fixHeadRe    = regexp.MustCompile(`^## Fix round(\s|$)`)
+	polishHeadRe = regexp.MustCompile(`^## Polish\s*$`)
+	verifyRe     = regexp.MustCompile(`^\*\*verify:\*\*\s*(.*\S)\s*$`)
+	testsRe      = regexp.MustCompile(`^\*\*Tests:\*\*\s*(.*\S)\s*$`)
 )
 
 // briefInput is everything the brief needs besides the plan text.
@@ -35,11 +36,12 @@ type briefInput struct {
 
 // planMarks is what one pass over the plan text finds outside code blocks.
 type planMarks struct {
-	fixLines []int  // 1-based lines of the "## Fix round" headings
-	fixEnd   int    // line after the last fix round section ends, 0 = end of file
-	waves    string // text of the "## Waves" section
-	hasWaves bool
-	tests    string // text after "**Tests:**"
+	fixLines   []int // 1-based lines of the "## Fix round" headings
+	fixEnd     int   // line after the last fix round section ends, 0 = end of file
+	polishLine int   // 1-based line of the "## Polish" heading, 0 = none
+	waves      string
+	hasWaves   bool
+	tests      string // text after "**Tests:**"
 }
 
 func scanPlan(src []byte) planMarks {
@@ -56,12 +58,19 @@ func scanPlan(src []byte) planMarks {
 		}
 		if !inFence && strings.HasPrefix(ln, "## ") {
 			inWaves = false
+			// The polish section ends whatever ran before it, the way a
+			// later "## Fix round" ends an earlier one.
 			if afterFix && !fixHeadRe.MatchString(ln) && m.fixEnd == 0 {
 				m.fixEnd = i + 1
 			}
 			if fixHeadRe.MatchString(ln) {
 				m.fixLines = append(m.fixLines, i+1)
 				afterFix, m.fixEnd = true, 0
+			}
+			// The first "## Polish" heading wins; a second one is a plan
+			// typo, and the tasks still sit below the first.
+			if m.polishLine == 0 && polishHeadRe.MatchString(strings.TrimSpace(ln)) {
+				m.polishLine = i + 1
 			}
 			if strings.TrimSpace(ln) == "## Waves" {
 				inWaves, m.hasWaves = true, true
@@ -88,24 +97,31 @@ func scanPlan(src []byte) planMarks {
 // briefTasks picks the tasks one round covers, by heading line. The send
 // command also needs their ids for its checkpoint.
 func briefTasks(src []byte, round string) ([]board.TaskSec, error) {
-	if round == polishRound {
-		return nil, nil
-	}
-	if round != "" && !roundPattern.MatchString(round) {
-		return nil, fmt.Errorf("round %q is not a valid name", round)
-	}
 	marks := scanPlan(src)
 	all := board.Parse(src).Tasks
 	lo, hi := 0, 0 // task heading line must be > lo, and < hi when hi > 0
-	if round == "" {
-		if len(marks.fixLines) > 0 {
-			hi = marks.fixLines[0]
+	// The polish round hands over the "## Polish" task, where the review
+	// NOTEs land. Without that section there is nothing to hand over.
+	if round == polishRound {
+		if marks.polishLine == 0 {
+			return nil, fmt.Errorf("round %q needs a \"## Polish\" section in the plan, found none", round)
 		}
+		lo = marks.polishLine
+	} else if round == "" {
+		// The first dispatch stops at whichever section comes first.
+		hi = firstSectionLine(marks)
 	} else {
+		if !roundPattern.MatchString(round) {
+			return nil, fmt.Errorf("round %q is not a valid name", round)
+		}
 		if len(marks.fixLines) == 0 {
 			return nil, fmt.Errorf("round %q needs a \"## Fix round\" section in the plan, found none", round)
 		}
 		lo, hi = marks.fixLines[len(marks.fixLines)-1], marks.fixEnd
+		// A polish section after the last fix round is not a fix task.
+		if marks.polishLine > lo && (hi == 0 || marks.polishLine < hi) {
+			hi = marks.polishLine
+		}
 	}
 	var out []board.TaskSec
 	for _, t := range all {
@@ -117,6 +133,21 @@ func briefTasks(src []byte, round string) ([]board.TaskSec, error) {
 		return nil, fmt.Errorf("the plan has no tasks for this round")
 	}
 	return out, nil
+}
+
+// firstSectionLine is the line where the first round stops: the earlier of
+// the first fix round and the polish section, 0 when neither exists.
+func firstSectionLine(marks planMarks) int {
+	if len(marks.fixLines) > 0 && marks.polishLine > 0 {
+		if marks.fixLines[0] < marks.polishLine {
+			return marks.fixLines[0]
+		}
+		return marks.polishLine
+	}
+	if len(marks.fixLines) > 0 {
+		return marks.fixLines[0]
+	}
+	return marks.polishLine
 }
 
 // taskVerify returns the text of the task's "**verify:**" line.

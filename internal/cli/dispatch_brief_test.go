@@ -170,7 +170,7 @@ func TestBuildBriefFixRounds(t *testing.T) {
 func TestBuildBriefPolish(t *testing.T) {
 	in := briefEnv(t)
 	in.Round = "polish"
-	src := []byte(briefPlanHead + briefFixOne)
+	src := []byte(briefPlanHead + briefFixOne + briefPolish)
 
 	in.Note = "  \n"
 	if _, err := buildBrief("p.md", src, in); err == nil {
@@ -184,10 +184,58 @@ func TestBuildBriefPolish(t *testing.T) {
 	if !strings.Contains(got, "NOTE: [fix] rename the helper") {
 		t.Errorf("polish brief misses the note\n%s", got)
 	}
-	if strings.Contains(got, "TICKETS") || strings.Contains(got, "task-") {
-		t.Errorf("polish must take no tasks\n%s", got)
+	// The polish round hands over the plan's polish task, not an empty note.
+	if !strings.Contains(got, "TICKETS") || !strings.Contains(got, "task-7") {
+		t.Errorf("polish must name the polish task\n%s", got)
 	}
 	briefHasState(t, got)
+}
+
+// briefPolish is the review polish section: one task, applied after the fix
+// rounds, named exactly "## Polish".
+const briefPolish = `
+## Polish
+
+### Task 7: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+`
+
+func TestBuildBriefPolishNamesPolishTask(t *testing.T) {
+	in := briefEnv(t)
+	in.Round = "polish"
+	in.Note = "[fix] rename the helper"
+	src := []byte(briefPlanHead + briefFixOne + briefPolish)
+	got, err := buildBrief(".acta/plans/demo.md", src, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"task-7", "Review polish", "every NOTE below is applied"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("polish brief misses %q\n%s", want, got)
+		}
+	}
+	for _, bad := range []string{"task-1", "task-4", "property one", "fix one holds"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("polish brief took %q\n%s", bad, got)
+		}
+	}
+	briefHasState(t, got)
+	// The first dispatch leaves the polish task out, even with no fix round.
+	in.Round = ""
+	got, err = buildBrief(".acta/plans/demo.md", []byte(briefPlanHead+briefPolish), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "task-7") {
+		t.Errorf("first dispatch took the polish task\n%s", got)
+	}
+	// A polish round with no ## Polish section refuses naming the section.
+	in.Round = "polish"
+	_, err = buildBrief(".acta/plans/demo.md", []byte(briefPlanHead+briefFixOne), in)
+	if err == nil || !strings.Contains(err.Error(), "## Polish") {
+		t.Errorf("polish without the section must refuse naming it, got %v", err)
+	}
 }
 
 func TestBuildBriefRefusals(t *testing.T) {
