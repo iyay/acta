@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0095
 created: "2026-10-05 21:15:31"
 hash: hhm9v3s
+started: "2026-10-05 21:25:45"
 ---
 # Plan review status Implementation Plan
 
@@ -31,9 +32,9 @@ hash: hhm9v3s
 
 **Files:** Modify `internal/board/board.go` and its tests; any CLI test that pins a plan status list.
 **verify:** For every plan (all ticked in a worktree, all ticked in the main tree, some unticked in a worktree, no tasks) the derived status is exactly review, done, in-progress, and the status it has today; a spec or bug whose only plan is in review is never shown as finished; `review` is never treated as closed. List each case checked.
-- [ ] Failing test: a board with a plan whose tasks are all ticked, loaded from another worktree, must report `review`; it reports `done` today.
-- [ ] Code: where the plan status is derived, turn `done` into `review` when the item's Worktree is set; parent status counts review as not finished; `review` stays out of Closed.
-- [ ] Commit: `board: an unmerged plan with every task ticked is in review`.
+- [x] Failing test: a board with a plan whose tasks are all ticked, loaded from another worktree, must report `review`; it reports `done` today.
+- [x] Code: where the plan status is derived, turn `done` into `review` when the item's Worktree is set; parent status counts review as not finished; `review` stays out of Closed.
+- [x] Commit: `board: an unmerged plan with every task ticked is in review`.
 
 ### Task 2: TUI color and detail line
 
@@ -50,3 +51,13 @@ hash: hhm9v3s
 - [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
 - [ ] Code: add 1 to the patch in all three files.
 - [ ] Commit: `plugin: bump patch version`.
+
+## State
+
+### Next
+
+Task 2 starts from:
+- plan Status review + Worktree set; read both, change no board logic
+- review excluded from Closed(); spec/bug in review stays going
+- new tests in internal/board/review_test.go; trees_test updated
+- commit d91f2ad on branch review-status

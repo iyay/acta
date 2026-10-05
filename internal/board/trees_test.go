@@ -50,8 +50,8 @@ func TestLoadTreesPicksTheWorktreeAhead(t *testing.T) {
 	if task.Status != "done" || task.Worktree != "feat" || task.Path != filepath.Join(wt.Root, "plans", "2026-09-21-a.md") {
 		t.Fatalf("task = %+v", task)
 	}
-	if s := b.Get("specs/2026-09-20-a"); s.Status != "done" || s.Worktree != "" {
-		t.Fatalf("story A = %+v (status from the merged tasks, file from main)", s)
+	if s := b.Get("specs/2026-09-20-a"); s.Status != "in-progress" || s.Worktree != "" {
+		t.Fatalf("story A = %+v (its only plan waits on the branch, file from main)", s)
 	}
 	if s := b.Get("specs/2026-09-22-same"); s.Title != "Same" || s.Worktree != "" {
 		t.Fatalf("equal ticks must keep the main copy: %+v", s)

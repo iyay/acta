@@ -582,6 +582,25 @@ func (b *Board) derive() {
 			it.Status, it.StatusSource = taskStatus(it.Done, it.Total, it.Started), "derived"
 		}
 	}
+	// A plan with every box ticked on a branch still waits for merge, so
+	// the board reads the plan as in review and the spec or bug above it
+	// keeps those boxes as work going on instead of work done.
+	review := map[string]bool{}
+	for _, it := range b.Items {
+		if it.Kind != KindPlan || it.Worktree == "" || len(it.Children) == 0 {
+			continue
+		}
+		all := true
+		for _, id := range it.Children {
+			if b.byID[id].Status != "done" {
+				all = false
+				break
+			}
+		}
+		if all {
+			review[it.ID] = true
+		}
+	}
 	for _, it := range b.Items {
 		if it.Kind == KindTask || it.Kind == KindDebtItem {
 			continue
@@ -604,6 +623,12 @@ func (b *Board) derive() {
 		}
 		done, started := 0, 0
 		for _, id := range it.Children {
+			if review[b.byID[id].PlanID] {
+				// Boxes ticked on a branch still wait for merge, so the
+				// spec or bug above keeps them as work going on.
+				started++
+				continue
+			}
 			switch b.byID[id].Status {
 			case "done":
 				done++
@@ -623,6 +648,12 @@ func (b *Board) derive() {
 		// ticks of a child plan, which can still be waiting to be ticked.
 		case it.Kind == KindBug && it.fmStatus == "" && it.FixedIn != "":
 			it.Status, it.StatusSource = "fixed", "derived"
+		// Every box is ticked but the branch is not merged, so the work
+		// waits for a look, not for more ticks. The boxes stay ticked in
+		// the count, so the row still reads the full tally.
+		case it.Kind == KindPlan && review[it.ID]:
+			it.Done, it.Total = len(it.Children), len(it.Children)
+			it.Status, it.StatusSource = "review", "derived"
 		case it.fmStatus == "":
 			if st, ok := closedByStatus(b, it); ok {
 				it.Status, it.StatusSource = st, "derived"
