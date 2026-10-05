@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/iyay/acta/internal/config"
@@ -59,6 +60,7 @@ func Run(e Env) []Result {
 		checkConflicts(e),
 		checkRepo(e),
 		checkSchema(e),
+		checkFiles(e),
 		checkAgentsView(e),
 		checkSetup(e),
 		checkTheme(e),
@@ -73,6 +75,96 @@ func checkSchema(e Env) Result {
 	}
 	return Result{Name: "schema", Level: Warn, Msg: strings.Join(e.SchemaProblems, "; "),
 		Fix: "add the missing sections, or run acta scratch add --section"}
+}
+
+// checkFiles names spec and plan files acta never stamped: no id in the
+// frontmatter, or a plans file with no task heading. It reads only the
+// checkout's own planning folders, so a file on another branch or in another
+// worktree is never named. A heading inside a code block is an example, not
+// a real task.
+func checkFiles(e Env) Result {
+	r := Result{Name: "files"}
+	if e.RepoRoot == "" {
+		r.Level, r.Msg = OK, "not in a git repo, skipped"
+		return r
+	}
+	var missing, notask, problems []string
+	for _, dir := range []string{"specs", "plans"} {
+		files, err := filepath.Glob(filepath.Join(e.ActaRoot, dir, "*.md"))
+		if err != nil || files == nil {
+			continue
+		}
+		for _, f := range files {
+			raw, err := os.ReadFile(f)
+			if err != nil {
+				continue
+			}
+			name := dir + "/" + filepath.Base(f)
+			if !hasFileID(raw) {
+				problems = append(problems, name+": no id, acta never stamped it")
+				missing = append(missing, name)
+			} else if dir == "plans" && !hasTaskHeading(raw) {
+				problems = append(problems, name+": no task heading, not a plan")
+				notask = append(notask, name)
+			}
+		}
+	}
+	if len(problems) == 0 {
+		r.Level, r.Msg = OK, "every spec and plan file has an id"
+		return r
+	}
+	sort.Strings(problems)
+	r.Level, r.Msg = Warn, strings.Join(problems, "; ")
+	var fixes []string
+	if len(missing) > 0 {
+		fixes = append(fixes, "acta id")
+	}
+	if len(notask) > 0 {
+		fixes = append(fixes, "move it out of plans/")
+	}
+	r.Fix = strings.Join(fixes, "; ")
+	return r
+}
+
+// hasFileID says whether raw carries an id in its frontmatter. Only the
+// block between the first two --- lines counts, so a pasted example in the
+// body that names an id does not stamp the file.
+func hasFileID(raw []byte) bool {
+	text := strings.ReplaceAll(string(raw), "\r\n", "\n")
+	rest, found := strings.CutPrefix(text, "---\n")
+	if !found {
+		return false
+	}
+	end := strings.Index(rest, "\n---")
+	if end < 0 {
+		return false
+	}
+	for _, ln := range strings.Split(rest[:end], "\n") {
+		key, val, found := strings.Cut(ln, ":")
+		if !found {
+			continue
+		}
+		if strings.TrimSpace(key) == "id" && strings.TrimSpace(val) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasTaskHeading says whether raw holds a task section. Headings inside a
+// fenced code block are quoted examples, not real tasks.
+func hasTaskHeading(raw []byte) bool {
+	inFence := false
+	for _, ln := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence && strings.HasPrefix(ln, "### Task") {
+			return true
+		}
+	}
+	return false
 }
 
 // Fix writes what only the repo can fix: the .acta folder and its .gitignore

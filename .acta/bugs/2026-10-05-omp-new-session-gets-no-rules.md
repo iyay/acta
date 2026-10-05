@@ -1,6 +1,7 @@
 ---
 id: BUG-0030
 hash: a1ivser
+started: "2026-10-05 13:06:16"
 ---
 # omp gets no acta session rules
 

@@ -132,7 +132,7 @@ func TestBrokenThemeDoesNotFailTheRun(t *testing.T) {
 }
 
 func TestDoctorChecksRunInFixedOrder(t *testing.T) {
-	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "schema", "agents-view", "setup", "theme"}
+	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "schema", "files", "agents-view", "setup", "theme"}
 	if got := names(Run(env(t))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
 	}
@@ -399,6 +399,83 @@ func TestCheckSchema(t *testing.T) {
 		r := checkSchema(Env{SchemaProblems: []string{"scratch old.md: missing ## Words"}})
 		if strings.Contains(r.Msg, "no-schema.md") {
 			t.Fatalf("msg %q", r.Msg)
+		}
+	})
+}
+
+// The files check names planning files acta never stamped: a spec or plan
+// with no id, and a plan file with no task heading. It reads only the
+// checkout's own folders, so a file on another branch or worktree is never
+// named.
+func TestDoctorFiles(t *testing.T) {
+	good := "---\nid: PLN-0086\nhash: kit90tv\n---\n# Good\n\n### Task 1: One\n\n- [ ] a\n"
+	t.Run("stamped plan with tasks is ok", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-good.md"), good)
+		r := byName(Run(e), "files")
+		wantLevel(t, r, OK, "")
+	})
+	t.Run("plan with no id", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-noid.md"), "---\nstatus: draft\n---\n# No id\n\n### Task 1: One\n\n- [ ] a\n")
+		r := byName(Run(e), "files")
+		wantLevel(t, r, Warn, "acta id")
+		if !strings.Contains(r.Msg, "plans/2026-10-05-noid.md") {
+			t.Fatalf("msg %q does not name the file", r.Msg)
+		}
+	})
+	t.Run("spec with no id", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "specs", "2026-10-05-noid.md"), "# No id at all\n")
+		r := byName(Run(e), "files")
+		wantLevel(t, r, Warn, "acta id")
+		if !strings.Contains(r.Msg, "specs/2026-10-05-noid.md") {
+			t.Fatalf("msg %q does not name the file", r.Msg)
+		}
+	})
+	t.Run("plans file with no task heading", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-notask.md"), "---\nid: PLN-0087\nhash: a1b2c3d\n---\n# Notes\n\nJust words.\n")
+		r := byName(Run(e), "files")
+		wantLevel(t, r, Warn, "move it out of plans/")
+		if !strings.Contains(r.Msg, "plans/2026-10-05-notask.md") {
+			t.Fatalf("msg %q does not name the file", r.Msg)
+		}
+	})
+	t.Run("every bad file named, stamped file not", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-good.md"), good)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-noid.md"), "# No id\n\n### Task 1: One\n\n- [ ] a\n")
+		write(t, filepath.Join(e.ActaRoot, "specs", "2026-10-05-noid.md"), "# No id\n")
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-notask.md"), "---\nid: PLN-0087\nhash: a1b2c3d\n---\n# Notes\n")
+		r := byName(Run(e), "files")
+		wantLevel(t, r, Warn, "acta id")
+		for _, name := range []string{"plans/2026-10-05-noid.md", "specs/2026-10-05-noid.md", "plans/2026-10-05-notask.md"} {
+			if !strings.Contains(r.Msg, name) {
+				t.Fatalf("msg %q does not name %s", r.Msg, name)
+			}
+		}
+		if strings.Contains(r.Msg, "good.md") {
+			t.Fatalf("msg %q names the stamped file", r.Msg)
+		}
+		if !strings.Contains(r.Fix, "move it out of plans/") {
+			t.Fatalf("fix %q misses the plans fix", r.Fix)
+		}
+	})
+	t.Run("a file outside the acta folder is never read", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ActaRoot, "plans", "2026-10-05-good.md"), good)
+		write(t, filepath.Join(e.RepoRoot, "plans", "stray.md"), "# No id\n")
+		r := byName(Run(e), "files")
+		wantLevel(t, r, OK, "")
+	})
+	t.Run("outside a git repo", func(t *testing.T) {
+		e := env(t)
+		e.RepoRoot = ""
+		r := byName(Run(e), "files")
+		wantLevel(t, r, OK, "")
+		if !strings.Contains(r.Msg, "skipped") {
+			t.Fatalf("msg %q does not say skipped", r.Msg)
 		}
 	})
 }
