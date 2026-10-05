@@ -207,6 +207,7 @@ func buildBrief(planPath string, src []byte, in briefInput) (string, error) {
 	fmt.Fprintf(&b, "%s plan %s.\n\n", verb, doc.Title)
 	fmt.Fprintf(&b, "PLAN: %s (design: %s) — read FIRST, before any todo list. Its tasks listed below are the only tickets; no decomposition of your own.\n", planPath, spec)
 	b.WriteString("SKILL: load build (omp: build) and tdd before the todo list, and follow them for every task.\n")
+	b.WriteString("STATE: read `acta state <plan>` FIRST, before the tickets: it shows what an earlier session left in the plan's ## State.\n")
 	if len(tickets) > 0 {
 		fmt.Fprintf(&b, "TICKETS (exactly these %d):\n%s\n", len(tickets), strings.Join(tickets, "\n"))
 		fmt.Fprintf(&b, "WAVES (the plan's, as written):\n%s\n", marks.waves)

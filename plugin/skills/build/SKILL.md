@@ -144,6 +144,7 @@ Every implementer hand-off, built from [implementer-prompt.md](implementer-promp
 - report in the user's chat language (see the session rules); write everything in the repo in the repo language;
 - very first action on every task: run `acta tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`);
 - right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `acta tick plans/2026-09-26-tick-fixes#task-3 --step 2`); right after the task's commit, run `acta tick plans/<stem>#task-N --all` so no box stays open; never commit the plan file.
+- after the task commits, run `acta state set plans/<stem>#task-N <part>` with the lines on stdin, so a fresh session finds the work without being told: `next` for what the next task starts from, `findings` for a finding that cost time, `rulings` for a question waiting on the user. Ten lines each, and never the current task, last commit, worktree path or review round: those are computed on read.
 
 The standing rules for every worker are in `references/house-rules.md` (two folders up from this skill); point the implementer at its absolute path.
 

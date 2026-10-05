@@ -83,6 +83,21 @@ func briefEnv(t *testing.T) briefInput {
 	}
 }
 
+// briefHasState checks the line every round kind carries: the recipient reads
+// the plan's State before anything else. It fails when the line is missing,
+// doubled, or placed after the tickets it must come before.
+func briefHasState(t *testing.T, got string) {
+	t.Helper()
+	const line = "STATE: read `acta state <plan>` FIRST, before the tickets"
+	if n := strings.Count(got, line); n != 1 {
+		t.Errorf("want one %q line, got %d\n%s", line, n, got)
+		return
+	}
+	if j := strings.Index(got, "TICKETS"); j >= 0 && strings.Index(got, line) > j {
+		t.Errorf("the state line sits after the tickets\n%s", got)
+	}
+}
+
 func TestBuildBriefFirstDispatch(t *testing.T) {
 	in := briefEnv(t)
 	in.Note = "mind the cache"
@@ -120,6 +135,7 @@ func TestBuildBriefFirstDispatch(t *testing.T) {
 	if n := strings.Count(got, "REPLY-BACK:"); n != 1 {
 		t.Errorf("want one REPLY-BACK line, got %d", n)
 	}
+	briefHasState(t, got)
 }
 
 func TestBuildBriefFixRounds(t *testing.T) {
@@ -148,6 +164,7 @@ func TestBuildBriefFixRounds(t *testing.T) {
 	if !strings.Contains(got, "task-4") || strings.Contains(got, "task-1") {
 		t.Errorf("single fix round wrong\n%s", got)
 	}
+	briefHasState(t, got)
 }
 
 func TestBuildBriefPolish(t *testing.T) {
@@ -170,6 +187,7 @@ func TestBuildBriefPolish(t *testing.T) {
 	if strings.Contains(got, "TICKETS") || strings.Contains(got, "task-") {
 		t.Errorf("polish must take no tasks\n%s", got)
 	}
+	briefHasState(t, got)
 }
 
 func TestBuildBriefRefusals(t *testing.T) {
