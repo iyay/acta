@@ -24,7 +24,6 @@ Write the test first. Watch it fail. Write minimal code to pass.
 **Exceptions (ask your human partner):**
 - Throwaway prototypes
 - Generated code
-- Configuration files
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
@@ -234,7 +233,7 @@ Write one test per behaviour the plan names: every branch, error path, validatio
 | "Test hard = design unclear" | Listen to test. Hard to test = hard to use. |
 | "TDD will slow me down" | TDD IS the pragmatic path: catches bugs before commit, prevents regressions, lets you refactor without fear. "Pragmatic" shortcuts mean debugging in production — slower, not faster. |
 | "Manual test faster" | Manual doesn't prove edge cases. You'll re-test every change. |
-| "Existing code has no tests" | You're improving it. Add tests for existing code. |
+| "Existing code has no tests" | Test the behavior you change. Tests for the rest are a note for a later plan. |
 
 ## Red Flags - STOP and Start Over
 
@@ -320,12 +319,4 @@ Can't check all boxes? You skipped TDD. Start over.
 Bug found? Write failing test reproducing it. Follow TDD cycle. Test proves fix and prevents regression.
 
 Never fix bugs without a test.
-
-## Final Rule
-
-```
-Production code → test exists and failed first
-Otherwise → not TDD
-```
-
 No exceptions without your human partner's permission.
