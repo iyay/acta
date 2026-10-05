@@ -46,7 +46,7 @@ The spec and plan from acta:shape and acta:slice stay on main; they are already 
 
 Path: `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). Parent: the branch the user names, else the repo's default branch. Record the parent; `acta:land` merges into it. One worktree per approved plan. Copy in the untracked files the suite needs (env files, fixtures) and link dependency folders instead of installing them.
 
-Copy in the house rules too: `AGENTS.md` and `CLAUDE.md` — `AGENTS.md` is a symlink to an untracked `CLAUDE.md`, so a fresh worktree gets neither and the agent runs the whole ticket with zero house rules.
+Copy in the house rules too: any `CLAUDE.md` or `AGENTS.md` git does not track (file or symlink). A fresh worktree holds only tracked files, so without them the agent runs the ticket with no house rules.
 
 ### Step 0: Detect Existing Isolation
 
@@ -89,7 +89,7 @@ git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"
 cd "../$REPO-$SLUG"
 ```
 
-Sandbox fallback: if `git worktree add` fails with a permission error, tell the user the sandbox blocked worktree creation and you are working in the current directory instead. Then run setup and baseline tests in place.
+Sandbox fallback: if `git worktree add` fails with a permission error, stop and tell the user the sandbox blocked it. Never work in the main checkout instead.
 
 ### Step 2: Project Setup
 
@@ -122,7 +122,7 @@ Work the plan wave by wave (see ## Waves). For each task: dispatch the implement
 
 ## Setup
 
-Work happens only in the worktree from ## Worktree. Never start implementation on the main branch without your human partner's explicit consent.
+Work happens only in the worktree from ## Worktree.
 
 Read the plan once, note its context and Global Constraints, and make a todo per task. If the plan names a spec, read that too: the spec is the authority the plan argues from, and conflicts inside the plan resolve against it.
 
@@ -156,7 +156,7 @@ Implementers report DONE, DONE_WITH_CONCERNS, BLOCKED or NEEDS_CONTEXT. DONE: ch
 
 Never ignore an escalation. If the implementer asks questions, before starting or mid-task, answer clearly and completely instead of rushing it into code.
 
-### 5. Complete the task
+### 3. Complete the task
 
 The commit is in and the verify line passes: mark the todo complete and move on. Never move to the next task while this one is still BLOCKED on something the plan depends on.
 

@@ -5,16 +5,13 @@ Use this template when dispatching an implementer subagent.
 ```
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
-  model: `sonnet` in Claude Code or `agent="task"` on omp, and only when
-         `acta config show` lists `subagent_models: split`; when it does not,
-         name no model and follow the user's own config.
+  model: `sonnet` in Claude Code only when `acta config show` lists
+         `subagent_models: split`, else no model; on omp always `agent="task"`.
   prompt: |
     You are implementing Task N: [task name]
 
-    ## Task Description
-
-    Read your task brief first: [BRIEF_FILE]
-    It contains the full task text from the plan.
+    Your task is Task N in [PLAN_PATH]. Read only that task's section, never
+    the whole plan. The exact values to use are below.
 
     ## Context
 
@@ -130,7 +127,7 @@ Subagent (general-purpose):
 
     **Testing:**
     - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
+    - Did every change start from a failing test I watched fail?
     - Are tests comprehensive?
     - Is the test output pristine (no stray warnings or noise)?
 

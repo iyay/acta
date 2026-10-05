@@ -54,6 +54,9 @@ func TestSkillBuild(t *testing.T) {
 			"EnterWorktree", "Native Worktree Tools", "native worktree tool available", "Git Worktree Fallback", "Step 1a",
 			"Refuse to start without an approved spec and an approved plan. Say which one is missing.",
 			"after `acta:land` close the tab",
+			"is a symlink to an untracked", "explicit consent",
+			"working in the current directory instead", "### 5. Complete",
+			"[BRIEF_FILE]", "TDD if required", "and only when\n         ",
 		},
 	})
 }
