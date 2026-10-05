@@ -118,6 +118,56 @@ func TestSessionStartBrokenVoice(t *testing.T) {
 	}
 }
 
+// Every session start text that names a repo language also says which
+// language prompts to other agents use: always the repo language, because
+// subagents write repo text too. Chat Indonesian with repo English must ask
+// for English, never Indonesian.
+func TestSessionStartHandoffLineUsesRepoLanguage(t *testing.T) {
+	const wantEn = "- Write prompts and hand-offs to subagents or other agents in English.\n"
+	set := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	out := SessionStart(set)
+	if !strings.Contains(out, wantEn) {
+		t.Errorf("voice set: missing the handoff line:\n%s", out)
+	}
+	if strings.Contains(out, "hand-offs to subagents or other agents in Indonesian") {
+		t.Errorf("voice set: the handoff line uses the chat language:\n%s", out)
+	}
+	// The line sits after the repo language line and before the style line,
+	// so it reads as part of the voice, not as a new rule.
+	repo, hand, style := strings.Index(out, "(code, comments, commits, specs, plans) in English."),
+		strings.Index(out, wantEn),
+		strings.Index(out, "\n- Style: ")
+	if !(repo >= 0 && repo < hand && hand < style) {
+		t.Errorf("voice set: the handoff line is not after the repo line: %d %d %d:\n%s", repo, hand, style, out)
+	}
+	// A repo in another language moves the line with it, never with chat.
+	koreanRepo := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "Korean"}, VoiceExists: true}
+	const wantKo = "- Write prompts and hand-offs to subagents or other agents in Korean.\n"
+	if out := SessionStart(koreanRepo); !strings.Contains(out, wantKo) ||
+		strings.Contains(out, "hand-offs to subagents or other agents in Indonesian") {
+		t.Errorf("repo Korean: the handoff line must say Korean:\n%s", out)
+	}
+	// Both fallbacks write in English until the config is fixed, so the
+	// handoff line says English there too.
+	for name, in := range map[string]Input{
+		"first run": {Voice: config.UserDefault()},
+		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		if out := SessionStart(in); !strings.Contains(out, wantEn) {
+			t.Errorf("%s: missing the handoff line:\n%s", name, out)
+		}
+	}
+	// The fallback file the hook script prints when acta is missing must
+	// carry the line too.
+	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), wantEn) {
+		t.Error("plugin/hooks/default-rules.md misses the handoff line")
+	}
+}
+
 // The session note tells shape that the user picked probe, and only that value
 // does. Any other voice path must stay as it was, byte for byte.
 func TestSessionStartQuestionsProbeLine(t *testing.T) {

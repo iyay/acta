@@ -13,6 +13,7 @@ Core rules:
 Voice:
 - Write every chat message to the user in English.
 - Write everything that goes into the repo (code, comments, commits, specs, plans) in English. Comments use short, plain words and say why.
+- Write prompts and hand-offs to subagents or other agents in English.
 - Style: adhd.
 
 Lean coding guide (full text: acta:lean):

@@ -100,13 +100,20 @@ func SessionStart(in Input) string {
 	case !in.VoiceExists:
 		b.WriteString(firstRun)
 		b.WriteString("- Style: adhd.\n")
+		// No config yet, so English is the fallback for repo text too.
+		b.WriteString("- Write prompts and hand-offs to subagents or other agents in English.\n")
 	case in.VoiceErr != nil:
 		fmt.Fprintf(&b, "\nVoice: the voice file could not be read (%v). Write in English, adhd style, until it is fixed; acta:setup rewrites it.\n", in.VoiceErr)
 		b.WriteString("- Style: adhd.\n")
+		// The config is broken, so English is the fallback for repo text too.
+		b.WriteString("- Write prompts and hand-offs to subagents or other agents in English.\n")
 	default:
 		v := in.Voice
 		fmt.Fprintf(&b, "\nVoice:\n- Write every chat message to the user in %s.\n", v.ChatLanguage)
 		fmt.Fprintf(&b, "- Write everything that goes into the repo (code, comments, commits, specs, plans) in %s. Comments use short, plain words and say why.\n", v.RepoLanguage)
+		// Subagents write repo text too, so their prompts use the repo
+		// language, never the chat language.
+		fmt.Fprintf(&b, "- Write prompts and hand-offs to subagents or other agents in %s.\n", v.RepoLanguage)
 		fmt.Fprintf(&b, "- Style: %s.\n", v.Style)
 		if v.Questions == "probe" {
 			b.WriteString("- Questions: probe.\n")
