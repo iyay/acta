@@ -9,13 +9,7 @@ Moves planning docs written by another workflow into `.acta/`, in the acta file 
 
 ## superpowers docs
 
-superpowers already writes close to the contract, so this is a move with no content change:
-
-1. Run `acta migrate superpowers`. It is a dry run: it prints an old-path to new-path table and any name clash.
-2. Show the table to the user and wait for a yes.
-3. Run `acta migrate superpowers --apply`. It refuses on a dirty tree or a clash, moves with `git mv`, makes one commit, deletes nothing, drops `docs/superpowers` from `legacy`, and never pushes.
-
-If the installed `acta` has no `migrate` command yet, use the route below for superpowers docs too, moving each file with `git mv` instead of writing a new one.
+Superpowers docs take the generic route below: build the table the same way, move each file with `git mv` instead of writing a new one, and after the commit drop `docs/superpowers` from `legacy` in `.acta.yaml`.
 
 ## Any other format
 
