@@ -5,6 +5,7 @@ id: PLN-0085
 created: "2026-10-05 12:26:29"
 hash: cqy1o86
 started: "2026-10-05 12:50:42"
+finished: "2026-10-05 12:52:47"
 ---
 # Doctor executor not set Implementation Plan
 
@@ -39,6 +40,11 @@ started: "2026-10-05 12:50:42"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- The print-format test in internal/doctor/doctor_test.go still feeds the old words "no build executor" as made-up input; it does not call checkSetup.
+- The revert check covered doctor.go only; internal/plugincheck covers the version bump.

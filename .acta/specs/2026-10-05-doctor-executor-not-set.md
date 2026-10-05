@@ -3,6 +3,7 @@ id: SPC-0075
 created: "2026-10-05 12:25:49"
 hash: fpx1t09
 started: "2026-10-05 12:50:42"
+finished: "2026-10-05 12:52:47"
 ---
 # Doctor treats an unset build executor as fine
 

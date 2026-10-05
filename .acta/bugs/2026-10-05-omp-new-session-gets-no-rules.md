@@ -2,10 +2,10 @@
 id: BUG-0030
 hash: a1ivser
 ---
-# omp after /new gets no acta session rules
+# omp gets no acta session rules
 
 ## Symptom
-After /new (or resume or fork) in a running omp, the agent gets only the one-line per-turn reminder ("acta config: reply in Indonesian, adhd style.") and never the acta session rules block. It then skips the acta flow: in be-pmis on 2026-10-05 it wrote a plan file straight into .acta/plans with no shape, no slice and no yes.
+After new (or resume or fork) session in a running omp, the agent gets only the one-line per-turn reminder ("acta config: reply in Indonesian, adhd style.") and never the acta session rules block. It then skips the acta flow: in be-pmis on 2026-10-05 it wrote a plan file straight into .acta/plans with no shape, no slice and no yes.
 
 ## Root cause
 plugin/omp/index.ts:180-181 listens only to "session_start" and "session_compact". omp emits "session_switch" with reason "new", "resume" or "fork" for those actions (found in @oh-my-pi/pi-coding-agent dist: emit({type:"session_switch",reason:"new",...})). So state.reset never runs, rulesSent (index.ts createState) stays true from the earlier session, and contextFor (index.ts ~121) sends only the reminder.
