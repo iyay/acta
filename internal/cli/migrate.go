@@ -24,7 +24,7 @@ func cmdMigrateRoot(args []string, stdout, stderr io.Writer) int {
 	return migrateRoot(cwd, stdout, stderr)
 }
 
-const migrateRootMsg = "acta: move root folder .pm to .acta"
+const migrateRootMsg = "chore: move root folder .pm to .acta"
 
 // migrateRoot moves .pm/ to .acta/ with git mv, renames .pm.yaml when it
 // exists, drops a root line that only says ".pm", and commits once with a

@@ -2,7 +2,6 @@ package write
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 
 	"github.com/iyay/acta/internal/board"
@@ -130,7 +129,7 @@ func MarkItem(cfg config.Config, b *board.Board, id string, done bool) (Outcome,
 			return Outcome{}, err
 		}
 	}
-	msg := fmt.Sprintf("acta: %s %s", id, word)
+	msg := Subject(cfg, unique(wrote), id+" "+word)
 	o := Outcome{Path: it.Path}
 	switch {
 	case !cfg.AutoCommit:

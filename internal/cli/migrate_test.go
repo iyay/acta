@@ -98,7 +98,7 @@ func TestMigrateRootHappyPath(t *testing.T) {
 	if len(msgs) != before+1 {
 		t.Fatalf("want one new commit, log is %v", msgs)
 	}
-	if msgs[0] != "acta: move root folder .pm to .acta" {
+	if msgs[0] != "chore: move root folder .pm to .acta" {
 		t.Fatalf("commit message %q", msgs[0])
 	}
 	if out := stdout.String(); !strings.Contains(out, ".pm") || !strings.Contains(out, ".acta") {

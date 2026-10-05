@@ -123,7 +123,7 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	if err := os.WriteFile(it.Path, out, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, it.Path, fmt.Sprintf("acta: %s %s %s", id, field, value), dirty), nil
+	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, field, value)), dirty), nil
 }
 
 // setTitle changes the title of one item. The board reads a title from the
@@ -222,7 +222,7 @@ func NewBug(cfg config.Config, slug, title, ref, priority string, body []byte) (
 	if err := os.WriteFile(path, content, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, path, "acta: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
+	return finish(cfg, path, Subject(cfg, []string{path}, "new bug "+strings.TrimSuffix(filepath.Base(path), ".md")), false), nil
 }
 
 // StartBug writes the bare template so an editor can open it.
@@ -262,7 +262,7 @@ func FinishBug(cfg config.Config, path string, tmpl []byte) (Outcome, error) {
 		}
 		return Outcome{Path: path}, ErrUnchanged
 	}
-	return finish(cfg, path, "acta: new bug "+strings.TrimSuffix(filepath.Base(path), ".md"), false), nil
+	return finish(cfg, path, Subject(cfg, []string{path}, "new bug "+strings.TrimSuffix(filepath.Base(path), ".md")), false), nil
 }
 
 // NewDebt writes review NOTEs onto a plan as a checklist file in the debt
@@ -308,7 +308,7 @@ func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []st
 	if !added {
 		return Outcome{Path: path}, nil
 	}
-	return finish(cfg, path, "acta: new debt "+fileStem, dirty), nil
+	return finish(cfg, path, Subject(cfg, []string{path}, "new debt "+fileStem), dirty), nil
 }
 
 // addDebtLines writes the new lines onto the debt file at path, under that
@@ -391,7 +391,7 @@ func createDebt(cfg config.Config, b *board.Board, path, fileStem, title string,
 	if err := os.WriteFile(path, content, 0o644); err != nil {
 		return Outcome{}, err
 	}
-	return finish(cfg, path, "acta: new debt "+fileStem, false), nil
+	return finish(cfg, path, Subject(cfg, []string{path}, "new debt "+fileStem), false), nil
 }
 
 // splitNotes turns raw stdin into one trimmed line of text per note. A

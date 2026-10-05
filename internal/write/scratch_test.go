@@ -71,7 +71,7 @@ func TestNewScratchWritesRawItemAndCommits(t *testing.T) {
 	if want := "## Words\n\n### 2026-09-26\n\n" + string(body); !strings.Contains(string(got), want) {
 		t.Errorf("body changed:\ngot  %q\nwant %q", got, want)
 	}
-	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "acta: new scratch 2026-09-26-newest-first" {
+	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "chore(scratch): new 2026-09-26-newest-first" {
 		t.Errorf("commit message %q", msg)
 	}
 	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--format=%H"), "\n") + 1; n != strings.Count(before, "\n")+2 {
@@ -244,7 +244,7 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note ✓\n\n### 2026-09-26\n\nanswer 1 ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(body).Body != want {
 		t.Errorf("body = %q, want %q", body, want)
 	}
-	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "acta: add to scratch 2026-09-26-idea" {
+	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "chore(scratch): add to 2026-09-26-idea" {
 		t.Errorf("commit message %q", msg)
 	}
 	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--format=%H"), "\n") + 1; n != strings.Count(before, "\n")+2 {

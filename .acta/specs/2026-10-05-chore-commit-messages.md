@@ -2,6 +2,7 @@
 id: SPC-0080
 created: "2026-10-05 15:18:54"
 hash: raxfale
+started: "2026-10-05 15:24:25"
 ---
 # Planning commits use chore(<kind>): instead of acta:
 

@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0090
 created: "2026-10-05 15:18:54"
 hash: ub9flsj
+started: "2026-10-05 15:24:25"
 ---
 # chore commit messages Implementation Plan
 
@@ -31,17 +32,17 @@ hash: ub9flsj
 
 **Files:** Modify the commit subjects in `internal/write/*.go`, `internal/cli/doctor.go`, `internal/cli/migrate.go`, and any other non-test Go file that writes `acta: ` into a commit subject; `internal/board/state.go`; their tests.
 **verify:** No commit acta makes has a subject starting with `acta: `; each single-kind commit is scoped by that kind and each multi-kind, doctor or migrate commit has no scope; the review round is found from both `chore(plan): tick fix round N` and the old `acta: tick fix round N`. List every write command and commit path checked.
-- [ ] Failing test: a write command in a temp clone (for example `acta scratch new`) must commit `chore(scratch): ...`; fails because it commits `acta: ...`.
-- [ ] Code: one small helper that builds the subject from the kinds touched, used by every commit path; state.go matches both round subjects.
-- [ ] Commit: `write: planning commits use chore(<kind>) subjects`.
+- [x] Failing test: a write command in a temp clone (for example `acta scratch new`) must commit `chore(scratch): ...`; fails because it commits `acta: ...`.
+- [x] Code: one small helper that builds the subject from the kinds touched, used by every commit path; state.go matches both round subjects.
+- [x] Commit: `write: planning commits use chore(<kind>) subjects`.
 
 ### Task 2: skill text
 
 **Files:** Modify `plugin/skills/land/SKILL.md`, `plugin/skills/migrate/SKILL.md`, `plugin/skills/build/SKILL.md`, `plugin/skills/review/SKILL.md`, `plugin/skills/build/dispatch.md`, `plugin/references/house-rules.md` where they name a commit subject.
 **verify:** No skill or reference line tells an agent to commit with an `acta: ` subject, and each names the new form; `internal/plugincheck` passes. List each file and line checked.
-- [ ] Failing test: grep the skill and reference files for commit subjects starting with `acta: ` and see hits; `scripts/test ./internal/plugincheck` green before.
-- [ ] Code: change each named subject to the chore form, for example `chore(plan): tick wave <n>`, `chore(plan): tick fix round <n>`, `chore(plan): review notes for <plan id>`.
-- [ ] Commit: `skills: commit subjects use chore(<kind>)`.
+- [x] Failing test: grep the skill and reference files for commit subjects starting with `acta: ` and see hits; `scripts/test ./internal/plugincheck` green before.
+- [x] Code: change each named subject to the chore form, for example `chore(plan): tick wave <n>`, `chore(plan): tick fix round <n>`, `chore(plan): review notes for <plan id>`.
+- [x] Commit: `skills: commit subjects use chore(<kind>)`.
 
 ### Task 3: version bump
 

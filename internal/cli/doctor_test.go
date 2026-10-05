@@ -423,8 +423,8 @@ func TestDoctorCLIFixCommitsOnACleanRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if msg := strings.TrimSpace(string(out)); msg != "acta: doctor fix" {
-		t.Fatalf("commit message %q want %q", msg, "acta: doctor fix")
+	if msg := strings.TrimSpace(string(out)); msg != "chore: doctor fix" {
+		t.Fatalf("commit message %q want %q", msg, "chore: doctor fix")
 	}
 	if strings.Contains(stderr.String(), "not committed") {
 		t.Fatalf("stderr %q says the commit was skipped", stderr.String())

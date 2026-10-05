@@ -49,7 +49,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 			// below is the answer the user asked for.
 			if reason := skipReason(e, dirty); reason != "" {
 				fmt.Fprintln(stderr, "fixed, not committed:", reason)
-			} else if r := gitc.CommitPaths(e.RepoRoot, paths, "acta: doctor fix"); !r.Committed {
+		} else if r := gitc.CommitPaths(e.RepoRoot, paths, "chore: doctor fix"); !r.Committed {
 				fmt.Fprintln(stderr, "fixed, not committed:", r.Reason)
 			}
 			fmt.Fprintf(stdout, "fixed repo: %s\n", strings.Join(paths, ", "))

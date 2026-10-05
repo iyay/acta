@@ -79,7 +79,7 @@ func SetState(cfg config.Config, b *board.Board, planID, part string, body []byt
 	if name == "" {
 		name = it.ID
 	}
-	return finish(cfg, it.Path, "acta: state "+name, dirty), nil
+	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, "state "+name), dirty), nil
 }
 
 // putState writes text under the heading the State parts name at index at. A

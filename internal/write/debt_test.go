@@ -44,7 +44,7 @@ func TestNewDebtWritesChecklist(t *testing.T) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
 	}
-	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "acta: new debt 2026-09-27-short-ids"); n != 1 {
+	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "chore(debt): new debt 2026-09-27-short-ids"); n != 1 {
 		t.Fatalf("commits = %d, want 1", n)
 	}
 }
@@ -79,7 +79,7 @@ func TestNewDebtAppendsWithoutDuplicates(t *testing.T) {
 	}
 	// only the create commit and one append commit; the all-duplicate
 	// pass in the next test must not add a third.
-	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "acta: new debt 2026-09-27-short-ids"); n != 2 {
+	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "chore(debt): new debt 2026-09-27-short-ids"); n != 2 {
 		t.Fatalf("commits = %d, want 2", n)
 	}
 }

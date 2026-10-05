@@ -75,7 +75,7 @@ func TestSetValueCommits(t *testing.T) {
 	if string(body) != "---\nref: B-1\nstatus: fixed\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash status fixed" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash status fixed" {
 		t.Fatalf("commit message %q", got)
 	}
 }
@@ -232,7 +232,7 @@ func TestNewBug(t *testing.T) {
 	if !strings.Contains(string(body), "ref: New-261") || !strings.Contains(string(body), "## Symptom") {
 		t.Fatalf("file lost content: %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: new bug 2026-09-26-ack-dup" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): new bug 2026-09-26-ack-dup" {
 		t.Fatalf("commit message %q", got)
 	}
 }
@@ -331,7 +331,7 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: bugs/2026-09-24-crash ref New-261" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash ref New-261" {
 		t.Fatalf("commit message %q", got)
 	}
 }

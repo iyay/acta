@@ -116,7 +116,7 @@ func TestSetStateCommitsWithTheStateSubject(t *testing.T) {
 	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: state PLN-0082" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(plan): state PLN-0082" {
 		t.Fatalf("commit subject %q", got)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "show", "--name-only", "--format=", "HEAD"); got != ".acta/plans/2026-10-05-live-work-state.md" {
@@ -137,7 +137,7 @@ func TestSetStateFallsBackToTheIdWhenThePlanHasNoShortID(t *testing.T) {
 	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
 		t.Fatal(err)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "acta: state plans/2026-10-05-live-work-state" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(plan): state plans/2026-10-05-live-work-state" {
 		t.Fatalf("commit subject %q", got)
 	}
 }

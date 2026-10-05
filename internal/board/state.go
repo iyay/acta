@@ -9,9 +9,9 @@ import (
 	"github.com/iyay/acta/internal/gitc"
 )
 
-// roundSubject is the commit subject that opens a review round. The number
-// after it is the round the build is on.
-const roundSubject = "acta: tick fix round "
+// roundSubjects are the commit subjects that open a review round, newest
+// first. The number after one is the round the build is on.
+var roundSubjects = []string{"chore(plan): tick fix round ", "acta: tick fix round "}
 
 // stateHeads are the three subsections a State section holds, in the order the
 // file fixes. The writer in internal/write keeps the same names.
@@ -125,12 +125,41 @@ func runState(repo string, b *Board, it *Item, w gitc.Worktree) RunState {
 	if h, s, err := gitc.NewestCommit(repo, w.Branch, ""); err == nil {
 		r.Commit = h + " " + s
 	}
-	if _, s, err := gitc.NewestCommit(repo, w.Branch, roundSubject); err == nil {
-		r.Round = strings.TrimSpace(strings.TrimPrefix(s, roundSubject))
+	if h, n := newestRound(repo, w.Branch); h != "" {
+		r.Round = n
 	}
 	n, f, o := stateOf(it.Body)
 	r.Next, r.Findings, r.Rulings = n, f, o
 	return r
+}
+
+// newestRound gives the round of the newest fix-round commit on the branch,
+// checking both the new and the old subject. The newest commit wins
+// whatever subject it uses, so old history keeps working while new
+// commits use the new subject.
+func newestRound(repo, branch string) (string, string) {
+	var found []string
+	var rounds []string
+	for _, pre := range roundSubjects {
+		if h, s, err := gitc.NewestCommit(repo, branch, pre); err == nil && s != "" {
+			found = append(found, h)
+			rounds = append(rounds, strings.TrimSpace(strings.TrimPrefix(s, pre)))
+		}
+	}
+	if len(found) == 0 {
+		return "", ""
+	}
+	if len(found) == 1 {
+		return found[0], rounds[0]
+	}
+	if first, err := gitc.FirstSeen(repo, found[0]); err == nil {
+		if second, err := gitc.FirstSeen(repo, found[1]); err == nil {
+			if second > first {
+				return found[1], rounds[1]
+			}
+		}
+	}
+	return found[0], rounds[0]
 }
 
 // openTask gives the first task of the plan with a box still open, or nil when
