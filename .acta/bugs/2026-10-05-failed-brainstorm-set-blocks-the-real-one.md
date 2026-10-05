@@ -2,6 +2,8 @@
 id: BUG-0031
 hash: q3xv1ma
 started: "2026-10-05 14:57:26"
+fixed_in: 477a908c87fe08c9f085eda732fd2a1368c2b5e8
+finished: "2026-10-05 15:15:37"
 ---
 # A mistyped brainstorm command blocks the real one in the same session
 

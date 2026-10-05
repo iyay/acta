@@ -3,6 +3,7 @@ id: SPC-0078
 created: "2026-10-05 14:25:27"
 hash: l31a9vj
 started: "2026-10-05 14:36:45"
+finished: "2026-10-05 14:46:16"
 ---
 # Hand-offs in the repo language, and evals may use Read
 

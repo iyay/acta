@@ -5,6 +5,7 @@ id: PLN-0088
 created: "2026-10-05 14:25:27"
 hash: zeb4nps
 started: "2026-10-05 14:36:45"
+finished: "2026-10-05 14:46:16"
 ---
 # Hand-off language and eval Read Implementation Plan
 
@@ -47,6 +48,14 @@ started: "2026-10-05 14:36:45"
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
 **verify:** The three files agree on one `x.y.z`, one patch above the version on the parent branch at the time this task runs; `internal/plugincheck` passes.
-- [ ] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
-- [ ] Code: add 1 to the patch in all three files.
-- [ ] Commit: `plugin: bump patch version`.
+- [x] Failing test: none new; run `scripts/test ./internal/plugincheck` before and after the bump to watch it stay green.
+- [x] Code: add 1 to the patch in all three files.
+- [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- The session-start cap went up 71 bytes for the hand-off line, the length of that line.
+- `claude plugin eval --help` lists Bash, Write, Edit, WebFetch and mcp__* as gated tools, not Read; the traces prove the grant works: Read of probe.md succeeded after it, and was denied before.
+- No test pins the `--allow-tools Bash Read` line in scripts/eval.
+- The new hook test is 50 lines; a table test would be shorter.
+- probe-round after the fix and BUG-0031: 1.00 three times out of three.
