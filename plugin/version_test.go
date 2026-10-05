@@ -21,10 +21,7 @@ func TestMain(m *testing.M) {
 // on disk, so this test tracks the real file instead of a copy.
 func pluginFileVersion(t *testing.T) string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", ".claude-plugin", "plugin.json"))
-	if err != nil {
-		raw, err = os.ReadFile(filepath.Join(".claude-plugin", "plugin.json"))
-	}
+	raw, err := os.ReadFile(filepath.Join(".claude-plugin", "plugin.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -164,10 +164,19 @@ func homeDir() string {
 	return home
 }
 
-// tuiVersion is the version text the TUI header shows: v plus the plugin
-// version, so the board footer never shows a Go pseudo-version.
+// tuiVersionFor is the version text the TUI header shows: v plus a real
+// version, or the bare fallback text when there is none to show.
+func tuiVersionFor(version string) string {
+	if version == "dev" {
+		return "dev"
+	}
+	return "v" + version
+}
+
+// tuiVersion is the version text the TUI header shows, so the board footer
+// never shows a Go pseudo-version.
 func tuiVersion() string {
-	return "v" + plugin.Version()
+	return tuiVersionFor(plugin.Version())
 }
 
 // buildVersion is the plugin version, with the commit appended when the

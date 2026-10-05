@@ -768,3 +768,17 @@ func TestTUIVersionShowsPluginVersion(t *testing.T) {
 		t.Fatalf("tuiVersion() = %q, want %q", got, want)
 	}
 }
+
+// tuiVersionFor is the pure part of tuiVersion: a real version gets a v in
+// front, while the fallback text stays bare, so the header never says vdev.
+func TestTuiVersionFor(t *testing.T) {
+	cases := map[string]string{
+		"0.1.7": "v0.1.7",
+		"dev":   "dev",
+	}
+	for in, want := range cases {
+		if got := tuiVersionFor(in); got != want {
+			t.Fatalf("tuiVersionFor(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

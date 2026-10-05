@@ -43,3 +43,11 @@ finished: "2026-10-05 12:02:52"
 - [x] Failing test: none new; run `scripts/test ./internal/plugincheck ./plugin` before and after the bump to watch it stay green.
 - [x] Code: add 1 to the patch in all three files.
 - [x] Commit: `plugin: bump patch version`.
+
+## Review notes
+
+- Building cmd/acta now needs plugin/.claude-plugin/plugin.json in the module; moving that file breaks the build, not just a test.
+- The commit-in-brackets suffix of buildVersion has no test; that code did not change.
+- The polish change to the plugin test helper has no test that goes red on revert; it is a test-helper change.
+- TestTuiVersionFor is spelled differently from its neighbour TestTUIVersionShowsPluginVersion.
+- TestTuiVersionFor keeps its cases in a map, so they run in random order.
