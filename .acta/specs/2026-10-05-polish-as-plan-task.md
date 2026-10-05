@@ -3,6 +3,7 @@ parent: scratch/2026-10-05-polish-as-plan-task
 id: SPC-0077
 created: "2026-10-05 13:48:17"
 hash: exdvp2b
+started: "2026-10-05 13:55:00"
 ---
 # A review polish is a task in the plan
 

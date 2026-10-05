@@ -67,7 +67,7 @@ BLOCKERs or open tasks go back in this same turn. A findings list with no `send`
 2. Run `acta dispatch send --plan <plan> --rules <abs path> --round fix-<n>`. It reuses the same tab, so the agent keeps its context. Write the note as if it remembers nothing, because omp compacts.
 3. Start the watcher, then stop. One turn per round.
 
-The polish goes out the same way: `--round polish` with the `[fix]` NOTE list as the note. The review skill's `## After a CLEAN round` owns what happens on reply-back.
+The polish goes out the same way: `--round polish` hands over the `## Polish` task, with the `[fix]` NOTE list as the note. The review skill's `## After a CLEAN round` owns what happens on reply-back.
 
 Clean and complete: run `## After a CLEAN round`; its `acta:land` is build's `## Close`. Close the tab first (below). Never leave a reviewed branch parked.
 
