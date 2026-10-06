@@ -51,9 +51,9 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** `RunAll` never reports success when the glob is malformed or matches no case: it runs no case, prints one line naming the glob, and returns true. An empty glob still runs every case. List every glob shape tested (empty, matching, malformed, matching none).
 
-- [ ] Red: `TestRunAllBadCase` with `only` = `"[abc"` and `only` = `"nope*"`; each must return true, print a line that contains the glob, and run no case (the fake omp's `args` log file is never written).
-- [ ] Green: before the loop, check `only` once with `path.Match(only, "")`; on `path.ErrBadPattern` print `bad --case glob "<glob>": <err>` and return true; after a first pass that counts matches, zero matches prints `no case matches "<glob>"` and returns true.
-- [ ] Commit: `fix(evalomp): --case with a bad or empty match fails the run (DBT-0048.02, DBT-0048.03)`
+- [x] Red: `TestRunAllBadCase` with `only` = `"[abc"` and `only` = `"nope*"`; each must return true, print a line that contains the glob, and run no case (the fake omp's `args` log file is never written).
+- [x] Green: before the loop, check `only` once with `path.Match(only, "")`; on `path.ErrBadPattern` print `bad --case glob "<glob>": <err>` and return true; after a first pass that counts matches, zero matches prints `no case matches "<glob>"` and returns true.
+- [x] Commit: `fix(evalomp): --case with a bad or empty match fails the run (DBT-0048.02, DBT-0048.03)`
 
 ### Task 03: The scaffold has a time limit
 
