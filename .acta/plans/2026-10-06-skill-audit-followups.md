@@ -6,6 +6,7 @@ id: PLN-0100
 created: "2026-10-06 07:10:03"
 hash: bu9zdov
 started: "2026-10-06 07:12:34"
+finished: "2026-10-06 07:21:02"
 ---
 # skill audit follow-ups Implementation Plan
 
@@ -54,6 +55,25 @@ started: "2026-10-06 07:12:34"
 
 **verify:** The three files carry the same `x.y.z` version, one patch above main's at branch time.
 
-- [ ] Run `scripts/test ./internal/plugincheck/`; the version check already guards agreement, so the bump has no red test of its own.
-- [ ] Add 1 to the patch version in all three files.
-- [ ] Commit: `chore(plugin): bump patch version`
+- [x] Run `scripts/test ./internal/plugincheck/`; the version check already guards agreement, so the bump has no red test of its own.
+- [x] Add 1 to the patch version in all three files.
+- [x] Commit: `chore(plugin): bump patch version`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `plugin/skills/debug/SKILL.md:112`: make it full sentences that keep the example and say to give the steps, for example "**This reveals:** Which layer fails. A probe that only runs in CI: give the user its steps; never push." Stay under the byte cap by tightening this line only; never raise a cap.
+- [x] `plugin/skills/debug/root-cause-tracing.md:68`: a full sentence with its condition and verb, for example "If you can't trace it by hand, log in a throwaway clone outside the repo:". Stay under the byte cap; shorten other words on that line only if needed.
+- [x] `internal/plugincheck/skill_build_test.go`: add `MustNot` `"ask questions"` so the old implementer line cannot come back.
+- [x] Commit: `polish: review notes for PLN-0100`
+
+Polish reverted (e92d59e): the polish review found that `root-cause-tracing.md:68` lost "outside the repo". Every Task 4 item moved to `[debt]`.
+
+## Review notes
+
+- implementer-prompt.md sends anything unexpected to NEEDS_CONTEXT, while BLOCKED may fit a blocking surprise better; the controller treats both the same.
+- The ticked tasks quote wording that did not land word for word; 96ff265 shortened it to fit byte caps.
+- build/SKILL.md:155 "If the implementer asks questions" is fine; a future "ask questions" pin would collide only if reworded.
