@@ -5,6 +5,7 @@ closes: [DBT-0084.01, DBT-0084.02]
 id: PLN-0100
 created: "2026-10-06 07:10:03"
 hash: bu9zdov
+started: "2026-10-06 07:12:34"
 ---
 # skill audit follow-ups Implementation Plan
 
@@ -33,9 +34,9 @@ hash: bu9zdov
 
 **verify:** No line in the build skill or implementer prompt asks the subagent to hold a conversation, and no line gives a fixed English sentence to say to the user; list every "ask" and every quoted chat line in both files.
 
-- [ ] Add `MustNot` `"Ask them now"` and `"Already in isolated workspace"` to `TestSkillBuild`; it fails on today's text.
-- [ ] In `implementer-prompt.md`, "**Ask them now.** Raise any concerns before starting work." becomes "Stop and report NEEDS_CONTEXT with the question before you start." and the "**While you work:**" lines become "If something is unexpected or unclear, stop and report NEEDS_CONTEXT with the question. Don't guess."; in `SKILL.md`, the two quoted report lines become one line: "Tell the user, in their chat language, the worktree path and branch, or that HEAD is detached and a branch is needed at finish time."
-- [ ] Commit: `fix(skills): build asks for NEEDS_CONTEXT and reports in the chat language`
+- [x] Add `MustNot` `"Ask them now"` and `"Already in isolated workspace"` to `TestSkillBuild`; it fails on today's text.
+- [x] In `implementer-prompt.md`, "**Ask them now.** Raise any concerns before starting work." becomes "Stop and report NEEDS_CONTEXT with the question before you start." and the "**While you work:**" lines become "If something is unexpected or unclear, stop and report NEEDS_CONTEXT with the question. Don't guess."; in `SKILL.md`, the two quoted report lines become one line: "Tell the user, in their chat language, the worktree path and branch, or that HEAD is detached and a branch is needed at finish time."
+- [x] Commit: `fix(skills): build asks for NEEDS_CONTEXT and reports in the chat language`
 
 ### Task 2: debug probes stay out of the checkout
 
@@ -43,9 +44,9 @@ hash: bu9zdov
 
 **verify:** No debug text tells the agent to add instrumentation or run a probe in the real checkout, and a CI-only probe always ends with the user running it, never a push; list every instrumentation and probe step in the debug folder and where it runs.
 
-- [ ] Add `MustNot` `"When you can't trace manually, add instrumentation:"` and `Must` `"never push"` to `TestSkillDebug` (confirm the rule reads the folder's reference files); it fails.
-- [ ] In `root-cause-tracing.md` the line becomes "When you can't trace manually, instrument a throwaway clone outside the repo:"; in `SKILL.md`, after the CI example's "This reveals" line, add "A probe that can only run in CI: write its steps and ask the user to run them; never push."
-- [ ] Commit: `fix(skills): debug probes never touch the checkout or push`
+- [x] Add `MustNot` `"When you can't trace manually, add instrumentation:"` and `Must` `"never push"` to `TestSkillDebug` (confirm the rule reads the folder's reference files); it fails.
+- [x] In `root-cause-tracing.md` the line becomes "When you can't trace manually, instrument a throwaway clone outside the repo:"; in `SKILL.md`, after the CI example's "This reveals" line, add "A probe that can only run in CI: write its steps and ask the user to run them; never push."
+- [x] Commit: `fix(skills): debug probes never touch the checkout or push`
 
 ### Task 3: version bump
 

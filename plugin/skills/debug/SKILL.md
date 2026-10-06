@@ -110,6 +110,7 @@ You MUST complete each phase before proceeding to the next.
    ```
 
    **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
+   A probe that can only run in CI: write its steps and ask the user to run them; never push.
 
 5. **Trace Data Flow**
 
@@ -255,9 +256,6 @@ If you catch yourself thinking:
 | "Just try this first, then investigate" | First fix sets the pattern. Do it right from the start. |
 | "I'll write test after confirming fix works" | Untested fixes don't stick. Test first proves it. |
 | "Multiple fixes at once saves time" | Can't isolate what worked. Causes new bugs. |
-| "Reference too long, I'll adapt the pattern" | Partial understanding guarantees bugs. Read it completely. |
-| "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
-| "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question pattern, don't fix again. |
 
 ## Quick Reference
 
