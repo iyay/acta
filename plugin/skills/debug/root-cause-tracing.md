@@ -65,7 +65,7 @@ Project.create('name', context.tempDir); // Accessed before beforeEach!
 
 ## Adding Stack Traces
 
-When you can't trace manually, instrument a throwaway clone outside the repo:
+If stuck, use a throwaway clone outside the repo:
 
 ```typescript
 // Before the problematic operation
@@ -82,6 +82,7 @@ async function gitInit(directory: string) {
 }
 ```
 
+**Critical:** Use `console.error()` in tests (not logger - may not show)
 
 **Run and capture:**
 ```bash

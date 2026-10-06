@@ -4,6 +4,8 @@ closes: [DBT-0084.01, DBT-0084.02]
 id: SPC-0091
 created: "2026-10-06 07:09:08"
 hash: atoye2r
+started: "2026-10-06 07:12:34"
+finished: "2026-10-06 07:21:02"
 ---
 # skill text: audit follow-ups (implementer questions, build report, debug probes)
 
