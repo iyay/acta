@@ -77,7 +77,7 @@ You MUST complete each phase before proceeding to the next.
 
    **WHEN system has multiple components (CI → build → signing, API → service → database):**
 
-   **BEFORE proposing fixes, instrument a scratch copy:**
+   **First instrument a throwaway clone outside the repo:**
    ```
    For EACH component boundary:
      - Log what data enters component
@@ -156,7 +156,7 @@ You MUST complete each phase before proceeding to the next.
    - Be specific, not vague
 
 2. **Test Minimally**
-   - Test it with the SMALLEST probe, in a scratch copy
+   - Test one probe in a throwaway clone outside the repo
    - One variable at a time
    - Don't fix multiple things at once
 

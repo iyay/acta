@@ -2,6 +2,8 @@
 id: SPC-0090
 created: "2026-10-06 06:28:06"
 hash: olt3mpt
+started: "2026-10-06 06:32:45"
+finished: "2026-10-06 06:41:18"
 ---
 # skill text: fix stale facts and rules that contradict each other
 
