@@ -40,7 +40,7 @@ const (
 
 // runningRule tells the agent when to write the next step down, so a session
 // that dies leaves the next one something to go on from.
-const runningRule = "Before you stop, or when context runs low, run acta state set <plan> next so the next session starts where this one stopped."
+const runningRule = "Before you stop, or when context runs low, run acta state set <plan> next with the lines on stdin so the next session starts where this one stopped."
 
 const coreRules = `
 Core rules:

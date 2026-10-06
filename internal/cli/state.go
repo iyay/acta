@@ -54,11 +54,14 @@ func namesPlan(it *board.Item, id string) bool {
 }
 
 func cmdStateSet(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	if len(args) != 2 {
-		fmt.Fprintln(stderr, "usage: acta state set <plan> next|findings|rulings < text.md")
+	fs, root := flags("state set", stderr)
+	clear := fs.Bool("clear", false, "empty the State part instead of writing lines")
+	pos, err := parseMixed(fs, args)
+	if err != nil || len(pos) != 2 {
+		fmt.Fprintln(stderr, "usage: acta state set <plan> next|findings|rulings [--clear] < text.md")
 		return exitBadInput
 	}
-	cfg, b, code := loadBoard("", stderr)
+	cfg, b, code := loadBoard(*root, stderr)
 	if code != exitOK {
 		return code
 	}
@@ -67,6 +70,6 @@ func cmdStateSet(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	o, err := write.SetState(cfg, b, args[0], args[1], body)
+	o, err := write.SetState(cfg, b, pos[0], pos[1], body, *clear)
 	return report(o, err, stdout, stderr)
 }

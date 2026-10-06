@@ -3,7 +3,7 @@ type: Reference
 title: How a plan's Spec line is read
 description: First backtick .md span, else first bare .md word with a slash, else no spec; the none form for plans without a spec
 paths: [internal/board/]
-timestamp: 2026-10-06T00:00:00Z
+timestamp: 2026-10-06T05:19:30Z
 ---
 
 `specPath` in `internal/board/parse.go` takes the first backtick span ending in `.md`, else the first bare word ending in `.md` that has a `/`, else no spec (no warning).

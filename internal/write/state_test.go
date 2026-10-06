@@ -40,7 +40,7 @@ func stateBody(t *testing.T, path string) string {
 // A plan with no State section gets one, holding only the part that was set.
 func TestSetStateCreatesMissingSection(t *testing.T) {
 	cfg, path := stateRepo(t, statePlan)
-	o, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("write the tests\n"))
+	o, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("write the tests\n"), false)
 	if err != nil || !o.Committed {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
@@ -54,10 +54,10 @@ func TestSetStateCreatesMissingSection(t *testing.T) {
 // the order fixes, and the part already written stays byte for byte.
 func TestSetStateAddsMissingSubsectionInOrder(t *testing.T) {
 	cfg, path := stateRepo(t, statePlan)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("first\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("first\n"), false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "findings", []byte("second\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "findings", []byte("second\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	want := statePlan + "\n## State\n\n### Next\n\nfirst\n\n### Findings\n\nsecond\n"
@@ -71,7 +71,7 @@ func TestSetStateAddsMissingSubsectionInOrder(t *testing.T) {
 func TestSetStatePutsAMissingFirstPartInFront(t *testing.T) {
 	plan := statePlan + "\n## State\n\n### Open rulings\n\nask the user\n"
 	cfg, path := stateRepo(t, plan)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("run the gate\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("run the gate\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	want := statePlan + "\n## State\n\n### Next\n\nrun the gate\n\n### Open rulings\n\nask the user\n"
@@ -85,7 +85,7 @@ func TestSetStatePutsAMissingFirstPartInFront(t *testing.T) {
 func TestSetStateReplacesOnlyThatSubsection(t *testing.T) {
 	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nold findings\n\n### Open rulings\n\nold rulings\n\n## After\n\nkeep me\n"
 	cfg, path := stateRepo(t, plan)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "findings", []byte("new findings\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "findings", []byte("new findings\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	want := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nnew findings\n\n### Open rulings\n\nold rulings\n\n## After\n\nkeep me\n"
@@ -94,12 +94,12 @@ func TestSetStateReplacesOnlyThatSubsection(t *testing.T) {
 	}
 }
 
-// An empty body clears the subsection: the heading stays, no body lines are
-// left, and the other parts are not touched.
+// Clearing with blank lines on stdin empties the subsection: the heading
+// stays, no body lines are left, and the other parts are not touched.
 func TestSetStateEmptyBodyClearsTheSubsection(t *testing.T) {
 	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nkeep\n"
 	cfg, path := stateRepo(t, plan)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("\n  \n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("\n  \n"), true); err != nil {
 		t.Fatal(err)
 	}
 	want := statePlan + "\n## State\n\n### Next\n\n### Findings\n\nkeep\n"
@@ -113,7 +113,7 @@ func TestSetStateEmptyBodyClearsTheSubsection(t *testing.T) {
 func TestSetStateCommitsWithTheStateSubject(t *testing.T) {
 	cfg, path := stateRepo(t, statePlanWithID)
 	before := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(plan): state PLN-0082" {
@@ -134,7 +134,7 @@ func TestSetStateCommitsWithTheStateSubject(t *testing.T) {
 // the id it was given instead of failing.
 func TestSetStateFallsBackToTheIdWhenThePlanHasNoShortID(t *testing.T) {
 	cfg, _ := stateRepo(t, statePlanNoID)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "rulings", []byte("which side?\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(plan): state plans/2026-10-05-live-work-state" {
@@ -147,7 +147,7 @@ func TestSetStateFallsBackToTheIdWhenThePlanHasNoShortID(t *testing.T) {
 func TestSetStateTenLinesFitAndElevenDoNot(t *testing.T) {
 	cfg, path := stateRepo(t, statePlan)
 	ten := strings.TrimSuffix(strings.Repeat("line\n", 10), "\n")
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(ten)); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(ten), false); err != nil {
 		t.Fatal(err)
 	}
 	if got := stateBody(t, path); !strings.Contains(got, "### Next\n\n"+ten+"\n") {
@@ -156,7 +156,7 @@ func TestSetStateTenLinesFitAndElevenDoNot(t *testing.T) {
 
 	before := stateBody(t, path)
 	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
-	_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(ten+"\neleven\n"))
+	_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(ten+"\neleven\n"), false)
 	if err == nil || !strings.Contains(err.Error(), "at most 10 lines") {
 		t.Fatalf("err = %v, want one naming the 10 line limit", err)
 	}
@@ -176,7 +176,7 @@ func TestSetStateUnknownPartIsRefused(t *testing.T) {
 	for _, part := range []string{"ruling", "Next", "", "findings "} {
 		cfg, path := stateRepo(t, statePlan)
 		before := stateBody(t, path)
-		_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", part, []byte("x\n"))
+		_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", part, []byte("x\n"), false)
 		if err == nil {
 			t.Fatalf("part %q was accepted", part)
 		}
@@ -202,7 +202,7 @@ func TestSetStateUnknownPlanIsRefused(t *testing.T) {
 	path := filepath.Join(cfg.RepoRoot, ".acta", "plans", "2026-10-05-live-work-state.md")
 	before := stateBody(t, path)
 	for _, id := range []string{"plans/2026-10-06-nope", "BUG-1", "PLAN-9"} {
-		_, err := SetState(cfg, mustLoad(t, cfg), id, "next", []byte("x\n"))
+		_, err := SetState(cfg, mustLoad(t, cfg), id, "next", []byte("x\n"), false)
 		if err == nil {
 			t.Fatalf("id %q was accepted", id)
 		}
@@ -223,7 +223,7 @@ func TestSetStateAutoCommitOffWritesNoCommit(t *testing.T) {
 	cfg, path := stateRepo(t, statePlan)
 	cfg.AutoCommit = false
 	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
-	o, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("x\n"))
+	o, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("x\n"), false)
 	if err != nil || o.Committed || o.Skipped || o.Reason == "" {
 		t.Fatalf("outcome %+v err %v", o, err)
 	}
@@ -244,7 +244,7 @@ func TestSetStateTouchesNothingOutsideTheSubsection(t *testing.T) {
 		"## State\r\n\r\n### Next\r\n\r\nold next\r\n\r\n### Findings\r\n\r\nkeep this\r\n\r\n" +
 		"## Notes\r\n\r\nhand written   \r\n"
 	cfg, path := stateRepo(t, plan)
-	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("new next\n")); err != nil {
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("new next\n"), false); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\r\nstatus: in-progress\r\n---\r\n# Live work state\r\n\r\n" +
@@ -253,5 +253,73 @@ func TestSetStateTouchesNothingOutsideTheSubsection(t *testing.T) {
 		"## Notes\r\n\r\nhand written   \r\n"
 	if got := stateBody(t, path); got != want {
 		t.Fatalf("file = %q\nwant %q", got, want)
+	}
+}
+
+// A forgotten pipe must not wipe the Next: an empty body without clear is
+// refused with --clear named, and the file and the git head stay as they were.
+func TestSetStateEmptyBodyNeedsClear(t *testing.T) {
+	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nkeep\n"
+	cfg, path := stateRepo(t, plan)
+	before := stateBody(t, path)
+	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+	_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(""), false)
+	if err == nil || !strings.Contains(err.Error(), "--clear") {
+		t.Fatalf("err = %v, want one naming --clear", err)
+	}
+	if got := stateBody(t, path); got != before {
+		t.Fatalf("file changed: %q", got)
+	}
+	if gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD") != head {
+		t.Fatal("a refused body made a commit")
+	}
+}
+
+// Blank lines alone are nothing too: the same refusal, nothing written.
+func TestSetStateBlankLinesNeedClear(t *testing.T) {
+	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nkeep\n"
+	cfg, path := stateRepo(t, plan)
+	before := stateBody(t, path)
+	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+	_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("\n  \n"), false)
+	if err == nil || !strings.Contains(err.Error(), "--clear") {
+		t.Fatalf("err = %v, want one naming --clear", err)
+	}
+	if got := stateBody(t, path); got != before {
+		t.Fatalf("file changed: %q", got)
+	}
+	if gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD") != head {
+		t.Fatal("a refused body made a commit")
+	}
+}
+
+// Clear with an empty body empties next, the way an empty body always did.
+func TestSetStateClearEmptiesNext(t *testing.T) {
+	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nkeep\n"
+	cfg, path := stateRepo(t, plan)
+	if _, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte(""), true); err != nil {
+		t.Fatal(err)
+	}
+	want := statePlan + "\n## State\n\n### Next\n\n### Findings\n\nkeep\n"
+	if got := stateBody(t, path); got != want {
+		t.Fatalf("file = %q\nwant %q", got, want)
+	}
+}
+
+// Clear with text is refused: the caller must pick one, not both.
+func TestSetStateClearWithTextIsRefused(t *testing.T) {
+	plan := statePlan + "\n## State\n\n### Next\n\nold next\n\n### Findings\n\nkeep\n"
+	cfg, path := stateRepo(t, plan)
+	before := stateBody(t, path)
+	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+	_, err := SetState(cfg, mustLoad(t, cfg), "plans/2026-10-05-live-work-state", "next", []byte("new next\n"), true)
+	if err == nil {
+		t.Fatal("clear with text was accepted")
+	}
+	if got := stateBody(t, path); got != before {
+		t.Fatalf("file changed: %q", got)
+	}
+	if gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD") != head {
+		t.Fatal("a refused body made a commit")
 	}
 }
