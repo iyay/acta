@@ -6,6 +6,7 @@ id: PLN-0103
 created: "2026-10-06 09:25:50"
 hash: dd3qpd3
 started: "2026-10-06 09:30:59"
+finished: "2026-10-06 09:50:38"
 ---
 # dispatch checkpoint verdict Implementation Plan
 
@@ -70,9 +71,9 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 
 **verify:** No text outside the card's rows, and no `task <n> of <m>` phrase anywhere, can count as id n. List every decoy tested.
 
-- [ ] Red: a card whose only id-like text is `Task 1 of 3`, for ids `1,2`, wants `unconfirmed` (today `drift`); a `task 2` line above the header wants it not counted.
-- [ ] Green: look for ids only in lines after the header line, and drop matches followed by `\s+of\s+\d`.
-- [ ] Commit: `fix(dispatch): task N of M text is not a task id (DBT-0078.01)`
+- [x] Red: a card whose only id-like text is `Task 1 of 3`, for ids `1,2`, wants `unconfirmed` (today `drift`); a `task 2` line above the header wants it not counted.
+- [x] Green: look for ids only in lines after the header line, and drop matches followed by `\s+of\s+\d`.
+- [x] Commit: `fix(dispatch): task N of M text is not a task id (DBT-0078.01)`
 
 ### Task 05: Version 0.1.26
 
@@ -80,6 +81,6 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 
 **verify:** The three files carry the same version, 0.1.26, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
-- [ ] Green: bump the patch from 0.1.25 to 0.1.26 in all three files.
-- [ ] Commit: `chore: version 0.1.26`
+- [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
+- [x] Green: bump the patch from 0.1.25 to 0.1.26 in all three files.
+- [x] Commit: `chore: version 0.1.26`
