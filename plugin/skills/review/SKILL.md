@@ -31,7 +31,7 @@ Outside the deep lens, the review answers three questions and stops:
 2. Does it run: tests and type checks green, output shown?
 3. Do the tests go red when the change is reverted?
 
-The deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) applies only to trust boundaries, auth, money, migrations and deletes.
+The deep lens (trace every user value to its sink, check every caller, adversarial inputs, error swallowing, cross-tenant access) applies only to trust boundaries, auth, money, migrations and deletes.
 
 Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTEs as a flat list, and a last line of one word: CLEAN or BLOCKED.
 
@@ -111,7 +111,7 @@ WHEN receiving code review feedback:
 
 **NEVER:**
 - "You're absolutely right!" (performative, says nothing)
-- "Great point!" / "Excellent feedback!" (performative, says nothing)
+- "Great point!" / "Excellent feedback!" (performative)
 - "Let me implement that now" (before verification)
 
 **INSTEAD:**

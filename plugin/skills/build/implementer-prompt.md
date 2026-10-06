@@ -11,7 +11,7 @@ Subagent (general-purpose):
     You are implementing Task N: [task name]
 
     Your task is Task N in [PLAN_PATH]. Read only that task's section, never
-    the whole plan. The exact values to use are below.
+    the whole plan. The exact values to use are in Context below.
 
     ## Context
 
