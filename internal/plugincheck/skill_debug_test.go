@@ -9,7 +9,8 @@ func TestSkillDebug(t *testing.T) {
 		Must: []string{
 			"Phase 1", "Read only until the hypothesis is proven", "acta:bug", "acta:shape",
 			"regression test", "Three failed fixes", "root-cause-tracing.md",
+			"never push",
 		},
-		MustNot: []string{"superpowers:", "CREATION-LOG", "test-pressure", "test-academic", "git-bug", "add diagnostic instrumentation", "SMALLEST possible change"},
+		MustNot: []string{"superpowers:", "CREATION-LOG", "test-pressure", "test-academic", "git-bug", "add diagnostic instrumentation", "SMALLEST possible change", "When you can't trace manually, add instrumentation:"},
 	})
 }
