@@ -59,10 +59,18 @@ func RunCase(c Case, o Options) (Workspace, error) {
 	if c.Scaffold != "" {
 		// The scaffold writes the voice file into HOME. A throwaway home keeps
 		// it off the user's real config, which omp itself still needs.
-		cmd := exec.Command("bash", c.Scaffold)
+		sctx, cancel := context.WithTimeout(context.Background(), time.Duration(c.TimeoutSeconds)*time.Second)
+		defer cancel()
+		// A stuck scaffold must not hold the run hostage past the case timeout.
+		cmd := exec.CommandContext(sctx, "bash", c.Scaffold)
 		cmd.Dir = work
 		cmd.Env = withEnv(os.Environ(), "HOME", home)
-		if out, err := cmd.CombinedOutput(); err != nil {
+		cmd.WaitDelay = 5 * time.Second
+		out, err := cmd.CombinedOutput()
+		if errors.Is(sctx.Err(), context.DeadlineExceeded) {
+			return Workspace{Dir: work}, fmt.Errorf("scaffold: timed out after %ds", c.TimeoutSeconds)
+		}
+		if err != nil {
 			return Workspace{Dir: work}, fmt.Errorf("scaffold: %v: %s", err, strings.TrimSpace(string(out)))
 		}
 	}
