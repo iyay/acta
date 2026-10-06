@@ -84,3 +84,22 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 - [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
 - [x] Green: bump the patch from 0.1.25 to 0.1.26 in all three files.
 - [x] Commit: `chore: version 0.1.26`
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `internal/cli/dispatch_herdr.go`: move the header-and-rows split out of `checkpoint` into a small helper so `checkpoint` is under 50 lines, with no change in behaviour.
+- [x] `internal/cli/dispatch_herdr.go`: the task-count regex reads a one-task header too (`Todo 1 task`); add that case to the folded-list test table.
+- [x] Commit: `polish: review notes for PLN-0103`
+
+## Review notes
+
+- On a counted drift, the missing list can name ids omp listed but folded away; only the message changes, not the verdict.
+- The header regex still matches a symbol-led sentence like "- Todo list here", as before this plan.
+- A card header on the pane's last line gives no rows, so every id counts as missing; acceptable with nothing visible.
+- missingIDs compiles one regexp per id per call; one call per send, so it does not matter.
+- cardCount has no word break after tasks?, so "Todo 3 tasksomething" reads 3; omp never prints that.
+- The polish split out two helpers (cardHeaderRows, missingIDs), one more than the NOTE asked; no behaviour change.
