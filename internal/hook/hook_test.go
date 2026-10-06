@@ -705,3 +705,14 @@ func TestSessionStartKeepsEveryPlanAndThreeLinesEach(t *testing.T) {
 		t.Errorf("the rule line appears %d times, want 1:\n%s", n, out)
 	}
 }
+
+// The running rule tells the agent the lines come on stdin, so a bare call
+// with nothing piped in reads as the mistake it is.
+func TestSessionStartRunningRuleNamesStdin(t *testing.T) {
+	in := korean()
+	in.Running = []string{planBlock("one", "run the state test")}
+	out := SessionStart(in)
+	if !strings.Contains(out, "run acta state set <plan> next with the lines on stdin") {
+		t.Errorf("running rule does not name stdin:\n%s", out)
+	}
+}

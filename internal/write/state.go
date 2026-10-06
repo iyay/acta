@@ -24,9 +24,10 @@ var stateParts = []struct{ part, heading string }{
 // SetState writes one part of the State section of a plan and commits the
 // file. Only the named subsection changes: every other byte of the file stays
 // as it was. A plan with no State section, or a State section with no such
-// subsection, gets one in the place the order above fixes. An empty body
-// clears the subsection.
-func SetState(cfg config.Config, b *board.Board, planID, part string, body []byte) (Outcome, error) {
+// subsection, gets one in the place the order above fixes. A blank body is
+// refused without clear, so a forgotten pipe never wipes a part: pass clear
+// to empty the subsection, never together with text on stdin.
+func SetState(cfg config.Config, b *board.Board, planID, part string, body []byte, clear bool) (Outcome, error) {
 	at := -1
 	for i, p := range stateParts {
 		if p.part == part {
@@ -43,8 +44,16 @@ func SetState(cfg config.Config, b *board.Board, planID, part string, body []byt
 	case it.Kind != board.KindPlan:
 		return Outcome{}, bad("%s is not a plan", planID)
 	}
-	// A body of nothing but blank lines clears the subsection, the same way an
-	// empty one does.
+	// A body of nothing but blank lines counts as blank too. Without clear a
+	// blank body is a forgotten pipe, not an empty part; with clear, text on
+	// stdin means the caller asked for two things at once.
+	blank := strings.TrimSpace(string(body)) == ""
+	switch {
+	case blank && !clear:
+		return Outcome{}, bad("nothing on stdin; pipe the lines in, or use --clear to empty %s", part)
+	case !blank && clear:
+		return Outcome{}, bad("text on stdin with --clear; pipe the lines in without it, or use --clear alone to empty %s", part)
+	}
 	trimmed := strings.Trim(string(body), "\r\n")
 	var text []string
 	if strings.TrimSpace(trimmed) != "" {

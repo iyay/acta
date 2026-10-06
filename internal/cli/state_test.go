@@ -303,3 +303,39 @@ func TestCmdStateShowsAWorktreePlanWithNoStateSection(t *testing.T) {
 		}
 	}
 }
+
+// --clear with nothing on stdin empties the subsection. This is the only way
+// a blank stdin may wipe a part, so a forgotten pipe never clears by accident.
+func TestCmdStateSetClearEmptiesNext(t *testing.T) {
+	plan := cliStatePlan + "\n## State\n\n### Next\n\nold next\n"
+	dir := stateRepo(t, plan)
+	code, _, stderr := runState(t, dir, "", "set", "plans/2026-10-05-live-work-state", "next", "--clear")
+	if code != exitOK {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	want := cliStatePlan + "\n## State\n\n### Next\n"
+	if got := read(t, stateFile(dir)); got != want {
+		t.Fatalf("file = %q\nwant %q", got, want)
+	}
+}
+
+// An empty stdin and a blank-lines-only one without --clear are refused with
+// --clear named. The file and the git head stay as they were.
+func TestCmdStateSetEmptyStdinNeedsClear(t *testing.T) {
+	plan := cliStatePlan + "\n## State\n\n### Next\n\nold next\n"
+	dir := stateRepo(t, plan)
+	before := read(t, stateFile(dir))
+	head := gitOut(t, dir, "rev-parse", "HEAD")
+	for _, body := range []string{"", "\n  \n"} {
+		code, _, stderr := runState(t, dir, body, "set", "plans/2026-10-05-live-work-state", "next")
+		if code != exitBadInput || !strings.Contains(stderr, "--clear") {
+			t.Fatalf("body %q: exit %d stderr %q", body, code, stderr)
+		}
+	}
+	if got := read(t, stateFile(dir)); got != before {
+		t.Fatalf("file changed: %q", got)
+	}
+	if gitOut(t, dir, "rev-parse", "HEAD") != head {
+		t.Fatal("a refused call made a commit")
+	}
+}
