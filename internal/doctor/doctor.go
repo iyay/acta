@@ -171,13 +171,10 @@ func hasTaskHeading(raw []byte) bool {
 // line. It returns the paths it changed, so the caller can commit them. It
 // never writes under Home: Claude Code and omp own those files.
 func Fix(e Env) ([]string, error) {
-	gi := filepath.Join(e.ActaRoot, ".gitignore")
-	// Only a file the repo owns may be written: the root has to sit inside
-	// the repo, and the .gitignore has to be a real file. A link, missing
-	// target or not, carries the append somewhere else entirely.
-	if e.RepoRoot == "" || e.ActaRoot == "" || !inRepoPath(e.RepoRoot, e.ActaRoot) || isLink(gi) {
+	if refusal(e) != "" {
 		return nil, nil
 	}
+	gi := filepath.Join(e.ActaRoot, ".gitignore")
 	before, _ := os.ReadFile(gi)
 	if err := os.MkdirAll(e.ActaRoot, 0o755); err != nil {
 		return nil, err
@@ -190,6 +187,26 @@ func Fix(e Env) ([]string, error) {
 		return nil, nil
 	}
 	return []string{gi}, nil
+}
+
+// refusal says why --fix must not write, or "" when it may. Fix and
+// checkRepo both call it first, so the write and the report cannot disagree.
+func refusal(e Env) string {
+	// Only a file the repo owns may be written: the root has to sit inside
+	// the repo, and the .gitignore has to be a real file. A link, missing
+	// target or not, carries the append somewhere else entirely.
+	if e.RepoRoot == "" || e.ActaRoot == "" || !inRepoPath(e.RepoRoot, e.ActaRoot) {
+		return e.ActaRoot + " is outside the repo " + e.RepoRoot
+	}
+	// The .git folder is git's own state; a root there or under it would
+	// let --fix write where only git may write.
+	if inRepoPath(filepath.Join(e.RepoRoot, ".git"), e.ActaRoot) {
+		return e.ActaRoot + " is inside the repo .git folder"
+	}
+	if isLink(filepath.Join(e.ActaRoot, ".gitignore")) {
+		return ".gitignore in " + e.ActaRoot + " is a link, not a file of this repo"
+	}
+	return ""
 }
 
 // inRepoPath says whether a path is a place this repo owns. Both sides are
@@ -372,20 +389,18 @@ func checkRepo(e Env) Result {
 		r.Level, r.Msg = OK, "not in a git repo, skipped"
 		return r
 	}
-	gi := filepath.Join(e.ActaRoot, ".gitignore")
-	// A root outside the repo, or one that is a link out of it, is the one
-	// problem --fix cannot touch, so the fix line names root instead of
-	// sending the user back to --fix.
-	if !inRepoPath(e.RepoRoot, e.ActaRoot) {
-		r.Level, r.Msg = Fail, e.ActaRoot+" is outside the repo "+e.RepoRoot
+	// One refusal rule for both --fix and this report: when it gives a
+	// reason, the fix line tells the user what to do by hand instead of
+	// sending them back to --fix, which would write nothing.
+	if reason := refusal(e); reason != "" {
+		r.Level, r.Msg = Fail, reason
 		r.Fix = "fix root in .acta.yaml so it points inside the repo"
-		return r
-	}
-	// A .gitignore that is a link can carry the write to a file the repo
-	// does not own, so --fix will not write it and the user replaces it.
-	if isLink(gi) {
-		r.Level, r.Msg = Fail, ".gitignore in "+e.ActaRoot+" is a link, not a file of this repo"
-		r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
+		switch {
+		case strings.Contains(reason, ".gitignore"):
+			r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
+		case strings.Contains(reason, ".git folder"):
+			r.Fix = "fix root in .acta.yaml so it points outside the .git folder"
+		}
 		return r
 	}
 	fi, err := os.Stat(e.ActaRoot)

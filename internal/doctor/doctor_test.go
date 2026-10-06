@@ -675,6 +675,41 @@ func TestDoctorFixWritesNothingWhenActaRootIsALinkOut(t *testing.T) {
 	wantLevel(t, byName(Run(e), "repo"), Fail, "root")
 }
 
+// A root that is the repo's own .git folder, or sits inside it, would let
+// --fix write where git keeps its state, so --fix must write nothing and
+// the check must refuse instead of sending the user back to --fix.
+func TestDoctorFixWritesNothingInsideGitDir(t *testing.T) {
+	cases := []struct {
+		name string
+		root func(Env) string
+	}{
+		{"dot git folder", func(e Env) string { return filepath.Join(e.RepoRoot, ".git") }},
+		{"inside dot git folder", func(e Env) string { return filepath.Join(e.RepoRoot, ".git", "acta") }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := env(t)
+			e.ActaRoot = c.root(e)
+			before := snapshot(t, e.RepoRoot)
+			paths, err := Fix(e)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(paths) != 0 {
+				t.Fatalf("paths %v", paths)
+			}
+			if after := snapshot(t, e.RepoRoot); !reflect.DeepEqual(before, after) {
+				t.Fatalf("Fix wrote inside .git: before %v after %v", before, after)
+			}
+			r := byName(Run(e), "repo")
+			wantLevel(t, r, Fail, "")
+			if strings.Contains(r.Fix, "acta doctor --fix") {
+				t.Fatalf("fix %q sends the user to --fix, which must not write inside .git", r.Fix)
+			}
+		})
+	}
+}
+
 // A .gitignore that is a link to a file that is not there yet still makes
 // the append land on the target, creating a file outside the repo. So --fix
 // must write nothing, the target must stay missing, and the check must say
