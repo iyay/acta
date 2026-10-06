@@ -818,6 +818,39 @@ func TestDoctorFixWritesNothingWhenGitignoreLinksInsideTheRepo(t *testing.T) {
 	wantLevel(t, byName(Run(e), "repo"), Fail, "replace the .gitignore link")
 }
 
+// A .gitignore that is a folder makes the append land nowhere good, so
+// --fix must write nothing and the check must fail without sending the
+// user back to --fix.
+func TestDoctorFixWritesNothingWhenGitignoreIsAFolder(t *testing.T) {
+	e := env(t)
+	if err := os.MkdirAll(filepath.Join(e.ActaRoot, ".gitignore"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, e.RepoRoot)
+	paths, err := Fix(e)
+	if err != nil {
+		t.Fatalf("Fix on a folder .gitignore: %v", err)
+	}
+	if len(paths) != 0 {
+		t.Fatalf("paths %v", paths)
+	}
+	if after := snapshot(t, e.RepoRoot); !reflect.DeepEqual(before, after) {
+		t.Fatalf("Fix changed the repo:\nbefore %v\nafter %v", before, after)
+	}
+	r := byName(Run(e), "repo")
+	wantLevel(t, r, Fail, "")
+	wantFix := "replace " + filepath.Join(e.ActaRoot, ".gitignore") + " with a regular file"
+	if r.Fix != wantFix {
+		t.Fatalf("fix %q want %q", r.Fix, wantFix)
+	}
+	if !strings.Contains(r.Msg, "not a regular file") {
+		t.Fatalf("msg %q does not name the non-regular file", r.Msg)
+	}
+	if strings.Contains(r.Fix, "acta doctor --fix") {
+		t.Fatalf("fix %q sends the user to --fix, which would write nothing", r.Fix)
+	}
+}
+
 // A config file that does not parse is a broken setup, not a skipped
 // check, so the repo line has to carry the error and fail.
 func TestDoctorRepoFailsOnBrokenConfig(t *testing.T) {

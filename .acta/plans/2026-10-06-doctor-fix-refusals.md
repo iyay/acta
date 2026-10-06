@@ -6,6 +6,7 @@ id: PLN-0102
 created: "2026-10-06 08:47:02"
 hash: hgvqno6
 started: "2026-10-06 08:49:40"
+finished: "2026-10-06 09:00:55"
 ---
 # doctor --fix refusals Implementation Plan
 
@@ -60,9 +61,9 @@ Tasks 01 to 03 all edit `internal/doctor/doctor.go` and `doctor_test.go`, so the
 
 **verify:** `Fix` writes the `.gitignore` only when it is missing or a regular file; for any other kind (folder, link) it writes nothing and `checkRepo` fails with no `--fix` hint. List every file kind tested.
 
-- [ ] Red: `.acta/.gitignore` as a folder; `Fix` must return `nil, nil` with nothing changed (today it returns an error), and `checkRepo` must fail with no `acta doctor --fix`.
-- [ ] Green: in `refusal`, `os.Lstat` the `.gitignore`; when it exists and `!fi.Mode().IsRegular()`, refuse ("<path> is not a regular file").
-- [ ] Commit: `fix(doctor): --fix refuses a .gitignore that is not a regular file (DBT-0011.24)`
+- [x] Red: `.acta/.gitignore` as a folder; `Fix` must return `nil, nil` with nothing changed (today it returns an error), and `checkRepo` must fail with no `acta doctor --fix`.
+- [x] Green: in `refusal`, `os.Lstat` the `.gitignore`; when it exists and `!fi.Mode().IsRegular()`, refuse ("<path> is not a regular file").
+- [x] Commit: `fix(doctor): --fix refuses a .gitignore that is not a regular file (DBT-0011.24)`
 
 ### Task 04: unreadable git status means no commit
 
@@ -80,6 +81,20 @@ Tasks 01 to 03 all edit `internal/doctor/doctor.go` and `doctor_test.go`, so the
 
 **verify:** The three files carry the same version, 0.1.25, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
-- [ ] Green: bump the patch from 0.1.24 to 0.1.25 in all three files.
-- [ ] Commit: `chore: version 0.1.25`
+- [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
+- [x] Green: bump the patch from 0.1.24 to 0.1.25 in all three files.
+- [x] Commit: `chore: version 0.1.25`
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `internal/doctor/doctor.go` checkRepo: a `.gitignore` that exists but is not a regular file (folder, fifo) gets its own fix line, "replace <path> with a regular file", not the "replace the .gitignore link" line; add a test assert on that fix text in the existing folder test.
+- [x] Commit: `polish: review notes for PLN-0102`
+
+## Review notes
+
+- A .acta link that points out of the repo is reported as outside the repo, with "fix root in .acta.yaml" rather than "replace the link"; both sides still refuse.
+- The non-regular .gitignore fix line rebuilds the same filepath.Join that refusal does; matches the block's style.

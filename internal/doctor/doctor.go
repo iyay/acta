@@ -221,6 +221,11 @@ func refusal(e Env) string {
 	if isLink(filepath.Join(e.ActaRoot, ".gitignore")) {
 		return ".gitignore in " + e.ActaRoot + " is a link, not a file of this repo"
 	}
+	// A .gitignore that is no real file — a folder, a fifo, a device —
+	// breaks the append, so --fix must write nothing.
+	if fi, err := os.Lstat(filepath.Join(e.ActaRoot, ".gitignore")); err == nil && !fi.Mode().IsRegular() {
+		return filepath.Join(e.ActaRoot, ".gitignore") + " is not a regular file"
+	}
 	return ""
 }
 
@@ -411,6 +416,8 @@ func checkRepo(e Env) Result {
 		r.Level, r.Msg = Fail, reason
 		r.Fix = "fix root in .acta.yaml so it points inside the repo"
 		switch {
+		case strings.Contains(reason, "not a regular file"):
+			r.Fix = "replace " + filepath.Join(e.ActaRoot, ".gitignore") + " with a regular file"
 		case strings.Contains(reason, ".gitignore"):
 			r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
 		case strings.Contains(reason, ".git folder"):
