@@ -285,11 +285,19 @@ func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []by
 	// written, so it keeps the plan's slug and drops the plan's own date.
 	path := filepath.Join(cfg.Root, cfg.Dirs.Debt, Now().Format("2006-01-02")+"-"+it.Slug+".md")
 	fileStem := strings.TrimSuffix(filepath.Base(path), ".md")
-
-	src, err := os.ReadFile(path)
+	// One lock from the first read through the commit: two calls for a file
+	// that does not exist yet would otherwise both write a fresh file and
+	// bury each other, and a tick landing between our write and our commit
+	// would end up inside our commit.
+	unlock, err := lock(path)
+	if err != nil {
+		return Outcome{}, err
+	}
+	defer unlock()
+	_, err = os.Stat(path)
 	switch {
 	case err == nil:
-		return appendDebt(cfg, path, fileStem, src, texts)
+		return appendLocked(cfg, path, fileStem, texts)
 	case !os.IsNotExist(err):
 		return Outcome{}, err
 	}
@@ -297,10 +305,22 @@ func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []by
 }
 
 // appendDebt adds only the lines the debt file does not already hold.
-// Nothing new means nothing written and nothing committed. The caller's src
-// is not used: the file is read again under the lock, so a tick that landed
-// after the caller read it is not thrown away.
+// Nothing new means nothing written and nothing committed. The caller holds
+// the file's lock from NewDebt, or takes it itself.
 func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []string) (Outcome, error) {
+	unlock, err := lock(path)
+	if err != nil {
+		return Outcome{}, err
+	}
+	defer unlock()
+	return appendLocked(cfg, path, fileStem, texts)
+}
+
+// appendLocked is appendDebt's work with the file's lock already held. The
+// lock must already be held: taking it again in the same process blocks.
+// finish runs inside the lock, so no tick can land between the write and
+// the commit and end up inside this commit.
+func appendLocked(cfg config.Config, path, fileStem string, texts []string) (Outcome, error) {
 	dirty, added, err := addDebtLines(cfg, path, texts)
 	if err != nil {
 		return Outcome{}, err
@@ -311,17 +331,12 @@ func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []st
 	return finish(cfg, path, Subject(cfg, []string{path}, "new debt "+fileStem), dirty), nil
 }
 
-// addDebtLines writes the new lines onto the debt file at path, under that
-// file's lock, through a temp file and a rename, the way TickLine does it.
-// TickLine locks the same file, so the two can never read each other half
-// written or throw away each other's change. It says whether the file was
-// already dirty in git before we wrote, and whether it wrote anything.
+// addDebtLines writes the new lines onto the debt file at path, through a
+// temp file and a rename, the way TickLine does it. The caller holds the
+// file's lock: it must not take the lock again (same-process flock blocks).
+// It says whether the file was already dirty in git before we wrote, and
+// whether it wrote anything.
 func addDebtLines(cfg config.Config, path string, texts []string) (bool, bool, error) {
-	unlock, err := lock(path)
-	if err != nil {
-		return false, false, err
-	}
-	defer unlock()
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return false, false, err

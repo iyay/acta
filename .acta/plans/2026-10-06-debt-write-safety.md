@@ -5,6 +5,7 @@ closes: [SPC-0095, DBT-0021.03, DBT-0021.05, DBT-0008.02]
 id: PLN-0104
 created: "2026-10-06 10:48:28"
 hash: ffaorfe
+started: "2026-10-06 10:52:59"
 ---
 # Debt write safety Implementation Plan
 
@@ -37,9 +38,9 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 
 **verify:** No two `NewDebt` calls on the same debt file, whether the file exists yet or not, can lose a note, and no other write to that file can land between `NewDebt`'s write and its commit. List every path through `NewDebt` (create, append with new lines, append with nothing new) and where each takes and releases the lock.
 
-- [ ] Red: two goroutines call `NewDebt` for the same plan with different notes and no debt file yet; after both, the file holds both notes (today one is lost). A second test: a `TickLine` started while `NewDebt` holds the file must wait, so the "new debt" commit holds no tick.
-- [ ] Green: `NewDebt` takes `lock(path)` before reading the file and defers the unlock; it picks `createDebt` or the append path under the lock; `addDebtLines` drops its own `lock`; `finish` runs inside the lock.
-- [ ] Commit: `fix(write): new debt holds one lock through its commit (DBT-0021.03, DBT-0021.05)`
+- [x] Red: two goroutines call `NewDebt` for the same plan with different notes and no debt file yet; after both, the file holds both notes (today one is lost). A second test: a `TickLine` started while `NewDebt` holds the file must wait, so the "new debt" commit holds no tick.
+- [x] Green: `NewDebt` takes `lock(path)` before reading the file and defers the unlock; it picks `createDebt` or the append path under the lock; `addDebtLines` drops its own `lock`; `finish` runs inside the lock.
+- [x] Commit: `fix(write): new debt holds one lock through its commit (DBT-0021.03, DBT-0021.05)`
 
 ### Task 02: TickLine checks its line by text
 
@@ -60,3 +61,13 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 - [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
 - [ ] Green: bump the patch from 0.1.26 to 0.1.27 in all three files.
 - [ ] Commit: `chore: version 0.1.27`
+
+## State
+
+### Next
+
+task-02 mulai dari:
+- ops.go: NewDebt pegang lock(path) dari Stat sampai finish; appendDebt bungkus appendLocked; addDebtLines tanpa lock sendiri.
+- debt_test.go: RED TestConcurrentNewDebtKeepsBothNotes + TestNewDebtCommitHoldsNoTick hijau.
+- TickLine(path,line,state) belum berubah; update panggilan test ke signature baru.
+- scripts/test ./internal/write/ hijau di f210e17.
