@@ -111,7 +111,7 @@ func (e sendEnv) herdrReady(recent string) {
 	e.h.out("agent_get", agentJSON("wM:p5", "idle"))
 	e.h.out("agent_read_visible", "> ")
 	e.h.out("agent_read_visible", "🎯 Goal")
-	e.h.out("agent_read_recent-unwrapped", recent)
+	e.h.out("agent_read_recent-unwrapped", goalMark+"\n"+recent)
 }
 
 const slugGet = "agent get dispatch-send"
@@ -136,7 +136,7 @@ func TestDispatchSendFirstRoundNewTab(t *testing.T) {
 	e.h.out("tab_create", tabJSON("wM:p5"))
 	e.h.out("agent_read_visible", "> ")
 	e.h.out("agent_read_visible", "🎯 Goal")
-	e.h.out("agent_read_recent-unwrapped", todoCard+"Task 1 first, Task 2 second, Task 3 third")
+	e.h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"Task 1 first, Task 2 second, Task 3 third")
 
 	code, stdout, stderr := e.send(t, "")
 	if code != exitOK {
@@ -347,7 +347,7 @@ func sendGit(t *testing.T, dir string, args ...string) {
 
 func TestDispatchSendDriftPrintsPaneAndExits4(t *testing.T) {
 	e := newSendEnv(t)
-	e.herdrReady(todoCard + "Task 1 and Task 2 only")
+	e.herdrReady(strings.Replace(todoCard, "3 tasks", "2 tasks", 1) + "Task 1 and Task 2 only")
 	code, stdout, stderr := e.send(t, "")
 	if code != exitDrift {
 		t.Fatalf("exit %d, want %d; stderr %q", code, exitDrift, stderr)

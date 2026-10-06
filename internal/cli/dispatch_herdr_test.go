@@ -481,6 +481,7 @@ func TestHerdrCheckpointFoldedList(t *testing.T) {
 		{"count below plan with gaps is drift", goalMark + "\n⛳ Todo 3 tasks\n- Task 1: a\n- Task 2: b\n", []string{"1", "2", "3", "4", "5"}, checkpointDrift, []string{"3", "4", "5"}},
 		{"count below plan all seen is drift", goalMark + "\n⛳ Todo 3 tasks\n" + "- Task 1: a\n- Task 2: b\n- Task 3: c\n- Task 4: d\n- Task 5: e\n", []string{"1", "2", "3", "4", "5"}, checkpointDrift, nil},
 		{"count exact all seen is ok", goalMark + "\n⛳ Todo 2 tasks\n- Task 1: a\n- Task 2: b\n", []string{"1", "2"}, checkpointOK, nil},
+		{"one task header below plan is drift", goalMark + "\n⛳ Todo 1 task\n", []string{"1", "2"}, checkpointDrift, []string{"1", "2"}},
 		{"no count with gaps is drift", goalMark + "\n⛳ Todo\n- Task 1: a\n", []string{"1", "2"}, checkpointDrift, []string{"2"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

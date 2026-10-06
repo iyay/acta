@@ -279,7 +279,7 @@ func dropGoal(slug string) error {
 // framed header like "+--- [x] Todo 3 tasks ---+" matches as well.
 var todoCardHeader = regexp.MustCompile(`(?m)^[^\p{L}\p{N}\n]*(?:\[x\][^\p{L}\p{N}\n]*)?Todo(?:\s|$)`)
 
-var cardCount = regexp.MustCompile(`Todo\s+(\d+)\s+tasks`)
+var cardCount = regexp.MustCompile(`Todo\s+(\d+)\s+tasks?`)
 
 // ofTail turns a match into progress text, not an id: "Task 1 of 3" never
 // names id 1.
@@ -297,6 +297,45 @@ func cardTotal(header string) (int, bool) {
 		return 0, false
 	}
 	return n, true
+}
+
+// cardHeaderRows finds the card header and splits off the rows after it.
+// Only lines after the header line are rows: chatter above the card
+// cannot name an id.
+func cardHeaderRows(text string) (string, string, bool) {
+	loc := todoCardHeader.FindStringIndex(text)
+	if loc == nil {
+		return "", "", false
+	}
+	header := text[loc[0]:]
+	rows := ""
+	if i := strings.IndexByte(header, '\n'); i >= 0 {
+		header = header[:i]
+		rows = text[loc[0]+i+1:]
+	}
+	return header, rows, true
+}
+
+// missingIDs lists ids with no row naming them. A match trailed by
+// "of N" is progress text ("Task 1 of 3"), never a row for that id.
+func missingIDs(rows string, ids []string) ([]string, int) {
+	var missing []string
+	found := 0
+	for _, id := range ids {
+		seen := false
+		for _, m := range regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)`+regexp.QuoteMeta(id)+`\b`).FindAllStringIndex(rows, -1) {
+			if !ofTail.MatchString(rows[m[1]:]) {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			missing = append(missing, id)
+		} else {
+			found++
+		}
+	}
+	return missing, found
 }
 
 // checkpoint waits, then reads the pane once and looks for every task id.
@@ -331,35 +370,12 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 	} else {
 		text = ""
 	}
-	loc := todoCardHeader.FindStringIndex(text)
-	if loc == nil {
+	header, rows, ok := cardHeaderRows(text)
+	if !ok {
 		return checkpointUnconfirmed, nil, text
 	}
-	header := text[loc[0]:]
-	// Only lines after the header line are rows: chatter above the card
-	// cannot name an id.
-	rows := ""
-	if i := strings.IndexByte(header, '\n'); i >= 0 {
-		header = header[:i]
-		rows = text[loc[0]+i+1:]
-	}
 
-	var missing []string
-	found := 0
-	for _, id := range ids {
-		seen := false
-		for _, m := range regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)`+regexp.QuoteMeta(id)+`\b`).FindAllStringIndex(rows, -1) {
-			if !ofTail.MatchString(rows[m[1]:]) {
-				seen = true
-				break
-			}
-		}
-		if !seen {
-			missing = append(missing, id)
-		} else {
-			found++
-		}
-	}
+	missing, found := missingIDs(rows, ids)
 	if n, ok := cardTotal(header); ok {
 		if n < len(ids) {
 			return checkpointDrift, missing, text
