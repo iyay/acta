@@ -130,6 +130,24 @@ func OmpJudge(omp string) Judge {
 // RunAll runs every case whose name matches the only glob (all when only is
 // empty), prints one line per case and a total, and says whether any failed.
 func RunAll(cases []Case, o Options, only string, judge Judge, out io.Writer) (failed bool) {
+	if only != "" {
+		// A broken glob can never pick a case, so fail out loud instead of
+		// passing an empty run as green.
+		if _, err := path.Match(only, ""); err != nil {
+			fmt.Fprintf(out, "bad --case glob %q: %v\n", only, err)
+			return true
+		}
+		matched := 0
+		for _, c := range cases {
+			if ok, _ := path.Match(only, c.Name); ok {
+				matched++
+			}
+		}
+		if matched == 0 {
+			fmt.Fprintf(out, "no case matches %q\n", only)
+			return true
+		}
+	}
 	passed, failedN, skipped := 0, 0, 0
 	for _, c := range cases {
 		if only != "" {

@@ -323,3 +323,25 @@ func TestRunAllFailurePaths(t *testing.T) {
 		})
 	}
 }
+
+// A --case glob that is broken or picks no case must fail the run out loud,
+// not pass an empty run as green.
+func TestRunAllBadCase(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	for _, only := range []string{"[abc", "nope*"} {
+		omp, logDir := fakeOmp(t, fixture(t))
+		cases := []Case{
+			{Name: "good", Prompt: "x", TimeoutSeconds: 30, Graders: []Grader{{Name: "said", Type: "regex", Pattern: "SCR-0001"}}},
+		}
+		var out bytes.Buffer
+		if !RunAll(cases, Options{Omp: omp, PluginDir: "/p"}, only, nil, &out) {
+			t.Errorf("glob %q ran nothing, yet RunAll reported success:\n%s", only, out.String())
+		}
+		if !strings.Contains(out.String(), only) {
+			t.Errorf("glob %q missing from output:\n%s", only, out.String())
+		}
+		if _, err := os.Stat(filepath.Join(logDir, "args")); !os.IsNotExist(err) {
+			t.Errorf("glob %q ran a case (args log exists)", only)
+		}
+	}
+}
