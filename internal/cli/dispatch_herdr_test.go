@@ -526,6 +526,45 @@ func TestHerdrCheckpointCardWithNoIDsIsUnconfirmed(t *testing.T) {
 	}
 }
 
+// "Task 1 of 3" is progress text, not a row naming id 1: a card whose only
+// id-like text is that phrase names no ids, so it is unconfirmed, not drift.
+func TestHerdrCheckpointOfPhraseIsNotAnID(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"\u23fa Todo\n- Task 1 of 3\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "unconfirmed" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+	h.wantCalls([]string{readRecent}, h.calls())
+}
+
+// A "task 2" line above the card header is chatter, not a row: with only
+// Task 1 in the rows, id 2 is missing, so this is drift naming 2.
+func TestHerdrCheckpointTextAboveHeaderIsNotAnID(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", goalMark+"\nworking on task 2 now\n"+"\u23fa Todo\n- Task 1: a\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"2"}) {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+	h.wantCalls([]string{readRecent}, h.calls())
+}
+
+// An of-phrase next to a real row still hides its id: "Task 1 of 3" names no
+// id while "Task 2: b" does, so id 1 is missing and this is drift naming 1.
+func TestHerdrCheckpointOfPhraseBesideRealRow(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"\u23fa Todo\n- Task 1 of 3\n- Task 2: b\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1"}) {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+	h.wantCalls([]string{readRecent}, h.calls())
+}
+
 // Ids that sit in plain text with no Todo card are not a todo list. The
 // words Todos, Todo-list and mytodo are not the card title either.
 func TestHerdrCheckpointIDsWithoutCardAreUnconfirmed(t *testing.T) {

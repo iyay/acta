@@ -281,6 +281,10 @@ var todoCardHeader = regexp.MustCompile(`(?m)^[^\p{L}\p{N}\n]*(?:\[x\][^\p{L}\p{
 
 var cardCount = regexp.MustCompile(`Todo\s+(\d+)\s+tasks`)
 
+// ofTail turns a match into progress text, not an id: "Task 1 of 3" never
+// names id 1.
+var ofTail = regexp.MustCompile(`(?i)^\s+of\s+\d`)
+
 // cardTotal reads the "<N> tasks" count from the card header line. It says
 // false when the header has no count, so callers keep today's rule then.
 func cardTotal(header string) (int, bool) {
@@ -332,13 +336,25 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 		return checkpointUnconfirmed, nil, text
 	}
 	header := text[loc[0]:]
+	// Only lines after the header line are rows: chatter above the card
+	// cannot name an id.
+	rows := ""
 	if i := strings.IndexByte(header, '\n'); i >= 0 {
 		header = header[:i]
+		rows = text[loc[0]+i+1:]
 	}
+
 	var missing []string
 	found := 0
 	for _, id := range ids {
-		if !regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)` + regexp.QuoteMeta(id) + `\b`).MatchString(text) {
+		seen := false
+		for _, m := range regexp.MustCompile(`(?i)\b(?:task[ -]?|t-)`+regexp.QuoteMeta(id)+`\b`).FindAllStringIndex(rows, -1) {
+			if !ofTail.MatchString(rows[m[1]:]) {
+				seen = true
+				break
+			}
+		}
+		if !seen {
 			missing = append(missing, id)
 		} else {
 			found++
