@@ -37,8 +37,10 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	e := doctorEnv(*known)
 	if *fix {
 		// The file was dirty before --fix touched it, so its other lines
-		// are the user's own and are not ours to commit.
-		dirty, _ := gitc.IsDirty(e.RepoRoot, filepath.Join(e.ActaRoot, ".gitignore"))
+		// are the user's own and are not ours to commit. A status git cannot
+		// read means dirty cannot be told from clean, so the err travels with
+		// it into skipReason instead of being dropped.
+		dirty, dirtyErr := gitc.IsDirty(e.RepoRoot, filepath.Join(e.ActaRoot, ".gitignore"))
 		paths, err := doctor.Fix(e)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
@@ -47,7 +49,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		if len(paths) > 0 {
 			// A commit that does not happen is worth saying, but the report
 			// below is the answer the user asked for.
-			if reason := skipReason(e, dirty); reason != "" {
+			if reason := skipReason(e, dirty, dirtyErr); reason != "" {
 				fmt.Fprintln(stderr, "fixed, not committed:", reason)
 			} else if r := gitc.CommitPaths(e.RepoRoot, paths, "chore: doctor fix"); !r.Committed {
 				fmt.Fprintln(stderr, "fixed, not committed:", r.Reason)
@@ -130,11 +132,14 @@ func schemaProblems(cfg config.Config) []string {
 // skipReason says why --fix will not commit, or "" when it will. The rules
 // are the ones the other write commands follow: auto_commit off means the
 // user wants nothing committed, and a file that was already dirty holds
-// their own changes, which are not ours to commit.
-func skipReason(e doctor.Env, dirty bool) string {
+// their own changes, which are not ours to commit. A status git cannot read
+// means dirty cannot be told from clean, so no commit either.
+func skipReason(e doctor.Env, dirty bool, dirtyErr error) string {
 	switch {
 	case !e.AutoCommit:
 		return "auto_commit is off"
+	case dirtyErr != nil:
+		return "cannot read git status: " + dirtyErr.Error()
 	case dirty:
 		return "file had other uncommitted changes"
 	}
