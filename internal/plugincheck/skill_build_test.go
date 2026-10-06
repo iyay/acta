@@ -57,6 +57,7 @@ func TestSkillBuild(t *testing.T) {
 			"is a symlink to an untracked", "explicit consent",
 			"working in the current directory instead", "### 5. Complete",
 			"[BRIEF_FILE]", "TDD if required", "and only when\n         ",
+			"Ask them now", "Already in isolated workspace",
 		},
 	})
 }

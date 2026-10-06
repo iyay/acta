@@ -25,7 +25,7 @@ Subagent (general-purpose):
     - Dependencies or assumptions
     - Anything unclear in the task description
 
-    **Ask them now.** Raise any concerns before starting work.
+    Stop and report NEEDS_CONTEXT with the question before you start.
 
     Work from the worktree path in this hand-off: [directory]. First action:
     print `pwd` and `git rev-parse --show-toplevel`; both must equal the
@@ -61,8 +61,7 @@ Subagent (general-purpose):
     marker tags. Report in the user's chat language (see the session
     rules); write everything in the repo in the repo language.
 
-    **While you work:** If you encounter something unexpected or unclear, **ask questions**.
-    It's always OK to pause and clarify. Don't guess or make assumptions.
+    If something is unexpected or unclear, stop and report NEEDS_CONTEXT with the question. Don't guess.
 
     While iterating, run the focused test for what you're changing; before
     committing, run the task's own narrow tests (the plan's run steps), never the
