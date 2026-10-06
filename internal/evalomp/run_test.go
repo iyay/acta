@@ -5,7 +5,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -193,6 +195,36 @@ func TestRunCaseFailures(t *testing.T) {
 			t.Errorf("err = %q, want it to say the scaffold timed out", msg)
 		}
 	})
+}
+
+// A timed-out omp must take its children with it, or a stuck grandchild
+// keeps eating the run host while later cases queue behind it.
+func TestRunCaseTimeoutKillsChildren(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	omp, logDir := fakeOmp(t, `sleep 30 & echo $! > "$(dirname "$0")/child"; wait`)
+	_, err := RunCase(Case{Prompt: "x", TimeoutSeconds: 1}, Options{Omp: omp, PluginDir: "/p"})
+	if !errors.Is(err, ErrTimeout) {
+		t.Fatalf("err = %v, want ErrTimeout", err)
+	}
+	raw, readErr := os.ReadFile(filepath.Join(logDir, "child"))
+	if readErr != nil {
+		t.Fatalf("reading child pid: %v", readErr)
+	}
+	pid, convErr := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if convErr != nil {
+		t.Fatalf("parsing child pid %q: %v", raw, convErr)
+	}
+	t.Cleanup(func() { syscall.Kill(pid, syscall.SIGKILL) })
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if err := syscall.Kill(pid, 0); err != nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("omp's child is still alive after timeout")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // A failure with nothing to say is still a failure, so the message has to name

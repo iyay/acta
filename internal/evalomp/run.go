@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -84,6 +85,10 @@ func RunCase(c Case, o Options) (Workspace, error) {
 	cmd := exec.CommandContext(ctx, o.Omp, ompArgs(c.Prompt, o)...)
 	cmd.Dir = work
 	cmd.Env = withEnv(os.Environ(), "PM_VOICE_FILE", filepath.Join(home, ".acta", "config.yaml"))
+	// omp's kids must die with it, so it leads its own process group and the
+	// timeout kills the whole group instead of just the top process.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	// A killed omp can leave a child holding the pipes open. Stop waiting for
 	// them soon after, so one stuck case cannot hang the whole run.
 	cmd.WaitDelay = 5 * time.Second
