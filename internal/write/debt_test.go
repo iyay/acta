@@ -279,3 +279,116 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		wantBoth(t, fmt.Sprintf("round %d lost a change", round))
 	}
 }
+
+// Two NewDebt calls for one plan with no debt file yet must keep both
+// NOTEs. Without the lock both read "no file" and both write a fresh file,
+// so the second buries the first.
+func TestConcurrentNewDebtKeepsBothNotes(t *testing.T) {
+	useLockBase(t)
+	fixNowAt(t, "2026-09-27")
+	for round := range 10 {
+		cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+		b := mustLoad(t, cfg)
+		path := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
+		gate := make(chan struct{})
+		failed := make(chan error, 2)
+		go func() {
+			<-gate
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("alpha\n"))
+			failed <- err
+		}()
+		go func() {
+			<-gate
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("beta\n"))
+			failed <- err
+		}()
+		close(gate)
+		for range 2 {
+			if err := <-failed; err != nil {
+				t.Fatalf("round %d: %v", round, err)
+			}
+		}
+		got := readFile(t, path)
+		if !strings.Contains(got, "- [ ] alpha\n") || !strings.Contains(got, "- [ ] beta\n") {
+			t.Fatalf("round %d lost a NOTE:\n%s", round, got)
+		}
+	}
+}
+
+// A tick that starts while NewDebt is mid-commit must wait for the lock, so
+// the "new debt" commit holds the NOTE but not the tick.
+func TestNewDebtCommitHoldsNoTick(t *testing.T) {
+	useLockBase(t)
+	fixNowAt(t, "2026-09-27")
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+	b := mustLoad(t, cfg)
+	path := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
+	rel := ".acta/debt/2026-09-27-short-ids.md"
+	if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("seed\n")); err != nil {
+		t.Fatal(err)
+	}
+	// The seed box stays the first checklist line; later NOTEs append below.
+	boxLine := 0
+	for i, line := range strings.Split(readFile(t, path), "\n") {
+		if line == "- [ ] seed" {
+			boxLine = i + 1
+			break
+		}
+	}
+	if boxLine == 0 {
+		t.Fatalf("seed box not found:\n%s", readFile(t, path))
+	}
+	for round := range 20 {
+		note := fmt.Sprintf("race note %d", round)
+		before := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+		done := make(chan error, 1)
+		go func() {
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte(note+"\n"))
+			done <- err
+		}()
+		// The NOTE on disk means the write is done and the commit is still
+		// pending; a tick starting now must wait for the lock when held.
+		waitForNote(t, path, "- [ ] "+note+"\n")
+		if err := TickLine(path, boxLine, 'x'); err != nil {
+			t.Fatal(err)
+		}
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		commits := gitRun(t, cfg.RepoRoot, "log", "--format=%H", before+"..HEAD")
+		if strings.Contains(commits, "\n") || len(commits) != 40 {
+			t.Fatalf("round %d: want one new commit, got %q", round, commits)
+		}
+		held := gitRun(t, cfg.RepoRoot, "show", commits+":"+rel)
+		// gitRun trims the output, so the check skips the trailing newline.
+		if !strings.Contains(held, "- [ ] "+note) {
+			t.Fatalf("round %d: commit %s misses the NOTE:\n%s", round, commits, held)
+		}
+		if strings.Contains(held, "[x]") {
+			t.Fatalf("round %d: the tick landed inside the new-debt commit:\n%s", round, held)
+		}
+		// Put the ticked box back so the next round starts clean.
+		gitRun(t, cfg.RepoRoot, "checkout", "-q", "--", path)
+	}
+	// Every NOTE must still be on disk after all rounds.
+	got := readFile(t, path)
+	for round := range 20 {
+		if want := fmt.Sprintf("- [ ] race note %d\n", round); !strings.Contains(got, want) {
+			t.Fatalf("race note %d was lost:\n%s", round, got)
+		}
+	}
+}
+
+// waitForNote polls for text NewDebt's write leaves behind. The commit takes
+// far longer than the write, so seeing the text means the commit that must
+// exclude a concurrent tick is still pending.
+func waitForNote(t *testing.T, path, want string) {
+	t.Helper()
+	for range 10000 {
+		if b, err := os.ReadFile(path); err == nil && strings.Contains(string(b), want) {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %q in %s", want, path)
+}
