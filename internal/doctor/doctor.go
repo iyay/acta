@@ -203,6 +203,21 @@ func refusal(e Env) string {
 	if inRepoPath(filepath.Join(e.RepoRoot, ".git"), e.ActaRoot) {
 		return e.ActaRoot + " is inside the repo .git folder"
 	}
+	// A link anywhere in the root's path carries the write to its target,
+	// even when the target sits in this repo. Lstat reads each part
+	// itself, so a dangling link still counts.
+	if rel, err := filepath.Rel(filepath.Clean(e.RepoRoot), filepath.Clean(e.ActaRoot)); err == nil {
+		cur := filepath.Clean(e.RepoRoot)
+		for _, part := range strings.Split(rel, string(os.PathSeparator)) {
+			if part == "." || part == "" || part == ".." {
+				continue
+			}
+			cur = filepath.Join(cur, part)
+			if isLink(cur) {
+				return cur + " is a symlink; replace it with a real folder"
+			}
+		}
+	}
 	if isLink(filepath.Join(e.ActaRoot, ".gitignore")) {
 		return ".gitignore in " + e.ActaRoot + " is a link, not a file of this repo"
 	}
@@ -400,6 +415,8 @@ func checkRepo(e Env) Result {
 			r.Fix = "replace the .gitignore link in " + e.ActaRoot + " with a real file"
 		case strings.Contains(reason, ".git folder"):
 			r.Fix = "fix root in .acta.yaml so it points outside the .git folder"
+		case strings.Contains(reason, "is a symlink"):
+			r.Fix = "replace the symlinked folder with a real folder"
 		}
 		return r
 	}
