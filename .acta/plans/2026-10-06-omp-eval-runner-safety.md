@@ -71,9 +71,9 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** After `RunCase` returns `ErrTimeout`, no process omp started is still alive. List every process the test starts and how it checks each is gone.
 
-- [ ] Red: `TestRunCaseTimeoutKillsChildren` with a fake omp body `sleep 30 & echo $! > "<logdir>/child"; wait`, `TimeoutSeconds: 1`; after `ErrTimeout`, `syscall.Kill(pid, 0)` on the saved child pid must report the process is gone (allow a short poll, under 2 s).
-- [ ] Green: start omp with `cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}` and `cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }`; keep `WaitDelay`.
-- [ ] Commit: `fix(evalomp): kill omp's whole process group on timeout (DBT-0048.08)`
+- [x] Red: `TestRunCaseTimeoutKillsChildren` with a fake omp body `sleep 30 & echo $! > "<logdir>/child"; wait`, `TimeoutSeconds: 1`; after `ErrTimeout`, `syscall.Kill(pid, 0)` on the saved child pid must report the process is gone (allow a short poll, under 2 s).
+- [x] Green: start omp with `cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}` and `cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }`; keep `WaitDelay`.
+- [x] Commit: `fix(evalomp): kill omp's whole process group on timeout (DBT-0048.08)`
 
 ### Task 05: The judge reports why it failed
 
