@@ -205,10 +205,9 @@ func TestRunningRoundReadsBothSubjects(t *testing.T) {
 	}
 }
 
-// When both round subjects exist but their order cannot be told, the round
-// comes from the new subject, so a branch with mixed history still reports
-// the new form.
-func TestRunningRoundPrefersNewSubjectWithoutOrder(t *testing.T) {
+// The round is whichever fix-round commit came later in the branch, whatever
+// subject it uses, so an old-subject commit after the rename still wins.
+func TestRunningRoundPrefersNewerOldSubject(t *testing.T) {
 	t.Parallel()
 
 	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
@@ -218,8 +217,25 @@ func TestRunningRoundPrefersNewSubjectWithoutOrder(t *testing.T) {
 	if len(runs) != 1 {
 		t.Fatalf("running = %v, want one plan", runIds(runs))
 	}
+	if runs[0].Round != "2" {
+		t.Errorf("round = %q, want 2, the old-subject commit is the newer one", runs[0].Round)
+	}
+}
+
+// A new-subject commit after the old one wins, so the order comes from git
+// and not from which subject the commit uses.
+func TestRunningRoundPrefersNewerNewSubject(t *testing.T) {
+	t.Parallel()
+
+	cfg, wt := runRepo(t, nil, map[string]string{"plans/2026-10-05-live.md": startedPlan})
+	gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", "acta: tick fix round 2")
+	gitRun(t, wt, "commit", "-q", "--allow-empty", "-m", "chore(plan): tick fix round 5")
+	runs := Running(cfg)
+	if len(runs) != 1 {
+		t.Fatalf("running = %v, want one plan", runIds(runs))
+	}
 	if runs[0].Round != "5" {
-		t.Errorf("round = %q, want 5, the new subject when the order is unknown", runs[0].Round)
+		t.Errorf("round = %q, want 5, the new-subject commit is the newer one", runs[0].Round)
 	}
 }
 
