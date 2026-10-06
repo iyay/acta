@@ -95,3 +95,19 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 - [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
 - [x] Green: bump the patch from 0.1.23 to 0.1.24 in all three files.
 - [x] Commit: `chore: version 0.1.24`
+
+## Polish
+
+### Task 07: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `internal/evalomp/main_test.go`: `TestMain` panics when `os.Setenv("HOME", home)` fails, so the HOME guard can never be skipped without a sound.
+- [x] Commit: `polish: review notes for PLN-0101`
+
+## Review notes
+
+- RunAll calls path.Match twice per case (pre-count and loop); harmless.
+- TestOmpJudgeFailureSaysWhy uses a 30 s bound, loose against the 5 s WaitDelay; still proves no hang.
+- TestMain still ignores the os.RemoveAll error on its temp HOME; fine for test cleanup.
+- If os.Setenv fails, the TestMain panic leaves the temp HOME folder behind; harmless.
