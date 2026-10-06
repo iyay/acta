@@ -304,22 +304,11 @@ func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []by
 	return createDebt(cfg, b, path, fileStem, title, it, texts)
 }
 
-// appendDebt adds only the lines the debt file does not already hold.
-// Nothing new means nothing written and nothing committed. The caller holds
-// the file's lock from NewDebt, or takes it itself.
-func appendDebt(cfg config.Config, path, fileStem string, src []byte, texts []string) (Outcome, error) {
-	unlock, err := lock(path)
-	if err != nil {
-		return Outcome{}, err
-	}
-	defer unlock()
-	return appendLocked(cfg, path, fileStem, texts)
-}
-
-// appendLocked is appendDebt's work with the file's lock already held. The
-// lock must already be held: taking it again in the same process blocks.
-// finish runs inside the lock, so no tick can land between the write and
-// the commit and end up inside this commit.
+// appendLocked appends only the lines the debt file does not already hold.
+// Nothing new means nothing written and nothing committed. The lock must
+// already be held: taking it again in the same process blocks. finish runs
+// inside the lock, so no tick can land between the write and the commit and
+// end up inside this commit.
 func appendLocked(cfg config.Config, path, fileStem string, texts []string) (Outcome, error) {
 	dirty, added, err := addDebtLines(cfg, path, texts)
 	if err != nil {

@@ -168,16 +168,23 @@ func TickLine(path string, line int, text string, state byte) error {
 }
 
 // lineText is what a debt checklist line says, without its box and without
-// any priority tag, the same text the board keeps as the item's title.
+// any priority tag, the same text the board keeps as the item's title. It
+// cuts where the board parser cuts, so extra spaces stay part of the text
+// on both sides. A lone carriage return is dropped, the way the board turns
+// a Windows line ending into a plain one before it reads the line.
 func lineText(ln string) string {
-	text := strings.TrimSpace(ln[strings.Index(ln, "]")+1:])
-	_, rest := board.SplitPriority(text)
+	text := strings.TrimSuffix(ln, "\r")
+	i := strings.Index(text, "]")
+	if i < 0 || i+2 > len(text) {
+		return ""
+	}
+	_, rest := board.SplitPriority(text[i+2:])
 	return rest
 }
 
-// findLine gives the one checklist line whose text is text: its index, -1
-// when none matches, -2 when more than one does.
-// ponytail: two sentinels instead of a count; only caller reads them.
+// findLine gives the one checklist line whose text is text: its index in the
+// file. No line with the text gives -1, and two or more lines with the same
+// text give -2, so the caller can tell "nothing to tick" from "too many".
 func findLine(lines []string, text string) int {
 	at := -1
 	for i, ln := range lines {

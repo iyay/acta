@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/iyay/acta/internal/board"
 )
 
 const plan = "# P\n\n### Task 1: One\n- [x] a\n- [ ] b\n```text\n- [ ] in a fence\n```\n- [ ] c\n\n### Task 2: Two\n- [ ] d\n"
@@ -260,6 +262,36 @@ func TestTickLineMatchesTaggedLineByUntaggedText(t *testing.T) {
 	got, _ := os.ReadFile(path)
 	if string(got) != "# R\n\n- [x] (high) urgent\n- [ ] other\n" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// Every debt line the board reads must tick by the title the board keeps,
+// whatever spaces sit around the words.
+func TestTickLineTicksEverySpacingTheBoardReads(t *testing.T) {
+	useLockBase(t)
+	for _, c := range []struct{ line, title, ticked string }{
+		{"- [ ] plain", "plain", "- [x] plain"},
+		{"- [ ] foo ", "foo ", "- [x] foo "},
+		{"- [ ]  (high) bar", " (high) bar", "- [x]  (high) bar"},
+		{"- [ ] (high)  baz", " baz", "- [x] (high)  baz"},
+	} {
+		src := "# R\n\n" + c.line + "\n- [ ] other\n"
+		doc := board.Parse([]byte(src))
+		if len(doc.Items) != 2 {
+			t.Fatalf("line %q parsed as %d items, want 2", c.line, len(doc.Items))
+		}
+		if _, title := board.SplitPriority(doc.Items[0].Text); title != c.title {
+			t.Fatalf("line %q title = %q, want %q", c.line, title, c.title)
+		}
+		path := filepath.Join(t.TempDir(), "d.md")
+		os.WriteFile(path, []byte(src), 0o644)
+		if err := TickLine(path, doc.Items[0].Line, c.title, 'x'); err != nil {
+			t.Fatalf("line %q title %q: %v", c.line, c.title, err)
+		}
+		got, _ := os.ReadFile(path)
+		if !strings.Contains(string(got), c.ticked+"\n") {
+			t.Fatalf("line %q was not ticked, want %q in:\n%s", c.line, c.ticked, got)
+		}
 	}
 }
 
