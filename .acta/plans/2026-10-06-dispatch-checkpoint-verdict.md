@@ -5,6 +5,7 @@ closes: [SPC-0094, DBT-0071.01, DBT-0071.02, DBT-0071.03, DBT-0078.01]
 id: PLN-0103
 created: "2026-10-06 09:25:50"
 hash: dd3qpd3
+started: "2026-10-06 09:30:59"
 ---
 # dispatch checkpoint verdict Implementation Plan
 
@@ -39,9 +40,9 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 
 **verify:** No card drawn before the newest `goalMark` line can change the verdict, and pane text with no goal mark is always `unconfirmed`. List every pane shape tested (old card above new goal, no goal mark, new card only).
 
-- [ ] Red: a pane with an old round's card naming task 1 and 2 above the newest `🎯 Goal` line, and a new card naming only task 3 and 4, for ids `3,4`: today it reads the old card too; the test wants `ok` from the new part only. Also a pane with no goal mark wants `unconfirmed`.
-- [ ] Green: after the read, cut `text` to what follows the last line containing `goalMark`; with no such line return `unconfirmed`.
-- [ ] Commit: `fix(dispatch): checkpoint reads only the newest round (DBT-0071.03)`
+- [x] Red: a pane with an old round's card naming task 1 and 2 above the newest `🎯 Goal` line, and a new card naming only task 3 and 4, for ids `3,4`: today it reads the old card too; the test wants `ok` from the new part only. Also a pane with no goal mark wants `unconfirmed`.
+- [x] Green: after the read, cut `text` to what follows the last line containing `goalMark`; with no such line return `unconfirmed`.
+- [x] Commit: `fix(dispatch): checkpoint reads only the newest round (DBT-0071.03)`
 
 ### Task 02: Framed header and its task count
 

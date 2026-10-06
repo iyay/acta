@@ -432,7 +432,7 @@ func TestHerdrDeliverGoalReadFailureStops(t *testing.T) {
 func TestHerdrCheckpointOK(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 20*time.Millisecond, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", todoCard+"- Task 1: a\n- task-2 b\n- TASK 4 c\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"- Task 1: a\n- task-2 b\n- TASK 4 c\n")
 	start := time.Now()
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2", "4"})
 	if verdict != "ok" || len(missing) != 0 {
@@ -451,7 +451,7 @@ func TestHerdrCheckpointDriftNamesMissingIDs(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
 	// Task 12 must not count as task 1, and task 3 is absent.
-	h.out("agent_read_recent-unwrapped", todoCard+"- Task 12: other\n- Task 2: b\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"- Task 12: other\n- Task 2: b\n")
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2", "3"})
 	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1", "3"}) {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -482,7 +482,7 @@ func TestHerdrCheckpointUnconfirmedWithNoTodoList(t *testing.T) {
 func TestHerdrCheckpointCardWithNoIDsIsUnconfirmed(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", "\u23fa Todo 2 tasks\n\u2610 Build the auth module\n\u2610 Add the REST endpoints\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"\u23fa Todo 2 tasks\n\u2610 Build the auth module\n\u2610 Add the REST endpoints\n")
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2"})
 	if verdict != "unconfirmed" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -517,7 +517,7 @@ func TestHerdrCheckpointIDsWithoutCardAreUnconfirmed(t *testing.T) {
 func TestHerdrCheckpointCardInsideAFrame(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", "\u256d\u2500 \u23fa Todo 2/2\n\u2502 Task 1: a\n\u2502 Task 2: b\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"\u256d\u2500 \u23fa Todo 2/2\n\u2502 Task 1: a\n\u2502 Task 2: b\n")
 	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
 	if verdict != "ok" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -528,7 +528,7 @@ func TestHerdrCheckpointCardInsideAFrame(t *testing.T) {
 func TestHerdrCheckpointAsciiHeader(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", "[x] Todo 2 tasks\n- Task 1: a\n- Task 2: b\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"[x] Todo 2 tasks\n- Task 1: a\n- Task 2: b\n")
 	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
 	if verdict != "ok" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -539,7 +539,7 @@ func TestHerdrCheckpointAsciiHeader(t *testing.T) {
 func TestHerdrCheckpointAcceptsTDashForm(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", todoCard+"- T-1 / T-2 / t-3\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"- T-1 / T-2 / t-3\n")
 	verdict, missing, _ := checkpoint("round-1", []string{"1", "2", "3"})
 	if verdict != "ok" || len(missing) != 0 {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -549,7 +549,7 @@ func TestHerdrCheckpointAcceptsTDashForm(t *testing.T) {
 func TestHerdrCheckpointTDashTenIsNotOne(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", todoCard+"- T-10: other\n")
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"- T-10: other\n")
 	// T-10 names no id here, so the card is still unwritten, not drift.
 	verdict, missing, _ := checkpoint("round-1", []string{"1"})
 	if verdict != "unconfirmed" || len(missing) != 0 {
@@ -582,6 +582,33 @@ func TestHerdrCheckpointNoTasksCallsNothing(t *testing.T) {
 	}
 	if len(h.calls()) != 0 {
 		t.Fatalf("herdr was called: %q", h.calls())
+	}
+}
+
+// An old round's card above the newest goal line is ignored: only the new
+// card decides the verdict.
+func TestHerdrCheckpointIgnoresOldRoundCard(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", todoCard+"- Task 1: a\n- Task 2: b\n"+goalMark+"\n"+todoCard+"- Task 3: c\n- Task 4: d\n")
+	verdict, missing, pane := checkpoint("round-1", []string{"3", "4"})
+	if verdict != "ok" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
+	}
+	if strings.Contains(pane, "Task 1") {
+		t.Fatalf("old round leaked into the verdict text: %q", pane)
+	}
+}
+
+// No goal line on screen means the goal never showed: unconfirmed, even
+// with a card naming every id.
+func TestHerdrCheckpointNoGoalMarkIsUnconfirmed(t *testing.T) {
+	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+	h := newScriptedHerdr(t)
+	h.out("agent_read_recent-unwrapped", todoCard+"- Task 1: a\n- Task 2: b\n")
+	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+	if verdict != "unconfirmed" || len(missing) != 0 {
+		t.Fatalf("verdict %q missing %q", verdict, missing)
 	}
 }
 

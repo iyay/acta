@@ -277,7 +277,10 @@ func dropGoal(slug string) error {
 var todoCardHeader = regexp.MustCompile(`(?m)^(?:\[x\])?[^\p{L}\p{N}\n]*Todo(?:\s|$)`)
 
 // checkpoint waits, then reads the pane once and looks for every task id.
-// With no todo card on screen the list is not written yet, which is
+// Only the newest round counts: omp leaves the old round's card on screen,
+// so everything up to the last goal line is cut away. With no goal line the
+// goal never showed, which is "unconfirmed", not a failure. With no todo
+// card on screen the list is not written yet, which is
 // "unconfirmed", not a failure. A card that names none of the ids is the
 // same: the real list is still not written. Only a card that names some ids
 // but skips others is "drift". The pane text comes back so the caller can
@@ -292,6 +295,15 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 	text, err := herdr("agent", "read", slug, "--source", "recent-unwrapped", "--lines", "60")
 	if err != nil {
 		return checkpointUnconfirmed, nil, err.Error()
+	}
+	at := strings.LastIndex(text, goalMark)
+	if at < 0 {
+		return checkpointUnconfirmed, nil, text
+	}
+	if i := strings.IndexByte(text[at:], '\n'); i >= 0 {
+		text = text[at+i+1:]
+	} else {
+		text = ""
 	}
 	if !todoCardHeader.MatchString(text) {
 		return checkpointUnconfirmed, nil, text
