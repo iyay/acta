@@ -672,7 +672,56 @@ func TestDoctorFixWritesNothingWhenActaRootIsALinkOut(t *testing.T) {
 	if got := snapshot(t, outside); len(got) > 1 {
 		t.Fatalf("Fix wrote outside the repo: %v", got)
 	}
-	wantLevel(t, byName(Run(e), "repo"), Fail, "root")
+}
+
+// A root reached through a symlink lets --fix write through the link, so it
+// must refuse whether the link's target is inside the repo, outside it or
+// gone, and whether the link is the root itself or a folder above it.
+func TestDoctorFixWritesNothingThroughSymlinkedPath(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, e *Env)
+	}{
+		{"root links to a folder in the repo", func(t *testing.T, e *Env) {
+			write(t, filepath.Join(e.RepoRoot, "real", ".gitignore"), "# notes\n")
+			link(t, e.ActaRoot, "real")
+		}},
+		{"root is a dangling link", func(t *testing.T, e *Env) {
+			link(t, e.ActaRoot, "gone")
+		}},
+		{"folder above the root is a link", func(t *testing.T, e *Env) {
+			if err := os.MkdirAll(filepath.Join(e.RepoRoot, "real"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			link(t, filepath.Join(e.RepoRoot, "sub"), "real")
+			e.ActaRoot = filepath.Join(e.RepoRoot, "sub", ".acta")
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			e := env(t)
+			c.setup(t, &e)
+			before := snapshot(t, e.RepoRoot)
+			paths, err := Fix(e)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(paths) != 0 {
+				t.Fatalf("paths %v", paths)
+			}
+			if after := snapshot(t, e.RepoRoot); !reflect.DeepEqual(before, after) {
+				t.Fatalf("Fix wrote through a link: before %v after %v", before, after)
+			}
+			r := byName(Run(e), "repo")
+			wantLevel(t, r, Fail, "")
+			if !strings.Contains(r.Msg, "symlink") {
+				t.Fatalf("msg %q does not name the symlink", r.Msg)
+			}
+			if strings.Contains(r.Fix, "acta doctor --fix") {
+				t.Fatalf("fix %q sends the user to --fix, which must not write through a link", r.Fix)
+			}
+		})
+	}
 }
 
 // A root that is the repo's own .git folder, or sits inside it, would let

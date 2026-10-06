@@ -50,9 +50,9 @@ Tasks 01 to 03 all edit `internal/doctor/doctor.go` and `doctor_test.go`, so the
 
 **verify:** No acta root whose path below the repo root passes through a symlink, whether the link's target is inside the repo, outside it or missing, can be written by `Fix`, and `checkRepo` never suggests `--fix` for one. List every link shape tested.
 
-- [ ] Red: cases `.acta` as a link to another in-repo folder that holds a tracked `.gitignore`, `.acta` as a dangling link, and `sub/.acta` where `sub` is the link; each must leave every file unchanged and give `Fail` with no `acta doctor --fix`.
-- [ ] Green: in `refusal`, walk each part of the root's path from the repo root down with `os.Lstat` and refuse on the first symlink, naming it ("<path> is a symlink; replace it with a real folder").
-- [ ] Commit: `fix(doctor): --fix refuses an acta root that goes through a symlink (DBT-0011.31, DBT-0011.24)`
+- [x] Red: cases `.acta` as a link to another in-repo folder that holds a tracked `.gitignore`, `.acta` as a dangling link, and `sub/.acta` where `sub` is the link; each must leave every file unchanged and give `Fail` with no `acta doctor --fix`.
+- [x] Green: in `refusal`, walk each part of the root's path from the repo root down with `os.Lstat` and refuse on the first symlink, naming it ("<path> is a symlink; replace it with a real folder").
+- [x] Commit: `fix(doctor): --fix refuses an acta root that goes through a symlink (DBT-0011.31, DBT-0011.24)`
 
 ### Task 03: .gitignore must be a regular file
 
