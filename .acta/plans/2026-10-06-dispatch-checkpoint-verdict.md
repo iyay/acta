@@ -60,9 +60,9 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 
 **verify:** With a task count in the header, `drift` comes only from a count below `len(ids)`; ids missing under a count at or above it give `unconfirmed`; with no count, today's rule holds. List every count and seen-ids combination tested.
 
-- [ ] Red: `Todo 12 tasks` with 8 rows shown for 12 ids wants `unconfirmed`; `Todo 3 tasks` for 5 ids wants `drift`; `Todo 2 tasks` naming both of 2 ids wants `ok`; a header with no count, some ids missing, wants `drift`.
-- [ ] Green: in `checkpoint`, use `cardTotal`; apply the three rules from the spec before the old some-missing rule.
-- [ ] Commit: `fix(dispatch): a folded todo list is unconfirmed, not drift (DBT-0071.01)`
+- [x] Red: `Todo 12 tasks` with 8 rows shown for 12 ids wants `unconfirmed`; `Todo 3 tasks` for 5 ids wants `drift`; `Todo 2 tasks` naming both of 2 ids wants `ok`; a header with no count, some ids missing, wants `drift`.
+- [x] Green: in `checkpoint`, use `cardTotal`; apply the three rules from the spec before the old some-missing rule.
+- [x] Commit: `fix(dispatch): a folded todo list is unconfirmed, not drift (DBT-0071.01)`
 
 ### Task 04: Generic task text is not an id
 

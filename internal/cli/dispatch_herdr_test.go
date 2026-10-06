@@ -450,8 +450,9 @@ func TestHerdrCheckpointOK(t *testing.T) {
 func TestHerdrCheckpointDriftNamesMissingIDs(t *testing.T) {
 	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
 	h := newScriptedHerdr(t)
-	// Task 12 must not count as task 1, and task 3 is absent.
-	h.out("agent_read_recent-unwrapped", goalMark+"\n"+todoCard+"- Task 12: other\n- Task 2: b\n")
+	// Task 12 must not count as task 1, and task 3 is absent. The card
+	// counts 2 tasks for a 3-task plan, so the missing ids are drift.
+	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"\u23fa Todo 2 tasks\n"+"- Task 12: other\n- Task 2: b\n")
 	verdict, missing, pane := checkpoint("round-1", []string{"1", "2", "3"})
 	if verdict != "drift" || !reflect.DeepEqual(missing, []string{"1", "3"}) {
 		t.Fatalf("verdict %q missing %q", verdict, missing)
@@ -460,6 +461,39 @@ func TestHerdrCheckpointDriftNamesMissingIDs(t *testing.T) {
 		t.Fatalf("pane text not returned: %q", pane)
 	}
 	h.wantCalls([]string{readRecent}, h.calls())
+}
+
+// A folded todo list hides rows omp did not draw: with a count at or above
+// the plan's task count, unseen ids are unconfirmed, never drift. Only a
+// count below the plan's count is drift. With no count, today's rule holds.
+func TestHerdrCheckpointFoldedList(t *testing.T) {
+	ids12 := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
+	rows8 := "- Task 1: a\n- Task 2: b\n- Task 3: c\n- Task 4: d\n- Task 5: e\n- Task 6: f\n- Task 7: g\n- Task 8: h\n"
+	for _, tc := range []struct {
+		name    string
+		pane    string
+		ids     []string
+		verdict string
+		missing []string
+	}{
+		{"folded 8 of 12 is unconfirmed", goalMark + "\n⛳ Todo 12 tasks\n" + rows8, ids12, checkpointUnconfirmed, nil},
+		{"count above plan with gaps is unconfirmed", goalMark + "\n⛳ Todo 15 tasks\n" + rows8, ids12, checkpointUnconfirmed, nil},
+		{"count below plan with gaps is drift", goalMark + "\n⛳ Todo 3 tasks\n- Task 1: a\n- Task 2: b\n", []string{"1", "2", "3", "4", "5"}, checkpointDrift, []string{"3", "4", "5"}},
+		{"count below plan all seen is drift", goalMark + "\n⛳ Todo 3 tasks\n" + "- Task 1: a\n- Task 2: b\n- Task 3: c\n- Task 4: d\n- Task 5: e\n", []string{"1", "2", "3", "4", "5"}, checkpointDrift, nil},
+		{"count exact all seen is ok", goalMark + "\n⛳ Todo 2 tasks\n- Task 1: a\n- Task 2: b\n", []string{"1", "2"}, checkpointOK, nil},
+		{"no count with gaps is drift", goalMark + "\n⛳ Todo\n- Task 1: a\n", []string{"1", "2"}, checkpointDrift, []string{"2"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+			h := newScriptedHerdr(t)
+			h.out("agent_read_recent-unwrapped", tc.pane)
+			verdict, missing, _ := checkpoint("round-1", tc.ids)
+			if verdict != tc.verdict || !reflect.DeepEqual(missing, tc.missing) {
+				t.Fatalf("verdict %q missing %q, want %q %q", verdict, missing, tc.verdict, tc.missing)
+			}
+			h.wantCalls([]string{readRecent}, h.calls())
+		})
+	}
 }
 
 // What omp draws for its todo list: a header line titled Todo. The glyph

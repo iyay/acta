@@ -301,8 +301,11 @@ func cardTotal(header string) (int, bool) {
 // goal never showed, which is "unconfirmed", not a failure. With no todo
 // card on screen the list is not written yet, which is
 // "unconfirmed", not a failure. A card that names none of the ids is the
-// same: the real list is still not written. Only a card that names some ids
-// but skips others is "drift". The pane text comes back so the caller can
+// same: the real list is still not written. When the header names a task
+// count, that count decides: below the plan's task count is "drift", at or
+// above it unseen ids may only be folded away, so that is "unconfirmed",
+// never "drift". With no count, only a card that names some ids but skips
+// others is "drift". The pane text comes back so the caller can
 // show it on drift. A failed read is "unconfirmed" too, with the failure in
 // place of the text. With no ids there is nothing to check: ok, and herdr
 // is not called.
@@ -324,8 +327,13 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 	} else {
 		text = ""
 	}
-	if !todoCardHeader.MatchString(text) {
+	loc := todoCardHeader.FindStringIndex(text)
+	if loc == nil {
 		return checkpointUnconfirmed, nil, text
+	}
+	header := text[loc[0]:]
+	if i := strings.IndexByte(header, '\n'); i >= 0 {
+		header = header[:i]
 	}
 	var missing []string
 	found := 0
@@ -335,6 +343,15 @@ func checkpoint(slug string, ids []string) (string, []string, string) {
 		} else {
 			found++
 		}
+	}
+	if n, ok := cardTotal(header); ok {
+		if n < len(ids) {
+			return checkpointDrift, missing, text
+		}
+		if len(missing) > 0 {
+			return checkpointUnconfirmed, nil, text
+		}
+		return checkpointOK, nil, text
 	}
 	if found == 0 {
 		return checkpointUnconfirmed, nil, text
