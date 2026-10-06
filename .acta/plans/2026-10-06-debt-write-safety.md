@@ -67,7 +67,7 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 
 ### Next
 
-task-03 done. Commit 5f71d36 bumped 0.1.27 all 3. plugincheck pass. Review/land next. debt DBT-0021 started-line left uncommitted in worktree.
+task-04 done. Commit c7b432c matches lineText to board title, drops ponytail tag, removes appendDebt. Review/land next.
 
 ## Fix round 1
 
@@ -77,8 +77,15 @@ task-03 done. Commit 5f71d36 bumped 0.1.27 all 3. plugincheck pass. Review/land 
 
 **verify:** For every debt line the board parses, the text `lineText` gives equals the title the board gives, so `TickLine` ticks every item it ticked before this plan. List every spacing case tested (trailing space, two spaces after the box, two spaces after the tag, plain).
 
-- [ ] Red: in `tick_test.go`, parse a debt file holding `- [ ] foo ` and `- [ ]  (high) bar` with `board.Parse`, then `TickLine` each item with its parsed title; both must tick (today: "no checklist line with text").
-- [ ] Green: `lineText` takes the text the same way `itemRe` group 2 does (everything after `] `, no `TrimSpace`), then strips the priority tag the same way the board does for its title.
-- [ ] Drop the `// ponytail:` line above `findLine`; say in plain English why it returns -1 and -2.
-- [ ] Remove `appendDebt` from `ops.go` (no production caller left); point its tests at `NewDebt`.
-- [ ] Commit: `fix(write): debt tick text matches the board title exactly`
+- [x] Red: in `tick_test.go`, parse a debt file holding `- [ ] foo ` and `- [ ]  (high) bar` with `board.Parse`, then `TickLine` each item with its parsed title; both must tick (today: "no checklist line with text").
+- [x] Green: `lineText` takes the text the same way `itemRe` group 2 does (everything after `] `, no `TrimSpace`), then strips the priority tag the same way the board does for its title.
+- [x] Drop the `// ponytail:` line above `findLine`; say in plain English why it returns -1 and -2.
+- [x] Remove `appendDebt` from `ops.go` (no production caller left); point its tests at `NewDebt`.
+- [x] Commit: `fix(write): debt tick text matches the board title exactly`
+
+## Review notes
+
+- findLine returns -1 and -2 as sentinels instead of a count; correct, a little less clear.
+- tickAnyBoxRe accepts `- [x]foo` with no space, which the board does not read; harmless since the text must still match.
+- A file whose last line ends in a lone `\r` with no `\n` keeps the `\r` in the board title but not in lineText, so that one line cannot be ticked.
+- A hand-made `- [ ]\tfoo` line is not a board item but lineText reads it as `foo`; it can only be ticked when the real `foo` line is gone.

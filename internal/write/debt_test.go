@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/iyay/acta/internal/board"
-	"github.com/iyay/acta/internal/config"
 )
 
 // A plan file with an id and hash already set, so NewDebt can resolve it by
@@ -162,30 +161,38 @@ func TestNewDebtAutoCommitOff(t *testing.T) {
 
 // A tick and a NOTE landing on one debt file must both stay in the file,
 // whatever order they run in, and the file must never be half written.
-func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
+func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 	useLockBase(t)
-	root := t.TempDir()
-	// No git and no commit here: this test is about the file alone, and
-	// fifty rounds of commits would only make it slow.
-	cfg := config.Default(root)
+	fixNowAt(t, "2026-09-29")
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+	// No commit here: this test is about the file alone, and fifty rounds
+	// of commits would only make it slow.
 	cfg.AutoCommit = false
-	path := filepath.Join(root, "debt", "2026-09-29-locks.md")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	// The box sits on the sixth line: two lines of front matter, the
-	// heading, then a blank line.
-	const boxLine = 6
+	cfg.IsGit = false
+	b := mustLoad(t, cfg)
+	path := filepath.Join(cfg.Root, "debt", "2026-09-29-short-ids.md")
 	const first = "---\nid: DEBT-1\n---\n# Review NOTEs: Locks\n\n- [ ] first note\n"
 
-	// start puts the file back to one open box and gives back the copy a
-	// caller would already be holding.
-	start := func(t *testing.T) []byte {
+	// start puts the file back to one open box.
+	start := func(t *testing.T) {
 		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(path, []byte(first), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		return []byte(readFile(t, path))
+	}
+	// boxLine finds the open box, so the tick does not hard code its line.
+	boxLine := func(t *testing.T) int {
+		t.Helper()
+		for i, line := range strings.Split(readFile(t, path), "\n") {
+			if line == "- [ ] first note" {
+				return i + 1
+			}
+		}
+		t.Fatal("first note box not found")
+		return 0
 	}
 	// noTempLeft proves no half written file is left behind for the next
 	// run to pick up as junk.
@@ -205,11 +212,11 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 	}
 
 	t.Run("append then tick keeps both", func(t *testing.T) {
-		src := start(t)
-		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
+		start(t)
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n")); err != nil {
 			t.Fatal(err)
 		}
-		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
+		if err := TickLine(path, boxLine(t), "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		wantBoth(t, "the NOTE was lost")
@@ -217,19 +224,19 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 
 	t.Run("tick then append keeps both", func(t *testing.T) {
 		// This is the copy NewDebt already read, before the tick landed.
-		src := start(t)
-		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
+		start(t)
+		if err := TickLine(path, boxLine(t), "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n")); err != nil {
 			t.Fatal(err)
 		}
 		wantBoth(t, "the tick was lost")
 	})
 
 	t.Run("nothing new leaves the file alone", func(t *testing.T) {
-		src := start(t)
-		out, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"first note"})
+		start(t)
+		out, err := NewDebt(cfg, b, "PLAN-3", "", []byte("first note\n"))
 		if err != nil || out.Committed {
 			t.Fatalf("out=%+v err=%v, want no write and no commit", out, err)
 		}
@@ -238,11 +245,11 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		}
 		// A NOTE that is already ticked is still on the file, so it must
 		// not come back as a second open box.
-		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
+		if err := TickLine(path, boxLine(t), "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		ticked := readFile(t, path)
-		if _, err := appendDebt(cfg, path, "2026-09-29-locks", []byte(ticked), []string{"first note"}); err != nil {
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("first note\n")); err != nil {
 			t.Fatal(err)
 		}
 		if got := readFile(t, path); got != ticked {
@@ -252,7 +259,8 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 	})
 
 	for round := range 50 {
-		src := start(t)
+		start(t)
+		line := boxLine(t)
 		var wg sync.WaitGroup
 		gate := make(chan struct{})
 		failed := make(chan error, 2)
@@ -260,12 +268,12 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-gate
-			failed <- TickLine(path, boxLine, "first note", 'x')
+			failed <- TickLine(path, line, "first note", 'x')
 		}()
 		go func() {
 			defer wg.Done()
 			<-gate
-			_, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"})
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n"))
 			failed <- err
 		}()
 		close(gate)
