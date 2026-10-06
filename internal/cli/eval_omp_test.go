@@ -40,11 +40,11 @@ func TestEvalOmpExitCodes(t *testing.T) {
 		t.Errorf("passing suite: code %d, out %q, err %q", code, out.String(), errb.String())
 	}
 
-	// A glob that matches nothing runs nothing, so the suite is green and
-	// prints no case line.
+	// A glob that matches nothing fails the run loudly, so a typo can never
+	// hide as a green suite.
 	out.Reset()
 	dir = evalPlugin(t, "hello", "hello")
-	if code := cmdEvalOmp([]string{dir, "--case", "nothing-matches"}, &out, &errb); code != exitOK || strings.Contains(out.String(), "PASS") {
+	if code := cmdEvalOmp([]string{dir, "--case", "nothing-matches"}, &out, &errb); code != exitCaseFailed || !strings.Contains(out.String(), `no case matches`) || !strings.Contains(out.String(), "nothing-matches") || strings.Contains(out.String(), "PASS") {
 		t.Errorf("empty glob: code %d, out %q", code, out.String())
 	}
 
