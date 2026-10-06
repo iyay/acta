@@ -272,6 +272,20 @@ func TestOmpJudge(t *testing.T) {
 	}
 }
 
+// A judge that dies must say what omp printed, and a judge child holding
+// the pipes open must not keep the call waiting past WaitDelay.
+func TestOmpJudgeFailureSaysWhy(t *testing.T) {
+	omp, _ := fakeOmp(t, "(sleep 60 >&2 &); echo judge-broke >&2; exit 3")
+	start := time.Now()
+	_, err := OmpJudge(omp)("does it pass?")
+	if err == nil || !strings.Contains(err.Error(), "judge-broke") {
+		t.Fatalf("judge error = %v, want it to carry omp's stderr", err)
+	}
+	if took := time.Since(start); took >= 30*time.Second {
+		t.Fatalf("judge call took %v, a held pipe must not outlive WaitDelay", took)
+	}
+}
+
 func TestRunAll(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
