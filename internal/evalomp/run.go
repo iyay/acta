@@ -135,8 +135,18 @@ func OmpJudge(omp string) Judge {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, omp, "-p", "--no-session", "--no-extensions", "--no-rules", "--no-skills", prompt)
 		cmd.Dir = os.TempDir()
+		// A judge child holding the pipes open must not keep the call
+		// waiting, or the timeout kill waits on that child forever.
+		cmd.WaitDelay = 5 * time.Second
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
 		out, err := cmd.Output()
-		return string(out), err
+		if err != nil {
+			// The bare exit status says nothing, so the error carries what
+			// omp printed to say why the reply never came.
+			return string(out), fmt.Errorf("judge: %v: %s", err, strings.TrimSpace(stderr.String()))
+		}
+		return string(out), nil
 	}
 }
 

@@ -6,6 +6,7 @@ id: PLN-0101
 created: "2026-10-06 08:11:28"
 hash: wo20ff9
 started: "2026-10-06 08:14:58"
+finished: "2026-10-06 08:31:22"
 ---
 # omp eval runner safety Implementation Plan
 
@@ -81,9 +82,9 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** Every judge failure carries omp's stderr in its error, and a judge child holding the pipes open cannot keep the call waiting past `WaitDelay`. List every judge exit path (ok, omp fails, times out).
 
-- [ ] Red: `TestOmpJudgeFailureSaysWhy` with a fake omp body `echo judge-broke >&2; exit 3`; the error must contain `judge-broke`.
-- [ ] Green: in `OmpJudge` set `cmd.WaitDelay = 5 * time.Second`, capture stderr in a buffer, and on error return `fmt.Errorf("judge: %v: %s", err, strings.TrimSpace(stderr.String()))`.
-- [ ] Commit: `fix(evalomp): judge errors carry omp's stderr (DBT-0048.09)`
+- [x] Red: `TestOmpJudgeFailureSaysWhy` with a fake omp body `echo judge-broke >&2; exit 3`; the error must contain `judge-broke`.
+- [x] Green: in `OmpJudge` set `cmd.WaitDelay = 5 * time.Second`, capture stderr in a buffer, and on error return `fmt.Errorf("judge: %v: %s", err, strings.TrimSpace(stderr.String()))`.
+- [x] Commit: `fix(evalomp): judge errors carry omp's stderr (DBT-0048.09)`
 
 ### Task 06: Version 0.1.24
 
@@ -91,6 +92,6 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** The three files carry the same version, 0.1.24, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
-- [ ] Green: bump the patch from 0.1.23 to 0.1.24 in all three files.
-- [ ] Commit: `chore: version 0.1.24`
+- [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
+- [x] Green: bump the patch from 0.1.23 to 0.1.24 in all three files.
+- [x] Commit: `chore: version 0.1.24`
