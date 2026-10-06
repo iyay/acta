@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -274,7 +275,25 @@ func dropGoal(slug string) error {
 // Todo on its own, with only symbols before it. A word like Todos or mytodo,
 // or a sentence about a todo list, is not the card. The ascii symbol preset
 // draws the icon as "[x]", and x is a letter, so that form is allowed first.
-var todoCardHeader = regexp.MustCompile(`(?m)^(?:\[x\])?[^\p{L}\p{N}\n]*Todo(?:\s|$)`)
+// The ascii frame edge ("+---") and dash run ("---+") are symbols too, so a
+// framed header like "+--- [x] Todo 3 tasks ---+" matches as well.
+var todoCardHeader = regexp.MustCompile(`(?m)^[^\p{L}\p{N}\n]*(?:\[x\][^\p{L}\p{N}\n]*)?Todo(?:\s|$)`)
+
+var cardCount = regexp.MustCompile(`Todo\s+(\d+)\s+tasks`)
+
+// cardTotal reads the "<N> tasks" count from the card header line. It says
+// false when the header has no count, so callers keep today's rule then.
+func cardTotal(header string) (int, bool) {
+	m := cardCount.FindStringSubmatch(header)
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
 
 // checkpoint waits, then reads the pane once and looks for every task id.
 // Only the newest round counts: omp leaves the old round's card on screen,

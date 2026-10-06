@@ -525,13 +525,19 @@ func TestHerdrCheckpointCardInsideAFrame(t *testing.T) {
 }
 
 // omp's ascii symbol preset draws the todo icon as "[x]", and x is a letter.
+// The header may also sit inside an ascii frame: +--- [x] Todo 3 tasks ---+.
 func TestHerdrCheckpointAsciiHeader(t *testing.T) {
-	fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
-	h := newScriptedHerdr(t)
-	h.out("agent_read_recent-unwrapped", goalMark+"\n"+"[x] Todo 2 tasks\n- Task 1: a\n- Task 2: b\n")
-	verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
-	if verdict != "ok" || len(missing) != 0 {
-		t.Fatalf("verdict %q missing %q", verdict, missing)
+	for _, header := range []string{
+		"[x] Todo 2 tasks\n",
+		"+--- [x] Todo 2 tasks ---+\n",
+	} {
+		fastWaits(t, time.Second, time.Second, 0, time.Millisecond)
+		h := newScriptedHerdr(t)
+		h.out("agent_read_recent-unwrapped", goalMark+"\n"+header+"- Task 1: a\n- Task 2: b\n")
+		verdict, missing, _ := checkpoint("round-1", []string{"1", "2"})
+		if verdict != "ok" || len(missing) != 0 {
+			t.Fatalf("header %q: verdict %q missing %q", header, verdict, missing)
+		}
 	}
 }
 

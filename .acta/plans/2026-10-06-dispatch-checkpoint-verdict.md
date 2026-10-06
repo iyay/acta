@@ -50,9 +50,9 @@ Tasks 01 to 04 all edit `internal/cli/dispatch_herdr.go` and its test file, so t
 
 **verify:** Every header shape omp draws (glyph header, unframed `[x] Todo`, framed `+--- [x] Todo 3 tasks ---+`) is found, and words like Todos, mytodo or a sentence about a todo are never a header. List every header form tested, matching and not matching.
 
-- [ ] Red: replace `TestHerdrCheckpointAsciiHeader`'s unframed-only case with a table that adds the framed ascii header; the framed one fails today.
-- [ ] Green: set `todoCardHeader` to `(?m)^[^\p{L}\p{N}\n]*(?:\[x\][^\p{L}\p{N}\n]*)?Todo(?:\s|$)` and add a helper `cardTotal(header string) (int, bool)` that reads `<N> tasks` from the header line.
-- [ ] Commit: `fix(dispatch): checkpoint finds the framed ascii todo header (DBT-0071.02)`
+- [x] Red: replace `TestHerdrCheckpointAsciiHeader`'s unframed-only case with a table that adds the framed ascii header; the framed one fails today.
+- [x] Green: set `todoCardHeader` to `(?m)^[^\p{L}\p{N}\n]*(?:\[x\][^\p{L}\p{N}\n]*)?Todo(?:\s|$)` and add a helper `cardTotal(header string) (int, bool)` that reads `<N> tasks` from the header line.
+- [x] Commit: `fix(dispatch): checkpoint finds the framed ascii todo header (DBT-0071.02)`
 
 ### Task 03: Folded list is not drift
 
