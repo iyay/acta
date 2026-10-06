@@ -163,10 +163,10 @@ func TestTickLineSetsOnlyThatBox(t *testing.T) {
 	useLockBase(t)
 	path := filepath.Join(t.TempDir(), "d.md")
 	os.WriteFile(path, []byte("# R\n\n- [ ] a\n- [ ] b\n- [x] c\n"), 0o644)
-	if err := TickLine(path, 4, '-'); err != nil {
+	if err := TickLine(path, 4, "b", '-'); err != nil {
 		t.Fatal(err)
 	}
-	if err := TickLine(path, 5, 'x'); err != nil {
+	if err := TickLine(path, 5, "c", 'x'); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(path)
@@ -179,12 +179,87 @@ func TestTickLineRejectsNonBox(t *testing.T) {
 	useLockBase(t)
 	path := filepath.Join(t.TempDir(), "d.md")
 	os.WriteFile(path, []byte("# R\n\ntext\n"), 0o644)
-	if err := TickLine(path, 3, 'x'); err == nil {
+	if err := TickLine(path, 3, "text", 'x'); err == nil {
 		t.Fatal("want error on a line with no box")
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != "# R\n\ntext\n" {
 		t.Fatalf("file changed: %q", got)
+	}
+}
+
+// TickLine with the right line and the item's text ticks only that box.
+func TestTickLineChecksTextOnMatchingLine(t *testing.T) {
+	useLockBase(t)
+	path := filepath.Join(t.TempDir(), "d.md")
+	os.WriteFile(path, []byte("# R\n\n- [ ] a\n- [ ] b\n"), 0o644)
+	if err := TickLine(path, 4, "b", 'x'); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "# R\n\n- [ ] a\n- [x] b\n" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// A line added above the item after the board was read moves its box down.
+// TickLine with the stale line number and the item's text still ticks the
+// right box and leaves the line now on that number alone.
+func TestTickLineFindsMovedLineByText(t *testing.T) {
+	useLockBase(t)
+	path := filepath.Join(t.TempDir(), "d.md")
+	os.WriteFile(path, []byte("# R\n\n- [ ] new\n- [ ] a\n- [ ] b\n"), 0o644)
+	if err := TickLine(path, 4, "b", 'x'); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "# R\n\n- [ ] new\n- [ ] a\n- [x] b\n" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// No single line with the text means no tick: twice or missing is an error
+// naming the text, and the file stays byte for byte as it was.
+func TestTickLineRefusesTwiceOrMissingText(t *testing.T) {
+	useLockBase(t)
+	for _, c := range []struct {
+		name, src, text string
+	}{
+		// Line 3 holds another box, so the scan runs and finds two.
+		{"twice", "# R\n\n- [ ] a\n- [ ] same\n- [ ] same\n", "same"},
+		// Line 3 holds another box, so the scan runs and finds none.
+		{"missing", "# R\n\n- [ ] a\n", "gone"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "d.md")
+			os.WriteFile(path, []byte(c.src), 0o644)
+			err := TickLine(path, 3, c.text, 'x')
+			if err == nil {
+				t.Fatalf("want error for %s text %q", c.name, c.text)
+			}
+			if !strings.Contains(err.Error(), c.text) {
+				t.Fatalf("error %q does not name %q", err, c.text)
+			}
+			got, _ := os.ReadFile(path)
+			if string(got) != c.src {
+				t.Fatalf("file changed: %q", got)
+			}
+		})
+	}
+}
+
+// A "(high) " tagged line matches its untagged text, which is what the
+// board keeps as the item's title.
+func TestTickLineMatchesTaggedLineByUntaggedText(t *testing.T) {
+	useLockBase(t)
+	path := filepath.Join(t.TempDir(), "d.md")
+	os.WriteFile(path, []byte("# R\n\n- [ ] (high) urgent\n- [ ] other\n"), 0o644)
+	if err := TickLine(path, 3, "urgent", 'x'); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "# R\n\n- [x] (high) urgent\n- [ ] other\n" {
+		t.Fatalf("got %q", got)
 	}
 }
 

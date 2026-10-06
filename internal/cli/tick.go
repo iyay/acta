@@ -83,7 +83,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		// Undo is for a slip of the finger. It clears the boxes and nothing
 		// else: dates already written stay, and nobody is recorded.
 		if it.Kind == board.KindDebtItem {
-			err = write.TickLine(it.Path, it.Line, ' ')
+			err = write.TickLine(it.Path, it.Line, it.Title, ' ')
 			if err == nil {
 				fmt.Fprintf(stdout, "%s open\n", it.ID)
 			}
@@ -107,7 +107,7 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		if *wontfix {
 			state = '-'
 		}
-		if err := write.TickLine(it.Path, it.Line, state); err != nil {
+		if err := write.TickLine(it.Path, it.Line, it.Title, state); err != nil {
 			fmt.Fprintln(stderr, err)
 			if errors.Is(err, write.ErrBadInput) {
 				return exitBadInput

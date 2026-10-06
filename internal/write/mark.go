@@ -112,7 +112,7 @@ func MarkItem(cfg config.Config, b *board.Board, id string, done bool) (Outcome,
 	wrote := []string{it.Path}
 	switch {
 	case it.Kind == board.KindDebtItem:
-		if err := TickLine(it.Path, it.Line, state); err != nil {
+		if err := TickLine(it.Path, it.Line, it.Title, state); err != nil {
 			return Outcome{}, err
 		}
 	case done:
