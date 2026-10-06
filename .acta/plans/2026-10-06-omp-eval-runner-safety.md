@@ -61,9 +61,9 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** No scaffold can run longer than its case's `TimeoutSeconds`: past it, `RunCase` returns an error that says the scaffold timed out, and the throwaway folder is still cleaned by the caller. List every scaffold exit path (ok, fails, times out).
 
-- [ ] Red: add a "scaffold timeout" case to `TestRunCaseFailures` with a scaffold `exec sleep 20` and `TimeoutSeconds: 1`; it must return within a few seconds with an error containing `scaffold` and `timed out`.
-- [ ] Green: run the scaffold with `exec.CommandContext` under a `context.WithTimeout` of `TimeoutSeconds`, set `WaitDelay`, and on `context.DeadlineExceeded` return `scaffold: timed out after <n>s`.
-- [ ] Commit: `fix(evalomp): stop a scaffold that runs past the case timeout (DBT-0048.07)`
+- [x] Red: add a "scaffold timeout" case to `TestRunCaseFailures` with a scaffold `exec sleep 20` and `TimeoutSeconds: 1`; it must return within a few seconds with an error containing `scaffold` and `timed out`.
+- [x] Green: run the scaffold with `exec.CommandContext` under a `context.WithTimeout` of `TimeoutSeconds`, set `WaitDelay`, and on `context.DeadlineExceeded` return `scaffold: timed out after <n>s`.
+- [x] Commit: `fix(evalomp): stop a scaffold that runs past the case timeout (DBT-0048.07)`
 
 ### Task 04: A timed-out omp takes its children with it
 

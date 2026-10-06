@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fakeOmp writes a stand-in omp that records its arguments, its folder and
@@ -175,6 +176,23 @@ func TestRunCaseFailures(t *testing.T) {
 			t.Errorf("err = %v, want ErrTimeout", err)
 		}
 	})
+	t.Run("scaffold timeout", func(t *testing.T) {
+		// A scaffold that outlives the case must not hold the run hostage.
+		slow := filepath.Join(t.TempDir(), "slow.sh")
+		write(t, slow, "exec sleep 20\n")
+		omp, _ := fakeOmp(t, fixture(t))
+		start := time.Now()
+		_, err := RunCase(Case{Prompt: "x", TimeoutSeconds: 1, Scaffold: slow}, Options{Omp: omp, PluginDir: "/p"})
+		if got := time.Since(start); got > 10*time.Second {
+			t.Errorf("RunCase took %v, want it back within a few seconds", got)
+		}
+		if err == nil {
+			t.Fatal("want an error")
+		}
+		if msg := err.Error(); !strings.Contains(msg, "scaffold") || !strings.Contains(msg, "timed out") {
+			t.Errorf("err = %q, want it to say the scaffold timed out", msg)
+		}
+	})
 }
 
 // A failure with nothing to say is still a failure, so the message has to name
@@ -291,14 +309,17 @@ func TestRunAllFailurePaths(t *testing.T) {
 	t.Setenv("TMPDIR", tmp)
 	broken := filepath.Join(t.TempDir(), "bad.sh")
 	write(t, broken, "exit 4\n")
+	slow := filepath.Join(t.TempDir(), "slow.sh")
+	write(t, slow, "exec sleep 20\n")
 	for name, tc := range map[string]struct {
 		body string
 		c    Case
 	}{
-		"scaffold fails": {fixture(t), Case{Name: "s", Prompt: "x", TimeoutSeconds: 30, Scaffold: broken}},
-		"omp fails":      {"echo nope >&2; exit 2", Case{Name: "s", Prompt: "x", TimeoutSeconds: 30}},
-		"broken stream":  {"echo '{\"type\":\"agent_start\"}'", Case{Name: "s", Prompt: "x", TimeoutSeconds: 30}},
-		"timeout":        {"exec sleep 20", Case{Name: "s", Prompt: "x", TimeoutSeconds: 1}},
+		"scaffold fails":   {fixture(t), Case{Name: "s", Prompt: "x", TimeoutSeconds: 30, Scaffold: broken}},
+		"omp fails":        {"echo nope >&2; exit 2", Case{Name: "s", Prompt: "x", TimeoutSeconds: 30}},
+		"broken stream":    {"echo '{\"type\":\"agent_start\"}'", Case{Name: "s", Prompt: "x", TimeoutSeconds: 30}},
+		"timeout":          {"exec sleep 20", Case{Name: "s", Prompt: "x", TimeoutSeconds: 1}},
+		"scaffold timeout": {fixture(t), Case{Name: "s", Prompt: "x", TimeoutSeconds: 1, Scaffold: slow}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			omp, _ := fakeOmp(t, tc.body)
