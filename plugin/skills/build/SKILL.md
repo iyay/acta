@@ -67,9 +67,7 @@ git rev-parse --show-superproject-working-tree 2>/dev/null
 
 If `GIT_DIR != GIT_COMMON` (and not a submodule): you are already in a linked worktree. Skip to Step 2 (Project Setup). Do NOT create another worktree.
 
-Report with branch state:
-- On a branch: "Already in isolated workspace at `<path>` on branch `<name>`."
-- Detached HEAD: "Already in isolated workspace at `<path>` (detached HEAD, externally managed). Branch creation needed at finish time."
+Tell the user, in their chat language, the worktree path and branch, or that HEAD is detached and a branch is needed at finish time.
 
 If `GIT_DIR == GIT_COMMON` (or in a submodule): you are in a normal repo checkout. Create the worktree below without asking.
 
