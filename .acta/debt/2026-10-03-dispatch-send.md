@@ -2,6 +2,7 @@
 id: DBT-0071
 hash: ctm2g5f
 parent: plans/2026-10-03-dispatch-send
+started: "2026-10-06 09:30:59"
 ---
 # Review NOTEs: Dispatch Send and Close Implementation Plan
 
