@@ -6,6 +6,7 @@ id: PLN-0104
 created: "2026-10-06 10:48:28"
 hash: ffaorfe
 started: "2026-10-06 10:52:59"
+finished: "2026-10-06 11:17:36"
 ---
 # Debt write safety Implementation Plan
 
@@ -48,9 +49,9 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 
 **verify:** `TickLine` never changes a box whose text (priority tag removed) is not the item's text; a stale line number either finds the one matching line or refuses with nothing written. List every case tested (line matches, line moved, text twice, text missing, tagged line).
 
-- [ ] Red: in `tick_test.go`, a debt file where a line was inserted above the item after the board was read: `TickLine` with the old line number and the item's text ticks the right box; a file with the text twice and a file without it both return an error and leave the file byte for byte the same; a `(high) ` tagged line matches its untagged text.
-- [ ] Green: `TickLine(path string, line int, text string, state byte) error`; compare the line's text without the priority tag (reuse the tag reader the board uses) to `text`; on mismatch scan for exactly one matching checklist line; update the callers in `internal/cli/tick.go` (two places) and `internal/write/mark.go` to pass `it.Title`, and the existing calls in `debt_test.go`.
-- [ ] Commit: `fix(write): a debt tick checks its line by text (DBT-0008.02)`
+- [x] Red: in `tick_test.go`, a debt file where a line was inserted above the item after the board was read: `TickLine` with the old line number and the item's text ticks the right box; a file with the text twice and a file without it both return an error and leave the file byte for byte the same; a `(high) ` tagged line matches its untagged text.
+- [x] Green: `TickLine(path string, line int, text string, state byte) error`; compare the line's text without the priority tag (reuse the tag reader the board uses) to `text`; on mismatch scan for exactly one matching checklist line; update the callers in `internal/cli/tick.go` (two places) and `internal/write/mark.go` to pass `it.Title`, and the existing calls in `debt_test.go`.
+- [x] Commit: `fix(write): a debt tick checks its line by text (DBT-0008.02)`
 
 ### Task 03: Version 0.1.27
 
@@ -58,16 +59,26 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 
 **verify:** The three files carry the same version, 0.1.27, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
-- [ ] Green: bump the patch from 0.1.26 to 0.1.27 in all three files.
-- [ ] Commit: `chore: version 0.1.27`
+- [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
+- [x] Green: bump the patch from 0.1.26 to 0.1.27 in all three files.
+- [x] Commit: `chore: version 0.1.27`
 
 ## State
 
 ### Next
 
-task-02 mulai dari:
-- ops.go: NewDebt pegang lock(path) dari Stat sampai finish; appendDebt bungkus appendLocked; addDebtLines tanpa lock sendiri.
-- debt_test.go: RED TestConcurrentNewDebtKeepsBothNotes + TestNewDebtCommitHoldsNoTick hijau.
-- TickLine(path,line,state) belum berubah; update panggilan test ke signature baru.
-- scripts/test ./internal/write/ hijau di f210e17.
+task-03 done. Commit 5f71d36 bumped 0.1.27 all 3. plugincheck pass. Review/land next. debt DBT-0021 started-line left uncommitted in worktree.
+
+## Fix round 1
+
+### Task 04: Tick text matches the board title exactly
+
+**Files:** `internal/write/tick.go`, `internal/write/tick_test.go`, `internal/write/ops.go`, `internal/write/debt_test.go`
+
+**verify:** For every debt line the board parses, the text `lineText` gives equals the title the board gives, so `TickLine` ticks every item it ticked before this plan. List every spacing case tested (trailing space, two spaces after the box, two spaces after the tag, plain).
+
+- [ ] Red: in `tick_test.go`, parse a debt file holding `- [ ] foo ` and `- [ ]  (high) bar` with `board.Parse`, then `TickLine` each item with its parsed title; both must tick (today: "no checklist line with text").
+- [ ] Green: `lineText` takes the text the same way `itemRe` group 2 does (everything after `] `, no `TrimSpace`), then strips the priority tag the same way the board does for its title.
+- [ ] Drop the `// ponytail:` line above `findLine`; say in plain English why it returns -1 and -2.
+- [ ] Remove `appendDebt` from `ops.go` (no production caller left); point its tests at `NewDebt`.
+- [ ] Commit: `fix(write): debt tick text matches the board title exactly`

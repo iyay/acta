@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/iyay/acta/internal/board"
 )
 
 // These match the board parser, so tick counts the same boxes the board shows.
@@ -126,10 +128,14 @@ func rewriteTask(path string, headingLine int, edit func([]byte) ([]byte, int, i
 	return done, total, os.Rename(tmp, path)
 }
 
-// TickLine sets the single checklist box on line (1-based) of the file at
-// path to state ('x' or '-'). It is for a debt file, where each checklist
-// line is its own item instead of one line among a task's boxes.
-func TickLine(path string, line int, state byte) error {
+// TickLine sets the single checklist box whose text (any priority tag
+// removed) is text to state ('x' or '-'). It is for a debt file, where each
+// checklist line is its own item instead of one line among a task's boxes.
+// The caller passes the line the board read, which may be stale when a hand
+// edit added a line above meanwhile. That line wins when its text matches;
+// otherwise the file is searched for the one line with this text, and none
+// or more than one is an error naming the text. Nothing is written then.
+func TickLine(path string, line int, text string, state byte) error {
 	unlock, err := lock(path)
 	if err != nil {
 		return err
@@ -139,16 +145,51 @@ func TickLine(path string, line int, state byte) error {
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(string(src), "\n")
-	if line < 1 || line > len(lines) || !tickAnyBoxRe.MatchString(lines[line-1]) {
-		return bad("line %d is not a checklist box", line)
+	orig := string(src)
+	lines := strings.Split(orig, "\n")
+	at := -1
+	if line >= 1 && line <= len(lines) && tickAnyBoxRe.MatchString(lines[line-1]) && lineText(lines[line-1]) == text {
+		at = line - 1
+	} else {
+		at = findLine(lines, text)
+		if at < 0 {
+			return bad("no checklist line with text %q", text)
+		}
+		if at == -2 {
+			return bad("more than one checklist line with text %q", text)
+		}
 	}
-	lines[line-1] = tickAnyBoxRe.ReplaceAllString(lines[line-1], "${1}"+string(state)+"${3}")
+	lines[at] = tickAnyBoxRe.ReplaceAllString(lines[at], "${1}"+string(state)+"${3}")
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// lineText is what a debt checklist line says, without its box and without
+// any priority tag, the same text the board keeps as the item's title.
+func lineText(ln string) string {
+	text := strings.TrimSpace(ln[strings.Index(ln, "]")+1:])
+	_, rest := board.SplitPriority(text)
+	return rest
+}
+
+// findLine gives the one checklist line whose text is text: its index, -1
+// when none matches, -2 when more than one does.
+// ponytail: two sentinels instead of a count; only caller reads them.
+func findLine(lines []string, text string) int {
+	at := -1
+	for i, ln := range lines {
+		if !tickAnyBoxRe.MatchString(ln) || lineText(ln) != text {
+			continue
+		}
+		if at >= 0 {
+			return -2
+		}
+		at = i
+	}
+	return at
 }
 
 // lockRoot points the lock folder somewhere else. Only a test sets it, to a

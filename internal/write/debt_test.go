@@ -209,7 +209,7 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
 			t.Fatal(err)
 		}
-		if err := TickLine(path, boxLine, 'x'); err != nil {
+		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		wantBoth(t, "the NOTE was lost")
@@ -218,7 +218,7 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 	t.Run("tick then append keeps both", func(t *testing.T) {
 		// This is the copy NewDebt already read, before the tick landed.
 		src := start(t)
-		if err := TickLine(path, boxLine, 'x'); err != nil {
+		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := appendDebt(cfg, path, "2026-09-29-locks", src, []string{"new note"}); err != nil {
@@ -238,7 +238,7 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		}
 		// A NOTE that is already ticked is still on the file, so it must
 		// not come back as a second open box.
-		if err := TickLine(path, boxLine, 'x'); err != nil {
+		if err := TickLine(path, boxLine, "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		ticked := readFile(t, path)
@@ -260,7 +260,7 @@ func TestAppendDebtAndTickLineKeepBoth(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-gate
-			failed <- TickLine(path, boxLine, 'x')
+			failed <- TickLine(path, boxLine, "first note", 'x')
 		}()
 		go func() {
 			defer wg.Done()
@@ -349,7 +349,7 @@ func TestNewDebtCommitHoldsNoTick(t *testing.T) {
 		// The NOTE on disk means the write is done and the commit is still
 		// pending; a tick starting now must wait for the lock when held.
 		waitForNote(t, path, "- [ ] "+note+"\n")
-		if err := TickLine(path, boxLine, 'x'); err != nil {
+		if err := TickLine(path, boxLine, "seed", 'x'); err != nil {
 			t.Fatal(err)
 		}
 		if err := <-done; err != nil {
