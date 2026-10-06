@@ -341,6 +341,39 @@ func TestDoctorCLIFixMakesNoCommitWhenAutoCommitIsOff(t *testing.T) {
 	}
 }
 
+// A git status git cannot read (a broken index) means --fix cannot tell a
+// dirty file from a clean one. It still fixes the file on disk, but never
+// commits, and says why.
+// A git status git cannot read (a broken index) means --fix cannot tell a
+// dirty file from a clean one. It still fixes the file on disk, but never
+// commits, and says why.
+func TestDoctorCLIFixMakesNoCommitWhenStatusIsUnreadable(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %d, want %d: --fix committed with unreadable status", got, before)
+	}
+	if !strings.Contains(stderr.String(), "fixed, not committed: cannot read git status") {
+		t.Fatalf("stderr %q does not say the status could not be read", stderr.String())
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, ".acta", ".gitignore"))
+	if err != nil {
+		t.Fatalf("the file was not fixed on disk: %v", err)
+	}
+	if !strings.Contains(string(raw), ".agents.json") {
+		t.Fatalf("gitignore %q was not fixed on disk", raw)
+	}
+}
+
 // root: in .acta.yaml can point out of the repo. --fix must write nothing
 // there, and the repo check has to point at root, not at --fix.
 func TestDoctorCLIFixWritesNothingWhenRootLeavesTheRepo(t *testing.T) {

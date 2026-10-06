@@ -5,6 +5,7 @@ closes: [SPC-0093, DBT-0011.16, DBT-0011.24, DBT-0011.30, DBT-0011.31]
 id: PLN-0102
 created: "2026-10-06 08:47:02"
 hash: hgvqno6
+started: "2026-10-06 08:49:40"
 ---
 # doctor --fix refusals Implementation Plan
 
@@ -39,9 +40,9 @@ Tasks 01 to 03 all edit `internal/doctor/doctor.go` and `doctor_test.go`, so the
 
 **verify:** No acta root that is the repo's `.git` folder or inside it can be written by `Fix`, and `checkRepo` never reports ok or suggests `--fix` for one. The outside-the-repo refusal keeps working through the same function. List every root shape tested (`.git`, `.git/sub`, outside, normal).
 
-- [ ] Red: table test with roots `<repo>/.git` and `<repo>/.git/acta`: after `Fix`, no file under the temp repo changed (compare a file listing with sizes before and after), and `checkRepo` is `Fail` with a `Fix` line that does not contain `acta doctor --fix`.
-- [ ] Green: add `refusal(e Env) string`; move the outside-the-repo rule and the `.gitignore`-is-a-link rule into it; add the `.git` rule (real path of the root equal to or under the real path of `<RepoRoot>/.git`); `Fix` and `checkRepo` call it first.
-- [ ] Commit: `fix(doctor): --fix never writes inside .git (DBT-0011.30)`
+- [x] Red: table test with roots `<repo>/.git` and `<repo>/.git/acta`: after `Fix`, no file under the temp repo changed (compare a file listing with sizes before and after), and `checkRepo` is `Fail` with a `Fix` line that does not contain `acta doctor --fix`.
+- [x] Green: add `refusal(e Env) string`; move the outside-the-repo rule and the `.gitignore`-is-a-link rule into it; add the `.git` rule (real path of the root equal to or under the real path of `<RepoRoot>/.git`); `Fix` and `checkRepo` call it first.
+- [x] Commit: `fix(doctor): --fix never writes inside .git (DBT-0011.30)`
 
 ### Task 02: no symlink in the root's path
 
@@ -69,9 +70,9 @@ Tasks 01 to 03 all edit `internal/doctor/doctor.go` and `doctor_test.go`, so the
 
 **verify:** `acta doctor --fix` never commits when it cannot read the file's git status, and always says why. List every path through the commit decision (auto_commit off, dirty, status error, clean).
 
-- [ ] Red: make `gitc.IsDirty` fail for a fixable repo (for example a `.git` file that is not a real git dir, or a broken index), run `cmdDoctor([]string{"--fix"}, ...)` from that folder, and assert stderr contains `fixed, not committed: cannot read git status` and no commit was made.
-- [ ] Green: keep the `IsDirty` error; pass it into `skipReason` (or check it right before) so it gives `cannot read git status: <err>`.
-- [ ] Commit: `fix(doctor): --fix does not commit when git status cannot be read (DBT-0011.16)`
+- [x] Red: make `gitc.IsDirty` fail for a fixable repo (for example a `.git` file that is not a real git dir, or a broken index), run `cmdDoctor([]string{"--fix"}, ...)` from that folder, and assert stderr contains `fixed, not committed: cannot read git status` and no commit was made.
+- [x] Green: keep the `IsDirty` error; pass it into `skipReason` (or check it right before) so it gives `cannot read git status: <err>`.
+- [x] Commit: `fix(doctor): --fix does not commit when git status cannot be read (DBT-0011.16)`
 
 ### Task 05: Version 0.1.25
 
