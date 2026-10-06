@@ -134,9 +134,10 @@ func runState(repo string, b *Board, it *Item, w gitc.Worktree) RunState {
 }
 
 // newestRound gives the round of the newest fix-round commit on the branch,
-// checking both the new and the old subject. The newest commit wins
-// whatever subject it uses, so old history keeps working while new
-// commits use the new subject.
+// checking both the new and the old subject. The commit that came later wins
+// whatever subject it uses, so old history keeps working while new commits
+// use the new subject. A git error keeps the first found, so the view never
+// fails for a round it cannot order.
 func newestRound(repo, branch string) (string, string) {
 	var found []string
 	var rounds []string
@@ -152,12 +153,8 @@ func newestRound(repo, branch string) (string, string) {
 	if len(found) == 1 {
 		return found[0], rounds[0]
 	}
-	if first, err := gitc.FirstSeen(repo, found[0]); err == nil {
-		if second, err := gitc.FirstSeen(repo, found[1]); err == nil {
-			if second > first {
-				return found[1], rounds[1]
-			}
-		}
+	if older, err := gitc.IsAncestor(repo, found[0], found[1]); err == nil && older {
+		return found[1], rounds[1]
 	}
 	return found[0], rounds[0]
 }

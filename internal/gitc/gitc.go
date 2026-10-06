@@ -4,6 +4,7 @@ package gitc
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -93,6 +94,24 @@ func FirstSeen(repo, path string) (int, error) {
 		}
 	}
 	return len(commits), nil
+}
+
+// IsAncestor says whether commit a comes before commit b on the branch, so
+// the newer of two commits wins whatever subject it uses. It runs git
+// merge-base --is-ancestor, where exit 1 means no and any other failure is
+// an error, so a typo never looks like an order.
+func IsAncestor(repo, a, b string) (bool, error) {
+	cmd := exec.Command("git", "-C", repo, "merge-base", "--is-ancestor", a, b)
+	var errOut bytes.Buffer
+	cmd.Stderr = &errOut
+	if err := cmd.Run(); err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 1 {
+			return false, nil
+		}
+		return false, fmt.Errorf("git merge-base --is-ancestor: %v: %s", err, strings.TrimSpace(errOut.String()))
+	}
+	return true, nil
 }
 
 // LastChange is the commit time of the newest commit on the way back from HEAD

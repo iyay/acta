@@ -584,3 +584,24 @@ func TestNewestCommit(t *testing.T) {
 		t.Errorf("a prefix no commit says gave %q, want nothing", subject)
 	}
 }
+
+// IsAncestor says whether one commit came before another, so the round that
+// came later wins whatever subject it uses. A missing commit is an error,
+// not a no, so a typo never looks like an order.
+func TestIsAncestor(t *testing.T) {
+	repo := setupRepo(t)
+	parent := git(t, repo, "rev-parse", "HEAD")
+	writeFile(t, filepath.Join(repo, "c.md"), "c\n")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-q", "-m", "second")
+	child := git(t, repo, "rev-parse", "HEAD")
+	if ok, err := IsAncestor(repo, parent, child); err != nil || !ok {
+		t.Errorf("IsAncestor(parent, child) = %v, %v, want true, no error", ok, err)
+	}
+	if ok, err := IsAncestor(repo, child, parent); err != nil || ok {
+		t.Errorf("IsAncestor(child, parent) = %v, %v, want false, no error", ok, err)
+	}
+	if _, err := IsAncestor(repo, parent, "no-such-commit"); err == nil {
+		t.Errorf("IsAncestor with a missing commit gave no error, want one")
+	}
+}
