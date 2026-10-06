@@ -125,6 +125,10 @@ func TestRunCaseNoSkills(t *testing.T) {
 
 func TestRunCaseScaffold(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
+	// The scaffold must never see the real HOME, so point HOME at a
+	// throwaway folder and check nothing lands there.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	omp, logs := fakeOmp(t, fixture(t))
 	dir := t.TempDir()
 	scaffold := filepath.Join(dir, "scaffold.sh")
@@ -138,6 +142,9 @@ func TestRunCaseScaffold(t *testing.T) {
 	}
 	if got := read(t, read(t, filepath.Join(logs, "voice"))); !strings.Contains(got, "English") {
 		t.Errorf("voice file = %q, want what the scaffold wrote in the throwaway home", got)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); !os.IsNotExist(err) {
+		t.Errorf("scaffold wrote to the test HOME; RunCase must hand it a throwaway home")
 	}
 }
 

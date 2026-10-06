@@ -5,6 +5,7 @@ closes: [SPC-0092, DBT-0048.01, DBT-0048.02, DBT-0048.03, DBT-0048.07, DBT-0048.
 id: PLN-0101
 created: "2026-10-06 08:11:28"
 hash: wo20ff9
+started: "2026-10-06 08:14:58"
 ---
 # omp eval runner safety Implementation Plan
 
@@ -40,9 +41,9 @@ Every task from 02 to 05 touches `internal/evalomp/run.go` and `run_test.go`, so
 
 **verify:** No test in the package can read or write the user's real HOME, on any path, and `TestRunCaseScaffold` fails whenever `RunCase` stops giving the scaffold the throwaway home. List every test that runs a scaffold or omp and how each gets its HOME.
 
-- [ ] Red: in `TestRunCaseScaffold`, set `HOME` to a fresh `t.TempDir()` and assert `$HOME/.acta/config.yaml` does not exist after `RunCase`; watch it fail by dropping the `withEnv(..., "HOME", home)` on the scaffold command for one run, then put it back.
-- [ ] Green: `TestMain` sets `HOME` to a fresh temp folder (made with `os.MkdirTemp`, removed after `m.Run()`) before any test runs, so later tests are safe too.
-- [ ] Commit: `test(evalomp): keep every test off the real HOME (DBT-0048.01)`
+- [x] Red: in `TestRunCaseScaffold`, set `HOME` to a fresh `t.TempDir()` and assert `$HOME/.acta/config.yaml` does not exist after `RunCase`; watch it fail by dropping the `withEnv(..., "HOME", home)` on the scaffold command for one run, then put it back.
+- [x] Green: `TestMain` sets `HOME` to a fresh temp folder (made with `os.MkdirTemp`, removed after `m.Run()`) before any test runs, so later tests are safe too.
+- [x] Commit: `test(evalomp): keep every test off the real HOME (DBT-0048.01)`
 
 ### Task 02: --case fails when it runs nothing
 

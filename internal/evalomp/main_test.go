@@ -11,5 +11,15 @@ import (
 // waits for any more stops itself instead of burning the CPU.
 func TestMain(m *testing.M) {
 	testguard.Watch()
-	os.Exit(m.Run())
+	// Every test in this package spawns shells or omp, and shells read HOME
+	// even when asked only for TMPDIR. Point HOME at a throwaway folder so
+	// no path can reach the user's real config.
+	home, err := os.MkdirTemp("", "acta-eval-omp-test-home-")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("HOME", home)
+	code := m.Run()
+	os.RemoveAll(home)
+	os.Exit(code)
 }
