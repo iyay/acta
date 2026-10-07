@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 # folder does not start with routing-. An explicit filter runs as asked.
 default_filter=1
 for a in "$@"; do
-  case "$a" in --tag|--case) default_filter=0;; esac
+  case "$a" in --tag|--tag=*|--case|--case=*) default_filter=0;; esac
 done
 cases=()
 if [ "$default_filter" = 1 ]; then

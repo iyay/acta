@@ -23,3 +23,12 @@ Why: the land gate runs `scripts/eval` whenever a diff touches `plugin/skills/` 
 ## Testing
 
 `scripts/test ./internal/plugincheck/` while building, `scripts/test --full` at land. No paid `scripts/eval` run.
+
+## Change after review round 1 (approved by the user in chat on 2026-10-07)
+
+Proved at no cost: `claude plugin eval` keeps only the last `--case`, and its glob takes no braces or negation, so there is no way to exclude cases in one call. `acta eval-omp --case` also keeps only the last value. Changes 1 to 3 above are replaced by this:
+
+- The 18 routing cases move from `plugin/evals/` to `plugin/evals-routing/`. `scripts/eval` with no extra arguments runs `plugin/evals/` as it did before this plan, with no case list.
+- The baseline runs with `scripts/eval --eval-dir evals-routing`, which `claude plugin eval` already supports.
+- `acta eval-omp` gains `--eval-dir <dir>` (default `evals`), so `scripts/eval --omp --eval-dir evals-routing` works the same way.
+- Tests follow the move: `TestRoutingEvalCases` reads `plugin/evals-routing/`, the scaffold checks also cover it, and a test proves `plugin/evals/` holds no `routing-*` case.
