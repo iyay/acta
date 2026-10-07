@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/iyay/acta/internal/evalomp"
 )
 
 // evalCases ties each eval case to the one phrase it guards. The file is a path
@@ -295,5 +297,16 @@ func TestScaffoldsRefuseNonEmptyDir(t *testing.T) {
 				t.Fatalf("scaffold changed the folder: %v", entries)
 			}
 		})
+	}
+}
+
+// The omp runner reads these patterns as JavaScript regex, so each must compile there.
+func TestEvalGraderPatternsCompileInOmp(t *testing.T) {
+	cases, err := evalomp.LoadCases(filepath.Join(pluginRoot(t), "evals"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range evalomp.PatternProblems(cases) {
+		t.Error(p)
 	}
 }

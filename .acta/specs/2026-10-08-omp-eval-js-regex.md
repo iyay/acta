@@ -3,6 +3,8 @@ parent: bugs/2026-10-08-omp-eval-probe-round-lookahead
 id: SPC-0106
 created: "2026-10-08 05:11:54"
 hash: zd4p2ir
+started: "2026-10-08 05:15:35"
+finished: "2026-10-08 05:16:45"
 ---
 # The omp eval runner reads grader patterns as JavaScript regex
 

@@ -201,3 +201,48 @@ func TestGradeNeverCallsTheJudgeForOtherTypes(t *testing.T) {
 		}
 	}
 }
+
+// probePattern is the real pattern from the probe-round case. It uses lookaround,
+// which Go's own regexp cannot read.
+const probePattern = `\*\*Q\d+\.[^\n*]*\*\*(?:(?!Recommended:)[\s\S])*?(?=\*\*Q\d+\.|$)`
+
+func TestGradeJavaScriptPatterns(t *testing.T) {
+	grade := func(g Grader, reply string, calls ...Call) Outcome {
+		g.Name = "g"
+		return Grade(g, Workspace{Dir: t.TempDir(), Result: Result{Reply: reply, Calls: calls}}, nil)
+	}
+	probe := Grader{Type: "regex", Pattern: probePattern, Match: "not_contains", Target: Target{Kind: "last_message"}}
+
+	missing := "**Q1.** Which one?\nA or B.\n\n**Q2.** And this?\nRecommended: A"
+	if got := grade(probe, missing); got.Pass || !strings.Contains(got.Why, "Q") {
+		t.Errorf("a block with no Recommended: must FAIL with the pattern in the message, got %+v", got)
+	}
+	whole := "**Q1.** Which one?\nRecommended: B\n\n**Q2.** And this?\nRecommended: A"
+	if got := grade(probe, whole); !got.Pass {
+		t.Errorf("every block has Recommended:, want PASS, got %+v", got)
+	}
+
+	if got := grade(Grader{Type: "regex", Pattern: "none(?!x)", Flags: "i"}, "NONE here"); !got.Pass {
+		t.Errorf("flag i must match across case, got %+v", got)
+	}
+	call := Call{Tool: "bash", Input: `{"command":"acta scratch new idea"}`}
+	if got := grade(Grader{Type: "tool_used", Tool: "Bash", InputMatch: `acta scratch (?=new)`}, "", call); !got.Pass {
+		t.Errorf("tool_used input_match with lookahead must match, got %+v", got)
+	}
+}
+
+func TestGradeMatchErrorNeverPasses(t *testing.T) {
+	// A pattern that backtracks forever hits the 2 second timeout. The grader
+	// must FAIL then, even when the grader wants "not found".
+	g := Grader{Name: "g", Type: "regex", Pattern: `(a+)+$`, Match: "not_contains"}
+	w := Workspace{Dir: t.TempDir(), Result: Result{Reply: strings.Repeat("a", 60) + "!"}}
+	got := Grade(g, w, nil)
+	if got.Pass || !strings.Contains(got.Why, "(a+)+$") {
+		t.Errorf("a match error must FAIL and name the pattern, got %+v", got)
+	}
+	tool := Grader{Name: "t", Type: "tool_used", Tool: "bash", InputMatch: `(a+)+$`, Min: new(0), Max: new(0)}
+	w.Result.Calls = []Call{{Tool: "bash", Input: strings.Repeat("a", 60) + "!"}}
+	if got := Grade(tool, w, nil); got.Pass || !strings.Contains(got.Why, "(a+)+$") {
+		t.Errorf("a tool match error must FAIL and name the pattern, got %+v", got)
+	}
+}
