@@ -105,3 +105,16 @@ Then Task 03 (needs 02), Task 05 (needs 03), Task 06.
 ### Findings
 
 Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip but forces the last tree to the branch tree, so parent commits made after the fork are undone (tidy.go:100,129). Confirmed by reading the code. Waiting on Spec axis before the fix round.
+
+## Fix round 1
+
+### Task 07: Tidy keeps parent work the branch does not have
+
+**Files:** `internal/tidy/tidy.go`, `internal/tidy/tidy_test.go`, `internal/cli/tidy.go`, `internal/cli/tidy_test.go`, `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_land_test.go`, `plugin/README.md`, `.acta/wiki/land-tidy-history.md`
+
+**verify:** For any base and branch, the tidy tip's tree equals the three-way merge of the base tip and the branch (from their merge base) plus only remap edits, so no parent commit's content is lost on either the `--ff-only` or the `--onto`/`reset --keep` path; when that merge clashes, tidy exits non-zero and writes no ref. No git failure is ever read as a clash or ignored. List every path checked: parent moved with a code commit, parent moved with chore commits only (with and without `--onto`), merge clash, unknown `--onto` ref, a git error during replay, a bad branch name.
+
+- [ ] Red: tests in `internal/tidy` for a parent that moved after the fork (code commit on base: the tidy tip keeps it and adds the branch change), the `--onto` path with chore commits on the parent (their content survives in the tip), a clashing parent change (error, no ref), an unknown `--onto` ref (error), and a bad branch name (error before any commit is built); CLI test for the new output line. Watch them fail.
+- [ ] Green: the target tree is `git merge-tree --write-tree --merge-base=<merge-base of base and branch> <base> <branch>`; a clash returns an error. The last node takes the target tree (plus remap) and `proof` compares against the target, not the branch tree. Walk `<merge-base>..<branch>`. `replay` returns real git errors (exit code other than 1). `ontoStart` returns an error for an unknown ref or a failed rev-list. Check the branch with `git check-ref-format --branch` first. Put `--end-of-options` before user revs in `rev-parse`. Fix the `removeIndex` comment to say plainly why the error is ignored. The CLI line becomes `tidy: <old> commits -> <new>, tree ok, parent <short sha of base read>, folded <n>` where folded counts parent chore commits folded.
+- [ ] Green: land skill tidy path: pick the fold point before running tidy; record the parent tip from the `tidy:` line and check it before moving the parent; use `reset --keep` only when `folded` is above 0, else `--ff-only`; reuse gates only when `git diff --name-only <branch> refs/acta/tidy/<branch>` lists only planning-root paths, else run the gates on the tidy tip before moving the parent. Update the land skill frontmatter description and `plugin/README.md` so they no longer say every land is `merge --no-ff`. Update `land-tidy-history.md` (why `-D` is safe now rests on the merge proof). Extend `skill_land_test.go` for the new rules. Stay under the plugincheck caps.
+- [ ] Commit: `fix(tidy): keep parent work the branch does not have (PLN-0114 fix round 1)`
