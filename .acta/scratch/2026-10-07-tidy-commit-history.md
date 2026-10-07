@@ -2,9 +2,10 @@
 id: SCR-0054
 hash: byb1bux
 title: Tidy commit history as acta's commit rule
-status: raw
+status: brainstorming
 created: "2026-10-07 19:23:36"
 schema: "1"
+started: "2026-10-07 19:23:41"
 ---
 # Tidy commit history as acta's commit rule
 
