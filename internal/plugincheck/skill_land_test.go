@@ -18,6 +18,8 @@ func TestSkillLand(t *testing.T) {
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
+			"`commit_history`", "acta tidy", "refs/acta/last-land", "--ff-only", "reset --keep",
+			"never fall back to a plain merge", "git branch -D",
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
 			"chore(plan): tick <plan>", "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
