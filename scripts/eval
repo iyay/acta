@@ -6,14 +6,29 @@
 # paths, a test in this repo rejects those, and the land gate runs this script.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-
+# The routing set is a baseline measure, and in the land gate it would add 54
+# runs to every land. So with no --tag and no --case, run only the cases whose
+# folder does not start with routing-. An explicit filter runs as asked.
+default_filter=1
+for a in "$@"; do
+  case "$a" in --tag|--case) default_filter=0;; esac
+done
+cases=()
+if [ "$default_filter" = 1 ]; then
+  for d in plugin/evals/*/; do
+    n="${d%/}"; n="${n##*/}"
+    case "$n" in routing-*) continue;; esac
+    [ -e "$d/prompt.md" ] || [ -e "$d/case.yaml" ] || continue
+    cases+=(--case "$n")
+  done
+fi
 # --omp runs the same cases through omp instead. The runner comes from this
 # checkout; the hooks inside each run still use the acta on PATH.
 if [ "${1:-}" = "--omp" ]; then
   shift
-  exec go run ./cmd/acta eval-omp "$@" plugin
+  exec go run ./cmd/acta eval-omp "${cases[@]}" "$@" plugin
 fi
 out="$(mktemp -d)"
 echo "Results will be written to $out"
 exec claude plugin eval --model sonnet --ablation none --no-publish --allow-tools Bash Read \
-  --scaffold --judge-model haiku --output-dir "$out" "$@" plugin
+  --scaffold --judge-model haiku --output-dir "$out" "${cases[@]}" "$@" plugin
