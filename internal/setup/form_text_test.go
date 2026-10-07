@@ -82,3 +82,37 @@ func TestFormAnsweredLine(t *testing.T) {
 		t.Errorf("executor line = %q", got[4])
 	}
 }
+
+// TestInstallRowsLineUp checks every install row starts its first mark in
+// the same column, with a gap after the longest tool name.
+func TestInstallRowsLineUp(t *testing.T) {
+	pinHome(t)
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	sets := [][]string{{"claude"}, {"claude", "omp"}, {"a", "claude", "omp"}}
+	for _, names := range sets {
+		content := formGroupContent(t, setup.Env{Harnesses: names, Current: config.User{}})
+		last := ansi.ReplaceAllString(content[len(content)-1], "")
+		col := -1
+		rows := 0
+		for _, line := range strings.Split(last, "\n") {
+			i := strings.IndexAny(line, "●○")
+			if i < 0 {
+				continue
+			}
+			rows++
+			c := len([]rune(line[:i]))
+			if col == -1 {
+				col = c
+			}
+			if c != col {
+				t.Errorf("%v: mark column %d, want %d in %q", names, c, col, line)
+			}
+			if line[i-1] != ' ' {
+				t.Errorf("%v: no space before the mark in %q", names, line)
+			}
+		}
+		if rows != len(names) {
+			t.Errorf("%v: got %d rows, want %d in %q", names, rows, len(names), last)
+		}
+	}
+}

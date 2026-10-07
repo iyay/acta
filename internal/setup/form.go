@@ -166,14 +166,20 @@ func buildFormState(e Env) *formState {
 	}
 
 	if len(e.Harnesses) > 0 {
+		// Pad every title to the longest name plus two spaces so the
+		// Yes/No marks start in one column with a gap after the name.
+		width := 0
+		for _, h := range e.Harnesses {
+			width = max(width, len(h))
+		}
 		var harnessFields []huh.Field
 		for _, h := range e.Harnesses {
 			v := true
 			st.install[h] = &v
 			harnessFields = append(harnessFields,
-				huh.NewConfirm().Title(h).Value(st.install[h]).Inline(true))
+				huh.NewConfirm().Title(fmt.Sprintf("%-*s", width+2, h)).Value(st.install[h]).Inline(true))
 		}
-		add("Install the acta plugin?", "Install the acta plugin into each tool found.",
+		add("Plugin install", "One row per tool found.",
 			func() string {
 				var parts []string
 				for _, h := range e.Harnesses {
