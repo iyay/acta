@@ -13,6 +13,7 @@ import (
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/setup"
+	"github.com/iyay/acta/plugin"
 )
 
 const setupUsage = "usage: acta setup [--plugin-dir <path>]"
@@ -60,9 +61,15 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 		fmt.Fprintln(stderr, "Set each value by hand with `acta config set`, or re-run `acta setup` in a terminal.")
 		return exitOther
 	}
-	env := setupEnv(*pluginDir)
+	dir, extractErr := pluginDirFor(*pluginDir, homeDir())
+	env := setupEnv(dir)
 	fmt.Fprint(stdout, setup.RailOpen())
 	fmt.Fprint(stdout, setup.DoctorSummary(doctor.Run(doctorEnv(""))))
+	if extractErr != nil {
+		// Without the folder the install step shows the by-hand lines;
+		// the rest of setup still runs.
+		fmt.Fprint(stdout, setup.RailProblem("could not unpack the plugin: "+extractErr.Error()))
+	}
 	answers, err := setup.Ask(env, stdout)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -75,6 +82,21 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 	}
 	fmt.Fprint(stdout, setupSummary())
 	return exitOK
+}
+
+// pluginDirFor picks the folder install commands point at. A given folder
+// wins and nothing is extracted. Otherwise the plugin inside the binary is
+// unpacked under home; on failure the dir is empty so the wizard falls back
+// to the run-by-hand lines.
+func pluginDirFor(given, home string) (string, error) {
+	if given != "" {
+		return given, nil
+	}
+	dir, err := setup.ExtractPlugin(plugin.Files, home)
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 // setupEnv reads what the wizard found: harnesses on PATH, the git repo
