@@ -101,3 +101,7 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 Took over from omp (tab closed). Task 01 done (e950533) by omp.
 Task 02 and Task 04 running as Claude sonnet subagents in parallel.
 Then Task 03 (needs 02), Task 05 (needs 03), Task 06.
+
+### Findings
+
+Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip but forces the last tree to the branch tree, so parent commits made after the fork are undone (tidy.go:100,129). Confirmed by reading the code. Waiting on Spec axis before the fix round.
