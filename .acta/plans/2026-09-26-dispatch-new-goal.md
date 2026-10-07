@@ -143,7 +143,7 @@ Then run `pmb tick plans/2026-09-26-dispatch-new-goal#task-1 --all`.
 
 **verify:** herdr-delivery.md gives a copyable fix-round command right under the "Step 4, fix round" line, with the `<fixed-from>..<new-head>` review range, and a test goes red if that command is removed again. List every fix-round mention in both dispatch files and what command each points to.
 
-Review round 1 BLOCKER: commit 79e81ab deleted the fix-round bash block under that line; the plan only asked to reword the line. `grep -rn fixed-from plugin/skills` finds nothing.
+Review round 1 BLOCKER: commit 784d1a4 deleted the fix-round bash block under that line; the plan only asked to reword the line. `grep -rn fixed-from plugin/skills` finds nothing.
 
 - [x] **Step 1: Write the failing test**
 
@@ -168,7 +168,7 @@ Expected: FAIL with "lost the fix-round command".
 
 - [x] **Step 3: Put the block back**
 
-Directly under the line `Step 4, fix round: \`/goal\` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:` insert this block (it is the one deleted in 79e81ab, word for word, plus the check line):
+Directly under the line `Step 4, fix round: \`/goal\` only, on the plan the agent already holds, same inline tail; still confirm 🎯 Goal:` insert this block (it is the one deleted in 784d1a4, word for word, plus the check line):
 
 ````markdown
 ```bash

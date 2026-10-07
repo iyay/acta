@@ -12,7 +12,7 @@ parent: plans/2026-09-29-body-schema-scratch
 - [ ] (low) CheckBody does not check that the # title matches the frontmatter title, which the spec base rule asks for.
 - [ ] (low) doctor schemaProblems prints the raw kind name, not the words the spec error text uses (spec, plan); ids.go maps them, doctor does not.
 - [x] The scratch SKILL.md edit joined three paragraphs into single long lines.
-- [ ] (low) Commit 47810b5 loosened the full-file equality check for tick --start in cmd/acta/tick_test.go to a box count.
+- [ ] (low) Commit b48610d loosened the full-file equality check for tick --start in cmd/acta/tick_test.go to a box count.
 - [ ] (medium) A tick writes started/finished into the spec file but tick never commits, and the orchestrator commits only the plan file, so the spec can stay dirty and the next write on it skips its commit.
 - [ ] (medium) closeScratchParent writes the parent scratch file without a dirtyBefore check, so pending edits there ride the id commit.
 - [ ] (low) NewScratch writes schema and created as quoted strings, unlike hand-written files.

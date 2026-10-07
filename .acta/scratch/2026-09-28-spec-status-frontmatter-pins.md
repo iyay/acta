@@ -5,7 +5,7 @@ title: Spec frontmatter status pins the status and hides a finished spec
 status: brainstorming
 created: "2026-09-28"
 ---
-User 2026-09-28: "btw SPEC-6 kenapa gantung ya?" SPEC-6 showed `approved (frontmatter)` with 8/8 tasks done and landed (deaeeb9), so it never moved to Done. Fixed by hand with `acta set specs/2026-09-26-review-debt-design status done`.
+User 2026-09-28: "btw SPEC-6 kenapa gantung ya?" SPEC-6 showed `approved (frontmatter)` with 8/8 tasks done and landed (80de647), so it never moved to Done. Fixed by hand with `acta set specs/2026-09-26-review-debt-design status done`.
 
 Cause: a written `status:` in a spec's frontmatter wins over the status derived from its plans. Five old specs carry one (file-contract, pm-plugin, review-debt, tui, tui-panes); land set four to done and missed SPEC-6. New specs (SPEC-10, SPEC-11) have no status line and derive it.
 
@@ -15,7 +15,7 @@ Proposal:
 
 2026-09-29, brainstorm started. User: "semuanya aja lah sekalian" (do SCRATCH-6, 8 and 14 together). Scope for this brainstorm: SCRATCH-8 + SCRATCH-14 + a new finding; SCRATCH-6 runs as its own Architectural brainstorm elsewhere.
 
-New finding: SPEC-16 shows draft (derived) while PLAN-25 that built it is done and landed (bb71f0f). PLAN-25 has parent: debt/2026-09-29-skill-paths, so no plan links to SPEC-16. A plan has one parent only.
+New finding: SPEC-16 shows draft (derived) while PLAN-25 that built it is done and landed (5aebed4). PLAN-25 has parent: debt/2026-09-29-skill-paths, so no plan links to SPEC-16. A plan has one parent only.
 
 SCRATCH-14 shows raw although PLAN-24 fixed it: SPEC-15 has one parent (SCRATCH-12), and scratch statuses are only raw, brainstorming, dropped.
 

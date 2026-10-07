@@ -23,6 +23,7 @@ type Defaults struct {
 	BuildExecutor  string
 	SubagentModels string
 	PlanDepth      string
+	CommitHistory  string
 	Questions      string
 	OfferDispatch  bool
 }
@@ -44,6 +45,9 @@ func FormDefaults(e Env) Defaults {
 	if c.PlanDepth == "" {
 		c.PlanDepth = "full"
 	}
+	if c.CommitHistory == "" {
+		c.CommitHistory = "tidy"
+	}
 	if c.Questions == "" {
 		c.Questions = "one"
 	}
@@ -55,6 +59,7 @@ func FormDefaults(e Env) Defaults {
 		BuildExecutor:  c.BuildExecutor,
 		SubagentModels: c.SubagentModels,
 		PlanDepth:      c.PlanDepth,
+		CommitHistory:  c.CommitHistory,
 		Questions:      c.Questions,
 		OfferDispatch:  herdr,
 	}
@@ -141,6 +146,12 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("full: real code in every step, waits for your yes", "full"),
 					huh.NewOption("minimal: short steps, build starts at once", "minimal"),
 				).Value(&d.PlanDepth), text(&d.PlanDepth)},
+		{"Commit history", "",
+			huh.NewSelect[string]().
+				Options(
+					huh.NewOption("tidy: one commit per task, straight history", "tidy"),
+					huh.NewOption("full: every commit plus a merge commit", "full"),
+				).Value(&d.CommitHistory), text(&d.CommitHistory)},
 		{"Questions", "",
 			huh.NewSelect[string]().
 				Options(
@@ -243,6 +254,7 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 		BuildExecutor:  d.BuildExecutor,
 		SubagentModels: d.SubagentModels,
 		PlanDepth:      d.PlanDepth,
+		CommitHistory:  d.CommitHistory,
 		Questions:      d.Questions,
 	}
 	return a, nil

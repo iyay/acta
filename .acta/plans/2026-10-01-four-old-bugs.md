@@ -77,7 +77,7 @@ finished: "2026-10-01 15:38:54"
 
 ## Fix round 1
 
-Review round 1 (c2b4a34..44dc248): Spec CLEAN, Standards BLOCKED with two findings in `acta set title`.
+Review round 1 (ccc03ef..45143a7): Spec CLEAN, Standards BLOCKED with two findings in `acta set title`.
 
 ### Task 5: acta set title touches only the title line of a story, bug, spec, plan or scratch file
 

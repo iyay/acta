@@ -12,7 +12,7 @@ Status: design approved by the user in chat on 2026-09-30. Architectural (change
 
 ## Why
 
-The user wants trackpad scrolling at 60fps. A benchmark on the real board (200x55, idle machine, main 0cfe59a) showed:
+The user wants trackpad scrolling at 60fps. A benchmark on the real board (200x55, idle machine, main c9fb0d8) showed:
 
 - The wheel path runs in series. The first notch arms a 16 ms tick (`internal/tui/model.go:562`). The tick scrolls (`model.go:232`). Then `View` runs. Then the Bubble Tea v1 renderer writes on its own 60fps ticker. One scroll step costs about 16 + 7.5 + up to 16.6 ms, so the best case is near 30 fps.
 - `View` takes 7.5 ms with the detail pane focused and 2.7 ms with the list pane focused.

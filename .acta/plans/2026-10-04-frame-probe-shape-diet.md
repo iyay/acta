@@ -102,7 +102,7 @@ finished: "2026-10-04 07:22:25"
 - R1: the shape description lost its trigger list (new feature, fix that needs code, behaviour change, decision); the four old shape evals guard triggering at land.
 - R1: the early "decompose a multi-subsystem request" guidance is gone; only the self-review scope check covers it, under the spec's drop of general design advice.
 - R1: startup.md shares 41 of 740 seven-word runs with gstack and probe.md 27 of 277 with grilling; both are rewritten overall and shorter than their sources.
-- R1: Task 2 landed as two commits with the same message (d61e8b0, b2b4f0d).
+- R1: Task 2 landed as two commits with the same message (90a9640, b1d3ef2).
 - R1: the out-of-plan edits to skill_setup_test.go and plugin/hooks/default-rules.md are needed (a Must string, TestDefaultRulesFile).
 - R1: probe.md uses SCR-0001 as its placeholder id while frame uses SCR-xxxx.
 - Polish: every-question-has-a-recommendation no longer checks a heading with italic in it (`**Q1. Use *Postgres* here?**`).

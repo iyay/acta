@@ -35,7 +35,7 @@ User ruling 2026-10-03: SCR-0039 (skill diet) merges into this brainstorm. One s
 
 ### 2026-10-03
 
-Q1 proof of same quality: C. Gate at land = old eval cases green + new eval cases for new behaviour + plugincheck + word counts before/after. One replay at the end on the PLN-0077 range (64b934f..c8f5e24), old vs new review, for the token number. All of this runs in the acta repo only; nothing new ships to user repos except leaner skill text and the new review rules. Cross-plugin benchmark stays optional, outside this spec.
+Q1 proof of same quality: C. Gate at land = old eval cases green + new eval cases for new behaviour + plugincheck + word counts before/after. One replay at the end on the PLN-0077 range (21aca70..1428e20), old vs new review, for the token number. All of this runs in the acta repo only; nothing new ships to user repos except leaner skill text and the new review rules. Cross-plugin benchmark stays optional, outside this spec.
 
 ### 2026-10-03
 
@@ -87,7 +87,7 @@ Design section 3 approved (other skills): rewrite targets slice 3.0k->1.8k, buil
 
 ### 2026-10-03
 
-Spec written: SPC-0069 .acta/specs/2026-10-03-review-and-skill-diet-design.md (af19620). Waiting for user review.
+Spec written: SPC-0069 .acta/specs/2026-10-03-review-and-skill-diet-design.md (3476539). Waiting for user review.
 
 ### 2026-10-03
 
@@ -95,7 +95,7 @@ User approved spec SPC-0069 on 2026-10-03. Next: acta:slice for plan 1 (dispatch
 
 ### 2026-10-03
 
-Plan 1 written: PLN-0079 .acta/plans/2026-10-03-dispatch-send.md (45fa750), 5 tasks in 3 waves. Plan-time rulings: --rules flag carries the absolute house-rules.md path (the Go binary cannot find the plugin dir); exit codes 0 ok/unconfirmed, 1 bad input, 2 delivery failed, 4 drift (spec fixed 834bdde); waits are package variables so tests run in ms; agent found but working = refuse, nothing sent. Waiting for user yes (user CLAUDE.md rule 3 overrides minimal no-wait).
+Plan 1 written: PLN-0079 .acta/plans/2026-10-03-dispatch-send.md (3476539), 5 tasks in 3 waves. Plan-time rulings: --rules flag carries the absolute house-rules.md path (the Go binary cannot find the plugin dir); exit codes 0 ok/unconfirmed, 1 bad input, 2 delivery failed, 4 drift (spec fixed 3476539); waits are package variables so tests run in ms; agent found but working = refuse, nothing sent. Waiting for user yes (user CLAUDE.md rule 3 overrides minimal no-wait).
 
 ### 2026-10-03
 
@@ -103,6 +103,6 @@ User approved PLN-0079 on 2026-10-03. Build starts with executor dispatch.
 
 ### 2026-10-03
 
-PLN-0079 LANDED 000a130 on 2026-10-03 (R1 BLOCKED 1 + promoted close-order BLOCKER, fix round 1, R2 CLEAN both axes, polish 76594f9 + test widen 60a57bb CLEAN; full suite 16 ok, eval 7/7 with branch binary; debt DBT-0071 with 6 items, 21 Review notes). Version 0.1.3. Next: acta:slice for plan 2 (review diet).
+PLN-0079 LANDED 0fc6b4d on 2026-10-03 (R1 BLOCKED 1 + promoted close-order BLOCKER, fix round 1, R2 CLEAN both axes, polish 3173739 + test widen 0fc6b4d CLEAN; full suite 16 ok, eval 7/7 with branch binary; debt DBT-0071 with 6 items, 21 Review notes). Version 0.1.3. Next: acta:slice for plan 2 (review diet).
 
 ## Open questions

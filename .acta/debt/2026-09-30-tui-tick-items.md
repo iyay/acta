@@ -7,7 +7,7 @@ parent: plans/2026-09-30-tui-tick-items
 
 - [ ] (low) internal/write/mark.go: + on a task already done (or - on one already open) changes nothing, but CommitPaths still runs and the TUI status says "commit failed" although nothing was written.
 - [ ] (low) internal/tui/view.go: the help does not name ctrl+c or the down/up arrow aliases that the key switch handles.
-- [x] Commit 2cf03a6 adds a 30-row help test that the plan did not ask for; it is test-only and changes no behaviour. (stale)
+- [x] Commit 4dba25c adds a 30-row help test that the plan did not ask for; it is test-only and changes no behaviour. (stale)
 - [ ] (medium) internal/write/mark.go: no committed test covers the dirty-spec guard (a dirty spec file on + of a task); removing the spec append keeps the suite green.
 - [ ] (low) internal/write/mark.go: when TaskDates fails after Tick, the plan stays ticked and uncommitted and the TUI shows only the error.
 - [ ] (medium) internal/gitc: CommitPaths leaves files staged if a pre-commit hook rejects the commit (same old gap as gitc.Commit).

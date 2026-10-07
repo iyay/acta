@@ -70,10 +70,10 @@ finished: "2026-10-06 07:21:02"
 - [x] `internal/plugincheck/skill_build_test.go`: add `MustNot` `"ask questions"` so the old implementer line cannot come back.
 - [x] Commit: `polish: review notes for PLN-0100`
 
-Polish reverted (e92d59e): the polish review found that `root-cause-tracing.md:68` lost "outside the repo". Every Task 4 item moved to `[debt]`.
+Polish reverted (f375829): the polish review found that `root-cause-tracing.md:68` lost "outside the repo". Every Task 4 item moved to `[debt]`.
 
 ## Review notes
 
 - implementer-prompt.md sends anything unexpected to NEEDS_CONTEXT, while BLOCKED may fit a blocking surprise better; the controller treats both the same.
-- The ticked tasks quote wording that did not land word for word; 96ff265 shortened it to fit byte caps.
+- The ticked tasks quote wording that did not land word for word; f375829 shortened it to fit byte caps.
 - build/SKILL.md:155 "If the implementer asks questions" is fine; a future "ask questions" pin would collide only if reworded.

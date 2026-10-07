@@ -2,7 +2,7 @@
 id: BUG-0030
 hash: a1ivser
 started: "2026-10-05 13:06:16"
-fixed_in: 52a548a7e329a7a5a3c27584126e7c194968b76a
+fixed_in: fa9088668ec3781c40e2bb7689006146edac374f
 finished: "2026-10-05 13:29:24"
 ---
 # omp gets no acta session rules
@@ -19,4 +19,4 @@ Steps: start omp in a repo with acta, send one message, run /new, send a message
 Test shape: in plugin/omp/index.test.ts, fire session_start, before_agent_start, then session_switch {reason:"new"}, then before_agent_start; the second context must hold the rules again.
 
 ## Found in
-main at b8ead07, acta:debug on a be-pmis omp session the user pasted.
+main at 7ce8c03, acta:debug on a be-pmis omp session the user pasted.

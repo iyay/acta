@@ -19,4 +19,4 @@ gimana? make sense gak?
 
 Image #2: /var/folders/32/w_l_8__17m37y41yzzct4llh0000gn/T/TemporaryItems/NSIRD_screencaptureui_UuZRjm/Screenshot 2026-09-28 at 20.11.54.png (omp Settings screen: a top tab bar Appearance, Model, Interaction, Context, Memory, Files, Shell, Tools, Tasks, Providers, Plugins; left section list; right detail list; hint line at the bottom "←/→ to switch tabs").
 
-Replaces the SPEC-10 five-pane sidebar (landed cd5bbfd) if approved.
+Replaces the SPEC-10 five-pane sidebar (landed 622a74a) if approved.

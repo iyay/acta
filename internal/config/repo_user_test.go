@@ -208,3 +208,48 @@ func TestSaveRepoUserKeepsOtherKeys(t *testing.T) {
 		t.Error("SaveRepoUser wrote chat_language")
 	}
 }
+
+// A commit_history in .acta.yaml beats the user value both ways, and the set
+// says the repo gave it. A repo that says nothing, or says it the wrong way,
+// leaves the user value alone.
+func TestMergeRepoCommitHistory(t *testing.T) {
+	user := func(history string) User {
+		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", CommitHistory: history}
+	}
+	cases := []struct {
+		name, global, yaml, want string
+		fromRepo                 bool
+	}{
+		{"repo full beats user tidy", "tidy", "commit_history: full\n", "full", true},
+		{"repo tidy beats user full", "full", "commit_history: tidy\n", "tidy", true},
+		{"repo full beats unset user", "", "commit_history: full\n", "full", true},
+		{"spaces are trimmed", "", "commit_history: \" full \"\n", "full", true},
+		{"repo silent, user full stays", "full", "root: .acta\n", "full", false},
+		{"repo silent, unset stays empty", "", "root: .acta\n", "", false},
+		{"empty text is ignored", "full", "commit_history: \"\"\n", "full", false},
+		{"number is ignored", "full", "commit_history: 3\n", "full", false},
+		{"list is ignored", "full", "commit_history:\n  - tidy\n", "full", false},
+	}
+	for _, c := range cases {
+		got, from, err := MergeRepo(user(c.global), writeRepoYAML(t, c.yaml))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got != user(c.want) {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, user(c.want))
+		}
+		if from["commit_history"] != c.fromRepo || len(from) > 1 {
+			t.Errorf("%s: from %v, want commit_history=%v and nothing else", c.name, from, c.fromRepo)
+		}
+	}
+}
+
+// A bad commit_history in .acta.yaml is refused by name, so it is never used.
+func TestMergeRepoCommitHistoryBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Tidy", "minimal", "tidy full"} {
+		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, "commit_history: "+bad+"\n"))
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "commit_history") {
+			t.Errorf("commit_history %q in .acta.yaml: err %v, want ErrBadUser naming the key", bad, err)
+		}
+	}
+}

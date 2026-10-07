@@ -35,7 +35,7 @@ Unchanged: the kind colors, the selection band, the popup dim, the frame reuse r
 
 ## Order
 
-PLN-0045 (TUI scroll at 60fps) landed as 69c6f4a before this plan was written, so the branch starts from a main that already holds it.
+PLN-0045 (TUI scroll at 60fps) landed as e48bce4 before this plan was written, so the branch starts from a main that already holds it.
 
 ## Files
 

@@ -521,7 +521,7 @@ git commit -m "tui: status line shows the keys of the focused pane"
 
 ## Fix round 1
 
-Review round 1 over `6e17712..64ea11d` found two BLOCKERs. Both go in one task and land as one commit.
+Review round 1 over `b0aa5c9..7e14629` found two BLOCKERs. Both go in one task and land as one commit.
 
 ### Task 4: Fix the stale drag highlight on a bar miss and the hidden Edit and Copy hints
 

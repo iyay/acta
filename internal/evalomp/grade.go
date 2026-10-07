@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -98,15 +97,14 @@ func gradeRegex(g Grader, w Workspace) Outcome {
 		}
 		text = string(data)
 	}
-	expr := g.Pattern
-	if strings.Contains(g.Flags, "i") {
-		expr = "(?i)" + expr
-	}
-	re, err := regexp.Compile(expr)
+	re, err := CompilePattern(g.Pattern, g.Flags)
 	if err != nil {
 		return fail(g, "bad pattern %q: %v", g.Pattern, err)
 	}
-	found := re.MatchString(text)
+	found, err := re.MatchString(text)
+	if err != nil {
+		return fail(g, "pattern %q could not be matched: %v", g.Pattern, err)
+	}
 	want := g.Match != "not_contains"
 	if found != want {
 		return fail(g, "pattern %q: want found %v, got %v", g.Pattern, want, found)
@@ -117,13 +115,20 @@ func gradeRegex(g Grader, w Workspace) Outcome {
 // gradeTool matches the tool name without case, because the suite says Bash
 // and omp calls the same tool bash.
 func gradeTool(g Grader, w Workspace) Outcome {
-	re, err := regexp.Compile(g.InputMatch)
+	re, err := CompilePattern(g.InputMatch, "")
 	if err != nil {
 		return fail(g, "bad input_match %q: %v", g.InputMatch, err)
 	}
 	count := 0
 	for _, c := range w.Result.Calls {
-		if strings.EqualFold(c.Tool, g.Tool) && re.MatchString(c.Input) {
+		if !strings.EqualFold(c.Tool, g.Tool) {
+			continue
+		}
+		hit, err := re.MatchString(c.Input)
+		if err != nil {
+			return fail(g, "input_match %q could not be matched: %v", g.InputMatch, err)
+		}
+		if hit {
 			count++
 		}
 	}

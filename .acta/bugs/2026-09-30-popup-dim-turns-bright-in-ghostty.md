@@ -2,13 +2,13 @@
 id: BUG-0014
 hash: qu87ixv
 started: "2026-09-30"
-fixed_in: "1641042"
+fixed_in: "c7a9554"
 finished: "2026-09-30"
 ---
 # Text behind a popup shows bright instead of dim
 
 ## Symptom
-With the tokyo-night theme in Ghostty, opening the help popup (`?`) or any other popup does not dim the screen behind it. The text behind the popup shows at full brightness, close to white, and every color on it is gone. Seen on main 97501dc (screenshot, 2026-09-30).
+With the tokyo-night theme in Ghostty, opening the help popup (`?`) or any other popup does not dim the screen behind it. The text behind the popup shows at full brightness, close to white, and every color on it is gone. Seen on main 587107b (screenshot, 2026-09-30).
 
 ## Root cause
 The TUI side is correct. `cover` (internal/tui/view.go:670) strips every line behind the popup and paints it with `styles.dim`. `dim` (internal/tui/styles.go:85) is faint plus `dimColor`, which mixes slot 8 halfway toward the theme background (internal/tui/styles.go:125). For tokyo-night that gives #2d3147 on #1a1b26, a contrast ratio of only 1.34.
@@ -29,4 +29,4 @@ Proof the bytes are right up to the terminal:
 The check: with `minimum-contrast = 1`, the same screen is dim.
 
 ## Found in
-main 97501dc. Found by acta:debug from the user's screenshot, 2026-09-30.
+main 587107b. Found by acta:debug from the user's screenshot, 2026-09-30.

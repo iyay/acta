@@ -14,4 +14,4 @@ parent: plans/2026-09-27-tui-polish
 - [ ] (low) gitc.Author has no --follow, so a renamed file falls back to the current user's name (gitc.go:123).
 - [x] tui tests went from 24s to 62s: TestViewNeverOverflowsAnyWindow 29s, TestNoRoundedCorners 11s, TestViewFitsEveryTerminalSize 7s; trim the size sweeps.
 - [ ] (low) model.go is 790 lines, 10 short of the 800 limit; model_test.go 1801, view_test.go 1021, scroll_test.go 855 lines.
-- [x] The omp recipient ran git reset mid-build and squashed its wip commit, dropping orchestrator commit e2591d2 from history (content survived in 9fcf007).
+- [x] The omp recipient ran git reset mid-build and squashed its wip commit, dropping orchestrator commit e2591d2 from history (content survived in 80de647).

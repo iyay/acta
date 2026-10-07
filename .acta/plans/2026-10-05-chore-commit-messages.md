@@ -65,7 +65,7 @@ finished: "2026-10-05 15:43:17"
 
 ## Review notes
 
-- Polish review CLEAN (Spec + Standards, range 662bbac..5e7d4bb): new round test pins the state.go:162 fallback line; fallback prefers the new subject even when the old-subject commit is newer, per plan; `polish:` subject matches the spec carve-out for implementer code commits.
-- c1fcdce is a formatting-only commit from the recipient; the house rule wants formatting folded into the task commit.
+- Polish review CLEAN (Spec + Standards, range 5b376ee..5b376ee): new round test pins the state.go:162 fallback line; fallback prefers the new subject even when the old-subject commit is newer, per plan; `polish:` subject matches the spec carve-out for implementer code commits.
+- 5b376ee is a formatting-only commit from the recipient; the house rule wants formatting folded into the task commit.
 - kindOf in internal/write/subject.go matches the wiki scope by the literal folder name `wiki`, not a config entry.
 - The scratch subject wording changed from `new scratch <stem>` to `chore(scratch): new <stem>`; nothing reads the old words.

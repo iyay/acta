@@ -1,7 +1,7 @@
 ---
 id: BUG-0025
 hash: k95mwh2
-fixed_in: 080bc63
+fixed_in: 45143a7
 finished: "2026-10-01 16:14:10"
 ---
 # acta set status on a debt item changes the whole debt file

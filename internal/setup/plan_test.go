@@ -18,6 +18,7 @@ func testUser() config.User {
 		BuildExecutor:  "subagent",
 		SubagentModels: "split",
 		PlanDepth:      "full",
+		CommitHistory:  "full",
 		Questions:      "probe",
 	}
 }

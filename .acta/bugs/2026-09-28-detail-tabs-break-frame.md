@@ -1,7 +1,7 @@
 ---
 id: BUG-0002
 hash: s1nx6xz
-fixed_in: cd5bbfd
+fixed_in: 622a74a
 ---
 # Scrolling the detail pane breaks the screen when the body has tabs
 
@@ -17,4 +17,4 @@ internal/tui has no tab expansion: detail body lines keep literal "\t". lipgloss
 3. The frame breaks as in the user's screenshot of 2026-09-28.
 
 ## Found in
-main at 994065b, found by the user while reading PLAN-17 in the TUI; root cause checked with a throwaway lipgloss.Width probe.
+main at 0250df1, found by the user while reading PLAN-17 in the TUI; root cause checked with a throwaway lipgloss.Width probe.

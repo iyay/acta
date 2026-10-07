@@ -12,7 +12,7 @@ Status: design approved by the user in chat on 2026-09-30. Bounded: it fixes one
 
 ## Why
 
-The `answers-appended` eval scores 0.50 on every run, on main as well. `plugin/evals/answers-appended/scaffold.sh` seeds `.acta/scratch/eval-answer.md` in the old format, with no `schema: "1"` and no sections. The scratch skill tells the agent to use `acta scratch add --section words`. On an old item, `acta scratch add` refuses any `--section` on purpose (`internal/write/scratch.go:107`, body schema spec line 55). So the agent stops and the answer never lands. The seed was written before the body schema landed (fb7e830). In a copy of the plugin with a current-format seed, the case passed 3 of 3 runs.
+The `answers-appended` eval scores 0.50 on every run, on main as well. `plugin/evals/answers-appended/scaffold.sh` seeds `.acta/scratch/eval-answer.md` in the old format, with no `schema: "1"` and no sections. The scratch skill tells the agent to use `acta scratch add --section words`. On an old item, `acta scratch add` refuses any `--section` on purpose (`internal/write/scratch.go:107`, body schema spec line 55). So the agent stops and the answer never lands. The seed was written before the body schema landed (dc983b7). In a copy of the plugin with a current-format seed, the case passed 3 of 3 runs.
 
 ## Design
 

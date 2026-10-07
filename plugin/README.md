@@ -104,7 +104,7 @@ topics are covered by the plugin and can be removed from your file:
 | TDD rules and the test quality bar | `acta:tdd` |
 | Debug phases, read-only until the hypothesis | `acta:debug` |
 | Review: two axes, BLOCKER or NOTE, three rounds | `acta:review` |
-| Landing: gates, merge --no-ff, no menu, never push | `acta:land` |
+| Landing: gates, merge or tidy history, no menu, never push | `acta:land` |
 | Chat language, style and tone | `~/.acta/config.yaml` |
 
 Keep anything personal to you: memory rules, your tool setup, your list of

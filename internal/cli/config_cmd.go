@@ -12,7 +12,7 @@ import (
 	"github.com/iyay/acta/internal/theme"
 )
 
-const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--questions one|probe] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--coding-guide G]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--commit-history H] [--coding-guide G]"
 
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -54,6 +54,11 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// No file sets it. Say so, or setup thinks full was chosen.
 			depth, depthMark = "full", " (default)"
 		}
+		history, historyMark := v.CommitHistory, ""
+		if history == "" {
+			// Same here: an unset history is tidy, and show says so.
+			history, historyMark = "tidy", " (default)"
+		}
 		guide, guideMark := v.CodingGuide, ""
 		if guide == "" {
 			// Same here: an unset guide is lean, and show says so.
@@ -83,7 +88,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "questions": questions, "coding_guide": guide, "from_repo": fromRepo,
+				"theme": v.Theme, "plan_depth": depth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -101,6 +106,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
 		}
 		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
+		fmt.Fprintf(stdout, "commit_history: %s%s%s\n", history, mark("commit_history"), historyMark)
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
 		if v.SubagentModels != "" {
@@ -124,6 +130,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
+		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
@@ -131,12 +138,12 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
 		if *repoOnly {
-			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "coding_guide": *guide},
+			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "commit_history": *history, "coding_guide": *guide},
 				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme)
 		}
 		v, read, _, err := config.ResolveUserFile()
@@ -166,6 +173,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *depth != "" {
 			v.PlanDepth = *depth
+		}
+		if *history != "" {
+			v.CommitHistory = *history
 		}
 		if *questions != "" {
 			v.Questions = *questions
@@ -216,7 +226,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 // who clones the repo.
 func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) int {
 	if personal {
-		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth and --coding-guide; set the others without --repo\n")
+		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --commit-history and --coding-guide; set the others without --repo\n")
 		return exitBadInput
 	}
 	set := map[string]string{}
@@ -253,6 +263,8 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) in
 			check.BuildExecutor = val
 		case k == "plan_depth":
 			check.PlanDepth = val
+		case k == "commit_history":
+			check.CommitHistory = val
 		case k == "coding_guide":
 			check.CodingGuide = val
 		}

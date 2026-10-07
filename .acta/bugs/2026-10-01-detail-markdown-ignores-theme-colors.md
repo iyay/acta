@@ -2,7 +2,7 @@
 id: BUG-0026
 hash: fujb7ep
 started: "2026-10-01 19:06:02"
-fixed_in: 9a0197f
+fixed_in: 256bda8
 finished: "2026-10-01 21:53:19"
 ---
 # Detail pane markdown does not use the theme colors
@@ -31,4 +31,4 @@ theme color can reach the markdown.
    tokyo-night palette.
 
 ## Found in
-main at 84a02f1, debug phase 1 from a user screenshot.
+main at 08a0b5d, debug phase 1 from a user screenshot.

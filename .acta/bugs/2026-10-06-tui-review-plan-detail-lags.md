@@ -1,7 +1,7 @@
 ---
 id: BUG-0032
 hash: aer6v2y
-fixed_in: e0c24ec
+fixed_in: 9e13188
 finished: "2026-10-06 06:19:06"
 ---
 # Switching to the Plans tab lags when a plan is in review
@@ -18,4 +18,4 @@ The detail ROUND line runs a full worktree scan on every render. `internal/tui/d
 3. The switch takes about 2-3 s. Timing probe: `board.PlanStates(cfg)` takes about 1.3 s per call.
 
 ## Found in
-main at 87c911c, while PLN-0097 waited in review; found by acta:debug with a timing probe.
+main at 9eef15d, while PLN-0097 waited in review; found by acta:debug with a timing probe.

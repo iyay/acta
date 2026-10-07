@@ -14,7 +14,7 @@ finished: "2026-10-03 15:03:55"
 
 ### 2026-10-03
 
-Step 2 of the 2026-10-03 roadmap (step 1 landed as 7da14f7). User rulings so far:
+Step 2 of the 2026-10-03 roadmap (step 1 landed as 1428e20). User rulings so far:
 
 1. One builtin output style, forced: plugin/output-styles/ with force-for-plugin: true and keep-coding-instructions: true. It merges Claude Code's Concise style, caveman (JuliusBrussee/caveman, MIT except its engine folders) and the acta adhd rules into one text: overlaps written once, conflicts settled. Proposed settlements: a one-line status only during multi-turn work; errors quote the deciding lines, then cause and fix, full log on request; an explicit request for detail beats every length cap; the tone from config beats compression; the chat language comes from config. A core for every user plus an ADHD block that applies when the session note says adhd, so `style: plain` still works. One level, no lite/full/ultra. The hook stops printing adhdRules under Claude Code; omp keeps it. Target about 300 words.
 2. Builtin coding guide `lean`, from ponytail (MIT), rewritten: a skill of about 400 words plus a five-line summary in session start, on by default, with a config switch. Drop the `ponytail:` marker comments, the levels, the test rule (acta:tdd owns tests) and the output rules (the style owns them). Rename the "ponytail-lazy" Global Constraints line. acta doctor warns when the ponytail or caveman plugins are also on (hook.EnabledPlugins and Conflicts exist).

@@ -17,7 +17,7 @@ hash: kdgub2w
 ## Global Constraints
 
 - Implement ponytail-lazy: YAGNI, then existing code, then stdlib, then native, then an installed dependency, then one line, then the minimum; never cut validation, security or accessibility.
-- The base is branch `top-tabs` at 6112ebb, merged into `pane-sort` (293ee72), so this runs beside PLAN-19. PLAN-19 may still change the TUI; the orchestrator merges main in again before landing. If a name below (`paneTop`, `rowsOf`, `openRows`, `activeRows`, `doneRows`, `treeRows`, `helpLines`) no longer exists, stop and report; do not guess.
+- The base is branch `top-tabs` at b681d31, merged into `pane-sort` (0bbda15), so this runs beside PLAN-19. PLAN-19 may still change the TUI; the orchestrator merges main in again before landing. If a name below (`paneTop`, `rowsOf`, `openRows`, `activeRows`, `doneRows`, `treeRows`, `helpLines`) no longer exists, stop and report; do not guess.
 - The key is `o`. The two title words are exactly `oldest` and `newest`.
 - Every pane starts at `oldest` on each TUI start. The choice lives in memory only.
 - Search results keep the board order; the flag does not touch them.

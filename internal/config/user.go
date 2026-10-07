@@ -25,6 +25,10 @@ type User struct {
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
+	// CommitHistory says how a landed branch reads: tidy (one commit per
+	// code task, a straight line) or full (every commit plus a merge).
+	// Empty means tidy.
+	CommitHistory string `yaml:"commit_history,omitempty"`
 	// Questions says how the agent asks: one question at a time, or a round
 	// of probe questions. Empty means one. It is a user key, never a repo one.
 	Questions string `yaml:"questions,omitempty"`
@@ -206,6 +210,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_depth must be minimal or full, not %q", ErrBadUser, v.PlanDepth)
 	}
+	switch v.CommitHistory {
+	case "", "tidy", "full":
+	default:
+		return fmt.Errorf("%w: commit_history must be tidy or full, not %q", ErrBadUser, v.CommitHistory)
+	}
 	switch v.Questions {
 	case "", "one", "probe":
 	default:
@@ -229,6 +238,7 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
+	v.CommitHistory = strings.TrimSpace(v.CommitHistory)
 	v.Questions = strings.TrimSpace(v.Questions)
 	v.CodingGuide = strings.TrimSpace(v.CodingGuide)
 	if v.ChatLanguage == "" {

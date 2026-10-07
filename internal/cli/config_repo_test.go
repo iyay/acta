@@ -408,3 +408,145 @@ func TestConfigShowBrokenRepoFile(t *testing.T) {
 		t.Errorf("exit %d stderr %q", code, errs)
 	}
 }
+
+// With nothing set anywhere, commit_history still shows, as tidy, marked
+// (default). The JSON carries the plain value.
+func TestConfigShowCommitHistoryDefault(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "commit_history: tidy (default)\n") {
+		t.Errorf("show lacks commit_history: tidy (default):\n%s", out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["commit_history"] != "tidy" {
+		t.Errorf("json commit_history %v, want tidy", got["commit_history"])
+	}
+}
+
+// A commit_history set in either file, even to tidy, gets no (default) mark.
+// A repo value beats the user value both ways and shows (repo), in the text
+// and in from_repo.
+func TestConfigShowCommitHistorySet(t *testing.T) {
+	cases := []struct {
+		global, repo, want, json string
+		fromRepo                 bool
+	}{
+		{"commit_history: tidy\n", "", "commit_history: tidy\n", "tidy", false},
+		{"commit_history: full\n", "", "commit_history: full\n", "full", false},
+		{"", "commit_history: tidy\n", "commit_history: tidy (repo)\n", "tidy", true},
+		{"", "commit_history: full\n", "commit_history: full (repo)\n", "full", true},
+		{"commit_history: tidy\n", "commit_history: full\n", "commit_history: full (repo)\n", "full", true},
+		{"commit_history: full\n", "commit_history: tidy\n", "commit_history: tidy (repo)\n", "tidy", true},
+	}
+	for _, c := range cases {
+		repoWithGlobal(t, c.global, c.repo)
+		out := mustRun(t, "config", "show")
+		if !strings.Contains(out, c.want) {
+			t.Errorf("global %q repo %q: show lacks %q:\n%s", c.global, c.repo, c.want, out)
+		}
+		var got map[string]any
+		if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got["commit_history"] != c.json {
+			t.Errorf("global %q repo %q: json commit_history %v, want %s", c.global, c.repo, got["commit_history"], c.json)
+		}
+		from, _ := got["from_repo"].([]any)
+		if (len(from) == 1 && from[0] == "commit_history") != c.fromRepo {
+			t.Errorf("global %q repo %q: json from_repo %v, want commit_history=%v", c.global, c.repo, got["from_repo"], c.fromRepo)
+		}
+	}
+}
+
+// Without --repo the history goes to the global file, alone or next to other
+// flags, and never to .acta.yaml.
+func TestConfigSetCommitHistoryGlobal(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--commit-history", "full")
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.CommitHistory != "full" {
+		t.Errorf("global file holds %+v, %v; want commit_history full", v, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("set without --repo wrote .acta.yaml")
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "commit_history: full\n") {
+		t.Errorf("show:\n%s", out)
+	}
+}
+
+// set --repo --commit-history writes .acta.yaml and never the global file, and
+// show then marks the value (repo).
+func TestConfigSetRepoCommitHistory(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\ncommit_history: tidy\n", "")
+	before, _ := os.ReadFile(globalPath)
+	mustRun(t, "config", "set", "--repo", "--commit-history", "full")
+	after, _ := os.ReadFile(globalPath)
+	if string(before) != string(after) {
+		t.Errorf("global file changed:\n%s", after)
+	}
+	raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+	if !strings.Contains(string(raw), "commit_history: full") {
+		t.Errorf(".acta.yaml lacks commit_history: full:\n%s", raw)
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "commit_history: full (repo)\n") {
+		t.Errorf("show:\n%s", out)
+	}
+}
+
+// A bad history is refused with its name, and .acta.yaml keeps the bytes it had.
+func TestConfigSetRepoCommitHistoryRefusesBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Tidy", "minimal", "full off"} {
+		dir, _ := repoWithGlobal(t, "", "plan_depth: minimal\n")
+		path := filepath.Join(dir, ".acta.yaml")
+		before, _ := os.ReadFile(path)
+		if code, _, errs := runCodeOut("config", "set", "--repo", "--commit-history", bad); code != exitBadInput || !strings.Contains(errs, "commit_history must be tidy or full") {
+			t.Errorf("%q: exit %d stderr %q, want bad input saying commit_history must be tidy or full", bad, code, errs)
+		}
+		if after, _ := os.ReadFile(path); string(before) != string(after) {
+			t.Errorf("%q changed .acta.yaml:\n%s", bad, after)
+		}
+	}
+}
+
+// A bad history is refused before any write, so a file keeps the value it had
+// and a missing file stays missing.
+func TestConfigSetCommitHistoryRefusesBadValue(t *testing.T) {
+	for _, bad := range []string{"deep", "Tidy", "minimal"} {
+		_, globalPath := repoWithGlobal(t, "", "")
+		if code, _, errs := runCodeOut("config", "set", "--commit-history", bad); code != exitBadInput || !strings.Contains(errs, "commit_history") {
+			t.Errorf("%q: exit %d stderr %q, want bad input naming commit_history", bad, code, errs)
+		}
+		if _, err := os.Stat(globalPath); err == nil {
+			t.Errorf("%q wrote the global file", bad)
+		}
+	}
+	_, globalPath := repoWithGlobal(t, "commit_history: full\n", "")
+	before, _ := os.ReadFile(globalPath)
+	if code, _, _ := runCodeOut("config", "set", "--commit-history", "deep"); code != exitBadInput {
+		t.Errorf("exit %d, want bad input", code)
+	}
+	if after, _ := os.ReadFile(globalPath); string(before) != string(after) {
+		t.Errorf("global file changed:\n%s", after)
+	}
+}
+
+// A bad history already sitting in either file stops show, and the message
+// names the key and the file. Nothing falls back to tidy by itself.
+func TestConfigShowRefusesBadCommitHistory(t *testing.T) {
+	for _, c := range []struct{ global, repo, file string }{
+		{"commit_history: deep\n", "", "config.yaml"},
+		{"commit_history: Tidy\n", "", "config.yaml"},
+		{"", "commit_history: deep\n", ".acta.yaml"},
+		{"", "commit_history: TIDY\n", ".acta.yaml"},
+	} {
+		repoWithGlobal(t, c.global, c.repo)
+		for _, args := range [][]string{{"config", "show"}, {"config", "show", "--json"}} {
+			code, out, errs := runCodeOut(args...)
+			if code != exitBadInput || out != "" || !strings.Contains(errs, "commit_history") || !strings.Contains(errs, c.file) {
+				t.Errorf("global %q repo %q %v: exit %d stdout %q stderr %q", c.global, c.repo, args, code, out, errs)
+			}
+		}
+	}
+}

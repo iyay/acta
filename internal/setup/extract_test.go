@@ -1,9 +1,11 @@
 package setup
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -106,5 +108,46 @@ func TestExtractHomeBlocked(t *testing.T) {
 	}
 	if _, err := ExtractPlugin(plugin.Files, ""); err == nil {
 		t.Fatal("want an error for an empty home")
+	}
+}
+
+func TestExtractRefusesNonAbsoluteHome(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
+	t.Setenv("TMPDIR", t.TempDir())
+	for _, home := range []string{"", ".", "relative/dir", "./x"} {
+		work := t.TempDir()
+		t.Chdir(work)
+		if _, err := ExtractPlugin(fstest.MapFS{"a.txt": {Data: []byte("a")}}, home); err == nil {
+			t.Errorf("home %q: want an error", home)
+		}
+		left, _ := os.ReadDir(work)
+		if len(left) != 0 {
+			t.Errorf("home %q: wrote %d entries under the working dir", home, len(left))
+		}
+	}
+}
+
+func TestExtractNamesAsideWhenRestoreFails(t *testing.T) {
+	home := t.TempDir()
+	old := filepath.Join(home, ".acta", "plugin")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Every rename into the final folder fails, so the swap and the restore both fail.
+	realRename := renameFile
+	t.Cleanup(func() { renameFile = realRename })
+	renameFile = func(from, to string) error {
+		if to == old {
+			return errors.New("forced failure")
+		}
+		return realRename(from, to)
+	}
+	_, err := ExtractPlugin(fstest.MapFS{"a.txt": {Data: []byte("a")}}, home)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	if !strings.Contains(err.Error(), filepath.Join(home, ".acta", "plugin-new-")) || !strings.Contains(err.Error(), "-old") {
+		t.Fatalf("error does not name the aside path: %v", err)
 	}
 }

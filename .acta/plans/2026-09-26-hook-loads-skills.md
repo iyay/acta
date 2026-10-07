@@ -12,7 +12,7 @@ hash: v06nogf
 
 **Tech Stack:** Go 1.27 (module `pm-board`), markdown.
 
-**Spec:** `.pm/specs/2026-09-26-pm-plugin-design.md` §5 and §7. Source: dogfood plan 1 (merge 143cec3) loaded only pm:plan, and self-reviewed a 7-file diff with Go code.
+**Spec:** `.pm/specs/2026-09-26-pm-plugin-design.md` §5 and §7. Source: dogfood plan 1 (merge d709f36) loaded only pm:plan, and self-reviewed a 7-file diff with Go code.
 
 **Worktree:** `/Users/iyay/Nayakatara/pm-board-hookfix`, branch `hookfix`, parent `main`. Executor: `inline`.
 

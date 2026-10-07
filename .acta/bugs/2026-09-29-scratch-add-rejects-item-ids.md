@@ -18,4 +18,4 @@ Not debugged yet. Seen from running the PATH binary at /Users/iyay/.local/bin/ac
 3. `echo hi | acta scratch add scratch/2026-09-29-popup-dim-main-text` works.
 
 ## Found in
-main at 01cf9a1, while adding user notes to SCR-0017. The PATH binary may be older than main (see the note about rebuilding after merge), so check that first.
+main at 9856782, while adding user notes to SCR-0017. The PATH binary may be older than main (see the note about rebuilding after merge), so check that first.

@@ -2,7 +2,7 @@
 ref: plans/2026-09-29-tui-scroll-performance#task-4
 id: BUG-0010
 hash: h319txx
-fixed_in: 080bc63
+fixed_in: 45143a7
 finished: "2026-10-01 16:14:09"
 ---
 # The first reload throws away the scroll of a tab whose cursor was never moved
@@ -18,14 +18,14 @@ Every pane's cursor starts as the empty string (`freshTab`, `internal/tui/sideba
 `reloadMsg` case calls `moveTo(m.cursor())`, and the cursor now resolves to row 0. `moveTo`
 sees an id that differs from the stored `""`, treats it as a new item, and sets the detail
 offset to 0. It also moves the list back to the cursor row. This code was already on base
-d943290 before the wheel batching work. Review round 3 probed base and got offset 0 for this
+bec97a4 before the wheel batching work. Review round 3 probed base and got offset 0 for this
 sequence, the same as the branch.
 
 When this was first filed it said base gives 6 and blamed the wheel mark. Both claims were
 wrong and have been corrected here.
 
 ## Repro
-In `internal/tui`, on base d943290 or later:
+In `internal/tui`, on base bec97a4 or later:
 
     m := paneModel(t, paneDetail)   // the cursor was never moved, so m.sel is still ""
     // scroll the detail box two lines, with the wheel or with keys

@@ -984,7 +984,7 @@ git commit -m "tui: hide the copy toast after two seconds"
 
 ## Fix round 1
 
-Review round 1 (`752d34c..d95d375`): Standards axis CLEAN, Spec axis BLOCKED on one finding. Spec change 3 says the work lines in the detail show "the id in the kind color". Today `workLine` (`internal/tui/detail.go`) paints only the dot, and the plan header line that `planLines` writes above its tasks is plain. Both show the id in the theme foreground. The Task 3 code in this plan left this out; this task closes it.
+Review round 1 (`ce1b2cb..ad2b3a4`): Standards axis CLEAN, Spec axis BLOCKED on one finding. Spec change 3 says the work lines in the detail show "the id in the kind color". Today `workLine` (`internal/tui/detail.go`) paints only the dot, and the plan header line that `planLines` writes above its tasks is plain. Both show the id in the theme foreground. The Task 3 code in this plan left this out; this task closes it.
 
 ### Task 6: Kind-colored ids on detail work lines
 

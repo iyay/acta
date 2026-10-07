@@ -125,5 +125,5 @@ finished: "2026-10-06 06:41:18"
 - Byte caps were not lowered for files that shrank (code-reviewer.md, implementer-prompt.md, migrate); the spec kept caps as they are.
 - skill_build_test.go:59 pin "and only when\n         " depends on exact wrapping; the new model line has no Must pin.
 - implementer-prompt.md "The exact values to use" now points at Context, which holds scene-setting text, not a values slot.
-- Commit 7fed3c9 alone fails TestBudgetFiles; e927ef6 fixes it, the range is green.
+- Commit 5c7c15c alone fails TestBudgetFiles; 0c55ca8 fixes it, the range is green.
 - debug/SKILL.md polish: "BEFORE proposing fixes" became "First", "SMALLEST probe" became "one probe"; meaning kept by Phase 1 and the lines below.
