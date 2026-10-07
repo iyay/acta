@@ -52,3 +52,34 @@ func TestCompilePatternFlags(t *testing.T) {
 		t.Error("a bad pattern must not compile")
 	}
 }
+
+func TestCompilePatternMultilineFlag(t *testing.T) {
+	const text = "intro\n**Q6.** x"
+	re, err := CompilePattern(`^\*\*Q6\.`, "im")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := re.MatchString(text); !ok {
+		t.Error("flag m must let ^ match at the start of a later line")
+	}
+	re, err = CompilePattern(`^\*\*Q6\.`, "i")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := re.MatchString(text); ok {
+		t.Error("without flag m, ^ must match only at the start of the text")
+	}
+}
+
+func TestCompilePatternRefusesUnknownFlag(t *testing.T) {
+	_, err := CompilePattern("a", "s")
+	if err == nil {
+		t.Fatal("flag s is not supported, want an error")
+	}
+	if !strings.Contains(err.Error(), `"s"`) {
+		t.Errorf("error %q must name the flag as \"s\"", err)
+	}
+	if _, err := CompilePattern("a", "ix"); err == nil {
+		t.Error("one bad flag next to a good one must still be refused")
+	}
+}

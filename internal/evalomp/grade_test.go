@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func workspace(t *testing.T) Workspace {
@@ -232,8 +233,12 @@ func TestGradeJavaScriptPatterns(t *testing.T) {
 }
 
 func TestGradeMatchErrorNeverPasses(t *testing.T) {
-	// A pattern that backtracks forever hits the 2 second timeout. The grader
-	// must FAIL then, even when the grader wants "not found".
+	// Real runs wait 2 seconds. Here a short wait keeps the test fast.
+	oldTimeout := matchTimeout
+	matchTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { matchTimeout = oldTimeout })
+	// A pattern that backtracks forever hits the short timeout set above. The
+	// grader must FAIL then, even when it wants "not found".
 	g := Grader{Name: "g", Type: "regex", Pattern: `(a+)+$`, Match: "not_contains"}
 	w := Workspace{Dir: t.TempDir(), Result: Result{Reply: strings.Repeat("a", 60) + "!"}}
 	got := Grade(g, w, nil)

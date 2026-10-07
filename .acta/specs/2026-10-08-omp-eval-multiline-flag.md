@@ -4,6 +4,8 @@ closes: [DBT-0097.01]
 id: SPC-0107
 created: "2026-10-08 05:25:09"
 hash: z1gqg7h
+started: "2026-10-08 05:26:46"
+finished: "2026-10-08 05:27:42"
 ---
 # The omp eval runner honours the m flag and refuses flags it does not know
 

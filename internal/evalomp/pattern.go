@@ -2,7 +2,6 @@ package evalomp
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/dlclark/regexp2"
@@ -10,14 +9,23 @@ import (
 
 // matchTimeout stops a pattern that backtracks without end, so one bad
 // grader cannot hang the whole run.
-const matchTimeout = 2 * time.Second
+var matchTimeout = 2 * time.Second
 
 // CompilePattern reads a grader pattern the way JavaScript does. The suite
 // writes these patterns for JavaScript, and Go's own regexp has no lookaround.
 func CompilePattern(pattern, flags string) (*regexp2.Regexp, error) {
 	opts := regexp2.RegexOptions(regexp2.ECMAScript)
-	if strings.Contains(flags, "i") {
-		opts |= regexp2.IgnoreCase
+	// A flag we ignore would change what a grader means without a word, so
+	// every flag is applied or refused.
+	for _, f := range flags {
+		switch f {
+		case 'i':
+			opts |= regexp2.IgnoreCase
+		case 'm':
+			opts |= regexp2.Multiline
+		default:
+			return nil, fmt.Errorf("unsupported regex flag %q: only i and m are supported", string(f))
+		}
 	}
 	re, err := regexp2.Compile(pattern, opts)
 	if err != nil {
