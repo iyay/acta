@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/setup"
@@ -141,29 +144,53 @@ func TestNoBackgrounds(t *testing.T) {
 	}
 }
 
+func TestRailFrame(t *testing.T) {
+	if got := setup.RailOpen(); got != "┌  acta setup\n│\n" {
+		t.Errorf("open = %q", got)
+	}
+	if got := setup.RailLine("hello"); got != "│  hello\n" {
+		t.Errorf("line = %q", got)
+	}
+	if got := setup.RailProblem("bad"); got != "│  ▲ bad\n" {
+		t.Errorf("problem = %q", got)
+	}
+}
+
+// TestCollapsed checks an answered question: a ◇ title line, the answer on
+// the rail, and a spacer rail line so the next question starts clean.
+func TestCollapsed(t *testing.T) {
+	want := "◇  Style\n│  adhd\n│\n"
+	if got := setup.Collapsed("Style", "adhd"); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	if got := setup.Collapsed("Tone", ""); got != "◇  Tone\n│  (none)\n│\n" {
+		t.Errorf("empty answer must read (none), got %q", got)
+	}
+}
+
 func TestDoctorSummary(t *testing.T) {
-	t.Run("all ok prints one line with the count", func(t *testing.T) {
+	t.Run("all ok prints one rail line with the count", func(t *testing.T) {
 		rs := []doctor.Result{
 			{Name: "binary", Level: doctor.OK, Msg: "/tmp/acta"},
 			{Name: "harness", Level: doctor.OK, Msg: "claude enabled"},
 			{Name: "files", Level: doctor.OK, Msg: "every file has an id"},
 		}
-		if got := setup.DoctorSummary(rs); got != "✓ install checks ok (3)\n" {
+		if got := setup.DoctorSummary(rs); got != "│  ✓ install checks ok (3)\n│\n" {
 			t.Errorf("got %q", got)
 		}
 	})
 	t.Run("empty counts as ok", func(t *testing.T) {
-		if got := setup.DoctorSummary(nil); got != "✓ install checks ok (0)\n" {
+		if got := setup.DoctorSummary(nil); got != "│  ✓ install checks ok (0)\n│\n" {
 			t.Errorf("got %q", got)
 		}
 	})
-	t.Run("one failing shows only the not-ok results", func(t *testing.T) {
+	t.Run("one failing shows only the not-ok results as problem lines", func(t *testing.T) {
 		rs := []doctor.Result{
 			{Name: "binary", Level: doctor.OK, Msg: "/tmp/acta"},
 			{Name: "harness", Level: doctor.Warn, Msg: "omp link missing", Fix: "omp plugin install"},
 			{Name: "files", Level: doctor.Fail, Msg: "no id in plans/foo.md"},
 		}
-		want := "warn harness: omp link missing\nfix: omp plugin install\nfail files: no id in plans/foo.md\n"
+		want := "│  ▲ harness: omp link missing\n│  fix: omp plugin install\n│  ▲ files: no id in plans/foo.md\n│\n"
 		if got := setup.DoctorSummary(rs); got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
@@ -172,7 +199,7 @@ func TestDoctorSummary(t *testing.T) {
 
 func TestBlockLines(t *testing.T) {
 	got := setup.BlockLines([]string{"CLAUDE.md", "AGENTS.md"})
-	want := "acta block → CLAUDE.md\nacta block → AGENTS.md\n"
+	want := "│  acta block → CLAUDE.md\n│  acta block → AGENTS.md\n"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -184,38 +211,102 @@ func TestBlockLines(t *testing.T) {
 func TestInstallLines(t *testing.T) {
 	t.Run("ok install names the harness", func(t *testing.T) {
 		got := setup.InstallLine("claude", []string{"claude", "plugin", "add", "<dir>"}, nil)
-		if got != "✓ claude\n" {
+		if got != "│  ✓ claude\n" {
 			t.Errorf("got %q", got)
 		}
 	})
-	t.Run("failed install names the harness and the command", func(t *testing.T) {
+	t.Run("failed install is a problem line with the command", func(t *testing.T) {
 		got := setup.InstallLine("omp", []string{"omp", "plugin", "install", "<dir>"}, errors.New("exit 1"))
-		want := "✗ omp: omp plugin install <dir>\n"
+		want := "│  ▲ omp: omp plugin install <dir>\n"
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 }
 
-func TestSummaryBox(t *testing.T) {
-	t.Run("names config, installs, block files and next step", func(t *testing.T) {
-		box := setup.SummaryBox("/home/u/.acta/config.yaml",
-			[]string{"claude", "omp"}, []string{"CLAUDE.md"}, "run `acta --help`")
-		for _, want := range []string{
-			"config: /home/u/.acta/config.yaml", "installed: claude, omp",
-			"block: CLAUDE.md", "next: run `acta --help`",
-		} {
-			if !strings.Contains(box, want) {
-				t.Errorf("summary box misses %q:\n%s", want, box)
+// TestConfirmDotMarks renders the yes/no field with the setup theme: the
+// focused answer carries a filled dot and the other a hollow one, in both
+// focus states, so each screen reads like `● Yes  ○ No`.
+func TestConfirmDotMarks(t *testing.T) {
+	render := func(yes bool) string {
+		t.Helper()
+		hold := lipgloss.ColorProfile()
+		lipgloss.SetColorProfile(termenv.Ascii)
+		defer lipgloss.SetColorProfile(hold)
+
+		v := yes
+		c := huh.NewConfirm().Value(&v).WithTheme(setup.Theme())
+		renderField := func(focused bool) string {
+			if focused {
+				c.Focus()
+			} else {
+				c.Blur()
 			}
+			return c.View()
+		}
+		return renderField(true) + "\n" + renderField(false)
+	}
+	for _, yes := range []bool{true, false} {
+		got := render(yes)
+		if yes {
+			if !strings.Contains(got, "● Yes") {
+				t.Errorf("yes answer must read `● Yes`, got %q", got)
+			}
+			if !strings.Contains(got, "○ No") {
+				t.Errorf("no answer must read `○ No`, got %q", got)
+			}
+			continue
+		}
+		if !strings.Contains(got, "○ Yes") {
+			t.Errorf("yes answer must read `○ Yes`, got %q", got)
+		}
+		if !strings.Contains(got, "● No") {
+			t.Errorf("no answer must read `● No`, got %q", got)
+		}
+	}
+}
+
+func TestSummary(t *testing.T) {
+	t.Run("names config, installs, block files and next step, then closes the rail", func(t *testing.T) {
+		got := setup.SummaryBox("/home/u/.acta/config.yaml",
+			[]string{"claude", "omp"}, []string{"CLAUDE.md"}, "run `acta --help`")
+		want := "│\n◇  Setup done\n" +
+			"│  config: /home/u/.acta/config.yaml\n" +
+			"│  installed: claude, omp\n" +
+			"│  block: CLAUDE.md\n" +
+			"│  next: run `acta --help`\n" +
+			"└\n"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 	t.Run("empty installs and blocks still print a line each", func(t *testing.T) {
 		box := setup.SummaryBox("cfg", nil, nil, "next")
-		for _, want := range []string{"config: cfg", "installed: none", "block: none", "next: next"} {
+		for _, want := range []string{"│  config: cfg", "│  installed: none", "│  block: none", "│  next: next"} {
 			if !strings.Contains(box, want) {
-				t.Errorf("summary box misses %q:\n%s", want, box)
+				t.Errorf("summary misses %q:\n%s", want, box)
 			}
 		}
 	})
+	t.Run("a missing config path prints a clear word, not an empty value", func(t *testing.T) {
+		box := setup.SummaryBox("", []string{"claude"}, []string{"CLAUDE.md"}, "next")
+		if !strings.Contains(box, "config: (unknown)") {
+			t.Errorf("summary must name the missing path, got:\n%s", box)
+		}
+	})
+}
+
+// TestActiveDescriptionDim checks the help line is dim on the rail, like every
+// other rail line. Colors are forced on, since tests run with no terminal.
+func TestActiveDescriptionDim(t *testing.T) {
+	hold := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	defer lipgloss.SetColorProfile(hold)
+	got := setup.ActiveDescription("help")
+	if !strings.HasPrefix(got, "\x1b[") {
+		t.Errorf("rail glyph is not styled: %q", got)
+	}
+	if plain := ansi.Strip(got); plain != "│  help" {
+		t.Errorf("plain text = %q", plain)
+	}
 }
