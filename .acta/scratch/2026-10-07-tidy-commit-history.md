@@ -36,4 +36,13 @@ Round 1 (all recommended):
 - Q4: chore commits on main stay; at the next land, unpushed chore commits fold into the first commit that lands.
 - Q5: land remaps old hashes in the branch's planning files to the new ones, in the last commit.
 
+### 2026-10-07
+
+Round 2 (all recommended):
+- Q6: no upstream: fold only chore commits after the last land; land records its tip in refs/acta/last-land. With upstream: only after @{upstream}.
+- Q7: new Go subcommand acta tidy <base> <branch>; land skill calls it.
+- Q8: review fix-ups fold into the last task commit.
+- Q9: subject, body, trailers and author stay as written.
+- Q10: a clashing replay folds into the commit before it; a final tree that differs stops land and leaves the branch untouched; never fall back to a plain merge.
+
 ## Open questions
