@@ -15,3 +15,6 @@ parent: plans/2026-10-07-tidy-commit-history
 - [ ] (low) git rev-parse --short=7 prints more than 7 chars when 7 is ambiguous, while acta tidy prints exactly 7, so land stops when it need not. Compare by prefix or print the full sha.
 - [ ] (low) Land skill full-mode step 8 says fixed_in takes the last task commit, tidy step 4 says the tidy tip; make the two lines say the same thing.
 - [ ] (low) The land skill is at 9094 of 9100 bytes; the next edit must cut text or raise the cap.
+- [ ] (medium) tidy.md names step numbers from two files ("step 1", "step 4", "Steps 9 and 10" mean SKILL.md; "step 2", "the commit from 4" mean tidy.md); say "SKILL.md step N" so an agent reading only tidy.md does not guess.
+- [ ] (low) TestLandTidyPath does not pin --short=7, "Pushed commits stay", chore(...), "red stops the land" or the last-land update-ref step.
+- [ ] (low) In tidy mode the landing report's wiki diff <merge-sha>^1..<merge-sha> sees only the last replayed commit; diff from the old parent tip instead.
