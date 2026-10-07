@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-10-07-tidy-commit-history
 depth: minimal
-closes: [SPC-0105]
+closes: [SPC-0105, DBT-0096.01]
 id: PLN-0114
 created: "2026-10-07 19:28:43"
 hash: uyo6akt
