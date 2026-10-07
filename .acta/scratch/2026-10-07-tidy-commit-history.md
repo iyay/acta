@@ -27,4 +27,13 @@ Leaning: tidy the branch at land time, not change auto-commit at the source.
 
 ## Log
 
+### 2026-10-07
+
+Round 1 (all recommended):
+- Q1: setting in acta config, default tidy (tidy | full).
+- Q2: tidy at acta:land, before the branch reaches its parent; auto-commit stays as is.
+- Q3: linear, no merge commit; fixed_in points at the last task commit.
+- Q4: chore commits on main stay; at the next land, unpushed chore commits fold into the first commit that lands.
+- Q5: land remaps old hashes in the branch's planning files to the new ones, in the last commit.
+
 ## Open questions
