@@ -60,9 +60,9 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** `acta tidy <base> <branch> [--onto <ref>]` prints exactly `tidy: <old> commits -> <new>, tree ok` and exits 0 on success; on any error (bad args, unknown ref, old git, tree mismatch) it exits non-zero, prints why on stderr, and leaves every ref as it was. List each exit path checked.
 
-- [ ] Red: CLI tests on a temp repo for success output, missing args, unknown ref, and a mismatch. Run `scripts/test ./internal/cli/ -run Tidy` and watch it fail.
-- [ ] Green: parse args, resolve the planning root the way other commands do (`internal/config`), call `tidy.Run`, add `case "tidy":` to `cli.go` and a line in its usage text.
-- [ ] Commit: `feat(cli): acta tidy command (SPC-0105)`
+- [x] Red: CLI tests on a temp repo for success output, missing args, unknown ref, and a mismatch. Run `scripts/test ./internal/cli/ -run Tidy` and watch it fail.
+- [x] Green: parse args, resolve the planning root the way other commands do (`internal/config`), call `tidy.Run`, add `case "tidy":` to `cli.go` and a line in its usage text.
+- [x] Commit: `feat(cli): acta tidy command (SPC-0105)`
 
 ### Task 04: setup asks commit_history
 
