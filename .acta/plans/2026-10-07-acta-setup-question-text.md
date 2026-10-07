@@ -5,6 +5,8 @@ closes: [SPC-0102]
 id: PLN-0111
 created: "2026-10-07 12:59:29"
 hash: w9waw9o
+started: "2026-10-07 12:59:53"
+finished: "2026-10-07 13:01:22"
 ---
 # acta setup question text Implementation Plan
 
@@ -32,9 +34,9 @@ hash: w9waw9o
 
 **verify:** Every title, description (or no description line) and option note matches the spec table on every env (with and without `HERDR_ENV=1`, with and without harnesses); no text the wizard prints matches the whole words I, me or my; the answered line shows the bare option value, not its note. List every question and env checked.
 
-- [ ] **Test:** a table test of all 8 questions against the spec, a no-"I" scan of every title, description and option label, and an answered-line check; it fails on today's text.
-- [ ] **Code:** replace the titles, descriptions and option labels in `form.go`; drop the description line when the spec says none.
-- [ ] **Commit:** `feat(setup): short titles and useful help text`.
+- [x] **Test:** a table test of all 8 questions against the spec, a no-"I" scan of every title, description and option label, and an answered-line check; it fails on today's text.
+- [x] **Code:** replace the titles, descriptions and option labels in `form.go`; drop the description line when the spec says none.
+- [x] **Commit:** `feat(setup): short titles and useful help text`.
 
 ### Task 02: version bump
 
@@ -42,6 +44,13 @@ hash: w9waw9o
 
 **verify:** All three files hold 0.1.33 and `internal/plugincheck` accepts it.
 
-- [ ] **Test:** the existing version check in `internal/plugincheck`.
-- [ ] **Code:** set 0.1.33 in all three files.
-- [ ] **Commit:** `chore(plugin): bump version`.
+- [x] **Test:** the existing version check in `internal/plugincheck`.
+- [x] **Code:** set 0.1.33 in all three files.
+- [x] **Commit:** `chore(plugin): bump version`.
+
+## Review notes
+
+- `internal/setup/export_test.go` is the repo's first export_test file; it exposes `AnsweredLines` to the external test package only.
+- `pinHome` in `form_text_test.go` repeats the HOME/PM_VOICE_FILE/TMPDIR setup other setup tests do inline; one shared helper would be a later cleanup.
+- `TestFormAnsweredLine` swaps the global lipgloss color profile; safe while no setup test runs with `t.Parallel`.
+- No eval run: this branch touches no file under plugin/skills or plugin/hooks.
