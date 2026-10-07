@@ -53,24 +53,13 @@ func TestPlan(t *testing.T) {
 		},
 		{
 			name: "full tty run with both files writes two blocks",
-			a:    setup.Answers{User: u, Install: map[string]bool{"claude": true, "omp": true}, BlockFile: "CLAUDE.md"},
+			a:    setup.Answers{User: u, Install: map[string]bool{"claude": true, "omp": true}},
 			e: setup.Env{TTY: true, Harnesses: []string{"claude", "omp"},
 				PluginDir: "/p", RepoRoot: "/r", HasClaudeMD: true, HasAgentsMD: true, Current: other},
 			want: []setup.Action{
 				{Kind: "config", User: u},
 				{Kind: "install", Harness: "claude", Argv: claudeInstall},
 				{Kind: "install", Harness: "omp", Argv: ompInstall},
-				{Kind: "block", Path: "/r/CLAUDE.md"},
-				{Kind: "block", Path: "/r/AGENTS.md"},
-			},
-		},
-		{
-			name: "blockfile does not decide the block paths",
-			a:    setup.Answers{User: u, BlockFile: "AGENTS.md"},
-			e: setup.Env{TTY: true, RepoRoot: "/r",
-				HasClaudeMD: true, HasAgentsMD: true, Current: other},
-			want: []setup.Action{
-				{Kind: "config", User: u},
 				{Kind: "block", Path: "/r/CLAUDE.md"},
 				{Kind: "block", Path: "/r/AGENTS.md"},
 			},
@@ -185,7 +174,6 @@ func TestPlan(t *testing.T) {
 
 // TestPlanMatrix covers every combination of TTY, harness set, plugin dir,
 // repo presence and CLAUDE.md/AGENTS.md presence: 2*4*2*2*4 = 128 cases.
-// BlockFile is fixed to AGENTS.md throughout to prove it never decides.
 func TestPlanMatrix(t *testing.T) {
 	u := testUser()
 	harnessSets := map[string][]string{
@@ -209,8 +197,7 @@ func TestPlanMatrix(t *testing.T) {
 						name := strings.Join([]string{b(tty), hName, d(dir), r(repo), fName}, "/")
 						t.Run(name, func(t *testing.T) {
 							a := setup.Answers{User: u,
-								Install:   map[string]bool{"claude": true, "omp": true},
-								BlockFile: "AGENTS.md"}
+								Install: map[string]bool{"claude": true, "omp": true}}
 							e := setup.Env{TTY: tty, Harnesses: hs,
 								PluginDir: dir, RepoRoot: repo,
 								HasClaudeMD: fs[0], HasAgentsMD: fs[1]}

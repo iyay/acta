@@ -95,6 +95,27 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** When CLAUDE.md or AGENTS.md is a symlink, `WriteBlock` never replaces the link: after any number of runs the link is still a link, its target holds the block, and every byte of the target outside the marker pair is unchanged. This holds for a link to a file in the same dir, a link to a file in another dir, a chain of two links, and the case where CLAUDE.md links to AGENTS.md and the block is written to both names. The temp file is made in the target's dir. A failed write still leaves the target whole. List every link shape tested.
 
-- [ ] **Test:** add symlink cases to `TestWriteBlock` (the shapes above, each run twice); they fail on the current code because the link becomes a plain file.
-- [ ] **Code:** resolve the path with `filepath.EvalSymlinks` before reading and swapping (keep the path as given when the file does not exist yet), create the temp file in the resolved file's dir, and say in the doc comment that only the mode is kept, not owner, group or extended attributes.
-- [ ] **Run:** `scripts/test ./internal/setup/` passes and `gofmt -l internal/ cmd/` prints nothing.
+- [x] **Test:** add symlink cases to `TestWriteBlock` (the shapes above, each run twice); they fail on the current code because the link becomes a plain file.
+- [x] **Code:** resolve the path with `filepath.EvalSymlinks` before reading and swapping (keep the path as given when the file does not exist yet), create the temp file in the resolved file's dir, and say in the doc comment that only the mode is kept, not owner, group or extended attributes.
+- [x] **Run:** `scripts/test ./internal/setup/` passes and `gofmt -l internal/ cmd/` prints nothing.
+
+## Polish
+
+### Task 07: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Remove the dead `Answers.BlockFile` field (`internal/setup/plan.go:36-41`) and every use of it in `internal/setup/plan_test.go`; the block is mandatory, so nothing reads it.
+- [x] Commit: `polish: review notes for PLN-0109`
+
+## Review notes
+
+- `showBlock` in `internal/cli/setup_cmd.go` repeats Plan's file choice; it could print the paths from Plan's block actions so the two cannot drift.
+- The deferred `os.Remove(tmpName)` in `internal/setup/block.go` also runs after a good rename and gets a harmless ENOENT.
+- A `Stat` error after a good read falls back to mode 0644 without saying so in a comment.
+- The new file keeps only the mode, not owner, group, xattrs or ACLs; the doc comment says so.
+- A failed install drops the error itself and prints only the command; the harness's own stderr still shows.
+- `--plugin-dir` starting with `-` would read as a flag to claude or omp; low risk, the user typed it.
+- `setup_cmd_test.go` compares `RepoRoot` to a temp dir; it could flake where TMPDIR is a symlinked path.
+- The failed-write test uses a 0555 folder, which does not fail when run as root.
+- `go.mod` moved `alecthomas/chroma/v2` from indirect to direct; only `internal/tui` uses it and that predates this branch.

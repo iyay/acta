@@ -263,6 +263,185 @@ func TestWriteBlock(t *testing.T) {
 			}
 		}
 	})
+	t.Run("symlink to a file in the same dir keeps the link", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "TARGET.md")
+		link := filepath.Join(dir, "CLAUDE.md")
+		old := "# My project\nSome notes.\n"
+		write(t, target, old)
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		// Two runs: the link must survive every rewrite.
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(link); err != nil {
+				t.Fatal(err)
+			}
+			wantLink(t, link)
+			if got := read(t, target); got != old+wantBlock {
+				t.Fatalf("run %d: target = %q, want old bytes then the block", run, got)
+			}
+		}
+	})
+
+	t.Run("symlink to a file in another dir keeps the link", func(t *testing.T) {
+		base := t.TempDir()
+		realDir := filepath.Join(base, "real")
+		linkDir := filepath.Join(base, "links")
+		if err := os.Mkdir(realDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(linkDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(realDir, "NOTES.md")
+		link := filepath.Join(linkDir, "CLAUDE.md")
+		old := "# Notes\n"
+		write(t, target, old)
+		// A relative link: the target lives one folder over.
+		if err := os.Symlink(filepath.Join("..", "real", "NOTES.md"), link); err != nil {
+			t.Fatal(err)
+		}
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(link); err != nil {
+				t.Fatal(err)
+			}
+			wantLink(t, link)
+			if got := read(t, target); got != old+wantBlock {
+				t.Fatalf("run %d: target = %q, want old bytes then the block", run, got)
+			}
+		}
+		// No temp file may leak into either folder.
+		for _, dir := range []string{realDir, linkDir} {
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range entries {
+				if strings.HasPrefix(e.Name(), ".acta-block-") {
+					t.Fatalf("leftover temp file %s in %s", e.Name(), dir)
+				}
+			}
+		}
+	})
+
+	t.Run("chained symlinks keep every link", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "REAL.md")
+		mid := filepath.Join(dir, "MID.md")
+		link := filepath.Join(dir, "CLAUDE.md")
+		old := "# Real\n"
+		write(t, target, old)
+		if err := os.Symlink(target, mid); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(mid, link); err != nil {
+			t.Fatal(err)
+		}
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(link); err != nil {
+				t.Fatal(err)
+			}
+			wantLink(t, link)
+			wantLink(t, mid)
+			if got := read(t, target); got != old+wantBlock {
+				t.Fatalf("run %d: target = %q, want old bytes then the block", run, got)
+			}
+		}
+	})
+
+	t.Run("CLAUDE.md linked to AGENTS.md takes writes to both names", func(t *testing.T) {
+		dir := t.TempDir()
+		agents := filepath.Join(dir, "AGENTS.md")
+		claude := filepath.Join(dir, "CLAUDE.md")
+		old := "# Agents\n"
+		write(t, agents, old)
+		if err := os.Symlink(agents, claude); err != nil {
+			t.Fatal(err)
+		}
+		// Both names point at one file: write through each name twice.
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(claude); err != nil {
+				t.Fatal(err)
+			}
+			if err := setup.WriteBlock(agents); err != nil {
+				t.Fatal(err)
+			}
+		}
+		wantLink(t, claude)
+		if got := read(t, agents); got != old+wantBlock {
+			t.Fatalf("AGENTS.md = %q, want old bytes then one block", got)
+		}
+		if got := read(t, claude); got != old+wantBlock {
+			t.Fatalf("CLAUDE.md = %q, want old bytes then one block", got)
+		}
+		if n := strings.Count(read(t, agents), "<!-- acta:begin -->"); n != 1 {
+			t.Fatalf("target holds %d begin markers, want exactly 1", n)
+		}
+	})
+
+	t.Run("failed write through a symlink leaves the target whole", func(t *testing.T) {
+		base := t.TempDir()
+		realDir := filepath.Join(base, "real")
+		linkDir := filepath.Join(base, "links")
+		if err := os.Mkdir(realDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(linkDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(realDir, "CLAUDE.md")
+		link := filepath.Join(linkDir, "CLAUDE.md")
+		old := "# My project\n"
+		write(t, target, old)
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		// A locked target folder stops the temp file, so the rename never runs.
+		if err := os.Chmod(realDir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(realDir, 0o755)
+		if err := setup.WriteBlock(link); err == nil {
+			t.Fatalf("WriteBlock with a read-only target folder = nil, want an error")
+		}
+		wantLink(t, link)
+		if got := read(t, target); got != old {
+			t.Fatalf("after a failed write = %q, want the old bytes untouched", got)
+		}
+	})
+
+	t.Run("symlink write lands its temp file in the target dir", func(t *testing.T) {
+		base := t.TempDir()
+		realDir := filepath.Join(base, "real")
+		linkDir := filepath.Join(base, "links")
+		if err := os.Mkdir(realDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(linkDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(realDir, "NOTES.md")
+		link := filepath.Join(linkDir, "CLAUDE.md")
+		old := "# Notes\n"
+		write(t, target, old)
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		// A locked link folder must not stop the write: the temp file
+		// belongs in the target's folder, not the link's.
+		if err := os.Chmod(linkDir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(linkDir, 0o755)
+		if err := setup.WriteBlock(link); err != nil {
+			t.Fatalf("WriteBlock with a read-only link folder = %v, want nil", err)
+		}
+		wantLink(t, link)
+		if got := read(t, target); got != old+wantBlock {
+			t.Fatalf("target = %q, want old bytes then the block", got)
+		}
+	})
 }
 
 func write(t *testing.T, path, content string) {
@@ -279,4 +458,15 @@ func read(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+func wantLink(t *testing.T, path string) {
+	t.Helper()
+	fi, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("%s is no longer a symlink after WriteBlock", path)
+	}
 }

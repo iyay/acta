@@ -35,18 +35,28 @@ const Block = "<!-- acta:begin -->\n" +
 // grows a stray carriage return however often the wizard rewrites it.
 // Every write lands through a temp file in the same folder plus a rename,
 // so a failed write leaves the old file whole.
+// A link never turns into a plain file: the path is resolved first, so the
+// swap lands on the file the link points to and the link itself is left
+// alone, with the temp file made in that file's own folder.
+// Only the mode bits carry over to the new file: owner, group and xattrs
+// stay as the fresh temp file leaves them.
 func WriteBlock(path string) error {
-	raw, err := os.ReadFile(path)
+	// A path with no file behind it keeps its own name.
+	real := path
+	if dst, err := filepath.EvalSymlinks(path); err == nil {
+		real = dst
+	}
+	raw, err := os.ReadFile(real)
 	perm := os.FileMode(0o644)
 	if err == nil {
 		// An existing file keeps its own mode: WriteFile only used its
 		// perm for new files, so the rename path must do the same.
-		if fi, statErr := os.Stat(path); statErr == nil {
+		if fi, statErr := os.Stat(real); statErr == nil {
 			perm = fi.Mode().Perm()
 		}
 	} else {
 		if errors.Is(err, os.ErrNotExist) {
-			return swapFile(path, []byte(Block), perm)
+			return swapFile(real, []byte(Block), perm)
 		}
 		return err
 	}
@@ -64,7 +74,7 @@ func WriteBlock(path string) error {
 		if old != "" && !strings.HasSuffix(old, "\n") {
 			sep = eol
 		}
-		return swapFile(path, []byte(old+sep+block), perm)
+		return swapFile(real, []byte(old+sep+block), perm)
 	case begin < 0:
 		return fmt.Errorf("setup: %s has an end marker without a begin marker", path)
 	case end < 0:
@@ -79,7 +89,7 @@ func WriteBlock(path string) error {
 	tail := old[end+len(endMarker):]
 	tail = strings.TrimPrefix(tail, "\r\n")
 	tail = strings.TrimPrefix(tail, "\n")
-	return swapFile(path, []byte(old[:begin]+block+tail), perm)
+	return swapFile(real, []byte(old[:begin]+block+tail), perm)
 }
 
 // blockText returns Block with the file's own line endings. LF files keep
