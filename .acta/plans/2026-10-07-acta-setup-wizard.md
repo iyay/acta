@@ -5,6 +5,8 @@ closes: [SPC-0100]
 id: PLN-0109
 created: "2026-10-07 09:34:22"
 hash: debv8d3
+started: "2026-10-07 09:38:02"
+finished: "2026-10-07 10:19:33"
 ---
 # acta setup wizard Implementation Plan
 
@@ -39,9 +41,9 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** For every combination of env (TTY or not, `claude` / `omp` found or not, plugin dir given or not, in a git repo or not, CLAUDE.md / AGENTS.md: both, one, none) `Plan` returns the action list the spec's Flow section names, and with no TTY it returns no write or install action. `WriteBlock` changes only the bytes between `<!-- acta:begin -->` and `<!-- acta:end -->` on a re-run, appends the block when the markers are missing, and creates a file holding only the block when the file is missing. The block text equals, byte for byte, the block in `git show main:plugin/skills/setup/SKILL.md` as of this plan (Task 03 removes it from the skill in the same wave). List every env combination and file state tested.
 
-- [ ] **Test:** table-driven `TestPlan` over the env combinations above and `TestWriteBlock` over new file, file with no markers, file with markers and text around them; they fail because the package does not exist.
-- [ ] **Code:** `type Env struct{ TTY bool; Harnesses []string; PluginDir, RepoRoot string; HasClaudeMD, HasAgentsMD bool; Current config.User }`, `type Answers struct{ User config.User; Install map[string]bool; BlockFile string }`, `type Action struct{ Kind string /* "config", "install", "print", "block" */; Harness, Path string; Argv [][]string; User config.User }`, `func Plan(a Answers, e Env) []Action`, plus `const Block` and `func WriteBlock(path string) error`.
-- [ ] **Run:** `scripts/test ./internal/setup/` passes.
+- [x] **Test:** table-driven `TestPlan` over the env combinations above and `TestWriteBlock` over new file, file with no markers, file with markers and text around them; they fail because the package does not exist.
+- [x] **Code:** `type Env struct{ TTY bool; Harnesses []string; PluginDir, RepoRoot string; HasClaudeMD, HasAgentsMD bool; Current config.User }`, `type Answers struct{ User config.User; Install map[string]bool; BlockFile string }`, `type Action struct{ Kind string /* "config", "install", "print", "block" */; Harness, Path string; Argv [][]string; User config.User }`, `func Plan(a Answers, e Env) []Action`, plus `const Block` and `func WriteBlock(path string) error`.
+- [x] **Run:** `scripts/test ./internal/setup/` passes.
 
 ### Task 02: huh form, runner and the `acta setup` command
 
@@ -49,9 +51,9 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** No path of `acta setup` writes a file or runs a harness command when stdin or stdout is not a TTY; it exits non-zero with a message naming `acta config set`. Every action from `Plan` is carried out by the runner: config through `config.SaveUser` after `Validate`, block through `WriteBlock`, installs through the runner interface, and a failed install prints its command and carries on. Form defaults come from the current config. List every action kind and the no-TTY paths tested.
 
-- [ ] **Test:** `TestRunActions` with a fake runner (success, one failing install) and a temp HOME; `TestSetupNoTTY` calls `cli.Run([]string{"setup"}, ...)` with `stdinIsTTY=false` and checks the exit code, the message and that no config file appeared. Both fail first.
-- [ ] **Code:** `type Runner interface{ Run(argv []string) error }`, `func Apply(actions []Action, r Runner, out io.Writer) error`, `func Ask(e Env) (Answers, error)` built on `huh` with one field per group, `cmdSetup(args, stdinIsTTY, stdout, stderr)` that builds `Env` (`exec.LookPath`, `HERDR_ENV`, git root, `--plugin-dir`), runs `doctor.Run` and prints its results, then `Ask`, `Plan`, `Apply` and a summary.
-- [ ] **Run:** `scripts/test ./internal/setup/ ./internal/cli/` passes.
+- [x] **Test:** `TestRunActions` with a fake runner (success, one failing install) and a temp HOME; `TestSetupNoTTY` calls `cli.Run([]string{"setup"}, ...)` with `stdinIsTTY=false` and checks the exit code, the message and that no config file appeared. Both fail first.
+- [x] **Code:** `type Runner interface{ Run(argv []string) error }`, `func Apply(actions []Action, r Runner, out io.Writer) error`, `func Ask(e Env) (Answers, error)` built on `huh` with one field per group, `cmdSetup(args, stdinIsTTY, stdout, stderr)` that builds `Env` (`exec.LookPath`, `HERDR_ENV`, git root, `--plugin-dir`), runs `doctor.Run` and prints its results, then `Ask`, `Plan`, `Apply` and a summary.
+- [x] **Run:** `scripts/test ./internal/setup/ ./internal/cli/` passes.
 
 ### Task 03: thin acta:setup skill
 
@@ -59,9 +61,9 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** The skill tells the agent to ask the user to run `! acta setup` in their terminal, and to fall back to `acta config set` flags when the user cannot. It no longer holds the block text or the per-question rules that now live in Go. The plugincheck rule for the skill matches the new text and still bans `superpowers:`. List every phrase dropped from and added to the `Must` list.
 
-- [ ] **Test:** update `TestSkillSetup` `Must` to the new phrases (`acta setup`, `--plugin-dir`, `acta config set`, `acta doctor`) and lower `MaxLines`; it fails against the old skill.
-- [ ] **Code:** rewrite `plugin/skills/setup/SKILL.md` to the thin version.
-- [ ] **Run:** `scripts/test ./internal/plugincheck/` passes.
+- [x] **Test:** update `TestSkillSetup` `Must` to the new phrases (`acta setup`, `--plugin-dir`, `acta config set`, `acta doctor`) and lower `MaxLines`; it fails against the old skill.
+- [x] **Code:** rewrite `plugin/skills/setup/SKILL.md` to the thin version.
+- [x] **Run:** `scripts/test ./internal/plugincheck/` passes.
 
 ### Task 04: version bump
 
@@ -69,6 +71,18 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** All three files hold the same version, one patch above 0.1.30, and `internal/plugincheck` accepts it.
 
-- [ ] **Test:** the existing version check in `internal/plugincheck` is the test.
-- [ ] **Code:** set the version to `0.1.31` in all three files.
-- [ ] **Run:** `scripts/test ./internal/plugincheck/` passes.
+- [x] **Test:** the existing version check in `internal/plugincheck` is the test.
+- [x] **Code:** set the version to `0.1.31` in all three files.
+- [x] **Run:** `scripts/test ./internal/plugincheck/` passes.
+
+## Fix round 1
+
+### Task 05: review round 1 fixes
+
+**Files:** `internal/setup/block.go`, `internal/setup/block_test.go`, `internal/setup/form.go`, `internal/setup/plan.go`.
+
+**verify:** No run of `WriteBlock` ever loses or changes a byte outside a complete marker pair, on any file state: unpaired begin with no end, end with no begin, end before begin, two begin markers, CRLF line endings, and a failed write (the old file stays whole because the new bytes go to a temp file in the same dir, then rename). An unpaired or out-of-order marker returns an error and leaves the file untouched. A CRLF file gets no stray `\r` on any number of re-runs. `gofmt -l internal/ cmd/` prints nothing. List every file state tested.
+
+- [ ] **Test:** add `TestWriteBlock` cases for each file state above, each running `WriteBlock` twice; they fail on the current code (the unpaired-begin case loses the user text on run 2).
+- [ ] **Code:** refuse unpaired or out-of-order markers with an error; keep the line ending of the existing file; write through a temp file plus `os.Rename`; run `gofmt -w` on `internal/setup/`. All in one commit.
+- [ ] **Run:** `scripts/test ./internal/setup/` passes and `gofmt -l internal/ cmd/` prints nothing.
