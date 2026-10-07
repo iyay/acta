@@ -2,7 +2,9 @@ package setup
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,32 +26,94 @@ const Block = "<!-- acta:begin -->\n" +
 
 // WriteBlock writes Block to path. A missing file ends up holding only the
 // block. A file without the markers keeps its bytes and gains the block at
-// the end. A file with the markers keeps everything outside them: only the
-// bytes between the two markers are replaced, so a re-run changes nothing
-// else.
+// the end. A file with one full marker pair keeps everything outside it:
+// only the bytes between the two markers are replaced, so a re-run changes
+// nothing else. A file with half a pair (a begin without an end, an end
+// without a begin, the end before the begin, or a repeated marker) is left
+// alone and an error comes back, so a broken file never loses user text.
+// The block follows the file's own line endings, so a CRLF file never
+// grows a stray carriage return however often the wizard rewrites it.
+// Every write lands through a temp file in the same folder plus a rename,
+// so a failed write leaves the old file whole.
 func WriteBlock(path string) error {
 	raw, err := os.ReadFile(path)
-	if err != nil {
+	perm := os.FileMode(0o644)
+	if err == nil {
+		// An existing file keeps its own mode: WriteFile only used its
+		// perm for new files, so the rename path must do the same.
+		if fi, statErr := os.Stat(path); statErr == nil {
+			perm = fi.Mode().Perm()
+		}
+	} else {
 		if errors.Is(err, os.ErrNotExist) {
-			return os.WriteFile(path, []byte(Block), 0o644)
+			return swapFile(path, []byte(Block), perm)
 		}
 		return err
 	}
 	old := string(raw)
-	begin := strings.Index(old, beginMarker)
-	end := -1
-	if begin >= 0 {
-		if i := strings.Index(old[begin:], endMarker); i >= 0 {
-			end = begin + i
-		}
+	eol := "\n"
+	if strings.Contains(old, "\r\n") {
+		eol = "\r\n"
 	}
-	if begin < 0 || end < 0 {
+	block := blockText(eol)
+	begin := strings.Index(old, beginMarker)
+	end := strings.Index(old, endMarker)
+	switch {
+	case begin < 0 && end < 0:
+		sep := ""
 		if old != "" && !strings.HasSuffix(old, "\n") {
-			old += "\n"
+			sep = eol
 		}
-		return os.WriteFile(path, []byte(old+Block), 0o644)
+		return swapFile(path, []byte(old+sep+block), perm)
+	case begin < 0:
+		return fmt.Errorf("setup: %s has an end marker without a begin marker", path)
+	case end < 0:
+		return fmt.Errorf("setup: %s has a begin marker without an end marker", path)
+	case end < begin:
+		return fmt.Errorf("setup: %s has its end marker before its begin marker", path)
+	case strings.Contains(old[begin+len(beginMarker):], beginMarker):
+		return fmt.Errorf("setup: %s has more than one begin marker", path)
+	case strings.Contains(old[end+len(endMarker):], endMarker):
+		return fmt.Errorf("setup: %s has more than one end marker", path)
 	}
 	tail := old[end+len(endMarker):]
+	tail = strings.TrimPrefix(tail, "\r\n")
 	tail = strings.TrimPrefix(tail, "\n")
-	return os.WriteFile(path, []byte(old[:begin]+Block+tail), 0o644)
+	return swapFile(path, []byte(old[:begin]+block+tail), perm)
+}
+
+// blockText returns Block with the file's own line endings. LF files keep
+// the block as is; CRLF files get a CRLF copy so no lone carriage return
+// ever lands, however often the wizard rewrites.
+func blockText(eol string) string {
+	if eol == "\r\n" {
+		return strings.ReplaceAll(Block, "\n", "\r\n")
+	}
+	return Block
+}
+
+// swapFile lands bytes through a temp file in the same folder plus a
+// rename. A failed write leaves the old file whole because the new bytes
+// never touch it; the rename is the only move, and the temp file is
+// cleaned up on the way out.
+func swapFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".acta-block-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }

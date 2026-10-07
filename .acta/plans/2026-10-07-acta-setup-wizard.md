@@ -83,6 +83,18 @@ Task 02 builds on the `internal/setup` API from Task 01. Tasks 03 and 04 touch o
 
 **verify:** No run of `WriteBlock` ever loses or changes a byte outside a complete marker pair, on any file state: unpaired begin with no end, end with no begin, end before begin, two begin markers, CRLF line endings, and a failed write (the old file stays whole because the new bytes go to a temp file in the same dir, then rename). An unpaired or out-of-order marker returns an error and leaves the file untouched. A CRLF file gets no stray `\r` on any number of re-runs. `gofmt -l internal/ cmd/` prints nothing. List every file state tested.
 
-- [ ] **Test:** add `TestWriteBlock` cases for each file state above, each running `WriteBlock` twice; they fail on the current code (the unpaired-begin case loses the user text on run 2).
-- [ ] **Code:** refuse unpaired or out-of-order markers with an error; keep the line ending of the existing file; write through a temp file plus `os.Rename`; run `gofmt -w` on `internal/setup/`. All in one commit.
+- [x] **Test:** add `TestWriteBlock` cases for each file state above, each running `WriteBlock` twice; they fail on the current code (the unpaired-begin case loses the user text on run 2).
+- [x] **Code:** refuse unpaired or out-of-order markers with an error; keep the line ending of the existing file; write through a temp file plus `os.Rename`; run `gofmt -w` on `internal/setup/`. All in one commit.
+- [x] **Run:** `scripts/test ./internal/setup/` passes and `gofmt -l internal/ cmd/` prints nothing.
+
+## Fix round 2
+
+### Task 06: write the block through symlinks
+
+**Files:** `internal/setup/block.go`, `internal/setup/block_test.go`.
+
+**verify:** When CLAUDE.md or AGENTS.md is a symlink, `WriteBlock` never replaces the link: after any number of runs the link is still a link, its target holds the block, and every byte of the target outside the marker pair is unchanged. This holds for a link to a file in the same dir, a link to a file in another dir, a chain of two links, and the case where CLAUDE.md links to AGENTS.md and the block is written to both names. The temp file is made in the target's dir. A failed write still leaves the target whole. List every link shape tested.
+
+- [ ] **Test:** add symlink cases to `TestWriteBlock` (the shapes above, each run twice); they fail on the current code because the link becomes a plain file.
+- [ ] **Code:** resolve the path with `filepath.EvalSymlinks` before reading and swapping (keep the path as given when the file does not exist yet), create the temp file in the resolved file's dir, and say in the doc comment that only the mode is kept, not owner, group or extended attributes.
 - [ ] **Run:** `scripts/test ./internal/setup/` passes and `gofmt -l internal/ cmd/` prints nothing.

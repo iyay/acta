@@ -117,6 +117,152 @@ func TestWriteBlock(t *testing.T) {
 			t.Fatalf("block-only file = %q, want it unchanged", got)
 		}
 	})
+	t.Run("begin without end errors and leaves the file alone", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		old := "# My project\nKeep this.\n<!-- acta:begin -->\nStale text.\n"
+		write(t, path, old)
+		// Both runs must refuse: the old code ate "Stale text." on run 2.
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(path); err == nil {
+				t.Fatalf("run %d: WriteBlock with a begin but no end = nil, want an error", run)
+			}
+			if got := read(t, path); got != old {
+				t.Fatalf("run %d: file = %q, want the old bytes untouched", run, got)
+			}
+		}
+	})
+
+	t.Run("end without begin errors and leaves the file alone", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		old := "# My project\nKeep this.\n<!-- acta:end -->\n"
+		write(t, path, old)
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(path); err == nil {
+				t.Fatalf("run %d: WriteBlock with an end but no begin = nil, want an error", run)
+			}
+			if got := read(t, path); got != old {
+				t.Fatalf("run %d: file = %q, want the old bytes untouched", run, got)
+			}
+		}
+	})
+
+	t.Run("end before begin errors and leaves the file alone", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		old := "<!-- acta:end -->\nMiddle.\n<!-- acta:begin -->\n"
+		write(t, path, old)
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(path); err == nil {
+				t.Fatalf("run %d: WriteBlock with the end before the begin = nil, want an error", run)
+			}
+			if got := read(t, path); got != old {
+				t.Fatalf("run %d: file = %q, want the old bytes untouched", run, got)
+			}
+		}
+	})
+
+	t.Run("two begins error and leave the file alone", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		old := "# My project\n<!-- acta:begin -->\nFirst.\n<!-- acta:begin -->\nSecond.\n<!-- acta:end -->\nTail.\n"
+		write(t, path, old)
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(path); err == nil {
+				t.Fatalf("run %d: WriteBlock with two begins = nil, want an error", run)
+			}
+			if got := read(t, path); got != old {
+				t.Fatalf("run %d: file = %q, want the old bytes untouched", run, got)
+			}
+		}
+	})
+
+	t.Run("CRLF file keeps its line endings on every re-run", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		head := "# My project\r\n\r\n"
+		tail := "\r\nMore notes.\r\n"
+		oldInner := "<!-- acta:begin -->\r\nStale text.\r\n<!-- acta:end -->\r\n"
+		write(t, path, head+oldInner+tail)
+		crlfBlock := strings.ReplaceAll(wantBlock, "\n", "\r\n")
+		want := head + crlfBlock + tail
+		// Three runs: the fix must hold however often the wizard rewrites.
+		for run := 1; run <= 3; run++ {
+			if err := setup.WriteBlock(path); err != nil {
+				t.Fatal(err)
+			}
+			got := read(t, path)
+			if got != want {
+				t.Fatalf("run %d: file = %q, want head plus a CRLF block plus tail", run, got)
+			}
+			if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\r") {
+				t.Fatalf("run %d: stray carriage return in %q", run, got)
+			}
+		}
+	})
+
+	t.Run("CRLF file without markers gains a CRLF block", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "CLAUDE.md")
+		old := "# My project\r\nSome notes.\r\n"
+		write(t, path, old)
+		crlfBlock := strings.ReplaceAll(wantBlock, "\n", "\r\n")
+		for run := 1; run <= 2; run++ {
+			if err := setup.WriteBlock(path); err != nil {
+				t.Fatal(err)
+			}
+			got := read(t, path)
+			if got != old+crlfBlock {
+				t.Fatalf("run %d: file = %q, want the old bytes then a CRLF block", run, got)
+			}
+			if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\r") {
+				t.Fatalf("run %d: stray carriage return in %q", run, got)
+			}
+		}
+	})
+
+	t.Run("failed write leaves the old file whole", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "CLAUDE.md")
+		old := "# My project\n"
+		write(t, path, old)
+		// A locked folder stops the temp file, so the rename never runs.
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(dir, 0o755)
+		if err := setup.WriteBlock(path); err == nil {
+			t.Fatalf("WriteBlock in a read-only folder = nil, want an error")
+		}
+		if got := read(t, path); got != old {
+			t.Fatalf("after a failed write = %q, want the old bytes untouched", got)
+		}
+	})
+
+	t.Run("successful write swaps through a rename and leaves no temp file", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "CLAUDE.md")
+		write(t, path, "# My project\n")
+		before, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := setup.WriteBlock(path); err != nil {
+			t.Fatal(err)
+		}
+		after, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// A rename swaps the file; writing in place would keep it.
+		if os.SameFile(before, after) {
+			t.Fatalf("WriteBlock rewrote the file in place, want a temp file plus rename")
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), ".acta-block-") {
+				t.Fatalf("leftover temp file %s in %s", e.Name(), dir)
+			}
+		}
+	})
 }
 
 func write(t *testing.T, path, content string) {
