@@ -1,5 +1,8 @@
 ---
 parent: scratch/2026-10-07-tidy-commit-history
+id: SPC-0105
+created: "2026-10-07 19:26:44"
+hash: cmsh160
 ---
 Status: Architectural, approved by the user in chat on 2026-10-07.
 Why: acta auto-commits every planning change and lands with `merge --no-ff`, so a repo's history fills with `chore(...)` commits, review fix-ups and long `Land ...` merges. One code task should read as one commit. This repo went from 1984 commits to 452 with the same rules done by hand.
