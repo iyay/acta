@@ -6,6 +6,7 @@ id: PLN-0114
 created: "2026-10-07 19:28:43"
 hash: uyo6akt
 started: "2026-10-07 19:32:45"
+finished: "2026-10-07 20:38:24"
 ---
 # Tidy commit history Implementation Plan
 
@@ -80,9 +81,9 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** With `commit_history: tidy` the land skill runs gates, then `acta tidy`, picks the fold point (`@{upstream}`, else `refs/acta/last-land`, else none), moves the parent with `merge --ff-only` or the guarded `reset --keep`, sets `refs/acta/last-land`, puts the last task commit in `fixed_in`, and deletes the branch with `-D` only after tidy passed; with `full` it reads as today. A failed tidy never falls back to a plain merge. The skill stays under the plugincheck caps. List each step checked.
 
-- [ ] Red: `skill_land_test.go` requires the land skill to name `acta tidy`, `commit_history`, `refs/acta/last-land`, `--ff-only`, `reset --keep`, and the no-fallback rule. Run `scripts/test ./internal/plugincheck/ -run Land` and watch it fail.
-- [ ] Green: add the tidy path to the land skill (steps 5, 7 and 8 split by mode), rewrite the two wiki pages and add `land-tidy-history` (keep rule, fold rules, why `-D` is safe), following the wiki format in `plugin/skills/build/wiki.md`. Run `acta wiki check`.
-- [ ] Commit: `feat(land): tidy history before landing (SPC-0105)`
+- [x] Red: `skill_land_test.go` requires the land skill to name `acta tidy`, `commit_history`, `refs/acta/last-land`, `--ff-only`, `reset --keep`, and the no-fallback rule. Run `scripts/test ./internal/plugincheck/ -run Land` and watch it fail.
+- [x] Green: add the tidy path to the land skill (steps 5, 7 and 8 split by mode), rewrite the two wiki pages and add `land-tidy-history` (keep rule, fold rules, why `-D` is safe), following the wiki format in `plugin/skills/build/wiki.md`. Run `acta wiki check`.
+- [x] Commit: `feat(land): tidy history before landing (SPC-0105)`
 
 ### Task 06: Version 0.1.36
 
@@ -90,8 +91,8 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** The three files carry the same version, 0.1.36, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Green: change 0.1.35 to 0.1.36 in all three files. Run `scripts/test ./internal/plugincheck/`.
-- [ ] Commit: `chore: version 0.1.36`
+- [x] Green: change 0.1.35 to 0.1.36 in all three files. Run `scripts/test ./internal/plugincheck/`.
+- [x] Commit: `chore: version 0.1.36`
 
 ## State
 
