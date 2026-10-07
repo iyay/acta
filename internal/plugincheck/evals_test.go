@@ -104,6 +104,134 @@ func TestEvalScriptFlags(t *testing.T) {
 	}
 }
 
+// TestEvalScriptDefaultSkipsRouting keeps the default run cheap. With no
+// --tag and no --case, scripts/eval must name every case except the routing-*
+// baseline set; an explicit filter passes through untouched. Both paths run
+// scripts/eval with stub claude and go binaries that only log arguments.
+func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
+	evalDir := filepath.Join("..", "..", "plugin", "evals")
+	entries, err := os.ReadDir(evalDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var keep, routing []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(evalDir, e.Name(), "prompt.md")); err != nil {
+			if _, err := os.Stat(filepath.Join(evalDir, e.Name(), "case.yaml")); err != nil {
+				continue
+			}
+		}
+		if strings.HasPrefix(e.Name(), "routing-") {
+			routing = append(routing, e.Name())
+		} else {
+			keep = append(keep, e.Name())
+		}
+	}
+	if len(keep) == 0 || len(routing) == 0 {
+		t.Fatalf("want keep and routing cases, got keep=%v routing=%v", keep, routing)
+	}
+	script, err := filepath.Abs(filepath.Join("..", "..", "scripts", "eval"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	origPath := os.Getenv("PATH")
+	// runEval runs scripts/eval with stub claude and go binaries that only
+	// log their arguments, and returns those logged arguments, one per line.
+	runEval := func(args ...string) []string {
+		bin := t.TempDir()
+		log := filepath.Join(t.TempDir(), "argv.log")
+		stub := "#!/bin/sh\nprintf '%s\\n' \"$@\" >> \"$EVAL_STUB_LOG\"\n"
+		for _, name := range []string{"claude", "go"} {
+			if err := os.WriteFile(filepath.Join(bin, name), []byte(stub), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		t.Setenv("EVAL_STUB_LOG", log)
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+origPath)
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("TMPDIR", t.TempDir())
+		cmd := exec.Command(script, args...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("scripts/eval %v: %v\n%s", args, err, out)
+		}
+		raw, err := os.ReadFile(log)
+		if err != nil {
+			t.Fatalf("stub logged nothing for args %v: %v", args, err)
+		}
+		return strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+	}
+	// caseGlobs pulls every --case value out of logged arguments.
+	caseGlobs := func(argv []string) []string {
+		var out []string
+		for i, a := range argv {
+			if a == "--case" && i+1 < len(argv) {
+				out = append(out, argv[i+1])
+			}
+		}
+		return out
+	}
+	// assertPartition checks the globs name every keep case and no routing one.
+	assertPartition := func(globs []string) {
+		t.Helper()
+		if len(globs) == 0 {
+			t.Fatal("default run passes no case filter")
+		}
+		for _, name := range keep {
+			hit := false
+			for _, g := range globs {
+				ok, err := filepath.Match(g, name)
+				if err != nil {
+					t.Fatalf("bad --case glob %q: %v", g, err)
+				}
+				hit = hit || ok
+			}
+			if !hit {
+				t.Errorf("default run skips non-routing case %q (globs %v)", name, globs)
+			}
+		}
+		for _, name := range routing {
+			for _, g := range globs {
+				if ok, _ := filepath.Match(g, name); ok {
+					t.Errorf("default run includes routing case %q (glob %q)", name, g)
+				}
+			}
+		}
+	}
+	// No args on the Claude path: the default case list, no routing case.
+	argv := runEval()
+	assertPartition(caseGlobs(argv))
+	// --tag routing passes through with no added case list.
+	argv = runEval("--tag", "routing")
+	if globs := caseGlobs(argv); len(globs) != 0 {
+		t.Errorf("--tag routing gained a case list: %v", globs)
+	}
+	// --case x passes through with no added list.
+	argv = runEval("--case", "x")
+	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
+		t.Errorf("--case x became %v, want only [x]", globs)
+	}
+	// --omp with no args routes to acta eval-omp with the same default list.
+	argv = runEval("--omp")
+	found := false
+	for _, a := range argv {
+		if a == "eval-omp" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("--omp run never reached acta eval-omp: %v", argv)
+	}
+	assertPartition(caseGlobs(argv))
+	// --omp --case x passes through.
+	argv = runEval("--omp", "--case", "x")
+	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
+		t.Errorf("--omp --case x became %v, want only [x]", globs)
+	}
+}
+
 // caseText joins every file of one case folder, so a row can be checked without
 // the test caring which file holds the phrase.
 func caseText(t *testing.T, dir string) string {
