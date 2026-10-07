@@ -10,10 +10,10 @@ allowed_tools: []
 
 Tolong rapikan README di repo ini. Itu saja yang dikerjakan.
 
-The search box fires one request per keystroke, so typing fast floods the
-server every time. A short debounce would calm it down. Jangan dikerjakan
-sekarang, dan jangan tulis di CLAUDE.md atau file catatan mana pun. Simpan
-di tempat repo ini menyimpan hal seperti itu, jawab dalam satu baris apa
-yang kamu simpan, lalu berhenti.
+Kotak pencarian mengirim satu permintaan per ketikan, jadi mengetik cepat
+membanjiri server setiap saat. Debounce singkat akan menenangkannya.
+Jangan dikerjakan sekarang, dan jangan tulis di CLAUDE.md atau file catatan
+mana pun. Simpan di tempat repo ini menyimpan hal seperti itu, jawab dalam
+satu baris apa yang kamu simpan, lalu berhenti.
 
 The acta CLI for this repo is ./bin/acta. It is on PATH as well.

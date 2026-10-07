@@ -10,11 +10,8 @@ allowed_tools: []
 
 Ada satu nilai yang keliru di config/app.yaml. Kunci timeout tertulis 30,
 padahal seharusnya 300, jadi setiap permintaan gagal terlalu cepat.
-Perbaikannya satu angka di satu baris itu saja.
 
-The file holds one wrong number and nothing else is broken. Apakah
-perubahan ini perlu proses panjang dengan beberapa pendekatan dan
-tulisan berseksi, atau rute singkat sudah cukup? Jawab dalam beberapa
-baris lalu berhenti. Jangan ubah file apa pun.
+The file holds one wrong number and nothing else in there is broken
+at all. Betulkan satu angka di satu baris itu saja.
 
 The acta CLI for this repo is ./bin/acta. It is on PATH as well.
