@@ -3,7 +3,7 @@ type: Runbook
 title: Never chain gates with merge
 description: Run the gate, read its output, then merge in a separate call; a chain with ; merges on red
 paths: [plugin/skills/land/]
-timestamp: 2026-10-05T15:28:00Z
+timestamp: 2026-10-07T13:39:26Z
 ---
 
 Run the full gate first and read its output. Merge with `git merge` only in a later call, or join the two with `&&` on a command whose exit code is the gate itself.
