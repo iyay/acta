@@ -3,6 +3,8 @@ parent: specs/2026-10-07-acta-setup-wizard-design
 id: SPC-0101
 created: "2026-10-07 11:26:37"
 hash: c875bpf
+started: "2026-10-07 11:32:16"
+finished: "2026-10-07 12:03:51"
 ---
 Status: Bounded, approved by the user in chat on 2026-10-07.
 Why: the first `acta setup` (SPC-0100) shows every question in one long form, prints ten doctor lines and the whole acta block, and has no title or progress. SPC-0100 asked for one question at a time like an `npx` wizard. The user saw it in a real terminal and asked for it to look much better.
@@ -18,6 +20,30 @@ Why: the first `acta setup` (SPC-0100) shows every question in one long form, pr
 5. **Harness install as its own step.** After the config questions, one screen lists the harnesses found, each with a yes/no. Install output is one line per harness (`✓ claude` or `✗ omp: <command to run by hand>`).
 6. **Block shown short.** Print `acta block → CLAUDE.md` (one line per file) instead of the whole block text.
 7. **Closing summary.** A short box at the end: config file path, what was installed, which files got the block, then the next step.
+
+## Clack layout (user ruling 2026-10-07, replaces the screen shape in items 1-3)
+
+The user asked for the look of `npx skills@latest install ...` (the clack prompt style). The wizard draws one continuous left rail instead of clearing the screen:
+
+```
+┌  acta setup
+│
+◇  Chat language
+│  Indonesian
+│
+◆  Style  (2/8)
+│  Who reads my replies: adhd keeps them short.
+│  › ● adhd
+│    ○ plain
+└
+```
+
+- `┌  acta setup` opens the run; `└` closes it after the summary.
+- The active question starts with `◆` in the accent blue, then its step count and a dim one-line description, all behind `│`.
+- Once answered, the question collapses to `◇  <title>` and `│  <answer>` in dim grey, and stays on screen.
+- Options read `●` for the chosen one and `○` for the rest, with `›` on the focused row. Yes/no uses the same marks: `● Yes  ○ No`.
+- Doctor, install, block and summary lines sit on the same rail with `│`; a problem line starts with `▲` in the terminal's red.
+- Colors stay as item 3 says: grey, one calm blue accent, no filled blocks, adaptive, dim contrast 1.6 or more.
 
 Nothing changes in `Plan`, `Apply`, `WriteBlock`, the no-TTY guard or the config values written. Only the look of `form.go` and the printing in `internal/cli/setup_cmd.go` change.
 

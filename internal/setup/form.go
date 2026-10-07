@@ -1,6 +1,8 @@
 package setup
 
 import (
+	"strconv"
+
 	"github.com/charmbracelet/huh"
 
 	"github.com/iyay/acta/internal/config"
@@ -60,12 +62,22 @@ func FormDefaults(e Env) Defaults {
 	}
 }
 
-// Ask collects the answers with one huh field per group. It holds no rules:
-// every decision lives in Plan. The block is mandatory, so the form never
-// asks about it; it only shows the block and the file it goes to.
-func Ask(e Env) (Answers, error) {
+// formState holds the built form with the answer slots its fields write
+// into: one bool per harness found, in harness order. Ask reads them back
+// after the run; tests render the groups without running.
+type formState struct {
+	form    *huh.Form
+	groups  []*huh.Group
+	answers *Defaults
+	install map[string]*bool
+}
+
+// buildFormState puts one question on each screen in fixed order, then one
+// harness screen with a yes/no per harness found. Every group carries the
+// title, its step count and a one-line plain description saying what the
+// question means. Dispatch is offered only when HERDR_ENV=1 says so.
+func buildFormState(e Env) *formState {
 	d := FormDefaults(e)
-	a := Answers{User: e.Current, Install: map[string]bool{}}
 
 	executors := []huh.Option[string]{
 		huh.NewOption("subagent", "subagent"),
@@ -75,56 +87,112 @@ func Ask(e Env) (Answers, error) {
 		executors = append(executors, huh.NewOption("dispatch", "dispatch"))
 	}
 
-	fields := []huh.Field{
-		huh.NewInput().Title("Which language should I use when I talk with you?").
-			Value(&d.Language),
-		huh.NewSelect[string]().Title("Style: adhd or plain?").
-			Options(huh.NewOptions("adhd", "plain")...).Value(&d.Style),
-		huh.NewInput().Title("Anything about tone, in your own words? (optional)").
-			Value(&d.Tone),
-		huh.NewInput().Title("Language for files written to the repo?").
-			Value(&d.RepoLanguage),
-		huh.NewSelect[string]().Title("Which build executor?").
-			Options(executors...).Value(&d.BuildExecutor),
-		huh.NewSelect[string]().Title("How should subagent models be picked?").
-			Options(
-				huh.NewOption("default (leave it to your own config)", "default"),
-				huh.NewOption("split", "split"),
-			).Value(&d.SubagentModels),
-		huh.NewSelect[string]().Title("How much should a plan spell out?").
-			Options(
-				huh.NewOption("full (real code in every step, plan waits for a yes)", "full"),
-				huh.NewOption("minimal (short steps, no code, build starts right away)", "minimal"),
-			).Value(&d.PlanDepth),
-		huh.NewSelect[string]().Title("How should I ask you things?").
-			Options(
-				huh.NewOption("one (one question at a time)", "one"),
-				huh.NewOption("probe (a round of questions, with a recommended answer each)", "probe"),
-			).Value(&d.Questions),
-	}
-	for _, h := range e.Harnesses {
-		yes := true
-		fields = append(fields,
-			huh.NewConfirm().Title("Install the acta plugin into "+h+"?").
-				Value(&yes).Inline(true))
-		a.Install[h] = false
+	questions := []struct {
+		desc  string
+		field huh.Field
+	}{
+		{"The language I use when I talk with you.",
+			huh.NewInput().Title("Which language should I use when I talk with you?").
+				Value(&d.Language)},
+		{"Short replies for speed, or full sentences.",
+			huh.NewSelect[string]().Title("Style: adhd or plain?").
+				Options(huh.NewOptions("adhd", "plain")...).Value(&d.Style)},
+		{"Anything about tone, in your own words. Optional.",
+			huh.NewInput().Title("Anything about tone, in your own words? (optional)").
+				Value(&d.Tone)},
+		{"The language for files written to the repo.",
+			huh.NewInput().Title("Language for files written to the repo?").
+				Value(&d.RepoLanguage)},
+		{"Who writes the code when a plan runs.",
+			huh.NewSelect[string]().Title("Which build executor?").
+				Options(executors...).Value(&d.BuildExecutor)},
+		{"Who picks the model for background work.",
+			huh.NewSelect[string]().Title("How should subagent models be picked?").
+				Options(
+					huh.NewOption("default (leave it to your own config)", "default"),
+					huh.NewOption("split", "split"),
+				).Value(&d.SubagentModels)},
+		{"How much a plan spells out before it runs.",
+			huh.NewSelect[string]().Title("How should a plan spell out?").
+				Options(
+					huh.NewOption("full (real code in every step, plan waits for a yes)", "full"),
+					huh.NewOption("minimal (short steps, no code, build starts right away)", "minimal"),
+				).Value(&d.PlanDepth)},
+		{"How I ask you things while working.",
+			huh.NewSelect[string]().Title("How should I ask you things?").
+				Options(
+					huh.NewOption("one (one question at a time)", "one"),
+					huh.NewOption("probe (a round of questions, with a recommended answer each)", "probe"),
+				).Value(&d.Questions)},
 	}
 
-	form := huh.NewForm(huh.NewGroup(fields...))
-	if err := form.Run(); err != nil {
+	n := len(questions)
+	if len(e.Harnesses) > 0 {
+		n++
+	}
+	groups := make([]*huh.Group, 0, n)
+	for i, q := range questions {
+		groups = append(groups, huh.NewGroup(q.field).
+			Title("acta setup").
+			Description(stepLine(i+1, n, q.desc)))
+	}
+
+	install := map[string]*bool{}
+	if len(e.Harnesses) > 0 {
+		var harnessFields []huh.Field
+		for _, h := range e.Harnesses {
+			v := true
+			install[h] = &v
+			harnessFields = append(harnessFields,
+				huh.NewConfirm().Title("Install the acta plugin into "+h+"?").
+					Value(install[h]).Inline(true))
+		}
+		groups = append(groups, huh.NewGroup(harnessFields...).
+			Title("acta setup").
+			Description(stepLine(n, n, "Install the acta plugin into each tool found.")))
+	}
+
+	return &formState{
+		form:    huh.NewForm(groups...).WithTheme(Theme()),
+		groups:  groups,
+		answers: &d,
+		install: install,
+	}
+}
+
+// stepLine joins the step count and the one-line description: "3/9. What
+// this question means." huh shows the group description as one block, so
+// both ride in it and every screen shows title, count and help together.
+func stepLine(k, n int, desc string) string {
+	return strconv.Itoa(k) + "/" + strconv.Itoa(n) + ". " + desc
+}
+
+// BuildForm returns the wizard form: one group per question in fixed order,
+// then one harness group. Tests render its groups without running it.
+func BuildForm(e Env) *huh.Form {
+	return buildFormState(e).form
+}
+
+// FormGroups returns the wizard groups for tests: same order as the form
+// shows, without running anything.
+func FormGroups(e Env) []*huh.Group {
+	return buildFormState(e).groups
+}
+
+// Ask collects the answers with one question per screen. It holds no rules:
+// every decision lives in Plan. The block is mandatory, so the form never
+// asks about it; it only shows the block and the file it goes to.
+func Ask(e Env) (Answers, error) {
+	a := Answers{User: e.Current, Install: map[string]bool{}}
+	st := buildFormState(e)
+	if err := st.form.Run(); err != nil {
 		return Answers{}, err
 	}
 
-	// huh wrote into d through the pointers above; the confirms wrote
-	// into their own locals, which are read back here in harness order.
-	i := len(fields) - len(e.Harnesses)
 	for _, h := range e.Harnesses {
-		if c, ok := fields[i].(*huh.Confirm); ok {
-			a.Install[h] = c.GetValue().(bool)
-		}
-		i++
+		a.Install[h] = *st.install[h]
 	}
-
+	d := st.answers
 	a.User = config.User{
 		ChatLanguage:   d.Language,
 		Style:          d.Style,
