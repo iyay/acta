@@ -1,14 +1,20 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/setup"
 )
+
+// errTestInstall marks an install action whose command failed, so the
+// closing box must leave that harness out of the installed list.
+var errTestInstall = errors.New("exit 1")
 
 // TestSetupNoTTY checks the paths where acta setup must write nothing and
 // run no harness command: stdin not a TTY (piped input), and stdout not a
@@ -153,9 +159,10 @@ func TestSetupEnvCurrent(t *testing.T) {
 	})
 }
 
-// TestShowBlockShort checks the note before Apply names each block file on
-// its own short line and never prints the block itself.
-func TestShowBlockShort(t *testing.T) {
+// TestBlockNoteShort checks the note cmdSetup prints before Apply: it names
+// each block file from the live plan actions on its own short line and never
+// prints the block itself.
+func TestBlockNoteShort(t *testing.T) {
 	dir := t.TempDir()
 	claude := filepath.Join(dir, "CLAUDE.md")
 	agents := filepath.Join(dir, "AGENTS.md")
@@ -165,20 +172,22 @@ func TestShowBlockShort(t *testing.T) {
 		want string
 	}{
 		{"both files", setup.Env{RepoRoot: dir, HasClaudeMD: true, HasAgentsMD: true},
-			"acta block → " + claude + "\nacta block → " + agents + "\n"},
+			"│  acta block → " + claude + "\n│  acta block → " + agents + "\n"},
 		{"agents only", setup.Env{RepoRoot: dir, HasAgentsMD: true},
-			"acta block → " + agents + "\n"},
+			"│  acta block → " + agents + "\n"},
 		{"no file yet", setup.Env{RepoRoot: dir},
-			"acta block → " + claude + "\n"},
+			"│  acta block → " + claude + "\n"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			var out strings.Builder
-			showBlock(&out, c.env)
-			if out.String() != c.want {
-				t.Fatalf("showBlock = %q, want %q", out.String(), c.want)
+			answers := setup.Answers{Install: map[string]bool{}}
+			env := c.env
+			env.TTY = true
+			got := blockNote(setup.Plan(answers, env))
+			if got != c.want {
+				t.Fatalf("block note = %q, want %q", got, c.want)
 			}
-			if strings.Contains(out.String(), setup.Block) {
-				t.Fatalf("showBlock prints the block text")
+			if strings.Contains(got, setup.Block) {
+				t.Fatalf("block note prints the block text")
 			}
 		})
 	}
@@ -186,7 +195,8 @@ func TestShowBlockShort(t *testing.T) {
 
 // TestSetupSummaryBox checks the closing box names the voice file, the
 // installed harnesses, the block files and the next step, with none lines
-// when the plan installed nothing and wrote no block.
+// when the plan installed nothing and wrote no block. A harness whose
+// install line reports failure never counts as installed.
 func TestSetupSummaryBox(t *testing.T) {
 	home := t.TempDir()
 	voice := filepath.Join(home, "config.yaml")
@@ -209,5 +219,109 @@ func TestSetupSummaryBox(t *testing.T) {
 		if !strings.Contains(empty, want) {
 			t.Fatalf("empty summary %q misses %q", empty, want)
 		}
+	}
+}
+
+// TestApplySetupSkipsFailedInstall runs the live apply path cmdSetup uses
+// with a runner that fails one harness. The failed harness prints its
+// problem line and never shows as installed in the closing summary; the
+// block still gets written after it.
+func TestApplySetupSkipsFailedInstall(t *testing.T) {
+	home := t.TempDir()
+	voice := filepath.Join(home, "config.yaml")
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", voice)
+	t.Setenv("TMPDIR", home)
+	block := filepath.Join(t.TempDir(), "CLAUDE.md")
+	actions := []setup.Action{
+		{Kind: setup.ActionInstall, Harness: "claude", Argv: [][]string{{"claude", "plugin", "add", "/p"}}},
+		{Kind: setup.ActionInstall, Harness: "omp", Argv: [][]string{{"omp", "plugin", "link", "/p"}}},
+		{Kind: setup.ActionBlock, Path: block},
+	}
+	var out strings.Builder
+	done, err := applySetup(actions, failRunner{fail: "omp"}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"│  ✓ claude\n", "│  ▲ omp: omp plugin link /p\n"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("apply output %q misses %q", out.String(), want)
+		}
+	}
+	got := setupSummary(done, setupNext)
+	for _, want := range []string{"config: " + voice, "installed: claude", "block: " + block, "next: " + setupNext} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("summary %q misses %q", got, want)
+		}
+	}
+	if strings.Contains(got, "omp") {
+		t.Fatalf("summary %q lists a harness whose install failed", got)
+	}
+	if _, err := os.Stat(block); err != nil {
+		t.Fatalf("block not written after a failed install: %v", err)
+	}
+}
+
+// TestApplySetupHardError keeps Apply's rule: a bad config value stops the
+// run and comes back as an error.
+func TestApplySetupHardError(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", filepath.Join(home, "config.yaml"))
+	t.Setenv("TMPDIR", home)
+	bad := config.User{Style: "nope"}
+	var out strings.Builder
+	if _, err := applySetup([]setup.Action{{Kind: setup.ActionConfig, User: bad}}, failRunner{}, &out); err == nil {
+		t.Fatal("want an error for an invalid config value")
+	}
+}
+
+// failRunner fails the install of one harness and runs the rest, so the
+// test sees the same problem line Apply prints for real.
+type failRunner struct{ fail string }
+
+func (f failRunner) Run(argv []string) error {
+	for _, w := range argv {
+		if w == f.fail {
+			return errTestInstall
+		}
+	}
+	return nil
+}
+
+// TestSetupRunnerNoStdin checks an installer that asks a question does not
+// hang the wizard. With no stdin it reads end of input, exits 1, and the run
+// is reported as failed.
+func TestSetupRunnerNoStdin(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", filepath.Join(home, "voice.yaml"))
+	t.Setenv("TMPDIR", home)
+	bin := t.TempDir()
+	script := "#!/bin/sh\nread x || exit 1\nexit 0\n"
+	if err := os.WriteFile(filepath.Join(bin, "fake-installer"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// Give the process a stdin that never ends, so an inherited stdin hangs.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	hold := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = hold; r.Close() }()
+
+	done := make(chan error, 1)
+	go func() { done <- setupRunner{}.Run([]string{"fake-installer"}) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("installer that wanted input must be reported as failed")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("installer blocked on stdin")
 	}
 }

@@ -81,6 +81,25 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 
 **verify:** Every yes/no screen renders exactly `● Yes  ○ No` style marks (filled dot on the focused answer, hollow dot on the other, for both focus states), and a test renders the confirm and checks the marks. The summary box never lists a harness as installed when its install failed. The block text the user sees comes from the same code that `cmdSetup` runs, and that code is what the test covers (no test-only copy). The plan-depth question title reads "How much should a plan spell out?". A config path that cannot be found shows a clear word in the summary, not an empty value. List every screen and output path checked.
 
-- [ ] **Test:** add tests for the confirm marks, a failed install missing from the installed list, the live block-lines path and the plan-depth title; they fail on the current code.
-- [ ] **Code:** give `FocusedButton` and `BlurredButton` the dot marks (lipgloss `SetString("●")` and `SetString("○")` prepend to the label), drop the unused `blockFiles` and the test-only `showBlock` in favour of the live path, filter failed installs out of the summary, restore the title, and print `config: (unknown)` when the path cannot be found.
-- [ ] **Commit:** `fix(setup): dot marks on yes/no and honest summary`.
+- [x] **Test:** add tests for the confirm marks, a failed install missing from the installed list, the live block-lines path and the plan-depth title; they fail on the current code.
+- [x] **Code:** give `FocusedButton` and `BlurredButton` the dot marks (lipgloss `SetString("●")` and `SetString("○")` prepend to the label), drop the unused `blockFiles` and the test-only `showBlock` in favour of the live path, filter failed installs out of the summary, restore the title, and print `config: (unknown)` when the path cannot be found.
+- [x] **Commit:** `fix(setup): dot marks on yes/no and honest summary`.
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Run the install command with no stdin (`internal/cli/setup_cmd.go`), so an installer that asks a question fails at once and shows `▲` instead of hanging behind the hidden output.
+- [x] Dim the `│` rail glyph in `ActiveDescription` (`internal/setup/look.go`) like every other rail line.
+- [x] Commit: `polish: review notes for PLN-0110`
+
+## Review notes
+
+- The first fix round went to omp, then moved to a Claude Code implementer on the user's ask; omp's half-done dot-mark edits were kept where they fit the clack layout.
+- `applySetup` builds a new `failTracker` per action and calls `setup.Apply` once per action; output and the stop-on-hard-error rule match one call over the whole list.
+- `formState.groups` and each question's `group` point at the same groups, kept twice only so tests can read them.
+- The failed-install line lost the old "run it by hand" words; the command itself still shows.
+- The dim-grey bar of contrast 1.6 is a floor for dim text only, well under the usual 4.5 for body text.
+- No eval run: this branch touches no file under plugin/skills or plugin/hooks.

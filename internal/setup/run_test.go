@@ -88,7 +88,7 @@ func TestRunActions(t *testing.T) {
 		if err := setup.Apply(actions, f, &out); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), "✗ omp: omp plugin link /p\n") {
+		if !strings.Contains(out.String(), "│  ▲ omp: omp plugin link /p\n") {
 			t.Fatalf("output %q misses the short failed install line", out.String())
 		}
 		if strings.Contains(out.String(), "Could not run") {

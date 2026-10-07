@@ -25,10 +25,45 @@ type setupRunner struct{}
 
 func (setupRunner) Run(argv []string) error {
 	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// The install tool's own output would break the rail, so it stays off
+	// screen. A failure prints the command to run by hand instead. Stdin
+	// stays nil: an installer that asks a question gets end of input and
+	// fails at once, instead of waiting on a prompt nobody can see.
 	return cmd.Run()
+}
+
+// failTracker wraps a runner and remembers when any command failed, so the
+// closing summary can leave out a harness whose install did not work.
+type failTracker struct {
+	setup.Runner
+	failed bool
+}
+
+func (f *failTracker) Run(argv []string) error {
+	err := f.Runner.Run(argv)
+	if err != nil {
+		f.failed = true
+	}
+	return err
+}
+
+// applySetup carries out the plan one action at a time through setup.Apply,
+// so it knows which install failed. It returns the actions that really
+// happened: a failed install is dropped, everything else stays. It stops at
+// the first hard error, as Apply does.
+func applySetup(actions []setup.Action, r setup.Runner, out io.Writer) ([]setup.Action, error) {
+	var done []setup.Action
+	for _, a := range actions {
+		t := &failTracker{Runner: r}
+		if err := setup.Apply([]setup.Action{a}, t, out); err != nil {
+			return done, err
+		}
+		if a.Kind == setup.ActionInstall && t.failed {
+			continue
+		}
+		done = append(done, a)
+	}
+	return done, nil
 }
 
 // stdoutIsTTY says whether stdout is a terminal. os.Stdout is the real one
@@ -62,23 +97,23 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 		return exitOther
 	}
 	env := setupEnv(*pluginDir)
+	fmt.Fprint(stdout, setup.RailOpen())
 	fmt.Fprint(stdout, setup.DoctorSummary(doctor.Run(doctorEnv(""))))
-	answers, err := setup.Ask(env)
+	answers, err := setup.Ask(env, stdout)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	var blockFiles []string
-	if env.RepoRoot != "" {
-		blockFiles = blockPaths(env)
-		fmt.Fprint(stdout, setup.BlockLines(blockFiles))
-	}
 	actions := setup.Plan(answers, env)
-	if err := setup.Apply(actions, setupRunner{}, stdout); err != nil {
+	if env.RepoRoot != "" {
+		fmt.Fprint(stdout, blockNote(actions))
+	}
+	done, err := applySetup(actions, setupRunner{}, stdout)
+	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	fmt.Fprint(stdout, setupSummary(actions, setupNext))
+	fmt.Fprint(stdout, setupSummary(done, setupNext))
 	return exitOK
 }
 
@@ -112,28 +147,19 @@ func setupEnv(pluginDir string) setup.Env {
 	return env
 }
 
-// blockPaths lists the files Apply will write the acta block to: one per
-// file that exists, or a new CLAUDE.md when neither does. It mirrors what
-// Plan turns into block actions, so the short note before Apply matches the
-// files Apply really writes.
-func blockPaths(env setup.Env) []string {
-	switch {
-	case env.HasClaudeMD && env.HasAgentsMD:
-		return []string{
-			filepath.Join(env.RepoRoot, "CLAUDE.md"),
-			filepath.Join(env.RepoRoot, "AGENTS.md"),
+// blockNote names each file the live plan writes the acta block to, one
+// short line each, before Apply writes it. It reads the block paths out of
+// the same actions cmdSetup hands to Apply, so the note can never drift
+// from what Apply really writes. The block is never skipped and never
+// confirmed.
+func blockNote(actions []setup.Action) string {
+	var paths []string
+	for _, a := range actions {
+		if a.Kind == setup.ActionBlock {
+			paths = append(paths, a.Path)
 		}
-	case env.HasAgentsMD:
-		return []string{filepath.Join(env.RepoRoot, "AGENTS.md")}
-	default:
-		return []string{filepath.Join(env.RepoRoot, "CLAUDE.md")}
 	}
-}
-
-// showBlock names each file the acta block goes to, one short line each,
-// before Apply writes it. The block is never skipped and never confirmed.
-func showBlock(out io.Writer, env setup.Env) {
-	fmt.Fprint(out, setup.BlockLines(blockPaths(env)))
+	return setup.BlockLines(paths)
 }
 
 // setupSummary closes the wizard: where the config landed, which harnesses

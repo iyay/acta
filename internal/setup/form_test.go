@@ -60,31 +60,33 @@ func TestFormGroups(t *testing.T) {
 		t.Fatalf("got %d groups, want 9", len(groups))
 	}
 
-	// Fixed order: every screen says which question it is, with its own
-	// step count and a one-line plain description.
+	// Fixed order: every screen opens with the blue-diamond title line,
+	// its own step count, and a dim one-line description on the rail.
 	want := []struct {
+		title string
 		count string
 		desc  string
 	}{
-		{"1/9", "The language I use when I talk with you."},
-		{"2/9", "Short replies for speed, or full sentences."},
-		{"3/9", "Anything about tone, in your own words. Optional."},
-		{"4/9", "The language for files written to the repo."},
-		{"5/9", "Who writes the code when a plan runs."},
-		{"6/9", "Who picks the model for background work."},
-		{"7/9", "How much a plan spells out before it runs."},
-		{"8/9", "How I ask you things while working."},
-		{"9/9", "Install the acta plugin into each tool found."},
+		{"Which language should I use when I talk with you?", "(1/9)", "The language I use when I talk with you."},
+		{"Style: adhd or plain?", "(2/9)", "Short replies for speed, or full sentences."},
+		{"Anything about tone, in your own words? (optional)", "(3/9)", "Anything about tone, in your own words. Optional."},
+		{"Language for files written to the repo?", "(4/9)", "The language for files written to the repo."},
+		{"Which build executor?", "(5/9)", "Who writes the code when a plan runs."},
+		{"How should subagent models be picked?", "(6/9)", "Who picks the model for background work."},
+		{"How much should a plan spell out?", "(7/9)", "How much a plan spells out before it runs."},
+		{"How should I ask you things?", "(8/9)", "How I ask you things while working."},
+		{"Install the acta plugin?", "(9/9)", "Install the acta plugin into each tool found."},
 	}
 	for i, w := range want {
-		if !strings.Contains(groups[i], "acta setup") {
-			t.Errorf("group %d: missing title %q", i+1, "acta setup")
+		lines := strings.Split(groups[i], "\n")
+		if len(lines) != 2 {
+			t.Fatalf("group %d: header must be a title line and a description line, got %q", i+1, groups[i])
 		}
-		if !strings.Contains(groups[i], w.count) {
-			t.Errorf("group %d: missing step count %q in %q", i+1, w.count, groups[i])
+		if !strings.HasPrefix(lines[0], "◆  "+w.title+"  "+w.count) {
+			t.Errorf("group %d: title line = %q, want ◆, %q, %q", i+1, lines[0], w.title, w.count)
 		}
-		if !strings.Contains(groups[i], w.desc) {
-			t.Errorf("group %d: missing description %q", i+1, w.desc)
+		if lines[1] != "│  "+w.desc {
+			t.Errorf("group %d: description line = %q, want a rail line with %q", i+1, lines[1], w.desc)
 		}
 	}
 
@@ -158,5 +160,49 @@ func TestFormExecutorOptionsFollowHerdr(t *testing.T) {
 	herdr := formGroupContent(t, setup.Env{Current: config.User{}})[4]
 	if !strings.Contains(herdr, "dispatch") {
 		t.Errorf("executor screen must offer dispatch inside herdr, got %q", herdr)
+	}
+}
+
+// TestFormPlanDepthTitle keeps the plan-depth question worded exactly: the
+// screen title tells the user what a plan spells out.
+func TestFormPlanDepthTitle(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	header := formGroupText(t, setup.Env{Current: config.User{}})[6]
+	if !strings.Contains(header, "How much should a plan spell out?") {
+		t.Errorf("plan-depth question must read %q, got %q", "How much should a plan spell out?", header)
+	}
+}
+
+// TestFormRail checks every content line of every screen sits on the rail,
+// and that select options use the clack marks: ● chosen, ○ the rest, › on
+// the focused row.
+func TestFormRail(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	env := setup.Env{Harnesses: []string{"claude", "omp"}, Current: config.User{}}
+	content := formGroupContent(t, env)
+	for i, c := range content {
+		for _, line := range strings.Split(c, "\n") {
+			if !strings.HasPrefix(line, "│  ") {
+				t.Errorf("group %d: line %q is off the rail", i+1, line)
+			}
+		}
+	}
+	style := content[1]
+	for _, want := range []string{"› ● adhd", "  ○ plain"} {
+		if !strings.Contains(style, want) {
+			t.Errorf("style screen must show %q, got %q", want, style)
+		}
+	}
+	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
+	if !strings.Contains(content[8], "claude") || !strings.Contains(content[8], "● Yes  ○ No") {
+		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[8])
 	}
 }
