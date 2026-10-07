@@ -30,7 +30,8 @@ func TestFormOptionNotes(t *testing.T) {
 		4: {"subagent: helper agents in the same session", "inline: the main agent writes the code"},
 		5: {"default: your own config decides", "split: sonnet writes code, the rest use a stronger model"},
 		6: {"full: real code in every step, waits for your yes", "minimal: short steps, build starts at once"},
-		7: {"one: one question at a time", "probe: a batch, each with the agent's pick"},
+		7: {"tidy: one commit per task, straight history", "full: every commit plus a merge commit"},
+		8: {"one: one question at a time", "probe: a batch, each with the agent's pick"},
 	}
 	for _, herdr := range []string{"", "1"} {
 		t.Setenv("HERDR_ENV", herdr)

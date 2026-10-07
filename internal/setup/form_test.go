@@ -57,9 +57,9 @@ func TestFormGroups(t *testing.T) {
 	}
 	groups := formGroupText(t, env)
 
-	// Eight question screens, then one screen with a yes/no per harness.
-	if len(groups) != 9 {
-		t.Fatalf("got %d groups, want 9", len(groups))
+	// Nine question screens, then one screen with a yes/no per harness.
+	if len(groups) != 10 {
+		t.Fatalf("got %d groups, want 10", len(groups))
 	}
 
 	// Fixed order: every screen opens with the blue-diamond title line,
@@ -69,15 +69,16 @@ func TestFormGroups(t *testing.T) {
 		count string
 		desc  string
 	}{
-		{"Chat language", "(1/9)", "The language the agent chats in. Code and files use the repo language."},
-		{"Reply style", "(2/9)", ""},
-		{"Tone", "(3/9)", "Optional. Your own words, like \"casual, no jargon\"."},
-		{"Repo language", "(4/9)", "Code, comments, commits, specs and plans."},
-		{"Build executor", "(5/9)", ""},
-		{"Subagent models", "(6/9)", "Claude Code only."},
-		{"Plan detail", "(7/9)", ""},
-		{"Questions", "(8/9)", ""},
-		{"Plugin install", "(9/9)", "One row per tool found."},
+		{"Chat language", "(1/10)", "The language the agent chats in. Code and files use the repo language."},
+		{"Reply style", "(2/10)", ""},
+		{"Tone", "(3/10)", "Optional. Your own words, like \"casual, no jargon\"."},
+		{"Repo language", "(4/10)", "Code, comments, commits, specs and plans."},
+		{"Build executor", "(5/10)", ""},
+		{"Subagent models", "(6/10)", "Claude Code only."},
+		{"Plan detail", "(7/10)", ""},
+		{"Commit history", "(8/10)", ""},
+		{"Questions", "(9/10)", ""},
+		{"Plugin install", "(10/10)", "One row per tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")
@@ -98,8 +99,8 @@ func TestFormGroups(t *testing.T) {
 
 	// The harness screen lists every harness found.
 	content := formGroupContent(t, env)
-	if !strings.Contains(content[8], "claude") || !strings.Contains(content[8], "omp") {
-		t.Errorf("harness group lists every harness, got %q", content[8])
+	if !strings.Contains(content[9], "claude") || !strings.Contains(content[9], "omp") {
+		t.Errorf("harness group lists every harness, got %q", content[9])
 	}
 }
 
@@ -111,12 +112,12 @@ func TestFormGroupsNoHarness(t *testing.T) {
 
 	env := setup.Env{Current: config.User{}}
 	groups := formGroupText(t, env)
-	if len(groups) != 8 {
-		t.Fatalf("got %d groups, want 8", len(groups))
+	if len(groups) != 9 {
+		t.Fatalf("got %d groups, want 9", len(groups))
 	}
 	content := formGroupContent(t, env)
-	if strings.Contains(content[7], "claude") || strings.Contains(content[7], "omp") {
-		t.Errorf("last group must not name a harness, got %q", content[7])
+	if strings.Contains(content[8], "claude") || strings.Contains(content[8], "omp") {
+		t.Errorf("last group must not name a harness, got %q", content[8])
 	}
 }
 
@@ -208,8 +209,8 @@ func TestFormRail(t *testing.T) {
 		}
 	}
 	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
-	if !strings.Contains(content[8], "claude") || !strings.Contains(content[8], "● Yes  ○ No") {
-		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[8])
+	if !strings.Contains(content[9], "claude") || !strings.Contains(content[9], "● Yes  ○ No") {
+		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[9])
 	}
 }
 
@@ -242,10 +243,10 @@ func TestFormInstallRows(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			content := formGroupContent(t, c.env)
 			if c.wantGroup {
-				if len(content) != 9 {
-					t.Fatalf("got %d groups, want 9", len(content))
+				if len(content) != 10 {
+					t.Fatalf("got %d groups, want 10", len(content))
 				}
-				last := content[8]
+				last := content[9]
 				for _, h := range c.has {
 					if !strings.Contains(last, h) {
 						t.Errorf("install screen misses %q: %q", h, last)
@@ -258,8 +259,8 @@ func TestFormInstallRows(t *testing.T) {
 				}
 				return
 			}
-			if len(content) != 8 {
-				t.Fatalf("got %d groups, want 8 (no install screen)", len(content))
+			if len(content) != 9 {
+				t.Fatalf("got %d groups, want 9 (no install screen)", len(content))
 			}
 		})
 	}
@@ -322,5 +323,38 @@ func TestFormWithConfigValues(t *testing.T) {
 	d := setup.FormDefaults(setup.Env{Current: config.User{ChatLanguage: "Korean", RepoLanguage: "French"}})
 	if d.Language != "Korean" || d.RepoLanguage != "French" {
 		t.Fatalf("defaults = %+v, want the config values", d)
+	}
+}
+
+// TestFormCommitHistory checks the commit history question sits right after
+// plan detail, shows both options, and starts on the saved value, or tidy
+// when nothing is saved.
+func TestFormCommitHistory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	header := formGroupText(t, setup.Env{Current: config.User{}})[7]
+	if !strings.Contains(header, "Commit history") {
+		t.Errorf("question after plan detail must read %q, got %q", "Commit history", header)
+	}
+	content := formGroupContent(t, setup.Env{Current: config.User{}})[7]
+	for _, want := range []string{"tidy: one commit per task, straight history", "full: every commit plus a merge commit"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("commit history screen must show %q, got %q", want, content)
+		}
+	}
+
+	if d := setup.FormDefaults(setup.Env{}); d.CommitHistory != "tidy" {
+		t.Errorf("default = %q, want tidy", d.CommitHistory)
+	}
+	d := setup.FormDefaults(setup.Env{Current: config.User{CommitHistory: "full"}})
+	if d.CommitHistory != "full" {
+		t.Errorf("default from config = %q, want full", d.CommitHistory)
+	}
+	shown := formGroupContent(t, setup.Env{Current: config.User{CommitHistory: "full"}})[7]
+	if !strings.Contains(shown, "› ● full") {
+		t.Errorf("screen must start on full, got %q", shown)
 	}
 }

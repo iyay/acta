@@ -354,3 +354,59 @@ func TestThemeThatDoesNotLoadStillReads(t *testing.T) {
 		}
 	}
 }
+
+// commit_history takes tidy or full. Empty is fine, it means tidy. Anything
+// else is refused by name, and fill trims spaces like it does for the other keys.
+func TestValidateCommitHistory(t *testing.T) {
+	for _, tc := range []struct {
+		history string
+		ok      bool
+	}{
+		{"", true},
+		{"tidy", true},
+		{"full", true},
+		{"tidy ", true}, // fill trims
+		{"Tidy", false},
+		{"FULL", false},
+		{"deep", false},
+		{"minimal", false},
+		{"tidy full", false},
+	} {
+		v := UserDefault()
+		v.CommitHistory = tc.history
+		err := fill(v).Validate()
+		if (err == nil) != tc.ok {
+			t.Errorf("commit_history %q: err %v, want ok=%v", tc.history, err, tc.ok)
+		}
+		if err != nil && !errors.Is(err, ErrBadUser) {
+			t.Errorf("commit_history %q: err %v is not ErrBadUser", tc.history, err)
+		}
+		if err != nil && !strings.Contains(err.Error(), "commit_history") {
+			t.Errorf("commit_history %q: err %v does not name the key", tc.history, err)
+		}
+	}
+}
+
+// A bad commit_history never loads from the user file and never lands in it.
+func TestCommitHistoryBadValueNeverStored(t *testing.T) {
+	for _, bad := range []string{"deep", "Tidy", "minimal", "full off"} {
+		in := filepath.Join(t.TempDir(), "config.yaml")
+		body := "chat_language: English\nstyle: adhd\nrepo_language: English\ncommit_history: " + bad + "\n"
+		if err := os.WriteFile(in, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		v, exists, err := LoadUser(in)
+		if !exists || !errors.Is(err, ErrBadUser) || v != UserDefault() {
+			t.Errorf("load %q: got %+v %v %v, want defaults, exists, ErrBadUser", bad, v, exists, err)
+		}
+		out := filepath.Join(t.TempDir(), "config.yaml")
+		u := UserDefault()
+		u.CommitHistory = bad
+		if err := SaveUserFile(out, u); !errors.Is(err, ErrBadUser) {
+			t.Errorf("save %q: err %v, want ErrBadUser", bad, err)
+		}
+		if _, err := os.Stat(out); !os.IsNotExist(err) {
+			t.Errorf("save %q: a bad value was written", bad)
+		}
+	}
+}
