@@ -14,7 +14,7 @@ import (
 // so scripts treat both runners the same.
 const exitCaseFailed = 1
 
-const evalOmpUsage = "usage: acta eval-omp [--case <glob>] [plugin-dir]"
+const evalOmpUsage = "usage: acta eval-omp [--eval-dir <dir>] [--case <glob>] [plugin-dir]"
 
 // cmdEvalOmp runs the plugin's eval cases through omp. Each case costs model
 // quota, so no test runs it with the real omp.
@@ -22,6 +22,7 @@ func cmdEvalOmp(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("eval-omp", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	only := fs.String("case", "", "run only the cases whose name matches this glob")
+	evalDir := fs.String("eval-dir", "evals", "eval case folder below the plugin dir")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) > 1 {
 		fmt.Fprintln(stderr, evalOmpUsage)
@@ -46,7 +47,7 @@ func cmdEvalOmp(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "acta eval-omp: %s is not a plugin folder: %v\n", plugin, err)
 		return exitOther
 	}
-	cases, err := evalomp.LoadCases(filepath.Join(abs, "evals"))
+	cases, err := evalomp.LoadCases(filepath.Join(abs, *evalDir))
 	if err != nil {
 		fmt.Fprintf(stderr, "acta eval-omp: %v\n", err)
 		return exitOther

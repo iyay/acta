@@ -223,8 +223,7 @@ func routingGraderMeta(t *testing.T, path string) routingToolGrader {
 // grader, no grader calls the judge, no prompt names its route, and the
 // language split holds.
 func TestRoutingEvalCases(t *testing.T) {
-	root := filepath.Join(pluginRoot(t), "evals")
-
+	root := filepath.Join(pluginRoot(t), "evals-routing")
 	entries, err := filepath.Glob(filepath.Join(root, "routing-*"))
 	if err != nil {
 		t.Fatal(err)

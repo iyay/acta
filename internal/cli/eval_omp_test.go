@@ -66,11 +66,11 @@ func TestEvalOmpExitCodes(t *testing.T) {
 
 	// Bad usage has to say what the right call looks like, not just fail.
 	errb.Reset()
-	if code := cmdEvalOmp([]string{"--bogus"}, &out, &errb); code != exitBadInput || !strings.Contains(errb.String(), "usage: acta eval-omp [--case <glob>] [plugin-dir]") {
+	if code := cmdEvalOmp([]string{"--bogus"}, &out, &errb); code != exitBadInput || !strings.Contains(errb.String(), "usage: acta eval-omp [--eval-dir <dir>] [--case <glob>] [plugin-dir]") {
 		t.Errorf("bad flag usage line: code %d, err %q", code, errb.String())
 	}
 	errb.Reset()
-	if code := cmdEvalOmp([]string{"a", "b"}, &out, &errb); code != exitBadInput || !strings.Contains(errb.String(), "usage: acta eval-omp [--case <glob>] [plugin-dir]") {
+	if code := cmdEvalOmp([]string{"a", "b"}, &out, &errb); code != exitBadInput || !strings.Contains(errb.String(), "usage: acta eval-omp [--eval-dir <dir>] [--case <glob>] [plugin-dir]") {
 		t.Errorf("two dirs usage line: code %d, err %q", code, errb.String())
 	}
 }
@@ -99,6 +99,26 @@ func TestEvalOmpNoOmp(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := cmdEvalOmp(nil, &out, &errb); code != exitOther || !strings.Contains(errb.String(), "omp is not on PATH") {
 		t.Errorf("code %d, err %q", code, errb.String())
+	}
+}
+
+// With --eval-dir the runner loads its cases from that folder below the
+// plugin, so the routing baseline runs with --eval-dir evals-routing.
+func TestEvalOmpEvalDir(t *testing.T) {
+	var out, errb bytes.Buffer
+	dir := evalPlugin(t, "hello", "hello")
+	routing := filepath.Join(dir, "evals-routing", "two")
+	if err := os.MkdirAll(filepath.Join(routing, "graders"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(routing, "prompt.md"), []byte("---\ntimeout_seconds: 30\n---\nHi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(routing, "graders", "said.md"), []byte("---\ntype: regex\npattern: \"bye\"\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdEvalOmp([]string{"--eval-dir", "evals-routing", "--case", "two", dir}, &out, &errb); code != exitCaseFailed || !strings.Contains(out.String(), "FAIL two") || strings.Contains(out.String(), "PASS one") {
+		t.Errorf("--eval-dir run: code %d, out %q, err %q", code, out.String(), errb.String())
 	}
 }
 

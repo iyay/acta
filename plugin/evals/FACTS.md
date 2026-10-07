@@ -572,3 +572,7 @@ skill files with the Read tool. Before this, a run where the agent picked
 Read over Bash hit `Permission to use Read denied` in don't-ask mode and
 failed for a reason unrelated to the case; granting Read makes the
 probe-round result depend on the case, not on which tool the agent picks.
+
+## 2026-10-07: routing cases live in plugin/evals-routing/
+
+The 18 routing cases (runs: 3 each) are a baseline measure for the router, not a per-change gate. They moved from plugin/evals/ to plugin/evals-routing/, so the default run never sees them and the land gate does not run them. Run them with scripts/eval --eval-dir evals-routing, or scripts/eval --omp --eval-dir evals-routing for the omp runner.

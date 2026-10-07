@@ -104,42 +104,42 @@ func TestEvalScriptFlags(t *testing.T) {
 	}
 }
 
-// TestEvalScriptDefaultSkipsRouting keeps the default run cheap. With no
-// --tag and no --case, scripts/eval must name every case except the routing-*
-// baseline set; an explicit filter passes through untouched. Both paths run
-// scripts/eval with stub claude and go binaries that only log arguments.
-func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
-	evalDir := filepath.Join("..", "..", "plugin", "evals")
-	entries, err := os.ReadDir(evalDir)
+// TestEvalsHoldNoRoutingCases keeps the default run cheap. The routing set is
+// a baseline measure that lives in plugin/evals-routing/, so a default
+// scripts/eval, which runs plugin/evals/ with no filter, never sees it.
+func TestEvalsHoldNoRoutingCases(t *testing.T) {
+	matches, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", "routing-*"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var keep, routing []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+	var dirs []string
+	for _, m := range matches {
+		st, err := os.Stat(m)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if _, err := os.Stat(filepath.Join(evalDir, e.Name(), "prompt.md")); err != nil {
-			if _, err := os.Stat(filepath.Join(evalDir, e.Name(), "case.yaml")); err != nil {
-				continue
-			}
-		}
-		if strings.HasPrefix(e.Name(), "routing-") {
-			routing = append(routing, e.Name())
-		} else {
-			keep = append(keep, e.Name())
+		if st.IsDir() {
+			dirs = append(dirs, filepath.Base(m))
 		}
 	}
-	if len(keep) == 0 || len(routing) == 0 {
-		t.Fatalf("want keep and routing cases, got keep=%v routing=%v", keep, routing)
+	if len(dirs) != 0 {
+		t.Errorf("plugin/evals/ holds routing cases %v; they live in plugin/evals-routing/", dirs)
 	}
+}
+
+// TestEvalScriptPassesArgsThrough runs scripts/eval under /bin/bash with stub
+// claude and go binaries that only log arguments. The script adds no case
+// list of its own: with no arguments the runner covers plugin/evals/ as is,
+// and the routing baseline runs with --eval-dir evals-routing.
+func TestEvalScriptPassesArgsThrough(t *testing.T) {
 	script, err := filepath.Abs(filepath.Join("..", "..", "scripts", "eval"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	origPath := os.Getenv("PATH")
-	// runEval runs scripts/eval with stub claude and go binaries that only
-	// log their arguments, and returns those logged arguments, one per line.
+	// runEval runs scripts/eval with /bin/bash and stub claude and go
+	// binaries that only log their arguments, and returns those logged
+	// arguments, one per line.
 	runEval := func(args ...string) []string {
 		bin := t.TempDir()
 		log := filepath.Join(t.TempDir(), "argv.log")
@@ -153,9 +153,9 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+origPath)
 		t.Setenv("HOME", t.TempDir())
 		t.Setenv("TMPDIR", t.TempDir())
-		cmd := exec.Command(script, args...)
+		cmd := exec.Command("/bin/bash", append([]string{script}, args...)...)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("scripts/eval %v: %v\n%s", args, err, out)
+			t.Fatalf("/bin/bash scripts/eval %v: %v\n%s", args, err, out)
 		}
 		raw, err := os.ReadFile(log)
 		if err != nil {
@@ -163,8 +163,20 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 		}
 		return strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
 	}
-	// caseGlobs pulls every --case value out of logged arguments.
-	caseGlobs := func(argv []string) []string {
+	// evalDir pulls the --eval-dir value out of logged arguments.
+	evalDir := func(argv []string) (string, bool) {
+		for i, a := range argv {
+			if v, ok := strings.CutPrefix(a, "--eval-dir="); ok {
+				return v, true
+			}
+			if a == "--eval-dir" && i+1 < len(argv) {
+				return argv[i+1], true
+			}
+		}
+		return "", false
+	}
+	// caseArgs pulls every --case value out of logged arguments.
+	caseArgs := func(argv []string) []string {
 		var out []string
 		for i, a := range argv {
 			if v, ok := strings.CutPrefix(a, "--case="); ok {
@@ -175,57 +187,32 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 		}
 		return out
 	}
-	// assertPartition checks the globs name every keep case and no routing one.
-	assertPartition := func(globs []string) {
-		t.Helper()
-		if len(globs) == 0 {
-			t.Fatal("default run passes no case filter")
-		}
-		for _, name := range keep {
-			hit := false
-			for _, g := range globs {
-				ok, err := filepath.Match(g, name)
-				if err != nil {
-					t.Fatalf("bad --case glob %q: %v", g, err)
-				}
-				hit = hit || ok
-			}
-			if !hit {
-				t.Errorf("default run skips non-routing case %q (globs %v)", name, globs)
-			}
-		}
-		for _, name := range routing {
-			for _, g := range globs {
-				if ok, _ := filepath.Match(g, name); ok {
-					t.Errorf("default run includes routing case %q (glob %q)", name, g)
-				}
-			}
-		}
+	// No args on the Claude path: no case list added.
+	if globs := caseArgs(runEval()); len(globs) != 0 {
+		t.Errorf("default run gained a case list: %v", globs)
 	}
-	// No args on the Claude path: the default case list, no routing case.
-	argv := runEval()
-	assertPartition(caseGlobs(argv))
-	// --tag routing passes through with no added case list.
-	argv = runEval("--tag", "routing")
-	if globs := caseGlobs(argv); len(globs) != 0 {
-		t.Errorf("--tag routing gained a case list: %v", globs)
+	// --eval-dir evals-routing passes through untouched, no --case added.
+	argv := runEval("--eval-dir", "evals-routing")
+	if dir, ok := evalDir(argv); !ok || dir != "evals-routing" {
+		t.Errorf("--eval-dir evals-routing became %v", argv)
+	}
+	if globs := caseArgs(argv); len(globs) != 0 {
+		t.Errorf("--eval-dir run gained a case list: %v", globs)
+	}
+	// --eval-dir=evals-routing passes through untouched, no --case added.
+	argv = runEval("--eval-dir=evals-routing")
+	if dir, ok := evalDir(argv); !ok || dir != "evals-routing" {
+		t.Errorf("--eval-dir=evals-routing became %v", argv)
+	}
+	if globs := caseArgs(argv); len(globs) != 0 {
+		t.Errorf("--eval-dir= run gained a case list: %v", globs)
 	}
 	// --case x passes through with no added list.
 	argv = runEval("--case", "x")
-	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
+	if globs := caseArgs(argv); len(globs) != 1 || globs[0] != "x" {
 		t.Errorf("--case x became %v, want only [x]", globs)
 	}
-	// --case=x passes through with no added list.
-	argv = runEval("--case=x")
-	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
-		t.Errorf("--case=x became %v, want only [x]", globs)
-	}
-	// --tag=routing passes through with no added case list.
-	argv = runEval("--tag=routing")
-	if globs := caseGlobs(argv); len(globs) != 0 {
-		t.Errorf("--tag=routing gained a case list: %v", globs)
-	}
-	// --omp with no args routes to acta eval-omp with the same default list.
+	// --omp with no args routes to acta eval-omp with no case list.
 	argv = runEval("--omp")
 	found := false
 	for _, a := range argv {
@@ -236,11 +223,16 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 	if !found {
 		t.Errorf("--omp run never reached acta eval-omp: %v", argv)
 	}
-	assertPartition(caseGlobs(argv))
-	// --omp --case x passes through.
-	argv = runEval("--omp", "--case", "x")
-	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
-		t.Errorf("--omp --case x became %v, want only [x]", globs)
+	if globs := caseArgs(argv); len(globs) != 0 {
+		t.Errorf("--omp run gained a case list: %v", globs)
+	}
+	// --omp --eval-dir evals-routing reaches eval-omp untouched, no --case.
+	argv = runEval("--omp", "--eval-dir", "evals-routing")
+	if dir, ok := evalDir(argv); !ok || dir != "evals-routing" {
+		t.Errorf("--omp --eval-dir evals-routing became %v", argv)
+	}
+	if globs := caseArgs(argv); len(globs) != 0 {
+		t.Errorf("--omp --eval-dir run gained a case list: %v", globs)
 	}
 }
 
@@ -270,14 +262,22 @@ func caseText(t *testing.T, dir string) string {
 // TestScaffoldsRefuseNonEmptyDir runs every scaffold in a folder that already
 // holds a file. A scaffold runs git init, git config and a commit of the whole
 // folder, so a hand run inside a real repo would change that repo. It must
-// stop first and leave the folder as it was.
+// stop first and leave the folder as it was. Both eval dirs count: the
+// routing baseline lives in plugin/evals-routing/.
 func TestScaffoldsRefuseNonEmptyDir(t *testing.T) {
-	scaffolds, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", "*", "scaffold.sh"))
-	if err != nil || len(scaffolds) == 0 {
-		t.Fatalf("no scaffolds found: %v", err)
+	var scaffolds []string
+	for _, dir := range []string{"evals", "evals-routing"} {
+		found, err := filepath.Glob(filepath.Join(pluginRoot(t), dir, "*", "scaffold.sh"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		scaffolds = append(scaffolds, found...)
+	}
+	if len(scaffolds) == 0 {
+		t.Fatal("no scaffolds found")
 	}
 	for _, s := range scaffolds {
-		t.Run(filepath.Base(filepath.Dir(s)), func(t *testing.T) {
+		t.Run(filepath.Join(filepath.Base(filepath.Dir(filepath.Dir(s))), filepath.Base(filepath.Dir(s))), func(t *testing.T) {
 			dir := t.TempDir()
 			keep := filepath.Join(dir, "keep.txt")
 			if err := os.WriteFile(keep, []byte("mine\n"), 0o644); err != nil {
