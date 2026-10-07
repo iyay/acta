@@ -167,7 +167,9 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 	caseGlobs := func(argv []string) []string {
 		var out []string
 		for i, a := range argv {
-			if a == "--case" && i+1 < len(argv) {
+			if v, ok := strings.CutPrefix(a, "--case="); ok {
+				out = append(out, v)
+			} else if a == "--case" && i+1 < len(argv) {
 				out = append(out, argv[i+1])
 			}
 		}
@@ -212,6 +214,16 @@ func TestEvalScriptDefaultSkipsRouting(t *testing.T) {
 	argv = runEval("--case", "x")
 	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
 		t.Errorf("--case x became %v, want only [x]", globs)
+	}
+	// --case=x passes through with no added list.
+	argv = runEval("--case=x")
+	if globs := caseGlobs(argv); len(globs) != 1 || globs[0] != "x" {
+		t.Errorf("--case=x became %v, want only [x]", globs)
+	}
+	// --tag=routing passes through with no added case list.
+	argv = runEval("--tag=routing")
+	if globs := caseGlobs(argv); len(globs) != 0 {
+		t.Errorf("--tag=routing gained a case list: %v", globs)
 	}
 	// --omp with no args routes to acta eval-omp with the same default list.
 	argv = runEval("--omp")
