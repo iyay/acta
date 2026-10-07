@@ -118,3 +118,16 @@ Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip 
 - [x] Green: the target tree is `git merge-tree --write-tree --merge-base=<merge-base of base and branch> <base> <branch>`; a clash returns an error. The last node takes the target tree (plus remap) and `proof` compares against the target, not the branch tree. Walk `<merge-base>..<branch>`. `replay` returns real git errors (exit code other than 1). `ontoStart` returns an error for an unknown ref or a failed rev-list. Check the branch with `git check-ref-format --branch` first. Put `--end-of-options` before user revs in `rev-parse`. Fix the `removeIndex` comment to say plainly why the error is ignored. The CLI line becomes `tidy: <old> commits -> <new>, tree ok, parent <short sha of base read>, folded <n>` where folded counts parent chore commits folded.
 - [x] Green: land skill tidy path: pick the fold point before running tidy; record the parent tip from the `tidy:` line and check it before moving the parent; use `reset --keep` only when `folded` is above 0, else `--ff-only`; reuse gates only when `git diff --name-only <branch> refs/acta/tidy/<branch>` lists only planning-root paths, else run the gates on the tidy tip before moving the parent. Update the land skill frontmatter description and `plugin/README.md` so they no longer say every land is `merge --no-ff`. Update `land-tidy-history.md` (why `-D` is safe now rests on the merge proof). Extend `skill_land_test.go` for the new rules. Stay under the plugincheck caps.
 - [x] Commit: `fix(tidy): keep parent work the branch does not have (PLN-0114 fix round 1)`
+
+## Polish
+
+### Task 08: Review polish
+
+**verify:** Each NOTE below is applied, and nothing else changes.
+
+- [ ] Land skill tidy step 5 compares like with like: `git rev-parse --short=7 <parent>` against the `parent` sha of the `tidy:` line.
+- [ ] Land skill tidy step 3: a red gate on the tidy tip stops the land.
+- [ ] Land skill Red Flags gets back "Relying on partial verification" and the Rationalization row "Partial check is enough → Partial proves nothing", within the current byte cap.
+- [ ] `TestBadBranchNameIsRefused` uses a name that exists as a ref but that `check-ref-format --branch` refuses, or asserts the "not a valid branch name" message, so it fails when the check is removed.
+- [ ] Doc comments in `internal/tidy/tidy.go` match the code: `replay` (returns clash and err), `proof` (compares against the merge of base and branch), and `Result` (what `Parent` and `Folded` mean).
+- [ ] Commit: `polish: review notes for PLN-0114`
