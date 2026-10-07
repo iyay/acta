@@ -1281,7 +1281,7 @@ git commit -m "feat(tui): top tab bar with one tab per kind"
 
 ### Task 3: The tab bar always shows the open tab
 
-Review round 1 (range da82e5b..b1b2c57) found one BLOCKER. `tabBar()` (`internal/tui/view.go`) builds one line with every tab name, and `pad` / `fit` cut it from the right. On a terminal narrower than the bar (about 51 columns), the open tab can be cut away: at 40 columns on the start tab Activities the top line reads ` Scratches  Bugs  Debts  Specs  Plans  [`, and pane titles only say `List`, so the reader cannot tell where they are. At da82e5b the focused pane title always kept its open name below 60 columns.
+Review round 1 (range 54f31d7..e53fd6a) found one BLOCKER. `tabBar()` (`internal/tui/view.go`) builds one line with every tab name, and `pad` / `fit` cut it from the right. On a terminal narrower than the bar (about 51 columns), the open tab can be cut away: at 40 columns on the start tab Activities the top line reads ` Scratches  Bugs  Debts  Specs  Plans  [`, and pane titles only say `List`, so the reader cannot tell where they are. At 54f31d7 the focused pane title always kept its open name below 60 columns.
 
 **Files:** `internal/tui/view.go`, `internal/tui/view_test.go`
 

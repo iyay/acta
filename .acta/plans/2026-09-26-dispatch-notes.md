@@ -12,7 +12,7 @@ hash: z2gsoqx
 
 **Tech Stack:** Go 1.27 tests over markdown skills.
 
-**Spec:** `.pm/specs/2026-09-26-pm-plugin-design.md` §2 (build, dispatch). Source: dogfood plan 2 (merge f09c483): the dispatcher polled omp with sleep and until-loops after the checkpoint; omp's /goal audit found 6 unticked boxes after the reply-back and reopened its goal.
+**Spec:** `.pm/specs/2026-09-26-pm-plugin-design.md` §2 (build, dispatch). Source: dogfood plan 2 (merge ea30e32): the dispatcher polled omp with sleep and until-loops after the checkpoint; omp's /goal audit found 6 unticked boxes after the reply-back and reopened its goal.
 
 **Worktree:** `/Users/iyay/Nayakatara/pm-board-notefix`, branch `notefix`, parent `main`. Executor: `inline`.
 

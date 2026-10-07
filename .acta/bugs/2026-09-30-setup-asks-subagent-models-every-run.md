@@ -1,7 +1,7 @@
 ---
 id: BUG-0020
 hash: sedlyuh
-fixed_in: 487e5d1
+fixed_in: b5f7571
 finished: "2026-09-30"
 ---
 # Setup asks about split subagent models on every run
@@ -18,4 +18,4 @@ plugin/skills/setup/SKILL.md:37 says a no saves nothing. internal/voice/voice.go
 3. Run /acta:setup again: the same question is asked.
 
 ## Found in
-main at f1fb03a, found by reading after the user asked why setup keeps asking.
+main at ff523e8, found by reading after the user asked why setup keeps asking.

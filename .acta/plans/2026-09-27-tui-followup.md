@@ -14,7 +14,7 @@ hash: bmx1pbb
 
 **Spec:** `.pm/specs/2026-09-26-tui-followup-design.md`
 
-**Worktree:** `/Users/iyay/Nayakatara/pm-board-tui-followup`, branch `tui-followup`, parent `main` (main merged in at 7aca6a9, PLAN-12 code present).
+**Worktree:** `/Users/iyay/Nayakatara/pm-board-tui-followup`, branch `tui-followup`, parent `main` (main merged in at db1ea77, PLAN-12 code present).
 
 ## Global Constraints
 

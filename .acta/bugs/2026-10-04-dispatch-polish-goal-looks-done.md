@@ -1,7 +1,7 @@
 ---
 id: BUG-0028
 hash: b86e4y3
-fixed_in: d255ea23a428487667e30f014e50f5f116f2436b
+fixed_in: ab80e3c2773a19386bbe9c33aba8275a669cbc5e
 finished: "2026-10-05 14:34:24"
 ---
 # A polish dispatch is skipped: omp says the goal is done and makes no commit
@@ -18,4 +18,4 @@ finished: "2026-10-05 14:34:24"
 3. Wait for omp to go idle. `git log <base>..HEAD` is empty and the pane says the audit is done.
 
 ## Found in
-main, while landing PLN-0080 (branch frame-probe, base 4b06204) on 2026-10-04: the first polish send got a 58 s re-audit and no commit. A plain herdr prompt naming the polish was needed to get the work done.
+main, while landing PLN-0080 (branch frame-probe, base 74f4882) on 2026-10-04: the first polish send got a 58 s re-audit and no commit. A plain herdr prompt naming the polish was needed to get the work done.

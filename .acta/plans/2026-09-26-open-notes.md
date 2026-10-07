@@ -6,7 +6,7 @@ hash: s3zys19
 
 > **For agentic workers:** run this plan with pm:build, task by task. Steps use checkbox (`- [ ]`) syntax, and pmb reads those boxes as task progress.
 
-**Goal:** Close the open review NOTEs from the tick-fixes plan (f09c483) and the dispatch-notes plan (d19a71e): one lock folder for every process of a user, stronger lock tests, a full `pmb tick -h`, and plugin text that names the exact tick and show commands.
+**Goal:** Close the open review NOTEs from the tick-fixes plan (ea30e32) and the dispatch-notes plan (3fd224d): one lock folder for every process of a user, stronger lock tests, a full `pmb tick -h`, and plugin text that names the exact tick and show commands.
 
 **Architecture:** The tick lock moves from `os.TempDir()` to a fixed per-user folder `/tmp/pmb-<uid>` (mode 0700, checked before use). `pmb tick -h` prints the flag list after the usage line. Plugin skill text is fixed in place and each file gets its own test guard.
 

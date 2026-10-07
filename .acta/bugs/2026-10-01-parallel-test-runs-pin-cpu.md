@@ -5,7 +5,7 @@ priority: high
 status: fixed
 started: "2026-10-01 15:58:01"
 finished: "2026-10-01 18:45:04"
-fixed_in: fe39799
+fixed_in: 3b44571
 ---
 # Test runs from many agents pin every CPU core at 100%
 

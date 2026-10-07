@@ -18,7 +18,7 @@ dan kadang lag-nya lama sampe hang ketika ada agent yang lagi kerja
 
 ## Context
 
-Came up right after PLN-0037 (SCR-0010, wheel batching) landed at 3316318 on 2026-09-29. The user confirmed scrolling is much better but still lags a little.
+Came up right after PLN-0037 (SCR-0010, wheel batching) landed at 7de14e7 on 2026-09-29. The user confirmed scrolling is much better but still lags a little.
 Suspects, not measured yet:
 - Bubble Tea still runs a full View (3-5 ms) after every mouse message, even a notch that only adds to the pending delta.
 - Reload chaining while agents write files (.agents.json, acta tick, worktree commits). One trees.Load took about 1.9 s on 572 items and spawns one git process per file (fillAuthors, internal/board/closed.go:22). WatchDirs also includes worktrees.
@@ -29,7 +29,7 @@ A throwaway trace build is ready at the session scratchpad (acta-trace2, writes 
 
 ### 2026-09-29
 
-2026-09-29 trace on main 527ddd3 (throwaway build, 24 s run, the user saw lag while an agent worked):
+2026-09-29 trace on main 63f99d0 (throwaway build, 24 s run, the user saw lag while an agent worked):
 - 451 MouseMsg, 154 wheelTickMsg, 25 KeyMsg.
 - 0 watcher file events and 0 reloads. Reload chaining was not the cause in this run.
 - View ran 637 times: p50 7.8 ms, p90 14.6 ms, p99 35 ms, max 292 ms. That is about twice the p50 of 3.0 ms from the first trace, likely because the agent's work (tests, builds) competes for CPU.

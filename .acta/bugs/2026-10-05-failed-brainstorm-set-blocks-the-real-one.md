@@ -2,7 +2,7 @@
 id: BUG-0031
 hash: q3xv1ma
 started: "2026-10-05 14:57:26"
-fixed_in: 477a908c87fe08c9f085eda732fd2a1368c2b5e8
+fixed_in: a2298d3b8d3386427a754526b34461ada74f1dd2
 finished: "2026-10-05 15:15:37"
 ---
 # A mistyped brainstorm command blocks the real one in the same session
@@ -17,4 +17,4 @@ internal/hook/session.go RecordBrainstorm (around line 71) records the stem stra
 In a repo with acta and a scratch item 2026-10-05-x: in one session run `acta set scratch/x status brainstorming` (fails, unknown id), then `acta set scratch/2026-10-05-x status brainstorming`. The second is blocked with exit 2.
 
 ## Found in
-main at 3e7e903, acta:debug of the flaky probe-round eval while reviewing PLN-0088.
+main at ab80e3c, acta:debug of the flaky probe-round eval while reviewing PLN-0088.

@@ -100,7 +100,7 @@ finished: "2026-10-01 16:21:38"
 
 ## Fix round 1
 
-Review round 1 over `daff3eb..3405b8f`: Spec axis BLOCKED (2), Standards axis CLEAN. Both BLOCKERs go in this one task.
+Review round 1 over `45143a7..e31694b`: Spec axis BLOCKED (2), Standards axis CLEAN. Both BLOCKERs go in this one task.
 
 ### Task 6: quoted text never cuts a command, and every ./... run takes the lock
 

@@ -477,7 +477,7 @@ git commit -m "tui: build the detail lines once per item, width and board"
 
 ## Fix round 1
 
-Review round 1 (d943290..037572f) found two BLOCKERs. Both reviewers found the same two, and both proved them with probe tests.
+Review round 1 (bec97a4..6bfc421) found two BLOCKERs. Both reviewers found the same two, and both proved them with probe tests.
 
 ### Task 3: Drop stale wheel notches and never cache the empty detail box
 
@@ -491,7 +491,7 @@ Review round 1 (d943290..037572f) found two BLOCKERs. Both reviewers found the s
 
 **BLOCKER 1:** `internal/tui/model.go:205-209`. The tick applies `wheelDelta` to `wheelPane` no matter what changed since the notches came in. `moveTo` (`model.go:304-306`) sets the detail offset to 0 for a new item, and the tick then undoes that.
 - Repro: Plans tab, focus on the detail box, 2 × `wheelOnly` down, `click` the second list row, `wheelTick`.
-- Wrong: detail `off = 6` on the new item. Expected: `off = 0`, which is what base d943290 gives.
+- Wrong: detail `off = 6` on the new item. Expected: `off = 0`, which is what base bec97a4 gives.
 - Same cause: `openTab` (`sidebar.go:98-108`) and a reload that moves the selection.
 - Fix direction: drop the pending delta (`wheelDelta = 0`) in the one shared place every such path goes through. Or, at the tick, apply the delta only when the item and tab still match what they were when the notches came in. Pick the smaller one that covers every path in the verify list.
 - Mutation that proves the fix: remove the drop, and the new test goes red.
@@ -510,7 +510,7 @@ Review round 1 (d943290..037572f) found two BLOCKERs. Both reviewers found the s
 
 ## Fix round 2
 
-Review round 2 (037572f..041a5d1) found one BLOCKER, with two holes. Both reviewers found it, and both proved it with probe tests.
+Review round 2 (6bfc421..587474d) found one BLOCKER, with two holes. Both reviewers found it, and both proved it with probe tests.
 
 ### Task 4: Drop pending notches as soon as the screen they belong to is gone
 
@@ -518,7 +518,7 @@ Review round 2 (037572f..041a5d1) found one BLOCKER, with two holes. Both review
 - Modify: `internal/tui/model.go` (the wheel case in `mouse`, and its comment)
 - Test: `internal/tui/scroll_test.go`
 
-**verify:** A notch is only ever applied on the screen where it came in: the same `mark()` it was gathered under. This holds when all the notches of a frame come before the change, when some come before it and some after, and when the next notch lands on another pane. Show that each of these gives the base d943290 result: the reload, tab and click repros below; a Done sub-tab switch between two notches; and the plain cases where nothing changes (list pane, detail pane, and a reload that keeps the same item), which must still scroll the full total.
+**verify:** A notch is only ever applied on the screen where it came in: the same `mark()` it was gathered under. This holds when all the notches of a frame come before the change, when some come before it and some after, and when the next notch lands on another pane. Show that each of these gives the base bec97a4 result: the reload, tab and click repros below; a Done sub-tab switch between two notches; and the plain cases where nothing changes (list pane, detail pane, and a reload that keeps the same item), which must still scroll the full total.
 
 **BLOCKER:** `internal/tui/model.go:512-518`.
 - Hole 1: every notch overwrites `wheelMark` with the current screen (`:518`). So one notch after the change makes the older notches look like they belong to the new screen, and the tick at `:220` applies all of them.

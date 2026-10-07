@@ -5,7 +5,7 @@ hash: x5dx8jo
 ---
 # TUI top tabs, one per kind
 
-Status: design approved by the user in chat on 2026-09-28, section by section. Replaces the five-pane sidebar of `.acta/specs/2026-09-28-scratch-sidebar-design.md` (landed cd5bbfd).
+Status: design approved by the user in chat on 2026-09-28, section by section. Replaces the five-pane sidebar of `.acta/specs/2026-09-28-scratch-sidebar-design.md` (landed 622a74a).
 
 ## Why
 

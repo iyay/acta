@@ -1,7 +1,7 @@
 ---
 id: BUG-0009
 hash: e330k3j
-fixed_in: 080bc63
+fixed_in: 45143a7
 finished: "2026-10-01 16:14:08"
 ---
 # acta set cannot change an item title
@@ -13,4 +13,4 @@ finished: "2026-10-01 16:14:08"
 `acta set scratch/2026-09-29-popup-dim-main-text title "x"`
 
 ## Found in
-main at 01cf9a1, while retitling SCR-0017 at the user's request.
+main at 9856782, while retitling SCR-0017 at the user's request.

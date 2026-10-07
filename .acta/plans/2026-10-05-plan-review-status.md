@@ -59,7 +59,7 @@ finished: "2026-10-05 22:07:21"
 
 Task 3 starts from:
 - review yellow (slot 3) on rows, workLine, dot ◐; detail WORKTREE + ROUND via board.PlanStates
-- commit 016eb88 on review-status; tests internal/tui/review_test.go green
+- commit 9b35a00 on review-status; tests internal/tui/review_test.go green
 - no board logic touched; theme/* untouched (slot reuse, no new hex)
 - next: bump patch in 3 plugin json files, run internal/plugincheck
   verify: version files agree, plugincheck green
@@ -70,7 +70,7 @@ Task 3 starts from:
 
 **verify:** every NOTE below is applied, and nothing else changes.
 
-- [x] Put back the two comments the diff deleted with no task behind it: the comment above the dot constants in internal/tui/detail.go (near line 14) and "Each role always takes the same slot..." in internal/tui/styles.go (near line 31), as they read at 97634b1.
+- [x] Put back the two comments the diff deleted with no task behind it: the comment above the dot constants in internal/tui/detail.go (near line 14) and "Each role always takes the same slot..." in internal/tui/styles.go (near line 31), as they read at 0300b61.
 - [x] Commit: `polish: review notes for PLN-0095`
 
 ## Review notes

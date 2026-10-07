@@ -10,7 +10,7 @@ Status: design approved by the user in chat on 2026-09-29. Bounded (changes the 
 
 ## Why
 
-After PLN-0037, scrolling is much better but still lags a little, and it hangs for a while when an agent is working. A live trace on main 527ddd3 (24 s, an agent working) showed:
+After PLN-0037, scrolling is much better but still lags a little, and it hangs for a while when an agent is working. A live trace on main 63f99d0 (24 s, an agent working) showed:
 
 - No watcher events and no reloads, so reload chains were not the cause.
 - 451 `MouseMsg` and 154 wheel ticks, but `View` still ran 637 times. About 450 of those renders changed nothing on screen, because the notch only added to the pending delta.

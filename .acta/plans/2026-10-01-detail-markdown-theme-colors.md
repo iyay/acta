@@ -90,7 +90,7 @@ Ruling on fix round 1 (orchestrator, 2026-10-01): the code does not leave the te
 
 ## Review notes
 
-- The recipient filed BUG-0027 for a heading color defect in this branch's own code and deleted the file in the fix commit 305a5ef; net diff is zero.
+- The recipient filed BUG-0027 for a heading color defect in this branch's own code and deleted the file in the fix commit 36c08d9; net diff is zero.
 - `internal/tui/markdown.go` imports `glamour/ansi` under the name `glamour`, while `view.go` uses `glamour` for the root package.
 - The fnv hash in the chroma style name guards a theme file that changes between two picks, which cannot happen while `WithTheme` runs once per process; `"acta-" + t.Name` would do.
 - `cfg.HTMLSpan` has no visible effect because glamour strips inline tags; `TestAnInlineTagLosesItsTagsAndKeepsItsWords` passes on the base code too.

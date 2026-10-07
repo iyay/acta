@@ -10,7 +10,7 @@ Status: design approved by the user in chat on 2026-09-30. Bounded (changes the 
 
 ## Why
 
-SCR-0020 asked for `acta path <id>` because `acta show` was slow. A measure on main bdc5f52 found a different cause:
+SCR-0020 asked for `acta path <id>` because `acta show` was slow. A measure on main ce1b2cb found a different cause:
 
 - `acta show SCR-0013` takes about 2.9 s, every run.
 - This repo has one worktree and no unmerged branches, so loading other trees is not the cost.

@@ -5,7 +5,7 @@ parent: plans/2026-09-29-tui-scroll-performance
 ---
 # Review NOTEs: TUI Scroll Performance Implementation Plan
 
-- [x] Task 1 was committed in two commits with the same message (595dc38, 93b3bb3), and fix round 1 in two (c3c169e, 08c87df); each plan step asked for one commit. (stale)
+- [x] Task 1 was committed in two commits with the same message (346ebf5, 2c13a25), and fix round 1 in two (16cf8cf, 587474d); each plan step asked for one commit. (stale)
 - [ ] (low) view_bench_test.go uses &testing.T{} instead of passing b as testing.TB to paneModel, so a t.Fatal inside the helper does not stop the benchmark cleanly and its TempDir is never cleaned up.
 - [x] view_bench_test.go flips wheel direction on every notch, so each frame adds up to zero and the benchmark never scrolls; the plan flipped once per frame.
 - [ ] (low) No test turns the wheel while a popup, the slug prompt or search is open; only help is tested, and the guard for all four is one shared line.

@@ -2,7 +2,7 @@
 id: BUG-0019
 hash: j1b4znk
 started: "2026-09-30"
-fixed_in: c456a76
+fixed_in: ff523e8
 finished: "2026-09-30"
 ---
 # omp runs the dispatch executor and opens another omp tab
@@ -21,4 +21,4 @@ With `build_executor: dispatch` in `~/.acta/config.yaml`, an omp session that ru
 3. The agent follows `acta:dispatch` and creates another omp tab instead of running subagents.
 
 ## Found in
-main at a4b3c22, found by reading (acta:debug) after a user report.
+main at 22eb478, found by reading (acta:debug) after a user report.

@@ -1,7 +1,7 @@
 ---
 id: BUG-0029
 hash: jpbscq6
-fixed_in: 6efd86705f2b25bd1458c60ffbaaae3fe729f2c9
+fixed_in: 0300b6131607b89ca4fa85d241fec0a54f421dd0
 finished: "2026-10-05 21:13:06"
 ---
 # Implementer subagents cannot write the report file the build template asks for

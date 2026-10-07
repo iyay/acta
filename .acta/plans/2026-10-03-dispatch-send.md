@@ -95,7 +95,7 @@ finished: "2026-10-03 21:17:56"
 
 ## Fix round 1
 
-Review round 1 (`c747698..d709b2c`): Spec axis BLOCKED, Standards axis CLEAN. Two BLOCKERs and four `[fix]` NOTEs, all in this one task.
+Review round 1 (`3476539..d6f6698`): Spec axis BLOCKED, Standards axis CLEAN. Two BLOCKERs and four `[fix]` NOTEs, all in this one task.
 
 ### Task 6: Checkpoint sees a made-up todo list, close runs before land, and four small fixes
 
@@ -130,4 +130,4 @@ Review round 1 (`c747698..d709b2c`): Spec axis BLOCKED, Standards axis CLEAN. Tw
 - dispatch.md exit 4 says "yield" without saying the printed watcher still starts.
 - The removed line "A fact that belongs in the plan goes in the plan." was the only steer of plan facts out of the note file.
 - In the two timing tests a wait that never stops fails only through the go test timeout, since the elapsed checks run after waitFor returns.
-- Full suite at 7aad762+polish first failed on TestHerdrFindOmpNeverStartsEndsAtTheLimit (30 ms ready limit, one shell per scripted herdr call under load); 60a57bb widened two timing tests, then `scripts/test --full -count=1` was green.
+- Full suite at c904909+polish first failed on TestHerdrFindOmpNeverStartsEndsAtTheLimit (30 ms ready limit, one shell per scripted herdr call under load); 0fc6b4d widened two timing tests, then `scripts/test --full -count=1` was green.

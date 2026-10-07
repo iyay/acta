@@ -9,7 +9,7 @@ finished: "2026-10-06 05:07:49"
 
 Status: Bounded, approved in chat on 2026-10-06.
 
-Why: the block `acta:setup` writes into CLAUDE.md or AGENTS.md was last changed in ab94b15 (first-run setup). Since then acta gained the wiki, live work state and the scratch triage rule, and the block says none of it. Agents in a harness without acta hooks (Codex, for one) only see this block, so they keep putting project knowledge in their own memory. The user also moved their personal memory rules out of their global CLAUDE.md and wants the block to carry them.
+Why: the block `acta:setup` writes into CLAUDE.md or AGENTS.md was last changed in 46f5673 (first-run setup). Since then acta gained the wiki, live work state and the scratch triage rule, and the block says none of it. Agents in a harness without acta hooks (Codex, for one) only see this block, so they keep putting project knowledge in their own memory. The user also moved their personal memory rules out of their global CLAUDE.md and wants the block to carry them.
 
 ## Change
 

@@ -68,5 +68,5 @@ Task 01 and Task 02 touch different files and can run together.
 
 - TestEvalsHoldNoRoutingCases checks only the routing-* name, so a routing-style case under another name would slip into the gate set.
 - TestScaffoldsRefuseNonEmptyDir subtests are now named evals/<case> or evals-routing/<case>; old -run patterns need the prefix.
-- Fix round 1 landed as two commits: a94cd52 dropped the repo-root cd and 95d42ce put it back.
+- Fix round 1 landed as two commits: bf46473 dropped the repo-root cd and 15eb060 put it back.
 - The branch was rebased once (autosquash) to fold the formatting-only commit, so the round-1 fix base sha in the dispatch record no longer exists.

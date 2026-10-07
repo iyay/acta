@@ -56,4 +56,4 @@ Task 01 and Task 02 touch different files and can run together.
 - The scaffold language check uses strings.Contains, so a scaffold writing both chat_language values would pass; none does today.
 - No test pins the prompt bodies; the review diffed them and only the allowed_tools line changed.
 - Light cases now load a skill inside max_turns: 6; the turn budget is not measured yet.
-- Commit b7357d9 says "re-check wiki" but changed no wiki page, and added a started: line to the DBT-0090 file.
+- Commit ac52f82 says "re-check wiki" but changed no wiki page, and added a started: line to the DBT-0090 file.

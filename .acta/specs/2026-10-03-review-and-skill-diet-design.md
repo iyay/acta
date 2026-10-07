@@ -103,4 +103,4 @@ Everything below runs in this repo only. Nothing new ships to user repos except 
 
 - At every land: `scripts/test --full`, every old eval case green, plugincheck green, word counts before and after.
 - New eval cases in plan 2: a BLOCKED reviewer report makes the agent run the validator before any fix round; a finding in code already on the parent branch goes to `acta:bug`, not to a fix round.
-- After plan 2 lands, one replay on the PLN-0077 range (`64b934f..c8f5e24`): old review against new review, total tokens and the findings side by side. The numbers go in plan 2's Review notes.
+- After plan 2 lands, one replay on the PLN-0077 range (`21aca70..1428e20`): old review against new review, total tokens and the findings side by side. The numbers go in plan 2's Review notes.

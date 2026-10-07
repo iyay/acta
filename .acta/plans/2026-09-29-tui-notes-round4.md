@@ -1941,7 +1941,7 @@ git commit -m "fix(tui): fade the screen behind a popup toward the background"
 
 ## Fix round 1
 
-Review round 1 over `4446448..2c386bd` found three BLOCKERs. One task holds all three and lands as one commit.
+Review round 1 over `bec97a4..63f99d0` found three BLOCKERs. One task holds all three and lands as one commit.
 
 ### Task 11: Fix round 1 - popup fits, footer names all dates, copied task id resolves
 
@@ -1974,7 +1974,7 @@ git commit -m "fix(tui): keep popups on screen, name all dates, copy an id acta 
 
 ## Fix round 2
 
-Review round 2 over `1911b71..970f5ab` found one BLOCKER.
+Review round 2 over `63f99d0..63f99d0` found one BLOCKER.
 
 ### Task 12: Fix round 2 - a popup as tall as the screen is still whole
 

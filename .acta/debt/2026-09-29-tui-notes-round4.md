@@ -17,7 +17,7 @@ parent: plans/2026-09-29-tui-notes-round4
 - [ ] (low) treeRows reads m.openPlans directly while treeMark goes through isOpen; they agree only because the tree tab is never Activities.
 - [ ] (low) Sticky detail scrollbar thumb spans the whole wall though only the middle scrolls.
 - [ ] (low) Task 1: below about 16 columns the open tab name gets cut; widths 0 and 1 draw dashes, not a box.
-- [x] Task 10's commit 43bda74 does not name the cause the debug step proved. (stale)
+- [x] Task 10's commit 1cdba95 does not name the cause the debug step proved. (stale)
 - [ ] (medium) Duplicate short ids: y on the second plan's task copies an id that resolves to the first plan's task.
 - [ ] (low) TestAPopupNeverCoversTheTabBox only checks the too-short case; it stays green if popupRect always puts the box at line 0.
 - [ ] (low) TestAPopupIsWholeOnTheScreen allows the box to reach the status line at every height, not only when the box is as tall as the screen.

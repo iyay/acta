@@ -606,7 +606,7 @@ git commit -m "feat(hook): scratch skill, one brainstorm per session, first run 
 
 ### Task 8: Make `acta doctor --fix` commit and write like other acta write commands
 
-Review round 1 (range b7cc692..d5a0f60) found four BLOCKERs, all in doctor. One task, one commit.
+Review round 1 (range 622a74a..69fd51c) found four BLOCKERs, all in doctor. One task, one commit.
 
 **Files:** `internal/cli/doctor.go`, `internal/doctor/doctor.go`, `internal/cli/doctor_test.go`, `internal/doctor/doctor_test.go`
 
@@ -631,10 +631,10 @@ git commit -m "fix(doctor): respect dirty files, auto_commit and repo bounds in 
 
 ### Task 9: Doctor repo bounds follow symlinks
 
-Review round 2 (range d5a0f60..a96a5cf) found one BLOCKER, from both reviewers. `insideRepo` (`internal/doctor/doctor.go:87-93`) compares path text only. `RepoRoot` comes from git with symlinks resolved; `ActaRoot` does not. Two wrong outputs:
+Review round 2 (range 69fd51c..17f9a9e) found one BLOCKER, from both reviewers. `insideRepo` (`internal/doctor/doctor.go:87-93`) compares path text only. `RepoRoot` comes from git with symlinks resolved; `ActaRoot` does not. Two wrong outputs:
 
 1. A symlink lets `--fix` write outside the repo and then print `ok repo`. Probes: `.acta -> ../outside`; `root: link` with `link -> ../outside`; a committed `.acta/.gitignore -> ../../outside/victim.conf` (plain `acta doctor` says run `--fix`, and `--fix` appends `.agents.json` to `victim.conf`).
-2. Regression from Task 8: a root that is inside the repo but reached through a symlink (macOS `/var` -> `/private/var`, for example `ACTA_ROOT=$REPO/.acta` under `$TMPDIR`) now reports `fail repo: ... is outside the repo` and exits 1. It worked at d5a0f60.
+2. Regression from Task 8: a root that is inside the repo but reached through a symlink (macOS `/var` -> `/private/var`, for example `ACTA_ROOT=$REPO/.acta` under `$TMPDIR`) now reports `fail repo: ... is outside the repo` and exits 1. It worked at 69fd51c.
 
 Fix inside doctor only: resolve symlinks with `filepath.EvalSymlinks` on `RepoRoot` and on `ActaRoot` (or its deepest existing parent) before `filepath.Rel`. Treat a `.gitignore` that is itself a symlink as outside the repo: `Fix` writes nothing and the repo check reports `fail`. The same write-through-symlink in `hook.EnsureGitignore` callers (`internal/cli/hook.go:45`, `internal/cli/tick.go:115`) was already on the parent branch; it is a separate bug and is not part of this task.
 
@@ -656,7 +656,7 @@ git commit -m "fix(doctor): resolve symlinks before the repo bounds check"
 
 ### Task 10: Refuse a `.gitignore` that is a symlink
 
-Review round 3 (range a96a5cf..f8d49d3) found that Task 9's rule "a `.gitignore` that is itself a symlink counts as outside the repo" was not built. `realPath` (`internal/doctor/doctor.go:103-113`) falls back to the parent folder when `EvalSymlinks` fails, and the `.gitignore` path is never checked with `os.Lstat`. The user ruled on 2026-09-28 to fix this past the three-round budget.
+Review round 3 (range 17f9a9e..8f7abb9) found that Task 9's rule "a `.gitignore` that is itself a symlink counts as outside the repo" was not built. `realPath` (`internal/doctor/doctor.go:103-113`) falls back to the parent folder when `EvalSymlinks` fails, and the `.gitignore` path is never checked with `os.Lstat`. The user ruled on 2026-09-28 to fix this past the three-round budget.
 
 1. Dangling link: a committed `.acta/.gitignore -> ../../outside/new.conf` (`outside/` exists, `new.conf` does not). `--fix` creates `outside/new.conf`.
 2. In-repo link: `.acta/.gitignore -> ../.git/config` (or `../docs/notes.txt`). `--fix` appends `.agents.json` to that file and then reports `ok repo`, while git ignores nothing.

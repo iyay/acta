@@ -57,8 +57,8 @@ finished: "2026-10-05 15:58:57"
 ### Task 4: version above the new main
 
 **Files:** Modify `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json`, `plugin/package.json`.
-**verify:** The three files agree on 0.1.14, one patch above main (0.1.13 at f50bde2), so merging this branch moves the version; `internal/plugincheck` passes.
-- [x] Failing test: `git show f50bde2:plugin/.claude-plugin/plugin.json` shows 0.1.13, the same as this branch, so a merge would not move the version.
+**verify:** The three files agree on 0.1.14, one patch above main (0.1.13 at 5b376ee), so merging this branch moves the version; `internal/plugincheck` passes.
+- [x] Failing test: `git show 5b376ee:plugin/.claude-plugin/plugin.json` shows 0.1.13, the same as this branch, so a merge would not move the version.
 - [x] Code: set 0.1.14 in all three files.
 - [x] Commit: `plugin: bump patch version to 0.1.14`.
 

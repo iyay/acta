@@ -11,7 +11,7 @@ Status: design approved by the user in chat on 2026-09-30. Bounded (one existing
 
 ## Why
 
-The board takes an item's title only from the first `# ` heading in the body (`internal/board/parse.go:99`). With no heading it shows the slug (`internal/board/board.go:392`). Scratch items made before commit 3116f9f carry their title only in the frontmatter `title:` field, so 16 files show their slug in the TUI list and in `acta show` (for example SCR-0011 shows `bug-debt-severity`).
+The board takes an item's title only from the first `# ` heading in the body (`internal/board/parse.go:99`). With no heading it shows the slug (`internal/board/board.go:392`). Scratch items made before commit 25d71a2 carry their title only in the frontmatter `title:` field, so 16 files show their slug in the TUI list and in `acta show` (for example SCR-0011 shows `bug-debt-severity`).
 
 ## Design
 
