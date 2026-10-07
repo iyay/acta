@@ -125,9 +125,9 @@ Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip 
 
 **verify:** Each NOTE below is applied, and nothing else changes.
 
-- [ ] Land skill tidy step 5 compares like with like: `git rev-parse --short=7 <parent>` against the `parent` sha of the `tidy:` line.
-- [ ] Land skill tidy step 3: a red gate on the tidy tip stops the land.
-- [ ] Land skill Red Flags gets back "Relying on partial verification" and the Rationalization row "Partial check is enough → Partial proves nothing", within the current byte cap.
-- [ ] `TestBadBranchNameIsRefused` uses a name that exists as a ref but that `check-ref-format --branch` refuses, or asserts the "not a valid branch name" message, so it fails when the check is removed.
-- [ ] Doc comments in `internal/tidy/tidy.go` match the code: `replay` (returns clash and err), `proof` (compares against the merge of base and branch), and `Result` (what `Parent` and `Folded` mean).
-- [ ] Commit: `polish: review notes for PLN-0114`
+- [x] Land skill tidy step 5 compares like with like: `git rev-parse --short=7 <parent>` against the `parent` sha of the `tidy:` line.
+- [x] Land skill tidy step 3: a red gate on the tidy tip stops the land.
+- [x] Land skill Red Flags gets back "Relying on partial verification" and the Rationalization row "Partial check is enough → Partial proves nothing", within the current byte cap.
+- [x] `TestBadBranchNameIsRefused` uses a name that exists as a ref but that `check-ref-format --branch` refuses, or asserts the "not a valid branch name" message, so it fails when the check is removed.
+- [x] Doc comments in `internal/tidy/tidy.go` match the code: `replay` (returns clash and err), `proof` (compares against the merge of base and branch), and `Result` (what `Parent` and `Folded` mean).
+- [x] Commit: `polish: review notes for PLN-0114`
