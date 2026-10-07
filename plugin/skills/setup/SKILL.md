@@ -5,79 +5,12 @@ description: "acta: Use on first run and whenever the user asks to change setup:
 
 # Setup
 
-The chat language, style and tone live in `~/.acta/config.yaml` (or the file `PM_VOICE_FILE` names). An old `voice.yaml` in the same folder moves there on its own. `acta` reads it at the start of every session and before every message. When the repo has code and `.acta/wiki/` holds no page yet, offer in one line to seed the wiki with `acta:migrate`, and only start on a yes.
+Setup lives in the `acta setup` wizard now. It asks every question itself: chat language, style, tone, build executor, subagent models, plugin installs, and the acta block. It runs `acta doctor` first and writes only with a TTY.
 
-## First run
+Ask the user to run `! acta setup` in their own terminal. When the harness gives this session a TTY, run it there instead.
 
-1. Run `acta doctor` and show its result. When a repo check failed, offer `acta doctor --fix`.
-2. Run `acta config show` and read what it prints. Nothing is set (no config file, or every value marked `(default)`) means a first run: ask every question below, one at a time, in order. A value marked `(default)` is not set yet, so ask for it. Never ask about `coding_guide`: it stays `lean` unless the user brings it up, and `acta config set --coding-guide off` turns it off. Any other run: show the current setting first. Then:
-   - When the user already said which part to change, change only that part and stop there.
-   - Otherwise ask only the parts not set yet, then ask once: "Change anything already set? (voice, questions, executor, plan depth, subagent models, acta block)". A yes means the user names the parts to change, so change only those.
+Pass `--plugin-dir <path>` when the user fetched this repo somewhere the wizard cannot find, so it knows which plugin to install.
 
-Pass only the flags that change: `acta config set --style plain`, `acta config set --clear-tone`, `acta config set --repo-language English`, `acta config set --executor inline`, `acta config set --clear-subagent-models`. `acta config show` prints the current setting.
+When the user cannot run the wizard at all, fall back to `acta config set` with the flags `acta config show` marks as missing, one question at a time.
 
-### Voice
-
-Which language should I use when I talk with you? (default: English) Style: `adhd` (the answer or next action first, short numbered steps) or `plain`? (default: adhd) Anything about tone, in your own words? (optional)
-
-Save the answers, writing the language as its full English name (Korean, not ko):
-
-```bash
-acta config set --language Korean --style adhd --tone "Casual, short sentences."
-```
-
-From the next message on, talk in the chosen language.
-
-### Default build executor
-
-`subagent` (default) or `inline`. Offer `dispatch` only when `HERDR_ENV=1` is in the environment, which means this session runs inside a herdr pane. `herdr` on PATH is not enough: dispatch needs this session's own pane. Without `HERDR_ENV=1`, do not offer `dispatch` at all.
-
-```bash
-acta config set --executor subagent
-```
-
-### Plan depth
-
-`full` (default: real code in every plan step, and the plan waits for a yes) or `minimal` (short steps, no code, build starts right away).
-
-```bash
-acta config set --plan-depth full
-```
-
-Then ask once whether to save the executor and the depth for every repo or this repo only. This repo only: `acta config set --repo --executor inline --plan-depth minimal` writes `.acta.yaml`, which is committed, so it reaches everyone who clones the repo. Use `--plan-depth minimal` the same way in the global command.
-
-### Split subagent models
-
-Ask this one in Claude Code only, and only while `acta config show` has no `subagent_models` line. Default no. A yes saves `acta config set --subagent-models split`. A no saves `acta config set --subagent-models default`, so the question is not asked again; the user's own config wins.
-
-### Questions
-
-How should I ask you things: `one` (default, one question at a time) or `probe` (a round of questions, with a recommended answer each)? This is a user setting only, never a repo one.
-
-```bash
-acta config set --questions probe
-```
-
-### The acta block
-
-Ask: add the acta block to CLAUDE.md / AGENTS.md? When the repo has neither, ask to create a CLAUDE.md for it. Show this exact block first, before any yes:
-
-```markdown
-<!-- acta:begin -->
-## acta
-This repo uses the acta plugin. Before each workflow step, load the matching acta skill and follow it.
-Specs, plans, bugs, debt, scratch items and the wiki live in `.acta/`.
-Project knowledge (gotchas, runbooks, decisions with their why) goes to `.acta/wiki/`, never to agent memory. Write a page only when a fresh agent would lose time or repeat a mistake without it. When a fact changes, rewrite its page.
-Before changing a file, run `acta wiki match <file>` and read each page it names.
-Work in flight goes to `acta state set <plan id> next` with the text on stdin (read it back with `acta state <plan id>`), not to agent memory. Agent memory keeps only the user's own setup.
-Raw ideas go to Scratchpad with `acta scratch new`. A finished scratch item is specced, never dropped; dropped means not done or not valid.
-<!-- acta:end -->
-```
-
-Write only after a yes. When both files exist, ask which one. When only CLAUDE.md exists, write the block there. When only AGENTS.md exists, write the block there and make no CLAUDE.md. When neither exists: in Claude Code, run `/init` first, then add the block to the CLAUDE.md it made; in any other harness, create a CLAUDE.md that holds only the block. Write only between the two markers; a re-run replaces the text inside them and leaves the rest of the file alone.
-
-## Limits
-
-- The user's own CLAUDE.md or AGENTS.md wins when it names a language or style.
-- Tone is at most 8 lines and 600 characters.
-- This skill edits CLAUDE.md or AGENTS.md only between the acta markers, and only after a yes; the one exception is the new CLAUDE.md that `/init` writes. It never edits settings.
+When the repo has code and `.acta/wiki/` holds no page yet, offer in one line to seed the wiki with `acta:migrate`, and only start on a yes.

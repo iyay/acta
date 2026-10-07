@@ -21,7 +21,7 @@ Out: the curl install script and the release pipeline it needs. They are split t
 2. Run the same checks as `acta doctor` and show the result. A failed check is shown, not fatal.
 3. Ask, with a `charmbracelet/huh` form, one question at a time: chat language, style, tone, build executor, subagent models. Each default is the value in the current user config (`internal/config/user.go`), or the built-in default when there is none.
 4. Look for `claude` and `omp` on PATH. For each one found, ask "install the acta plugin into <harness>? [Y/n]". On yes, run its install command. When that command fails, print it so the user can run it by hand, and carry on.
-5. When the working directory is inside a git repo, offer the acta block. Show the block first. Write only after a yes. File choice: both CLAUDE.md and AGENTS.md exist, ask which one; one exists, use it; neither exists, create a CLAUDE.md that holds only the block. Write only between `<!-- acta:begin -->` and `<!-- acta:end -->`; a re-run replaces the text inside them and leaves the rest of the file alone. The wizard never runs `/init`, because it runs outside an agent.
+5. When the working directory is inside a git repo, write the acta block. The block is mandatory: no yes is asked and there is no skip. Show the block and the file it goes to. File choice: both CLAUDE.md and AGENTS.md exist, write it to both; one exists, use it; neither exists, create a CLAUDE.md that holds only the block. Never create an AGENTS.md. Write only between `<!-- acta:begin -->` and `<!-- acta:end -->`; a re-run replaces the text inside them and leaves the rest of the file alone. The wizard never runs `/init`, because it runs outside an agent.
 6. Print a summary: what was written, which install commands ran or failed, and the next step.
 
 ## Code layout
@@ -35,7 +35,7 @@ Out: the curl install script and the release pipeline it needs. They are split t
 
 ## Skill change
 
-`plugin/skills/setup/SKILL.md` shrinks to: ask the user to run `! acta setup` (or run it when the harness gives a TTY), and fall back to `acta config set` when it cannot. The block text leaves the skill; `internal/setup/block.go` is the single source. `internal/plugincheck/skill_setup_test.go` checks the block in the skill today, so it changes to match.
+`plugin/skills/setup/SKILL.md` shrinks to: ask the user to run `! acta setup` (or run it when the harness gives a TTY), and fall back to `acta config set` when it cannot. The block text leaves the skill; `internal/setup/block.go` is the single source. `internal/plugincheck/skill_setup_test.go` checks the block in the skill today, so it changes to match. The skill's fallback path follows the same rule: the acta block is mandatory, written with the same file choice and no yes asked (user ruling 2026-10-07).
 
 ## Testing
 
