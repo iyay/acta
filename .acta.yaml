@@ -1,2 +1,2 @@
-build_executor: dispatch
+build_executor: subagent
 plan_depth: minimal
