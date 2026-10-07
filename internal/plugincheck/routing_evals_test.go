@@ -51,6 +51,15 @@ var routingBanned = []string{
 	"scratch",
 }
 
+// routingLightBanned never appears in a light prompt body. A light case asks
+// for the fix, so orders to stop or to leave files alone fail the case.
+var routingLightBanned = []string{
+	"stop",
+	"berhenti",
+	"do not change",
+	"jangan ubah",
+}
+
 // routingCLIEndsEveryPrompt is the last line of each routing prompt. The
 // scaffold puts the CLI there, and the prompt has to say so.
 const routingCLIEnding = "The acta CLI for this repo is ./bin/acta. It is on PATH as well."
@@ -258,6 +267,13 @@ func TestRoutingEvalCases(t *testing.T) {
 					t.Errorf("prompt body names its route with %q", bad)
 				}
 			}
+			if strings.HasPrefix(folder, "routing-light-") {
+				for _, bad := range routingLightBanned {
+					if strings.Contains(lower, bad) {
+						t.Errorf("light prompt asks for no fix with %q", bad)
+					}
+				}
+			}
 			if st, err := os.Stat(filepath.Join(dir, "scaffold.sh")); err != nil || st.IsDir() {
 				t.Error("scaffold.sh is missing")
 			}
@@ -348,7 +364,7 @@ func TestRoutingEvalCases(t *testing.T) {
 		t.Errorf("route second has %d English and %d Indonesian prompts, want 1 and 1",
 			enCount["second"], idCount["second"])
 	}
-	if mixed < 2 {
-		t.Errorf("only %d prompts mix English and Indonesian, want at least 2", mixed)
+	if mixed < 2 || mixed > 3 {
+		t.Errorf("%d prompts mix English and Indonesian, want 2 or 3", mixed)
 	}
 }

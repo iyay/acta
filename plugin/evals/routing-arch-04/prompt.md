@@ -13,8 +13,9 @@ berjalan dalam satu proses dan saling memanggil langsung, dan pemecahan
 ini akan mengubah cara setiap bagian berkomunikasi, jadi ini bukan
 perbaikan kecil.
 
-The split changes every call between the parts, so nothing stays as it is.
-Mulai kerjakan sekarang dengan cara repo ini menangani perubahan seperti
-ini, dan berhenti di hal pertama yang diminta ke saya.
+Pemecahan ini mengubah setiap panggilan di antara bagian-bagian itu,
+jadi tidak ada yang tetap seperti semula. Mulai kerjakan sekarang
+dengan cara repo ini menangani perubahan seperti ini, dan berhenti
+di hal pertama yang diminta ke saya.
 
 The acta CLI for this repo is ./bin/acta. It is on PATH as well.

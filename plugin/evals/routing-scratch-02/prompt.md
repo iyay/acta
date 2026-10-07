@@ -10,8 +10,8 @@ allowed_tools: []
 
 Saya masih mengutak-atik uji yang gagal di repo ini. Betulkan yang itu saja.
 
-The export endpoint keeps hitting the same file over and over, so a small
-cache in front of it would help a lot. Saya tidak mau dikerjakan sekarang,
+Endpoint ekspor terus menghantam berkas yang sama berulang-ulang, jadi cache
+kecil di depannya akan sangat membantu. Saya tidak mau dikerjakan sekarang,
 dan jangan taruh di CLAUDE.md atau file catatan mana pun. Simpan di tempat
 repo ini menyimpan hal seperti itu, jawab dalam satu baris apa yang kamu
 simpan, lalu berhenti.

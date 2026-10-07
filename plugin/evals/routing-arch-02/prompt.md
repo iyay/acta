@@ -12,8 +12,8 @@ Kami ingin memindah penyimpanan aplikasi ini ke Postgres. Sekarang setiap
 modul baca tulis dengan caranya sendiri, dan pemindahan ini akan mengubah
 cara semuanya menyimpan data, jadi ini bukan perbaikan kecil.
 
-The current layout spreads reads and writes across every module, so the move
-touches them all. Mulai kerjakan sekarang dengan cara repo ini menangani
+Semua baca tulis tersebar di setiap modul, jadi pemindahan ini menyentuh
+semuanya. Mulai kerjakan sekarang dengan cara repo ini menangani
 perubahan seperti ini, dan berhenti di hal pertama yang diminta ke saya.
 
 The acta CLI for this repo is ./bin/acta. It is on PATH as well.

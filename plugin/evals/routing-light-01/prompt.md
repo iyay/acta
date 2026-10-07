@@ -9,10 +9,6 @@ allowed_tools: []
 ---
 
 One line in src/greet.py is wrong. It returns 'Helo, ' + name, so the
-greeting comes out misspelled. The fix is one word in that one line.
-
-Does this change need the full process with competing approaches and a
-sectioned write-up, or is the short route enough? Answer in a few lines and
-stop. Do not change any file.
+greeting comes out misspelled. Fix that one word in that one line.
 
 The acta CLI for this repo is ./bin/acta. It is on PATH as well.
