@@ -33,12 +33,11 @@ type Env struct {
 }
 
 // Answers holds what the user said: the new user config and one install
-// answer per harness found. BlockFile stays for the plan's shape; the block
-// paths come from Env, since the block is mandatory and never picked.
+// answer per harness found. The block paths come from Env, since the block
+// is mandatory and never picked.
 type Answers struct {
-	User      config.User
-	Install   map[string]bool
-	BlockFile string
+	User    config.User
+	Install map[string]bool
 }
 
 // Action is one thing the runner carries out. Only the fields its Kind
