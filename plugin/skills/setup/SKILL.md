@@ -11,6 +11,6 @@ Ask the user to run `! acta setup` in their own terminal. When the harness gives
 
 Pass `--plugin-dir <path>` when the user fetched this repo somewhere the wizard cannot find, so it knows which plugin to install.
 
-When the user cannot run the wizard at all, fall back to `acta config set` with the flags `acta config show` marks as missing, one question at a time.
+When the user cannot run the wizard at all, fall back to `acta config set` with the flags `acta config show` marks as missing, one question at a time. The acta block is still mandatory there: write it with no yes asked and no skip. Both CLAUDE.md and AGENTS.md exist: write to both. One exists: use it. Neither exists: create a CLAUDE.md holding only the block. Never create an AGENTS.md.
 
 When the repo has code and `.acta/wiki/` holds no page yet, offer in one line to seed the wiki with `acta:migrate`, and only start on a yes.
