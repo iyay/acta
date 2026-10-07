@@ -140,3 +140,17 @@ Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip 
 - A branch named HEAD is now refused by acta tidy; land always passes a real branch name.
 - plan() in internal/tidy/tidy.go shadows err from replay with an inner var; it works.
 - The polish reworded land steps 1 to 4 and 7 to fit the cap, with no rule removed and no meaning changed.
+
+## Cap back
+
+### Task 09: Land skill back under its old cap
+
+The user ruled on 2026-10-07: the `skills/land/SKILL.md` byte cap goes back to 6962.
+
+**Files:** `plugin/skills/land/SKILL.md`, new `plugin/skills/land/tidy.md`, `internal/plugincheck/budget_test.go`, `internal/plugincheck/skill_land_test.go`, `.acta/wiki/land-tidy-history.md`, `.acta/wiki/plugincheck-caps-per-folder.md` if its text changes
+
+**verify:** `skills/land/SKILL.md` is at most 6962 bytes under a 6962 cap, and every rule the land skill held at the polish head is still in the land skill folder, word for word or with the same meaning, plus the three rules lost in fix round 1 ("Thinking 'just this once'", "Tired and wanting work over", the row "I'm tired | Tired is not an excuse"). With `commit_history: full` an agent reading only SKILL.md lands as before; with `tidy` SKILL.md sends it to `tidy.md`. List each rule moved and where it now lives.
+
+- [ ] Red: `budget_test.go` cap for `skills/land/SKILL.md` back to 6962 and a cap for `skills/land/tidy.md`; `skill_land_test.go` checks the tidy rules in `tidy.md` and the pointer in SKILL.md. Watch it fail on the size.
+- [ ] Green: move the tidy landing steps and their rules from SKILL.md into `tidy.md`, the way `build/dispatch.md` holds the dispatch path; SKILL.md keeps one line: with `commit_history: tidy`, read tidy.md and follow it. Put back the three lost rules in SKILL.md. Update the wiki pages that name where the tidy path lives.
+- [ ] Commit: `fix(land): tidy path in its own file, SKILL.md back under its cap (PLN-0114)`
