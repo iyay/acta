@@ -188,6 +188,35 @@ func routingCounts(body string) (en, id int) {
 	return en, id
 }
 
+// routingToolGrader is the frontmatter of a tool_used grader file. Min and
+// Max stay pointers so a missing key reads as nil, which the eval runner
+// treats as min 1 with no ceiling.
+type routingToolGrader struct {
+	Type  string `yaml:"type"`
+	Tool  string `yaml:"tool"`
+	Input string `yaml:"input_match"`
+	Min   *int   `yaml:"min"`
+	Max   *int   `yaml:"max"`
+}
+
+// routingGraderMeta reads one grader file frontmatter into routingToolGrader.
+func routingGraderMeta(t *testing.T, path string) routingToolGrader {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.SplitN(string(raw), "---", 3)
+	if len(parts) != 3 {
+		t.Fatalf("%s has no frontmatter between --- lines", path)
+	}
+	var g routingToolGrader
+	if err := yaml.Unmarshal([]byte(parts[1]), &g); err != nil {
+		t.Fatalf("%s frontmatter does not parse: %v", path, err)
+	}
+	return g
+}
+
 // TestRoutingEvalCases checks every routing eval folder: the set is exact,
 // each prompt carries the routing frontmatter and ends on the CLI line, each
 // folder holds a scaffold wired through case.yaml and at least one action
@@ -229,6 +258,7 @@ func TestRoutingEvalCases(t *testing.T) {
 				Runs    int      `yaml:"runs"`
 				Max     int      `yaml:"max_turns"`
 				Timeout int      `yaml:"timeout_seconds"`
+				Allowed []string `yaml:"allowed_tools"`
 			}
 			if err := yaml.Unmarshal([]byte(fm), &meta); err != nil {
 				t.Fatalf("prompt.md frontmatter does not parse: %v", err)
@@ -253,6 +283,9 @@ func TestRoutingEvalCases(t *testing.T) {
 			}
 			if !strings.Contains(fm, "allowed_tools:") {
 				t.Error("prompt.md must set allowed_tools")
+			}
+			if len(meta.Allowed) != 1 || meta.Allowed[0] != "Skill" {
+				t.Errorf("allowed_tools = %v, want [Skill]", meta.Allowed)
 			}
 			if routingContextRe.MatchString(fm) {
 				t.Error("prompt.md must not set a context key; the scaffold lives in the case folder")
@@ -319,6 +352,49 @@ func TestRoutingEvalCases(t *testing.T) {
 				if !strings.Contains(string(raw), "# guards: ") {
 					t.Errorf("grader %s does not say which route it guards", filepath.Base(g))
 				}
+			}
+			// Every light case needs a Skill acta: grader with min 1, so the
+			// run only passes when the agent loads a workflow skill.
+			if strings.HasPrefix(folder, "routing-light-") {
+				g := routingGraderMeta(t, filepath.Join(dir, "graders", "workflow-skill.md"))
+				if g.Type != "tool_used" || g.Tool != "Skill" || g.Input != "acta:" {
+					t.Errorf("workflow-skill.md = type %q tool %q input %q, want tool_used Skill acta:", g.Type, g.Tool, g.Input)
+				}
+				if g.Min == nil || *g.Min != 1 {
+					t.Errorf("workflow-skill.md min = %v, want 1", g.Min)
+				}
+			}
+			// Every chat case keeps the Skill acta: grader at min 0 max 0 and
+			// adds a Read /skills/ grader at min 0 max 0, so neither the
+			// workflow skill nor a skill file read passes.
+			if strings.HasPrefix(folder, "routing-chat-") {
+				g := routingGraderMeta(t, filepath.Join(dir, "graders", "no-skill.md"))
+				if g.Type != "tool_used" || g.Tool != "Skill" || g.Input != "acta:" {
+					t.Errorf("no-skill.md = type %q tool %q input %q, want tool_used Skill acta:", g.Type, g.Tool, g.Input)
+				}
+				if g.Min == nil || *g.Min != 0 || g.Max == nil || *g.Max != 0 {
+					t.Errorf("no-skill.md min/max = %v/%v, want 0/0", g.Min, g.Max)
+				}
+				g = routingGraderMeta(t, filepath.Join(dir, "graders", "no-skill-read.md"))
+				if g.Type != "tool_used" || g.Tool != "Read" || g.Input != "/skills/" {
+					t.Errorf("no-skill-read.md = type %q tool %q input %q, want tool_used Read /skills/", g.Type, g.Tool, g.Input)
+				}
+				if g.Min == nil || *g.Min != 0 || g.Max == nil || *g.Max != 0 {
+					t.Errorf("no-skill-read.md min/max = %v/%v, want 0/0", g.Min, g.Max)
+				}
+			}
+			// The scaffold writes the chat language the prompt speaks, so an
+			// Indonesian prompt runs with an Indonesian voice file.
+			scRaw, scErr := os.ReadFile(filepath.Join(dir, "scaffold.sh"))
+			if scErr != nil {
+				t.Fatal(scErr)
+			}
+			want := "chat_language: English"
+			if routingLang[folder] == "id" {
+				want = "chat_language: Indonesian"
+			}
+			if !strings.Contains(string(scRaw), want) {
+				t.Errorf("scaffold.sh must write %q", want)
 			}
 
 			en, id := routingCounts(routingLangBody(body))

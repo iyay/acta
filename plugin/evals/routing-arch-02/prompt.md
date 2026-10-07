@@ -5,7 +5,7 @@ tags: [routing]
 runs: 3
 max_turns: 6
 timeout_seconds: 240
-allowed_tools: []
+allowed_tools: [Skill]
 ---
 
 Kami ingin memindah penyimpanan aplikasi ini ke Postgres. Sekarang setiap

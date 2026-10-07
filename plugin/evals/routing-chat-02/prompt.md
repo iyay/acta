@@ -5,7 +5,7 @@ tags: [routing]
 runs: 3
 max_turns: 6
 timeout_seconds: 240
-allowed_tools: []
+allowed_tools: [Skill]
 ---
 
 Quick Go question. When I append to a slice inside a function, the caller

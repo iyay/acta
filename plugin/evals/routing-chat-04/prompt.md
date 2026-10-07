@@ -5,7 +5,7 @@ tags: [routing]
 runs: 3
 max_turns: 6
 timeout_seconds: 240
-allowed_tools: []
+allowed_tools: [Skill]
 ---
 
 How do webhook retries usually work? If the receiver is down for an hour,
