@@ -5,6 +5,7 @@ closes: [SPC-0105]
 id: PLN-0114
 created: "2026-10-07 19:28:43"
 hash: uyo6akt
+started: "2026-10-07 19:32:45"
 ---
 # Tidy commit history Implementation Plan
 
@@ -39,9 +40,9 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** `commit_history` accepts only `tidy` and `full`, reads `tidy` when unset at user and repo level, and a repo value beats the user value. `acta config show` (text and `--json`) and `acta config set` handle it on every path `plan_depth` takes. List each path checked.
 
-- [ ] Red: tests for the default, both valid values, a bad value rejected with an error that names `commit_history`, the repo override, and the show/set output. Run `scripts/test ./internal/config/ ./internal/cli/ -run CommitHistory` and watch it fail.
-- [ ] Green: add `CommitHistory string \`yaml:"commit_history,omitempty"\`` next to `PlanDepth`, with the same validate, trim and repo-override code, and wire it into `config_cmd.go` beside `plan_depth`.
-- [ ] Commit: `feat(config): commit_history setting, tidy by default (SPC-0105)`
+- [x] Red: tests for the default, both valid values, a bad value rejected with an error that names `commit_history`, the repo override, and the show/set output. Run `scripts/test ./internal/config/ ./internal/cli/ -run CommitHistory` and watch it fail.
+- [x] Green: add `CommitHistory string \`yaml:"commit_history,omitempty"\`` next to `PlanDepth`, with the same validate, trim and repo-override code, and wire it into `config_cmd.go` beside `plan_depth`.
+- [x] Commit: `feat(config): commit_history setting, tidy by default (SPC-0105)`
 
 ### Task 02: tidy package
 
@@ -49,9 +50,9 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** For any branch, the new chain's final tree equals the branch tree plus only the hash-remap edits in planning-root files, or `Run` returns an error and writes no ref. No commit is lost: every branch commit's change sits in exactly one new commit. List each fold path (before the first kept commit, after it, after the review marker, on a replay clash, `--onto` parent chores) and the test that covers it.
 
-- [ ] Red: tests on temp repos for: the keep rule (touches a file outside the planning root and type not `chore`/`docs`/`polish`/`wiki`); a planning-only commit before the first kept commit rides forward; one after folds back; every commit after the first review-notes or `polish` commit folds into the last kept commit; a replay clash folds into the commit before; dates never go backward; messages and authors unchanged; short and full old hashes in planning files remapped to the new commit at the same length, unknown hashes left; a forced tree mismatch returns an error and no `refs/acta/tidy/<branch>`; `Onto` replays `chore(...)` parent commits first and folds them forward; a non-chore parent commit makes `Onto` fold nothing. Run `scripts/test ./internal/tidy/` and watch it fail.
-- [ ] Green: `func Run(repo string, opt Options) (Result, error)` with `Options{Base, Branch, Onto, PlanningRoot string}` and `Result{OldCount, NewCount int; Tip string}`. Replay with `git merge-tree --write-tree --merge-base=<c>^ <current> <c>`; build commits with `git commit-tree` and the kept commit's author/committer env; write `refs/acta/tidy/<branch>` only after the tree check passes. `remap.go` holds the old-to-new map and the file rewrite.
-- [ ] Commit: `feat(tidy): fold a branch into one commit per code task (SPC-0105)`
+- [x] Red: tests on temp repos for: the keep rule (touches a file outside the planning root and type not `chore`/`docs`/`polish`/`wiki`); a planning-only commit before the first kept commit rides forward; one after folds back; every commit after the first review-notes or `polish` commit folds into the last kept commit; a replay clash folds into the commit before; dates never go backward; messages and authors unchanged; short and full old hashes in planning files remapped to the new commit at the same length, unknown hashes left; a forced tree mismatch returns an error and no `refs/acta/tidy/<branch>`; `Onto` replays `chore(...)` parent commits first and folds them forward; a non-chore parent commit makes `Onto` fold nothing. Run `scripts/test ./internal/tidy/` and watch it fail.
+- [x] Green: `func Run(repo string, opt Options) (Result, error)` with `Options{Base, Branch, Onto, PlanningRoot string}` and `Result{OldCount, NewCount int; Tip string}`. Replay with `git merge-tree --write-tree --merge-base=<c>^ <current> <c>`; build commits with `git commit-tree` and the kept commit's author/committer env; write `refs/acta/tidy/<branch>` only after the tree check passes. `remap.go` holds the old-to-new map and the file rewrite.
+- [x] Commit: `feat(tidy): fold a branch into one commit per code task (SPC-0105)`
 
 ### Task 03: acta tidy command
 
@@ -69,9 +70,9 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 **verify:** The wizard asks commit history once, defaults to the current value or `tidy`, and the saved user config holds the answer. No other question changes order or wording. List each check.
 
-- [ ] Red: tests for the new question title and options, its default, and the saved value. Run `scripts/test ./internal/setup/` and watch it fail.
-- [ ] Green: add the question after the plan depth question, with options `tidy` (one commit per task, straight history) and `full` (every commit plus a merge commit).
-- [ ] Commit: `feat(setup): ask for commit history (SPC-0105)`
+- [x] Red: tests for the new question title and options, its default, and the saved value. Run `scripts/test ./internal/setup/` and watch it fail.
+- [x] Green: add the question after the plan depth question, with options `tidy` (one commit per task, straight history) and `full` (every commit plus a merge commit).
+- [x] Commit: `feat(setup): ask for commit history (SPC-0105)`
 
 ### Task 05: land skill tidy path and wiki
 
@@ -96,5 +97,6 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 ### Next
 
-Dispatched to omp tab tidy-commit-history (pane wM:p58), base 3108fdb, all 6 tasks.
-On reply-back: verify per dispatch.md, then acta:review over 3108fdb..HEAD, then land.
+Took over from omp (tab closed). Task 01 done (e950533) by omp.
+Task 02 and Task 04 running as Claude sonnet subagents in parallel.
+Then Task 03 (needs 02), Task 05 (needs 03), Task 06.
