@@ -61,7 +61,8 @@ func TestTidySuccessPrintsLine(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("code %d, stderr %q", code, errOut)
 	}
-	if out != "tidy: 2 commits -> 1, tree ok\n" {
+	want := "tidy: 2 commits -> 1, tree ok, parent " + tidyGit(t, dir, "rev-parse", "--short=7", "main") + ", folded 0\n"
+	if out != want {
 		t.Fatalf("stdout %q", out)
 	}
 	if tidyGit(t, dir, "rev-parse", "--verify", "refs/acta/tidy/work") == "" {

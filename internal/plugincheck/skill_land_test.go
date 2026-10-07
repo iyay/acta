@@ -26,6 +26,13 @@ func TestSkillLand(t *testing.T) {
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
 			"acta wiki check <base>..<head>", "the wiki pages the branch added or changed",
 			"git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/",
+			// A moved parent: the fold point comes first, the parent tip is
+			// re-checked, and gates run on the tidy tip unless only planning
+			// files differ from the branch.
+			"Pick the fold point (step 2) first", "folded <n>", "must equal the `parent` sha",
+			"`folded` is 0", "`folded` is above 0",
+			"git diff --name-only <branch> refs/acta/tidy/<branch>", "detached temp worktree",
+			"tidy proved the tip equals the merge of parent and branch",
 		},
 		MustNot: []string{"superpowers:", "Push and Create PR", "Keep As-Is", "Present Options", "discard the work",
 			"Build never commits the plan file", "First commit the plan file",
@@ -36,7 +43,9 @@ func TestSkillLand(t *testing.T) {
 			// The wiki is the one home for project knowledge. The old files stay
 			// out of the skill text, and so does the name of the format its
 			// fields came from.
-			"CONTEXT.md", "docs/adr", "okf", "OKF"},
+			"CONTEXT.md", "docs/adr", "okf", "OKF",
+			// The branch tree no longer stands for the tidy tip once the parent moves.
+			"the trees match"},
 	})
 }
 

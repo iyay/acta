@@ -355,3 +355,117 @@ func TestCheckGitVersion(t *testing.T) {
 		}
 	}
 }
+
+// moveParent adds a commit on main after the branch was cut, then goes back.
+func moveParent(r *repoT, msg string, n int, files map[string]string) string {
+	r.git(nil, "checkout", "-q", "main")
+	h := r.commit(msg, d(n), "ann", files)
+	r.git(nil, "checkout", "-q", "feat")
+	return h
+}
+
+func hasFile(r *repoT, rev, path string) bool {
+	return r.refExists(rev + ":" + path)
+}
+
+func TestParentMovedWithCodeKeepsParentFiles(t *testing.T) {
+	r := start(t)
+	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	parent := moveParent(r, "feat: parent code", 2, map[string]string{"c.go": "c\n"})
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasFile(r, res.Tip, "c.go") || !hasFile(r, res.Tip, "a.go") {
+		t.Fatal("tip lost a file of the parent or of the branch")
+	}
+	if r.rev(res.Tip+"^") != parent || res.Parent != parent || res.Folded != 0 {
+		t.Fatalf("chain not on the parent tip: %+v", res)
+	}
+	// Only the branch work may differ from the parent.
+	if got := r.git(nil, "diff", "--name-only", parent, res.Tip); got != "a.go" {
+		t.Fatalf("diff against parent: %q", got)
+	}
+}
+
+func TestParentMovedWithChoresOnly(t *testing.T) {
+	for _, onto := range []bool{false, true} {
+		r := start(t)
+		fold := r.rev("main")
+		r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+		moveParent(r, "chore(plan): parent one", 2, map[string]string{".acta/p1.md": "p1\n"})
+		o := opt("main", "feat")
+		if onto {
+			o.Onto = fold
+		}
+		res, err := Run(r.dir, o)
+		if err != nil {
+			t.Fatalf("onto=%v: %v", onto, err)
+		}
+		if !hasFile(r, res.Tip, ".acta/p1.md") || !hasFile(r, res.Tip, "a.go") {
+			t.Fatalf("onto=%v: tip lost a file", onto)
+		}
+		wantFolded := 0
+		if onto {
+			wantFolded = 1
+		}
+		if res.Folded != wantFolded {
+			t.Fatalf("onto=%v: folded %d", onto, res.Folded)
+		}
+		want := r.rev("main")
+		if onto {
+			want = fold
+		}
+		if r.rev(res.Tip+"^") != want {
+			t.Fatalf("onto=%v: wrong start point", onto)
+		}
+	}
+}
+
+func TestParentClashWritesNoRef(t *testing.T) {
+	r := start(t)
+	r.commit("feat: a", d(1), "ann", map[string]string{"README.md": "branch\n"})
+	moveParent(r, "feat: parent", 2, map[string]string{"README.md": "parent\n"})
+	_, err := Run(r.dir, opt("main", "feat"))
+	if err == nil || !strings.Contains(err.Error(), "README.md") {
+		t.Fatalf("want an error naming README.md, got %v", err)
+	}
+	if r.refExists("refs/acta/tidy/feat") {
+		t.Fatal("ref written")
+	}
+}
+
+func TestUnknownOntoIsAnError(t *testing.T) {
+	r := start(t)
+	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	o := opt("main", "feat")
+	o.Onto = "no-such-ref"
+	if _, err := Run(r.dir, o); err == nil {
+		t.Fatal("want an error")
+	}
+	if r.refExists("refs/acta/tidy/feat") {
+		t.Fatal("ref written")
+	}
+}
+
+func TestReplayGitErrorIsNotAClash(t *testing.T) {
+	r := start(t)
+	tree := r.rev("main^{tree}")
+	// A missing commit makes merge-tree fail with a code other than 1.
+	if _, clash, err := replay(r.dir, strings.Repeat("0", 40), tree); err == nil || clash {
+		t.Fatalf("want a plain error, got clash=%v err=%v", clash, err)
+	}
+}
+
+func TestBadBranchNameIsRefused(t *testing.T) {
+	r := start(t)
+	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	for _, name := range []string{"-bad", "a..b", "x y"} {
+		if _, err := Run(r.dir, opt("main", name)); err == nil {
+			t.Fatalf("%q: want an error", name)
+		}
+	}
+	if r.refExists("refs/acta/tidy/-bad") {
+		t.Fatal("ref written")
+	}
+}

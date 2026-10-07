@@ -23,6 +23,8 @@ type Options struct {
 type Result struct {
 	OldCount, NewCount int
 	Tip                string
+	Parent             string
+	Folded             int
 }
 
 // tamperTree lets a test hand back a wrong final tree. It stays nil otherwise.
@@ -56,6 +58,10 @@ func Run(repo string, opt Options) (Result, error) {
 		root = ".acta"
 	}
 	short := strings.TrimPrefix(opt.Branch, "refs/heads/")
+	// The name goes into a ref path, so check it before anything is built.
+	if _, err := git(repo, nil, "", "check-ref-format", "--branch", short); err != nil {
+		return Result{}, fmt.Errorf("tidy: %q is not a valid branch name", short)
+	}
 	base, err := resolve(repo, opt.Base)
 	if err != nil {
 		return Result{}, err
@@ -64,11 +70,22 @@ func Run(repo string, opt Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	branchTree, err := resolve(repo, branchTip+"^{tree}")
+	// The branch may have been cut before the base moved. Walk only the
+	// branch's own commits, and aim at the merge of base and branch so the
+	// base's newer work is kept.
+	fork, err := git(repo, nil, "", "merge-base", base, branchTip)
 	if err != nil {
 		return Result{}, err
 	}
-	commits, err := walk(repo, base+".."+branchTip)
+	fork = strings.TrimSpace(fork)
+	target, clashPaths, clash, err := mergeTree(repo, fork, base, branchTip)
+	if err != nil {
+		return Result{}, err
+	}
+	if clash {
+		return Result{}, fmt.Errorf("tidy: %s clashes with %s at %s", opt.Branch, opt.Base, strings.Join(clashPaths, ", "))
+	}
+	commits, err := walk(repo, fork+".."+branchTip)
 	if err != nil {
 		return Result{}, err
 	}
@@ -80,14 +97,20 @@ func Run(repo string, opt Options) (Result, error) {
 	parent, cur := base, ""
 	var carried []commit
 	if opt.Onto != "" {
-		parent, carried = ontoStart(repo, opt.Onto, base)
+		if parent, carried, err = ontoStart(repo, opt.Onto, base); err != nil {
+			return Result{}, err
+		}
 	}
 	if cur, err = resolve(repo, parent+"^{tree}"); err != nil {
 		return Result{}, err
 	}
 	var pendDate time.Time
 	for _, c := range carried {
-		if t, ok := replay(repo, c.hash, cur); ok {
+		t, clash, err := replay(repo, c.hash, cur)
+		if err != nil {
+			return Result{}, err
+		}
+		if !clash {
 			cur = t
 		}
 		pendDate = later(pendDate, c.date)
@@ -97,7 +120,7 @@ func Run(repo string, opt Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	nodes[len(nodes)-1].tree = branchTree
+	nodes[len(nodes)-1].tree = target
 	keepTimeForward(nodes)
 
 	// Build every commit but the last, then the map from old to new hashes.
@@ -119,14 +142,14 @@ func Run(repo string, opt Options) (Result, error) {
 	for i, c := range commits {
 		olds[i] = c.hash
 	}
-	finalTree, _, err := remapTree(repo, branchTree, root, olds, newOf)
+	finalTree, _, err := remapTree(repo, target, root, olds, newOf)
 	if err != nil {
 		return Result{}, err
 	}
 	if tamperTree != nil {
 		finalTree = tamperTree(finalTree)
 	}
-	if err := proof(repo, branchTree, finalTree, root, olds, newOf); err != nil {
+	if err := proof(repo, target, finalTree, root, olds, newOf); err != nil {
 		return Result{}, err
 	}
 	nodes[last].tree = finalTree
@@ -137,7 +160,7 @@ func Run(repo string, opt Options) (Result, error) {
 	if _, err := git(repo, nil, "", "update-ref", "refs/acta/tidy/"+short, tip); err != nil {
 		return Result{}, err
 	}
-	return Result{OldCount: len(commits), NewCount: len(nodes), Tip: tip}, nil
+	return Result{OldCount: len(commits), NewCount: len(nodes), Tip: tip, Parent: base, Folded: len(carried)}, nil
 }
 
 // plan walks the branch commits oldest first and decides which ones stand
@@ -150,7 +173,11 @@ func plan(repo string, commits []commit, root, cur string, pendDate time.Time) (
 		if isReviewMarker(c.subject) {
 			reviewed = true
 		}
-		next, ok := replay(repo, c.hash, cur)
+		next, clash, err := replay(repo, c.hash, cur)
+		if err != nil {
+			return nil, err
+		}
+		ok := !clash
 		if ok {
 			cur = next
 		}
@@ -227,38 +254,69 @@ func touchesOutside(repo, hash, root string) (bool, error) {
 
 // replay applies the change of one commit on top of a tree. ok is false when
 // the change clashes.
-func replay(repo, hash, cur string) (string, bool) {
-	out, err := git(repo, nil, "", "merge-tree", "--write-tree", "--merge-base="+hash+"^", cur, hash)
-	if err != nil {
-		return "", false
+func replay(repo, hash, cur string) (string, bool, error) {
+	tree, _, clash, err := mergeTree(repo, hash+"^", cur, hash)
+	return tree, clash, err
+}
+
+// mergeTree is a three-way merge that writes no files. Exit code 1 is the one
+// code git uses for a clash, and then paths names the clashing files. Any
+// other failure comes back as an error and is never read as a clash.
+func mergeTree(repo, mergeBase, ours, theirs string) (tree string, paths []string, clash bool, err error) {
+	out, err := git(repo, nil, "", "merge-tree", "--write-tree", "--name-only", "--merge-base="+mergeBase, ours, theirs)
+	lines := strings.Split(out, "\n")
+	if err == nil {
+		return strings.TrimSpace(lines[0]), nil, false, nil
 	}
-	return strings.TrimSpace(strings.SplitN(out, "\n", 2)[0]), true
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+		return "", nil, false, err
+	}
+	// Line one is the tree. The clashing paths follow, up to a blank line.
+	for _, l := range lines[1:] {
+		if l == "" {
+			break
+		}
+		paths = append(paths, l)
+	}
+	return "", paths, true, nil
 }
 
 // ontoStart returns the commit to build on, and the chore commits to fold
-// forward. Any commit between onto and base that is not a chore cancels it.
-func ontoStart(repo, onto, base string) (string, []commit) {
+// forward. Any commit between onto and base that is not a chore cancels it,
+// and then the chain is built on base. An unknown ref or a failed git call is
+// an error.
+func ontoStart(repo, onto, base string) (string, []commit, error) {
 	o, err := resolve(repo, onto)
 	if err != nil {
-		return base, nil
+		return "", nil, err
 	}
 	if _, err := git(repo, nil, "", "merge-base", "--is-ancestor", o, base); err != nil {
-		return base, nil
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 1 {
+			// Onto is not behind base, so there is nothing to fold.
+			return base, nil, nil
+		}
+		return "", nil, err
 	}
 	chores, err := walk(repo, o+".."+base)
 	if err != nil {
-		return base, nil
+		return "", nil, err
 	}
 	for _, c := range chores {
 		if !strings.HasPrefix(c.subject, "chore(") {
-			return base, nil
+			return base, nil, nil
 		}
 	}
 	// A merge in between would be skipped by the walk, so refuse that too.
-	if all, err := git(repo, nil, "", "rev-list", "--count", o+".."+base); err != nil || strings.TrimSpace(all) != strconv.Itoa(len(chores)) {
-		return base, nil
+	all, err := git(repo, nil, "", "rev-list", "--count", o+".."+base)
+	if err != nil {
+		return "", nil, err
 	}
-	return o, chores
+	if strings.TrimSpace(all) != strconv.Itoa(len(chores)) {
+		return base, nil, nil
+	}
+	return o, chores, nil
 }
 
 // walk lists the non-merge commits of a range, oldest first, first parent only.
@@ -307,11 +365,11 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 
 // proof checks that the final tree is the branch tree plus hash swaps in the
 // planning root, and nothing else.
-func proof(repo, branchTree, finalTree, root string, olds []string, newOf map[string]string) error {
-	if branchTree == finalTree {
+func proof(repo, target, finalTree, root string, olds []string, newOf map[string]string) error {
+	if target == finalTree {
 		return nil
 	}
-	out, err := git(repo, nil, "", "diff-tree", "-r", "-z", "--raw", branchTree, finalTree)
+	out, err := git(repo, nil, "", "diff-tree", "-r", "-z", "--raw", target, finalTree)
 	if err != nil {
 		return err
 	}
@@ -321,7 +379,7 @@ func proof(repo, branchTree, finalTree, root string, olds []string, newOf map[st
 		meta := strings.Fields(strings.TrimPrefix(parts[i], ":"))
 		path := parts[i+1]
 		if len(meta) != 5 || meta[4] != "M" || !strings.HasPrefix(path, root+"/") {
-			return fmt.Errorf("tidy: final tree differs from the branch at %s (%v)", path, meta)
+			return fmt.Errorf("tidy: final tree differs from the merge of base and branch at %s (%v)", path, meta)
 		}
 		paths, oldShas, newShas = append(paths, path), append(oldShas, meta[2]), append(newShas, meta[3])
 	}
@@ -359,7 +417,7 @@ func checkVersion(out string) error {
 }
 
 func resolve(repo, rev string) (string, error) {
-	out, err := git(repo, nil, "", "rev-parse", "--verify", "-q", rev)
+	out, err := git(repo, nil, "", "rev-parse", "--verify", "-q", "--end-of-options", rev)
 	if err != nil {
 		return "", fmt.Errorf("tidy: unknown revision %q", rev)
 	}
@@ -389,7 +447,7 @@ func tempIndex() (string, error) {
 }
 
 func removeIndex(idx string) {
-	if err := os.RemoveAll(filepath.Dir(idx)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return
-	}
+	// Best effort. A temp folder left behind costs nothing and cannot change
+	// the result, so a failure here is ignored on purpose.
+	_ = os.RemoveAll(filepath.Dir(idx))
 }

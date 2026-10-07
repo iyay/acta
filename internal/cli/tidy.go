@@ -42,6 +42,10 @@ func cmdTidy(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	fmt.Fprintf(stdout, "tidy: %d commits -> %d, tree ok\n", res.OldCount, res.NewCount)
+	parent := res.Parent
+	if len(parent) > 7 {
+		parent = parent[:7]
+	}
+	fmt.Fprintf(stdout, "tidy: %d commits -> %d, tree ok, parent %s, folded %d\n", res.OldCount, res.NewCount, parent, res.Folded)
 	return exitOK
 }
