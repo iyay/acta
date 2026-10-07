@@ -1,0 +1,29 @@
+---
+id: SCR-0054
+hash: byb1bux
+title: Tidy commit history as acta's commit rule
+status: raw
+created: "2026-10-07 19:23:36"
+schema: "1"
+---
+# Tidy commit history as acta's commit rule
+
+## Words
+
+### 2026-10-07
+
+Make a tidy commit history acta's official rule for every repo that uses acta.
+
+Target shape (tried by hand on this repo, 1984 commits down to 452):
+- one commit per code task, with the task's own message (feat/fix/...)
+- commits that only touch planning files, chore, polish, wiki and review fix-ups fold into the task they belong to
+- no merge commits; land goes in linear
+- real dates kept, final tree identical to the unsquashed branch
+
+Leaning: tidy the branch at land time, not change auto-commit at the source.
+
+## Context
+
+## Log
+
+## Open questions
