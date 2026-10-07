@@ -5,6 +5,7 @@
 # The report goes to a temp folder, not into plugin/: it embeds absolute user
 # paths, a test in this repo rejects those, and the land gate runs this script.
 set -euo pipefail
+cd "$(dirname "$0")/.."
 # The routing set is a baseline measure for the router, and in the land gate
 # it would add 54 runs to every land. It lives in plugin/evals-routing/, so
 # the land gate never runs it; run it with --eval-dir evals-routing.

@@ -59,7 +59,14 @@ Task 01 and Task 02 touch different files and can run together.
 
 **verify:** A default `scripts/eval` run (Claude and `--omp`) sees no routing case and every other case, because `plugin/evals/` holds no `routing-*` folder; `scripts/eval --eval-dir evals-routing` and `scripts/eval --omp --eval-dir evals-routing` reach the 18 routing cases; `scripts/eval` runs under macOS `/bin/bash` 3.2 with any arguments. List each path and argument shape tested, and the bash used.
 
-- [ ] Red: tests that fail today: `plugin/evals/` holds a `routing-*` folder; `TestRoutingEvalCases` and the scaffold refusal test read `plugin/evals-routing/`; `acta eval-omp --eval-dir evals-routing --case x <plugin>` loads cases from that dir; `scripts/eval` run with `/bin/bash` and stub `claude`/`go` on a temp PATH (HOME and TMPDIR pinned to temp dirs) passes `--eval-dir evals-routing` through untouched and adds no `--case`.
-- [ ] Green: revert the case-list logic in `scripts/eval` from commits cc8d985 and b627f63 (the script goes back to passing `"$@"` only) and replace their test with the tests above; `git mv` the 18 folders; add `--eval-dir` (default `evals`) to `acta eval-omp`; add a plain comment in `scripts/eval` that the routing baseline lives in `plugin/evals-routing/` so the land gate does not run it, and is run with `--eval-dir evals-routing`.
-- [ ] Commit history: fold the formatting-only commit 2a9b818 into cc8d985 with a fixup and `git rebase -i`-free autosquash (`GIT_SEQUENCE_EDITOR=: git rebase --autosquash`), own unpushed commits only, before the fix commit.
-- [ ] Commit: `fix(eval): routing baseline lives in its own eval dir (SPC-0099 fix round 1)`
+- [x] Red: tests that fail today: `plugin/evals/` holds a `routing-*` folder; `TestRoutingEvalCases` and the scaffold refusal test read `plugin/evals-routing/`; `acta eval-omp --eval-dir evals-routing --case x <plugin>` loads cases from that dir; `scripts/eval` run with `/bin/bash` and stub `claude`/`go` on a temp PATH (HOME and TMPDIR pinned to temp dirs) passes `--eval-dir evals-routing` through untouched and adds no `--case`.
+- [x] Green: revert the case-list logic in `scripts/eval` from commits cc8d985 and b627f63 (the script goes back to passing `"$@"` only) and replace their test with the tests above; `git mv` the 18 folders; add `--eval-dir` (default `evals`) to `acta eval-omp`; add a plain comment in `scripts/eval` that the routing baseline lives in `plugin/evals-routing/` so the land gate does not run it, and is run with `--eval-dir evals-routing`.
+- [x] Commit history: fold the formatting-only commit 2a9b818 into cc8d985 with a fixup and `git rebase -i`-free autosquash (`GIT_SEQUENCE_EDITOR=: git rebase --autosquash`), own unpushed commits only, before the fix commit.
+- [x] Commit: `fix(eval): routing baseline lives in its own eval dir (SPC-0099 fix round 1)`
+
+## Review notes
+
+- TestEvalsHoldNoRoutingCases checks only the routing-* name, so a routing-style case under another name would slip into the gate set.
+- TestScaffoldsRefuseNonEmptyDir subtests are now named evals/<case> or evals-routing/<case>; old -run patterns need the prefix.
+- Fix round 1 landed as two commits: a94cd52 dropped the repo-root cd and 95d42ce put it back.
+- The branch was rebased once (autosquash) to fold the formatting-only commit, so the round-1 fix base sha in the dispatch record no longer exists.
