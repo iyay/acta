@@ -1,7 +1,7 @@
 ---
 parent: scratch/2026-10-07-tidy-commit-history
 depth: minimal
-closes: [SPC-0105, DBT-0096.01]
+closes: [SPC-0105, DBT-0096.01, DBT-0096.09, DBT-0096.10]
 id: PLN-0114
 created: "2026-10-07 19:28:43"
 hash: uyo6akt
@@ -152,3 +152,4 @@ The user ruled on 2026-10-07: the `skills/land/SKILL.md` byte cap goes back to 6
 - [x] Red: `budget_test.go` cap for `skills/land/SKILL.md` back to 6962 and a cap for `skills/land/tidy.md`; `skill_land_test.go` checks the tidy rules in `tidy.md` and the pointer in SKILL.md. Watch it fail on the size.
 - [x] Green: move the tidy landing steps and their rules from SKILL.md into `tidy.md`, the way `build/dispatch.md` holds the dispatch path; SKILL.md keeps one line: with `commit_history: tidy`, read tidy.md and follow it. Put back the three lost rules in SKILL.md. Update the wiki pages that name where the tidy path lives.
 - [x] Commit: `fix(land): tidy path in its own file, SKILL.md back under its cap (PLN-0114)`
+- Cap back review: both axes CLEAN. Its [fix] NOTE (step numbers across SKILL.md and tidy.md) went to debt, since a review of follow-up work after a CLEAN round starts no second polish.
