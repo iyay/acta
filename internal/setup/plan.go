@@ -25,17 +25,16 @@ const (
 // working directory, which of CLAUDE.md and AGENTS.md exist there, and the
 // current user config the form shows as defaults.
 type Env struct {
-	TTY                    bool
-	Harnesses              []string
-	PluginDir, RepoRoot    string
+	TTY                      bool
+	Harnesses                []string
+	PluginDir, RepoRoot      string
 	HasClaudeMD, HasAgentsMD bool
-	Current                config.User
+	Current                  config.User
 }
 
-// Answers holds what the user said: the new user config, one install answer
-// per harness found, and the block file the user picked when both files
-// exist. The block is mandatory, so BlockFile only records the pick; the
-// paths come from Env.
+// Answers holds what the user said: the new user config and one install
+// answer per harness found. BlockFile stays for the plan's shape; the block
+// paths come from Env, since the block is mandatory and never picked.
 type Answers struct {
 	User      config.User
 	Install   map[string]bool
@@ -46,10 +45,10 @@ type Answers struct {
 // needs are set: config sets User, install sets Harness and Argv, print
 // sets Harness and Path, block sets Path.
 type Action struct {
-	Kind           string
-	Harness, Path  string
-	Argv           [][]string
-	User           config.User
+	Kind          string
+	Harness, Path string
+	Argv          [][]string
+	User          config.User
 }
 
 // Plan turns answers and findings into the action list. Without a TTY it
