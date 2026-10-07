@@ -61,4 +61,12 @@ Q8 Windows hooks: keep bash hooks, Git Bash required. install.ps1 checks for Git
 
 Q9 install location: per-user, no sudo. ~/.local/bin/acta on macOS/Linux, %LOCALAPPDATA%\acta\bin\acta.exe on Windows, ACTA_INSTALL_DIR overrides. Script prints the PATH line when missing and never edits rc files or user PATH. User answer 2026-10-07.
 
+### 2026-10-07
+
+Approach: goreleaser + GitHub Actions on tag push v*. Separate windows-latest CI runs plugin/hooks through Git Bash on every push. Depends on PLN-0113 landing first (embedded plugin + acta setup). User answer 2026-10-07.
+
+### 2026-10-07
+
+Repo creation on hold 2026-10-07: user wants to rewrite git history first (all authors to rtriharyana@gmail.com, maybe more) before gh repo create iyay/acta --public. Not part of this spec; a prerequisite before the first release. Quick regex scan of all history found no secret patterns; /Users/iyay appears 19 times. Worktree setup-tidy (PLN-0113) is open, so a rewrite should wait until it lands.
+
 ## Open questions

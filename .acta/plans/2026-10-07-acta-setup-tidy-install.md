@@ -81,6 +81,15 @@ Task 01 changes `Env` and the install actions that Tasks 02 and 03 build on.
 
 **verify:** No run of the extractor ever creates, renames or deletes anything unless home is an absolute path: an empty home, `.`, `relative/dir` and `./x` are all refused with an error before any file call, and a test proves nothing appears under the current directory. When the swap fails and putting the old tree back also fails, the error says where the old tree now sits instead of being dropped. List every home value and failure path tested.
 
-- [ ] **Test:** extractor calls with each relative home inside a temp working dir, checking the error and that no `.acta` appears; a failed swap plus failed restore that checks the returned error names the moved-aside path. They fail on today's code.
-- [ ] **Code:** refuse `!filepath.IsAbs(home)` next to the empty check, and return the restore error with the aside path.
-- [ ] **Commit:** `fix(setup): never unpack the plugin under a relative home`.
+- [x] **Test:** extractor calls with each relative home inside a temp working dir, checking the error and that no `.acta` appears; a failed swap plus failed restore that checks the returned error names the moved-aside path. They fail on today's code.
+- [x] **Code:** refuse `!filepath.IsAbs(home)` next to the empty check, and return the restore error with the aside path.
+- [x] **Commit:** `fix(setup): never unpack the plugin under a relative home`.
+
+## Review notes
+
+- `renameFile` in `internal/setup/extract.go` is the repo's first package-level function variable used as a test seam.
+- `strings.Contains(p, "..")` in the extractor also refuses a plain name like `a..b`; harmless for an embed tree.
+- `FormDefaults` no longer fills "English"; `TestFormAnsweredLine` now passes it explicitly.
+- `blockNote` and `BlockLines` were removed once the block preview line went.
+- The restore-failure test checks the aside path in the error, not that the old tree still sits there.
+- No eval run: this branch touches no file under plugin/skills or plugin/hooks (only plugin/embed.go and tests).

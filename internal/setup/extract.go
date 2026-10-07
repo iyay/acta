@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,13 +9,18 @@ import (
 	"strings"
 )
 
+// renameFile is os.Rename. A test swaps it to force a failed swap.
+var renameFile = os.Rename
+
 // ExtractPlugin writes the plugin tree to <home>/.acta/plugin and returns
 // that folder. It builds the new tree in a temp folder inside <home>/.acta
 // first, then swaps it in, so an older tree is fully replaced and a failed
 // extract leaves the old one alone.
 func ExtractPlugin(src fs.FS, home string) (string, error) {
-	if home == "" {
-		return "", errors.New("no home folder to extract the plugin into")
+	// A relative home would unpack under the current folder and wipe an old
+	// tree there. Stop before any file call.
+	if !filepath.IsAbs(home) {
+		return "", fmt.Errorf("home folder %q is not an absolute path", home)
 	}
 	base := filepath.Join(home, ".acta")
 	final := filepath.Join(base, "plugin")
@@ -35,14 +39,17 @@ func ExtractPlugin(src fs.FS, home string) (string, error) {
 	aside := ""
 	if _, err := os.Lstat(final); err == nil {
 		aside = tmp + "-old"
-		if err := os.Rename(final, aside); err != nil {
+		if err := renameFile(final, aside); err != nil {
 			_ = os.RemoveAll(tmp)
 			return "", err
 		}
 	}
-	if err := os.Rename(tmp, final); err != nil {
+	if err := renameFile(tmp, final); err != nil {
 		if aside != "" {
-			_ = os.Rename(aside, final)
+			if rerr := renameFile(aside, final); rerr != nil {
+				// Keep the old tree: it now sits at aside, so say where.
+				return "", fmt.Errorf("%w; could not restore the old plugin, it is at %s: %v", err, aside, rerr)
+			}
 		}
 		_ = os.RemoveAll(tmp)
 		return "", err

@@ -3,7 +3,7 @@ type: Gotcha
 title: Tick stamps the parent spec
 description: tick --start and --all write started and finished into the parent spec, left uncommitted on the branch
 paths: [internal/cli/]
-timestamp: 2026-10-07T06:14:14Z
+timestamp: 2026-10-07T06:33:30Z
 ---
 
 `acta tick <plan>#task-N --start` and `--all` also write `started:` and `finished:` lines into the parent spec frontmatter, uncommitted. A diff gate that allows only code plus the plan file trips on it.
