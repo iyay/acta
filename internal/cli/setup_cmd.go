@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/setup"
 )
@@ -96,6 +97,12 @@ func setupEnv(pluginDir string) setup.Env {
 			env.HasAgentsMD = errAgents == nil
 		}
 	}
+	// The form shows the current config as its defaults, so read it here
+	// and let the form fall back to the built-ins when there is none. A
+	// broken file still yields the defaults from ResolveUser, never a
+	// failed wizard, so the error stays ignored.
+	u, _, _ := config.ResolveUser()
+	env.Current = u
 	return env
 }
 

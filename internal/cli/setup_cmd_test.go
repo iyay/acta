@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/iyay/acta/internal/config"
 )
 
 // TestSetupNoTTY checks the paths where acta setup must write nothing and
@@ -116,6 +118,36 @@ func TestSetupEnvFindings(t *testing.T) {
 		got := setupEnv("")
 		if got.RepoRoot != "" {
 			t.Fatalf("repo root = %q, want empty", got.RepoRoot)
+		}
+	})
+}
+
+// TestSetupEnvCurrent checks setupEnv fills Env.Current from the real user
+// config: the file values when one exists, else the built-in defaults the
+// form falls back to.
+func TestSetupEnvCurrent(t *testing.T) {
+	t.Run("from config file", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		cfg := filepath.Join(home, "config.yaml")
+		t.Setenv("PM_VOICE_FILE", cfg)
+		t.Setenv("TMPDIR", home)
+		if err := os.WriteFile(cfg, []byte("chat_language: Korean\nstyle: plain\nrepo_language: English\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := setupEnv("")
+		if got.Current.ChatLanguage != "Korean" || got.Current.Style != "plain" {
+			t.Fatalf("current = %+v, want Korean/plain", got.Current)
+		}
+	})
+	t.Run("no config file", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("PM_VOICE_FILE", filepath.Join(home, "config.yaml"))
+		t.Setenv("TMPDIR", home)
+		got := setupEnv("")
+		if got.Current != config.UserDefault() {
+			t.Fatalf("current = %+v, want defaults %+v", got.Current, config.UserDefault())
 		}
 	})
 }

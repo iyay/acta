@@ -10,15 +10,15 @@ import (
 // where set, else the built-in defaults. FormDefaults keeps that rule in
 // one place so Ask and tests read the same values.
 type Defaults struct {
-	Language         string
-	Style            string
-	Tone             string
-	RepoLanguage     string
-	BuildExecutor    string
-	SubagentModels   string
-	PlanDepth        string
-	Questions        string
-	OfferDispatch    bool
+	Language       string
+	Style          string
+	Tone           string
+	RepoLanguage   string
+	BuildExecutor  string
+	SubagentModels string
+	PlanDepth      string
+	Questions      string
+	OfferDispatch  bool
 }
 
 // FormDefaults reads the defaults out of the current config. Dispatch is
@@ -103,13 +103,11 @@ func Ask(e Env) (Answers, error) {
 			).Value(&d.Questions),
 	}
 	for _, h := range e.Harnesses {
-		h := h
 		yes := true
 		fields = append(fields,
 			huh.NewConfirm().Title("Install the acta plugin into "+h+"?").
 				Value(&yes).Inline(true))
 		a.Install[h] = false
-		_ = yes
 	}
 
 	form := huh.NewForm(huh.NewGroup(fields...))
