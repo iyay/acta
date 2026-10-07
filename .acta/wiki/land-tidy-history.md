@@ -3,7 +3,7 @@ type: Decision
 title: Land tidies history before moving the parent
 description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or resets the parent; fixed_in is the tidy tip
 paths: [plugin/skills/land/, internal/tidy/]
-timestamp: 2026-10-07T13:56:05Z
+timestamp: 2026-10-07T13:56:33Z
 ---
 
 With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `merge --ff-only`, or with `reset --keep` when parent chore commits were folded. `full` keeps the old `merge --no-ff`.
