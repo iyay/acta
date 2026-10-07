@@ -32,3 +32,5 @@ Risks for this spike:
 Agent's take: the API fits the idea and the cost is close to zero. Keep it opt-in and off by default, pin the version, and set a short timeout.
 
 2026-10-07: blocked by the routing eval set (see the new scratch item routing-eval-set). The existing eval cases name the route in the prompt, so they cannot benchmark rules against Jev.
+
+2026-10-07: the routing eval set landed (SPC-0097, SPC-0098; version 0.1.30). The baseline run `scripts/eval --tag routing` did not start: all 54 runs refused because ~/.docker holds symlinks into Docker.app, which the Bash sandbox rejects. Parked by the user. To resume: move ~/.docker aside (Docker Desktop closed), run the baseline, move it back, then apply the SPC-0097 decision rule (overall >= 90%, no route below 75%). The light number is a floor.

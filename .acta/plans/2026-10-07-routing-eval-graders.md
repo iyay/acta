@@ -5,6 +5,8 @@ closes: [SPC-0098, DBT-0090.01, DBT-0090.02, DBT-0090.03]
 id: PLN-0107
 created: "2026-10-07 08:30:31"
 hash: bdsgj85
+started: "2026-10-07 08:32:45"
+finished: "2026-10-07 08:44:10"
 ---
 # Routing eval graders Implementation Plan
 
@@ -35,9 +37,9 @@ Task 01 and Task 02 touch different files and can run together.
 
 **verify:** For all 18 routing cases: `allowed_tools: [Skill]`; every light case has a `tool_used` Skill grader with `input_match: "acta:"` and `min: 1`; every chat case has both the Skill `acta:` and the Read `/skills/` graders with `min: 0` and `max: 0`; every scaffold writes `chat_language: Indonesian` when the test's language table marks the prompt Indonesian (mixed counts by its main language) and `English` otherwise. `TestRoutingEvalCases` fails when any one of these breaks. List each rule and the folders it covers.
 
-- [ ] Red: extend `TestRoutingEvalCases` with the four rules above, reusing its existing language table for the main language of each prompt; run `scripts/test ./internal/plugincheck/ -run TestRoutingEvalCases` and watch it fail on `allowed_tools: []`.
-- [ ] Green: set `allowed_tools: [Skill]` in all 18 prompts; add `workflow-skill.md` (`type: tool_used`, `tool: Skill`, `input_match: "acta:"`, `min: 1`) to each light case; add `no-skill-read.md` (`type: tool_used`, `tool: Read`, `input_match: "/skills/"`, `min: 0`, `max: 0`) to each chat case; in each Indonesian case's `scaffold.sh` change `chat_language: English` to `chat_language: Indonesian`.
-- [ ] Commit: `test(evals): routing cases grant Skill, light needs a workflow skill, Indonesian scaffolds (DBT-0090)`
+- [x] Red: extend `TestRoutingEvalCases` with the four rules above, reusing its existing language table for the main language of each prompt; run `scripts/test ./internal/plugincheck/ -run TestRoutingEvalCases` and watch it fail on `allowed_tools: []`.
+- [x] Green: set `allowed_tools: [Skill]` in all 18 prompts; add `workflow-skill.md` (`type: tool_used`, `tool: Skill`, `input_match: "acta:"`, `min: 1`) to each light case; add `no-skill-read.md` (`type: tool_used`, `tool: Read`, `input_match: "/skills/"`, `min: 0`, `max: 0`) to each chat case; in each Indonesian case's `scaffold.sh` change `chat_language: English` to `chat_language: Indonesian`.
+- [x] Commit: `test(evals): routing cases grant Skill, light needs a workflow skill, Indonesian scaffolds (DBT-0090)`
 
 ### Task 02: Version 0.1.30
 
@@ -45,6 +47,13 @@ Task 01 and Task 02 touch different files and can run together.
 
 **verify:** The three files carry the same version, 0.1.30, and `internal/plugincheck` passes. List each file and the version it holds.
 
-- [ ] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
-- [ ] Green: change 0.1.29 to 0.1.30 in all three files.
-- [ ] Commit: `chore: version 0.1.30`
+- [x] Red: none needed; `scripts/test ./internal/plugincheck/` guards that the three agree.
+- [x] Green: change 0.1.29 to 0.1.30 in all three files.
+- [x] Commit: `chore: version 0.1.30`
+
+## Review notes
+
+- The scaffold language check uses strings.Contains, so a scaffold writing both chat_language values would pass; none does today.
+- No test pins the prompt bodies; the review diffed them and only the allowed_tools line changed.
+- Light cases now load a skill inside max_turns: 6; the turn budget is not measured yet.
+- Commit b7357d9 says "re-check wiki" but changed no wiki page, and added a started: line to the DBT-0090 file.
