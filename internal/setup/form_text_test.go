@@ -71,7 +71,7 @@ func TestFormAnsweredLine(t *testing.T) {
 	lipgloss.SetColorProfile(termenv.Ascii)
 	defer lipgloss.SetColorProfile(hold)
 
-	got := setup.AnsweredLines(setup.Env{Current: config.User{}})
+	got := setup.AnsweredLines(setup.Env{Current: config.User{ChatLanguage: "English"}})
 	if got[0] != "◇  Chat language\n│  English\n│\n" {
 		t.Errorf("chat language line = %q", got[0])
 	}

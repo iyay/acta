@@ -125,8 +125,8 @@ func TestSetupEnvFindings(t *testing.T) {
 }
 
 // TestSetupEnvCurrent checks setupEnv fills Env.Current from the real user
-// config: the file values when one exists, else the built-in defaults the
-// form falls back to.
+// config: the file values when one exists, else the empty user, so a first run starts
+// blank. The legacy voice files are never read here.
 func TestSetupEnvCurrent(t *testing.T) {
 	t.Run("from config file", func(t *testing.T) {
 		home := t.TempDir()
@@ -142,14 +142,42 @@ func TestSetupEnvCurrent(t *testing.T) {
 			t.Fatalf("current = %+v, want Korean/plain", got.Current)
 		}
 	})
-	t.Run("no config file", func(t *testing.T) {
+	t.Run("no config file and legacy files present", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("PM_VOICE_FILE", "")
+		t.Setenv("TMPDIR", home)
+		legacy := "chat_language: Korean\nstyle: plain\nrepo_language: Korean\n"
+		for _, p := range []string{
+			filepath.Join(home, ".acta", "voice.yaml"),
+			filepath.Join(home, ".pm", "voice.yaml"),
+		} {
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte(legacy), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		got := setupEnv("")
+		if got.Current != (config.User{}) {
+			t.Fatalf("current = %+v, want the empty user", got.Current)
+		}
+		if _, err := os.Stat(filepath.Join(home, ".acta", "voice.yaml")); err != nil {
+			t.Fatalf("the wizard must not move the legacy file: %v", err)
+		}
+		// Other callers still read the legacy file.
+		if v, exists, _ := config.ResolveUser(); !exists || v.ChatLanguage != "Korean" {
+			t.Fatalf("ResolveUser = %+v exists %v, want the legacy values", v, exists)
+		}
+	})
+	t.Run("no files at all", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 		t.Setenv("PM_VOICE_FILE", filepath.Join(home, "config.yaml"))
 		t.Setenv("TMPDIR", home)
-		got := setupEnv("")
-		if got.Current != config.UserDefault() {
-			t.Fatalf("current = %+v, want defaults %+v", got.Current, config.UserDefault())
+		if got := setupEnv(""); got.Current != (config.User{}) {
+			t.Fatalf("current = %+v, want the empty user", got.Current)
 		}
 	})
 }

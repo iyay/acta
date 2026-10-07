@@ -159,7 +159,7 @@ func TestFormDefaultsFromCurrent(t *testing.T) {
 		t.Fatalf("defaults = %+v, want the current values", fields)
 	}
 	empty := setup.FormDefaults(setup.Env{})
-	if empty.Language != "English" || empty.Style != "adhd" {
-		t.Fatalf("empty defaults = %+v, want the built-in ones", empty)
+	if empty.Language != "" || empty.Style != "adhd" {
+		t.Fatalf("empty defaults = %+v, want empty text and the first option", empty)
 	}
 }
