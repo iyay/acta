@@ -103,12 +103,15 @@ func setupEnv(pluginDir string) setup.Env {
 	for _, h := range env.Harnesses {
 		env.Installed[h] = doctor.PluginInstalled(denv, h)
 	}
-	// The form shows the current config as its defaults, so read it here
-	// and let the form fall back to the built-ins when there is none. A
-	// broken file still yields the defaults from ResolveUser, never a
-	// failed wizard, so the error stays ignored.
-	u, _, _ := config.ResolveUser()
-	env.Current = u
+	// The form shows the config file's values as its defaults. A first run
+	// has no file, so the form starts empty: the old voice files are never
+	// read here, or a deleted config would still offer an old language. A
+	// broken file reads as empty too, never a failed wizard.
+	if path, err := config.UserPath(); err == nil {
+		if u, exists, _ := config.LoadUser(path); exists {
+			env.Current = u
+		}
+	}
 	return env
 }
 

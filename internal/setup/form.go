@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,7 +12,8 @@ import (
 )
 
 // Defaults holds the starting values the form shows: the current config
-// where set, else the built-in defaults. FormDefaults keeps that rule in
+// where set. Text answers start empty on a first run; selects start on
+// their first option. FormDefaults keeps that rule in
 // one place so Ask and tests read the same values.
 type Defaults struct {
 	Language       string
@@ -30,14 +32,8 @@ type Defaults struct {
 func FormDefaults(e Env) Defaults {
 	herdr := isHerdr()
 	c := e.Current
-	if c.ChatLanguage == "" {
-		c.ChatLanguage = "English"
-	}
 	if c.Style == "" {
 		c.Style = "adhd"
-	}
-	if c.RepoLanguage == "" {
-		c.RepoLanguage = "English"
 	}
 	if c.BuildExecutor == "" {
 		c.BuildExecutor = "subagent"
@@ -62,6 +58,15 @@ func FormDefaults(e Env) Defaults {
 		Questions:      c.Questions,
 		OfferDispatch:  herdr,
 	}
+}
+
+// required refuses an empty answer. The two language answers have no
+// built-in value, so the user must type one.
+func required(s string) error {
+	if strings.TrimSpace(s) == "" {
+		return errors.New("required")
+	}
+	return nil
 }
 
 // question is one screen: its title, the group that draws it, and how to
@@ -108,7 +113,7 @@ func buildFormState(e Env) *formState {
 	}{
 		{"Chat language",
 			"The language the agent chats in. Code and files use the repo language.",
-			huh.NewInput().Value(&d.Language), text(&d.Language)},
+			huh.NewInput().Placeholder("English").Validate(required).Value(&d.Language), text(&d.Language)},
 		{"Reply style", "",
 			huh.NewSelect[string]().
 				Options(
@@ -120,7 +125,7 @@ func buildFormState(e Env) *formState {
 			huh.NewInput().Value(&d.Tone), text(&d.Tone)},
 		{"Repo language",
 			"Code, comments, commits, specs and plans.",
-			huh.NewInput().Value(&d.RepoLanguage), text(&d.RepoLanguage)},
+			huh.NewInput().Placeholder("English").Validate(required).Value(&d.RepoLanguage), text(&d.RepoLanguage)},
 		{"Build executor", "",
 			huh.NewSelect[string]().Options(executors...).Value(&d.BuildExecutor), text(&d.BuildExecutor)},
 		{"Subagent models",

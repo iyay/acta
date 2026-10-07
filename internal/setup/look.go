@@ -40,7 +40,7 @@ func Theme() *huh.Theme {
 		f.NoteTitle = title
 		f.Description = dim
 		f.ErrorIndicator = danger
-		f.ErrorMessage = danger
+		f.ErrorMessage = danger.SetString("▲")
 		f.SelectSelector = accent.SetString("› ")
 		f.Option = lipgloss.NewStyle()
 		f.MultiSelectSelector = accent.SetString("› ")

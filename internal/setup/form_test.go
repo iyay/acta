@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -261,5 +262,65 @@ func TestFormInstallRows(t *testing.T) {
 				t.Fatalf("got %d groups, want 8 (no install screen)", len(content))
 			}
 		})
+	}
+}
+
+// pressEnter drives one question like the user would: Init, then Enter, and
+// returns what is on screen.
+func pressEnter(t *testing.T, g *huh.Group) string {
+	t.Helper()
+	hold := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.Ascii)
+	defer lipgloss.SetColorProfile(hold)
+	f := huh.NewForm(g)
+	f.Init()
+	var m tea.Model = f
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	return m.View()
+}
+
+// TestFormFirstRunEmpty checks a run with no config: language inputs start
+// empty and refuse an empty answer with `required`; tone may stay empty;
+// selects start on their first option.
+func TestFormFirstRunEmpty(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	d := setup.FormDefaults(setup.Env{})
+	if d.Language != "" || d.RepoLanguage != "" || d.Tone != "" {
+		t.Fatalf("text defaults = %q/%q/%q, want all empty", d.Language, d.RepoLanguage, d.Tone)
+	}
+	if d.Style != "adhd" || d.BuildExecutor != "subagent" || d.SubagentModels != "default" ||
+		d.PlanDepth != "full" || d.Questions != "one" {
+		t.Fatalf("select defaults = %+v, want the first options", d)
+	}
+
+	content := formGroupContent(t, setup.Env{})
+	if !strings.Contains(content[0], "> E") {
+		t.Errorf("chat language must show the placeholder, got %q", content[0])
+	}
+	for i, name := range map[int]string{0: "chat language", 3: "repo language"} {
+		view := pressEnter(t, setup.FormGroups(setup.Env{})[i])
+		if !strings.Contains(view, "▲ required") {
+			t.Errorf("%s: empty answer must show required, got %q", name, view)
+		}
+		if !strings.Contains(view, "│  ") {
+			t.Errorf("%s: question must stay open, got %q", name, view)
+		}
+	}
+	// Tone is optional: Enter on empty moves on, so no error shows.
+	if view := pressEnter(t, setup.FormGroups(setup.Env{})[2]); strings.Contains(view, "required") {
+		t.Errorf("tone must be optional, got %q", view)
+	}
+}
+
+// TestFormWithConfigValues checks a config file's values are the starting
+// text, not the placeholder.
+func TestFormWithConfigValues(t *testing.T) {
+	d := setup.FormDefaults(setup.Env{Current: config.User{ChatLanguage: "Korean", RepoLanguage: "French"}})
+	if d.Language != "Korean" || d.RepoLanguage != "French" {
+		t.Fatalf("defaults = %+v, want the config values", d)
 	}
 }
