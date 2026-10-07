@@ -131,3 +131,12 @@ Review round 1: Standards axis BLOCKED. tidy.Run builds on the current base tip 
 - [x] `TestBadBranchNameIsRefused` uses a name that exists as a ref but that `check-ref-format --branch` refuses, or asserts the "not a valid branch name" message, so it fails when the check is removed.
 - [x] Doc comments in `internal/tidy/tidy.go` match the code: `replay` (returns clash and err), `proof` (compares against the merge of base and branch), and `Result` (what `Parent` and `Folded` mean).
 - [x] Commit: `polish: review notes for PLN-0114`
+
+## Review notes
+
+- Round 1 BLOCKED (both axes): tidy forced the last tree to the branch tree, so parent work made after the fork was undone. Fixed in fix round 1; round 2 CLEAN on both axes; polish CLEAN on both axes.
+- Hashes whose change lands in the last tidy commit stay old in planning files, since a commit cannot name its own hash; land takes fixed_in from refs/acta/tidy/<branch>.
+- Task 05 raised the land skill byte cap in internal/plugincheck/budget_test.go from 6962 to 9100, a file the plan did not list.
+- A branch named HEAD is now refused by acta tidy; land always passes a real branch name.
+- plan() in internal/tidy/tidy.go shadows err from replay with an inner var; it works.
+- The polish reworded land steps 1 to 4 and 7 to fit the cap, with no rule removed and no meaning changed.
