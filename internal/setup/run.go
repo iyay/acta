@@ -28,18 +28,20 @@ func Apply(actions []Action, r Runner, out io.Writer) error {
 			if err := config.SaveUser(a.User); err != nil {
 				return err
 			}
-			fmt.Fprint(out, RailLine("Saved your answers."))
+			fmt.Fprint(out, RailLine("✓ config saved"))
 		case ActionInstall:
 			for _, argv := range a.Argv {
 				fmt.Fprint(out, InstallLine(a.Harness, argv, r.Run(argv)))
 			}
+		case ActionInstalled:
+			fmt.Fprint(out, RailLine("✓ "+a.Harness+"  already installed"))
 		case ActionPrint:
-			fmt.Fprint(out, RailLine(a.Path))
+			fmt.Fprint(out, PrintLines(a))
 		case ActionBlock:
 			if err := WriteBlock(a.Path); err != nil {
 				return err
 			}
-			fmt.Fprint(out, RailLine("Wrote the acta block to "+a.Path+"."))
+			fmt.Fprint(out, RailLine("✓ acta block → "+a.Path))
 		default:
 			return fmt.Errorf("unknown setup action %q", a.Kind)
 		}

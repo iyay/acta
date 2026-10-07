@@ -51,6 +51,7 @@ func TestFormGroups(t *testing.T) {
 
 	env := setup.Env{
 		Harnesses: []string{"claude", "omp"},
+		PluginDir: "/p",
 		Current:   config.User{},
 	}
 	groups := formGroupText(t, env)
@@ -190,7 +191,7 @@ func TestFormRail(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
 	t.Setenv("TMPDIR", home)
 
-	env := setup.Env{Harnesses: []string{"claude", "omp"}, Current: config.User{}}
+	env := setup.Env{Harnesses: []string{"claude", "omp"}, PluginDir: "/p", Current: config.User{}}
 	content := formGroupContent(t, env)
 	for i, c := range content {
 		for _, line := range strings.Split(c, "\n") {
@@ -208,5 +209,57 @@ func TestFormRail(t *testing.T) {
 	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
 	if !strings.Contains(content[8], "claude") || !strings.Contains(content[8], "● Yes  ○ No") {
 		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[8])
+	}
+}
+
+// TestFormInstallRows checks who gets a Yes/No row: only a tool that still
+// needs the plugin, and only when a plugin dir lets the wizard install it.
+func TestFormInstallRows(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	cases := []struct {
+		name      string
+		env       setup.Env
+		wantGroup bool
+		has, not  []string
+	}{
+		{"not installed with dir", setup.Env{Harnesses: []string{"claude", "omp"}, PluginDir: "/p"},
+			true, []string{"claude", "omp"}, nil},
+		{"not installed without dir", setup.Env{Harnesses: []string{"claude", "omp"}},
+			false, nil, nil},
+		{"all installed with dir", setup.Env{Harnesses: []string{"claude", "omp"}, PluginDir: "/p",
+			Installed: map[string]bool{"claude": true, "omp": true}}, false, nil, nil},
+		{"mix with dir", setup.Env{Harnesses: []string{"claude", "omp"}, PluginDir: "/p",
+			Installed: map[string]bool{"claude": true}}, true, []string{"omp"}, []string{"claude"}},
+		{"mix without dir", setup.Env{Harnesses: []string{"claude", "omp"},
+			Installed: map[string]bool{"claude": true}}, false, nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			content := formGroupContent(t, c.env)
+			if c.wantGroup {
+				if len(content) != 9 {
+					t.Fatalf("got %d groups, want 9", len(content))
+				}
+				last := content[8]
+				for _, h := range c.has {
+					if !strings.Contains(last, h) {
+						t.Errorf("install screen misses %q: %q", h, last)
+					}
+				}
+				for _, h := range c.not {
+					if strings.Contains(last, h) {
+						t.Errorf("install screen asks about installed %q: %q", h, last)
+					}
+				}
+				return
+			}
+			if len(content) != 8 {
+				t.Fatalf("got %d groups, want 8 (no install screen)", len(content))
+			}
+		})
 	}
 }

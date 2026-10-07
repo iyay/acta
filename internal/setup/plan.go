@@ -17,7 +17,9 @@ const (
 	ActionConfig  = "config"
 	ActionInstall = "install"
 	ActionPrint   = "print"
-	ActionBlock   = "block"
+	// ActionInstalled notes a tool where the plugin is already installed.
+	ActionInstalled = "installed"
+	ActionBlock     = "block"
 )
 
 // Env holds what the wizard found: whether stdio is a terminal, which
@@ -30,6 +32,8 @@ type Env struct {
 	PluginDir, RepoRoot      string
 	HasClaudeMD, HasAgentsMD bool
 	Current                  config.User
+	// Installed marks each harness where the plugin is already installed.
+	Installed map[string]bool
 }
 
 // Answers holds what the user said: the new user config and one install
@@ -64,15 +68,19 @@ func Plan(a Answers, e Env) []Action {
 	}
 	out := []Action{{Kind: ActionConfig, User: a.User}}
 	for _, h := range e.Harnesses {
-		if !a.Install[h] {
+		if e.Installed[h] {
+			out = append(out, Action{Kind: ActionInstalled, Harness: h})
 			continue
 		}
+		// Without a plugin dir the wizard cannot install, so it asks
+		// nothing and shows the commands for the user to run by hand.
 		if e.PluginDir == "" {
-			hint, ok := installHint(h)
-			if !ok {
-				continue
+			if hint, ok := installHint(h); ok {
+				out = append(out, Action{Kind: ActionPrint, Harness: h, Path: hint})
 			}
-			out = append(out, Action{Kind: ActionPrint, Harness: h, Path: hint})
+			continue
+		}
+		if !a.Install[h] {
 			continue
 		}
 		argv, ok := installArgv(h, e.PluginDir)

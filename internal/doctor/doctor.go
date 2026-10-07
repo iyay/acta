@@ -305,15 +305,37 @@ func checkBinary(e Env) Result {
 	return Result{Name: "binary", Level: OK, Msg: msg}
 }
 
+// claudeHasPlugin says whether acta is enabled in Claude Code settings.
+func claudeHasPlugin(e Env) bool {
+	for _, p := range hook.EnabledPlugins(e.ClaudeDir, e.RepoRoot) {
+		if p == "acta" || strings.HasPrefix(p, "acta@") {
+			return true
+		}
+	}
+	return false
+}
+
+// PluginInstalled says whether the acta plugin is installed for one tool,
+// "claude" or "omp", by the same rules checkHarness uses. An omp link whose
+// target is gone does not count. An unknown tool is never installed.
+func PluginInstalled(e Env, tool string) bool {
+	switch tool {
+	case "claude":
+		return claudeHasPlugin(e)
+	case "omp":
+		_, err := os.Stat(filepath.Join(e.Home, ".omp", "plugins", "node_modules", "acta"))
+		return err == nil
+	}
+	return false
+}
+
 // checkHarness looks for the plugin where the harness looks for it: enabled
 // in Claude Code, or linked into omp's node_modules.
 func checkHarness(e Env) Result {
 	r := Result{Name: "harness"}
-	for _, p := range hook.EnabledPlugins(e.ClaudeDir, e.RepoRoot) {
-		if p == "acta" || strings.HasPrefix(p, "acta@") {
-			r.Level, r.Msg = OK, "acta plugin enabled in Claude Code"
-			return r
-		}
+	if claudeHasPlugin(e) {
+		r.Level, r.Msg = OK, "acta plugin enabled in Claude Code"
+		return r
 	}
 	link := filepath.Join(e.Home, ".omp", "plugins", "node_modules", "acta")
 	fi, err := os.Lstat(link)

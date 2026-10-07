@@ -163,12 +163,19 @@ func DoctorSummary(rs []doctor.Result) string {
 	return b.String() + dimText("│") + "\n"
 }
 
-// BlockLines names each file the acta block goes to, one rail line per
-// file, so the wizard never prints the whole block text.
-func BlockLines(paths []string) string {
+// PrintLines shows a print action on the rail, one rail line per line of
+// text. A harness print is a run-by-hand hint: a problem line with the
+// harness name, then each command indented under it.
+func PrintLines(a Action) string {
 	var b strings.Builder
-	for _, p := range paths {
-		b.WriteString(RailLine("acta block → " + p))
+	if a.Harness != "" {
+		b.WriteString(RailProblem(a.Harness + "  run by hand:"))
+	}
+	for _, line := range strings.Split(a.Path, "\n") {
+		if a.Harness != "" {
+			line = "  " + line
+		}
+		b.WriteString(RailLine(line))
 	}
 	return b.String()
 }

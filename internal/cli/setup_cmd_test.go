@@ -154,38 +154,39 @@ func TestSetupEnvCurrent(t *testing.T) {
 	})
 }
 
-// TestBlockNoteShort checks the note cmdSetup prints before Apply: it names
-// each block file from the live plan actions on its own short line and never
-// prints the block itself.
-func TestBlockNoteShort(t *testing.T) {
-	dir := t.TempDir()
-	claude := filepath.Join(dir, "CLAUDE.md")
-	agents := filepath.Join(dir, "AGENTS.md")
-	for _, c := range []struct {
-		name string
-		env  setup.Env
-		want string
-	}{
-		{"both files", setup.Env{RepoRoot: dir, HasClaudeMD: true, HasAgentsMD: true},
-			"│  acta block → " + claude + "\n│  acta block → " + agents + "\n"},
-		{"agents only", setup.Env{RepoRoot: dir, HasAgentsMD: true},
-			"│  acta block → " + agents + "\n"},
-		{"no file yet", setup.Env{RepoRoot: dir},
-			"│  acta block → " + claude + "\n"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			answers := setup.Answers{Install: map[string]bool{}}
-			env := c.env
-			env.TTY = true
-			got := blockNote(setup.Plan(answers, env))
-			if got != c.want {
-				t.Fatalf("block note = %q, want %q", got, c.want)
-			}
-			if strings.Contains(got, setup.Block) {
-				t.Fatalf("block note prints the block text")
-			}
-		})
+// TestSetupEnvInstalled checks setupEnv marks a tool whose plugin doctor
+// already sees. Fake claude and omp sit on PATH; nothing real runs.
+func TestSetupEnvInstalled(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
+	t.Setenv("PM_VOICE_FILE", filepath.Join(home, "config.yaml"))
+	t.Setenv("TMPDIR", home)
+	bin := t.TempDir()
+	for _, name := range []string{"claude", "omp"} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	plain := t.TempDir()
+	inDir(t, plain, func() {
+		got := setupEnv("")
+		if got.Installed["claude"] || got.Installed["omp"] {
+			t.Fatalf("installed = %v, want none", got.Installed)
+		}
+		settings := filepath.Join(home, ".claude", "settings.json")
+		if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(settings, []byte(`{"enabledPlugins":{"acta@acta-local":true}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got = setupEnv("")
+		if !got.Installed["claude"] || got.Installed["omp"] {
+			t.Fatalf("installed = %v, want claude only", got.Installed)
+		}
+	})
 }
 
 // TestSetupSummaryBox checks the closing box names the voice file and the

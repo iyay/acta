@@ -11,6 +11,7 @@ import (
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/doctor"
+	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/setup"
 )
 
@@ -68,9 +69,6 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 		return exitOther
 	}
 	actions := setup.Plan(answers, env)
-	if env.RepoRoot != "" {
-		fmt.Fprint(stdout, blockNote(actions))
-	}
 	if err := setup.Apply(actions, setupRunner{}, stdout); err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
@@ -100,6 +98,11 @@ func setupEnv(pluginDir string) setup.Env {
 			env.HasAgentsMD = errAgents == nil
 		}
 	}
+	denv := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), RepoRoot: env.RepoRoot}
+	env.Installed = map[string]bool{}
+	for _, h := range env.Harnesses {
+		env.Installed[h] = doctor.PluginInstalled(denv, h)
+	}
 	// The form shows the current config as its defaults, so read it here
 	// and let the form fall back to the built-ins when there is none. A
 	// broken file still yields the defaults from ResolveUser, never a
@@ -107,21 +110,6 @@ func setupEnv(pluginDir string) setup.Env {
 	u, _, _ := config.ResolveUser()
 	env.Current = u
 	return env
-}
-
-// blockNote names each file the live plan writes the acta block to, one
-// short line each, before Apply writes it. It reads the block paths out of
-// the same actions cmdSetup hands to Apply, so the note can never drift
-// from what Apply really writes. The block is never skipped and never
-// confirmed.
-func blockNote(actions []setup.Action) string {
-	var paths []string
-	for _, a := range actions {
-		if a.Kind == setup.ActionBlock {
-			paths = append(paths, a.Path)
-		}
-	}
-	return setup.BlockLines(paths)
 }
 
 // setupSummary closes the wizard with the config path and the TUI hint.

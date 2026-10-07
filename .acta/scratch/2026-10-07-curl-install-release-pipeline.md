@@ -2,9 +2,10 @@
 id: SCR-0052
 hash: mmzx0dw
 title: Curl install script and release pipeline
-status: raw
+status: brainstorming
 created: "2026-10-07 09:32:23"
 schema: "1"
+started: "2026-10-07 13:24:34"
 ---
 # Curl install script and release pipeline
 
