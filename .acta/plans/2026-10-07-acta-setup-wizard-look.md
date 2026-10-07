@@ -6,6 +6,7 @@ id: PLN-0110
 created: "2026-10-07 11:28:32"
 hash: zbv85ob
 started: "2026-10-07 11:32:16"
+finished: "2026-10-07 12:03:51"
 ---
 # acta setup look Implementation Plan
 
@@ -48,9 +49,9 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 
 **verify:** The form has one group per question, in the fixed order (language, style, tone, repo language, build executor, subagent models, plan depth, questions), then one harness group listing every harness found with a yes/no each. Every question group shows `acta setup` as a bold title, its step count `k/n` with the right k and n, and a one-line plain description. The form uses `Theme()` from Task 01. Defaults still come from `FormDefaults`, and `dispatch` is still offered only when `HERDR_ENV=1`. List every group and its title, count and description.
 
-- [ ] **Test:** a test that builds the form for an env with and without harnesses and checks the group count, order, step counts and descriptions; it fails because today the form is one group.
-- [ ] **Code:** split `Ask` into one `huh.NewGroup` per question with a description, use `huh.NewForm(...).WithTheme(Theme())`, and keep the answers mapping as it is.
-- [ ] **Commit:** `feat(setup): one question per screen with step count`.
+- [x] **Test:** a test that builds the form for an env with and without harnesses and checks the group count, order, step counts and descriptions; it fails because today the form is one group.
+- [x] **Code:** split `Ask` into one `huh.NewGroup` per question with a description, use `huh.NewForm(...).WithTheme(Theme())`, and keep the answers mapping as it is.
+- [x] **Commit:** `feat(setup): one question per screen with step count`.
 
 ### Task 03: short output in `acta setup`
 
@@ -58,9 +59,9 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 
 **verify:** On every run path `acta setup` prints no full doctor list when all checks pass, never prints the acta block text, prints one line per harness install, and ends with the summary box. A failing check, a failing install and a refused block write each still show their own line with the reason. The no-TTY path prints exactly what it prints today. List every output path tested.
 
-- [ ] **Test:** update `setup_cmd_test.go` and `run_test.go` to expect the short lines from Task 01 (doctor summary, block lines, install lines, summary box); they fail against today's long output.
-- [ ] **Code:** replace the doctor print, `showBlock` and the closing line in `setup_cmd.go` with the Task 01 helpers, and make `Apply` print install results with `InstallLine`.
-- [ ] **Commit:** `feat(cli): short doctor, install and block output for setup`.
+- [x] **Test:** update `setup_cmd_test.go` and `run_test.go` to expect the short lines from Task 01 (doctor summary, block lines, install lines, summary box); they fail against today's long output.
+- [x] **Code:** replace the doctor print, `showBlock` and the closing line in `setup_cmd.go` with the Task 01 helpers, and make `Apply` print install results with `InstallLine`.
+- [x] **Commit:** `feat(cli): short doctor, install and block output for setup`.
 
 ### Task 04: version bump
 
@@ -71,3 +72,15 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 - [x] **Test:** the existing version check in `internal/plugincheck` is the test.
 - [x] **Code:** add 1 to the patch in all three files.
 - [x] **Commit:** `chore(plugin): bump version`.
+
+## Fix round 1
+
+### Task 05: review round 1 fixes
+
+**Files:** `internal/setup/look.go`, `internal/setup/look_test.go`, `internal/setup/form.go`, `internal/setup/form_test.go`, `internal/cli/setup_cmd.go`, `internal/cli/setup_cmd_test.go`.
+
+**verify:** Every yes/no screen renders exactly `● Yes  ○ No` style marks (filled dot on the focused answer, hollow dot on the other, for both focus states), and a test renders the confirm and checks the marks. The summary box never lists a harness as installed when its install failed. The block text the user sees comes from the same code that `cmdSetup` runs, and that code is what the test covers (no test-only copy). The plan-depth question title reads "How much should a plan spell out?". A config path that cannot be found shows a clear word in the summary, not an empty value. List every screen and output path checked.
+
+- [ ] **Test:** add tests for the confirm marks, a failed install missing from the installed list, the live block-lines path and the plan-depth title; they fail on the current code.
+- [ ] **Code:** give `FocusedButton` and `BlurredButton` the dot marks (lipgloss `SetString("●")` and `SetString("○")` prepend to the label), drop the unused `blockFiles` and the test-only `showBlock` in favour of the live path, filter failed installs out of the summary, restore the title, and print `config: (unknown)` when the path cannot be found.
+- [ ] **Commit:** `fix(setup): dot marks on yes/no and honest summary`.
