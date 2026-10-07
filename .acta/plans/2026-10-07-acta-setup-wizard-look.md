@@ -5,6 +5,7 @@ closes: [SPC-0101]
 id: PLN-0110
 created: "2026-10-07 11:28:32"
 hash: zbv85ob
+started: "2026-10-07 11:32:16"
 ---
 # acta setup look Implementation Plan
 
@@ -37,9 +38,9 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 
 **verify:** Every color the setup screens use comes from one place in `look.go`, and no filled background color is set on any style. Every dim grey has contrast 1.6 or more against both `#1a1b26` and `#ffffff`. The helpers print exactly: one line `✓ install checks ok (N)` when every doctor result is ok, else only the results that are not ok; one `acta block → <path>` line per block file; one line per harness install (`✓ claude` or `✗ omp: <command>`); and a short closing box naming the config path, installs, block files and the next step. List every helper and every input state tested.
 
-- [ ] **Test:** `TestDimContrast`, `TestNoBackgrounds`, `TestDoctorSummary` (all ok, one failing), `TestBlockLines`, `TestInstallLines`, `TestSummaryBox`; they fail because `look.go` does not exist.
-- [ ] **Code:** add the adaptive palette, `func Theme() *huh.Theme` built on `huh.ThemeBase()` with the palette, and `DoctorSummary([]doctor.Result) string`, `BlockLines(paths []string) string`, `InstallLine(harness string, argv []string, err error) string`, `SummaryBox(...) string`.
-- [ ] **Commit:** `feat(setup): minimal mono theme and short print helpers`.
+- [x] **Test:** `TestDimContrast`, `TestNoBackgrounds`, `TestDoctorSummary` (all ok, one failing), `TestBlockLines`, `TestInstallLines`, `TestSummaryBox`; they fail because `look.go` does not exist.
+- [x] **Code:** add the adaptive palette, `func Theme() *huh.Theme` built on `huh.ThemeBase()` with the palette, and `DoctorSummary([]doctor.Result) string`, `BlockLines(paths []string) string`, `InstallLine(harness string, argv []string, err error) string`, `SummaryBox(...) string`.
+- [x] **Commit:** `feat(setup): minimal mono theme and short print helpers`.
 
 ### Task 02: one question per screen
 
@@ -67,6 +68,6 @@ Tasks 02 and 03 use the theme and print helpers from Task 01 and touch different
 
 **verify:** All three files hold the same version, one patch above the current one on main, and `internal/plugincheck` accepts it.
 
-- [ ] **Test:** the existing version check in `internal/plugincheck` is the test.
-- [ ] **Code:** add 1 to the patch in all three files.
-- [ ] **Commit:** `chore(plugin): bump version`.
+- [x] **Test:** the existing version check in `internal/plugincheck` is the test.
+- [x] **Code:** add 1 to the patch in all three files.
+- [x] **Commit:** `chore(plugin): bump version`.
