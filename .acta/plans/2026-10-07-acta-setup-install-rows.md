@@ -53,6 +53,13 @@ finished: "2026-10-07 13:09:11"
 
 **verify:** On every run path the closing summary prints only `config: <path>` (or `config: (unknown)`) on the rail, then `└  Run acta in a repo to browse specs, plans and bugs.`; no `installed:`, `block:` or `next:` line appears in any form, with installs or none, with block files or none. List every path checked.
 
-- [ ] **Test:** summary tests for installs and none, block files and none, unknown config path; they fail on today's `installed:`/`block:`/`next:` lines.
-- [ ] **Code:** cut the three lines from `SummaryBox` and put the TUI hint on the closing `└` line; drop parameters that become unused.
-- [ ] **Commit:** `fix(setup): shorter closing summary with the TUI hint`.
+- [x] **Test:** summary tests for installs and none, block files and none, unknown config path; they fail on today's `installed:`/`block:`/`next:` lines.
+- [x] **Code:** cut the three lines from `SummaryBox` and put the TUI hint on the closing `└` line; drop parameters that become unused.
+- [x] **Commit:** `fix(setup): shorter closing summary with the TUI hint`.
+
+## Review notes
+
+- Install row padding counts bytes with `len`, not screen width; fine while every tool name is ASCII.
+- `TestApplySetupHardError` in `internal/cli/setup_cmd_test.go` keeps the old `applySetup` name but now tests `setup.Apply`; `internal/setup/run_test.go` would be its natural home.
+- Dropping `failTracker` and `TestApplySetupSkipsFailedInstall` lost no live path: the summary no longer lists installs, and `run_test.go` still pins "a failed install prints its command and carries on".
+- No eval run: this branch touches no file under plugin/skills or plugin/hooks.

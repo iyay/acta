@@ -18,6 +18,8 @@ Depends on SCR-0052 (curl install script and release pipeline): there must be pu
 
 ## Context
 
+Ruling 2026-10-07: the acta plugin folder is embedded in the binary (go:embed) and `acta setup` extracts it to ~/.acta/plugin, then installs into Claude Code and omp from there (PLN-0113 Task 04). So `acta update` = replace the binary, then extract the plugin again. A GitHub marketplace comes later, after the repo is public.
+
 ## Log
 
 ## Open questions
