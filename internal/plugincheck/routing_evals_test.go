@@ -181,8 +181,9 @@ func routingCounts(body string) (en, id int) {
 
 // TestRoutingEvalCases checks every routing eval folder: the set is exact,
 // each prompt carries the routing frontmatter and ends on the CLI line, each
-// folder holds a scaffold and at least one action grader, no grader calls the
-// judge, no prompt names its route, and the language split holds.
+// folder holds a scaffold wired through case.yaml and at least one action
+// grader, no grader calls the judge, no prompt names its route, and the
+// language split holds.
 func TestRoutingEvalCases(t *testing.T) {
 	root := filepath.Join(pluginRoot(t), "evals")
 
@@ -259,6 +260,29 @@ func TestRoutingEvalCases(t *testing.T) {
 			}
 			if st, err := os.Stat(filepath.Join(dir, "scaffold.sh")); err != nil || st.IsDir() {
 				t.Error("scaffold.sh is missing")
+			}
+			raw, err := os.ReadFile(filepath.Join(dir, "case.yaml"))
+			if err != nil {
+				t.Error("case.yaml is missing; the scaffold runs only when case.yaml wires it")
+			} else {
+				var cy struct {
+					Name    string `yaml:"name"`
+					Context struct {
+						Scaffold string `yaml:"scaffold_script"`
+					} `yaml:"context"`
+				}
+				if err := yaml.Unmarshal(raw, &cy); err != nil {
+					t.Errorf("case.yaml does not parse: %v", err)
+				} else {
+					if cy.Name != folder {
+						t.Errorf("case.yaml name = %q, want %q", cy.Name, folder)
+					}
+					if cy.Context.Scaffold == "" {
+						t.Error("case.yaml must set context.scaffold_script")
+					} else if st, err := os.Stat(filepath.Join(dir, cy.Context.Scaffold)); err != nil || st.IsDir() {
+						t.Errorf("scaffold_script %q is missing from the case folder", cy.Context.Scaffold)
+					}
+				}
 			}
 
 			graders, err := filepath.Glob(filepath.Join(dir, "graders", "*.md"))
