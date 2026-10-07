@@ -54,7 +54,7 @@ func TestFormNoFirstPerson(t *testing.T) {
 	pinHome(t)
 	re := regexp.MustCompile(`(?i)\b(i|me|my)\b`)
 	t.Setenv("HERDR_ENV", "1")
-	env := setup.Env{Harnesses: []string{"claude"}, Current: config.User{}}
+	env := setup.Env{Harnesses: []string{"claude"}, PluginDir: "/p", Current: config.User{}}
 	all := append(formGroupText(t, env), formGroupContent(t, env)...)
 	for _, txt := range all {
 		if m := re.FindString(txt); m != "" {
@@ -90,7 +90,7 @@ func TestInstallRowsLineUp(t *testing.T) {
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	sets := [][]string{{"claude"}, {"claude", "omp"}, {"a", "claude", "omp"}}
 	for _, names := range sets {
-		content := formGroupContent(t, setup.Env{Harnesses: names, Current: config.User{}})
+		content := formGroupContent(t, setup.Env{Harnesses: names, PluginDir: "/p", Current: config.User{}})
 		last := ansi.ReplaceAllString(content[len(content)-1], "")
 		col := -1
 		rows := 0

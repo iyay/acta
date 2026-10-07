@@ -64,8 +64,8 @@ func TestRunActions(t *testing.T) {
 		if err != nil || string(raw) != setup.Block {
 			t.Fatalf("block file = %q err %v, want the block only", raw, err)
 		}
-		if !strings.Contains(out.String(), "omp plugin link <plugin dir>") {
-			t.Fatalf("output %q misses the print text", out.String())
+		if !strings.Contains(out.String(), "│  ▲ omp  run by hand:\n│    omp plugin link <plugin dir>\n") {
+			t.Fatalf("output %q misses the run-by-hand lines", out.String())
 		}
 		if !strings.Contains(out.String(), "✓ claude\n") {
 			t.Fatalf("output %q misses the short install line", out.String())
@@ -73,8 +73,37 @@ func TestRunActions(t *testing.T) {
 		if strings.Contains(out.String(), "Ran `") || strings.Contains(out.String(), "Could not run") {
 			t.Fatalf("output %q uses the long install lines", out.String())
 		}
-		if !strings.Contains(out.String(), "Saved") || !strings.Contains(out.String(), blockPath) {
+		if !strings.Contains(out.String(), "│  ✓ config saved\n") ||
+			!strings.Contains(out.String(), "│  ✓ acta block → "+blockPath+"\n") {
 			t.Fatalf("output %q misses the summary", out.String())
+		}
+		if strings.Contains(out.String(), "Saved your answers") {
+			t.Fatalf("output %q keeps the old saved line", out.String())
+		}
+	})
+
+	t.Run("every output line stays on the rail", func(t *testing.T) {
+		tempHome(t)
+		var out strings.Builder
+		actions := []setup.Action{
+			{Kind: "config", User: u},
+			{Kind: "installed", Harness: "omp"},
+			{Kind: "print", Harness: "claude", Path: "claude plugin marketplace add <plugin dir>\nclaude plugin install acta@acta-local"},
+			{Kind: "block", Path: filepath.Join(dir, "rail.md")},
+		}
+		if err := setup.Apply(actions, &fakeRunner{}, &out); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "│  ✓ omp  already installed\n") {
+			t.Fatalf("output %q misses the installed line", out.String())
+		}
+		for _, line := range strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n") {
+			if !strings.HasPrefix(line, "│") {
+				t.Errorf("line %q is off the rail", line)
+			}
+		}
+		if n := strings.Count(out.String(), "acta block"); n != 1 {
+			t.Errorf("block line shown %d times, want once", n)
 		}
 	})
 

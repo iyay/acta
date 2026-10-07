@@ -197,17 +197,6 @@ func TestDoctorSummary(t *testing.T) {
 	})
 }
 
-func TestBlockLines(t *testing.T) {
-	got := setup.BlockLines([]string{"CLAUDE.md", "AGENTS.md"})
-	want := "│  acta block → CLAUDE.md\n│  acta block → AGENTS.md\n"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-	if got := setup.BlockLines(nil); got != "" {
-		t.Errorf("no block files want no lines, got %q", got)
-	}
-}
-
 func TestInstallLines(t *testing.T) {
 	t.Run("ok install names the harness", func(t *testing.T) {
 		got := setup.InstallLine("claude", []string{"claude", "plugin", "add", "<dir>"}, nil)

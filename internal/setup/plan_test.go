@@ -141,13 +141,56 @@ func TestPlan(t *testing.T) {
 			want: []setup.Action{{Kind: "config", User: u}},
 		},
 		{
-			name: "user said no with no dir prints nothing",
+			name: "no dir prints by hand even when the answer map says no",
 			a:    setup.Answers{User: u, Install: map[string]bool{"claude": false}},
 			e: setup.Env{TTY: true, Harnesses: []string{"claude"},
 				RepoRoot: "/r", HasClaudeMD: true, Current: other},
 			want: []setup.Action{
 				{Kind: "config", User: u},
+				{Kind: "print", Harness: "claude", Path: "claude plugin marketplace add <plugin dir>\nclaude plugin install acta@acta-local"},
 				{Kind: "block", Path: "/r/CLAUDE.md"},
+			},
+		},
+		{
+			name: "installed tool is noted, never installed or printed, with a dir",
+			a:    setup.Answers{User: u, Install: map[string]bool{}},
+			e: setup.Env{TTY: true, Harnesses: []string{"claude"}, Installed: map[string]bool{"claude": true},
+				PluginDir: "/p", Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "installed", Harness: "claude"},
+			},
+		},
+		{
+			name: "installed tool is noted, never printed, without a dir",
+			a:    setup.Answers{User: u},
+			e: setup.Env{TTY: true, Harnesses: []string{"claude"}, Installed: map[string]bool{"claude": true},
+				Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "installed", Harness: "claude"},
+			},
+		},
+		{
+			name: "mix with a dir: claude installed, omp not and said yes",
+			a:    setup.Answers{User: u, Install: map[string]bool{"omp": true}},
+			e: setup.Env{TTY: true, Harnesses: []string{"claude", "omp"}, Installed: map[string]bool{"claude": true},
+				PluginDir: "/p", Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "installed", Harness: "claude"},
+				{Kind: "install", Harness: "omp", Argv: ompInstall},
+			},
+		},
+		{
+			name: "mix without a dir: omp installed, claude printed by hand",
+			a:    setup.Answers{User: u},
+			e: setup.Env{TTY: true, Harnesses: []string{"claude", "omp"}, Installed: map[string]bool{"omp": true},
+				Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "print", Harness: "claude", Path: "claude plugin marketplace add <plugin dir>\nclaude plugin install acta@acta-local"},
+				{Kind: "installed", Harness: "omp"},
 			},
 		},
 		{

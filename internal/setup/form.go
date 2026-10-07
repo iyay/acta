@@ -144,8 +144,18 @@ func buildFormState(e Env) *formState {
 				).Value(&d.Questions), text(&d.Questions)},
 	}
 
+	// Only a tool that still needs the plugin gets a row, and only when a
+	// plugin dir lets the wizard install it. The rest are shown by Apply.
+	var askable []string
+	if e.PluginDir != "" {
+		for _, h := range e.Harnesses {
+			if !e.Installed[h] {
+				askable = append(askable, h)
+			}
+		}
+	}
 	n := len(specs)
-	if len(e.Harnesses) > 0 {
+	if len(askable) > 0 {
 		n++
 	}
 	st := &formState{answers: &d, install: map[string]*bool{}}
@@ -165,15 +175,15 @@ func buildFormState(e Env) *formState {
 		add(q.title, q.desc, q.answer, q.field)
 	}
 
-	if len(e.Harnesses) > 0 {
+	if len(askable) > 0 {
 		// Pad every title to the longest name plus two spaces so the
 		// Yes/No marks start in one column with a gap after the name.
 		width := 0
-		for _, h := range e.Harnesses {
+		for _, h := range askable {
 			width = max(width, len(h))
 		}
 		var harnessFields []huh.Field
-		for _, h := range e.Harnesses {
+		for _, h := range askable {
 			v := true
 			st.install[h] = &v
 			harnessFields = append(harnessFields,
@@ -182,7 +192,7 @@ func buildFormState(e Env) *formState {
 		add("Plugin install", "One row per tool found.",
 			func() string {
 				var parts []string
-				for _, h := range e.Harnesses {
+				for _, h := range askable {
 					yn := "no"
 					if *st.install[h] {
 						yn = "yes"
@@ -216,8 +226,8 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 		fmt.Fprint(out, Collapsed(q.title, q.answer()))
 	}
 
-	for _, h := range e.Harnesses {
-		a.Install[h] = *st.install[h]
+	for h, v := range st.install {
+		a.Install[h] = *v
 	}
 	d := st.answers
 	a.User = config.User{

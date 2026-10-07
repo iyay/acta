@@ -944,3 +944,40 @@ func snapshot(t *testing.T, root string) []string {
 	}
 	return out
 }
+
+// TestPluginInstalled checks the per-tool answer the setup wizard uses: it
+// must agree with the harness check above for every state.
+func TestPluginInstalled(t *testing.T) {
+	t.Run("nothing installed", func(t *testing.T) {
+		e := env(t)
+		if PluginInstalled(e, "claude") || PluginInstalled(e, "omp") {
+			t.Fatal("empty home reads as installed")
+		}
+	})
+	t.Run("claude enabled", func(t *testing.T) {
+		e := env(t)
+		write(t, filepath.Join(e.ClaudeDir, "settings.json"), `{"enabledPlugins":{"acta@acta-local":true}}`)
+		if !PluginInstalled(e, "claude") || PluginInstalled(e, "omp") {
+			t.Fatal("want claude only")
+		}
+	})
+	t.Run("omp live link", func(t *testing.T) {
+		e := env(t)
+		link(t, filepath.Join(nodeModules(e), "acta"), t.TempDir())
+		if !PluginInstalled(e, "omp") || PluginInstalled(e, "claude") {
+			t.Fatal("want omp only")
+		}
+	})
+	t.Run("omp dead link is not installed", func(t *testing.T) {
+		e := env(t)
+		link(t, filepath.Join(nodeModules(e), "acta"), filepath.Join(t.TempDir(), "gone"))
+		if PluginInstalled(e, "omp") {
+			t.Fatal("dead link reads as installed")
+		}
+	})
+	t.Run("unknown tool", func(t *testing.T) {
+		if PluginInstalled(env(t), "vim") {
+			t.Fatal("unknown tool reads as installed")
+		}
+	})
+}
