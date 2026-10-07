@@ -461,8 +461,13 @@ func TestBadBranchNameIsRefused(t *testing.T) {
 	r := start(t)
 	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
 	for _, name := range []string{"-bad", "a..b", "x y"} {
-		if _, err := Run(r.dir, opt("main", name)); err == nil {
+		_, err := Run(r.dir, opt("main", name))
+		if err == nil {
 			t.Fatalf("%q: want an error", name)
+		}
+		// This text only comes from the name check. Other git errors differ.
+		if !strings.Contains(err.Error(), "not a valid branch name") {
+			t.Fatalf("%q: want the name error, got %v", name, err)
 		}
 	}
 	if r.refExists("refs/acta/tidy/-bad") {

@@ -19,7 +19,9 @@ type Options struct {
 	Base, Branch, Onto, PlanningRoot string
 }
 
-// Result reports the new chain. Tip is the new last commit.
+// Result reports the new chain. Tip is the new last commit. Parent is the tip
+// of the base branch that tidy read. Folded is how many chore commits of that
+// parent were folded into the new chain.
 type Result struct {
 	OldCount, NewCount int
 	Tip                string
@@ -252,8 +254,9 @@ func touchesOutside(repo, hash, root string) (bool, error) {
 	return false, nil
 }
 
-// replay applies the change of one commit on top of a tree. ok is false when
-// the change clashes.
+// replay applies the change of one commit on top of a tree. It returns the new
+// tree, then clash (true when the change does not fit), then err for any other
+// git failure.
 func replay(repo, hash, cur string) (string, bool, error) {
 	tree, _, clash, err := mergeTree(repo, hash+"^", cur, hash)
 	return tree, clash, err
@@ -363,8 +366,8 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	return strings.TrimSpace(out), err
 }
 
-// proof checks that the final tree is the branch tree plus hash swaps in the
-// planning root, and nothing else.
+// proof checks that the final tree is the three-way merge of base and branch
+// (target) plus hash swaps in the planning root, and nothing else.
 func proof(repo, target, finalTree, root string, olds []string, newOf map[string]string) error {
 	if target == finalTree {
 		return nil

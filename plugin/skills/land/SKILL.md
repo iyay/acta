@@ -37,6 +37,7 @@ Skip any step = lying, not verifying
 - Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
 - About to commit without verification
 - Trusting agent success reports
+- Relying on partial verification
 - **ANY wording implying success without having run verification**
 
 ### Rationalization Prevention
@@ -47,6 +48,7 @@ Skip any step = lying, not verifying
 | "I'm confident" | Confidence is not evidence |
 | "Just this once" | No exceptions |
 | "Agent said success" | Verify independently |
+| "Partial check is enough" | Partial proves nothing |
 | "Other words, so the rule is off" | Spirit over letter |
 
 ## Landing
@@ -70,13 +72,13 @@ State gate: before the merge, run `acta state <plan id>` and read its Findings; 
 
 With `commit_history: tidy`, the gates of step 1 and the parent check of step 4 run as written. Then:
 
-1. Pick the fold point (step 2) first. From the worktree: `acta tidy <parent> <branch>` (add `--onto <fold point>` when one folds). It prints `tidy: <old> commits -> <new>, tree ok, parent <sha>, folded <n>` and writes `refs/acta/tidy/<branch>`. A non-zero exit (a clash with the parent too) stops the land and reports the error. On any failure, never fall back to a plain merge.
-2. Fold point: `@{upstream}` of the parent, else `refs/acta/last-land`, else none. Only when every parent commit after it is a `chore(...)` commit does it fold. Any other commit there: no fold point. Pushed commits are never touched.
-3. Gates: the tip is the merge of parent and branch plus remapped hashes. When `git diff --name-only <branch> refs/acta/tidy/<branch>` lists only planning-root paths, write "only planning files differ, gates reused". Any other path (the parent moved): run the gates on the tidy tip first, for example in a detached temp worktree of `refs/acta/tidy/<branch>`.
-4. Read the new tip now: `git rev-parse refs/acta/tidy/<branch>`. `fixed_in` takes it, never a hash from a planning file (tidy cannot rewrite a hash in its own last commit).
-5. Move the parent from the main checkout. First `git rev-parse <parent>` must equal the `parent` sha of the `tidy:` line, else stop. `folded` is 0: `git merge --ff-only refs/acta/tidy/<branch>`. `folded` is above 0: `git reset --keep refs/acta/tidy/<branch>`; `--keep` refuses on a tracked local change, and that stops the land. Then `acta id --fix-duplicates` and report each renumber line.
+1. Pick the fold point (step 2) first. From the worktree: `acta tidy <parent> <branch>` (add `--onto <fold point>` when one folds). It prints `tidy: <old> commits -> <new>, tree ok, parent <sha>, folded <n>` and writes `refs/acta/tidy/<branch>`. A non-zero exit (a clash with the parent too) stops the land and reports the error; never fall back to a plain merge.
+2. Fold point: `@{upstream}` of the parent, else `refs/acta/last-land`, else none. Only when every parent commit after it is a `chore(...)` commit does it fold. Any other commit there: no fold point. Pushed commits stay.
+3. Gates: the tip is parent plus branch plus remapped hashes. When `git diff --name-only <branch> refs/acta/tidy/<branch>` lists only planning-root paths, write "only planning files differ, gates reused". Any other path (the parent moved): run the gates on the tidy tip first (a detached temp worktree of `refs/acta/tidy/<branch>`); red stops the land.
+4. Read the new tip: `git rev-parse refs/acta/tidy/<branch>`. `fixed_in` takes it, never a hash from a planning file (tidy cannot rewrite a hash in its last commit).
+5. Move the parent from the main checkout. First `git rev-parse --short=7 <parent>` must equal the `parent` sha of the `tidy:` line, else stop. `folded` is 0: `git merge --ff-only refs/acta/tidy/<branch>`. `folded` is above 0: `git reset --keep refs/acta/tidy/<branch>`; `--keep` refuses on a tracked local change: that stops the land. Then `acta id --fix-duplicates` and report each renumber line.
 6. `git update-ref refs/acta/last-land HEAD` in the main checkout.
-7. Clean up: `git worktree remove <path>`, then `git branch -D <branch>`: the old branch is no longer an ancestor, and tidy proved the tip equals the merge of parent and branch. Then `git update-ref -d refs/acta/tidy/<branch>`.
+7. Clean up: `git worktree remove <path>`, then `git branch -D <branch>`: the old branch is no ancestor, and tidy proved the tip equals the merge of parent and branch. Then `git update-ref -d refs/acta/tidy/<branch>`.
 8. Step 8 gets the commit from 4. Steps 9 and 10 as written.
 
 Report after landing: the merge sha first (tidy mode: the new parent tip, and the `tidy:` line), the gate numbers you ran after the merge, what was cleaned up, the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none), one next action, and, if step 9 ran, the debt file and how many items it closed.
