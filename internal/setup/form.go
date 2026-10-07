@@ -84,17 +84,17 @@ type formState struct {
 
 // buildFormState puts one question on each screen in fixed order, then one
 // harness screen with a yes/no per harness found. Every group carries the
-// title, its step count and a one-line plain description saying what the
-// question means. Dispatch is offered only when HERDR_ENV=1 says so.
+// title, its step count and, when it has something to add, a one-line
+// plain description. Dispatch is offered only when HERDR_ENV=1 says so.
 func buildFormState(e Env) *formState {
 	d := FormDefaults(e)
 
 	executors := []huh.Option[string]{
-		huh.NewOption("subagent", "subagent"),
-		huh.NewOption("inline", "inline"),
+		huh.NewOption("subagent: helper agents in the same session", "subagent"),
+		huh.NewOption("inline: the main agent writes the code", "inline"),
 	}
 	if d.OfferDispatch {
-		executors = append(executors, huh.NewOption("dispatch", "dispatch"))
+		executors = append(executors, huh.NewOption("dispatch: an omp agent in its own herdr tab", "dispatch"))
 	}
 
 	// The field itself carries no title: the group header above it is the
@@ -106,42 +106,41 @@ func buildFormState(e Env) *formState {
 		field  huh.Field
 		answer func() string
 	}{
-		{"Which language should I use when I talk with you?",
-			"The language I use when I talk with you.",
+		{"Chat language",
+			"The language the agent chats in. Code and files use the repo language.",
 			huh.NewInput().Value(&d.Language), text(&d.Language)},
-		{"Style: adhd or plain?",
-			"Short replies for speed, or full sentences.",
+		{"Reply style", "",
 			huh.NewSelect[string]().
-				Options(huh.NewOptions("adhd", "plain")...).Value(&d.Style), text(&d.Style)},
-		{"Anything about tone, in your own words? (optional)",
-			"Anything about tone, in your own words. Optional.",
+				Options(
+					huh.NewOption("adhd: short, one next step at the end", "adhd"),
+					huh.NewOption("plain: normal paragraphs", "plain"),
+				).Value(&d.Style), text(&d.Style)},
+		{"Tone",
+			"Optional. Your own words, like \"casual, no jargon\".",
 			huh.NewInput().Value(&d.Tone), text(&d.Tone)},
-		{"Language for files written to the repo?",
-			"The language for files written to the repo.",
+		{"Repo language",
+			"Code, comments, commits, specs and plans.",
 			huh.NewInput().Value(&d.RepoLanguage), text(&d.RepoLanguage)},
-		{"Which build executor?",
-			"Who writes the code when a plan runs.",
+		{"Build executor", "",
 			huh.NewSelect[string]().Options(executors...).Value(&d.BuildExecutor), text(&d.BuildExecutor)},
-		{"How should subagent models be picked?",
-			"Who picks the model for background work.",
+		{"Subagent models",
+			"Claude Code only.",
 			huh.NewSelect[string]().
 				Options(
-					huh.NewOption("default (leave it to your own config)", "default"),
-					huh.NewOption("split", "split"),
+					huh.NewOption("default: your own config decides", "default"),
+					huh.NewOption("split: sonnet writes code, the rest use a stronger model", "split"),
 				).Value(&d.SubagentModels), text(&d.SubagentModels)},
-		{"How much should a plan spell out?",
-			"How much a plan spells out before it runs.",
+		{"Plan detail", "",
 			huh.NewSelect[string]().
 				Options(
-					huh.NewOption("full (real code in every step, plan waits for a yes)", "full"),
-					huh.NewOption("minimal (short steps, no code, build starts right away)", "minimal"),
+					huh.NewOption("full: real code in every step, waits for your yes", "full"),
+					huh.NewOption("minimal: short steps, build starts at once", "minimal"),
 				).Value(&d.PlanDepth), text(&d.PlanDepth)},
-		{"How should I ask you things?",
-			"How I ask you things while working.",
+		{"Questions", "",
 			huh.NewSelect[string]().
 				Options(
-					huh.NewOption("one (one question at a time)", "one"),
-					huh.NewOption("probe (a round of questions, with a recommended answer each)", "probe"),
+					huh.NewOption("one: one question at a time", "one"),
+					huh.NewOption("probe: a batch, each with the agent's pick", "probe"),
 				).Value(&d.Questions), text(&d.Questions)},
 	}
 
@@ -154,8 +153,11 @@ func buildFormState(e Env) *formState {
 		k := len(st.questions) + 1
 		g := huh.NewGroup(fields...).
 			WithTheme(Theme()).
-			Title(ActiveTitle(title, k, n)).
-			Description(ActiveDescription(desc))
+			Title(ActiveTitle(title, k, n))
+		// A question with nothing to add gets no description line.
+		if desc != "" {
+			g = g.Description(ActiveDescription(desc))
+		}
 		st.groups = append(st.groups, g)
 		st.questions = append(st.questions, question{title: title, group: g, answer: answer})
 	}

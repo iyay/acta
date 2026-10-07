@@ -67,25 +67,29 @@ func TestFormGroups(t *testing.T) {
 		count string
 		desc  string
 	}{
-		{"Which language should I use when I talk with you?", "(1/9)", "The language I use when I talk with you."},
-		{"Style: adhd or plain?", "(2/9)", "Short replies for speed, or full sentences."},
-		{"Anything about tone, in your own words? (optional)", "(3/9)", "Anything about tone, in your own words. Optional."},
-		{"Language for files written to the repo?", "(4/9)", "The language for files written to the repo."},
-		{"Which build executor?", "(5/9)", "Who writes the code when a plan runs."},
-		{"How should subagent models be picked?", "(6/9)", "Who picks the model for background work."},
-		{"How much should a plan spell out?", "(7/9)", "How much a plan spells out before it runs."},
-		{"How should I ask you things?", "(8/9)", "How I ask you things while working."},
+		{"Chat language", "(1/9)", "The language the agent chats in. Code and files use the repo language."},
+		{"Reply style", "(2/9)", ""},
+		{"Tone", "(3/9)", "Optional. Your own words, like \"casual, no jargon\"."},
+		{"Repo language", "(4/9)", "Code, comments, commits, specs and plans."},
+		{"Build executor", "(5/9)", ""},
+		{"Subagent models", "(6/9)", "Claude Code only."},
+		{"Plan detail", "(7/9)", ""},
+		{"Questions", "(8/9)", ""},
 		{"Install the acta plugin?", "(9/9)", "Install the acta plugin into each tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")
-		if len(lines) != 2 {
+		if w.desc == "" {
+			if len(lines) != 1 {
+				t.Fatalf("group %d: header must be a title line only, got %q", i+1, groups[i])
+			}
+		} else if len(lines) != 2 {
 			t.Fatalf("group %d: header must be a title line and a description line, got %q", i+1, groups[i])
 		}
 		if !strings.HasPrefix(lines[0], "◆  "+w.title+"  "+w.count) {
 			t.Errorf("group %d: title line = %q, want ◆, %q, %q", i+1, lines[0], w.title, w.count)
 		}
-		if lines[1] != "│  "+w.desc {
+		if w.desc != "" && lines[1] != "│  "+w.desc {
 			t.Errorf("group %d: description line = %q, want a rail line with %q", i+1, lines[1], w.desc)
 		}
 	}
@@ -172,8 +176,8 @@ func TestFormPlanDepthTitle(t *testing.T) {
 	t.Setenv("TMPDIR", home)
 
 	header := formGroupText(t, setup.Env{Current: config.User{}})[6]
-	if !strings.Contains(header, "How much should a plan spell out?") {
-		t.Errorf("plan-depth question must read %q, got %q", "How much should a plan spell out?", header)
+	if !strings.Contains(header, "Plan detail") {
+		t.Errorf("plan-depth question must read %q, got %q", "Plan detail", header)
 	}
 }
 

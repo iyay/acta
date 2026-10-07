@@ -3,6 +3,8 @@ parent: specs/2026-10-07-acta-setup-wizard-look
 id: SPC-0102
 created: "2026-10-07 12:59:28"
 hash: z0zopnh
+started: "2026-10-07 12:59:53"
+finished: "2026-10-07 13:01:22"
 ---
 Status: Bounded, approved by the user in chat on 2026-10-07.
 Why: in `acta setup` most descriptions repeat their question title, while the options that need a word of help (executor, subagent models, style) have none. The wizard also speaks as "I", but the wizard is not the agent; text names the agent instead.
