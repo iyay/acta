@@ -98,9 +98,7 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 ### Next
 
-Took over from omp (tab closed). Task 01 done (e950533) by omp.
-Task 02 and Task 04 running as Claude sonnet subagents in parallel.
-Then Task 03 (needs 02), Task 05 (needs 03), Task 06.
+Cap back (Task 09) review: Standards CLEAN (all mutants red). Waiting on Spec axis, then acta:land with merge --no-ff (tidy is not live until this lands).
 
 ### Findings
 
