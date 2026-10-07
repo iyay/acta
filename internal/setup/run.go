@@ -3,7 +3,6 @@ package setup
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/iyay/acta/internal/config"
 )
@@ -32,11 +31,7 @@ func Apply(actions []Action, r Runner, out io.Writer) error {
 			fmt.Fprintln(out, "Saved your answers.")
 		case ActionInstall:
 			for _, argv := range a.Argv {
-				if err := r.Run(argv); err != nil {
-					fmt.Fprintf(out, "Could not run `%s`: run it by hand.\n", strings.Join(argv, " "))
-				} else {
-					fmt.Fprintf(out, "Ran `%s`.\n", strings.Join(argv, " "))
-				}
+				fmt.Fprint(out, InstallLine(a.Harness, argv, r.Run(argv)))
 			}
 		case ActionPrint:
 			fmt.Fprintln(out, a.Path)

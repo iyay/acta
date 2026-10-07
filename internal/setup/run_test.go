@@ -67,6 +67,12 @@ func TestRunActions(t *testing.T) {
 		if !strings.Contains(out.String(), "omp plugin link <plugin dir>") {
 			t.Fatalf("output %q misses the print text", out.String())
 		}
+		if !strings.Contains(out.String(), "✓ claude\n") {
+			t.Fatalf("output %q misses the short install line", out.String())
+		}
+		if strings.Contains(out.String(), "Ran `") || strings.Contains(out.String(), "Could not run") {
+			t.Fatalf("output %q uses the long install lines", out.String())
+		}
 		if !strings.Contains(out.String(), "Saved") || !strings.Contains(out.String(), blockPath) {
 			t.Fatalf("output %q misses the summary", out.String())
 		}
@@ -82,8 +88,11 @@ func TestRunActions(t *testing.T) {
 		if err := setup.Apply(actions, f, &out); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), "omp plugin link /p") {
-			t.Fatalf("output %q misses the failed command", out.String())
+		if !strings.Contains(out.String(), "✗ omp: omp plugin link /p\n") {
+			t.Fatalf("output %q misses the short failed install line", out.String())
+		}
+		if strings.Contains(out.String(), "Could not run") {
+			t.Fatalf("output %q uses the long failure line", out.String())
 		}
 		if _, err := os.Stat(filepath.Join(dir, "second.md")); err != nil {
 			t.Fatalf("block missing after failed install: %v", err)
