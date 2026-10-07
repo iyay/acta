@@ -69,6 +69,18 @@ Task 01 changes `Env` and the install actions that Tasks 02 and 03 build on.
 
 **verify:** The embedded tree holds every file Claude Code and omp need to load the plugin (`.claude-plugin/`, `skills/`, `hooks/`, `output-styles/`, `references/`, `omp/`, `package.json`, `README.md`, `NOTICE`) and none from `evals/`, `evals-routing/` or any `*_test.go`; a test walks the embed and compares it with the files on disk under `plugin/`, so a new plugin file that is not embedded fails the test. Extraction writes the tree to `<HOME>/.acta/plugin/` byte for byte, keeps hook scripts executable, replaces an older extraction fully (no stale file left), and never writes outside that folder. With no `--plugin-dir`, every install command uses the extracted folder; with `--plugin-dir`, the given folder wins and nothing is extracted. If extraction fails, the install step shows the run-by-hand lines and the rest of setup still runs. List every case tested.
 
-- [ ] **Test:** embed contents against disk; extraction into a temp HOME (fresh, over an old tree with a stale file, hook mode bits); install argv with and without `--plugin-dir`; extraction failure path. They fail because none of this exists.
-- [ ] **Code:** add `//go:embed` with explicit `all:` paths in `plugin/embed.go`, an extractor in `internal/setup/extract.go` that writes to a temp folder in `~/.acta` and renames it into place, and wire `cmdSetup` to use it as the default plugin dir.
-- [ ] **Commit:** `feat(setup): ship the plugin inside the binary`.
+- [x] **Test:** embed contents against disk; extraction into a temp HOME (fresh, over an old tree with a stale file, hook mode bits); install argv with and without `--plugin-dir`; extraction failure path. They fail because none of this exists.
+- [x] **Code:** add `//go:embed` with explicit `all:` paths in `plugin/embed.go`, an extractor in `internal/setup/extract.go` that writes to a temp folder in `~/.acta` and renames it into place, and wire `cmdSetup` to use it as the default plugin dir.
+- [x] **Commit:** `feat(setup): ship the plugin inside the binary`.
+
+## Fix round 1
+
+### Task 05: refuse a relative home before extracting
+
+**Files:** `internal/setup/extract.go`, `internal/setup/extract_test.go`.
+
+**verify:** No run of the extractor ever creates, renames or deletes anything unless home is an absolute path: an empty home, `.`, `relative/dir` and `./x` are all refused with an error before any file call, and a test proves nothing appears under the current directory. When the swap fails and putting the old tree back also fails, the error says where the old tree now sits instead of being dropped. List every home value and failure path tested.
+
+- [ ] **Test:** extractor calls with each relative home inside a temp working dir, checking the error and that no `.acta` appears; a failed swap plus failed restore that checks the returned error names the moved-aside path. They fail on today's code.
+- [ ] **Code:** refuse `!filepath.IsAbs(home)` next to the empty check, and return the restore error with the aside path.
+- [ ] **Commit:** `fix(setup): never unpack the plugin under a relative home`.

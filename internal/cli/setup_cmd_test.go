@@ -288,3 +288,58 @@ func TestSetupRunnerNoStdin(t *testing.T) {
 		t.Fatal("installer blocked on stdin")
 	}
 }
+
+// TestPluginDirFor checks where install commands point: the given folder
+// wins and nothing is extracted; with no folder the plugin is extracted
+// under HOME; a failed extract gives an empty dir and a reason.
+func TestPluginDirFor(t *testing.T) {
+	t.Run("flag wins", func(t *testing.T) {
+		home := t.TempDir()
+		dir, err := pluginDirFor("/given", home)
+		if err != nil || dir != "/given" {
+			t.Fatalf("got %q, %v", dir, err)
+		}
+		if entries, _ := os.ReadDir(home); len(entries) != 0 {
+			t.Fatalf("extracted anyway: %v", entries)
+		}
+	})
+	t.Run("extracts by default", func(t *testing.T) {
+		home := t.TempDir()
+		dir, err := pluginDirFor("", home)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := filepath.Join(home, ".acta", "plugin"); dir != want {
+			t.Fatalf("dir = %q, want %q", dir, want)
+		}
+		if _, err := os.Stat(filepath.Join(dir, ".claude-plugin", "marketplace.json")); err != nil {
+			t.Fatal(err)
+		}
+		// The install argv now carries the extracted folder.
+		env := setup.Env{TTY: true, Harnesses: []string{"claude"}, PluginDir: dir}
+		acts := setup.Plan(setup.Answers{Install: map[string]bool{"claude": true}}, env)
+		found := false
+		for _, a := range acts {
+			for _, argv := range a.Argv {
+				for _, s := range argv {
+					if s == dir {
+						found = true
+					}
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("no install argv names %q: %+v", dir, acts)
+		}
+	})
+	t.Run("failure gives empty dir", func(t *testing.T) {
+		home := t.TempDir()
+		if err := os.WriteFile(filepath.Join(home, ".acta"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		dir, err := pluginDirFor("", home)
+		if err == nil || dir != "" {
+			t.Fatalf("got %q, %v; want empty dir and an error", dir, err)
+		}
+	})
+}
