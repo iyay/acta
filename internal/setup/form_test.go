@@ -75,7 +75,7 @@ func TestFormGroups(t *testing.T) {
 		{"Subagent models", "(6/9)", "Claude Code only."},
 		{"Plan detail", "(7/9)", ""},
 		{"Questions", "(8/9)", ""},
-		{"Install the acta plugin?", "(9/9)", "Install the acta plugin into each tool found."},
+		{"Plugin install", "(9/9)", "One row per tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")

@@ -5,6 +5,8 @@ closes: [SPC-0103]
 id: PLN-0112
 created: "2026-10-07 13:07:53"
 hash: onfa7nh
+started: "2026-10-07 13:08:12"
+finished: "2026-10-07 13:09:11"
 ---
 # acta setup install rows Implementation Plan
 
@@ -31,9 +33,9 @@ hash: onfa7nh
 
 **verify:** For any set of tool names (one, two or three, different lengths), every rendered install row has its first Yes/No mark in the same column, at least one space after the longest name; the title is `Plugin install` with description `One row per tool found.`; the answered line format is unchanged. List every name set rendered.
 
-- [ ] **Test:** render the harness group for name sets like [claude], [claude, omp], [a, claude, omp] and check the mark column and the gap; check the title and description; it fails on today's `claude● Yes`.
-- [ ] **Code:** pad each confirm title to the longest tool name plus two spaces (or put the gap in the theme), and change the title and description.
-- [ ] **Commit:** `fix(setup): line up the plugin install rows`.
+- [x] **Test:** render the harness group for name sets like [claude], [claude, omp], [a, claude, omp] and check the mark column and the gap; check the title and description; it fails on today's `claude● Yes`.
+- [x] **Code:** pad each confirm title to the longest tool name plus two spaces (or put the gap in the theme), and change the title and description.
+- [x] **Commit:** `fix(setup): line up the plugin install rows`.
 
 ### Task 02: version bump
 
@@ -41,6 +43,16 @@ hash: onfa7nh
 
 **verify:** All three files hold 0.1.34 and `internal/plugincheck` accepts it.
 
-- [ ] **Test:** the existing version check in `internal/plugincheck`.
-- [ ] **Code:** set 0.1.34 in all three files.
-- [ ] **Commit:** `chore(plugin): bump version`.
+- [x] **Test:** the existing version check in `internal/plugincheck`.
+- [x] **Code:** set 0.1.34 in all three files.
+- [x] **Commit:** `chore(plugin): bump version`.
+
+### Task 03: shorter closing summary
+
+**Files:** `internal/setup/look.go`, `internal/setup/look_test.go`, plus any setup or cli test that pins the old summary lines.
+
+**verify:** On every run path the closing summary prints only `config: <path>` (or `config: (unknown)`) on the rail, then `└  Run acta in a repo to browse specs, plans and bugs.`; no `installed:`, `block:` or `next:` line appears in any form, with installs or none, with block files or none. List every path checked.
+
+- [ ] **Test:** summary tests for installs and none, block files and none, unknown config path; they fail on today's `installed:`/`block:`/`next:` lines.
+- [ ] **Code:** cut the three lines from `SummaryBox` and put the TUI hint on the closing `└` line; drop parameters that become unused.
+- [ ] **Commit:** `fix(setup): shorter closing summary with the TUI hint`.
