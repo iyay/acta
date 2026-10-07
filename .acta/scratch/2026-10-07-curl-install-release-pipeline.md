@@ -16,6 +16,8 @@ Split from SCR-0051 on 2026-10-07. A curl install script (`curl ... | sh`) that 
 
 ## Context
 
+Ruling 2026-10-07: plugin files ship inside the binary (go:embed, extracted to ~/.acta/plugin by acta setup). The curl script only needs to fetch the binary and exec `acta setup`.
+
 ## Log
 
 ## Open questions

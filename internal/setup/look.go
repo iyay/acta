@@ -183,27 +183,14 @@ func InstallLine(harness string, argv []string, err error) string {
 	return RailProblem(harness + ": " + strings.Join(argv, " "))
 }
 
-// SummaryBox closes the wizard: where the config landed, what got
-// installed, which files got the block, and what to run next, then the
-// closing corner of the rail.
-func SummaryBox(configPath string, installed []string, blockFiles []string, next string) string {
-	orUnknown := func(s string) string {
-		if s == "" {
-			return "(unknown)"
-		}
-		return s
-	}
-	join := func(ss []string) string {
-		if len(ss) == 0 {
-			return "none"
-		}
-		return strings.Join(ss, ", ")
+// SummaryBox closes the wizard: where the config landed, then the closing
+// corner of the rail with the hint to open the TUI.
+func SummaryBox(configPath string) string {
+	if configPath == "" {
+		configPath = "(unknown)"
 	}
 	return dimText("│") + "\n" +
 		dimText("◇") + "  Setup done\n" +
-		RailLine("config: "+orUnknown(configPath)) +
-		RailLine("installed: "+join(installed)) +
-		RailLine("block: "+join(blockFiles)) +
-		RailLine("next: "+next) +
-		dimText("└") + "\n"
+		RailLine("config: "+configPath) +
+		dimText("└") + "  Run acta in a repo to browse specs, plans and bugs.\n"
 }

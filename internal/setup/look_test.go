@@ -267,31 +267,24 @@ func TestConfirmDotMarks(t *testing.T) {
 }
 
 func TestSummary(t *testing.T) {
-	t.Run("names config, installs, block files and next step, then closes the rail", func(t *testing.T) {
-		got := setup.SummaryBox("/home/u/.acta/config.yaml",
-			[]string{"claude", "omp"}, []string{"CLAUDE.md"}, "run `acta --help`")
+	t.Run("names the config only, then closes the rail with the TUI hint", func(t *testing.T) {
+		got := setup.SummaryBox("/home/u/.acta/config.yaml")
 		want := "│\n◇  Setup done\n" +
 			"│  config: /home/u/.acta/config.yaml\n" +
-			"│  installed: claude, omp\n" +
-			"│  block: CLAUDE.md\n" +
-			"│  next: run `acta --help`\n" +
-			"└\n"
+			"└  Run acta in a repo to browse specs, plans and bugs.\n"
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
 	})
-	t.Run("empty installs and blocks still print a line each", func(t *testing.T) {
-		box := setup.SummaryBox("cfg", nil, nil, "next")
-		for _, want := range []string{"│  config: cfg", "│  installed: none", "│  block: none", "│  next: next"} {
-			if !strings.Contains(box, want) {
-				t.Errorf("summary misses %q:\n%s", want, box)
-			}
-		}
-	})
 	t.Run("a missing config path prints a clear word, not an empty value", func(t *testing.T) {
-		box := setup.SummaryBox("", []string{"claude"}, []string{"CLAUDE.md"}, "next")
+		box := setup.SummaryBox("")
 		if !strings.Contains(box, "config: (unknown)") {
 			t.Errorf("summary must name the missing path, got:\n%s", box)
+		}
+		for _, bad := range []string{"installed:", "block:", "next:"} {
+			if strings.Contains(box, bad) {
+				t.Errorf("summary must not hold %q, got:\n%s", bad, box)
+			}
 		}
 	})
 }

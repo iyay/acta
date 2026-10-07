@@ -16,9 +16,6 @@ import (
 
 const setupUsage = "usage: acta setup [--plugin-dir <path>]"
 
-// setupNext is the step the closing box points to after a clean run.
-const setupNext = "open a repo and run acta to start planning"
-
 // setupRunner runs harness install commands through the real process, so
 // the wizard carries out what the user said yes to.
 type setupRunner struct{}
@@ -30,40 +27,6 @@ func (setupRunner) Run(argv []string) error {
 	// stays nil: an installer that asks a question gets end of input and
 	// fails at once, instead of waiting on a prompt nobody can see.
 	return cmd.Run()
-}
-
-// failTracker wraps a runner and remembers when any command failed, so the
-// closing summary can leave out a harness whose install did not work.
-type failTracker struct {
-	setup.Runner
-	failed bool
-}
-
-func (f *failTracker) Run(argv []string) error {
-	err := f.Runner.Run(argv)
-	if err != nil {
-		f.failed = true
-	}
-	return err
-}
-
-// applySetup carries out the plan one action at a time through setup.Apply,
-// so it knows which install failed. It returns the actions that really
-// happened: a failed install is dropped, everything else stays. It stops at
-// the first hard error, as Apply does.
-func applySetup(actions []setup.Action, r setup.Runner, out io.Writer) ([]setup.Action, error) {
-	var done []setup.Action
-	for _, a := range actions {
-		t := &failTracker{Runner: r}
-		if err := setup.Apply([]setup.Action{a}, t, out); err != nil {
-			return done, err
-		}
-		if a.Kind == setup.ActionInstall && t.failed {
-			continue
-		}
-		done = append(done, a)
-	}
-	return done, nil
 }
 
 // stdoutIsTTY says whether stdout is a terminal. os.Stdout is the real one
@@ -108,12 +71,11 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 	if env.RepoRoot != "" {
 		fmt.Fprint(stdout, blockNote(actions))
 	}
-	done, err := applySetup(actions, setupRunner{}, stdout)
-	if err != nil {
+	if err := setup.Apply(actions, setupRunner{}, stdout); err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	fmt.Fprint(stdout, setupSummary(done, setupNext))
+	fmt.Fprint(stdout, setupSummary())
 	return exitOK
 }
 
@@ -162,23 +124,11 @@ func blockNote(actions []setup.Action) string {
 	return setup.BlockLines(paths)
 }
 
-// setupSummary closes the wizard: where the config landed, which harnesses
-// the plan ran installs for, which block files the plan wrote, and what to
-// run next. The names come from the plan actions Apply just carried out, so
-// the box matches what really ran.
-func setupSummary(actions []setup.Action, next string) string {
+// setupSummary closes the wizard with the config path and the TUI hint.
+func setupSummary() string {
 	path, err := config.UserPath()
 	if err != nil {
 		path = ""
 	}
-	var installed, blocks []string
-	for _, a := range actions {
-		switch a.Kind {
-		case setup.ActionInstall:
-			installed = append(installed, a.Harness)
-		case setup.ActionBlock:
-			blocks = append(blocks, a.Path)
-		}
-	}
-	return setup.SummaryBox(path, installed, blocks, next)
+	return setup.SummaryBox(path)
 }

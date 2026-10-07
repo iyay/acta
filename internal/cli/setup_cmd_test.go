@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,10 +10,6 @@ import (
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/setup"
 )
-
-// errTestInstall marks an install action whose command failed, so the
-// closing box must leave that harness out of the installed list.
-var errTestInstall = errors.New("exit 1")
 
 // TestSetupNoTTY checks the paths where acta setup must write nothing and
 // run no harness command: stdin not a TTY (piped input), and stdout not a
@@ -193,72 +188,24 @@ func TestBlockNoteShort(t *testing.T) {
 	}
 }
 
-// TestSetupSummaryBox checks the closing box names the voice file, the
-// installed harnesses, the block files and the next step, with none lines
-// when the plan installed nothing and wrote no block. A harness whose
-// install line reports failure never counts as installed.
+// TestSetupSummaryBox checks the closing box names the voice file and the
+// TUI hint, and no longer lists installs, block files or a next line.
 func TestSetupSummaryBox(t *testing.T) {
 	home := t.TempDir()
 	voice := filepath.Join(home, "config.yaml")
 	t.Setenv("HOME", home)
 	t.Setenv("PM_VOICE_FILE", voice)
 	t.Setenv("TMPDIR", home)
-	block := filepath.Join(t.TempDir(), "CLAUDE.md")
-	actions := []setup.Action{
-		{Kind: setup.ActionInstall, Harness: "claude", Argv: [][]string{{"claude", "plugin", "add", "/p"}}},
-		{Kind: setup.ActionBlock, Path: block},
-	}
-	got := setupSummary(actions, setupNext)
-	for _, want := range []string{"config: " + voice, "installed: claude", "block: " + block, "next: " + setupNext} {
+	got := setupSummary()
+	for _, want := range []string{"config: " + voice, "└  Run acta in a repo to browse specs, plans and bugs.\n"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("summary %q misses %q", got, want)
 		}
 	}
-	empty := setupSummary(nil, setupNext)
-	for _, want := range []string{"installed: none", "block: none"} {
-		if !strings.Contains(empty, want) {
-			t.Fatalf("empty summary %q misses %q", empty, want)
+	for _, bad := range []string{"installed:", "block:", "next:"} {
+		if strings.Contains(got, bad) {
+			t.Fatalf("summary %q holds %q", got, bad)
 		}
-	}
-}
-
-// TestApplySetupSkipsFailedInstall runs the live apply path cmdSetup uses
-// with a runner that fails one harness. The failed harness prints its
-// problem line and never shows as installed in the closing summary; the
-// block still gets written after it.
-func TestApplySetupSkipsFailedInstall(t *testing.T) {
-	home := t.TempDir()
-	voice := filepath.Join(home, "config.yaml")
-	t.Setenv("HOME", home)
-	t.Setenv("PM_VOICE_FILE", voice)
-	t.Setenv("TMPDIR", home)
-	block := filepath.Join(t.TempDir(), "CLAUDE.md")
-	actions := []setup.Action{
-		{Kind: setup.ActionInstall, Harness: "claude", Argv: [][]string{{"claude", "plugin", "add", "/p"}}},
-		{Kind: setup.ActionInstall, Harness: "omp", Argv: [][]string{{"omp", "plugin", "link", "/p"}}},
-		{Kind: setup.ActionBlock, Path: block},
-	}
-	var out strings.Builder
-	done, err := applySetup(actions, failRunner{fail: "omp"}, &out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"│  ✓ claude\n", "│  ▲ omp: omp plugin link /p\n"} {
-		if !strings.Contains(out.String(), want) {
-			t.Fatalf("apply output %q misses %q", out.String(), want)
-		}
-	}
-	got := setupSummary(done, setupNext)
-	for _, want := range []string{"config: " + voice, "installed: claude", "block: " + block, "next: " + setupNext} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("summary %q misses %q", got, want)
-		}
-	}
-	if strings.Contains(got, "omp") {
-		t.Fatalf("summary %q lists a harness whose install failed", got)
-	}
-	if _, err := os.Stat(block); err != nil {
-		t.Fatalf("block not written after a failed install: %v", err)
 	}
 }
 
@@ -271,22 +218,9 @@ func TestApplySetupHardError(t *testing.T) {
 	t.Setenv("TMPDIR", home)
 	bad := config.User{Style: "nope"}
 	var out strings.Builder
-	if _, err := applySetup([]setup.Action{{Kind: setup.ActionConfig, User: bad}}, failRunner{}, &out); err == nil {
+	if err := setup.Apply([]setup.Action{{Kind: setup.ActionConfig, User: bad}}, setupRunner{}, &out); err == nil {
 		t.Fatal("want an error for an invalid config value")
 	}
-}
-
-// failRunner fails the install of one harness and runs the rest, so the
-// test sees the same problem line Apply prints for real.
-type failRunner struct{ fail string }
-
-func (f failRunner) Run(argv []string) error {
-	for _, w := range argv {
-		if w == f.fail {
-			return errTestInstall
-		}
-	}
-	return nil
 }
 
 // TestSetupRunnerNoStdin checks an installer that asks a question does not
