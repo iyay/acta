@@ -91,3 +91,10 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 - [ ] Green: change 0.1.35 to 0.1.36 in all three files. Run `scripts/test ./internal/plugincheck/`.
 - [ ] Commit: `chore: version 0.1.36`
+
+## State
+
+### Next
+
+Dispatched to omp tab tidy-commit-history (pane wM:p58), base 3108fdb, all 6 tasks.
+On reply-back: verify per dispatch.md, then acta:review over 3108fdb..HEAD, then land.
