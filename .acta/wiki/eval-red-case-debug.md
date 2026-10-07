@@ -2,8 +2,8 @@
 type: Runbook
 title: Debug a red eval case skill-last
 description: Check the case shape, then main, then PATH binary, before calling a red case a skill gap
-paths: [plugin/evals/]
-timestamp: 2026-10-07T02:06:54Z
+paths: [plugin/evals/, plugin/evals-routing/]
+timestamp: 2026-10-07T03:02:54Z
 ---
 
 1. Read the case: empty `allowed_tools` means the child cannot load the skill it tests; a prompt that says "answer and stop" gets no tool calls; too-low `max_turns` looks like failure.
