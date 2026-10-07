@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/setup"
 )
 
 // TestSetupNoTTY checks the paths where acta setup must write nothing and
@@ -150,4 +151,63 @@ func TestSetupEnvCurrent(t *testing.T) {
 			t.Fatalf("current = %+v, want defaults %+v", got.Current, config.UserDefault())
 		}
 	})
+}
+
+// TestShowBlockShort checks the note before Apply names each block file on
+// its own short line and never prints the block itself.
+func TestShowBlockShort(t *testing.T) {
+	dir := t.TempDir()
+	claude := filepath.Join(dir, "CLAUDE.md")
+	agents := filepath.Join(dir, "AGENTS.md")
+	for _, c := range []struct {
+		name string
+		env  setup.Env
+		want string
+	}{
+		{"both files", setup.Env{RepoRoot: dir, HasClaudeMD: true, HasAgentsMD: true},
+			"acta block → " + claude + "\nacta block → " + agents + "\n"},
+		{"agents only", setup.Env{RepoRoot: dir, HasAgentsMD: true},
+			"acta block → " + agents + "\n"},
+		{"no file yet", setup.Env{RepoRoot: dir},
+			"acta block → " + claude + "\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			var out strings.Builder
+			showBlock(&out, c.env)
+			if out.String() != c.want {
+				t.Fatalf("showBlock = %q, want %q", out.String(), c.want)
+			}
+			if strings.Contains(out.String(), setup.Block) {
+				t.Fatalf("showBlock prints the block text")
+			}
+		})
+	}
+}
+
+// TestSetupSummaryBox checks the closing box names the voice file, the
+// installed harnesses, the block files and the next step, with none lines
+// when the plan installed nothing and wrote no block.
+func TestSetupSummaryBox(t *testing.T) {
+	home := t.TempDir()
+	voice := filepath.Join(home, "config.yaml")
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", voice)
+	t.Setenv("TMPDIR", home)
+	block := filepath.Join(t.TempDir(), "CLAUDE.md")
+	actions := []setup.Action{
+		{Kind: setup.ActionInstall, Harness: "claude", Argv: [][]string{{"claude", "plugin", "add", "/p"}}},
+		{Kind: setup.ActionBlock, Path: block},
+	}
+	got := setupSummary(actions, setupNext)
+	for _, want := range []string{"config: " + voice, "installed: claude", "block: " + block, "next: " + setupNext} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("summary %q misses %q", got, want)
+		}
+	}
+	empty := setupSummary(nil, setupNext)
+	for _, want := range []string{"installed: none", "block: none"} {
+		if !strings.Contains(empty, want) {
+			t.Fatalf("empty summary %q misses %q", empty, want)
+		}
+	}
 }
