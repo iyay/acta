@@ -98,7 +98,7 @@ Each wave's tasks touch different files. Task 03 needs Task 02's package; Task 0
 
 ### Next
 
-Cap back (Task 09) review: Standards CLEAN (all mutants red). Waiting on Spec axis, then acta:land with merge --no-ff (tidy is not live until this lands).
+Land stopped at the eval gate: all 12 cases scored 0 with the Docker symlink sandbox error (machine setup, ~/.docker/bin and cli-plugins link into Docker.app); no case ran. Every other gate green at 02b687d. Waiting on the user: run scripts/eval --omp, land without eval, or fix the machine first.
 
 ### Findings
 
