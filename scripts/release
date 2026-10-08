@@ -1,0 +1,72 @@
+#!/bin/sh
+# Cuts a release: bumps the version in the three plugin files, runs every
+# gate, then makes one commit and one annotated tag. It never pushes. It
+# prints the push command and the user runs it.
+# Usage: scripts/release patch | minor | X.Y.Z
+set -eu
+cd "$(dirname "$0")/.."
+
+plugin=plugin/.claude-plugin/plugin.json
+files="$plugin plugin/.claude-plugin/marketplace.json plugin/package.json"
+
+fail() {
+	echo "release: $*" >&2
+	exit 1
+}
+
+semver='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+
+[ $# -eq 1 ] || fail "usage: scripts/release patch | minor | X.Y.Z"
+
+# The plugin.json version is the one the other two files must agree with.
+cur=$(sed -n 's/^ *"version": "\([^"]*\)".*/\1/p' "$plugin" | head -n 1)
+printf '%s' "$cur" | grep -q "$semver" || fail "cannot read a version from $plugin"
+major=${cur%%.*}
+rest=${cur#*.}
+minor=${rest%%.*}
+patch=${rest#*.}
+
+case $1 in
+patch) new="$major.$minor.$((patch + 1))" ;;
+minor) new="$major.$((minor + 1)).0" ;;
+*)
+	printf '%s' "$1" | grep -q "$semver" || fail "bad argument '$1': use patch, minor or X.Y.Z"
+	new=$1
+	;;
+esac
+tag="v$new"
+
+# Every check runs before a file changes, so a refusal leaves nothing behind.
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || fail "not on main"
+[ -z "$(git status --porcelain)" ] || fail "tree is not clean"
+if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+	fail "tag $tag already exists"
+fi
+
+# From here on, any stop puts the three files back as they were.
+committed=
+restore() {
+	[ -n "$committed" ] || git checkout -- $files
+}
+trap restore EXIT
+trap 'exit 1' INT TERM
+
+# cat into the old file, not mv, so the file keeps its mode.
+tmp=$(mktemp)
+for f in $files; do
+	sed "s/^\( *\)\"version\": \"[^\"]*\"/\1\"version\": \"$new\"/" "$f" >"$tmp"
+	cat "$tmp" >"$f"
+done
+rm "$tmp"
+
+scripts/test --full
+go vet ./...
+unformatted=$(gofmt -l .)
+[ -z "$unformatted" ] || fail "gofmt lists files that need formatting: $unformatted"
+
+git commit -q -m "chore(release): $tag" -- $files
+committed=1
+git tag -a "$tag" -m "$tag"
+
+echo "Released $tag. Push it with:"
+echo "git push origin main $tag"
