@@ -17,6 +17,7 @@ func TestSkillReview(t *testing.T) {
 			"## Review tiers",
 			"Light review: the orchestrator reads the full diff",
 			"A fix round always takes the two reviewers.",
+			"Reading the diff yourself never replaces the two reviewers, however small the diff.",
 			"In doubt: full.",
 			"acta debt new",
 			"drop the bucket tag",

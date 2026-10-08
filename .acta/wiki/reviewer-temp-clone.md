@@ -3,7 +3,7 @@ type: Gotcha
 title: Reviewers run acta write commands in a temp clone
 description: acta write commands auto-commit, so a read-only reviewer running one in the worktree makes real commits
 paths: [plugin/skills/review/]
-timestamp: 2026-10-06T00:00:00Z
+timestamp: 2026-10-08T02:25:38Z
 ---
 
 A reviewer said it tested `acta debt new` in a temp copy, but it ran in the worktree and made two real commits.

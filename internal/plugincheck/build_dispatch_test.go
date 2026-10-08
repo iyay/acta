@@ -68,7 +68,7 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"the plan's fast test command", "git diff --name-only <base>..HEAD -- .acta/bugs",
 		"Bugs found by recipient", "Harvested from omp", "omp memory: nothing to harvest", "learned.md",
 		"acta:review", "acta:land",
-		"Its small-change self-review never applies to a dispatch",
+		"The review depth comes from `acta:review`'s `## Review tiers`.",
 		"literal skill name, a review keyword, and the range",
 		"NOTEs are never written to memory", "sorts them into `[fix]`, `[debt]` or `[note]`",
 		"## Fix rounds", "Append `## Fix round <n>`", "--round fix-<n>", "--round polish",

@@ -3,7 +3,7 @@ type: Runbook
 title: Plugin changes need a restart, not a reinstall
 description: Claude Code loads the acta plugin in place from the repo's plugin/ folder; the plugin cache copy is stale and unused
 paths: [plugin/]
-timestamp: 2026-10-08T01:33:21Z
+timestamp: 2026-10-08T02:25:38Z
 ---
 
 The local marketplace is a `directory` source pointing at this repo's `plugin/` folder, so skills load from there in place. The copy under `~/.claude/plugins/cache/` is old and unused.
