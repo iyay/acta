@@ -14,7 +14,10 @@ func TestSkillReview(t *testing.T) {
 			"deep lens", "never a round 4", "code-reviewer.md", "CLEAN or BLOCKED",
 			"## Receiving findings", "Fix round", "acta:land",
 			"## Where findings go", "acta:bug", "already on the parent branch",
-			"Small means one file, and only text or config with no code logic.",
+			"## Review tiers",
+			"Light review: the orchestrator reads the full diff",
+			"A fix round always takes the two reviewers.",
+			"In doubt: full.",
 			"acta debt new",
 			"drop the bucket tag",
 			"the priority tag comes after the bucket tag",
@@ -27,10 +30,10 @@ func TestSkillReview(t *testing.T) {
 			"The `[fix]` NOTEs join that fix task.",
 			// The whole CLEAN-round flow, in the one section that owns it.
 			"\n## After a CLEAN round\n",
-			"The polish commit counts as no round. Every polish commit gets the two reviewers.",
+			"The polish commit counts as no round.",
 			"Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.",
 			"one polish commit holding all of them",
-			"The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range.",
+			"The orchestrator runs the full test suite with the output shown, then the polish range gets the review its tier picks (`## Review tiers`).",
 			"When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`.",
 			"The polish commit uses no round.",
 			"A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.",
@@ -39,7 +42,7 @@ func TestSkillReview(t *testing.T) {
 			"a `## Review notes` section in the plan file",
 			"that section is committed with the plan",
 			"Then `acta:land`.",
-			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward.",
+			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward.",
 			// Every other place names that section instead of restating it.
 			"A CLEAN round runs the polish flow in `## After a CLEAN round`.",
 			"run `## After a CLEAN round`, which ends in `acta:land`.",
@@ -47,11 +50,10 @@ func TestSkillReview(t *testing.T) {
 			"CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user",
 			"A round with no BLOCKER does not start; it runs `## After a CLEAN round`.",
 			"No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.",
-			"A polish commit is never a small change",
 			"and over a polish commit",
 			"A CLEAN round: no new round, no new fix task. Run `## After a CLEAN round`.",
 		},
-		MustNot: []string{"explicit instruction-file violation", "Acknowledge strengths", "Production readiness", "superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
+		MustNot: []string{"Small means one file", "Every polish commit gets the two reviewers", "A polish commit is never a small change", "explicit instruction-file violation", "Acknowledge strengths", "Production readiness", "superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
 			"land now with",
 			`Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE.`,
 			"CLEAN: land.",
@@ -79,12 +81,12 @@ func TestSkillReview(t *testing.T) {
 		t.Errorf("review/SKILL.md has %d \"## After a CLEAN round\" headings; the CLEAN-round flow lives in one section", n)
 	}
 
-	// A polish reply-back runs the suite and the two reviewers before step 3;
+	// A polish reply-back runs the suite and the tier's review before step 3;
 	// "step 3 onward" on its own skips both.
 	for _, line := range strings.Split(readSkill(t, "skills/review/SKILL.md"), "\n") {
 		if strings.Contains(line, "step 3 onward") &&
-			(!strings.Contains(line, "full test suite") || !strings.Contains(line, "two reviewers")) {
-			t.Errorf("review/SKILL.md sends a polish reply-back to step 3 onward without the full suite and the two reviewers: %q", line)
+			(!strings.Contains(line, "full test suite") || !strings.Contains(line, "Review tiers")) {
+			t.Errorf("review/SKILL.md sends a polish reply-back to step 3 onward without the full suite and the tier review: %q", line)
 		}
 	}
 	// The fix-task rule is stated once, in budget step 2.

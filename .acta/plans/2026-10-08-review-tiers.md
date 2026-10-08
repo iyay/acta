@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0120
 created: "2026-10-08 08:56:57"
 hash: nxy7zjg
+started: "2026-10-08 08:58:19"
 ---
 # Review depth follows what the diff changes
 
@@ -34,9 +35,9 @@ hash: nxy7zjg
 
 **verify:** No line in any skill says every polish or every change of more than one file takes the two reviewers, and the skill names every spec rule: light tier lines, full tier cases with "in doubt: full", light review steps with the `## Review notes` line, the dispatch exception, tiers for round 1 and polish only, and fix rounds always full. List each rule and the sentence that carries it, and each old sentence checked as gone.
 
-- [ ] Failing test: in `skill_review_test.go` swap the Must strings `Small means one file, and only text or config with no code logic.` and `The polish commit counts as no round. Every polish commit gets the two reviewers.` and `then the two reviewers review the polish range.` for the new phrases (the three from Global Constraints plus `The polish commit counts as no round.`), and add both old sentences to MustNot; run `scripts/test ./internal/plugincheck/ -run Review` and see it fail.
-- [ ] Code: replace `## Small changes` with `## Review tiers` holding the spec's light tier, full tier, light review and where-it-applies rules; in `## After a CLEAN round` step 2, the polish gets the review its tier picks (`## Review tiers`) in place of the two reviewers, keeping the full test run and every revert and `[debt]` rule; adjust `dispatch.md` only if it restates the old rule; stay under the review `MaxLines` cap.
-- [ ] Run `scripts/test ./internal/plugincheck/` passes, commit.
+- [x] Failing test: in `skill_review_test.go` swap the Must strings `Small means one file, and only text or config with no code logic.` and `The polish commit counts as no round. Every polish commit gets the two reviewers.` and `then the two reviewers review the polish range.` for the new phrases (the three from Global Constraints plus `The polish commit counts as no round.`), and add both old sentences to MustNot; run `scripts/test ./internal/plugincheck/ -run Review` and see it fail.
+- [x] Code: replace `## Small changes` with `## Review tiers` holding the spec's light tier, full tier, light review and where-it-applies rules; in `## After a CLEAN round` step 2, the polish gets the review its tier picks (`## Review tiers`) in place of the two reviewers, keeping the full test run and every revert and `[debt]` rule; adjust `dispatch.md` only if it restates the old rule; stay under the review `MaxLines` cap.
+- [x] Run `scripts/test ./internal/plugincheck/` passes, commit.
 
 ### Task 02: Eval cases for both tiers
 
@@ -57,6 +58,13 @@ hash: nxy7zjg
 
 **verify:** All three files carry the same version, one patch above `0.1.41`, so `0.1.42`. List each file and its version.
 
-- [ ] Failing test: none new; `internal/plugincheck` already checks the three files agree.
-- [ ] Code: set `"version": "0.1.42"` in the three files.
-- [ ] Run `scripts/test ./internal/plugincheck/` passes, commit.
+- [x] Failing test: none new; `internal/plugincheck` already checks the three files agree.
+- [x] Code: set `"version": "0.1.42"` in the three files.
+- [x] Run `scripts/test ./internal/plugincheck/` passes, commit.
+
+## State
+
+### Findings
+
+main was rewritten at 08:58 (8 scratch commits squashed to 7c8b360); new main tip 6d6a8c6 has the same tree as 808a9dd.
+Before land: git rebase --onto main 808a9dd review-tiers in the worktree, after every task is committed.

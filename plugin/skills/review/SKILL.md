@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Two reviewers, in parallel
 
-Dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
+A full review (`## Review tiers`) dispatches two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
 
 **Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
@@ -63,7 +63,7 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 
 ## After a CLEAN round
 
-The polish commit counts as no round. Every polish commit gets the two reviewers. This section is the whole CLEAN-round flow.
+The polish commit counts as no round. Each polish commit gets the review its tier picks (`## Review tiers`). This section is the whole CLEAN-round flow.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
 2. With `[fix]` NOTEs: first append a `## Polish` task to the plan, in the worktree:
@@ -77,18 +77,25 @@ The polish commit counts as no round. Every polish commit gets the two reviewers
    - [ ] <one box per [fix] NOTE>
    - [ ] Commit: `polish: review notes for <plan id>`
    ```
-   N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the two reviewers review the polish range. When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
+   N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
 5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
 6. The `[note]` NOTEs go into a `## Review notes` section in the plan file, one line each, and that section is committed with the plan.
 7. Then `acta:land`.
 
-A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the two reviewers over the polish range, then step 3 onward. The `--round polish` send hands over the plan's `## Polish` task.
+A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward. The `--round polish` send hands over the plan's `## Polish` task.
 
-## Small changes
+## Review tiers
 
-Small means one file, and only text or config with no code logic. Two or more files, or any code change, take the two reviewers. A small change may take an inline self-review instead: read the full diff, answer the three questions, state a verdict. Security, auth, data migration and money always take the two reviewers. Work another agent wrote (the `dispatch` executor) always takes the two reviewers: you did not watch it being written. A polish commit is never a small change: it goes through `## After a CLEAN round`.
+This is the one place that says how deep a review goes. Tiers apply to round 1 and to a polish commit. A fix round always takes the two reviewers.
+
+- **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
+- **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.
+
+Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the two reviewers.
+
+Work another agent wrote (the `dispatch` executor) always takes the two reviewers, except in the light tier.
 
 ## Receiving findings
 
