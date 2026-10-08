@@ -120,3 +120,106 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 	}
 	return path, os.Rename(tmp, path)
 }
+
+// Override is one repo key whose value in .acta.yaml differs from the one the
+// user would get without that file.
+type Override struct{ Key, Repo, Yours string }
+
+// repoValue reads one repo key from u. A key nobody set has the default the
+// hooks use, so "unset" and "set to the default" compare as equal.
+func repoValue(u User, key string) string {
+	var v, def string
+	switch key {
+	case "repo_language":
+		v = u.RepoLanguage
+	case "build_executor":
+		v = u.BuildExecutor
+	case "plan_depth":
+		v, def = u.PlanDepth, "full"
+	case "commit_history":
+		v, def = u.CommitHistory, "tidy"
+	case "coding_guide":
+		v, def = u.CodingGuide, "lean"
+	}
+	if v == "" {
+		return def
+	}
+	return v
+}
+
+// Overrides lists the repo keys that change what the user chose, in RepoKeys
+// order. A key the repo repeats with the same value is left out: it changes
+// nothing. It reads the file through MergeRepo, so it fails the same way.
+func Overrides(user User, repoRoot string) ([]Override, error) {
+	merged, from, err := MergeRepo(user, repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	var out []Override
+	for _, k := range RepoKeys {
+		if !from[k] {
+			continue
+		}
+		repo, yours := repoValue(merged, k), repoValue(user, k)
+		if repo != yours {
+			out = append(out, Override{Key: k, Repo: repo, Yours: yours})
+		}
+	}
+	return out, nil
+}
+
+// UnsetRepoUser removes the given repo keys from repoRoot/.acta.yaml and
+// returns its path. Like SaveRepoUser it edits the yaml tree, so other keys,
+// comments and order stay. A key that is not in the file, or no file at all,
+// is fine: the user's value already applies.
+func UnsetRepoUser(repoRoot string, keys []string) (string, error) {
+	path := filepath.Join(repoRoot, ".acta.yaml")
+	for _, k := range keys {
+		if !slices.Contains(RepoKeys, k) {
+			return path, fmt.Errorf("%w: %s cannot be unset per repo; only %s can", ErrBadUser, k, strings.Join(RepoKeys, ", "))
+		}
+	}
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return path, nil
+	}
+	if err != nil {
+		return path, err
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return path, fmt.Errorf("%s: %w", path, err)
+	}
+	if doc.Kind == 0 {
+		return path, nil
+	}
+	m := doc.Content[0]
+	if m.Kind != yaml.MappingNode {
+		return path, fmt.Errorf("%s: the top level is not a list of keys", path)
+	}
+	// Keys sit at even places and values right after them, so drop in pairs.
+	kept, changed := make([]*yaml.Node, 0, len(m.Content)), false
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if slices.Contains(keys, m.Content[i].Value) {
+			changed = true
+			continue
+		}
+		kept = append(kept, m.Content[i], m.Content[i+1])
+	}
+	if !changed {
+		return path, nil
+	}
+	m.Content = kept
+	out := []byte{}
+	// An empty map would print as "{}", so an empty result is an empty file.
+	if len(kept) > 0 {
+		if out, err = yaml.Marshal(&doc); err != nil {
+			return path, err
+		}
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return path, err
+	}
+	return path, os.Rename(tmp, path)
+}

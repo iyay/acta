@@ -3,6 +3,7 @@ parent: scratch/2026-10-07-repo-override-invisible
 id: SPC-0109
 created: "2026-10-08 07:41:02"
 hash: n8isf8t
+started: "2026-10-08 07:45:45"
 ---
 # Repo overrides are visible and changeable from setup, the session note and chat
 

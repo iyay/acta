@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -250,6 +251,139 @@ func TestMergeRepoCommitHistoryBadValue(t *testing.T) {
 		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, "commit_history: "+bad+"\n"))
 		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "commit_history") {
 			t.Errorf("commit_history %q in .acta.yaml: err %v, want ErrBadUser naming the key", bad, err)
+		}
+	}
+}
+
+// A repo key is an override only when its value differs from what the user
+// would get anyway. A key the user never set counts as its default.
+func TestOverrides(t *testing.T) {
+	user := User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "dispatch", PlanDepth: "minimal"}
+	cases := []struct {
+		name string
+		yaml string
+		user User
+		want []Override
+	}{
+		{"same value", "build_executor: dispatch\nplan_depth: minimal\n", user, nil},
+		{"different value", "build_executor: subagent\n", user, []Override{{"build_executor", "subagent", "dispatch"}}},
+		{"user unset, default differs", "plan_depth: minimal\n", UserDefault(), []Override{{"plan_depth", "minimal", "full"}}},
+		{"user unset, default equals", "plan_depth: full\ncommit_history: tidy\ncoding_guide: lean\n", UserDefault(), nil},
+		{"user unset commit_history, repo full", "commit_history: full\n", UserDefault(), []Override{{"commit_history", "full", "tidy"}}},
+		{"user unset coding_guide, repo off", "coding_guide: off\n", UserDefault(), []Override{{"coding_guide", "off", "lean"}}},
+		{"user has no executor", "build_executor: inline\n", UserDefault(), []Override{{"build_executor", "inline", ""}}},
+		{"repo language differs", "repo_language: Korean\n", UserDefault(), []Override{{"repo_language", "Korean", "English"}}},
+		{"only differing keys, in RepoKeys order",
+			"coding_guide: off\nplan_depth: full\nrepo_language: Korean\nbuild_executor: dispatch\n", user,
+			[]Override{{"repo_language", "Korean", "English"}, {"plan_depth", "full", "minimal"}, {"coding_guide", "off", "lean"}}},
+		{"other keys in the file are ignored", "root: x\nplan_depth: minimal\n", user, nil},
+		{"empty value is not set", "plan_depth: \"\"\n", user, nil},
+	}
+	for _, c := range cases {
+		got, err := Overrides(c.user, writeRepoYAML(t, c.yaml))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if !slices.Equal(got, c.want) {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
+		}
+	}
+}
+
+// No .acta.yaml at all means nothing overrides.
+func TestOverridesNoFile(t *testing.T) {
+	got, err := Overrides(UserDefault(), t.TempDir())
+	if err != nil || len(got) != 0 {
+		t.Errorf("no file: got %+v, %v, want an empty list and no error", got, err)
+	}
+}
+
+// Overrides fails the way MergeRepo does: bad yaml, a personal key, a bad
+// value, and a file that cannot be read.
+func TestOverridesErrors(t *testing.T) {
+	for _, body := range []string{"plan_depth: [\n", "tone: x\n", "style: plain\n", "plan_depth: deep\n"} {
+		got, err := Overrides(UserDefault(), writeRepoYAML(t, body))
+		if err == nil || len(got) != 0 {
+			t.Errorf("%q: got %+v, %v, want an error and no list", body, got, err)
+		}
+	}
+	// A folder named .acta.yaml cannot be read as a file.
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".acta.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Overrides(UserDefault(), dir); err == nil {
+		t.Error("unreadable .acta.yaml: want an error")
+	}
+	if _, err := Overrides(UserDefault(), writeRepoYAML(t, "chat_language: x\n")); !errors.Is(err, ErrBadUser) {
+		t.Errorf("personal key: err %v, want ErrBadUser", err)
+	}
+}
+
+func TestUnsetRepoUser(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		keys []string
+		want string
+	}{
+		{"removes only the named key and keeps the rest in order",
+			"root: x\nplan_depth: minimal\n# keep me\nbuild_executor: dispatch\ndirs: y\n", []string{"plan_depth"},
+			"root: x\n# keep me\nbuild_executor: dispatch\ndirs: y\n"},
+		{"removes two keys", "plan_depth: minimal\ncoding_guide: off\nroot: x\n", []string{"coding_guide", "plan_depth"}, "root: x\n"},
+		{"leaves an empty file when nothing is left", "plan_depth: minimal\n", []string{"plan_depth"}, ""},
+		{"key not in the file is fine", "root: x\n", []string{"plan_depth"}, "root: x\n"},
+		{"no keys given", "plan_depth: minimal\n", nil, "plan_depth: minimal\n"},
+		{"repeated key", "plan_depth: minimal\nroot: x\n", []string{"plan_depth", "plan_depth"}, "root: x\n"},
+	}
+	for _, c := range cases {
+		dir := writeRepoYAML(t, c.body)
+		path, err := UnsetRepoUser(dir, c.keys)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if path != filepath.Join(dir, ".acta.yaml") {
+			t.Errorf("%s: path %q", c.name, path)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if string(raw) != c.want {
+			t.Errorf("%s: file %q, want %q", c.name, raw, c.want)
+		}
+	}
+}
+
+// With no file there is nothing to remove, and no file is made.
+func TestUnsetRepoUserNoFile(t *testing.T) {
+	dir := t.TempDir()
+	path, err := UnsetRepoUser(dir, []string{"plan_depth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("a file appeared: %v", err)
+	}
+}
+
+// Any key outside the five repo keys is refused, and the file stays as it was.
+func TestUnsetRepoUserRefusesOtherKeys(t *testing.T) {
+	for _, k := range []string{"chat_language", "tone", "root", "nope"} {
+		body := "plan_depth: minimal\n"
+		dir := writeRepoYAML(t, body)
+		_, err := UnsetRepoUser(dir, []string{"plan_depth", k})
+		if !errors.Is(err, ErrBadUser) {
+			t.Fatalf("%s: err %v, want ErrBadUser", k, err)
+		}
+		for _, rk := range RepoKeys {
+			if !strings.Contains(err.Error(), rk) {
+				t.Errorf("%s: error %q does not name %s", k, err, rk)
+			}
+		}
+		raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+		if string(raw) != body {
+			t.Errorf("%s: file changed to %q", k, raw)
 		}
 	}
 }
