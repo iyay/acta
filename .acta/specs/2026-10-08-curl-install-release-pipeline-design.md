@@ -3,6 +3,8 @@ parent: scratch/2026-10-07-curl-install-release-pipeline
 created: "2026-10-08 10:21:02"
 id: SPC-0113
 hash: kaafb5s
+started: "2026-10-08 10:26:28"
+finished: "2026-10-08 10:33:20"
 ---
 # Curl install script and release pipeline
 

@@ -1,0 +1,43 @@
+# Builds the release archives. The version comes from the tag, and the binary
+# gets its own version from plugin.json, so nothing is set at link time.
+version: 2
+
+project_name: acta
+
+builds:
+  - id: acta
+    main: ./cmd/acta
+    binary: acta
+    # A static binary runs on any machine, with no C library needed.
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: acta
+    # No version in the name, so the latest/download links never change.
+    name_template: "acta_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    # Windows users expect a zip.
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+# The installers look for this exact file name.
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  # The installers are release assets, so one fixed link fetches each of them.
+  extra_files:
+    - glob: scripts/install.sh
+    - glob: scripts/install.ps1
