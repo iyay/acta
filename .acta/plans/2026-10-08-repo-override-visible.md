@@ -5,6 +5,7 @@ depth: minimal
 id: PLN-0118
 created: "2026-10-08 07:44:25"
 hash: rnplm6t
+started: "2026-10-08 07:45:45"
 ---
 # Repo overrides are visible and changeable
 
@@ -39,9 +40,9 @@ hash: rnplm6t
 **Interfaces:**
 - Produces: `type Override struct{ Key, Repo, Yours string }`; `func Overrides(user User, repoRoot string) ([]Override, error)` (same errors as `MergeRepo`, list in `RepoKeys` order); `func UnsetRepoUser(repoRoot string, keys []string) (string, error)` (returns the file path; `ErrBadUser` for a non-repo key).
 
-- [ ] Failing test: tables for `Overrides` and `UnsetRepoUser` over the inputs in the verify line, in `t.TempDir()` repos; run `scripts/test ./internal/config/` and see them fail (functions missing).
-- [ ] Code: add both functions next to `MergeRepo` and `SaveRepoUser`, reusing their file reading, defaults and yaml node walk.
-- [ ] Run `scripts/test ./internal/config/` passes, vet and gofmt clean, commit.
+- [x] Failing test: tables for `Overrides` and `UnsetRepoUser` over the inputs in the verify line, in `t.TempDir()` repos; run `scripts/test ./internal/config/` and see them fail (functions missing).
+- [x] Code: add both functions next to `MergeRepo` and `SaveRepoUser`, reusing their file reading, defaults and yaml node walk.
+- [x] Run `scripts/test ./internal/config/` passes, vet and gofmt clean, commit.
 
 ### Task 02: acta config set --repo --unset and config show overrides
 
@@ -110,6 +111,6 @@ hash: rnplm6t
 
 **verify:** All three files carry the same version, one patch above `0.1.39`, so `0.1.40`. List each file and its version.
 
-- [ ] Failing test: change only `plugin.json` to `0.1.40`; `scripts/test ./internal/plugincheck/ -run TestManifests` fails.
-- [ ] Code: set `0.1.40` in the other two files.
-- [ ] Run `scripts/test ./internal/plugincheck/ -run TestManifests` passes, commit.
+- [x] Failing test: change only `plugin.json` to `0.1.40`; `scripts/test ./internal/plugincheck/ -run TestManifests` fails.
+- [x] Code: set `0.1.40` in the other two files.
+- [x] Run `scripts/test ./internal/plugincheck/ -run TestManifests` passes, commit.
