@@ -6,6 +6,7 @@ id: PLN-0122
 created: "2026-10-08 10:23:15"
 hash: w5k2o2v
 started: "2026-10-08 10:26:28"
+finished: "2026-10-08 10:33:20"
 ---
 # Curl install script and release pipeline
 
@@ -86,9 +87,9 @@ started: "2026-10-08 10:26:28"
 
 **verify:** The release config builds all six os/arch pairs with CGO off, names every archive without a version, ships `checksums.txt`, `install.sh` and `install.ps1` as assets, and the release workflow cannot publish a tag that differs from `v` plus the `plugin.json` version. List each property and where the test checks it.
 
-- [ ] Failing test: `internal/plugincheck/release_test.go` parses `.goreleaser.yaml` with `gopkg.in/yaml.v3` and checks: main `./cmd/acta`, env `CGO_ENABLED=0`, goos `darwin linux windows`, goarch `amd64 arm64`, archive `name_template` is `acta_{{ .Os }}_{{ .Arch }}` with no `Version`, a windows `zip` format override, checksum `name_template: checksums.txt` with `algorithm: sha256`, `release.extra_files` lists `scripts/install.sh` and `scripts/install.ps1` and both files exist. It reads `release.yml` and checks the trigger is tags `v*` and a step compares `GITHUB_REF_NAME` with the version read from `plugin/.claude-plugin/plugin.json` before the goreleaser step. It reads `ci.yml` and checks a `windows-latest` job with `shell: bash` runs `plugin/hooks/` scripts and a step parses `scripts/install.ps1`. Run `scripts/test ./internal/plugincheck/ -run TestRelease` and see it fail.
-- [ ] Code: write `.goreleaser.yaml` (version 2) to match. `release.yml`: on push tags `v*`; checkout, setup-go from `go.mod`, a tag check step with `jq -r .version plugin/.claude-plugin/plugin.json`, `go test ./...`, `goreleaser/goreleaser-action` with `args: release --clean` and `GITHUB_TOKEN`. `ci.yml`: on push; job `test` on `ubuntu-latest` runs `go vet ./...`, fails on `gofmt -l .` output, `go test ./...`; job `windows-hooks` on `windows-latest` with `shell: bash` pipes sample `{"tool_name":"Bash","tool_input":{"command":"ls"}}` JSON into each `plugin/hooks/*` script and checks exit 0, and a `pwsh` step parses `scripts/install.ps1` with `[System.Management.Automation.Language.Parser]::ParseFile` and fails on errors. `scripts/install.ps1`: arch from `$env:PROCESSOR_ARCHITECTURE` (`AMD64`, `ARM64`), same URL and env rules as Global Constraints, `Invoke-WebRequest` into a temp dir, `Get-FileHash -Algorithm SHA256` against `checksums.txt`, `Expand-Archive`, copy `acta.exe` to the install dir, print the PATH step when missing, warn when neither `git.exe` nor Git Bash `bash.exe` is found, then run `acta setup`.
-- [ ] Run `scripts/test ./internal/plugincheck/` passes, commit `feat(release): goreleaser config, release and CI workflows, install.ps1`.
+- [x] Failing test: `internal/plugincheck/release_test.go` parses `.goreleaser.yaml` with `gopkg.in/yaml.v3` and checks: main `./cmd/acta`, env `CGO_ENABLED=0`, goos `darwin linux windows`, goarch `amd64 arm64`, archive `name_template` is `acta_{{ .Os }}_{{ .Arch }}` with no `Version`, a windows `zip` format override, checksum `name_template: checksums.txt` with `algorithm: sha256`, `release.extra_files` lists `scripts/install.sh` and `scripts/install.ps1` and both files exist. It reads `release.yml` and checks the trigger is tags `v*` and a step compares `GITHUB_REF_NAME` with the version read from `plugin/.claude-plugin/plugin.json` before the goreleaser step. It reads `ci.yml` and checks a `windows-latest` job with `shell: bash` runs `plugin/hooks/` scripts and a step parses `scripts/install.ps1`. Run `scripts/test ./internal/plugincheck/ -run TestRelease` and see it fail.
+- [x] Code: write `.goreleaser.yaml` (version 2) to match. `release.yml`: on push tags `v*`; checkout, setup-go from `go.mod`, a tag check step with `jq -r .version plugin/.claude-plugin/plugin.json`, `go test ./...`, `goreleaser/goreleaser-action` with `args: release --clean` and `GITHUB_TOKEN`. `ci.yml`: on push; job `test` on `ubuntu-latest` runs `go vet ./...`, fails on `gofmt -l .` output, `go test ./...`; job `windows-hooks` on `windows-latest` with `shell: bash` pipes sample `{"tool_name":"Bash","tool_input":{"command":"ls"}}` JSON into each `plugin/hooks/*` script and checks exit 0, and a `pwsh` step parses `scripts/install.ps1` with `[System.Management.Automation.Language.Parser]::ParseFile` and fails on errors. `scripts/install.ps1`: arch from `$env:PROCESSOR_ARCHITECTURE` (`AMD64`, `ARM64`), same URL and env rules as Global Constraints, `Invoke-WebRequest` into a temp dir, `Get-FileHash -Algorithm SHA256` against `checksums.txt`, `Expand-Archive`, copy `acta.exe` to the install dir, print the PATH step when missing, warn when neither `git.exe` nor Git Bash `bash.exe` is found, then run `acta setup`.
+- [x] Run `scripts/test ./internal/plugincheck/` passes, commit `feat(release): goreleaser config, release and CI workflows, install.ps1`.
 
 ### Task 06: Version rule, README, debt and wiki
 
@@ -98,9 +99,57 @@ started: "2026-10-08 10:26:28"
 
 **verify:** No text in the repo tells a plan to bump the version, the README's first install path is the one-liner for each OS, and the wiki page matches what `scripts/release`, `release.yml` and `ci.yml` do. List every file searched for the old bump rule and every claim in the wiki page with the file that backs it.
 
-- [ ] Check first: `grep -rn -i "adds 1 to the patch" CLAUDE.md plugin internal` shows the old rule only in `CLAUDE.md`; `scripts/test ./internal/plugincheck/` passes before and after (README is checked there).
-- [ ] `CLAUDE.md` Version section becomes: "Until the first release the version stays on 0.1.x. Plans never bump the version. Only `scripts/release` bumps it in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`, then commits and tags. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`."
-- [ ] `plugin/README.md` Install: step 1 is `curl -fsSL https://github.com/iyay/acta/releases/latest/download/install.sh | sh` for macOS and Linux and `irm https://github.com/iyay/acta/releases/latest/download/install.ps1 | iex` for Windows, saying it installs `acta` and runs `acta setup`, which installs the plugin for Claude Code and omp; a Windows note that Git Bash is required for the hooks; `go install github.com/iyay/acta/cmd/acta@latest` then `acta setup` as the path for developers. Drop the `/plugin marketplace add` and `omp plugin link` steps. Keep the rest of the file as is.
-- [ ] Debt: `acta debt new PLN-0122 --title "Windows CLAUDE_PLUGIN_ROOT path bug"` with a body naming anthropics/claude-code #18527 and #21878: on Windows the hook command path can come out mangled, so hooks may not run until that is fixed upstream or hooks call acta directly.
-- [ ] Wiki: `.acta/wiki/release.md`, type Runbook, `paths: [scripts/release, scripts/install.sh, scripts/install.ps1, .goreleaser.yaml, .github/workflows/]`. Steps: on clean `main` run `scripts/release patch`, then `git push origin main vX.Y.Z`, then watch the Release action. Rules: plans never bump the version; `release.yml` refuses a tag that is not `v` plus the `plugin.json` version; a tagged commit never folds. Run `acta wiki check main..HEAD` clean.
-- [ ] Commit `docs: release runbook, one-line install, plans stop bumping the version`.
+- [x] Check first: `grep -rn -i "adds 1 to the patch" CLAUDE.md plugin internal` shows the old rule only in `CLAUDE.md`; `scripts/test ./internal/plugincheck/` passes before and after (README is checked there).
+- [x] `CLAUDE.md` Version section becomes: "Until the first release the version stays on 0.1.x. Plans never bump the version. Only `scripts/release` bumps it in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`, then commits and tags. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`."
+- [x] `plugin/README.md` Install: step 1 is `curl -fsSL https://github.com/iyay/acta/releases/latest/download/install.sh | sh` for macOS and Linux and `irm https://github.com/iyay/acta/releases/latest/download/install.ps1 | iex` for Windows, saying it installs `acta` and runs `acta setup`, which installs the plugin for Claude Code and omp; a Windows note that Git Bash is required for the hooks; `go install github.com/iyay/acta/cmd/acta@latest` then `acta setup` as the path for developers. Drop the `/plugin marketplace add` and `omp plugin link` steps. Keep the rest of the file as is.
+- [x] Debt: `acta debt new PLN-0122 --title "Windows CLAUDE_PLUGIN_ROOT path bug"` with a body naming anthropics/claude-code #18527 and #21878: on Windows the hook command path can come out mangled, so hooks may not run until that is fixed upstream or hooks call acta directly.
+- [x] Wiki: `.acta/wiki/release.md`, type Runbook, `paths: [scripts/release, scripts/install.sh, scripts/install.ps1, .goreleaser.yaml, .github/workflows/]`. Steps: on clean `main` run `scripts/release patch`, then `git push origin main vX.Y.Z`, then watch the Release action. Rules: plans never bump the version; `release.yml` refuses a tag that is not `v` plus the `plugin.json` version; a tagged commit never folds. Run `acta wiki check main..HEAD` clean.
+- [x] Commit `docs: release runbook, one-line install, plans stop bumping the version`.
+
+## Polish
+
+### Task 07: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] `scripts/install.ps1`: wrap the whole body in `& { ... }` so `$ErrorActionPreference`, `$ProgressPreference` and the script's variables do not stay set in the user's session under `irm | iex`.
+- [x] `scripts/install.sh` and `scripts/install.ps1`: an `ACTA_VERSION` without a leading `v` (for example `0.1.44`) gets the `v` added, so the pinned URL is `/download/v0.1.44/`. Test in `scripts/install_test.go`.
+- [x] `.acta/wiki/release.md`: one sentence saying the SHA-256 check catches a broken download, not a tampered release, since `checksums.txt` comes from the same place as the archive.
+- [x] Commit: `polish: review notes PLN-0122`
+
+## Fix round 1
+
+### Task 08: install.sh downloads over HTTPS only
+
+**Files:**
+- Modify: `scripts/install.sh`
+- Test: `scripts/install_test.go`
+
+**verify:** Every download `install.sh` makes refuses any protocol other than HTTPS and any TLS below 1.2, on the first request and on every redirect; an `http://` base URL fails with nothing installed. List each curl call and each test path checked.
+
+- [x] Failing test: switch the fake server in `scripts/install_test.go` to `httptest.NewTLSServer`, write its certificate to a PEM file and pass it to curl through `CURL_CA_BUNDLE`, so the existing cases keep running over HTTPS. Add a case: an `http://` `ACTA_DOWNLOAD_URL` fails and the install dir holds no `acta`. Run `scripts/test ./scripts/ -run TestInstall` and see the new case fail.
+- [x] Code: every `curl` call in `scripts/install.sh` gets `--proto '=https' --tlsv1.2`. One plain comment saying why: a redirect to plain http would let someone swap both the archive and `checksums.txt`.
+- [x] Run `scripts/test ./scripts/` passes, `sh -n scripts/install.sh`, `gofmt -l scripts`, `go vet ./scripts/` clean, commit `fix(scripts): install.sh downloads over https only`.
+
+## Polish (round 2)
+
+### Task 09: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] `scripts/install_test.go`: `TestInstallRefusesRedirectToPlainHTTP` no longer sets `r.srv.Config.Handler` after the TLS server started; the handler is in place before start, so `scripts/test ./scripts/ -run TestInstall -race -count=3` passes.
+- [x] Commit: `polish: review notes PLN-0122 round 2`
+
+## Review notes
+
+- Tiers: round 1, fix round 1 and both polish commits all took the full tier (installer and history-rewrite paths), two reviewers each. All CLEAN.
+- The windows-hooks CI job checks exit 0 only, not the hook output; the plan narrowed the spec's wording.
+- install.sh is not wrapped in a function called on its last line; a cut-off `curl | sh` could run part of it. No harmful cut point was found.
+- dash skips the EXIT trap on Ctrl-C, so an interrupted install leaves its temp dir.
+- An ACTA_INSTALL_DIR with a trailing slash prints the PATH hint when it is not needed.
+- scripts/release accepts an exact X.Y.Z lower than the current version when that tag is new.
+- ci.yml and release.yml run bare `go test ./...`, not scripts/test; fine on a runner with no other jobs.
+- A Rosetta terminal on Apple Silicon reports x86_64 and gets the amd64 build, which still runs.
+- curl still reads the user's own ~/.curlrc; `-q` as the first argument would close that.
+- When curl is missing, install.sh stops with "curl: not found" and no fail message; nothing is installed.
+- The polish trimmed wording in .acta/wiki/release.md; "static" was restored in fix round 1.

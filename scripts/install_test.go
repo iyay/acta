@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -23,6 +25,8 @@ const fakeActa = "#!/bin/sh\necho \"$@\" > \"$ACTA_ARGS_FILE\"\n"
 // install.sh uses.
 type installRig struct {
 	srv   *httptest.Server
+	base  string // ACTA_DOWNLOAD_URL; the TLS server unless a test swaps it
+	ca    string // PEM file with the fake server certificate
 	dir   string // ACTA_INSTALL_DIR
 	home  string
 	bin   string // fake uname lives here
@@ -57,9 +61,29 @@ func sum(b []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
+// serveFiles answers the latest and pinned paths from the map, else 404.
+func serveFiles(files map[string][]byte, w http.ResponseWriter, req *http.Request) {
+	for _, prefix := range []string{"/latest/download/", "/download/v9.9.9/"} {
+		if name, ok := strings.CutPrefix(req.URL.Path, prefix); ok {
+			if body, found := files[name]; found {
+				_, _ = w.Write(body)
+				return
+			}
+		}
+	}
+	http.NotFound(w, req)
+}
+
 // newRig serves files under both the latest and the pinned v9.9.9 path.
 // A file missing from the map answers 404.
 func newRig(t *testing.T, files map[string][]byte, osName, arch string) *installRig {
+	t.Helper()
+	return newRigWith(t, files, osName, arch, nil)
+}
+
+// newRigWith is newRig with an optional handler that replaces the default one.
+// The handler must be given here: the server reads it as soon as it starts.
+func newRigWith(t *testing.T, files map[string][]byte, osName, arch string, override http.Handler) *installRig {
 	t.Helper()
 	r := &installRig{
 		dir:   filepath.Join(t.TempDir(), "bin"),
@@ -68,21 +92,24 @@ func newRig(t *testing.T, files map[string][]byte, osName, arch string) *install
 		args:  filepath.Join(t.TempDir(), "args"),
 		uname: [2]string{osName, arch},
 	}
-	r.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		r.mu.Lock()
-		r.hits = append(r.hits, req.URL.Path)
-		r.mu.Unlock()
-		for _, prefix := range []string{"/latest/download/", "/download/v9.9.9/"} {
-			if name, ok := strings.CutPrefix(req.URL.Path, prefix); ok {
-				if body, found := files[name]; found {
-					_, _ = w.Write(body)
-					return
-				}
-			}
-		}
-		http.NotFound(w, req)
-	}))
+	handler := override
+	if handler == nil {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			r.mu.Lock()
+			r.hits = append(r.hits, req.URL.Path)
+			r.mu.Unlock()
+			serveFiles(files, w, req)
+		})
+	}
+	r.srv = httptest.NewTLSServer(handler)
 	t.Cleanup(r.srv.Close)
+	r.base = r.srv.URL
+	// install.sh only trusts https, so curl gets the fake certificate this way.
+	r.ca = filepath.Join(t.TempDir(), "ca.pem")
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: r.srv.Certificate().Raw})
+	if err := os.WriteFile(r.ca, certPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	fake := "#!/bin/sh\ncase \"$1\" in\n-s) echo " + osName + " ;;\n-m) echo " + arch + " ;;\n*) echo " + osName + " ;;\nesac\n"
 	if err := os.WriteFile(filepath.Join(r.bin, "uname"), []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
@@ -121,7 +148,8 @@ func (r *installRig) run(t *testing.T, pathExtra string, env ...string) (string,
 	}
 	keep = append(keep,
 		"HOME="+r.home,
-		"ACTA_DOWNLOAD_URL="+r.srv.URL,
+		"ACTA_DOWNLOAD_URL="+r.base,
+		"CURL_CA_BUNDLE="+r.ca,
 		"ACTA_INSTALL_DIR="+r.dir,
 		"ACTA_ARGS_FILE="+r.args,
 		"PATH="+path,
@@ -193,6 +221,67 @@ func TestInstallPutsActaInDirWhenHashMatches(t *testing.T) {
 	}
 }
 
+// A plain http base URL must fail before any byte is fetched.
+func TestInstallRefusesPlainHTTPBaseURL(t *testing.T) {
+	t.Parallel()
+
+	asset := "acta_linux_amd64.tar.gz"
+	archive := tarGz(t, "acta", fakeActa)
+	files := map[string][]byte{asset: archive, "checksums.txt": []byte(sum(archive) + "  " + asset + "\n")}
+	r := newRig(t, files, "Linux", "x86_64")
+	var plainHits atomic.Int32
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		plainHits.Add(1)
+		serveFiles(files, w, req)
+	}))
+	t.Cleanup(plain.Close)
+	r.base = plain.URL
+	out, err := r.run(t, "")
+	if err == nil {
+		t.Fatalf("want failure on an http base URL, got success: %s", out)
+	}
+	if r.installed() {
+		t.Errorf("acta landed from an http base URL")
+	}
+	if n := plainHits.Load(); n != 0 {
+		t.Errorf("http server got %d requests, want 0", n)
+	}
+}
+
+// A redirect from https down to http must stop too, for each download.
+func TestInstallRefusesRedirectToPlainHTTP(t *testing.T) {
+	t.Parallel()
+
+	asset := "acta_linux_amd64.tar.gz"
+	archive := tarGz(t, "acta", fakeActa)
+	files := map[string][]byte{asset: archive, "checksums.txt": []byte(sum(archive) + "  " + asset + "\n")}
+	for _, name := range []string{asset, "checksums.txt"} {
+		var plainHits atomic.Int32
+		plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			plainHits.Add(1)
+			serveFiles(files, w, req)
+		}))
+		t.Cleanup(plain.Close)
+		r := newRigWith(t, files, "Linux", "x86_64", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if strings.HasSuffix(req.URL.Path, "/"+name) {
+				http.Redirect(w, req, plain.URL+req.URL.Path, http.StatusFound)
+				return
+			}
+			serveFiles(files, w, req)
+		}))
+		out, err := r.run(t, "")
+		if err == nil {
+			t.Errorf("%s: want failure on a redirect to http, got success: %s", name, out)
+		}
+		if r.installed() {
+			t.Errorf("%s: acta landed after a redirect to http", name)
+		}
+		if n := plainHits.Load(); n != 0 {
+			t.Errorf("%s: http server got %d requests, want 0", name, n)
+		}
+	}
+}
+
 func TestInstallPinnedVersionUsesPinnedPath(t *testing.T) {
 	t.Parallel()
 
@@ -211,6 +300,25 @@ func TestInstallPinnedVersionUsesPinnedPath(t *testing.T) {
 	}
 	if r.sawPath("/latest/download/acta_linux_amd64.tar.gz") {
 		t.Errorf("pinned run still asked for latest: %v", r.hits)
+	}
+}
+
+// A version typed without the leading v still has to hit the v tag path.
+func TestInstallPinnedVersionWithoutVGetsV(t *testing.T) {
+	t.Parallel()
+
+	r := goodRig(t, "acta_linux_amd64.tar.gz", "Linux", "x86_64")
+	out, err := r.run(t, "", "ACTA_VERSION=9.9.9")
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	if !r.installed() {
+		t.Fatalf("acta not installed: %s", out)
+	}
+	for _, want := range []string{"/download/v9.9.9/acta_linux_amd64.tar.gz", "/download/v9.9.9/checksums.txt"} {
+		if !r.sawPath(want) {
+			t.Errorf("missing request %s, got %v", want, r.hits)
+		}
 	}
 }
 

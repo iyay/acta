@@ -1,0 +1,39 @@
+# Publishes a release when a v* tag is pushed. The tag must match plugin.json,
+# so the files in the release and the version inside the binary agree.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Goreleaser reads the tag history, so it needs the full clone.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # This runs before anything is published. A wrong tag stops the job here.
+      - name: Check the tag matches plugin.json
+        run: |
+          want="v$(jq -r .version plugin/.claude-plugin/plugin.json)"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "tag $GITHUB_REF_NAME does not match plugin.json, which says $want" >&2
+            exit 1
+          fi
+      - name: Test
+        run: go test ./...
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

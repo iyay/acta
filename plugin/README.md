@@ -6,16 +6,16 @@ through `acta`, the acta CLI.
 
 ## Install
 
-1. Install `acta` and put it on your PATH:
+1. Run the installer for your system. It installs `acta`, then runs `acta setup`, which installs the plugin for Claude Code and omp.
+   macOS and Linux:
    ```bash
-   go install github.com/iyay/acta/cmd/acta@latest
+   curl -fsSL https://github.com/iyay/acta/releases/latest/download/install.sh | sh
    ```
-2. Claude Code: add this folder as a marketplace and install the plugin:
-   ```text
-   /plugin marketplace add /path/to/acta/plugin
-   /plugin install acta@acta-local
+   Windows (PowerShell). Git Bash is required, because the hooks run through bash:
+   ```powershell
+   irm https://github.com/iyay/acta/releases/latest/download/install.ps1 | iex
    ```
-3. omp: `omp plugin link /path/to/acta/plugin`; if the extension does not run, see `omp/FACTS.md#installing-acta-in-omp`.
+2. Developers: run `go install github.com/iyay/acta/cmd/acta@latest`, then `acta setup`.
 
 The `pmb` command still runs as an alias of `acta` and prints `pmb is now acta; this name goes away in a later version` to stderr first.
 

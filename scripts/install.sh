@@ -26,7 +26,12 @@ arm64 | aarch64) arch=arm64 ;;
 esac
 
 if [ -n "${ACTA_VERSION:-}" ]; then
-	url="$base/download/$ACTA_VERSION"
+	# Release tags start with v, so 0.1.44 and v0.1.44 mean the same.
+	case "$ACTA_VERSION" in
+	v*) tag="$ACTA_VERSION" ;;
+	*) tag="v$ACTA_VERSION" ;;
+	esac
+	url="$base/download/$tag"
 else
 	url="$base/latest/download"
 fi
@@ -44,9 +49,11 @@ asset="acta_${os}_${arch}.tar.gz"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# https only, on the first request and on every redirect. A step down to plain
+# http would let someone swap both the archive and checksums.txt.
 echo "Downloading $asset"
-curl -fsSL "$url/$asset" -o "$tmp/$asset"
-curl -fsSL "$url/checksums.txt" -o "$tmp/checksums.txt"
+curl -fsSL --proto '=https' --tlsv1.2 "$url/$asset" -o "$tmp/$asset"
+curl -fsSL --proto '=https' --tlsv1.2 "$url/checksums.txt" -o "$tmp/checksums.txt"
 
 # A "*" before the name marks binary mode in some checksum files.
 want="$(awk -v n="$asset" '$2 == n || $2 == "*" n { print $1; exit }' "$tmp/checksums.txt")"

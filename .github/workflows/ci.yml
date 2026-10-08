@@ -1,0 +1,61 @@
+# Checks every push. The Windows job exists because the hook scripts and
+# install.ps1 are only ever run for real on Windows.
+name: ci
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Vet
+        run: go vet ./...
+      # gofmt prints the names of badly formatted files and still exits 0, so
+      # the step looks at its output.
+      - name: Format
+        run: |
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
+            echo "gofmt wants to change:" >&2
+            echo "$files" >&2
+            exit 1
+          fi
+      - name: Test
+        run: go test ./...
+
+  windows-hooks:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      # acta is not on the PATH here, so every hook takes its fallback path.
+      # Each one has to exit 0 anyway, or it would block a Claude Code session.
+      - name: Hooks exit 0 without acta
+        run: |
+          for f in plugin/hooks/*; do
+            case "$f" in
+            *.json | *.md | *.txt) continue ;;
+            esac
+            echo "running $f"
+            echo '{"tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"ci"}' | bash "$f" || {
+              echo "hook failed: $f" >&2
+              exit 1
+            }
+          done
+      # A parse error would only show on a user's machine, so catch it here.
+      - name: install.ps1 parses
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/install.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
