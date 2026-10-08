@@ -5,6 +5,7 @@ id: PLN-0119
 created: "2026-10-08 08:25:17"
 hash: jmy430y
 started: "2026-10-08 08:26:49"
+finished: "2026-10-08 08:32:59"
 ---
 # acta scratch add folds into its own last commit
 
@@ -46,9 +47,9 @@ started: "2026-10-08 08:26:49"
 
 **verify:** Any run of `scratch add` calls on one item with nothing in between leaves exactly one `add to <stem>` commit holding every text, and every other write command (`scratch new`, `SetValue`, bugs, debt) still makes one commit per call. List each command checked and how many commits it made.
 
-- [ ] Failing test: in `internal/write/scratch_test.go`, three `AddScratch` calls on one item in a row make one `chore(scratch): add to <stem>` commit whose file holds all three texts; a `SetValue` between two adds makes the second add a new commit. Run `scripts/test ./internal/write/ -run Scratch` and see it fail.
-- [ ] Code: add `finishFold` next to `finish` in `internal/write/ops.go`, the same as `finish` but calling `gitc.CommitOrFold`; `internal/write/scratch.go:128` calls `finishFold`. Fix any older scratch test that counted one commit per add. Add one line to `.acta/wiki/commit-subject-form.md` (bump its `timestamp`): `scratch add` amends its own last commit when that commit is the same item's unshared add, so a brainstorm leaves one commit per item.
-- [ ] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit.
+- [x] Failing test: in `internal/write/scratch_test.go`, three `AddScratch` calls on one item in a row make one `chore(scratch): add to <stem>` commit whose file holds all three texts; a `SetValue` between two adds makes the second add a new commit. Run `scripts/test ./internal/write/ -run Scratch` and see it fail.
+- [x] Code: add `finishFold` next to `finish` in `internal/write/ops.go`, the same as `finish` but calling `gitc.CommitOrFold`; `internal/write/scratch.go:128` calls `finishFold`. Fix any older scratch test that counted one commit per add. Add one line to `.acta/wiki/commit-subject-form.md` (bump its `timestamp`): `scratch add` amends its own last commit when that commit is the same item's unshared add, so a brainstorm leaves one commit per item.
+- [x] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit.
 
 ### Task 03: Bump the plugin patch version
 
@@ -60,3 +61,13 @@ started: "2026-10-08 08:26:49"
 - [x] Failing test: none new; `internal/plugincheck` already checks the three files agree.
 - [x] Code: set `"version": "0.1.41"` in the three files.
 - [x] Run `scripts/test ./internal/plugincheck/` passes, commit.
+
+## Review notes
+
+- Round 1 CLEAN on both axes (Spec and Standards), no BLOCKER, no polish.
+- `CommitOrFold` runs the git-repo, dirty and busy checks before `canFold`, and the fallback `Commit` runs them again. The first run guards the amend, so it stays; the repeat costs a few git calls only when no fold happens.
+- The one-parent rule has no test of its own: `diff-tree -r` prints nothing for a merge, so the only-this-file rule already stops a merge. The rule stays as the spec asks.
+- `finishFold` copies `finish` with one call swapped; passing the commit function in would keep them in step.
+- An amend keeps the first add's author date, so `git log` shows when the item's first add happened.
+- `otherCheckoutHolds` compares path strings; if they ever differ, folding stops and a plain commit happens, so nothing is lost.
+- Implementer added a no-change rule (no fold when the file did not change), so HEAD is never rewritten for nothing; it falls through to `Commit` as the spec asks.
