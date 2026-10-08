@@ -1,6 +1,8 @@
 package hook
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -164,5 +166,55 @@ func TestGoTestBlockNoDir(t *testing.T) {
 		if block, msg := GoTestBlock(dir, "go test ./..."); block || msg != "" {
 			t.Errorf("dir %q: block = %v, message %q, want no block", dir, block, msg)
 		}
+	}
+}
+
+// TestHookChecksReadPowerShellLikeBash proves the shell checks never look at
+// the tool name. On Windows the agent runs commands through PowerShell, and it
+// sends the same tool_input.command, so each check must treat both tools alike.
+func TestHookChecksReadPowerShellLikeBash(t *testing.T) {
+	for _, tool := range []string{"Bash", "PowerShell"} {
+		t.Run(tool, func(t *testing.T) {
+			// The event goes through ParseEvent, the way the hook gets it.
+			parse := func(command string) ToolEvent {
+				in, err := json.Marshal(map[string]any{
+					"session_id": "s1",
+					"tool_name":  tool,
+					"tool_input": map[string]string{"command": command},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				e, ok := ParseEvent(bytes.NewReader(in))
+				if !ok || e.ToolName != tool {
+					t.Fatalf("ParseEvent gave %+v, ok %v", e, ok)
+				}
+				return e
+			}
+
+			// The go test block.
+			dir, _ := goTestRepo(t, false)
+			if block, msg := GoTestBlock(dir, parse("go test ./...").ToolInput.Command); !block || msg != goTestWant+" ./..." {
+				t.Errorf("go test block = %v, %q", block, msg)
+			}
+
+			// The brainstorm record (post-tool) and the second-item block (pre-tool).
+			root := t.TempDir()
+			scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
+			scratchFile(t, root, "two", "---\nid: SCRATCH-2\n---\n# Two\n")
+			if err := RecordBrainstorm(root, parse("acta set scratch/one status brainstorming")); err != nil {
+				t.Fatal(err)
+			}
+			if block, _ := PreTool(root, parse("acta set scratch/two status brainstorming")); !block {
+				t.Error("second brainstorm was not blocked")
+			}
+
+			// The wiki hint reads the words of the command.
+			wroot, repo := hintWiki(t)
+			t.Chdir(repo)
+			if got := WikiHints(wroot, repo, parse("cat internal/tui/a.go")); got != tuiLine {
+				t.Errorf("wiki hint = %q, want %q", got, tuiLine)
+			}
+		})
 	}
 }
