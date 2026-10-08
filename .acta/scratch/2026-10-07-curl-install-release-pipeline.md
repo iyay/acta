@@ -69,4 +69,20 @@ Approach: goreleaser + GitHub Actions on tag push v*. Separate windows-latest CI
 
 Repo creation on hold 2026-10-07: user wants to rewrite git history first (all authors to rtriharyana@gmail.com, maybe more) before gh repo create iyay/acta --public. Not part of this spec; a prerequisite before the first release. Quick regex scan of all history found no secret patterns; /Users/iyay appears 19 times. Worktree setup-tidy (PLN-0113) is open, so a rewrite should wait until it lands.
 
+### 2026-10-08
+
+Design section 1 approved 2026-10-08 (release pipeline): .goreleaser.yaml builds cmd/acta for darwin/linux/windows x amd64/arm64 with CGO off; tar.gz (zip on Windows); archive names carry no version so releases/latest/download URLs work; checksums.txt SHA-256; no ldflags since the version comes from the embedded plugin.json. release.yml on tag v*: tag must equal v + plugin.json version, then go test, then goreleaser; install.sh and install.ps1 upload as release assets. ci.yml on every push: ubuntu vet + test, windows-latest runs plugin/hooks scripts through Git Bash and checks output.
+
+### 2026-10-08
+
+Design section 2 approved 2026-10-08 (scripts/release + version rule): POSIX sh scripts/release <patch|minor|x.y.z> refuses off main, dirty tree or existing tag; writes the version to plugin.json, marketplace.json and package.json; runs scripts/test --full, go vet and gofmt -l, and reverts the three files on red; commits chore(release): vX.Y.Z and makes annotated tag vX.Y.Z; never pushes, prints the push command. CLAUDE.md Version section becomes: plans never bump; only scripts/release bumps and tags. plugincheck keeps the three-files-agree check. Tests run in a temp clone like scripts/test_test.go. DBT-0101.03 folds in: canFold refuses to fold a HEAD that a tag points at.
+
+### 2026-10-08
+
+Design section 3 approved 2026-10-08 (install scripts): install.sh (POSIX sh, curl | sh from releases/latest/download) detects OS and arch with uname, ACTA_VERSION pins, checks SHA-256 against checksums.txt with sha256sum or shasum -a 256 and installs nothing on mismatch, extracts to ACTA_INSTALL_DIR or ~/.local/bin, prints the PATH line and never edits rc files, then runs acta setup </dev/tty (setup needs a TTY stdin) or prints the command when no /dev/tty. install.ps1 (irm | iex) does the same with Get-FileHash into %LOCALAPPDATA%\acta\bin and warns when Git Bash is missing. Tests: install.sh from Go against a local fake HTTP server via ACTA_DOWNLOAD_URL (hash ok, hash bad, unknown platform, dir not on PATH); install.ps1 parse-checked on windows-latest, run against a real release after the first one.
+
+### 2026-10-08
+
+Design section 4 approved 2026-10-08 (Windows hooks, docs, wiki): hooks.json matchers widen to Bash|PowerShell|Read|Edit|Write|MultiEdit (pre) and Bash|PowerShell (post); internal/hook treats PowerShell like Bash when reading tool_input.command. CLAUDE_PLUGIN_ROOT Windows path bug (anthropics/claude-code #18527, #21878) filed as debt, not fixed. plugin/README.md Install switches to curl | sh and irm | iex, go install becomes the dev path, marketplace steps go (acta setup does them), Windows note says Git Bash is required. New wiki Runbook release.md written in build. Public repo creation and first push stay with the user, before the first release.
+
 ## Open questions
