@@ -32,6 +32,9 @@ func newRepo(t *testing.T) *repoT {
 	}
 	r := &repoT{t: t, dir: dir}
 	r.git(nil, "init", "-q", "-b", "main")
+	// A CI runner has no git user, so a merge would stop. Give this repo its own.
+	r.git(nil, "config", "user.name", "test")
+	r.git(nil, "config", "user.email", "test@example.com")
 	return r
 }
 

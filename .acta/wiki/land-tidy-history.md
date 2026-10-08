@@ -3,7 +3,7 @@ type: Decision
 title: Land tidies history before moving the parent
 description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or resets the parent; fixed_in is the tidy tip
 paths: [plugin/skills/land/, internal/tidy/]
-timestamp: 2026-10-08T02:46:42Z
+timestamp: 2026-10-08T04:44:14Z
 ---
 
 The tidy path lives in `plugin/skills/land/tidy.md`; `SKILL.md` only points to it, so it stays under its byte cap.

@@ -2,6 +2,8 @@
 created: "2026-10-08 11:40:51"
 id: SPC-0114
 hash: dcq43dd
+started: "2026-10-08 11:42:45"
+finished: "2026-10-08 11:43:46"
 ---
 # Tidy tests set their own git identity
 

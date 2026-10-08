@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0123
 created: "2026-10-08 11:40:51"
 hash: u2c588x
+started: "2026-10-08 11:42:45"
+finished: "2026-10-08 11:43:46"
 ---
 # Tidy tests set their own git identity
 
@@ -30,6 +32,11 @@ hash: u2c588x
 
 **verify:** No git call in `internal/tidy` tests depends on a user identity from outside the temp repo: with an empty HOME and `user.useConfigOnly=true`, the whole package passes. List every git call in the file that can create a commit and what identity it gets.
 
-- [ ] Failing test: run `h=$(mktemp -d); HOME=$h XDG_CONFIG_HOME=$h GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_PARAMETERS="'user.useConfigOnly'='true'" scripts/test ./internal/tidy/ -count=1` and see `TestReplayClashFoldsIntoPrevious` fail with `Committer identity unknown`.
-- [ ] Code: in `newRepo`, right after `git init`, run `git config user.name test` and `git config user.email test@example.com` in the temp repo, with one plain comment saying why (a CI runner has no git user, so a merge would stop).
-- [ ] Run the same command passes; `scripts/test ./internal/tidy/` passes; `gofmt -l internal/tidy` empty, `go vet ./internal/tidy/` clean; commit `fix(tidy): tests set their own git identity`.
+- [x] Failing test: run `h=$(mktemp -d); HOME=$h XDG_CONFIG_HOME=$h GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_PARAMETERS="'user.useConfigOnly'='true'" scripts/test ./internal/tidy/ -count=1` and see `TestReplayClashFoldsIntoPrevious` fail with `Committer identity unknown`.
+- [x] Code: in `newRepo`, right after `git init`, run `git config user.name test` and `git config user.email test@example.com` in the temp repo, with one plain comment saying why (a CI runner has no git user, so a merge would stop).
+- [x] Run the same command passes; `scripts/test ./internal/tidy/` passes; `gofmt -l internal/tidy` empty, `go vet ./internal/tidy/` clean; commit `fix(tidy): tests set their own git identity`.
+
+## Review notes
+
+- Full tier (test helper logic), two reviewers, both CLEAN.
+- No other package has the same hidden need for a global git identity; each one passed with an empty HOME and user.useConfigOnly=true.
