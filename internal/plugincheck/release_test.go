@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -82,15 +83,15 @@ func TestReleaseGoreleaserBuilds(t *testing.T) {
 	if !reflect.DeepEqual(strs(at(b, "env")), []string{"CGO_ENABLED=0"}) {
 		t.Errorf("env = %v, want only CGO_ENABLED=0", at(b, "env"))
 	}
-	if got := strs(at(b, "goos")); !reflect.DeepEqual(got, []string{"darwin", "linux", "windows"}) {
+	if got := strs(at(b, "goos")); !reflect.DeepEqual(got, []string{"darwin", "linux"}) {
 		t.Errorf("goos = %v", got)
 	}
 	if got := strs(at(b, "goarch")); !reflect.DeepEqual(got, []string{"amd64", "arm64"}) {
 		t.Errorf("goarch = %v", got)
 	}
-	// Ignore rules would drop one of the six pairs.
+	// Ignore rules would drop one of the four pairs.
 	if at(b, "ignore") != nil {
-		t.Errorf("builds[0].ignore = %v, all six os/arch pairs must build", at(b, "ignore"))
+		t.Errorf("builds[0].ignore = %v, all four os/arch pairs must build", at(b, "ignore"))
 	}
 }
 
@@ -108,10 +109,12 @@ func TestReleaseGoreleaserAssets(t *testing.T) {
 	if strings.Contains(releaseFile(t, ".goreleaser.yaml"), "Version") {
 		t.Error(".goreleaser.yaml mentions Version, asset names must not carry it")
 	}
-	overrides := list(at(a, "format_overrides"))
-	if len(overrides) != 1 || at(overrides[0], "goos") != "windows" ||
-		!reflect.DeepEqual(strs(at(overrides[0], "formats")), []string{"zip"}) {
-		t.Errorf("format_overrides = %v, want windows zip", at(a, "format_overrides"))
+	// Every archive is a tar.gz now that no Windows zip ships.
+	if at(a, "format_overrides") != nil {
+		t.Errorf("format_overrides = %v, want none", at(a, "format_overrides"))
+	}
+	if !reflect.DeepEqual(strs(at(a, "formats")), []string{"tar.gz"}) {
+		t.Errorf("archive formats = %v, want only tar.gz", at(a, "formats"))
 	}
 	if at(cfg, "checksum", "name_template") != "checksums.txt" {
 		t.Errorf("checksum name_template = %v", at(cfg, "checksum", "name_template"))
@@ -125,7 +128,7 @@ func TestReleaseGoreleaserAssets(t *testing.T) {
 		globs = append(globs, g)
 	}
 	sort.Strings(globs)
-	want := []string{"scripts/install.ps1", "scripts/install.sh"}
+	want := []string{"scripts/install.sh"}
 	if !reflect.DeepEqual(globs, want) {
 		t.Errorf("release.extra_files = %v, want %v", globs, want)
 	}
@@ -225,6 +228,39 @@ func TestReleaseCI(t *testing.T) {
 	for _, want := range []string{"go vet ./...", "gofmt -l .", "go test ./..."} {
 		if stepIndex(test, func(s any) bool { return strings.Contains(runOf(s), want) }) < 0 {
 			t.Errorf("test job has no step that runs %q", want)
+		}
+	}
+	// The cross-build step must name exactly the pairs goreleaser builds. The
+	// expected values come from .goreleaser.yaml, so the two files cannot drift.
+	cfg := parseYAML(t, ".goreleaser.yaml")
+	b := list(cfg["builds"])[0]
+	goos, goarch := strs(at(b, "goos")), strs(at(b, "goarch"))
+	cross := stepIndex(test, func(s any) bool {
+		r := runOf(s)
+		return strings.Contains(r, "CGO_ENABLED=0") && strings.Contains(r, "go build") && strings.Contains(r, "./cmd/acta")
+	})
+	if cross < 0 {
+		t.Fatal("test job has no step that cross-builds ./cmd/acta with CGO_ENABLED=0")
+	}
+	r := runOf(test[cross])
+	for _, k := range []string{"GOOS=", "GOARCH="} {
+		if !strings.Contains(r, k) {
+			t.Errorf("cross-build step does not set %s:\n%s", k, r)
+		}
+	}
+	words := map[string]bool{}
+	for _, w := range regexp.MustCompile(`[A-Za-z0-9]+`).FindAllString(r, -1) {
+		words[w] = true
+	}
+	for _, v := range append(append([]string{}, goos...), goarch...) {
+		if !words[v] {
+			t.Errorf("cross-build step does not name %q, which goreleaser builds", v)
+		}
+	}
+	// Words, not substrings: "arm" must not match inside "arm64".
+	for _, v := range []string{"windows", "386", "arm"} {
+		if words[v] {
+			t.Errorf("cross-build step names %q, which goreleaser does not build", v)
 		}
 	}
 	if at(wf, "jobs", "windows-hooks", "runs-on") != "windows-latest" {

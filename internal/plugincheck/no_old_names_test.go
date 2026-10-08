@@ -34,7 +34,7 @@ var oldVoiceRe = regexp.MustCompile(`\bacta voice\b`)
 // them, values are 1-based line numbers, so a second old name anywhere else
 // still fails.
 var aliasLines = map[string][]int{
-	"README.md": {20},
+	"README.md": {17},
 }
 
 // oldNameProblems names every old name on lines the alias list does not skip.

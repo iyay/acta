@@ -1,5 +1,5 @@
-# Checks every push. The Windows job exists because the hook scripts and
-# install.ps1 are only ever run for real on Windows.
+# Checks every push. The Windows job runs the hook scripts through Git Bash
+# and parse-checks install.ps1, so the script stays ready for the Windows port.
 name: ci
 
 on:
@@ -27,6 +27,15 @@ jobs:
           fi
       - name: Test
         run: go test ./...
+      # The release builds these four pairs. A syscall that only exists on one
+      # OS would break the release run, so catch it on every push instead.
+      - name: Cross-build release targets
+        run: |
+          for os in darwin linux; do
+            for arch in amd64 arm64; do
+              GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/acta
+            done
+          done
 
   windows-hooks:
     runs-on: windows-latest
