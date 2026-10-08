@@ -161,6 +161,11 @@ func loadVoice() hook.Input {
 	cwd, _ := os.Getwd()
 	if cfg, lerr := config.Load(cwd, ""); lerr == nil {
 		in.Voice, _, in.RepoErr = config.MergeRepo(v, cfg.RepoRoot)
+		// The user's own value goes in, before the merge, so each override
+		// shows what the repo file replaced. A bad repo file gives no list.
+		if in.RepoErr == nil {
+			in.Overrides, in.RepoErr = config.Overrides(v, cfg.RepoRoot)
+		}
 	}
 	return in
 }

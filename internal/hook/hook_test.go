@@ -219,6 +219,50 @@ func TestSessionStartConflicts(t *testing.T) {
 	}
 }
 
+// A repo file that overrides the user's own setting is named once at the
+// start, with both values and the command that brings the user's value back.
+func TestSessionStartOverrides(t *testing.T) {
+	const phrase = "overrides your own setting"
+	one := korean()
+	one.Overrides = []config.Override{{Key: "build_executor", Repo: "subagent", Yours: "dispatch"}}
+	out := SessionStart(one)
+	for _, want := range []string{
+		phrase,
+		"build_executor is subagent here (yours: dispatch)",
+		"Tell the user once, at the start",
+		"acta config set --repo --unset <key>",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("override block lacks %q:\n%s", want, out)
+		}
+	}
+
+	// Two keys share one sentence, and a value the user never set says so.
+	two := korean()
+	two.Overrides = []config.Override{
+		{Key: "repo_language", Repo: "Korean", Yours: ""},
+		{Key: "plan_depth", Repo: "minimal", Yours: "full"},
+	}
+	out = SessionStart(two)
+	if !strings.Contains(out, "repo_language is Korean here (yours: not set), plan_depth is minimal here (yours: full)") {
+		t.Errorf("two keys not in one sentence:\n%s", out)
+	}
+	if strings.Count(out, phrase) != 1 {
+		t.Errorf("block printed %d times:\n%s", strings.Count(out, phrase), out)
+	}
+
+	// No overrides, or a repo file that could not be read: no override text.
+	none := korean()
+	none.Overrides = []config.Override{}
+	broken := one
+	broken.RepoErr = errors.New("bad yaml")
+	for name, in := range map[string]Input{"nil list": korean(), "empty list": none, "repo error": broken} {
+		if got := SessionStart(in); strings.Contains(got, phrase) {
+			t.Errorf("%s: override text printed:\n%s", name, got)
+		}
+	}
+}
+
 // Every input shape gets the same checks: one style line with the right word,
 // no ADHD block (the output style holds it), no destructive-warning line (the
 // output style holds that too), and the lean summary unless coding_guide is off.
