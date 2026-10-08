@@ -5,6 +5,7 @@ title: Fold every one-file planning commit, not only scratch add
 status: raw
 created: "2026-10-08 09:01:03"
 schema: "1"
+finished: "2026-10-08 09:01:33"
 ---
 # Fold every one-file planning commit, not only scratch add
 
