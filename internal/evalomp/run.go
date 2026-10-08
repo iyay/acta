@@ -82,9 +82,18 @@ func RunCase(c Case, o Options) (Workspace, error) {
 	w := Workspace{Dir: work, Before: before}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(c.TimeoutSeconds)*time.Second)
 	defer cancel()
+	// omp gets the throwaway folder as HOME so what it writes stays out of the
+	// real home. It still needs its login and settings, so only .omp links back.
+	realHome, err := os.UserHomeDir()
+	if err != nil {
+		return w, fmt.Errorf("omp: real home: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(realHome, ".omp"), filepath.Join(home, ".omp")); err != nil {
+		return w, fmt.Errorf("omp: link .omp: %v", err)
+	}
 	cmd := exec.CommandContext(ctx, o.Omp, ompArgs(c.Prompt, o)...)
 	cmd.Dir = work
-	cmd.Env = withEnv(os.Environ(), "PM_VOICE_FILE", filepath.Join(home, ".acta", "config.yaml"))
+	cmd.Env = withEnv(withEnv(os.Environ(), "PM_VOICE_FILE", filepath.Join(home, ".acta", "config.yaml")), "HOME", home)
 	// omp's kids must die with it, so it leads its own process group and the
 	// timeout kills the whole group instead of just the top process.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -92,17 +101,52 @@ func RunCase(c Case, o Options) (Workspace, error) {
 	// A killed omp can leave a child holding the pipes open. Stop waiting for
 	// them soon after, so one stuck case cannot hang the whole run.
 	cmd.WaitDelay = 5 * time.Second
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	runErr := cmd.Run()
+	// The stream is read while omp runs, because omp can keep working long
+	// after its final reply and the run must end at that reply.
+	pr, pw := io.Pipe()
+	var stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = pw, &stderr
+	if err := cmd.Start(); err != nil {
+		return w, fmt.Errorf("omp: %v", err)
+	}
+	var waitErr error
+	exited := make(chan struct{})
+	go func() {
+		waitErr = cmd.Wait()
+		close(exited)
+		// The parser only sees end of input once omp is gone, however it went.
+		pw.Close()
+	}()
+	res, parseErr := ParseStream(pr)
+	// Wait never closes the pipe's read side, so close it here. That frees
+	// Wait's copy of omp's output if omp is still writing.
+	pr.Close()
+	// Every way out kills the whole group, kids included: omp may still be
+	// working after its final reply, or it may have died and left a child.
+	// Then wait until Wait is done, so nothing is left running.
+	killed := true
+	select {
+	case <-exited:
+		killed = false
+	default:
+	}
+	syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	<-exited
+	if killed {
+		// omp was still running, so any error Wait reports is our own kill.
+		waitErr = nil
+	}
+	if parseErr == nil {
+		w.Result = res
+		return w, nil
+	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return w, ErrTimeout
 	}
-	if runErr != nil {
-		return w, fmt.Errorf("omp: %v: %s", runErr, strings.TrimSpace(stderr.String()))
+	if waitErr != nil {
+		return w, fmt.Errorf("omp: %v: %s", waitErr, strings.TrimSpace(stderr.String()))
 	}
-	w.Result, err = ParseStream(&stdout)
-	return w, err
+	return w, parseErr
 }
 
 func ompArgs(prompt string, o Options) []string {

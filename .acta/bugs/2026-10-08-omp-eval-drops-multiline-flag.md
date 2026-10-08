@@ -2,6 +2,8 @@
 id: BUG-0035
 hash: qfgjosb
 priority: low
+fixed_in: 434e04f8093d5e184247669ec61ca2dd8f907422
+finished: "2026-10-08 05:32:06"
 ---
 # omp evals ignore the m flag, so five-questions-max can pass a reply with six questions
 

@@ -1,10 +1,12 @@
 package evalomp
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseStream(t *testing.T) {
@@ -134,5 +136,76 @@ func TestListFiles(t *testing.T) {
 	}
 	if got[".git/HEAD"] {
 		t.Error("git's own files must stay out of the list")
+	}
+}
+
+// messageEnd builds the line omp prints when one assistant message is done.
+func messageEnd(stop, text string) string {
+	return `{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"` + text +
+		`"}],"stopReason":"` + stop + `"}}` + "\n"
+}
+
+// The first assistant message that stops is the reply. Whatever omp does
+// after it, a later tool call, reply or agent_end, must not leak in.
+func TestParseStreamStopsAtFirstFinalReply(t *testing.T) {
+	text := `{"type":"tool_execution_start","toolName":"bash","args":{"command":"a"}}` + "\n" +
+		messageEnd("toolUse", "working on it") +
+		messageEnd("stop", "done") +
+		`{"type":"agent_start"}` + "\n" +
+		`{"type":"tool_execution_start","toolName":"read","args":{}}` + "\n" +
+		messageEnd("stop", "second reply") +
+		`{"type":"agent_end","messages":[{"role":"assistant","content":[{"type":"text","text":"late"}]}]}` + "\n"
+	res, err := ParseStream(strings.NewReader(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Reply != "done" {
+		t.Errorf("reply = %q, want the first final reply", res.Reply)
+	}
+	if len(res.Calls) != 1 || res.Calls[0].Tool != "bash" {
+		t.Errorf("calls = %+v, want only the call before the final reply", res.Calls)
+	}
+}
+
+// The reader must hand back at the final reply while omp is still running,
+// or RunCase would wait for an exit that never comes.
+func TestParseStreamReturnsWithoutEndOfInput(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	go io.WriteString(pw, messageEnd("stop", "done"))
+	got := make(chan Result, 1)
+	go func() {
+		res, _ := ParseStream(pr)
+		got <- res
+	}()
+	select {
+	case res := <-got:
+		if res.Reply != "done" {
+			t.Errorf("reply = %q", res.Reply)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("ParseStream kept reading after the final reply")
+	}
+}
+
+// A reply that stops for another reason is not a final reply: an aborted or
+// tool-use message must not end the run, so a stream with only those errors.
+func TestParseStreamOtherStopReasonsAreNotFinal(t *testing.T) {
+	for _, reason := range []string{"toolUse", "aborted", "error", ""} {
+		t.Run(reason, func(t *testing.T) {
+			if _, err := ParseStream(strings.NewReader(messageEnd(reason, "x"))); err == nil {
+				t.Error("want an error: no final reply and no agent_end")
+			}
+		})
+	}
+}
+
+// A final reply with no text parts is still the end. It gives an empty reply
+// and no error, like the old agent_end with no text did.
+func TestParseStreamFinalReplyWithoutText(t *testing.T) {
+	text := `{"type":"message_end","message":{"role":"assistant","content":[{"type":"toolCall","id":"c"}],"stopReason":"stop"}}` + "\n"
+	res, err := ParseStream(strings.NewReader(text))
+	if err != nil || res.Reply != "" {
+		t.Errorf("res = %+v, err = %v", res, err)
 	}
 }

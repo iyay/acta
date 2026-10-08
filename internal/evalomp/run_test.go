@@ -412,3 +412,116 @@ func TestRunAllBadCase(t *testing.T) {
 		}
 	}
 }
+
+// assertChildGone checks that the sleep the fake omp started is dead. It
+// proves RunCase killed omp's whole process group, not only omp.
+func assertChildGone(t *testing.T, logDir string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(logDir, "child"))
+	if err != nil {
+		t.Fatalf("reading child pid: %v", err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil {
+		t.Fatalf("parsing child pid %q: %v", raw, err)
+	}
+	t.Cleanup(func() { syscall.Kill(pid, syscall.SIGKILL) })
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if err := syscall.Kill(pid, 0); err != nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("omp's child is still alive after RunCase returned")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// omp can keep working for minutes after its final reply. RunCase must stop
+// at that reply, count nothing after it, and kill what is left.
+func TestRunCaseStopsAtFinalReply(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	tool := func(name string) string {
+		return `echo '{"type":"tool_execution_start","toolName":"` + name + `","args":{}}'` + "\n"
+	}
+	// The sleep starts first so the child file exists whenever RunCase returns.
+	start := `sleep 30 & echo $! > "$(dirname "$0")/child"` + "\n"
+	for name, tc := range map[string]struct{ body, reply string }{
+		"final reply": {
+			start + tool("bash") +
+				`echo '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"done"}],"stopReason":"stop"}}'` + "\n" +
+				tool("read") + "wait",
+			"done",
+		},
+		"agent_end first": {
+			start + tool("bash") +
+				`echo '{"type":"agent_end","messages":[{"role":"assistant","content":[{"type":"text","text":"ended"}]}]}'` + "\n" +
+				tool("read") + "wait",
+			"ended",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			omp, logDir := fakeOmp(t, tc.body)
+			began := time.Now()
+			w, err := RunCase(Case{Prompt: "x", TimeoutSeconds: 10}, Options{Omp: omp, PluginDir: "/p"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if took := time.Since(began); took > 4*time.Second {
+				t.Errorf("RunCase took %v, want it back at once after the reply", took)
+			}
+			if w.Result.Reply != tc.reply {
+				t.Errorf("reply = %q, want %q", w.Result.Reply, tc.reply)
+			}
+			if len(w.Result.Calls) != 1 || w.Result.Calls[0].Tool != "bash" {
+				t.Errorf("calls = %+v, want only the bash call before the end", w.Result.Calls)
+			}
+			assertChildGone(t, logDir)
+		})
+	}
+}
+
+// A stream that ends with neither a final reply nor agent_end is an error,
+// and a child that outlived omp must still be killed.
+func TestRunCaseStreamEndsWithoutReplyKillsChildren(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	omp, logDir := fakeOmp(t, `sleep 30 & echo $! > "$(dirname "$0")/child"
+echo '{"type":"agent_start"}'`)
+	_, err := RunCase(Case{Prompt: "x", TimeoutSeconds: 10}, Options{Omp: omp, PluginDir: "/p"})
+	if err == nil || errors.Is(err, ErrTimeout) {
+		t.Fatalf("err = %v, want a stream error", err)
+	}
+	assertChildGone(t, logDir)
+}
+
+// omp must see the throwaway folder as HOME, so nothing it writes lands in
+// the user's real home. Only .omp links to the real one, since omp needs its
+// login and settings from there.
+func TestRunCaseCleanHome(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	realHome := t.TempDir()
+	t.Setenv("HOME", realHome)
+	if err := os.Mkdir(filepath.Join(realHome, ".omp"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `printf '%s' "$HOME" > "$(dirname "$0")/home"
+readlink "$HOME/.omp" > "$(dirname "$0")/omp-link"
+` + fixture(t)
+	omp, logs := fakeOmp(t, body)
+	w, err := RunCase(Case{Prompt: "x", TimeoutSeconds: 30}, Options{Omp: omp, PluginDir: "/p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	throwaway := filepath.Join(filepath.Dir(w.Dir), "home")
+	if got := read(t, filepath.Join(logs, "home")); got != throwaway {
+		t.Errorf("omp HOME = %q, want %q", got, throwaway)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(logs, "omp-link"))); got != filepath.Join(realHome, ".omp") {
+		t.Errorf(".omp links to %q, want the real .omp", got)
+	}
+	entries, err := os.ReadDir(throwaway)
+	if err != nil || len(entries) != 1 || entries[0].Name() != ".omp" {
+		t.Errorf("throwaway home = %v, %v, want only .omp", entries, err)
+	}
+}
