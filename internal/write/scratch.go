@@ -125,7 +125,7 @@ func AppendScratch(cfg config.Config, b *board.Board, id, section string, text [
 	if err := os.WriteFile(it.Path, []byte(out), 0o644); err != nil {
 		return Outcome{}, err
 	}
-	o := finishFold(cfg, it.Path, Subject(cfg, []string{it.Path}, "add to "+stem(it.Path)), dirty)
+	o := finish(cfg, it.Path, Subject(cfg, []string{it.Path}, "add to "+stem(it.Path)), dirty)
 	o.ShortID = it.ShortID
 	return o, nil
 }

@@ -76,10 +76,10 @@ func TestNewDebtAppendsWithoutDuplicates(t *testing.T) {
 	if strings.Count(got, "- [ ] b\n") != 1 || !strings.Contains(got, "- [ ] c\n") {
 		t.Fatalf("got\n%s", got)
 	}
-	// only the create commit and one append commit; the all-duplicate
-	// pass in the next test must not add a third.
-	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "chore(debt): new debt 2026-09-27-short-ids"); n != 2 {
-		t.Fatalf("commits = %d, want 2", n)
+	// The append folds into the create commit, and it has the same subject, so
+	// the subject is not written twice.
+	if n := strings.Count(gitRun(t, cfg.RepoRoot, "log", "--oneline"), "chore(debt): new debt 2026-09-27-short-ids"); n != 1 {
+		t.Fatalf("commits = %d, want 1", n)
 	}
 }
 

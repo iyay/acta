@@ -51,9 +51,9 @@ started: "2026-10-08 09:34:23"
 
 **verify:** Every one-file write command (`set`, `bug`, `debt`, `state`, `priority`, `scratch new`, `scratch add`) run twice on one file in a row leaves one commit holding both changes and both subjects, and a write on another file in between makes a new commit. List each command checked and its commit count.
 
-- [ ] Failing test: two `SetValue` calls on one bug make one commit with both subjects in `%B`; `NewScratch` then `AppendScratch` on the same item make one commit; a write to another file between them makes a new commit. Run `scripts/test ./internal/write/ -run 'Fold|Scratch|SetValue'` and see it fail.
-- [ ] Code: `finish` calls `gitc.CommitOrFold`; delete `finishFold` and point `scratch.go` back at `finish`. Fix older tests that counted one commit per write on the same file.
-- [ ] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit `feat(write): every one-file planning write folds into its own last commit`.
+- [x] Failing test: two `SetValue` calls on one bug make one commit with both subjects in `%B`; `NewScratch` then `AppendScratch` on the same item make one commit; a write to another file between them makes a new commit. Run `scripts/test ./internal/write/ -run 'Fold|Scratch|SetValue'` and see it fail.
+- [x] Code: `finish` calls `gitc.CommitOrFold`; delete `finishFold` and point `scratch.go` back at `finish`. Fix older tests that counted one commit per write on the same file.
+- [x] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit `feat(write): every one-file planning write folds into its own last commit`.
 
 ### Task 03: acta commit command
 
@@ -63,9 +63,9 @@ started: "2026-10-08 09:34:23"
 
 **verify:** `acta commit <path> -m <msg>` commits only a file under the planning root, through `gitc.CommitOrFold`, and refuses with a clear error and no commit when the path is outside the planning root, missing, or the message is empty. List each input checked and its exit code and commit count.
 
-- [ ] Failing test: in a temp repo, `acta id`-style first commit then `acta commit .acta/specs/x.md -m "chore(spec): fix wording"` after an edit gives one commit with both subjects; a path outside the planning root, a missing path, and an empty `-m` each exit non-zero with no new commit. Run `scripts/test ./internal/cli/ -run TestCommit` and see it fail.
-- [ ] Code: `commit` case in `cli.go` calling a small `runCommit` in `commit.go`: resolve the planning root the same way other write commands do (`config`), check the path is inside it, call `gitc.CommitOrFold(repoRoot, path, msg, false)`, print the path like other write commands and use their skipped exit code when nothing was committed; add the command to the usage text.
-- [ ] Run `scripts/test ./internal/cli/` passes, vet and gofmt clean, commit `feat(cli): acta commit commits one planning file and folds it`.
+- [x] Failing test: in a temp repo, `acta id`-style first commit then `acta commit .acta/specs/x.md -m "chore(spec): fix wording"` after an edit gives one commit with both subjects; a path outside the planning root, a missing path, and an empty `-m` each exit non-zero with no new commit. Run `scripts/test ./internal/cli/ -run TestCommit` and see it fail.
+- [x] Code: `commit` case in `cli.go` calling a small `runCommit` in `commit.go`: resolve the planning root the same way other write commands do (`config`), check the path is inside it, call `gitc.CommitOrFold(repoRoot, path, msg, false)`, print the path like other write commands and use their skipped exit code when nothing was committed; add the command to the usage text.
+- [x] Run `scripts/test ./internal/cli/` passes, vet and gofmt clean, commit `feat(cli): acta commit commits one planning file and folds it`.
 
 ### Task 04: Skills send planning commits through acta commit
 
