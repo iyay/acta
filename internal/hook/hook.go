@@ -153,7 +153,7 @@ func SessionStart(in Input) string {
 			parts = append(parts, fmt.Sprintf("%s is %s here (yours: %s)", o.Key, o.Repo, yours))
 		}
 		// The user may not know the repo file wins, so the agent says it once.
-		fmt.Fprintf(&b, "\nThis repo's .acta.yaml overrides your own setting: %s. Tell the user once, at the start, and say `acta config set --repo --unset <key>` brings their own value back.\n", strings.Join(parts, ", "))
+		fmt.Fprintf(&b, "\nThis repo's .acta.yaml overrides your own setting: %s. Tell the user once, at the start, and say `acta config set --repo --unset <key>` brings their own value back. Before changing any of these keys, ask the user first, because .acta.yaml is committed and shared with everyone who clones the repo. Offer three choices: keep, write the new value to the repo, or remove the repo key. Write nothing until the user picks.\n", strings.Join(parts, ", "))
 	}
 	return b.String()
 }

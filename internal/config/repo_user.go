@@ -198,28 +198,57 @@ func UnsetRepoUser(repoRoot string, keys []string) (string, error) {
 		return path, fmt.Errorf("%s: the top level is not a list of keys", path)
 	}
 	// Keys sit at even places and values right after them, so drop in pairs.
-	kept, changed := make([]*yaml.Node, 0, len(m.Content)), false
+	// yaml ties the comment above a key to that key, so a removed key would
+	// take it along. The person wrote it for the file, so hand it on: it goes
+	// above the next key that stays. The comment on the same line as a removed
+	// value was about that value and goes with it.
+	kept, changed, carried := make([]*yaml.Node, 0, len(m.Content)), false, ""
 	for i := 0; i+1 < len(m.Content); i += 2 {
-		if slices.Contains(keys, m.Content[i].Value) {
+		k := m.Content[i]
+		if slices.Contains(keys, k.Value) {
 			changed = true
+			carried = joinComments(joinComments(carried, k.HeadComment), k.FootComment)
 			continue
 		}
-		kept = append(kept, m.Content[i], m.Content[i+1])
+		if carried != "" {
+			k.HeadComment = joinComments(carried, k.HeadComment)
+			carried = ""
+		}
+		kept = append(kept, k, m.Content[i+1])
 	}
 	if !changed {
 		return path, nil
 	}
 	m.Content = kept
 	out := []byte{}
-	// An empty map would print as "{}", so an empty result is an empty file.
-	if len(kept) > 0 {
+	switch {
+	case len(kept) > 0:
+		// No key is left below the comment, so it closes the file.
+		if carried != "" {
+			last := kept[len(kept)-2]
+			last.FootComment = joinComments(last.FootComment, carried)
+		}
 		if out, err = yaml.Marshal(&doc); err != nil {
 			return path, err
 		}
+	case carried != "":
+		// An empty map would print as "{}", so write the comment alone.
+		out = []byte(carried + "\n")
 	}
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, out, 0o644); err != nil {
 		return path, err
 	}
 	return path, os.Rename(tmp, path)
+}
+
+// joinComments stacks two yaml comment blocks, the first above the second.
+func joinComments(a, b string) string {
+	switch {
+	case a == "":
+		return b
+	case b == "":
+		return a
+	}
+	return a + "\n" + b
 }

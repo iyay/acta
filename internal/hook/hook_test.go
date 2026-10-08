@@ -231,6 +231,10 @@ func TestSessionStartOverrides(t *testing.T) {
 		"build_executor is subagent here (yours: dispatch)",
 		"Tell the user once, at the start",
 		"acta config set --repo --unset <key>",
+		"ask the user first",
+		"committed and shared with everyone who clones the repo",
+		"keep, write the new value to the repo, or remove the repo key",
+		"Write nothing until the user picks",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("override block lacks %q:\n%s", want, out)

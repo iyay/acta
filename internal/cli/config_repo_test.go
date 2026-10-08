@@ -275,6 +275,24 @@ func TestConfigSetRepoRefuses(t *testing.T) {
 	}
 }
 
+// A key that is not a repo key is refused before anything is written, even
+// when the same call also sets a good key. Both files stay byte for byte.
+func TestConfigSetRepoUnsetPersonalKeyRefused(t *testing.T) {
+	repoBody := "# acta settings for this repo\nbuild_executor: dispatch\nroot: .acta\n"
+	globalBody := "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n"
+	dir, globalPath := repoWithGlobal(t, globalBody, repoBody)
+	code, _, errs := runCodeOut("config", "set", "--repo", "--executor", "inline", "--unset", "style")
+	if code != exitBadInput || !strings.Contains(errs, "style cannot be unset per repo") {
+		t.Errorf("exit %d stderr %q, want bad input naming style", code, errs)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); string(raw) != repoBody {
+		t.Errorf(".acta.yaml changed:\n%s", raw)
+	}
+	if raw, _ := os.ReadFile(globalPath); string(raw) != globalBody {
+		t.Errorf("the global file changed:\n%s", raw)
+	}
+}
+
 // Without --repo the depth goes to the global file.
 func TestConfigSetPlanDepthGlobal(t *testing.T) {
 	dir, globalPath := repoWithGlobal(t, "", "")
