@@ -355,6 +355,50 @@ func TestUnsetRepoUser(t *testing.T) {
 	}
 }
 
+// yaml ties a comment to the key under it. Removing the key must not eat a
+// comment the person wrote for the file, so it moves to the next key left.
+func TestUnsetRepoUserKeepsComments(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		keys []string
+		want string
+	}{
+		{"header right above the removed first key",
+			"# acta settings for this repo\nbuild_executor: dispatch # omp for everyone\nroot: .acta\n", []string{"build_executor"},
+			"# acta settings for this repo\nroot: .acta\n"},
+		{"header above a removed middle key",
+			"root: x\n# why the guide is off\ncoding_guide: off\ndirs: y\n", []string{"coding_guide"},
+			"root: x\n# why the guide is off\ndirs: y\n"},
+		{"header above the only key stays in the file",
+			"# acta settings for this repo\nbuild_executor: dispatch\n", []string{"build_executor"},
+			"# acta settings for this repo\n"},
+		{"two removed keys in a row keep both headers",
+			"# one\nplan_depth: minimal\n# two\ncoding_guide: off\nroot: x\n", []string{"plan_depth", "coding_guide"},
+			"# one\n# two\nroot: x\n"},
+		{"header above the removed last key stays",
+			"root: x\n# trailing note\nplan_depth: minimal\n", []string{"plan_depth"},
+			"root: x\n# trailing note\n"},
+		{"note after the removed last key stays",
+			"root: x\nplan_depth: minimal\n\n# note at the end\n", []string{"plan_depth"},
+			"root: x\n\n# note at the end\n"},
+	}
+	for _, c := range cases {
+		dir := writeRepoYAML(t, c.body)
+		path, err := UnsetRepoUser(dir, c.keys)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if string(raw) != c.want {
+			t.Errorf("%s: file %q, want %q", c.name, raw, c.want)
+		}
+	}
+}
+
 // With no file there is nothing to remove, and no file is made.
 func TestUnsetRepoUserNoFile(t *testing.T) {
 	dir := t.TempDir()

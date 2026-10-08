@@ -10,6 +10,7 @@ func TestSkillSetup(t *testing.T) {
 			"acta setup", "! acta setup", "--plugin-dir",
 			"acta config set", "acta doctor", "TTY",
 			"mandatory", "no yes asked", "write to both", "Never create an AGENTS.md",
+			"--unset", "overrides",
 		},
 		MustNot: []string{"superpowers:",
 			"<!-- acta:begin -->", "<!-- acta:end -->",

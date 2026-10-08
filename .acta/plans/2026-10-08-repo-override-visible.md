@@ -6,6 +6,7 @@ id: PLN-0118
 created: "2026-10-08 07:44:25"
 hash: rnplm6t
 started: "2026-10-08 07:45:45"
+finished: "2026-10-08 07:52:35"
 ---
 # Repo overrides are visible and changeable
 
@@ -100,9 +101,9 @@ started: "2026-10-08 07:45:45"
 **Interfaces:**
 - Consumes: `acta config show --json` field `overrides` and `acta config set --repo --unset <key>` from Task 02.
 
-- [ ] Failing test: add `--unset` and `overrides` to the setup skill's required strings and the `repo-override-ask` row to `evalCases` (phrase from the new skill text); run `scripts/test ./internal/plugincheck/` and see it fail.
-- [ ] Code: the skill text from spec section 4; raise `MaxLines` and the byte cap only as far as the new text needs; the eval case copied in shape from an existing scaffolded case, `.acta.yaml` holding `build_executor: dispatch`, graders for the reply naming `.acta.yaml`, no Bash call matching `config set`, and `.acta.yaml` still holding `build_executor: dispatch`.
-- [ ] Run `scripts/test ./internal/plugincheck/` passes, commit.
+- [x] Failing test: add `--unset` and `overrides` to the setup skill's required strings and the `repo-override-ask` row to `evalCases` (phrase from the new skill text); run `scripts/test ./internal/plugincheck/` and see it fail.
+- [x] Code: the skill text from spec section 4; raise `MaxLines` and the byte cap only as far as the new text needs; the eval case copied in shape from an existing scaffolded case, `.acta.yaml` holding `build_executor: dispatch`, graders for the reply naming `.acta.yaml`, no Bash call matching `config set`, and `.acta.yaml` still holding `build_executor: dispatch`.
+- [x] Run `scripts/test ./internal/plugincheck/` passes, commit.
 
 ### Task 06: Bump the plugin patch version
 
@@ -114,3 +115,51 @@ started: "2026-10-08 07:45:45"
 - [x] Failing test: change only `plugin.json` to `0.1.40`; `scripts/test ./internal/plugincheck/ -run TestManifests` fails.
 - [x] Code: set `0.1.40` in the other two files.
 - [x] Run `scripts/test ./internal/plugincheck/ -run TestManifests` passes, commit.
+
+## Polish
+
+### Task 07: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `UnsetRepoUser` in `internal/config/repo_user.go` keeps a comment that yaml ties to a removed key: move it to the next key left (or to the document when none is left), with a test for a header comment right above the removed first key and for a line comment on it.
+- [x] `internal/cli/config_repo_test.go`: a test that `--repo --executor inline --unset style` exits with bad input and leaves `.acta.yaml` unchanged, so the CLI's own non-repo-key check is locked in.
+- [x] `plugin/skills/setup/SKILL.md`: "something else than" becomes "something other than".
+- [x] Commit: `polish: review notes for PLN-0118`
+
+## Review notes
+
+- Round 1 CLEAN on both axes, no BLOCKER; polish review CLEAN on both axes.
+- Spec section 2 says the override block shows in the per-prompt text too; the plugin-conflict block it copies is session start only, so the block is session start only (omp gets it through hook session-start).
+- The wizard has no separate summary screen before writing; each override answer is echoed as a line before Apply, then Apply prints one line per write and the closing commit line.
+- Orchestrator rulings beyond the spec: a user value unset with no default shows as "yours: not set", and the wizard leaves out the "yours" choice for it; both are pinned by tests.
+- The 7 rewritten "(repo)" assertions all compare a repo value that differs from the user's effective value, so they are stricter, not weaker.
+- yaml.Marshal turns 2-space nested indents into 4 spaces in both SaveRepoUser and UnsetRepoUser; older than this plan.
+- The no-config-set grader errs strict: a `config set --help` call would count as a write.
+
+## Fix round 1
+
+### Task 08: The rule to ask before touching .acta.yaml reaches the agent without the setup skill
+
+**Files:**
+- Modify: `internal/hook/hook.go`, `plugin/skills/setup/SKILL.md`
+- Test: `internal/hook/hook_test.go`, `internal/plugincheck/skill_setup_test.go` (only if a required string moves)
+
+**verify:** An agent asked to change a key the repo file overrides gets the ask-first rule from text it always loads (the session note), whether or not it opens the setup skill, and the setup skill is picked for a one-setting change. The `repo-override-ask` eval case passes. List the text each surface now carries.
+
+Eval evidence (round 1, `scripts/eval --case repo-override-ask --keep-temp`): the agent never opened the setup skill; it ran `acta config show`, saw `build_executor: dispatch (repo; yours: not set)`, said "Needs changing" and ran `acta config set --repo --executor subagent`. Graders `no-config-set` and `repo-file-untouched` failed.
+
+- [x] Failing test: `internal/hook/hook_test.go` asserts the override block also says to ask the user before changing any of those keys, because `.acta.yaml` is committed and shared with everyone who clones the repo, and to write nothing until the user picks keep, write or remove; run `scripts/test ./internal/hook/` and see it fail.
+- [x] Code: extend the block sentence in `internal/hook/hook.go`; widen the setup skill `description` so it also covers a request to change one setting (stay under the description cap in `internal/plugincheck/budget_test.go`).
+- [x] Run `scripts/test ./internal/hook/ ./internal/plugincheck/` passes, commit; the orchestrator reruns the eval case.
+
+### Task 09: Review polish, round 2
+
+**verify:** the NOTE below is applied, and nothing else changes.
+
+- [x] `plugin/skills/setup/SKILL.md` description names the old trigger words again within the cap: "acta: Use on first run and when the user asks to change setup or one setting (chat language, style, tone, build executor, plan depth): runs acta doctor and writes the optional acta block in CLAUDE.md or AGENTS.md."
+- [x] Commit: `polish: review notes for PLN-0118 round 2`
+- Fix round 1 (Task 08): eval case repo-override-ask was red (0.33, twice) because the agent never opened the setup skill and wrote .acta.yaml; the ask-first rule moved into the session-note override block, and the case then scored 1.00 three times out of three. Round 2 CLEAN on both axes.
+- Spec section 2 does not yet mention the ask-first sentence Task 08 added to the block; the code and this note are the record.
+- Polish round 2 (Task 09) put the old trigger words back in the setup description. One polish reviewer marked the dropped "subagent models" as a BLOCKER; it gives no reproducible wrong result, so it was moved to debt instead of reverting, since the revert would drop five other trigger words.
+- Land gates: scripts/test --full 20 ok, go vet and gofmt clean, scripts/eval 13 of 13 at 1.00.
