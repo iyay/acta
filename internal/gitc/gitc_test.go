@@ -842,6 +842,40 @@ func TestCommitOrFold(t *testing.T) {
 		})
 	}
 
+	// A tag marks a release. The tagged commit must keep its hash, so the
+	// edit goes into a new commit and the tag stays where it was.
+	for _, c := range []struct {
+		name string
+		tag  []string
+	}{
+		{"a lightweight tag on head", []string{"tag", "v1"}},
+		{"an annotated tag on head", []string{"tag", "-a", "v1", "-m", "release"}},
+	} {
+		t.Run(c.name+" blocks the fold", func(t *testing.T) {
+			repo, a := foldRepo(t, msg)
+			git(t, repo, c.tag...)
+			tagged := git(t, repo, "rev-parse", "HEAD")
+			before := commitCount(t, repo)
+			writeFile(t, a, "one\ntwo\n")
+			r := CommitOrFold(repo, a, msg, false)
+			if r != (Result{Committed: true}) {
+				t.Fatalf("got %+v", r)
+			}
+			if got := commitCount(t, repo); got == before {
+				t.Fatalf("commit count stayed %s, want a new commit", got)
+			}
+			if got := git(t, repo, "rev-parse", "v1^{commit}"); got != tagged {
+				t.Fatalf("tag points at %s, want %s", got, tagged)
+			}
+			if got := git(t, repo, "rev-parse", "HEAD~1"); got != tagged {
+				t.Fatalf("parent is %s, want the tagged commit %s", got, tagged)
+			}
+			if got := git(t, repo, "show", "HEAD:a.md"); got != "one\ntwo" {
+				t.Fatalf("HEAD holds %q", got)
+			}
+		})
+	}
+
 	// These paths never reach the fold check. They must match Commit.
 	t.Run("file was dirty", func(t *testing.T) {
 		repo, a := foldRepo(t, msg)
