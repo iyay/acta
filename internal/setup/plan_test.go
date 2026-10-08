@@ -359,3 +359,75 @@ func r(repo string) string {
 	}
 	return "repo"
 }
+
+// repoActions picks the actions that touch .acta.yaml out of a plan.
+func repoActions(actions []setup.Action) []setup.Action {
+	var out []setup.Action
+	for _, a := range actions {
+		if a.Kind == setup.ActionRepoSet || a.Kind == setup.ActionRepoUnset {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// TestPlanRepoOverrides checks each answer to an override question: keep
+// plans nothing, yours plans a set, remove plans an unset, and nothing is
+// planned outside a repo or without a terminal.
+func TestPlanRepoOverrides(t *testing.T) {
+	u := testUser()
+	both := []config.Override{
+		{Key: "build_executor", Repo: "dispatch", Yours: "subagent"},
+		{Key: "plan_depth", Repo: "minimal", Yours: "full"},
+	}
+	env := setup.Env{TTY: true, RepoRoot: "/r", HasClaudeMD: true}
+	ans := func(choices map[string]string, list ...config.Override) setup.Answers {
+		return setup.Answers{User: u, Overrides: list, Repo: choices}
+	}
+
+	t.Run("keep plans nothing", func(t *testing.T) {
+		got := repoActions(setup.Plan(ans(map[string]string{"build_executor": "keep", "plan_depth": "keep"}, both...), env))
+		if len(got) != 0 {
+			t.Fatalf("got %#v, want none", got)
+		}
+	})
+	t.Run("a missing answer counts as keep", func(t *testing.T) {
+		if got := repoActions(setup.Plan(ans(nil, both...), env)); len(got) != 0 {
+			t.Fatalf("got %#v, want none", got)
+		}
+	})
+	t.Run("yours sets the user's value and remove unsets", func(t *testing.T) {
+		got := repoActions(setup.Plan(ans(map[string]string{"build_executor": "yours", "plan_depth": "remove"}, both...), env))
+		want := []setup.Action{
+			{Kind: "repo-set", Path: "/r/.acta.yaml", Key: "build_executor", Value: "subagent"},
+			{Kind: "repo-unset", Path: "/r/.acta.yaml", Key: "plan_depth"},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %#v, want %#v", got, want)
+		}
+	})
+	t.Run("yours with no value of its own plans nothing", func(t *testing.T) {
+		o := config.Override{Key: "repo_language", Repo: "French"}
+		if got := repoActions(setup.Plan(ans(map[string]string{"repo_language": "yours"}, o), env)); len(got) != 0 {
+			t.Fatalf("got %#v, want none", got)
+		}
+	})
+	t.Run("an answer for a key that is not an override is ignored", func(t *testing.T) {
+		if got := repoActions(setup.Plan(ans(map[string]string{"coding_guide": "remove"}, both...), env)); len(got) != 0 {
+			t.Fatalf("got %#v, want none", got)
+		}
+	})
+	t.Run("outside a repo plans nothing", func(t *testing.T) {
+		e := setup.Env{TTY: true}
+		if got := repoActions(setup.Plan(ans(map[string]string{"build_executor": "remove"}, both...), e)); len(got) != 0 {
+			t.Fatalf("got %#v, want none", got)
+		}
+	})
+	t.Run("without a terminal plans nothing", func(t *testing.T) {
+		e := setup.Env{TTY: false, RepoRoot: "/r"}
+		got := setup.Plan(ans(map[string]string{"build_executor": "remove"}, both...), e)
+		if len(got) != 1 || got[0].Kind != "print" {
+			t.Fatalf("got %#v, want only the print", got)
+		}
+	})
+}

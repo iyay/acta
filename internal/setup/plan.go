@@ -20,6 +20,17 @@ const (
 	// ActionInstalled notes a tool where the plugin is already installed.
 	ActionInstalled = "installed"
 	ActionBlock     = "block"
+	// ActionRepoSet writes one key into the repo's .acta.yaml, and
+	// ActionRepoUnset drops one. Neither commits the file.
+	ActionRepoSet   = "repo-set"
+	ActionRepoUnset = "repo-unset"
+)
+
+// Answers to an override question. Keep is the default and changes nothing.
+const (
+	RepoKeep   = "keep"
+	RepoYours  = "yours"
+	RepoRemove = "remove"
 )
 
 // Env holds what the wizard found: whether stdio is a terminal, which
@@ -42,16 +53,22 @@ type Env struct {
 type Answers struct {
 	User    config.User
 	Install map[string]bool
+	// Overrides lists the repo keys that differ from the new answers, and
+	// Repo holds the answer for each key: keep, yours or remove.
+	Overrides []config.Override
+	Repo      map[string]string
 }
 
 // Action is one thing the runner carries out. Only the fields its Kind
 // needs are set: config sets User, install sets Harness and Argv, print
-// sets Harness and Path, block sets Path.
+// sets Harness and Path, block sets Path, and the two repo kinds set Path
+// (the .acta.yaml file) and Key, plus Value for a set.
 type Action struct {
 	Kind          string
 	Harness, Path string
 	Argv          [][]string
 	User          config.User
+	Key, Value    string
 }
 
 // Plan turns answers and findings into the action list. Without a TTY it
@@ -89,7 +106,28 @@ func Plan(a Answers, e Env) []Action {
 		}
 		out = append(out, Action{Kind: ActionInstall, Harness: h, Argv: argv})
 	}
-	return appendBlocks(out, e)
+	return appendRepoOverrides(appendBlocks(out, e), a, e)
+}
+
+// appendRepoOverrides turns each override answer into an action. Keep, or no
+// answer, plans nothing. Yours with no value of its own plans nothing either:
+// there is nothing to write. Outside a repo no override was asked.
+func appendRepoOverrides(out []Action, a Answers, e Env) []Action {
+	if e.RepoRoot == "" {
+		return out
+	}
+	path := filepath.Join(e.RepoRoot, ".acta.yaml")
+	for _, o := range a.Overrides {
+		switch a.Repo[o.Key] {
+		case RepoYours:
+			if o.Yours != "" {
+				out = append(out, Action{Kind: ActionRepoSet, Path: path, Key: o.Key, Value: o.Yours})
+			}
+		case RepoRemove:
+			out = append(out, Action{Kind: ActionRepoUnset, Path: path, Key: o.Key})
+		}
+	}
+	return out
 }
 
 // appendBlocks adds the mandatory block actions: one per file that exists,

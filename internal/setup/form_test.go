@@ -1,6 +1,7 @@
 package setup_test
 
 import (
+	"io"
 	"strings"
 	"testing"
 
@@ -357,4 +358,138 @@ func TestFormCommitHistory(t *testing.T) {
 	if !strings.Contains(shown, "› ● full") {
 		t.Errorf("screen must start on full, got %q", shown)
 	}
+}
+
+// overrideUser is the user the wizard just built: subagent for builds.
+func overrideUser() config.User {
+	return config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", BuildExecutor: "subagent"}
+}
+
+// TestOverrideGroups checks one select per differing repo key, shown only
+// inside a repo, with keep as the starting answer.
+func TestOverrideGroups(t *testing.T) {
+	hold := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.Ascii)
+	defer lipgloss.SetColorProfile(hold)
+
+	t.Run("a differing key gets one select that starts on keep", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: dispatch\n")
+		groups, err := setup.OverrideGroups(overrideUser(), root)
+		if err != nil || len(groups) != 1 {
+			t.Fatalf("groups = %d err %v, want one", len(groups), err)
+		}
+		// The sentence wraps on a narrow screen, so compare it word by word.
+		head, body := strings.Join(strings.Fields(groups[0].Header()), " "), groups[0].Content()
+		want := `build_executor is "dispatch" in this repo's .acta.yaml (shared with everyone who clones it). Yours is "subagent".`
+		if !strings.Contains(head, want) || !strings.Contains(head, "(1/1)") {
+			t.Errorf("header %q must hold %q and the count", head, want)
+		}
+		for _, opt := range []string{"keep: this repo keeps dispatch", "yours: write subagent into .acta.yaml",
+			"remove: drop it from .acta.yaml, your own value applies"} {
+			if !strings.Contains(body, opt) {
+				t.Errorf("content %q must offer %q", body, opt)
+			}
+		}
+		if !strings.Contains(body, "› ● keep") {
+			t.Errorf("content %q must start on keep", body)
+		}
+	})
+
+	t.Run("one select per differing key and none for an equal one", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: dispatch\nrepo_language: French\nplan_depth: full\n")
+		u := overrideUser()
+		u.PlanDepth = "full"
+		groups, err := setup.OverrideGroups(u, root)
+		if err != nil || len(groups) != 2 {
+			t.Fatalf("groups = %d err %v, want two (plan_depth is equal)", len(groups), err)
+		}
+	})
+
+	t.Run("a user value that is not set says so and offers no yours", func(t *testing.T) {
+		root := repoWithActaYAML(t, "repo_language: French\n")
+		groups, err := setup.OverrideGroups(config.User{ChatLanguage: "English", Style: "adhd"}, root)
+		if err != nil || len(groups) != 1 {
+			t.Fatalf("groups = %d err %v, want one", len(groups), err)
+		}
+		if !strings.Contains(groups[0].Header(), "Yours is not set.") {
+			t.Errorf("header %q must say yours is not set", groups[0].Header())
+		}
+		if strings.Contains(groups[0].Content(), "yours:") {
+			t.Errorf("content %q must not offer yours", groups[0].Content())
+		}
+	})
+
+	t.Run("no difference gives no question", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: subagent\n")
+		if groups, err := setup.OverrideGroups(overrideUser(), root); err != nil || len(groups) != 0 {
+			t.Fatalf("groups = %d err %v, want none", len(groups), err)
+		}
+	})
+
+	t.Run("no .acta.yaml gives no question", func(t *testing.T) {
+		root := repoWithActaYAML(t, "")
+		if groups, err := setup.OverrideGroups(overrideUser(), root); err != nil || len(groups) != 0 {
+			t.Fatalf("groups = %d err %v, want none", len(groups), err)
+		}
+	})
+
+	t.Run("outside a repo gives no question", func(t *testing.T) {
+		// A .acta.yaml in the working directory must not be read when the
+		// wizard found no repo.
+		t.Chdir(repoWithActaYAML(t, "build_executor: dispatch\n"))
+		if groups, err := setup.OverrideGroups(overrideUser(), ""); err != nil || len(groups) != 0 {
+			t.Fatalf("groups = %d err %v, want none", len(groups), err)
+		}
+	})
+
+	t.Run("an unreadable .acta.yaml is an error", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: [oops\n")
+		if _, err := setup.OverrideGroups(overrideUser(), root); err == nil {
+			t.Fatal("want the read error")
+		}
+	})
+}
+
+// TestAskOverrides drives the whole step without a terminal: the default is
+// keep, picks come back as answers, and a bad file costs one line only.
+func TestAskOverrides(t *testing.T) {
+	t.Run("default answer is keep and prints a collapsed line", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: dispatch\n")
+		var out strings.Builder
+		list, choices, err := setup.AskOverridesPicking(overrideUser(), root, &out, nil)
+		if err != nil || len(list) != 1 || choices["build_executor"] != "keep" {
+			t.Fatalf("list %v choices %v err %v, want one override on keep", list, choices, err)
+		}
+		if !strings.Contains(out.String(), "build_executor") || !strings.Contains(out.String(), "keep") {
+			t.Errorf("output %q must show the answered line before anything is written", out.String())
+		}
+	})
+
+	t.Run("picks come back as the answers", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: dispatch\n")
+		_, choices, err := setup.AskOverridesPicking(overrideUser(), root, io.Discard, map[string]string{"build_executor": "remove"})
+		if err != nil || choices["build_executor"] != "remove" {
+			t.Fatalf("choices %v err %v, want remove", choices, err)
+		}
+	})
+
+	t.Run("an unreadable file gives one line naming the error and no questions", func(t *testing.T) {
+		root := repoWithActaYAML(t, "build_executor: [oops\n")
+		var out strings.Builder
+		list, choices, err := setup.AskOverridesPicking(overrideUser(), root, &out, nil)
+		if err != nil || len(list) != 0 || len(choices) != 0 {
+			t.Fatalf("list %v choices %v err %v, want nothing and no failure", list, choices, err)
+		}
+		if n := strings.Count(out.String(), "\n"); n != 1 || !strings.Contains(out.String(), ".acta.yaml") {
+			t.Errorf("output %q must be one line naming the problem", out.String())
+		}
+	})
+
+	t.Run("outside a repo prints nothing", func(t *testing.T) {
+		var out strings.Builder
+		list, _, err := setup.AskOverridesPicking(overrideUser(), "", &out, nil)
+		if err != nil || len(list) != 0 || out.Len() != 0 {
+			t.Fatalf("list %v out %q err %v, want silence", list, out.String(), err)
+		}
+	})
 }
