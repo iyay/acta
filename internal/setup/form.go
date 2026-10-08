@@ -257,5 +257,100 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 		CommitHistory:  d.CommitHistory,
 		Questions:      d.Questions,
 	}
+	// The override questions depend on the answers just given, so they come
+	// as a second step after the fixed screens.
+	var err error
+	a.Overrides, a.Repo, err = askOverrides(a.User, e.RepoRoot, out, runGroup)
+	if err != nil {
+		return Answers{}, err
+	}
 	return a, nil
+}
+
+// runGroup shows one override screen and waits for the answer.
+func runGroup(q *overrideQuestion) error {
+	return huh.NewForm(q.group).WithTheme(Theme()).Run()
+}
+
+// overrideQuestion is one select about one repo key: the override it asks
+// about, the screen, and the slot the answer is written into.
+type overrideQuestion struct {
+	override config.Override
+	group    *huh.Group
+	choice   *string
+}
+
+// overrideSentence tells the user what the repo file does to this key and
+// what their own value is.
+func overrideSentence(o config.Override) string {
+	yours := fmt.Sprintf("Yours is %q.", o.Yours)
+	if o.Yours == "" {
+		yours = "Yours is not set."
+	}
+	return fmt.Sprintf("%s is %q in this repo's .acta.yaml (shared with everyone who clones it). %s", o.Key, o.Repo, yours)
+}
+
+// overrideQuestions builds one select per key the repo file changes. It
+// builds none outside a repo. A repo file that cannot be read is an error.
+func overrideQuestions(u config.User, repoRoot string) ([]*overrideQuestion, error) {
+	if repoRoot == "" {
+		return nil, nil
+	}
+	list, err := config.Overrides(u, repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	var out []*overrideQuestion
+	for i, o := range list {
+		choice := RepoKeep
+		opts := []huh.Option[string]{huh.NewOption("keep: this repo keeps "+o.Repo, RepoKeep)}
+		// With no value of its own there is nothing to write for yours.
+		if o.Yours != "" {
+			opts = append(opts, huh.NewOption("yours: write "+o.Yours+" into .acta.yaml", RepoYours))
+		}
+		remove := "remove: drop it from .acta.yaml"
+		if o.Yours != "" {
+			remove += ", your own value applies"
+		}
+		opts = append(opts, huh.NewOption(remove, RepoRemove))
+		g := huh.NewGroup(huh.NewSelect[string]().Options(opts...).Value(&choice)).
+			WithTheme(Theme()).
+			Title(ActiveTitle(o.Key, i+1, len(list))).
+			Description(ActiveDescription(overrideSentence(o)))
+		out = append(out, &overrideQuestion{override: o, group: g, choice: &choice})
+	}
+	return out, nil
+}
+
+// OverrideGroups returns the override screens for tests, without running
+// anything.
+func OverrideGroups(u config.User, repoRoot string) ([]*huh.Group, error) {
+	qs, err := overrideQuestions(u, repoRoot)
+	var out []*huh.Group
+	for _, q := range qs {
+		out = append(out, q.group)
+	}
+	return out, err
+}
+
+// askOverrides runs the override step with the user values just chosen. A
+// repo file that cannot be read costs one line and no questions: the rest of
+// setup goes on. run shows one screen; tests swap it for a fake.
+func askOverrides(u config.User, repoRoot string, out io.Writer, run func(*overrideQuestion) error) ([]config.Override, map[string]string, error) {
+	qs, err := overrideQuestions(u, repoRoot)
+	if err != nil {
+		fmt.Fprint(out, RailProblem("skipped the repo override questions, .acta.yaml could not be read: "+err.Error()))
+		return nil, nil, nil
+	}
+	var list []config.Override
+	choices := map[string]string{}
+	for _, q := range qs {
+		if err := run(q); err != nil {
+			return nil, nil, err
+		}
+		list = append(list, q.override)
+		choices[q.override.Key] = *q.choice
+		fmt.Fprint(out, Collapsed(q.override.Key+" in .acta.yaml", *q.choice))
+	}
+	return list, choices, nil
 }

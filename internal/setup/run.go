@@ -3,6 +3,7 @@ package setup
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/iyay/acta/internal/config"
 )
@@ -16,9 +17,11 @@ type Runner interface {
 // Apply carries out every action from Plan in order: it saves the user
 // config after Validate, runs installs through r, writes the block, and
 // prints hints. A failed install prints its command so the user can run it
-// by hand, then the rest carries on. It returns the first hard error: a
-// bad config value or an unknown action kind.
+// by hand, then the rest carries on. A repo action edits .acta.yaml and
+// never commits it, so the run ends with one line when the file changed. It
+// returns the first hard error: a bad config value or an unknown action kind.
 func Apply(actions []Action, r Runner, out io.Writer) error {
+	repoChanged := false
 	for _, a := range actions {
 		switch a.Kind {
 		case ActionConfig:
@@ -42,9 +45,24 @@ func Apply(actions []Action, r Runner, out io.Writer) error {
 				return err
 			}
 			fmt.Fprint(out, RailLine("✓ acta block → "+a.Path))
+		case ActionRepoSet:
+			if _, err := config.SaveRepoUser(filepath.Dir(a.Path), map[string]string{a.Key: a.Value}); err != nil {
+				return err
+			}
+			repoChanged = true
+			fmt.Fprint(out, RailLine("✓ .acta.yaml  "+a.Key+" set to "+a.Value))
+		case ActionRepoUnset:
+			if _, err := config.UnsetRepoUser(filepath.Dir(a.Path), []string{a.Key}); err != nil {
+				return err
+			}
+			repoChanged = true
+			fmt.Fprint(out, RailLine("✓ .acta.yaml  "+a.Key+" removed"))
 		default:
 			return fmt.Errorf("unknown setup action %q", a.Kind)
 		}
+	}
+	if repoChanged {
+		fmt.Fprint(out, RailLine(".acta.yaml changed; commit it when the team should get it."))
 	}
 	return nil
 }

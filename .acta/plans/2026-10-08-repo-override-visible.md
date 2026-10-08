@@ -55,9 +55,9 @@ started: "2026-10-08 07:45:45"
 **Interfaces:**
 - Consumes: `config.Overrides`, `config.UnsetRepoUser`, `config.Override` from Task 01.
 
-- [ ] Failing test: `--unset` removes a key, repeats, mixes with a set, refuses same key set and unset, refuses without `--repo`, refuses a non-repo key, makes no commit; `config show` prints `subagent (repo; yours: dispatch)` and JSON `overrides`, `from_repo` kept; run `scripts/test ./internal/cli/ -run TestConfig` and see them fail.
-- [ ] Code: a repeatable `--unset` flag on `config set`, wired to `UnsetRepoUser` inside `setRepo`; `config show` uses `Overrides` for the mark and the JSON field; update `configUsage`.
-- [ ] Run `scripts/test ./internal/cli/ -run TestConfig` passes, vet and gofmt clean, commit.
+- [x] Failing test: `--unset` removes a key, repeats, mixes with a set, refuses same key set and unset, refuses without `--repo`, refuses a non-repo key, makes no commit; `config show` prints `subagent (repo; yours: dispatch)` and JSON `overrides`, `from_repo` kept; run `scripts/test ./internal/cli/ -run TestConfig` and see them fail.
+- [x] Code: a repeatable `--unset` flag on `config set`, wired to `UnsetRepoUser` inside `setRepo`; `config show` uses `Overrides` for the mark and the JSON field; update `configUsage`.
+- [x] Run `scripts/test ./internal/cli/ -run TestConfig` passes, vet and gofmt clean, commit.
 
 ### Task 03: Session note names repo overrides
 
@@ -70,9 +70,9 @@ started: "2026-10-08 07:45:45"
 **Interfaces:**
 - Consumes: `config.Overrides`, `config.Override` from Task 01.
 
-- [ ] Failing test: an input with overrides gives one block naming key, repo value, user value and `acta config set --repo --unset <key>`; no overrides gives no block; `RepoErr` set gives no block; run `scripts/test ./internal/hook/ ./internal/cli/ -run Hook` and see them fail.
-- [ ] Code: `Overrides []config.Override` on the hook input, filled in `internal/cli/hook.go` next to `MergeRepo`; the block written next to the plugin-conflict block; check any hook text size cap in `internal/plugincheck` still holds.
-- [ ] Run `scripts/test ./internal/hook/ ./internal/cli/ -run Hook` passes, vet and gofmt clean, commit.
+- [x] Failing test: an input with overrides gives one block naming key, repo value, user value and `acta config set --repo --unset <key>`; no overrides gives no block; `RepoErr` set gives no block; run `scripts/test ./internal/hook/ ./internal/cli/ -run Hook` and see them fail.
+- [x] Code: `Overrides []config.Override` on the hook input, filled in `internal/cli/hook.go` next to `MergeRepo`; the block written next to the plugin-conflict block; check any hook text size cap in `internal/plugincheck` still holds.
+- [x] Run `scripts/test ./internal/hook/ ./internal/cli/ -run Hook` passes, vet and gofmt clean, commit.
 
 ### Task 04: Setup wizard asks about each repo override
 
@@ -85,9 +85,9 @@ started: "2026-10-08 07:45:45"
 **Interfaces:**
 - Consumes: `config.Overrides`, `config.SaveRepoUser`, `config.UnsetRepoUser` from Task 01.
 
-- [ ] Failing test: no difference gives no question; outside a repo gives no question; keep, yours and remove give no action, a set-repo action and an unset-repo action; the default is keep; an unreadable `.acta.yaml` gives one line and the other steps go on; the closing line shows only when `.acta.yaml` changed; run `scripts/test ./internal/setup/` and see them fail.
-- [ ] Code: overrides computed from the values just chosen; one select per key with keep as default; two new action kinds shown in the summary and run through `SaveRepoUser` / `UnsetRepoUser`.
-- [ ] Run `scripts/test ./internal/setup/` passes, vet and gofmt clean, commit.
+- [x] Failing test: no difference gives no question; outside a repo gives no question; keep, yours and remove give no action, a set-repo action and an unset-repo action; the default is keep; an unreadable `.acta.yaml` gives one line and the other steps go on; the closing line shows only when `.acta.yaml` changed; run `scripts/test ./internal/setup/` and see them fail.
+- [x] Code: overrides computed from the values just chosen; one select per key with keep as default; two new action kinds shown in the summary and run through `SaveRepoUser` / `UnsetRepoUser`.
+- [x] Run `scripts/test ./internal/setup/` passes, vet and gofmt clean, commit.
 
 ### Task 05: Setup skill handles repo overrides, with an eval case
 

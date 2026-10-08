@@ -163,3 +163,115 @@ func TestFormDefaultsFromCurrent(t *testing.T) {
 		t.Fatalf("empty defaults = %+v, want empty text and the first option", empty)
 	}
 }
+
+// wizardRun plays the wizard end to end without a terminal: the override
+// step takes picks, Plan makes the actions, Apply carries them out.
+func wizardRun(t *testing.T, root string, picks map[string]string) string {
+	t.Helper()
+	tempHome(t)
+	u := config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", BuildExecutor: "subagent"}
+	var out strings.Builder
+	list, choices, err := setup.AskOverridesPicking(u, root, &out, picks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := setup.Env{TTY: true, RepoRoot: root}
+	actions := setup.Plan(setup.Answers{User: u, Overrides: list, Repo: choices}, env)
+	if err := setup.Apply(actions, &fakeRunner{}, &out); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+const closingLine = ".acta.yaml changed; commit it when the team should get it."
+
+// TestRepoOverrideRun checks what lands on disk for every answer path, and
+// that the closing line shows only when .acta.yaml changed.
+func TestRepoOverrideRun(t *testing.T) {
+	const start = "# shared with the team\nbuild_executor: dispatch\nroot: docs\n"
+	read := func(t *testing.T, root string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(root, ".acta.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+
+	t.Run("keep leaves the file as it was and prints no closing line", func(t *testing.T) {
+		root := repoWithActaYAML(t, start)
+		out := wizardRun(t, root, map[string]string{"build_executor": "keep"})
+		if got := read(t, root); got != start {
+			t.Fatalf("file = %q, want it untouched", got)
+		}
+		if strings.Contains(out, closingLine) || commitCount(t, root) != 0 {
+			t.Fatalf("keep must print no closing line and commit nothing; out %q", out)
+		}
+	})
+
+	t.Run("the default answer changes nothing", func(t *testing.T) {
+		root := repoWithActaYAML(t, start)
+		out := wizardRun(t, root, nil)
+		if got := read(t, root); got != start || strings.Contains(out, closingLine) {
+			t.Fatalf("file = %q out %q, want nothing changed", got, out)
+		}
+	})
+
+	t.Run("yours writes the user's value, keeps the rest, never commits", func(t *testing.T) {
+		root := repoWithActaYAML(t, start)
+		out := wizardRun(t, root, map[string]string{"build_executor": "yours"})
+		got := read(t, root)
+		if !strings.Contains(got, "build_executor: subagent") || strings.Contains(got, "dispatch") ||
+			!strings.Contains(got, "# shared with the team") || !strings.Contains(got, "root: docs") {
+			t.Fatalf("file = %q, want subagent written and the rest kept", got)
+		}
+		if !strings.HasSuffix(out, "│  "+closingLine+"\n") {
+			t.Fatalf("output %q must end with the closing line", out)
+		}
+		if commitCount(t, root) != 0 {
+			t.Fatal("the wizard must not commit")
+		}
+	})
+
+	t.Run("remove drops the key, keeps the rest, never commits", func(t *testing.T) {
+		root := repoWithActaYAML(t, start)
+		out := wizardRun(t, root, map[string]string{"build_executor": "remove"})
+		got := read(t, root)
+		if strings.Contains(got, "build_executor") || !strings.Contains(got, "root: docs") {
+			t.Fatalf("file = %q, want the key gone and root kept", got)
+		}
+		if !strings.Contains(out, closingLine) || commitCount(t, root) != 0 {
+			t.Fatalf("out %q: want the closing line and no commit", out)
+		}
+	})
+
+	t.Run("an unreadable file is left alone, one line shows, the rest goes on", func(t *testing.T) {
+		const bad = "build_executor: [oops\n"
+		root := repoWithActaYAML(t, bad)
+		out := wizardRun(t, root, map[string]string{"build_executor": "remove"})
+		if got := read(t, root); got != bad {
+			t.Fatalf("file = %q, want it untouched", got)
+		}
+		if strings.Contains(out, closingLine) || !strings.Contains(out, "✓ config saved") {
+			t.Fatalf("out %q: want the config saved and no closing line", out)
+		}
+		if n := strings.Count(out, "▲"); n != 1 {
+			t.Fatalf("out %q: want one problem line, got %d", out, n)
+		}
+	})
+
+	t.Run("no .acta.yaml writes none", func(t *testing.T) {
+		root := repoWithActaYAML(t, "")
+		out := wizardRun(t, root, map[string]string{"build_executor": "yours"})
+		if _, err := os.Stat(filepath.Join(root, ".acta.yaml")); !os.IsNotExist(err) || strings.Contains(out, closingLine) {
+			t.Fatalf("err %v out %q, want no file and no closing line", err, out)
+		}
+	})
+
+	t.Run("outside a repo writes none", func(t *testing.T) {
+		out := wizardRun(t, "", map[string]string{"build_executor": "yours"})
+		if strings.Contains(out, closingLine) {
+			t.Fatalf("out %q, want no closing line", out)
+		}
+	})
+}
