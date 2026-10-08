@@ -90,3 +90,49 @@ func TestHookRepoFileEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// A repo .acta.yaml that differs from the user's own file reaches the session
+// note, with the user's value beside it. An equal value stays silent, and a
+// broken repo file gives no override text.
+func TestHookNamesRepoOverrides(t *testing.T) {
+	global := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("PM_VOICE_FILE", global)
+	if err := os.WriteFile(global, []byte("chat_language: Indonesian\nstyle: adhd\nrepo_language: English\nbuild_executor: dispatch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const phrase = "overrides your own setting"
+	cases := []struct {
+		name, body string
+		want       []string
+		silent     bool
+	}{
+		{"differs", "build_executor: subagent\n", []string{phrase, "build_executor is subagent here (yours: dispatch)", "acta config set --repo --unset <key>"}, false},
+		{"two keys", "build_executor: subagent\nplan_depth: minimal\n", []string{"build_executor is subagent here (yours: dispatch), plan_depth is minimal here"}, false},
+		{"same value", "build_executor: dispatch\n", nil, true},
+		{"broken file", "repo_language: [unclosed\n", nil, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte(tc.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			t.Chdir(dir)
+			out := mustRun(t, "hook", "session-start")
+			for _, w := range tc.want {
+				if !strings.Contains(out, w) {
+					t.Errorf("session-start lacks %q:\n%s", w, out)
+				}
+			}
+			if tc.silent && strings.Contains(out, phrase) {
+				t.Errorf("override text printed:\n%s", out)
+			}
+		})
+	}
+	t.Run("no repo file", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		if out := mustRun(t, "hook", "session-start"); strings.Contains(out, phrase) {
+			t.Errorf("override text printed:\n%s", out)
+		}
+	})
+}

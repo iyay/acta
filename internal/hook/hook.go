@@ -23,11 +23,12 @@ type Input struct {
 	Voice       config.User
 	VoiceExists bool
 	VoiceErr    error
-	RepoErr     error    // .acta.yaml could not be read; its repo keys are left out
-	Conflicts   []string // enabled plugins that overlap acta
-	Herdr       bool     // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
-	WikiPages   int      // pages in the project wiki; with none, the wiki line is left out
-	Running     []string // one block per plan with work going on, the lines already joined; with none, no block is printed
+	RepoErr     error             // .acta.yaml could not be read; its repo keys are left out
+	Conflicts   []string          // enabled plugins that overlap acta
+	Overrides   []config.Override // repo keys whose .acta.yaml value differs from the user's own; empty when RepoErr is set
+	Herdr       bool              // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
+	WikiPages   int               // pages in the project wiki; with none, the wiki line is left out
+	Running     []string          // one block per plan with work going on, the lines already joined; with none, no block is printed
 }
 
 // maxRunningPlans and maxRunningLines keep the block short enough to be read
@@ -141,6 +142,18 @@ func SessionStart(in Input) string {
 		fmt.Fprintf(&b, "\nA plugin that overlaps acta is enabled here: %s.\n", strings.Join(in.Conflicts, ", "))
 		b.WriteString("Tell the user once, at the start: two plugins that do the same job pull the agent two ways. To turn it off in this repo only, add this to .claude/settings.local.json:\n")
 		fmt.Fprintf(&b, "%s\n", snippet)
+	}
+	if len(in.Overrides) > 0 && in.RepoErr == nil {
+		parts := make([]string, 0, len(in.Overrides))
+		for _, o := range in.Overrides {
+			yours := o.Yours
+			if yours == "" {
+				yours = "not set"
+			}
+			parts = append(parts, fmt.Sprintf("%s is %s here (yours: %s)", o.Key, o.Repo, yours))
+		}
+		// The user may not know the repo file wins, so the agent says it once.
+		fmt.Fprintf(&b, "\nThis repo's .acta.yaml overrides your own setting: %s. Tell the user once, at the start, and say `acta config set --repo --unset <key>` brings their own value back.\n", strings.Join(parts, ", "))
 	}
 	return b.String()
 }
