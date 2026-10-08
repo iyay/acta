@@ -270,6 +270,58 @@ func TestAppendScratchAddsTextAfterOneBlankLine(t *testing.T) {
 	}
 }
 
+func TestAppendScratchFoldsRepeatAddsIntoOneCommit(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, map[string]string{".acta/specs/2026-09-25-other.md": "# Other\n"})
+	o, err := NewScratch(cfg, "idea", "", []byte("first note\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := func() int {
+		return strings.Count(strings.TrimSpace(gitRun(t, cfg.RepoRoot, "log", "--format=%H")), "\n") + 1
+	}
+	afterNew := count()
+	// Three adds in a row share one commit, so a brainstorm leaves one commit
+	// per item.
+	for _, txt := range []string{"add one\n", "add two\n", "add three\n"} {
+		if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte(txt)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := count(); got != afterNew+1 {
+		t.Errorf("three adds made %d commits, want 1", got-afterNew)
+	}
+	if msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); msg != "chore(scratch): add to 2026-09-26-idea" {
+		t.Errorf("commit message %q", msg)
+	}
+	shown := gitRun(t, cfg.RepoRoot, "show", "HEAD", "--format=", "--", o.Path)
+	for _, txt := range []string{"add one", "add two", "add three"} {
+		if !strings.Contains(shown, "+"+txt) {
+			t.Errorf("the one add commit lacks %q:\n%s", txt, shown)
+		}
+	}
+	if s := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); s != "" {
+		t.Errorf("tree dirty after the adds: %s", s)
+	}
+
+	// A write in between ends the run: the next add is a commit of its own.
+	if _, err := SetValue(cfg, mustLoad(t, cfg), "SCRATCH-1", "status", "dropped"); err != nil {
+		t.Fatal(err)
+	}
+	mid := count()
+	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("add four\n")); err != nil {
+		t.Fatal(err)
+	}
+	if got := count(); got != mid+1 {
+		t.Errorf("add after SetValue made %d commits, want 1 new one", got-mid)
+	}
+	// The SetValue commit is still there, not folded away.
+	subjects := strings.Split(gitRun(t, cfg.RepoRoot, "log", "-2", "--format=%s"), "\n")
+	if len(subjects) != 2 || !strings.HasPrefix(subjects[0], "chore(scratch): add to ") || strings.HasPrefix(subjects[1], "chore(scratch): add to ") {
+		t.Errorf("last two subjects %q", subjects)
+	}
+}
+
 func TestAppendScratchAddsTheNewlineTheBodyLacks(t *testing.T) {
 	fixNow(t)
 	// A new item's body always ends with a newline, so this is the old

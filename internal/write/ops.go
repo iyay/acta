@@ -450,6 +450,20 @@ func finish(cfg config.Config, path, msg string, dirty bool) Outcome {
 	return o
 }
 
+// finishFold is finish for a write that may join the commit before it. Only
+// scratch add uses it, so a run of adds to one item leaves one commit.
+func finishFold(cfg config.Config, path, msg string, dirty bool) Outcome {
+	o := Outcome{Path: path}
+	if !cfg.AutoCommit {
+		o.Reason = "auto_commit is off"
+		return o
+	}
+	r := gitc.CommitOrFold(cfg.RepoRoot, path, msg, dirty)
+	o.Committed, o.Reason = r.Committed, r.Reason
+	o.Skipped = !r.Committed
+	return o
+}
+
 func allowed(list []string, s string) bool {
 	for _, x := range list {
 		if x == s {
