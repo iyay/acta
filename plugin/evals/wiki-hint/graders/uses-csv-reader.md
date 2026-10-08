@@ -1,5 +1,5 @@
 ---
-# guards: Bash|Read|Edit|Write|MultiEdit
+# guards: Bash|PowerShell|Read|Edit|Write|MultiEdit
 type: regex
 pattern: 'csv\.reader'
 target:
