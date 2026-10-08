@@ -172,7 +172,7 @@ The commit is in and the verify line passes: mark the todo complete and move on.
 
 Run the plan's waves in order. Inside a wave, dispatch every task's implementer in one message, several at once; serial only for a shared file or a real dependency. Declare the waves in your todo list before dispatching. Read-only probes can run beside a wave.
 
-Implementers tick their own boxes with `acta tick`, and several of them share the plan file, so none of them commits it. When a wave is done, commit the plan file yourself, staged by path: `git commit -m "chore(plan): tick wave <n>" -- <plan path>`.
+Implementers tick their own boxes with `acta tick`, and several of them share the plan file, so none of them commits it. When a wave is done, commit the plan file yourself with `acta commit <plan path> -m "chore(plan): tick wave <n>"`. Any other plan or spec commit before landing uses `acta commit <path> -m "<message>"` too; only code commits use `git commit`.
 
 ### 1. Identify Independent Domains
 

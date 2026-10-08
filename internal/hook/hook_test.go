@@ -85,6 +85,17 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 	}
 }
 
+// Agents reach for git commit on a planning file and skip the fold. The
+// session text must say which command to use.
+func TestSessionStartNamesActaCommit(t *testing.T) {
+	const want = "Commit spec, plan and other planning files with acta commit <path> -m \"<message>\", never git commit."
+	for name, in := range map[string]Input{"voice set": korean(), "first run": {Voice: config.UserDefault()}} {
+		if out := SessionStart(in); !strings.Contains(out, want) {
+			t.Errorf("%s: missing %q", name, want)
+		}
+	}
+}
+
 func TestSessionStartPlainAndTone(t *testing.T) {
 	in := korean()
 	in.Voice.Style = "plain"

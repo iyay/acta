@@ -89,7 +89,7 @@ Classify, announce the path, then do these in order.
 2. Ask clarifying questions — one at a time, the ones that matter
 3. Present short design in chat — approach, files touched, testing
 4. Get approval — STOP and wait for an explicit yes; presenting the design and starting in the same breath skips the gate
-5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit on the checked-out branch
+5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit it with `acta commit <path> -m "<message>"`
 6. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
 7. Transition — invoke acta:slice
 
@@ -99,7 +99,7 @@ Classify, announce the path, then do these in order.
 2. Ask clarifying questions — one at a time; purpose, constraints, success criteria. Append each answer with `acta scratch add SCRATCH-n --section log`
 3. Propose 2-3 approaches — trade-offs and your recommendation
 4. Present design — in sections scaled to their complexity, approval after each section, each approved section appended to the Log
-5. Write design doc — `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPC number and hash, commit
+5. Write design doc — `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPC number and hash, commit it with `acta commit <path> -m "<message>"`
 6. Spec self-review — the four checks below
 7. User reviews written spec — ask, then wait for the yes
 8. Transition — invoke acta:slice
@@ -112,7 +112,7 @@ recommendation instead.
 
 **Where it goes.** `.acta/specs/` is the default root; `.acta.yaml`,
 `ACTA_ROOT` or `acta --root` move it. `acta list --json` shows the
-specs and plans that already exist. Write the spec plainly and commit it on the branch that is checked out (usually main). No worktree yet: `acta:build` makes the worktree once the plan is approved.
+specs and plans that already exist. Write the spec plainly and commit it on the branch that is checked out (usually main). Commit the spec, and every later edit to it, with `acta commit <path> -m "<message>"`, never `git commit`: acta folds a follow-up commit of the same file into the one before it. No worktree yet: `acta:build` makes the worktree once the plan is approved.
 
 **Finding a file.** With only an id or hash, `acta show <id|hash> --path` prints the path.
 

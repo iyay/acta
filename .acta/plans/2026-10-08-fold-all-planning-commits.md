@@ -6,6 +6,7 @@ id: PLN-0121
 created: "2026-10-08 09:32:47"
 hash: h7t7n68
 started: "2026-10-08 09:34:23"
+finished: "2026-10-08 09:46:09"
 ---
 # Every one-file planning commit folds
 
@@ -75,9 +76,9 @@ started: "2026-10-08 09:34:23"
 
 **verify:** No skill tells an agent to commit a spec or plan file with `git commit`; every place that commits a spec, a plan or plan ticks names `acta commit <path> -m "<message>"`; code commits by implementers still use `git commit`. The eval fails a run that commits a spec edit with `git commit` or leaves two commits for that spec. List each skill line changed and each grader with the wrong run it rejects.
 
-- [ ] Failing test: Must strings for `acta commit <path> -m "<message>"` in the shape, slice and build skill tests; `{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""}` in `evalCases`. Run `scripts/test ./internal/plugincheck/` and see it fail.
-- [ ] Code: shape (spec edit after `acta id`), slice (plan commit and plan edits), build (wave tick commit, plan or spec stamp commits) and land (plan tick commit before the merge) say to commit with `acta commit <path> -m "<message>"`; keep slice's implementer example `git commit -m "feat: ..."` as it is. Eval case copying `plugin/evals/repo-override-ask`'s safe scaffold shape: a repo with one spec committed as `chore(spec): assign short ids`, prompt asks to fix one word in that spec and commit it, then stop. Graders per `plugin/evals/FACTS.md` (`input_match` is a case-sensitive plain substring): `tool_used` Bash `input_match: "git commit"` max 0; `tool_used` Bash `input_match: "acta commit"` min 1. Raise a cap only to the new file size.
-- [ ] Run `scripts/test ./internal/plugincheck/ ./plugin/` passes, commit `feat(plugin): skills commit planning files with acta commit`; the orchestrator runs the eval case 3 times.
+- [x] Failing test: Must strings for `acta commit <path> -m "<message>"` in the shape, slice and build skill tests; `{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""}` in `evalCases`. Run `scripts/test ./internal/plugincheck/` and see it fail.
+- [x] Code: shape (spec edit after `acta id`), slice (plan commit and plan edits), build (wave tick commit, plan or spec stamp commits) and land (plan tick commit before the merge) say to commit with `acta commit <path> -m "<message>"`; keep slice's implementer example `git commit -m "feat: ..."` as it is. Eval case copying `plugin/evals/repo-override-ask`'s safe scaffold shape: a repo with one spec committed as `chore(spec): assign short ids`, prompt asks to fix one word in that spec and commit it, then stop. Graders per `plugin/evals/FACTS.md` (`input_match` is a case-sensitive plain substring): `tool_used` Bash `input_match: "git commit"` max 0; `tool_used` Bash `input_match: "acta commit"` min 1. Raise a cap only to the new file size.
+- [x] Run `scripts/test ./internal/plugincheck/ ./plugin/` passes, commit `feat(plugin): skills commit planning files with acta commit`; the orchestrator runs the eval case 3 times.
 
 ### Task 05: Wiki line and version bump
 
@@ -89,3 +90,27 @@ started: "2026-10-08 09:34:23"
 - [x] Failing test: none new; `internal/plugincheck` checks the three version files agree.
 - [x] Code: rewrite the fold line in `commit-subject-form.md` and bump its `timestamp`; set `"version": "0.1.43"` in the three files.
 - [x] Run `scripts/test ./internal/plugincheck/` passes, commit `chore(plugin): bump version to 0.1.43`.
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes; the planning-commit-folds eval passes 3 runs of 3.
+
+- [x] Session note (`internal/hook`, next to the other always-on rules, and the hook fallback text in `plugin/hooks/` if it carries those rules): one plain sentence telling the agent to commit spec, plan and other planning files with `acta commit <path> -m "<message>"`, never `git commit`; a hook test pins it.
+- [x] `plugin/evals/planning-commit-folds/scaffold.sh`: copy the real git into `bin/git` the way `plugin/evals/state-resume/scaffold.sh` does, so a commit can run in the eval sandbox.
+- [x] `internal/gitc/gitc.go` fold message: keep HEAD's body exactly as written (blank lines and indents stay); add the new subject as one line before HEAD's trailer block, so trailers such as `Co-Authored-By` stay trailers; a gitc test pins both.
+- [x] `internal/cli/commit_test.go`: a symlink inside the planning root that points outside it is refused with no commit.
+- [x] Commit: `polish: review notes for PLN-0121`
+
+## Review notes
+
+- Round 1 CLEAN on both axes. `[fix]` NOTEs went into the Task 06 polish: trailers kept through a fold, symlink escape test, and, after the planning-commit-folds eval failed because no acta skill loads for a plain "commit this spec" ask, a session-note rule that sends planning commits through `acta commit`. Polish review CLEAN on both axes.
+- The eval prompt gained "File edit tools are off here, so make the change with a shell command.", since `scripts/eval` grants only Bash and Read; it names neither commit command.
+- `acta doctor --fix` commits one path through `CommitPaths`, so it can fold into the user's own unpushed `chore(` commit of that file; `chore: doctor fix` has no `(`, so nothing folds into it.
+- `acta commit` with a `feat(...)` message on a planning file whose HEAD is a `chore(` commit folds, and the feat subject becomes a body line; that follows the spec.
+- `acta commit --root . <file>` treats the whole repo as the planning root; that only happens when the user picks that root.
+- The cli test for "acta id then acta commit" makes its first commit with git; a hand run with the built binary gave one commit holding both subjects.
+- A multi-line `-m` is matched one line at a time, so a repeat fold can add it again; `git commit -m` cleanup drops trailing spaces in HEAD's body.
+- The symlink test checks refusal and commit count, not the error wording.
+- Byte caps for build and slice keep slack from before this plan.

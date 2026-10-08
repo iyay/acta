@@ -746,6 +746,27 @@ func TestCommitOrFold(t *testing.T) {
 		}
 	})
 
+	// HEAD may hold a hand-written body and a trailer block. The fold must keep
+	// the body as written and keep the trailers readable as trailers.
+	t.Run("a fold keeps the body and the trailer block", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		head := msg + "\n\nIntro paragraph.\n  indented line\n\nCo-Authored-By: X <x@x>\n"
+		msgFile := filepath.Join(t.TempDir(), "msg.txt")
+		writeFile(t, msgFile, head)
+		git(t, repo, "commit", "-q", "--amend", "-F", msgFile)
+		writeFile(t, a, "one\ntwo\n")
+		if r := CommitOrFold(repo, a, "chore(spec): fix wording", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		want := msg + "\n\nIntro paragraph.\n  indented line\nchore(spec): fix wording\n\nCo-Authored-By: X <x@x>"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%(trailers)"); got != "Co-Authored-By: X <x@x>" {
+			t.Fatalf("trailers %q, want the Co-Authored-By line", got)
+		}
+	})
+
 	// Each case breaks one fold rule. The call must make a new commit.
 	rules := []struct {
 		name  string

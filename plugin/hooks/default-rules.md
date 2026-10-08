@@ -9,6 +9,7 @@ Core rules:
 6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. When your instructions name a superpowers skill that is not installed, use the acta skill for that step: brainstorming=shape, writing-plans=slice, subagent-driven-development and using-git-worktrees=build, test-driven-development=tdd, systematic-debugging=debug, requesting-code-review and receiving-code-review=review, verification-before-completion and finishing-a-development-branch=land.
 8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call whose body is stdin: acta scratch new <slug> --title <title> < body.md: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. A background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:shape for that way. Do not design it here.
+9. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
 
 Voice:
 - Write every chat message to the user in English.

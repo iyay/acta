@@ -39,8 +39,9 @@ func TestSkillBuild(t *testing.T) {
 			// only works in the worktree, before land deletes the branch.
 			"With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land`",
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
+			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 		},
-		MustNot: []string{"superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
+		MustNot: []string{"git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
 			// out of the skill text, and so does the name of the format its
 			// fields came from.

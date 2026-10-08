@@ -14,7 +14,7 @@ Write the plan for a skilled implementer who knows nothing about this codebase, 
 **Save plans to:** `.acta/plans/YYYY-MM-DD-<feature-name>.md` (`.acta/` is the default root; `.acta.yaml`, `ACTA_ROOT` or `acta --root` can move it).
 - (User preferences for plan location override this default)
 - Right after saving, run `acta id` right after so the plan gets its PLN number and hash before anyone refers to it.
-- Commit the plan on main. The worktree branch starts from that commit, so it carries the plan.
+- Commit the plan on main with `acta commit <path> -m "<message>"`, never `git commit`; commit every later edit to a plan or spec the same way. The worktree branch starts from that commit, so it carries the plan.
 - A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.
 
 ## Plan depth
@@ -26,7 +26,7 @@ Pick the depth in this order, and do not ask when one answers: the argument of `
 
 The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
 
-A minimal plan needs no yes: save it, run `acta id`, commit it on main, tell the user its path in one line, and invoke `acta:build` in the same turn. The spec still needs its yes first.
+A minimal plan needs no yes: save it, run `acta id`, commit it on main with `acta commit <path> -m "<message>"`, tell the user its path in one line, and invoke `acta:build` in the same turn. The spec still needs its yes first.
 
 ## Scope Check
 

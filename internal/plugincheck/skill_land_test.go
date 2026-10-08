@@ -24,7 +24,7 @@ func TestSkillLand(t *testing.T) {
 			"Thinking \"just this once\"", "Tired and wanting work over",
 			"| \"I'm tired\" | Tired is not an excuse |",
 			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
-			"chore(plan): tick <plan>", "before the merge, so the ticks reach main",
+			"chore(plan): tick <plan>", `acta commit <plan path> -m "chore(plan): tick <plan>"`, "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
 			"acta wiki check <base>..<head>", "the wiki pages the branch added or changed",
