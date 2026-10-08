@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-10-07 09:32:23"
 schema: "1"
 started: "2026-10-07 13:24:34"
+finished: "2026-10-08 10:21:02"
 ---
 # Curl install script and release pipeline
 
