@@ -5,6 +5,7 @@ depth: minimal
 id: PLN-0122
 created: "2026-10-08 10:23:15"
 hash: w5k2o2v
+started: "2026-10-08 10:26:28"
 ---
 # Curl install script and release pipeline
 
@@ -40,9 +41,9 @@ hash: w5k2o2v
 
 **verify:** `canFold` returns false whenever any tag (lightweight or annotated) points at HEAD, and every older guard still holds; a tagged commit's hash never changes through `CommitOrFold`. List each path checked and its result.
 
-- [ ] Failing test: in `TestCommitOrFold`, a one-file `chore(spec): x` HEAD with a lightweight tag on it, then a second edit of that file, gives a new commit and the tag still points at the old hash; same with an annotated tag. Run `scripts/test ./internal/gitc/ -run TestCommitOrFold` and see it fail.
-- [ ] Code: in `canFold`, before the branch checks, run `git tag --points-at HEAD`; any output or error means false. One plain comment: a tag marks a release, so its commit must never be rewritten.
-- [ ] Run `scripts/test ./internal/gitc/` passes, `go vet ./internal/gitc/` and `gofmt -l internal/gitc` clean, commit `fix(gitc): never fold a commit a tag points at`.
+- [x] Failing test: in `TestCommitOrFold`, a one-file `chore(spec): x` HEAD with a lightweight tag on it, then a second edit of that file, gives a new commit and the tag still points at the old hash; same with an annotated tag. Run `scripts/test ./internal/gitc/ -run TestCommitOrFold` and see it fail.
+- [x] Code: in `canFold`, before the branch checks, run `git tag --points-at HEAD`; any output or error means false. One plain comment: a tag marks a release, so its commit must never be rewritten.
+- [x] Run `scripts/test ./internal/gitc/` passes, `go vet ./internal/gitc/` and `gofmt -l internal/gitc` clean, commit `fix(gitc): never fold a commit a tag points at`.
 
 ### Task 02: Hooks fire on the PowerShell tool
 
@@ -52,9 +53,9 @@ hash: w5k2o2v
 
 **verify:** Every hook check that reads `tool_input.command` for a `Bash` call does the same for a `PowerShell` call, and the matchers name `PowerShell` wherever they name `Bash`. List each hook check and its result for both tool names.
 
-- [ ] Failing test: in `plugin_test.go` change the expected PreToolUse matcher to `Bash|PowerShell|Read|Edit|Write|MultiEdit` and PostToolUse to `Bash|PowerShell`. In `gotest_test.go` add a case to `TestGoTestBlock` that sends `tool_name: "PowerShell"` with `tool_input.command: "go test ./..."` in a repo with `scripts/test` and expects the block. Run `scripts/test ./internal/plugincheck/ ./internal/hook/ -run 'TestGoTestBlock|TestHooksJSON'` and see the plugincheck one fail.
-- [ ] Code: change the two matchers in `hooks.json`. `internal/hook` already reads `ToolInput.Command` without looking at `ToolName`, so no Go change unless the new hook case fails; then make it treat `PowerShell` like `Bash`.
-- [ ] Run the same command passes, commit `feat(hooks): fire Bash hooks on the PowerShell tool too`.
+- [x] Failing test: in `plugin_test.go` change the expected PreToolUse matcher to `Bash|PowerShell|Read|Edit|Write|MultiEdit` and PostToolUse to `Bash|PowerShell`. In `gotest_test.go` add a case to `TestGoTestBlock` that sends `tool_name: "PowerShell"` with `tool_input.command: "go test ./..."` in a repo with `scripts/test` and expects the block. Run `scripts/test ./internal/plugincheck/ ./internal/hook/ -run 'TestGoTestBlock|TestHooksJSON'` and see the plugincheck one fail.
+- [x] Code: change the two matchers in `hooks.json`. `internal/hook` already reads `ToolInput.Command` without looking at `ToolName`, so no Go change unless the new hook case fails; then make it treat `PowerShell` like `Bash`.
+- [x] Run the same command passes, commit `feat(hooks): fire Bash hooks on the PowerShell tool too`.
 
 ### Task 03: scripts/release bumps, gates and tags
 
@@ -63,9 +64,9 @@ hash: w5k2o2v
 
 **verify:** `scripts/release` makes exactly one commit `chore(release): vX.Y.Z` and one annotated tag `vX.Y.Z` only when the branch is `main`, the tree is clean, the tag is new and every gate is green; on every other path it leaves no commit, no tag and the three version files unchanged. It never runs `git push`. List each path checked and its result.
 
-- [ ] Failing test: `scripts/release_test.go` (package `scripts`, reuse the fake-binary pattern of `runScript` in `test_test.go`). Each case builds a temp git repo on `main` holding a copy of `scripts/release`, a fake `scripts/test` that exits 0 or 1, and the three version files at `0.1.43` with the same field shape as the real ones; a fake `go` and `gofmt` on PATH exit 0 with no output. Cases: `patch` gives `0.1.44` in all three files, one commit, tag `v0.1.44` annotated, output names `git push origin main v0.1.44`; `minor` gives `0.2.0`; `1.2.3` gives `1.2.3`; bad argument fails; on another branch fails; dirty tree fails; existing tag fails; red `scripts/test` fails with files restored, no new commit, no tag. Run `scripts/test ./scripts/ -run TestRelease` and see it fail.
-- [ ] Code: `scripts/release`, POSIX `sh`, `set -eu`, `cd` to the repo root. Read the current version from `plugin/.claude-plugin/plugin.json`; compute the new one; check branch, `git status --porcelain`, `git rev-parse -q --verify refs/tags/vX.Y.Z`; rewrite the `"version": "..."` line in the three files with `sed` into a temp file and `mv`; run `scripts/test --full`, `go vet ./...`, and fail when `gofmt -l .` prints anything; on failure `git checkout --` the three files and exit 1; then `git commit -m "chore(release): vX.Y.Z" -- <three files>`, `git tag -a vX.Y.Z -m vX.Y.Z`, print the push line. Mark it executable.
-- [ ] Run `scripts/test ./scripts/` passes, commit `feat(scripts): release script bumps the version, runs the gates and tags`.
+- [x] Failing test: `scripts/release_test.go` (package `scripts`, reuse the fake-binary pattern of `runScript` in `test_test.go`). Each case builds a temp git repo on `main` holding a copy of `scripts/release`, a fake `scripts/test` that exits 0 or 1, and the three version files at `0.1.43` with the same field shape as the real ones; a fake `go` and `gofmt` on PATH exit 0 with no output. Cases: `patch` gives `0.1.44` in all three files, one commit, tag `v0.1.44` annotated, output names `git push origin main v0.1.44`; `minor` gives `0.2.0`; `1.2.3` gives `1.2.3`; bad argument fails; on another branch fails; dirty tree fails; existing tag fails; red `scripts/test` fails with files restored, no new commit, no tag. Run `scripts/test ./scripts/ -run TestRelease` and see it fail.
+- [x] Code: `scripts/release`, POSIX `sh`, `set -eu`, `cd` to the repo root. Read the current version from `plugin/.claude-plugin/plugin.json`; compute the new one; check branch, `git status --porcelain`, `git rev-parse -q --verify refs/tags/vX.Y.Z`; rewrite the `"version": "..."` line in the three files with `sed` into a temp file and `mv`; run `scripts/test --full`, `go vet ./...`, and fail when `gofmt -l .` prints anything; on failure `git checkout --` the three files and exit 1; then `git commit -m "chore(release): vX.Y.Z" -- <three files>`, `git tag -a vX.Y.Z -m vX.Y.Z`, print the push line. Mark it executable.
+- [x] Run `scripts/test ./scripts/` passes, commit `feat(scripts): release script bumps the version, runs the gates and tags`.
 
 ### Task 04: install.sh fetches a hash-checked binary
 
@@ -74,9 +75,9 @@ hash: w5k2o2v
 
 **verify:** `install.sh` puts `acta` in the install dir only when the archive's SHA-256 matches its line in `checksums.txt`; on a mismatch, a missing line, a failed download or an unknown OS or arch it exits non-zero and the install dir holds no `acta`. It never edits rc files. List each path checked and its result.
 
-- [ ] Failing test: `scripts/install_test.go` builds a `.tar.gz` holding a fake `acta` shell script that writes its args to a file, serves it plus `checksums.txt` from `httptest.Server` under both `/latest/download/` and `/download/v9.9.9/`, and runs `sh scripts/install.sh` with `ACTA_DOWNLOAD_URL`, `ACTA_INSTALL_DIR` set to temp dirs and a fake `uname` on PATH. Cases: good hash installs and the fake acta was called with `setup` or the output says `run: acta setup`; `ACTA_VERSION=v9.9.9` hits the pinned path; bad hash fails and nothing lands; fake `uname` saying `Plan9` fails with a message naming the platform; install dir not on PATH prints an `export PATH=` line. Run `scripts/test ./scripts/ -run TestInstall` and see it fail.
-- [ ] Code: `scripts/install.sh`, POSIX `sh`, `set -eu`. Map `uname -s` (`Darwin`, `Linux`) and `uname -m` (`x86_64`/`amd64`, `arm64`/`aarch64`) to the names in Global Constraints; download with `curl -fsSL` into `mktemp -d` (cleaned by `trap`); pick `sha256sum` else `shasum -a 256`; compare to the `checksums.txt` line for the archive; `tar -xzf` and install with `mkdir -p` plus `cp` and `chmod 755`; print the PATH line when the dir is not in `$PATH`; when `( : </dev/tty ) 2>/dev/null` works run `acta setup </dev/tty`, else print `run: acta setup`.
-- [ ] Run `scripts/test ./scripts/` passes, commit `feat(scripts): install.sh downloads, checks and installs acta`.
+- [x] Failing test: `scripts/install_test.go` builds a `.tar.gz` holding a fake `acta` shell script that writes its args to a file, serves it plus `checksums.txt` from `httptest.Server` under both `/latest/download/` and `/download/v9.9.9/`, and runs `sh scripts/install.sh` with `ACTA_DOWNLOAD_URL`, `ACTA_INSTALL_DIR` set to temp dirs and a fake `uname` on PATH. Cases: good hash installs and the fake acta was called with `setup` or the output says `run: acta setup`; `ACTA_VERSION=v9.9.9` hits the pinned path; bad hash fails and nothing lands; fake `uname` saying `Plan9` fails with a message naming the platform; install dir not on PATH prints an `export PATH=` line. Run `scripts/test ./scripts/ -run TestInstall` and see it fail.
+- [x] Code: `scripts/install.sh`, POSIX `sh`, `set -eu`. Map `uname -s` (`Darwin`, `Linux`) and `uname -m` (`x86_64`/`amd64`, `arm64`/`aarch64`) to the names in Global Constraints; download with `curl -fsSL` into `mktemp -d` (cleaned by `trap`); pick `sha256sum` else `shasum -a 256`; compare to the `checksums.txt` line for the archive; `tar -xzf` and install with `mkdir -p` plus `cp` and `chmod 755`; print the PATH line when the dir is not in `$PATH`; when `( : </dev/tty ) 2>/dev/null` works run `acta setup </dev/tty`, else print `run: acta setup`.
+- [x] Run `scripts/test ./scripts/` passes, commit `feat(scripts): install.sh downloads, checks and installs acta`.
 
 ### Task 05: goreleaser, workflows and install.ps1
 
