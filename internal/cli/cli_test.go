@@ -198,7 +198,9 @@ func TestScratchAddAppendsAndCommits(t *testing.T) {
 	if want := "# idea\n\n## Words\n\n### 2026-09-26\n\nfirst note\n\n### 2026-09-26\n\nanswer ✓\n\n## Context\n\n## Log\n\n## Open questions\n"; board.Parse(src).Body != want {
 		t.Fatalf("body %q want %q", src, want)
 	}
-	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "chore(scratch): add to ") {
+	// The add folds into the commit that made the item: its subject stays on
+	// top and the add subject is a body line.
+	if msg, _ := exec.Command("git", "-C", dir, "log", "-1", "--format=%B").CombinedOutput(); !strings.HasPrefix(strings.TrimSpace(string(msg)), "chore(scratch): new ") || !strings.Contains(string(msg), "chore(scratch): add to ") {
 		t.Fatalf("commit message %q", msg)
 	}
 }

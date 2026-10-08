@@ -331,8 +331,13 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash ref New-261" {
+	// The ref write folds into the fixed_in commit: the first subject stays on
+	// top and the ref subject is a body line.
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash fixed_in d2277688f" {
 		t.Fatalf("commit message %q", got)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%b"); !strings.Contains(got, "chore(bug): bugs/2026-09-24-crash ref New-261") {
+		t.Fatalf("commit body %q lacks the ref subject", got)
 	}
 }
 
@@ -437,5 +442,82 @@ func TestSetValueFixedInAndRefKindsAndBounds(t *testing.T) {
 	if out := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); out != "" {
 		// only the two boundary writes above committed; nothing dirty remains.
 		t.Fatalf("dirty files after bounds: %s", out)
+	}
+}
+
+// commitCount counts every commit on the current branch.
+func commitCount(t *testing.T, cfg config.Config) int {
+	t.Helper()
+	return strings.Count(gitRun(t, cfg.RepoRoot, "log", "--format=%H"), "\n") + 1
+}
+
+// Two writes on one file in a row must share one commit and keep both
+// subjects. A write on another file between them ends the run.
+func TestSetValueFoldsRepeatWritesOnOneFile(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	const bug = "bugs/2026-09-24-crash"
+	if _, err := SetValue(cfg, mustLoad(t, cfg), bug, "status", "fixed"); err != nil {
+		t.Fatal(err)
+	}
+	afterFirst := commitCount(t, cfg)
+	if _, err := SetValue(cfg, mustLoad(t, cfg), bug, "priority", "high"); err != nil {
+		t.Fatal(err)
+	}
+	if got := commitCount(t, cfg); got != afterFirst {
+		t.Fatalf("second write made %d new commits, want 0 (folded)", got-afterFirst)
+	}
+	msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%B")
+	for _, want := range []string{"chore(bug): bugs/2026-09-24-crash status fixed", "chore(bug): bugs/2026-09-24-crash priority high"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("folded commit message lacks %q:\n%s", want, msg)
+		}
+	}
+
+	// A write on another file in between: the next write on the bug is a new commit.
+	if _, err := SetValue(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "status", "in-progress"); err != nil {
+		t.Fatal(err)
+	}
+	mid := commitCount(t, cfg)
+	if mid != afterFirst+1 {
+		t.Fatalf("write on another file made %d commits, want 1", mid-afterFirst)
+	}
+	if _, err := SetValue(cfg, mustLoad(t, cfg), bug, "priority", "low"); err != nil {
+		t.Fatal(err)
+	}
+	if got := commitCount(t, cfg); got != mid+1 {
+		t.Errorf("write after another file made %d commits, want 1 new one", got-mid)
+	}
+}
+
+// Two state writes on one plan leave one commit with both subjects.
+func TestSetStateFoldsRepeatWrites(t *testing.T) {
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-10-05-live-work-state.md": statePlanWithID})
+	const plan = "plans/2026-10-05-live-work-state"
+	if _, err := SetState(cfg, mustLoad(t, cfg), plan, "next", []byte("first\n"), false); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, cfg)
+	if _, err := SetState(cfg, mustLoad(t, cfg), plan, "findings", []byte("second\n"), false); err != nil {
+		t.Fatal(err)
+	}
+	if got := commitCount(t, cfg); got != before {
+		t.Errorf("second state write made %d new commits, want 0", got-before)
+	}
+}
+
+// Two debt notes added to one plan's debt file leave one commit.
+func TestNewDebtFoldsRepeatAppends(t *testing.T) {
+	fixNowAt(t, "2026-09-27")
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("one\n")); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, cfg)
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("two\n")); err != nil {
+		t.Fatal(err)
+	}
+	if got := commitCount(t, cfg); got != before {
+		t.Errorf("second debt append made %d new commits, want 0", got-before)
 	}
 }

@@ -438,21 +438,9 @@ func dirtyBefore(cfg config.Config, path string) (bool, error) {
 	return gitc.IsDirty(cfg.RepoRoot, path)
 }
 
+// finish commits one planning file. Every write goes through gitc.CommitOrFold,
+// so a run of writes on one file leaves one commit that keeps every subject.
 func finish(cfg config.Config, path, msg string, dirty bool) Outcome {
-	o := Outcome{Path: path}
-	if !cfg.AutoCommit {
-		o.Reason = "auto_commit is off"
-		return o
-	}
-	r := gitc.Commit(cfg.RepoRoot, path, msg, dirty)
-	o.Committed, o.Reason = r.Committed, r.Reason
-	o.Skipped = !r.Committed
-	return o
-}
-
-// finishFold is finish for a write that may join the commit before it. Only
-// scratch add uses it, so a run of adds to one item leaves one commit.
-func finishFold(cfg config.Config, path, msg string, dirty bool) Outcome {
 	o := Outcome{Path: path}
 	if !cfg.AutoCommit {
 		o.Reason = "auto_commit is off"
