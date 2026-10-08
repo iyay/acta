@@ -3,6 +3,7 @@ parent: scratch/2026-10-08-fold-all-planning-commits
 created: "2026-10-08 09:01:33"
 id: SPC-0112
 hash: wg0p3rt
+started: "2026-10-08 09:34:23"
 ---
 # Every one-file planning commit folds, not only scratch add
 
