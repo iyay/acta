@@ -3,6 +3,8 @@ parent: specs/2026-10-08-curl-install-release-pipeline-design
 created: "2026-10-08 12:12:02"
 id: SPC-0115
 hash: xx9en35
+started: "2026-10-08 12:55:12"
+finished: "2026-10-08 12:57:09"
 ---
 # First release ships macOS and Linux only, and CI cross-builds every release target
 

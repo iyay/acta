@@ -14,7 +14,6 @@ builds:
     goos:
       - darwin
       - linux
-      - windows
     goarch:
       - amd64
       - arm64
@@ -25,19 +24,13 @@ archives:
     name_template: "acta_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
-    # Windows users expect a zip.
-    format_overrides:
-      - goos: windows
-        formats:
-          - zip
 
-# The installers look for this exact file name.
+# The installer looks for this exact file name.
 checksum:
   name_template: checksums.txt
   algorithm: sha256
 
 release:
-  # The installers are release assets, so one fixed link fetches each of them.
+  # The installer is a release asset, so one fixed link fetches it.
   extra_files:
     - glob: scripts/install.sh
-    - glob: scripts/install.ps1
