@@ -32,6 +32,8 @@ var evalCases = []struct {
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
 	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
 	{"repo-override-ask", "skills/setup/SKILL.md", "is committed and shared"},
+	{"polish-light-review", "skills/review/SKILL.md", "Light review: the orchestrator reads the full diff"},
+	{"polish-full-review", "skills/review/SKILL.md", "## Review tiers"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it

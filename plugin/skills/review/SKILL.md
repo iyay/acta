@@ -1,6 +1,6 @@
 ---
 name: review
-description: "acta: Use once, when every task of a plan is committed, and on each fix round after that, and over a polish commit. Dispatches two read-only reviewers in parallel (Spec axis and Standards axis) over an explicit git range, sorts every finding into BLOCKER or NOTE, and stops after three rounds. The CLEAN-round flow lives in `## After a CLEAN round`. Also covers how to receive findings."
+description: "acta: Use once, when every task of a plan is committed, on each fix round, and over a polish commit. By `## Review tiers`, runs two read-only reviewers (Spec axis and Standards axis) in parallel or a light inline review, over an explicit git range; sorts findings into BLOCKER or NOTE; stops at three rounds. CLEAN-round flow: `## After a CLEAN round`. Also covers receiving findings."
 ---
 
 # Review
@@ -93,9 +93,9 @@ This is the one place that says how deep a review goes. Tiers apply to round 1 a
 - **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
 - **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.
 
-Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the two reviewers.
+Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the two reviewers. A full review means you dispatch the two reviewer subagents. Reading the diff yourself never replaces the two reviewers, however small the diff.
 
-Work another agent wrote (the `dispatch` executor) always takes the two reviewers, except in the light tier.
+Work another agent wrote (the `dispatch` executor) takes the two reviewers in the full tier. A light review that finds any line outside the light tier switches to the full review.
 
 ## Receiving findings
 

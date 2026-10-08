@@ -337,7 +337,7 @@ One file per check under `graders/`. The grader's name is the filename without
 | Type | Frontmatter options | Passes when |
 | --- | --- | --- |
 | `regex` | `pattern`, `flags`, `match`, `target` | the JavaScript regex `pattern` is found in `target`. `match: not_contains` requires absence, `match: "count:N"` requires exactly N. Case-insensitivity is `flags: i`, not `(?i)` |
-| `tool_used` | `tool`, `input_match`, `min`, `max` | the number of calls to `tool` whose JSON-encoded input matches `input_match` is between `min` (default 1) and `max` (default unlimited). `min: 0` and `max: 0` together assert it was never called |
+| `tool_used` | `tool`, `input_match`, `min`, `max` | the number of calls to `tool` whose JSON-encoded input contains `input_match` is between `min` (default 1) and `max` (default unlimited). `min: 0` and `max: 0` together assert it was never called. `input_match` is a case-sensitive plain substring, not a regex (measured 2026-10-08: `Axis` missed "Spec axis", and `[Aa]xis` never matched) |
 | `tool_order` | `before`, `after` | both tools were called and the first `before` call precedes the first `after` call |
 | `file_exists` | `path`, `exists` | a file Claude created during the run matches the `path` glob, or none does with `exists: false` |
 | `llm` | `criteria`, `focus` | a judge model votes PASS on the rubric in at least two of three votes. In the `.md` layout the file body is the criteria |
