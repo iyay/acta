@@ -19,5 +19,5 @@ Design:
 - Skill text is plain and fits every repo: no repo paths, no user names.
 - `internal/plugincheck/skill_review_test.go` swaps the required strings that name the old rule for the new ones, and refuses the old sentences ("Small means one file", "Every polish commit gets the two reviewers").
 - `plugin/skills/build/dispatch.md` changes only if a line there still says the polish always gets the two reviewers.
-- New eval case `polish-light-review`, listed in `evalCases`: a polish that only changes comments is reviewed inline with no reviewer subagent, and a polish with one logic line still gets the two reviewers.
+- Two new eval cases, each listed in `evalCases`, because one run can only face one polish: `polish-light-review`, where a polish that only changes comments is reviewed inline with no reviewer subagent, and `polish-full-review`, where a polish with one logic line still gets the two reviewers.
 - The last task adds 1 to the patch version in the three plugin files.
