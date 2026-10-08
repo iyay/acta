@@ -1,6 +1,6 @@
 {
   "name": "acta",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "private": true,
   "description": "omp extension for the acta plugin: session rules and the voice reminder",
   "pi": {

@@ -17,6 +17,7 @@ import (
 // Result says whether the commit happened, and why not when it did not.
 type Result struct {
 	Committed bool
+	Folded    bool // the change went into the last commit instead of a new one
 	Reason    string
 }
 
@@ -45,6 +46,109 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 		return Result{Reason: "commit failed: " + err.Error()}
 	}
 	return Result{Committed: true}
+}
+
+// CommitOrFold is Commit, except that it amends HEAD instead of adding a new
+// commit when HEAD is this tool's own earlier commit of the same file and
+// nothing else can hold that commit. A run of repeat edits then leaves one
+// commit. Any doubt, or a failed amend, ends in the plain Commit.
+func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
+	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
+		return Result{Reason: "not a git repo"}
+	}
+	if wasDirty {
+		return Result{Reason: "file had other uncommitted changes"}
+	}
+	if reason := busy(repo); reason != "" {
+		return Result{Reason: reason}
+	}
+	if canFold(repo, path, msg) {
+		if _, err := run(repo, "add", "--", path); err == nil {
+			if _, err := run(repo, "commit", "--amend", "--only", "-m", msg, "--", path); err == nil {
+				return Result{Committed: true, Folded: true}
+			}
+		}
+	}
+	return Commit(repo, path, msg, wasDirty)
+}
+
+// canFold says whether HEAD may be rewritten with a new edit of path. Each
+// rule keeps a rewrite from hurting someone else, and any error means no.
+func canFold(repo, path, msg string) bool {
+	// A file with no change would only rewrite HEAD. Commit says no to it.
+	if dirty, err := IsDirty(repo, path); err != nil || !dirty {
+		return false
+	}
+	// Same subject, one parent and the same author as this user, so HEAD is
+	// our own repeat commit and not a merge or a colleague's work.
+	out, err := run(repo, "log", "-1", "--format=%s%x00%an%x00%P")
+	if err != nil {
+		return false
+	}
+	f := strings.Split(strings.TrimRight(out, "\n"), "\x00")
+	if len(f) != 3 || f[0] != msg || len(strings.Fields(f[2])) != 1 {
+		return false
+	}
+	if me := UserName(repo); me == "" || f[1] != me {
+		return false
+	}
+	// HEAD must hold only this file. Asking with and without the path gives
+	// the same list when nothing else is in it.
+	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	one, err2 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD", "--", path)
+	if err1 != nil || err2 != nil || one == "" || all != one {
+		return false
+	}
+	// A commit that was pushed, or can be fetched from a remote, is shared.
+	if out, err := run(repo, "branch", "-r", "--contains", "HEAD"); err != nil || strings.TrimSpace(out) != "" {
+		return false
+	}
+	// HEAD must sit on a branch, and no other branch may hold it.
+	cur, err := run(repo, "symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil {
+		return false
+	}
+	branches, err := run(repo, "for-each-ref", "--contains", "HEAD", "--format=%(refname:short)", "refs/heads")
+	if err != nil {
+		return false
+	}
+	for _, b := range strings.Fields(branches) {
+		if b != strings.TrimSpace(cur) {
+			return false
+		}
+	}
+	return !otherCheckoutHolds(repo)
+}
+
+// otherCheckoutHolds says whether another worktree stands on HEAD or on a
+// commit built on it, or whether that cannot be told.
+func otherCheckoutHolds(repo string) bool {
+	top, err := run(repo, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return true
+	}
+	head, err := run(repo, "rev-parse", "HEAD")
+	if err != nil {
+		return true
+	}
+	trees, err := Worktrees(repo)
+	if err != nil {
+		return true
+	}
+	for _, w := range trees {
+		if w.Path == strings.TrimSpace(top) {
+			continue
+		}
+		theirs, err := run(w.Path, "rev-parse", "HEAD")
+		if err != nil {
+			return true
+		}
+		held, err := IsAncestor(repo, strings.TrimSpace(head), strings.TrimSpace(theirs))
+		if err != nil || held {
+			return true
+		}
+	}
+	return false
 }
 
 // CommitPaths commits only the listed paths in one commit. A dirty file
