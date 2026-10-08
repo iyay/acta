@@ -7,12 +7,20 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/theme"
 )
 
-const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--commit-history H] [--coding-guide G]"
+const configUsage = "usage: acta config show [--json] | acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme] | acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--commit-history H] [--coding-guide G] [--unset KEY]..."
+
+// keyList is a flag that can repeat, so --unset can name several keys.
+type keyList []string
+
+func (k *keyList) String() string     { return strings.Join(*k, ",") }
+func (k *keyList) Set(v string) error { *k = append(*k, v); return nil }
 
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -44,6 +52,12 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return exitBadInput
 		}
+		// Keep the user's own values: Overrides compares them with the repo's.
+		overrides, err := config.Overrides(v, cfg.RepoRoot)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return exitBadInput
+		}
 		v, from, err := config.MergeRepo(v, cfg.RepoRoot)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
@@ -71,11 +85,26 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			questions, questionsMark = "one", " (default)"
 		}
 		// Name the values the repo set, so the user knows which file to edit.
+		// When the repo changes what the user chose, say what they chose.
 		mark := func(k string) string {
+			for _, o := range overrides {
+				if o.Key != k {
+					continue
+				}
+				if o.Yours == "" {
+					return " (repo; yours: not set)"
+				}
+				return " (repo; yours: " + o.Yours + ")"
+			}
 			if from[k] {
 				return " (repo)"
 			}
 			return ""
+		}
+		// An empty list, not null, so a reader can loop without a check.
+		overrideList := []map[string]string{}
+		for _, o := range overrides {
+			overrideList = append(overrideList, map[string]string{"key": o.Key, "repo": o.Repo, "yours": o.Yours})
 		}
 		var fromRepo []string
 		for _, k := range config.RepoKeys {
@@ -88,7 +117,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo,
+				"theme": v.Theme, "plan_depth": depth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -134,17 +163,24 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
+		var unset keyList
+		fs.Var(&unset, "unset", "with --repo: remove this key from .acta.yaml so your own value applies (repeatable)")
 		if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
+			return exitBadInput
+		}
+		if len(unset) > 0 && !*repoOnly {
+			// Without --repo there is no .acta.yaml to take a key out of.
+			fmt.Fprintln(stderr, "--unset works only with --repo")
 			return exitBadInput
 		}
 		if *repoOnly {
 			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "commit_history": *history, "coding_guide": *guide},
-				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme)
+				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
@@ -221,10 +257,10 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-// setRepo saves repo keys to .acta.yaml. Personal flags are refused, since
-// that file is committed and would change how the agent talks to everyone
-// who clones the repo.
-func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) int {
+// setRepo saves repo keys to .acta.yaml and removes the keys in unset. Personal
+// flags are refused, since that file is committed and would change how the
+// agent talks to everyone who clones the repo.
+func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, unset []string) int {
 	if personal {
 		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --commit-history and --coding-guide; set the others without --repo\n")
 		return exitBadInput
@@ -235,9 +271,20 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) in
 			set[k] = val
 		}
 	}
-	if len(set) == 0 {
+	if len(set) == 0 && len(unset) == 0 {
 		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput
+	}
+	// Check every key before any write, so a refused call leaves the file alone.
+	for _, k := range unset {
+		if !slices.Contains(config.RepoKeys, k) {
+			fmt.Fprintf(stderr, "%s cannot be unset per repo; only %s can\n", k, strings.Join(config.RepoKeys, ", "))
+			return exitBadInput
+		}
+		if set[k] != "" {
+			fmt.Fprintf(stderr, "%s is set and unset in the same call; pick one\n", k)
+			return exitBadInput
+		}
 	}
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd, "")
@@ -273,13 +320,24 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool) in
 		fmt.Fprintln(stderr, err)
 		return exitBadInput
 	}
-	path, err := config.SaveRepoUser(cfg.RepoRoot, set)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		if errors.Is(err, config.ErrBadUser) {
-			return exitBadInput
+	path := filepath.Join(cfg.RepoRoot, ".acta.yaml")
+	if len(set) > 0 {
+		if path, err = config.SaveRepoUser(cfg.RepoRoot, set); err != nil {
+			fmt.Fprintln(stderr, err)
+			if errors.Is(err, config.ErrBadUser) {
+				return exitBadInput
+			}
+			return exitOther
 		}
-		return exitOther
+	}
+	if len(unset) > 0 {
+		if path, err = config.UnsetRepoUser(cfg.RepoRoot, unset); err != nil {
+			fmt.Fprintln(stderr, err)
+			if errors.Is(err, config.ErrBadUser) {
+				return exitBadInput
+			}
+			return exitOther
+		}
 	}
 	fmt.Fprintln(stdout, path)
 	return exitOK

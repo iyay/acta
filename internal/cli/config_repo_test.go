@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,7 +45,7 @@ func runCodeOut(args ...string) (int, string, string) {
 func TestConfigShowRepoLayer(t *testing.T) {
 	repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\nbuild_executor: dispatch\n", "plan_depth: minimal\n")
 	out := mustRun(t, "config", "show")
-	for _, want := range []string{"plan_depth: minimal (repo)\n", "build_executor: dispatch\n", "repo_language: English\n"} {
+	for _, want := range []string{"plan_depth: minimal (repo; yours: full)\n", "build_executor: dispatch\n", "repo_language: English\n"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
 		}
@@ -79,7 +80,7 @@ func TestConfigShowPlanDepthSetHasNoDefaultMark(t *testing.T) {
 		{"plan_depth: full\n", "", "plan_depth: full\n"},
 		{"plan_depth: minimal\n", "", "plan_depth: minimal\n"},
 		{"", "plan_depth: full\n", "plan_depth: full (repo)\n"},
-		{"", "plan_depth: minimal\n", "plan_depth: minimal (repo)\n"},
+		{"", "plan_depth: minimal\n", "plan_depth: minimal (repo; yours: full)\n"},
 	}
 	for _, c := range cases {
 		repoWithGlobal(t, c.global, c.repo)
@@ -127,9 +128,9 @@ func TestConfigShowCodingGuideSet(t *testing.T) {
 		{"coding_guide: lean\n", "", "coding_guide: lean\n", "lean", false},
 		{"coding_guide: off\n", "", "coding_guide: off\n", "off", false},
 		{"", "coding_guide: lean\n", "coding_guide: lean (repo)\n", "lean", true},
-		{"", "coding_guide: off\n", "coding_guide: off (repo)\n", "off", true},
-		{"coding_guide: lean\n", "coding_guide: off\n", "coding_guide: off (repo)\n", "off", true},
-		{"coding_guide: off\n", "coding_guide: lean\n", "coding_guide: lean (repo)\n", "lean", true},
+		{"", "coding_guide: off\n", "coding_guide: off (repo; yours: lean)\n", "off", true},
+		{"coding_guide: lean\n", "coding_guide: off\n", "coding_guide: off (repo; yours: lean)\n", "off", true},
+		{"coding_guide: off\n", "coding_guide: lean\n", "coding_guide: lean (repo; yours: off)\n", "lean", true},
 	}
 	for _, c := range cases {
 		repoWithGlobal(t, c.global, c.repo)
@@ -238,7 +239,7 @@ func TestConfigSetRepoWritesRepoFile(t *testing.T) {
 			t.Errorf(".acta.yaml lacks %q:\n%s", want, raw)
 		}
 	}
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_depth: minimal (repo)") {
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_depth: minimal (repo; yours: full)") {
 		t.Errorf("show:\n%s", out)
 	}
 }
@@ -303,7 +304,7 @@ func TestConfigSetRepoCodingGuide(t *testing.T) {
 			t.Errorf(".acta.yaml lacks %q:\n%s", want, raw)
 		}
 	}
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "coding_guide: off (repo)\n") {
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "coding_guide: off (repo; yours: lean)\n") {
 		t.Errorf("show:\n%s", out)
 	}
 }
@@ -436,9 +437,9 @@ func TestConfigShowCommitHistorySet(t *testing.T) {
 		{"commit_history: tidy\n", "", "commit_history: tidy\n", "tidy", false},
 		{"commit_history: full\n", "", "commit_history: full\n", "full", false},
 		{"", "commit_history: tidy\n", "commit_history: tidy (repo)\n", "tidy", true},
-		{"", "commit_history: full\n", "commit_history: full (repo)\n", "full", true},
-		{"commit_history: tidy\n", "commit_history: full\n", "commit_history: full (repo)\n", "full", true},
-		{"commit_history: full\n", "commit_history: tidy\n", "commit_history: tidy (repo)\n", "tidy", true},
+		{"", "commit_history: full\n", "commit_history: full (repo; yours: tidy)\n", "full", true},
+		{"commit_history: tidy\n", "commit_history: full\n", "commit_history: full (repo; yours: tidy)\n", "full", true},
+		{"commit_history: full\n", "commit_history: tidy\n", "commit_history: tidy (repo; yours: full)\n", "tidy", true},
 	}
 	for _, c := range cases {
 		repoWithGlobal(t, c.global, c.repo)
@@ -490,7 +491,7 @@ func TestConfigSetRepoCommitHistory(t *testing.T) {
 	if !strings.Contains(string(raw), "commit_history: full") {
 		t.Errorf(".acta.yaml lacks commit_history: full:\n%s", raw)
 	}
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "commit_history: full (repo)\n") {
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "commit_history: full (repo; yours: tidy)\n") {
 		t.Errorf("show:\n%s", out)
 	}
 }
@@ -548,5 +549,176 @@ func TestConfigShowRefusesBadCommitHistory(t *testing.T) {
 				t.Errorf("global %q repo %q %v: exit %d stdout %q stderr %q", c.global, c.repo, args, code, out, errs)
 			}
 		}
+	}
+}
+
+// readRepoFile gives the .acta.yaml text, or "" when there is no file.
+func readRepoFile(t *testing.T, dir string) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
+// --unset drops keys from .acta.yaml, can repeat, and prints the file path.
+func TestConfigUnsetRepoRemovesKeys(t *testing.T) {
+	dir, _ := repoWithGlobal(t, "", "plan_depth: minimal\nbuild_executor: inline\ncoding_guide: off\n")
+	out := mustRun(t, "config", "set", "--repo", "--unset", "plan_depth")
+	if strings.TrimSpace(out) != filepath.Join(dir, ".acta.yaml") && !strings.HasSuffix(strings.TrimSpace(out), ".acta.yaml") {
+		t.Errorf("printed %q, want the .acta.yaml path", out)
+	}
+	if got := readRepoFile(t, dir); strings.Contains(got, "plan_depth") || !strings.Contains(got, "build_executor: inline") {
+		t.Errorf("after one unset:\n%s", got)
+	}
+	mustRun(t, "config", "set", "--repo", "--unset", "build_executor", "--unset", "coding_guide")
+	if got := readRepoFile(t, dir); strings.Contains(got, "build_executor") || strings.Contains(got, "coding_guide") {
+		t.Errorf("after repeated unset:\n%s", got)
+	}
+}
+
+// One call can set a key and unset another; both changes land.
+func TestConfigUnsetRepoMixesWithSet(t *testing.T) {
+	dir, _ := repoWithGlobal(t, "", "plan_depth: minimal\n")
+	mustRun(t, "config", "set", "--repo", "--executor", "inline", "--unset", "plan_depth")
+	got := readRepoFile(t, dir)
+	if strings.Contains(got, "plan_depth") || !strings.Contains(got, "build_executor: inline") {
+		t.Errorf("mix of set and unset:\n%s", got)
+	}
+}
+
+// Every refused mix leaves both files as they were.
+func TestConfigUnsetRefuses(t *testing.T) {
+	const global = "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n"
+	const repo = "plan_depth: minimal\nbuild_executor: inline\n"
+	for _, args := range [][]string{
+		// Same key set and unset in one call.
+		{"config", "set", "--repo", "--plan-depth", "full", "--unset", "plan_depth"},
+		{"config", "set", "--repo", "--executor", "inline", "--unset", "build_executor"},
+		{"config", "set", "--repo", "--repo-language", "Korean", "--unset", "repo_language"},
+		// Without --repo.
+		{"config", "set", "--unset", "plan_depth"},
+		{"config", "set", "--language", "Korean", "--unset", "plan_depth"},
+		// Not a repo key, or no key at all.
+		{"config", "set", "--repo", "--unset", "chat_language"},
+		{"config", "set", "--repo", "--unset", "questions"},
+		{"config", "set", "--repo", "--unset", "nonsense"},
+		{"config", "set", "--repo", "--unset", "plan_depth", "--unset", "style"},
+		{"config", "set", "--repo", "--unset", ""},
+		// A bad value beside a good unset: nothing may land.
+		{"config", "set", "--repo", "--plan-depth", "deep", "--unset", "build_executor"},
+		// A personal flag beside --unset.
+		{"config", "set", "--repo", "--language", "Korean", "--unset", "plan_depth"},
+	} {
+		dir, globalPath := repoWithGlobal(t, global, repo)
+		if code, _, errs := runCodeOut(args...); code != exitBadInput || errs == "" {
+			t.Errorf("%v: exit %d stderr %q, want bad input", args, code, errs)
+		}
+		if got := readRepoFile(t, dir); got != repo {
+			t.Errorf("%v changed .acta.yaml:\n%s", args, got)
+		}
+		if raw, _ := os.ReadFile(globalPath); string(raw) != global {
+			t.Errorf("%v changed the global file:\n%s", args, raw)
+		}
+	}
+}
+
+// Unset of a key that is not in the file, or with no file at all, is fine.
+func TestConfigUnsetRepoMissingKeyIsFine(t *testing.T) {
+	dir, _ := repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--repo", "--unset", "plan_depth")
+	if got := readRepoFile(t, dir); got != "" {
+		t.Errorf("unset made a file:\n%s", got)
+	}
+}
+
+// --unset only edits the file; it never commits.
+func TestConfigUnsetRepoNeverCommits(t *testing.T) {
+	dir, _ := repoWithGlobal(t, "", "plan_depth: minimal\n")
+	git := func(args ...string) string {
+		cmd := exec.Command("git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@t"}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	git("add", ".acta.yaml")
+	git("commit", "-q", "-m", "seed")
+	head := git("rev-parse", "HEAD")
+	mustRun(t, "config", "set", "--repo", "--unset", "plan_depth")
+	if got := git("rev-parse", "HEAD"); got != head {
+		t.Errorf("HEAD moved from %s to %s", head, got)
+	}
+	if got := git("status", "--porcelain"); !strings.Contains(got, ".acta.yaml") {
+		t.Errorf("the unset should be left uncommitted, status:\n%s", got)
+	}
+}
+
+// A repo key that differs from the user's value shows both; an equal one keeps
+// the plain (repo) mark. Yours falls back to the default when the user set none.
+func TestConfigShowNamesOverrides(t *testing.T) {
+	repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\nbuild_executor: dispatch\ncoding_guide: lean\n",
+		"build_executor: subagent\nplan_depth: minimal\ncoding_guide: lean\n")
+	out := mustRun(t, "config", "show")
+	for _, want := range []string{
+		"build_executor: subagent (repo; yours: dispatch)\n",
+		"plan_depth: minimal (repo; yours: full)\n",
+		"coding_guide: lean (repo)\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("show lacks %q:\n%s", want, out)
+		}
+	}
+	var got struct {
+		FromRepo  []string `json:"from_repo"`
+		Overrides []struct {
+			Key, Repo, Yours string
+		} `json:"overrides"`
+	}
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.FromRepo) != 3 {
+		t.Errorf("from_repo %v, want all three repo keys", got.FromRepo)
+	}
+	if len(got.Overrides) != 2 || got.Overrides[0].Key != "build_executor" || got.Overrides[0].Repo != "subagent" || got.Overrides[0].Yours != "dispatch" ||
+		got.Overrides[1].Key != "plan_depth" || got.Overrides[1].Repo != "minimal" || got.Overrides[1].Yours != "full" {
+		t.Errorf("overrides %+v", got.Overrides)
+	}
+}
+
+// A key the user never set has no value to name, so show says so.
+func TestConfigShowOverrideYoursNotSet(t *testing.T) {
+	repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n", "build_executor: inline\n")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "build_executor: inline (repo; yours: not set)\n") {
+		t.Errorf("show:\n%s", out)
+	}
+	var got struct {
+		Overrides []struct{ Key, Repo, Yours string } `json:"overrides"`
+	}
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Overrides) != 1 || got.Overrides[0].Yours != "" {
+		t.Errorf("overrides %+v", got.Overrides)
+	}
+}
+
+// With no override the JSON still carries the field, as an empty list.
+func TestConfigShowOverridesEmptyList(t *testing.T) {
+	repoWithGlobal(t, "plan_depth: minimal\n", "plan_depth: minimal\n")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	list, ok := got["overrides"].([]any)
+	if !ok || len(list) != 0 {
+		t.Errorf("overrides %#v, want an empty list", got["overrides"])
+	}
+	if from, _ := got["from_repo"].([]any); len(from) != 1 {
+		t.Errorf("from_repo %v", got["from_repo"])
 	}
 }
