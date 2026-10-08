@@ -107,6 +107,29 @@ func TestCommitRefusesBadInput(t *testing.T) {
 	}
 }
 
+// A link inside the planning root can point at a file outside it. Committing
+// through the link would touch that file, so it is refused.
+func TestCommitRefusesSymlinkOutOfRoot(t *testing.T) {
+	dir := commitRepo(t)
+	if err := os.Symlink("../../README.md", filepath.Join(dir, ".acta", "specs", "link.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	code, _, stderr := runCommit(t, dir, ".acta/specs/link.md", "-m", "chore(spec): x")
+	if code == exitOK {
+		t.Fatalf("exit %d, want a refusal", code)
+	}
+	if strings.TrimSpace(stderr) == "" {
+		t.Error("no error text")
+	}
+	if got := commitCount(t, dir); got != before {
+		t.Errorf("commit count = %d, want %d", got, before)
+	}
+}
+
 func TestCommitSkippedWhenAutoCommitOff(t *testing.T) {
 	dir := commitRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("auto_commit: false\n"), 0o644); err != nil {

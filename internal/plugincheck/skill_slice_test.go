@@ -1,6 +1,11 @@
 package plugincheck
 
-import "testing"
+import (
+	"os"
+	"regexp"
+	"strings"
+	"testing"
+)
 
 func TestSkillSlice(t *testing.T) {
 	CheckSkill(t, SkillRule{
@@ -15,7 +20,8 @@ func TestSkillSlice(t *testing.T) {
 			"run `acta id` right after", "parent: debt/",
 			"never holds a step that can only happen after landing",
 			"closes:", "parent: debt/<stem>",
-			"Commit the plan on main", "only after the plan is approved",
+			"Commit the plan on main", `acta commit <path> -m "<message>"`,
+			"only after the plan is approved",
 			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
 			"## Plan depth", "`/slice minimal`", "depth: minimal", "`plan_depth`",
 			"apply to `full` plans only",
@@ -33,4 +39,30 @@ func TestSkillSlice(t *testing.T) {
 			"Every plan MUST start", "Announce at start", "questionable taste", "Frequent commits",
 		},
 	})
+}
+
+// gitCommitSpan matches a `git commit ...` command written in backticks, so a
+// sentence that says "never `git commit`" is not a command.
+var gitCommitSpan = regexp.MustCompile("`git commit [^`]*`")
+
+// planningWord matches a planning file or a planning commit subject inside it.
+var planningWord = regexp.MustCompile(`(?i)\b(plan|spec)\b|chore\(`)
+
+// TestNoSkillCommitsPlanningFilesWithGit walks every skill file. A spec, a
+// plan or a tick commit goes through acta commit, so acta can fold it into the
+// planning commit before it. Code commits keep git commit.
+func TestNoSkillCommitsPlanningFilesWithGit(t *testing.T) {
+	for _, p := range skillFiles(t, "skills") {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			for _, span := range gitCommitSpan.FindAllString(line, -1) {
+				if planningWord.MatchString(span) {
+					t.Errorf("%s:%d commits a planning file with git commit: %s", p, i+1, span)
+				}
+			}
+		}
+	}
 }

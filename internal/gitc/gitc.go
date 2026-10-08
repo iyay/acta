@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -77,31 +78,70 @@ func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	return Commit(repo, path, msg, wasDirty)
 }
 
-// foldArgs builds the git amend call for a fold. The subject stays HEAD's
-// own. The body keeps HEAD's lines, plus msg as one more line when no line of
-// the message says it yet. It says false when HEAD's message cannot be read.
+// trailerLine matches a line like "Co-Authored-By: X". A paragraph made only
+// of such lines is a trailer block, the way git reads one.
+var trailerLine = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*:\s+\S`)
+
+// foldArgs builds the git amend call for a fold. HEAD's message stays exactly
+// as written. msg is added as one more line when HEAD does not say it yet: it
+// goes before the trailer block, so trailers stay trailers, or at the end when
+// there is none. It says false when HEAD's message cannot be read.
 func foldArgs(repo, path, msg string) ([]string, bool) {
 	out, err := run(repo, "log", "-1", "--format=%B")
 	if err != nil {
 		return nil, false
 	}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	subject := strings.TrimSpace(lines[0])
-	var body []string
-	for _, ln := range lines[1:] {
-		if ln = strings.TrimSpace(ln); ln != "" {
-			body = append(body, ln)
+	lines := strings.Split(strings.TrimRight(out, " \t\r\n"), "\n")
+	msg = strings.TrimSpace(msg)
+	said := false
+	for _, ln := range lines {
+		if strings.TrimSpace(ln) == msg {
+			said = true
 		}
 	}
-	msg = strings.TrimSpace(msg)
-	if msg != subject && !slices.Contains(body, msg) {
-		body = append(body, msg)
+	if !said {
+		lines = insertFoldLine(lines, msg)
 	}
-	args := []string{"commit", "--amend", "--only", "-m", subject}
-	if len(body) > 0 {
-		args = append(args, "-m", strings.Join(body, "\n"))
-	}
+	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n")}
 	return append(args, "--", path), true
+}
+
+// insertFoldLine puts msg into the message lines: after the last body line
+// before a trailer block, else at the end. The subject is never moved.
+func insertFoldLine(lines []string, msg string) []string {
+	at := len(lines)
+	if start := trailerStart(lines); start > 0 {
+		at = start
+		// Step back over the blank lines, so msg sits with the body text.
+		for at > 1 && strings.TrimSpace(lines[at-1]) == "" {
+			at--
+		}
+	}
+	add := []string{msg}
+	if at == 1 {
+		// Right under the subject: keep one blank line between them.
+		add = []string{"", msg}
+	}
+	return slices.Concat(lines[:at], add, lines[at:])
+}
+
+// trailerStart is the index of the first line of the last paragraph when
+// every line of it is a trailer and it is not the subject. Else it is -1.
+func trailerStart(lines []string) int {
+	end := len(lines)
+	start := end
+	for start > 0 && strings.TrimSpace(lines[start-1]) != "" {
+		start--
+	}
+	if start == 0 || start == end {
+		return -1
+	}
+	for _, ln := range lines[start:end] {
+		if !trailerLine.MatchString(ln) {
+			return -1
+		}
+	}
+	return start
 }
 
 // canFold says whether HEAD may be rewritten with a new edit of path. Each

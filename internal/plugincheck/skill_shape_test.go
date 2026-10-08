@@ -25,6 +25,7 @@ func TestSkillShape(t *testing.T) {
 			"closes:",
 			"commit it on the branch that is checked out (usually main)",
 			"`acta:build` makes the worktree",
+			`acta commit <path> -m "<message>"`,
 			"acta scratch add SCRATCH-n --section log",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",

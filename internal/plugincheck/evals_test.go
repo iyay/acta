@@ -33,6 +33,7 @@ var evalCases = []struct {
 	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
 	{"repo-override-ask", "skills/setup/SKILL.md", "is committed and shared"},
 	{"polish-light-review", "skills/review/SKILL.md", "Light review: the orchestrator reads the full diff"},
+	{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""},
 	{"polish-full-review", "skills/review/SKILL.md", "## Review tiers"},
 }
 

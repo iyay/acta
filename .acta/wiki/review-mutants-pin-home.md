@@ -3,7 +3,7 @@ type: Gotcha
 title: Review mutants must pin HOME
 description: Revert checks run tests with their safety guard removed, so any write under HOME hits the real home
 paths: [internal/plugincheck/]
-timestamp: 2026-10-08T02:25:38Z
+timestamp: 2026-10-08T02:59:39Z
 ---
 
 A review mutant with a HOME guard removed overwrote the user's real voice config. Revert and mutation checks run tests whose safety line is the very line removed.
