@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -49,9 +50,11 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 }
 
 // CommitOrFold is Commit, except that it amends HEAD instead of adding a new
-// commit when HEAD is this tool's own earlier commit of the same file and
-// nothing else can hold that commit. A run of repeat edits then leaves one
-// commit. Any doubt, or a failed amend, ends in the plain Commit.
+// commit when HEAD is this tool's own earlier planning commit of the same file
+// and nothing else can hold that commit. A run of repeat edits then leaves one
+// commit. The amended commit keeps HEAD's subject and adds the new subject as
+// a body line, so no subject is lost. Any doubt, or a failed amend, ends in
+// the plain Commit.
 func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
@@ -62,31 +65,61 @@ func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	if reason := busy(repo); reason != "" {
 		return Result{Reason: reason}
 	}
-	if canFold(repo, path, msg) {
+	if canFold(repo, path) {
 		if _, err := run(repo, "add", "--", path); err == nil {
-			if _, err := run(repo, "commit", "--amend", "--only", "-m", msg, "--", path); err == nil {
-				return Result{Committed: true, Folded: true}
+			if args, ok := foldArgs(repo, path, msg); ok {
+				if _, err := run(repo, args...); err == nil {
+					return Result{Committed: true, Folded: true}
+				}
 			}
 		}
 	}
 	return Commit(repo, path, msg, wasDirty)
 }
 
+// foldArgs builds the git amend call for a fold. The subject stays HEAD's
+// own. The body keeps HEAD's lines, plus msg as one more line when no line of
+// the message says it yet. It says false when HEAD's message cannot be read.
+func foldArgs(repo, path, msg string) ([]string, bool) {
+	out, err := run(repo, "log", "-1", "--format=%B")
+	if err != nil {
+		return nil, false
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	subject := strings.TrimSpace(lines[0])
+	var body []string
+	for _, ln := range lines[1:] {
+		if ln = strings.TrimSpace(ln); ln != "" {
+			body = append(body, ln)
+		}
+	}
+	msg = strings.TrimSpace(msg)
+	if msg != subject && !slices.Contains(body, msg) {
+		body = append(body, msg)
+	}
+	args := []string{"commit", "--amend", "--only", "-m", subject}
+	if len(body) > 0 {
+		args = append(args, "-m", strings.Join(body, "\n"))
+	}
+	return append(args, "--", path), true
+}
+
 // canFold says whether HEAD may be rewritten with a new edit of path. Each
 // rule keeps a rewrite from hurting someone else, and any error means no.
-func canFold(repo, path, msg string) bool {
+func canFold(repo, path string) bool {
 	// A file with no change would only rewrite HEAD. Commit says no to it.
 	if dirty, err := IsDirty(repo, path); err != nil || !dirty {
 		return false
 	}
-	// Same subject, one parent and the same author as this user, so HEAD is
-	// our own repeat commit and not a merge or a colleague's work.
+	// A planning subject (it starts with chore( ), one parent and the same
+	// author as this user, so HEAD is our own planning commit and not a merge,
+	// a feature commit or a colleague's work.
 	out, err := run(repo, "log", "-1", "--format=%s%x00%an%x00%P")
 	if err != nil {
 		return false
 	}
 	f := strings.Split(strings.TrimRight(out, "\n"), "\x00")
-	if len(f) != 3 || f[0] != msg || len(strings.Fields(f[2])) != 1 {
+	if len(f) != 3 || !strings.HasPrefix(f[0], "chore(") || len(strings.Fields(f[2])) != 1 {
 		return false
 	}
 	if me := UserName(repo); me == "" || f[1] != me {
@@ -152,8 +185,12 @@ func otherCheckoutHolds(repo string) bool {
 }
 
 // CommitPaths commits only the listed paths in one commit. A dirty file
-// outside the list stays out, so one run of a tool is one commit.
+// outside the list stays out, so one run of a tool is one commit. One path
+// is a one-file write, so it may fold like CommitOrFold. More paths never do.
 func CommitPaths(repo string, paths []string, msg string) Result {
+	if len(paths) == 1 {
+		return CommitOrFold(repo, paths[0], msg, false)
+	}
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
 	}

@@ -165,6 +165,53 @@ func TestCommitPaths(t *testing.T) {
 	}
 }
 
+// One path goes through CommitOrFold, so it folds. More paths make a new commit.
+func TestCommitPathsOnePathFolds(t *testing.T) {
+	const msg = "chore(scratch): add to item"
+	t.Run("one path folds", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		writeFile(t, a, "one\ntwo\n")
+		r := CommitPaths(repo, []string{a}, "chore(spec): fix wording")
+		if r != (Result{Committed: true, Folded: true}) {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+		if got, want := git(t, repo, "log", "-1", "--format=%B"), msg+"\n\nchore(spec): fix wording"; got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+	})
+	t.Run("two paths make a new commit", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		writeFile(t, a, "one\ntwo\n")
+		writeFile(t, filepath.Join(repo, "b.md"), "b changed\n")
+		r := CommitPaths(repo, []string{a, filepath.Join(repo, "b.md")}, "chore(spec): fix wording")
+		if r != (Result{Committed: true}) {
+			t.Fatalf("got %+v", r)
+		}
+		if got, want := commitCount(t, repo), before; got == want {
+			t.Fatalf("commit count stayed %s, want a new commit", got)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(spec): fix wording" {
+			t.Fatalf("subject %q", got)
+		}
+	})
+	t.Run("one path keeps the dirty-file-outside-list guard", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		writeFile(t, a, "one\ntwo\n")
+		writeFile(t, filepath.Join(repo, "b.md"), "b changed\n")
+		if r := CommitPaths(repo, []string{a}, "chore(spec): fix wording"); !r.Committed {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "status", "--porcelain"); got != "M b.md" {
+			t.Fatalf("other dirty file not left alone: %q", got)
+		}
+	})
+}
+
 // FirstSeen answers with the place of a file in the branch history, so two
 // files keep a stable order even when their commits share one second.
 func TestFirstSeen(t *testing.T) {
@@ -648,13 +695,66 @@ func TestCommitOrFold(t *testing.T) {
 		}
 	})
 
+	// Another planning subject on the same file still folds, and git keeps
+	// every subject so the history says what each write was.
+	t.Run("a different chore( subject folds and keeps both", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		writeFile(t, a, "one\ntwo\n")
+		r := CommitOrFold(repo, a, "chore(spec): fix wording", false)
+		if r != (Result{Committed: true, Folded: true}) {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+		if got, want := git(t, repo, "log", "-1", "--format=%s"), msg; got != want {
+			t.Fatalf("subject %q, want %q", got, want)
+		}
+		if got, want := git(t, repo, "log", "-1", "--format=%B"), msg+"\n\nchore(spec): fix wording"; got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+		if got := git(t, repo, "show", "HEAD:a.md"); got != "one\ntwo" {
+			t.Fatalf("HEAD holds %q", got)
+		}
+
+		// A third subject is one more body line, and a repeat adds nothing.
+		writeFile(t, a, "one\ntwo\nthree\n")
+		if r := CommitOrFold(repo, a, "chore(scratch): third", false); !r.Folded {
+			t.Fatalf("third got %+v", r)
+		}
+		writeFile(t, a, "one\ntwo\nthree\nfour\n")
+		if r := CommitOrFold(repo, a, "chore(spec): fix wording", false); !r.Folded {
+			t.Fatalf("repeat got %+v", r)
+		}
+		want := msg + "\n\nchore(spec): fix wording\nchore(scratch): third"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+	})
+	t.Run("the same subject twice adds no body", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		writeFile(t, a, "one\ntwo\n")
+		if r := CommitOrFold(repo, a, msg, false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != msg {
+			t.Fatalf("message %q, want only %q", got, msg)
+		}
+	})
+
 	// Each case breaks one fold rule. The call must make a new commit.
 	rules := []struct {
 		name  string
 		msg   string // message of the second call, msg when empty
 		setup func(t *testing.T, repo string)
 	}{
-		{name: "subject differs", msg: "chore(scratch): add to other"},
+		{name: "head is not a chore( commit", setup: func(t *testing.T, repo string) {
+			git(t, repo, "commit", "-q", "--amend", "-m", "feat: x")
+		}},
 		{name: "head also changes another file", setup: func(t *testing.T, repo string) {
 			writeFile(t, filepath.Join(repo, "b.md"), "b2\n")
 			git(t, repo, "commit", "-q", "--amend", "--no-edit", "-a")
