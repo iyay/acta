@@ -605,3 +605,196 @@ func TestIsAncestor(t *testing.T) {
 		t.Errorf("IsAncestor with a missing commit gave no error, want one")
 	}
 }
+
+// foldRepo is a checkout whose newest commit is the first CommitOrFold of
+// a.md under msg, written by the name git config gives. The next call with
+// the same msg is the one that may fold.
+func foldRepo(t *testing.T, msg string) (repo, a string) {
+	t.Helper()
+	repo = setupRepo(t)
+	git(t, repo, "config", "user.name", "test")
+	a = filepath.Join(repo, "a.md")
+	writeFile(t, a, "one\n")
+	r := CommitOrFold(repo, a, msg, false)
+	if !r.Committed || r.Folded {
+		t.Fatalf("first call = %+v, want a plain commit", r)
+	}
+	return repo, a
+}
+
+func commitCount(t *testing.T, repo string) string {
+	t.Helper()
+	return git(t, repo, "rev-list", "--count", "HEAD")
+}
+
+func TestCommitOrFold(t *testing.T) {
+	const msg = "chore(scratch): add to item"
+	t.Run("folds", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		writeFile(t, a, "one\ntwo\n")
+		r := CommitOrFold(repo, a, msg, false)
+		if r != (Result{Committed: true, Folded: true}) {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+		if got := git(t, repo, "show", "HEAD:a.md"); got != "one\ntwo" {
+			t.Fatalf("HEAD holds %q, want both lines", got)
+		}
+		if got := git(t, repo, "status", "--porcelain"); got != "" {
+			t.Fatalf("tree not clean: %q", got)
+		}
+	})
+
+	// Each case breaks one fold rule. The call must make a new commit.
+	rules := []struct {
+		name  string
+		msg   string // message of the second call, msg when empty
+		setup func(t *testing.T, repo string)
+	}{
+		{name: "subject differs", msg: "chore(scratch): add to other"},
+		{name: "head also changes another file", setup: func(t *testing.T, repo string) {
+			writeFile(t, filepath.Join(repo, "b.md"), "b2\n")
+			git(t, repo, "commit", "-q", "--amend", "--no-edit", "-a")
+		}},
+		{name: "head is a merge", setup: func(t *testing.T, repo string) {
+			git(t, repo, "checkout", "-q", "-b", "side", "HEAD~1")
+			writeFile(t, filepath.Join(repo, "c.md"), "c\n")
+			git(t, repo, "add", "c.md")
+			git(t, repo, "commit", "-q", "-m", "side")
+			git(t, repo, "checkout", "-q", "main")
+			git(t, repo, "merge", "-q", "--no-ff", "-m", msg, "side")
+			git(t, repo, "branch", "-q", "-D", "side")
+		}},
+		{name: "a remote branch holds head", setup: func(t *testing.T, repo string) {
+			git(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+		}},
+		{name: "another local branch holds head", setup: func(t *testing.T, repo string) {
+			git(t, repo, "branch", "other")
+		}},
+		{name: "a linked worktree branch holds head", setup: func(t *testing.T, repo string) {
+			git(t, repo, "worktree", "add", "-q", "-b", "wt", filepath.Join(t.TempDir(), "wt"))
+		}},
+		{name: "a detached worktree sits on head", setup: func(t *testing.T, repo string) {
+			git(t, repo, "worktree", "add", "-q", "--detach", filepath.Join(t.TempDir(), "wt"))
+		}},
+		{name: "a detached worktree sits past head", setup: func(t *testing.T, repo string) {
+			wt := filepath.Join(t.TempDir(), "wt")
+			git(t, repo, "worktree", "add", "-q", "--detach", wt)
+			writeFile(t, filepath.Join(wt, "c.md"), "c\n")
+			git(t, wt, "add", "c.md")
+			git(t, wt, "commit", "-q", "-m", "ahead")
+		}},
+		{name: "head author is someone else", setup: func(t *testing.T, repo string) {
+			git(t, repo, "commit", "-q", "--amend", "--no-edit", "--author=Other <o@example.com>")
+		}},
+		{name: "git has no user name", setup: func(t *testing.T, repo string) {
+			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+			t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+			git(t, repo, "config", "--unset", "user.name")
+		}},
+	}
+	for _, c := range rules {
+		t.Run(c.name, func(t *testing.T) {
+			repo, a := foldRepo(t, msg)
+			if c.setup != nil {
+				c.setup(t, repo)
+			}
+			before := commitCount(t, repo)
+			second := c.msg
+			if second == "" {
+				second = msg
+			}
+			writeFile(t, a, "one\ntwo\n")
+			r := CommitOrFold(repo, a, second, false)
+			if r != (Result{Committed: true}) {
+				t.Fatalf("got %+v", r)
+			}
+			if got, want := commitCount(t, repo), before; got == want {
+				t.Fatalf("commit count stayed %s, want a new commit", got)
+			}
+			if got := git(t, repo, "show", "HEAD:a.md"); got != "one\ntwo" {
+				t.Fatalf("HEAD holds %q", got)
+			}
+		})
+	}
+
+	// These paths never reach the fold check. They must match Commit.
+	t.Run("file was dirty", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		r := CommitOrFold(repo, a, msg, true)
+		if r.Committed || r.Folded || !strings.Contains(r.Reason, "other uncommitted changes") {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+	})
+	t.Run("mid-merge", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		writeFile(t, filepath.Join(repo, ".git", "MERGE_HEAD"), git(t, repo, "rev-parse", "HEAD")+"\n")
+		writeFile(t, a, "two\n")
+		r := CommitOrFold(repo, a, msg, false)
+		if r.Committed || r.Folded || !strings.Contains(r.Reason, "merge") {
+			t.Fatalf("got %+v", r)
+		}
+	})
+	t.Run("detached HEAD", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		git(t, repo, "checkout", "-q", "--detach")
+		before := commitCount(t, repo)
+		writeFile(t, a, "two\n")
+		r := CommitOrFold(repo, a, msg, false)
+		if r.Committed || r.Folded || !strings.Contains(r.Reason, "detached") {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+	})
+	t.Run("not a repo", func(t *testing.T) {
+		dir := t.TempDir()
+		p := filepath.Join(dir, "a.md")
+		writeFile(t, p, "x\n")
+		r := CommitOrFold(dir, p, msg, false)
+		if r.Committed || r.Folded || !strings.Contains(r.Reason, "not a git repo") {
+			t.Fatalf("got %+v", r)
+		}
+	})
+	t.Run("nothing changed", func(t *testing.T) {
+		// Commit refuses a file with no change. A fold must not rewrite HEAD for it.
+		repo, a := foldRepo(t, msg)
+		head := git(t, repo, "rev-parse", "HEAD")
+		r := CommitOrFold(repo, a, msg, false)
+		if r.Committed || r.Folded || !strings.Contains(r.Reason, "commit failed") {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "rev-parse", "HEAD"); got != head {
+			t.Fatalf("HEAD moved to %s, want %s", got, head)
+		}
+	})
+	t.Run("amend fails, plain commit follows", func(t *testing.T) {
+		repo, a := foldRepo(t, msg)
+		before := commitCount(t, repo)
+		// The hook fails once, so the amend fails and the plain commit passes.
+		hook := filepath.Join(repo, ".git", "hooks", "pre-commit")
+		writeFile(t, hook, "#!/bin/sh\n[ -e \"$0.seen\" ] && exit 0\ntouch \"$0.seen\"\necho no >&2\nexit 1\n")
+		if err := os.Chmod(hook, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, a, "one\ntwo\n")
+		r := CommitOrFold(repo, a, msg, false)
+		if r != (Result{Committed: true}) {
+			t.Fatalf("got %+v", r)
+		}
+		if got, want := commitCount(t, repo), before; got == want {
+			t.Fatalf("commit count stayed %s, want a new commit", got)
+		}
+		if got := git(t, repo, "show", "HEAD:a.md"); got != "one\ntwo" {
+			t.Fatalf("HEAD holds %q", got)
+		}
+	})
+}
