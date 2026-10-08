@@ -151,6 +151,10 @@ func canFold(repo, path string) bool {
 	if dirty, err := IsDirty(repo, path); err != nil || !dirty {
 		return false
 	}
+	// A tag marks a release, so its commit must never be rewritten.
+	if tags, err := run(repo, "tag", "--points-at", "HEAD"); err != nil || strings.TrimSpace(tags) != "" {
+		return false
+	}
 	// A planning subject (it starts with chore( ), one parent and the same
 	// author as this user, so HEAD is our own planning commit and not a merge,
 	// a feature commit or a colleague's work.
