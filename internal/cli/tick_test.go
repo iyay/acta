@@ -463,3 +463,111 @@ func TestTickUsageNamesUndo(t *testing.T) {
 		t.Fatalf("help hides --undo: %q", errOut)
 	}
 }
+
+// trailerRepo makes a git repo with one plan (hash broaksz) whose task 5 has
+// two boxes. The one commit has the given message, so a test can pick what
+// HEAD says about the task.
+func trailerRepo(t *testing.T, headMsg string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".acta", "plans"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plan := "---\nid: PLN-1\nhash: broaksz\n---\n# P\n\n### Task 05: Five\n- [ ] a\n- [ ] b\n"
+	if err := os.WriteFile(filepath.Join(dir, ".acta", "plans", "2026-10-09-t.md"), []byte(plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, dir, "init", "-q")
+	gitOut(t, dir, "config", "user.email", "test@example.com")
+	gitOut(t, dir, "config", "user.name", "Test")
+	commitAll(t, dir, headMsg, ".")
+	return dir
+}
+
+const trailerWarning = `warning: HEAD has no "Task: PLN-broaksz#5" trailer`
+
+func TestTickWarnsWhenHeadLacksTheTrailer(t *testing.T) {
+	const id = "plans/2026-10-09-t#task-05"
+	cases := []struct {
+		name string
+		msg  string
+		args []string
+		warn bool
+	}{
+		{"all with trailer", "feat: x\n\nTask: PLN-broaksz#5", []string{"--all"}, false},
+		{"all with no trailer", "feat: x", []string{"--all"}, true},
+		{"all with trailer for another task", "feat: x\n\nTask: PLN-broaksz#4", []string{"--all"}, true},
+		{"all with trailer for another plan", "feat: x\n\nTask: PLN-zzzzzzz#5", []string{"--all"}, true},
+		{"start with no trailer", "feat: x", []string{"--start"}, false},
+		{"first step with no trailer", "feat: x", []string{"--step", "1"}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := trailerRepo(t, c.msg)
+			code, out, errOut := runTick(t, dir, append([]string{id}, c.args...)...)
+			if code != exitOK {
+				t.Fatalf("exit %d, want %d: %q", code, exitOK, errOut)
+			}
+			if got := strings.Contains(errOut, trailerWarning); got != c.warn {
+				t.Errorf("warning shown = %v, want %v: stderr %q", got, c.warn, errOut)
+			}
+			if out == "" {
+				t.Errorf("tick printed nothing on stdout")
+			}
+		})
+	}
+}
+
+// The last open step finishes the task, so it warns like --all does.
+func TestTickWarnsOnTheLastStep(t *testing.T) {
+	dir := trailerRepo(t, "feat: x")
+	const id = "plans/2026-10-09-t#task-05"
+	if _, _, errOut := runTick(t, dir, id, "--step", "1"); strings.Contains(errOut, "warning") {
+		t.Fatalf("mid-task step warned: %q", errOut)
+	}
+	code, _, errOut := runTick(t, dir, id, "--step", "2")
+	if code != exitOK || !strings.Contains(errOut, trailerWarning) {
+		t.Fatalf("last step: exit %d, stderr %q", code, errOut)
+	}
+}
+
+// The warning must not change what tick writes or returns.
+func TestTickWarningChangesNothingElse(t *testing.T) {
+	const id = "plans/2026-10-09-t#task-05"
+	files := func(dir string) string {
+		return read(t, filepath.Join(dir, ".acta", "plans", "2026-10-09-t.md"))
+	}
+	with := trailerRepo(t, "feat: x\n\nTask: PLN-broaksz#5")
+	without := trailerRepo(t, "feat: x")
+	codeA, outA, _ := runTick(t, with, id, "--all")
+	codeB, outB, _ := runTick(t, without, id, "--all")
+	if codeA != codeB || outA != outB {
+		t.Errorf("exit or stdout differ: %d %q vs %d %q", codeA, outA, codeB, outB)
+	}
+	if a, b := files(with), files(without); a != b {
+		t.Errorf("plan files differ:\n%q\n%q", a, b)
+	}
+}
+
+// A repo with no commit, or no git at all, gives no warning and no failure.
+func TestTickNoWarningWhenHeadCannotBeRead(t *testing.T) {
+	const id = "plans/2026-10-09-t#task-05"
+	t.Run("not a git repo", func(t *testing.T) {
+		dir := trailerRepo(t, "feat: x")
+		if err := os.RemoveAll(filepath.Join(dir, ".git")); err != nil {
+			t.Fatal(err)
+		}
+		code, _, errOut := runTick(t, dir, id, "--all")
+		if code != exitOK || strings.Contains(errOut, "warning") {
+			t.Errorf("exit %d, stderr %q", code, errOut)
+		}
+	})
+	t.Run("no commit yet", func(t *testing.T) {
+		dir := trailerRepo(t, "feat: x")
+		gitOut(t, dir, "update-ref", "-d", "HEAD")
+		code, _, errOut := runTick(t, dir, id, "--all")
+		if code != exitOK || strings.Contains(errOut, "warning") {
+			t.Errorf("exit %d, stderr %q", code, errOut)
+		}
+	})
+}

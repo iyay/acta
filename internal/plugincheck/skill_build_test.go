@@ -40,6 +40,7 @@ func TestSkillBuild(t *testing.T) {
 			"With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land`",
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
+			"Task: PLN-",
 		},
 		MustNot: []string{"git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
@@ -341,6 +342,24 @@ func TestImplementerPromptNoReportFile(t *testing.T) {
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("implementer-prompt.md is missing the capped-reply ask %q", want)
+		}
+	}
+}
+
+// TestBuildTrailerEverywhere reads each build file on its own. CheckSkill joins
+// the folder, so one file could lose the trailer rule and stay green. The
+// implementer reads only implementer-prompt.md, an omp agent reads the note
+// that dispatch.md describes, and SKILL.md covers inline, fix rounds and polish.
+func TestBuildTrailerEverywhere(t *testing.T) {
+	for _, name := range []string{"SKILL.md", "implementer-prompt.md", "dispatch.md"} {
+		if !strings.Contains(readBuildFile(t, name), "Task: PLN-<hash>#<n>") {
+			t.Errorf("build/%s does not name the trailer line \"Task: PLN-<hash>#<n>\"", name)
+		}
+	}
+	skill := strings.Join(strings.Fields(readBuildFile(t, "SKILL.md")), " ")
+	for _, want := range []string{"one line per task", "`chore(`"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md trailer rule is missing %q", want)
 		}
 	}
 }

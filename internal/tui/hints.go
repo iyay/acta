@@ -30,6 +30,8 @@ func (m Model) hints() []string {
 	// read from.
 	editable := it != nil && it.OnDisk
 	copyable := it != nil
+	// Only a task and a plan have commits to open.
+	linked := it != nil && (it.Kind == board.KindTask || it.Kind == board.KindPlan)
 	var out []string
 	if tick && own {
 		out = append(out, "Tick: +", "Untick: -")
@@ -48,6 +50,9 @@ func (m Model) hints() []string {
 		if copyable {
 			out = append(out, "Copy id: y")
 		}
+		if linked {
+			out = append(out, "Commits: d")
+		}
 		return append(out, "Back: esc")
 	}
 	out = append(out, "Detail: enter")
@@ -62,6 +67,9 @@ func (m Model) hints() []string {
 	}
 	if copyable {
 		out = append(out, "Copy id: y")
+	}
+	if linked {
+		out = append(out, "Commits: d")
 	}
 	out = append(out, "New bug: n", "Sort: o")
 	if m.foldsRow() {
@@ -85,6 +93,9 @@ func (m Model) foldsRow() bool {
 // hintLine joins the hints that fit in w cells. It drops them from the right,
 // but Help always stays.
 func (m Model) hintLine(w int) string {
+	if m.commitScreen != nil {
+		return fit(commitHint, w)
+	}
 	hs := m.hints()
 	for n := len(hs); n > 0; n-- {
 		line := strings.Join(append(hs[:n:n], helpHint), " | ")

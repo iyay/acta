@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/commits"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/write"
 )
@@ -132,6 +137,11 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 			return exitOther
 		}
 		fmt.Fprintf(stdout, "%s %d/%d\n", it.ID, done, total)
+		// Only a finished task needs its commit by now. A start or a middle
+		// step comes before the commit, so those stay quiet.
+		if it.Kind == board.KindTask && done == total {
+			warnMissingTrailer(cfg.Root, it, stderr)
+		}
 	}
 	// A task tick also dates the plan above it and the spec or bug above
 	// that. The dates are a side effect: the tick itself worked, so a
@@ -149,4 +159,25 @@ func cmdTick(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "agent record: %v\n", err)
 	}
 	return exitOK
+}
+
+// warnMissingTrailer tells the agent when HEAD does not name the task it just
+// finished. It is only a hint: if git or the task number cannot be read, it
+// says nothing and the tick result stays as it is.
+func warnMissingTrailer(root string, it *board.Item, stderr io.Writer) {
+	hash, _, _ := strings.Cut(strings.TrimPrefix(it.Hash, "PLN-"), ".")
+	num, err := strconv.Atoi(it.TaskNum)
+	// The trailer only ever holds a 7 character hash; an old short hash
+	// could never match, so a warning for it would be wrong.
+	if err != nil || !strings.HasPrefix(it.Hash, "PLN-") || len(hash) != 7 {
+		return
+	}
+	out, err := exec.Command("git", "-C", root, "log", "-1", "--format=%B").Output()
+	if err != nil {
+		return
+	}
+	if slices.Contains(commits.Trailers(string(out)), hash+"#"+strconv.Itoa(num)) {
+		return
+	}
+	fmt.Fprintf(stderr, "warning: HEAD has no \"Task: PLN-%s#%d\" trailer\n", hash, num)
 }

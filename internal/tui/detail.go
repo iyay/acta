@@ -3,12 +3,15 @@ package tui
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	xansi "github.com/charmbracelet/x/ansi"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/commits"
 )
 
 // The dots of the list between the header and the body: work under way wears
@@ -169,6 +172,13 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		return head, mid, paintDates(m.styles, dateLine(it, w))
 	}
 	mid = append(mid, m.workLines(it, w)...)
+	if it.Kind == board.KindTask || it.Kind == board.KindPlan {
+		if len(mid) > 0 {
+			mid = append(mid, "")
+		}
+		mid = append(mid, m.commitLines(it, w)...)
+		mid = append(mid, "")
+	}
 	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
 		mid = append(mid, fit(ln, w))
 	}
@@ -492,4 +502,66 @@ func expandTabs(s string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// commitRows is how many commits the detail lists. The Commits screen shows
+// the rest.
+const commitRows = 5
+
+// commitKeys are the keys of the load's commit map that belong to an item: one
+// key for a task, every key of the plan for a plan. A hash that is not a
+// 7 character PLN- hash was never written into a trailer, so it has none.
+func commitKeys(it *board.Item, found map[string][]commits.Commit) []string {
+	hash, _, _ := strings.Cut(strings.TrimPrefix(it.Hash, "PLN-"), ".")
+	if !strings.HasPrefix(it.Hash, "PLN-") || len(hash) != 7 {
+		return nil
+	}
+	if it.Kind == board.KindTask {
+		num := it.TaskNum
+		if n, err := strconv.Atoi(num); err == nil {
+			num = strconv.Itoa(n)
+		}
+		return []string{hash + "#" + num}
+	}
+	var keys []string
+	for k := range found {
+		if strings.HasPrefix(k, hash+"#") {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+// commitLines is the COMMITS section of a task or a plan: the newest commits
+// that name it, a count of the rest, or a line that says there are none. A
+// chore commit is only a plan tick, so it never counts. A commit that names
+// two tasks of one plan shows once.
+func (m Model) commitLines(it *board.Item, w int) []string {
+	seen := map[string]bool{}
+	var list []commits.Commit
+	for _, k := range commitKeys(it, m.taskCommits) {
+		for _, c := range m.taskCommits[k] {
+			if !c.Chore && !seen[c.Sha] {
+				seen[c.Sha] = true
+				list = append(list, c)
+			}
+		}
+	}
+	// The load lists each task oldest first, so the newest ones go on top.
+	sort.SliceStable(list, func(i, j int) bool { return list[i].Date.After(list[j].Date) })
+	out := []string{m.styles.label.Render("COMMITS")}
+	if len(list) == 0 {
+		return append(out, truncate("no linked commits", w))
+	}
+	for _, c := range list[:min(len(list), commitRows)] {
+		sha := c.Sha
+		if len(sha) > 7 {
+			sha = sha[:7]
+		}
+		out = append(out, truncate(expandTabs(sha+"  "+c.Subject), w))
+	}
+	if extra := len(list) - commitRows; extra > 0 {
+		out = append(out, truncate(fmt.Sprintf("+%d more · d to open", extra), w))
+	}
+	return out
 }

@@ -3,7 +3,7 @@ type: Gotcha
 title: Recipient must not rewrite history or file its own bugs
 description: omp once reset its branch and dropped an orchestrator commit, and once filed bugs for its own code; briefs forbid both
 paths: [plugin/skills/build/]
-timestamp: 2026-10-08T02:46:42Z
+timestamp: 2026-10-09T14:10:27Z
 ---
 
 Two things an omp recipient did on its own branch:

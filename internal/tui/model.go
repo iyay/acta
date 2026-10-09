@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/commits"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/editor"
 	"github.com/iyay/acta/internal/theme"
@@ -44,9 +45,10 @@ type popup struct {
 }
 
 type reloadMsg struct {
-	b      *board.Board
-	states []board.RunState
-	err    error
+	b       *board.Board
+	states  []board.RunState
+	commits map[string][]commits.Commit // task key "<plan hash>#<n>" to its commits
+	err     error
 }
 
 type watchFailedMsg struct{ err error }
@@ -65,6 +67,12 @@ const toastFor = 2 * time.Second
 // rounds lists the review rounds of the repo's worktrees, the way acta state
 // reads them. It is a hook so tests can point it at a fake branch.
 var rounds = board.PlanStates
+
+// findCommits reads the commits that name a task in a Task: trailer, from
+// HEAD and the branch of every worktree. It is a hook so tests can fake git.
+var findCommits = func(cfg config.Config) (map[string][]commits.Commit, error) {
+	return commits.Find(cfg.RepoRoot, commits.RefsFor(cfg))
+}
 
 // clearStatusAfter sends the clear message for text once d has passed.
 func clearStatusAfter(d time.Duration, text string) tea.Cmd {
@@ -195,6 +203,14 @@ type Model struct {
 	pulse    int          // the pulse frame the dots of work under way wear now
 	pulsing  bool         // true while a pulse message is on its way
 	styles   styles       // the brushes every screen is painted with
+
+	// The commits the last load found, by task key "<plan hash>#<n>", for the detail box.
+	taskCommits map[string][]commits.Commit
+
+	// The Commits screen; nil while it is closed. It takes every key and wheel
+	// notch while it is open, and the board under it stays as it was.
+	commitScreen *commitView
+	diffCache    map[string]diffResult // loaded diffs by sha, cleared on every reload
 }
 
 // New builds a model over b. dark picks the markdown style; ask the terminal
@@ -324,8 +340,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.board = msg.b
 		m.states = msg.states
+		m.taskCommits = msg.commits
 		m.moveTo(m.cursor())
-		return m, m.armPulse()
+		next, load := m.reloadCommits()
+		return next, tea.Batch(load, next.armPulse())
 	case pulseMsg:
 		m.pulsing = false
 		if !m.hasWork() {
@@ -372,6 +390,14 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// back with mouse reporting off and nothing turned it back on.
 		next, cmd := m.afterEditor(msg)
 		return next, tea.Batch(cmd, tea.EnableMouseCellMotion)
+	case diffLoadedMsg:
+		return m.storeDiff(msg), nil
+	case pagerDoneMsg:
+		// The pager ran with the program suspended, so the mouse is off now.
+		if msg.err != nil {
+			m.status = "pager: " + msg.err.Error()
+		}
+		return m, tea.EnableMouseCellMotion
 	case tea.KeyMsg:
 		return m.key(msg)
 	case tea.MouseMsg:
@@ -572,6 +598,9 @@ func (m *Model) end() {
 func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Any key may move the screen, so the picked cells stop meaning anything.
 	m.drag = drag{}
+	if m.commitScreen != nil {
+		return m.commitKey(k)
+	}
 	if m.help {
 		// The help sits over the panes, so it takes the keys until it closes.
 		if s := k.String(); s == "?" || s == "esc" {
@@ -648,6 +677,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.slug = &s
 	case "e":
 		return m.edit()
+	case "d":
+		return m.openCommits()
 	case "y":
 		// Copy first, then return, so the status the timer carries is the
 		// one the copy just set.
@@ -672,6 +703,9 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // on a tab name switches tab, and the wheel works on the box under the
 // pointer, so the mouse and the keys always leave the same cursor.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if m.commitScreen != nil {
+		return m.commitMouse(msg)
+	}
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
 		m.same = true
 		return m, nil
@@ -1109,7 +1143,13 @@ func (m Model) reloadCmd() tea.Cmd {
 		if err != nil {
 			return reloadMsg{err: err}
 		}
-		return reloadMsg{b: b, states: rounds(cfg)}
+		// The board is the point of a reload, so a git failure only empties
+		// the commits and never fails the load.
+		found, err := findCommits(cfg)
+		if err != nil {
+			found = nil
+		}
+		return reloadMsg{b: b, states: rounds(cfg), commits: found}
 	}
 }
 

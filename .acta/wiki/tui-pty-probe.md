@@ -3,7 +3,7 @@ type: Runbook
 title: Drive the TUI from a pty probe
 description: A Python pty plus key and SGR wheel escapes plus ACTA_TUI_TRACE measures the TUI with no user tab
 paths: [internal/tui/]
-timestamp: 2026-10-09T14:31:19Z
+timestamp: 2026-10-09T14:34:45Z
 ---
 
 Build the binary, open a pty sized with TIOCSWINSZ, start it with stdin/stdout/stderr on the slave, cwd at the repo, env `ACTA_TUI_TRACE=<log>` and `TERM=xterm-256color`, and drain the master in a thread. Wait 3 s for startup, send keys, then wheel notches as SGR escapes `\x1b[<65;X;YM` (down) or `\x1b[<64;X;YM` (up), 1-based X/Y. Read `tail -1` of the log.

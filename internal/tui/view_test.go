@@ -2351,14 +2351,14 @@ func TestHelpNamesOneKeyPerLine(t *testing.T) {
 	t.Parallel()
 
 	want := map[string]string{
-		"s": "set the status; dropped and wontfix close an item",
-		"t": "set the type: spec or bug",
-		"n": "new bug",
-		"+": "mark the task or debt line done",
-		"-": "put the task or debt line back to open",
-		"/": "search the rows",
-		"r": "reload the board from disk",
-		"q": "quit",
+		"s":   "set the status; dropped and wontfix close an item",
+		"t":   "set the type: spec or bug",
+		"n":   "new bug",
+		"+ -": "mark the task or debt line done / back to open",
+		"d":   "open commits",
+		"/":   "search the rows",
+		"r":   "reload the board from disk",
+		"q":   "quit",
 	}
 	got := map[string]string{}
 	for _, ln := range strings.Split(helpLines, "\n") {
@@ -2400,6 +2400,7 @@ func TestEveryHelpLineNamesOneKeyOrOnePairOfOpposites(t *testing.T) {
 		"g G":           true,
 		"h l":           true,
 		"ctrl+d ctrl+u": true,
+		"+ -":           true,
 	}
 	for _, ln := range strings.Split(helpLines, "\n") {
 		k, w, cut := strings.Cut(ln, "  ")

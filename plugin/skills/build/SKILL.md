@@ -139,6 +139,7 @@ Every implementer hand-off, built from [implementer-prompt.md](implementer-promp
 - stage by path, never `git add -A` or `git add .`;
 - run the repo's formatter and type checks before the commit; formatting goes in the task commit, never in a commit of its own;
 - comments in plain English a ten-year-old can read, saying why; no marker tags;
+- the exact line `Task: PLN-<hash>#<n>` that ends each code commit (hash from `acta show <plan id>`, `<n>` with no leading zero); fix-round and polish commits get one line per task fixed; `chore(` planning commits get none; `inline`: add it yourself;
 - report in the user's chat language (see the session rules); write everything in the repo in the repo language;
 - very first action on every task: run `acta tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`);
 - right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress (for example `acta tick plans/2026-09-26-tick-fixes#task-3 --step 2`); right after the task's commit, run `acta tick plans/<stem>#task-N --all` so no box stays open; never commit the plan file.
@@ -196,7 +197,7 @@ Too broad ("implement the plan") leaves the worker lost. No context (paths, veri
 **Context:** worktree path, branch, plan path, task number, verify line.
 
 **No constraints:** the worker refactors everything and commits the plan file.
-**Constraints:** stage by path, `acta tick plans/<stem>#task-N --step <n>` after each step, `acta tick plans/<stem>#task-N --all` right after the commit so no box stays open, never commit the plan file.
+**Constraints:** stage by path, the ticks and the trailer line above, never commit the plan file.
 
 **Vague output:** "done" - you learn nothing.
 **Specific:** the short status contract from the template: status, commits, test summary, concerns.

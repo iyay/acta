@@ -65,6 +65,7 @@ ctrl+d ctrl+u    page down / up
 space            open or shut a plan row
 h l              shut / open a plan row, h on a task too
 enter            open or shut a plan row, or focus the detail
+d                open commits
 z                expand the focused pane
 o                flip the sort: oldest / newest
 /                search the rows
@@ -75,8 +76,7 @@ s                set the status; dropped and wontfix close an item
 t                set the type: spec or bug
 p                set the priority of a bug or a debt line: high, medium, low or none
 n                new bug
-+                mark the task or debt line done
--                put the task or debt line back to open
++ -              mark the task or debt line done / back to open
 esc              back to the list, close this help
 q                quit`
 
@@ -124,6 +124,9 @@ func (m Model) View() string {
 // draw paints the whole screen: the boxes, the status line, and any popup on
 // top of them.
 func (m Model) draw() string {
+	if m.commitScreen != nil {
+		return m.commitsFrame()
+	}
 	g := m.geometry()
 	if !g.wide {
 		return m.withDrag(m.frameFrom(strings.Split(m.paneView(m.focus, g.full), "\n"), false))
@@ -553,6 +556,8 @@ func (m Model) statusLine() string {
 	// the faint brush while the words next to it keep their own color.
 	left, faintLeft := helpHint, true
 	switch {
+	case m.commitScreen != nil && m.status == "":
+		// The Commits screen has no search, so a query of the board stays hidden.
 	case m.searching || m.query != "":
 		left, faintLeft = "/"+m.query, false
 	case m.status != "":
