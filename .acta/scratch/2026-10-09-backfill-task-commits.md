@@ -2,10 +2,11 @@
 id: SCR-0059
 hash: gyzf4ge
 title: Link old plan commits to their tasks without rewriting history
-status: brainstorming
+status: dropped
 created: "2026-10-09 21:39:20"
 schema: "1"
 started: "2026-10-09 21:40:06"
+finished: "2026-10-09 21:59:06"
 ---
 # Link old plan commits to their tasks without rewriting history
 
@@ -38,6 +39,11 @@ Measured after round 1 (515 non-chore commits on main):
 - main-backup Land PLN- merges cover PLN-0035..PLN-0113 only. Mapping main shas back to backup commits is lossy: the 2026-10-07 rewrite folded and renamed commits. Tree match finds 264 main commits in backup, only 11 of them inside a Land merge.
 - Plan time window plus files named in task text: 71 commits hit exactly one task, 64 hit one plan but several tasks, 1 hits several plans, 379 hit nothing.
 - So confident links cover roughly a quarter of old commits at best.
+
+### 2026-10-09
+
+2026-10-09 probe round 2: user took the recommendation. Dropped.
+Why: the 2026-10-07 history rewrite folded and renamed the old commits, so the signal is gone. Confident links would cover about a quarter of 515 old commits (about 70 task links, 60 plan links), for a one-off script, a mapping file, a second read path in internal/commits and plan-level rows in the Commits view. New plans get the Task trailer already, so the gap only shrinks.
 
 ## Open questions
 
