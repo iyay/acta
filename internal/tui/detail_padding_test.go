@@ -15,11 +15,12 @@ func startCol(line string) int {
 	return len(r) - len([]rune(strings.TrimLeft(string(r), " ")))
 }
 
-// The detail box pads every side by one cell: text starts under the D of the
-// Detail title, one cell stays free before the right wall, and the first and
-// last inner lines are empty. The body is drawn by the real markdown renderer,
-// so its own margin is checked too.
-func TestDetailBoxPadsEverySide(t *testing.T) {
+// The detail box pads its left and right side by one cell: text starts under
+// the D of the Detail title and one cell stays free before the right wall.
+// It keeps no empty line at the top or the bottom, because one line of a
+// terminal looks twice as tall as one cell is wide. The body is drawn by the
+// real markdown renderer, so its own margin is checked too.
+func TestDetailBoxPadsItsSides(t *testing.T) {
 	m := loadedModel(t, map[string][]commits.Commit{"abcdefg#1": fakeCommits("a", 2)})
 	th, _ := theme.Builtin(theme.Default)
 	m.render = newRenderer(th, true)
@@ -32,10 +33,11 @@ func TestDetailBoxPadsEverySide(t *testing.T) {
 	}
 	col = len([]rune(string([]rune(lines[0]))[:col]))
 	inner := lines[1 : len(lines)-1]
-	for _, i := range []int{0, len(inner) - 1} {
-		if got := strings.TrimSpace(cutWalls(inner[i])); got != "" {
-			t.Errorf("inner line %d is not empty: %q", i, got)
-		}
+	if got := strings.TrimSpace(cutWalls(inner[0])); !strings.HasPrefix(got, "ID") {
+		t.Errorf("first inner line = %q, want the ID line", got)
+	}
+	if got := strings.TrimSpace(cutWalls(inner[len(inner)-1])); !strings.HasPrefix(got, "created") {
+		t.Errorf("last inner line = %q, want the date line", got)
 	}
 	seen := map[string]bool{}
 	for _, ln := range inner {
@@ -65,8 +67,8 @@ func TestDetailBoxPadsEverySide(t *testing.T) {
 	}
 }
 
-// A box too small for the padding draws without it, and no line is ever wider
-// than the box, whatever the size.
+// A box too narrow for the padding draws without it, the height is never
+// padded, and no line is ever wider than the box, whatever the size.
 func TestDetailBoxTooSmallForPaddingStaysInside(t *testing.T) {
 	for _, w := range []int{1, 2, 3, 4, 5, 8, 10} {
 		for _, h := range []int{1, 2, 3, 4, 5} {
@@ -75,8 +77,11 @@ func TestDetailBoxTooSmallForPaddingStaysInside(t *testing.T) {
 			if dw > b.textW() || dh > b.inner {
 				t.Errorf("w=%d h=%d: area %dx%d is bigger than the box", w, h, dw, dh)
 			}
-			if (w < 3 || h < 3) && (dw != w || dh != h) {
-				t.Errorf("w=%d h=%d: a box too small for padding got %dx%d", w, h, dw, dh)
+			if dh != h {
+				t.Errorf("w=%d h=%d: height padded to %d", w, h, dh)
+			}
+			if w < 3 && dw != w {
+				t.Errorf("w=%d h=%d: a box too narrow for padding got width %d", w, h, dw)
 			}
 		}
 	}
