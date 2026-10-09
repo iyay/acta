@@ -2,6 +2,7 @@
 id: DBT-0104
 hash: tr53gz4
 parent: plans/2026-10-09-instant-tui-startup
+started: "2026-10-09 21:45:11"
 ---
 # Instant TUI startup review notes
 
