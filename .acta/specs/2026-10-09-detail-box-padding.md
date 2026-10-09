@@ -3,6 +3,7 @@ parent: plans/2026-10-09-commits-colors-line-numbers
 id: SPC-0123
 created: "2026-10-09 22:47:37"
 hash: fbujn2o
+started: "2026-10-09 22:50:44"
 ---
 # Detail box padding, commit rows in the detail, no diff line numbers
 

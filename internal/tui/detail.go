@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -558,32 +557,24 @@ func commitKeys(it *board.Item, found map[string][]commits.Commit) []string {
 }
 
 // commitLines is the COMMITS section of a task or a plan: the newest commits
-// that name it, a count of the rest, or a line that says there are none. A
-// chore commit is only a plan tick, so it never counts. A commit that names
-// two tasks of one plan shows once.
+// that name it, drawn like the rows of the Commits screen, a count of the
+// rest, or a line that says there are none. A chore commit is only a plan
+// tick, so it never counts. A commit that names two tasks of one plan shows
+// once.
 func (m Model) commitLines(it *board.Item, w int) []string {
-	seen := map[string]bool{}
-	var list []commits.Commit
-	for _, k := range commitKeys(it, m.taskCommits) {
-		for _, c := range m.taskCommits[k] {
-			if !c.Chore && !seen[c.Sha] {
-				seen[c.Sha] = true
-				list = append(list, c)
-			}
+	var list []commitRow
+	for _, r := range commitRowsOf(it, m.taskCommits) {
+		if !r.c.Chore {
+			list = append(list, r)
 		}
 	}
-	// The load lists each task oldest first, so the newest ones go on top.
-	sort.SliceStable(list, func(i, j int) bool { return list[i].Date.After(list[j].Date) })
 	out := []string{m.styles.label.Render("COMMITS")}
 	if len(list) == 0 {
 		return append(out, truncate("no linked commits", w))
 	}
-	for _, c := range list[:min(len(list), commitRows)] {
-		sha := c.Sha
-		if len(sha) > 7 {
-			sha = sha[:7]
-		}
-		out = append(out, truncate(expandTabs(sha+"  "+c.Subject), w))
+	plan := it.Kind == board.KindPlan
+	for _, r := range list[:min(len(list), commitRows)] {
+		out = append(out, m.commitRowLine(r, plan, w))
 	}
 	if extra := len(list) - commitRows; extra > 0 {
 		out = append(out, truncate(fmt.Sprintf("+%d more · d to open", extra), w))

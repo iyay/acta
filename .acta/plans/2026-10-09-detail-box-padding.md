@@ -5,6 +5,7 @@ closes: [DBT-0107.01, DBT-0107.02]
 id: PLN-0132
 created: "2026-10-09 22:49:52"
 hash: nxqb6zb
+started: "2026-10-09 22:50:44"
 ---
 # Detail box padding, commit rows in the detail, no diff line numbers
 
@@ -35,9 +36,9 @@ hash: nxqb6zb
 
 **verify:** No diff line carries a gutter in any form, and every line kind keeps the one style it had before SPC-0122. List the line kinds checked and the widths swept.
 
-- [ ] **Failing test:** a diff with a hunk renders each line starting with its own first character (`+`, `-`, space, `@`, `d`, `c`), no leading number or padding; fails because the gutter is there.
-- [ ] **Change:** remove the gutter code and its helpers from `colorDiff`; drop the gutter tests and the gutter-stripping helper in the test file; keep the style checks.
-- [ ] **Commit:** `feat(tui): drop line numbers from the diff`
+- [x] **Failing test:** a diff with a hunk renders each line starting with its own first character (`+`, `-`, space, `@`, `d`, `c`), no leading number or padding; fails because the gutter is there.
+- [x] **Change:** remove the gutter code and its helpers from `colorDiff`; drop the gutter tests and the gutter-stripping helper in the test file; keep the style checks.
+- [x] **Commit:** `feat(tui): drop line numbers from the diff`
 
 ### Task 02: Detail commit rows like the Commits screen
 
@@ -47,9 +48,9 @@ hash: nxqb6zb
 
 **verify:** Every COMMITS row in the detail is exactly what `commitRowLine` paints for that commit at that width, on a task and on a plan, and chore commits never show. List cases checked: task, plan with a two-task commit, landed and unlanded, more than 5 commits, none, a chore commit.
 
-- [ ] **Failing test:** for a plan with landed, unlanded and a two-task commit, each COMMITS row equals `m.commitRowLine(row, true, w)`; for a task, `commitRowLine(row, false, w)`; fails because rows are plain.
-- [ ] **Change:** build the rows with `commitRowsOf(it, m.taskCommits)`, skip rows whose commit is a chore, take the first `commitRows`, and draw each with `m.commitRowLine(row, it.Kind == board.KindPlan, w)`; keep the `COMMITS` label, `no linked commits` and `+n more · d to open`.
-- [ ] **Commit:** `feat(tui): draw detail commit rows like the Commits screen`
+- [x] **Failing test:** for a plan with landed, unlanded and a two-task commit, each COMMITS row equals `m.commitRowLine(row, true, w)`; for a task, `commitRowLine(row, false, w)`; fails because rows are plain.
+- [x] **Change:** build the rows with `commitRowsOf(it, m.taskCommits)`, skip rows whose commit is a chore, take the first `commitRows`, and draw each with `m.commitRowLine(row, it.Kind == board.KindPlan, w)`; keep the `COMMITS` label, `no linked commits` and `+n more · d to open`.
+- [x] **Commit:** `feat(tui): draw detail commit rows like the Commits screen`
 
 ### Task 03: Even padding in the detail box
 
