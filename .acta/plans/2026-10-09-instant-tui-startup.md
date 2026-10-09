@@ -5,6 +5,7 @@ id: PLN-0128
 created: "2026-10-09 21:02:33"
 hash: lwl7n0v
 started: "2026-10-09 21:06:08"
+finished: "2026-10-09 21:12:13"
 ---
 # Instant TUI startup Implementation Plan
 
@@ -64,6 +65,29 @@ started: "2026-10-09 21:06:08"
 
 **verify:** Before `p.Run` the TUI runs no `git log`, no worktree scan and no watcher setup, and every load after the first frame is the full one with authors. List every load the TUI makes (first frame, startup load, watcher reload, the `r` key, the reload after a write action) and the function each one calls.
 
-- [ ] **Failing test:** add `TestLoadWithAuthorsFillsAuthors`: from `setup`, commit a new plan in the worktree as another name (`git -c user.name=Wen commit`); want `Load(cfg)` to leave `Author` empty on both the main plan and the worktree plan, and `LoadWithAuthors(cfg)` to give `test` and `Wen`; run `scripts/test ./internal/trees -run TestLoadWithAuthorsFillsAuthors` and watch it fail, because `LoadWithAuthors` does not exist.
-- [ ] **Code:** `LoadWithAuthors(cfg)` calls `Load(cfg)` and, when that worked, `b.FillAuthors()`; in `runTUI` the first board comes from `board.Load(cfg)`, `WithLoad` gets `func() (*board.Board, error) { return trees.LoadWithAuthors(cfg) }`, and the `tui.Watch` block becomes `stop := tui.Start(dirs, load, p.Send)` with `defer stop()`.
-- [ ] **Commit:** `perf(cli): show the first frame before any git scan`
+- [x] **Failing test:** add `TestLoadWithAuthorsFillsAuthors`: from `setup`, commit a new plan in the worktree as another name (`git -c user.name=Wen commit`); want `Load(cfg)` to leave `Author` empty on both the main plan and the worktree plan, and `LoadWithAuthors(cfg)` to give `test` and `Wen`; run `scripts/test ./internal/trees -run TestLoadWithAuthorsFillsAuthors` and watch it fail, because `LoadWithAuthors` does not exist.
+- [x] **Code:** `LoadWithAuthors(cfg)` calls `Load(cfg)` and, when that worked, `b.FillAuthors()`; in `runTUI` the first board comes from `board.Load(cfg)`, `WithLoad` gets `func() (*board.Board, error) { return trees.LoadWithAuthors(cfg) }`, and the `tui.Watch` block becomes `stop := tui.Start(dirs, load, p.Send)` with `defer stop()`.
+- [x] **Commit:** `perf(cli): show the first frame before any git scan`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** The NOTE below applied, and nothing else changes.
+
+- [x] Remove `WatchFailed` from `internal/tui/model.go`: its only caller outside tests was the `runTUI` line Task 3 replaced, so it is dead code now. `TestWatchFailedGoesManual` in `internal/tui/model_test.go` sends `watchFailedMsg{err: ...}` straight in.
+- [x] Commit: `polish: review notes PLN-0128`
+
+## Review notes
+
+- Round 1: full tier, two reviewers (Spec, Standards), both CLEAN. Polish: full tier, two reviewers, both CLEAN.
+- For a file nobody committed, `user.name` is now read in `RepoRoot`, not in the planning root; they differ only when `--root` points into another git repo with its own name.
+- The startup load from `tui.Start` and a load from a file change can land in either order, so an older board can show until the next change; `Init` raced the watcher the same way before.
+- `TestStartLoadsOnceAfterTheWatcherIsReady` marks `dirs` when it starts, not after the folders are added; this matches the plan's wording.
+- A file nobody committed inside another worktree takes the main checkout's `user.name`, as before.
+- `FillAuthors` keeps a per-folder lookup for files under no known checkout (an absolute root outside the repo); the spec does not name it, and it has its own test.
+- Spec Testing bullet 1 is covered for `trees.Load` only indirectly: `trees` cannot stub the board's git variable, so the stubbed count in `LoadTrees` and the empty-author check in `TestLoadWithAuthorsFillsAuthors` stand in.
+- Beyond the two wiki pages the spec named, `tick-stamps-spec` got its text fixed (the parent can be a bug) and nine pages got a re-check timestamp.
+- The plan changed during the build (f49a7c8) to add `internal/tui/detail_test.go` to Task 1.
+- `.acta/plans/2026-09-26-tui.md` still names `WatchFailed`; it is a landed plan, so it stays as history.
+- Measured on this repo with the foreground pty probe: first frame 52 to 71 ms on the branch binary over ten runs, 1137 to 1282 ms on the old one.

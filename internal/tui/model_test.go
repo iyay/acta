@@ -1010,7 +1010,7 @@ func TestReloadKeepsSelection(t *testing.T) {
 func TestWatchFailedGoesManual(t *testing.T) {
 	t.Parallel()
 
-	next, _ := newModel(t).Update(WatchFailed(errors.New("too many files")))
+	next, _ := newModel(t).Update(watchFailedMsg{err: errors.New("too many files")})
 	m := next.(Model)
 	if !m.manual || !strings.Contains(m.status, "press r") {
 		t.Fatalf("manual %v status %q", m.manual, m.status)

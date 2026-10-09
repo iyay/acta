@@ -146,9 +146,6 @@ type editorDoneMsg struct {
 	err    error
 }
 
-// WatchFailed tells the model live reload could not start.
-func WatchFailed(err error) tea.Msg { return watchFailedMsg{err: err} }
-
 // Model is the whole screen state. Bubble Tea copies it on every update.
 type Model struct {
 	cfg        config.Config

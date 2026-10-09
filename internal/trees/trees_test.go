@@ -252,3 +252,45 @@ func TestWatchDirs(t *testing.T) {
 		t.Fatal("the main tree's folders belong to the caller, not to WatchDirs")
 	}
 }
+
+func TestLoadWithAuthorsFillsAuthors(t *testing.T) {
+	t.Parallel()
+
+	repo, wt := setup(t)
+	write(t, filepath.Join(wt, ".pm/plans/2026-09-22-b.md"), "# Plan B\n\n### Task 1: One\n- [ ] a\n")
+	run(t, wt, "add", ".pm/plans/2026-09-22-b.md")
+	run(t, wt, "-c", "user.name=Wen", "-c", "user.email=wen@example.com", "commit", "-q", "-m", "b")
+	cfg, err := config.Load(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The plain load is fast on purpose, so it names nobody.
+	plain, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"plans/2026-09-21-a", "plans/2026-09-22-b"} {
+		it := plain.Get(id)
+		if it == nil {
+			t.Fatalf("plain load: %s missing", id)
+		}
+		if it.Author != "" {
+			t.Fatalf("plain load: %s author = %q, want empty", id, it.Author)
+		}
+	}
+
+	full, err := LoadWithAuthors(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]string{"plans/2026-09-21-a": "test", "plans/2026-09-22-b": "Wen"} {
+		it := full.Get(id)
+		if it == nil {
+			t.Fatalf("full load: %s missing", id)
+		}
+		if it.Author != want {
+			t.Fatalf("full load: %s author = %q, want %q", id, it.Author, want)
+		}
+	}
+}

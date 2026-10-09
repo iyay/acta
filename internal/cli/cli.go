@@ -32,10 +32,14 @@ const (
 	exitOther    = 3
 )
 
-// runTUI opens the TUI with live reload. When the watcher cannot start, the
-// TUI still opens in manual mode.
+// runTUI opens the TUI with live reload. The board on the first frame holds
+// only the main tree. The watcher's start brings the full one, with the other
+// worktrees, branches and authors. When the watcher cannot start, the TUI
+// still opens in manual mode.
 var runTUI = func(cfg config.Config, stderr io.Writer) int {
-	b, err := trees.Load(cfg)
+	// Git and the other worktrees would delay the first frame, so read only
+	// the main tree here.
+	b, err := board.Load(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
@@ -43,7 +47,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
 	dark := lipgloss.HasDarkBackground()
-	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithLoad(func() (*board.Board, error) { return trees.Load(cfg) })
+	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithLoad(func() (*board.Board, error) { return trees.LoadWithAuthors(cfg) })
 	// 120fps halves how long a new frame waits to reach the screen.
 	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
 	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
@@ -52,11 +56,8 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	p := tea.NewProgram(m, append(opts, traceOpts...)...)
 	load := m.Reload()
 	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
-	if stop, err := tui.Watch(dirs, load, p.Send); err != nil {
-		go p.Send(tui.WatchFailed(err))
-	} else {
-		defer stop()
-	}
+	stop := tui.Start(dirs, load, p.Send)
+	defer stop()
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
