@@ -69,4 +69,4 @@ From a task row in the TUI there is no way to see which commits that task made o
 
 ## Wiki
 
-Proposed, waiting for the user's yes: a `Convention` page `task-trailer.md` saying every code commit carries `Task: PLN-<hash>#<n>`, why the hash and not the short id, and that tick only warns.
+Approved by the user on 2026-10-09; acta:build writes it: a `Convention` page `task-trailer.md` saying every code commit carries `Task: PLN-<hash>#<n>`, why the hash and not the short id, and that tick only warns.
