@@ -6,6 +6,7 @@ id: PLN-0126
 created: "2026-10-09 16:13:15"
 hash: vbuiaa9
 started: "2026-10-09 16:15:34"
+finished: "2026-10-09 16:20:00"
 ---
 # acta update command
 
@@ -94,11 +95,11 @@ started: "2026-10-09 16:15:34"
 - Consumes: `update.IsRelease`, `update.NewClient`, `update.Latest`, `update.Fetch`, `update.Replace`, `setup.ExtractPlugin(plugin.Files, homeDir())`, `plugin.Version()`.
 - Produces: `func cmdUpdate(args []string, stdout, stderr io.Writer) int`; flags `--check` and hidden `--refresh-plugin`. Package vars `isRelease = update.IsRelease` and `exePath = os.Executable` so tests can swap them.
 
-- [ ] **Step 1: Failing tests** in `update_cmd_test.go`, one per verify path. TLS test server behind `ACTA_DOWNLOAD_URL`; client swap via a package var so the test cert is trusted. Refresh tests put a fake `claude` script on PATH (`t.Setenv`) that logs its args to a file, and set HOME to `t.TempDir()`. Success test: exe is a temp file; after run it holds the new bytes; the re-exec of `--refresh-plugin` is a package var `runRefresh func(exe string) error` swapped to call `cmdUpdate([]string{"--refresh-plugin"}, ...)` in process.
-- [ ] **Step 2: Watch them fail:** `scripts/test ./internal/cli -run TestUpdate`
-- [ ] **Step 3: Minimal code:** flow exactly as spec section "Flow of `acta update`", steps 1 to 5, messages verbatim. `--refresh-plugin` extracts, then when `exec.LookPath("claude")` finds it, runs the two commands recorded in Task 01's state note. Any refresh error: `plugin refresh failed: run acta setup`, exit 1.
-- [ ] **Step 4: Pass:** `scripts/test ./internal/cli -run TestUpdate` then `scripts/test ./internal/update ./internal/cli`
-- [ ] **Step 5: Commit** with gofmt and vet clean: `feat(cli): acta update command`
+- [x] **Step 1: Failing tests** in `update_cmd_test.go`, one per verify path. TLS test server behind `ACTA_DOWNLOAD_URL`; client swap via a package var so the test cert is trusted. Refresh tests put a fake `claude` script on PATH (`t.Setenv`) that logs its args to a file, and set HOME to `t.TempDir()`. Success test: exe is a temp file; after run it holds the new bytes; the re-exec of `--refresh-plugin` is a package var `runRefresh func(exe string) error` swapped to call `cmdUpdate([]string{"--refresh-plugin"}, ...)` in process.
+- [x] **Step 2: Watch them fail:** `scripts/test ./internal/cli -run TestUpdate`
+- [x] **Step 3: Minimal code:** flow exactly as spec section "Flow of `acta update`", steps 1 to 5, messages verbatim. `--refresh-plugin` extracts, then when `exec.LookPath("claude")` finds it, runs the two commands recorded in Task 01's state note. Any refresh error: `plugin refresh failed: run acta setup`, exit 1.
+- [x] **Step 4: Pass:** `scripts/test ./internal/cli -run TestUpdate` then `scripts/test ./internal/update ./internal/cli`
+- [x] **Step 5: Commit** with gofmt and vet clean: `feat(cli): acta update command`
 
 ## State
 
@@ -108,3 +109,29 @@ Verified with real claude (Task 01 step 1):
 - Refresh marketplace: claude plugin marketplace update acta-local  (optional --json; name arg optional, no name updates all)
 - Update plugin: claude plugin update acta@acta-local  (restart needed to apply; non-TTY needs -y/--yes; --json and -s user|project|local|managed available)
 Both commands exist. acta@acta-local is installed (user scope, 0.1.45).
+
+## Review notes
+
+- Round 1, full tier (download and replace of the binary is a trust boundary): two reviewers, both CLEAN, no BLOCKER.
+- The spec names `claude plugin update acta@acta-local`; the code adds `--yes`, which Task 01's probe showed is needed without a TTY.
+- `--check` prints `current vX, latest vX` when both match, not `acta vX is the latest`.
+- A refresh child killed by a signal exits 1 without the `plugin refresh failed` line.
+- `execRefresh` writes to os.Stdout and os.Stderr, so tests cannot capture the child's output.
+- Only a permission error at temp-file create maps to `no write access to <dir>`; other create errors show the raw error.
+- `Replace` does not fsync before the rename.
+- A failed `claude` command shows only the general refresh message, not claude's own error.
+- Integrity is TLS plus a checksum from the same host; there is no signature.
+
+## Fix round 1
+
+### Task 05: internal/update joins the test guard
+
+**Files:**
+- Create: `internal/update/main_test.go`
+
+**verify:** Every test package in the repo calls `testguard.Watch()`, so the full gate `TestEveryTestPackageWatches` passes. List every package it checks that is new on this branch.
+
+- [x] **Step 1: Red:** `scripts/test ./internal/plugincheck -run TestEveryTestPackageWatches` fails naming `internal/update`.
+- [x] **Step 2: Add** `internal/update/main_test.go` with `TestMain` calling `testguard.Watch()`, copied from `internal/write/main_test.go`.
+- [x] **Step 3: Green:** the same command passes, then `scripts/test ./internal/update`.
+- [x] **Step 4: Commit** with gofmt and vet clean: `test(update): join the test guard`

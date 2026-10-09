@@ -154,8 +154,10 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	case "tidy":
 		return cmdTidy(args[1:], stdout, stderr)
+	case "update":
+		return cmdUpdate(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, setup, id, commit, list, show, set, state, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one, eval-omp or tidy\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q; use doctor, setup, id, commit, list, show, set, state, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, dispatch init, dispatch send, dispatch close, reply-back, run-one, eval-omp, tidy or update\n", args[0])
 		return exitBadInput
 	}
 }
