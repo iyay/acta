@@ -342,6 +342,38 @@ func TestActivityListsOnlyInProgressTasks(t *testing.T) {
 	}
 }
 
+// TestActivityDropsStartedDoneTask checks a task that was started and then
+// finished is not under way. The started record stays on disk for good, so
+// the status has to win over it.
+func TestActivityDropsStartedDoneTask(t *testing.T) {
+	t.Parallel()
+
+	for _, status := range []string{"done", "fixed"} {
+		cfg := treeCfg(t, map[string]string{
+			".acta/plans/2026-09-20-one.md": "# One\n\n### Task 1: A\n\n- [ ] a\n",
+		})
+		m := sized(detailModel(t, cfg), 160, 50)
+		id := "plans/2026-09-20-one#task-1"
+		task := m.board.Get(id)
+		if task == nil {
+			t.Fatalf("no task %s on the board", id)
+		}
+		task.Started = true
+		task.Status = status
+		if inProgress(task) {
+			t.Errorf("a started task at %s counts as under way", status)
+		}
+		if got := activityTaskIDs(m); slices.Contains(got, id) {
+			t.Errorf("Activity still lists the %s task %s", status, id)
+		}
+		for _, r := range m.rowsOf(paneList) {
+			if r.depth == 0 && r.id == task.PlanID {
+				t.Errorf("Activity still shows the plan head of the %s task", status)
+			}
+		}
+	}
+}
+
 // TestNoDividerRow walks every pane of every tab and checks no row is a rule:
 // each row is a real item or the folded legacy group, and no pane draws a
 // full-width line of dashes, even where in-progress and not-started items sit

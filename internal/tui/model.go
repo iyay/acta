@@ -405,6 +405,11 @@ func inProgress(it *board.Item) bool {
 	if it == nil {
 		return false
 	}
+	// The started record stays on disk for good. Once the work is finished it
+	// must not make the item look busy again.
+	if it.Status == "done" || it.Status == "fixed" {
+		return false
+	}
 	if it.Started {
 		return true
 	}
