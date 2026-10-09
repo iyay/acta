@@ -77,9 +77,9 @@ started: "2026-10-09 20:51:08"
 
 **verify:** For any plan given by short id or hash, with or without a task, the command prints exactly the linked non-chore commits oldest first (all with `--all`), and every bad input exits 1. List every input checked: short id, hash, plan with no task, task, `--all`, `--json`, no linked commits (prints `no linked commits`, exit 0), unknown plan, task number not in the plan.
 
-- [ ] **Failing test:** `acta commits <plan> [task]` in a temp repo prints `sha  date  #task  subject  (branch)` lines, 7-char sha and `YYYY-MM-DD`; fails because the command does not exist.
-- [ ] **Change:** resolve the plan through the board, build refs from HEAD plus `trees.Others` branches, call `commits.Find`, filter, sort by date, print text or JSON.
-- [ ] **Commit:** `feat(cli): acta commits lists a task's commits`
+- [x] **Failing test:** `acta commits <plan> [task]` in a temp repo prints `sha  date  #task  subject  (branch)` lines, 7-char sha and `YYYY-MM-DD`; fails because the command does not exist.
+- [x] **Change:** resolve the plan through the board, build refs from HEAD plus `trees.Others` branches, call `commits.Find`, filter, sort by date, print text or JSON.
+- [x] **Commit:** `feat(cli): acta commits lists a task's commits`
 
 ### Task 05: tick warns on a missing trailer
 
@@ -89,9 +89,9 @@ started: "2026-10-09 20:51:08"
 
 **verify:** tick's exit code and file writes are the same with or without a trailer; the warning shows only when HEAD lacks the trailer for the ticked task. List every case checked: trailer present, missing, trailer for another task, HEAD not readable or not a git repo (no warning, no failure).
 
-- [ ] **Failing test:** tick a task whose HEAD commit has no `Task:` trailer; expect stderr `warning: HEAD has no "Task: PLN-<hash>#<n>" trailer` and the usual exit; fails because tick says nothing.
-- [ ] **Change:** after a successful tick, read HEAD's body with `git log -1 --format=%B`, check `commits.Trailers`, print the warning to stderr when missing.
-- [ ] **Commit:** `feat(tick): warn when HEAD lacks the task trailer`
+- [x] **Failing test:** tick a task whose HEAD commit has no `Task:` trailer; expect stderr `warning: HEAD has no "Task: PLN-<hash>#<n>" trailer` and the usual exit; fails because tick says nothing.
+- [x] **Change:** after a successful tick, read HEAD's body with `git log -1 --format=%B`, check `commits.Trailers`, print the warning to stderr when missing.
+- [x] **Commit:** `feat(tick): warn when HEAD lacks the task trailer`
 
 ### Task 06: TUI loads commits and shows them in the detail pane
 
@@ -101,9 +101,9 @@ started: "2026-10-09 20:51:08"
 
 **verify:** The detail pane of every task and plan shows the commits from the same load as the board, chore ones never counted, and no other item kind shows a COMMITS section. List every case checked: task with commits, task with more than 5, plan, task with only chore commits, no commits, a bug or debt row, a load where git fails (board still shows).
 
-- [ ] **Failing test:** a model fed a `reloadMsg` with a commits map renders `COMMITS`, up to 5 `sha  subject` rows, then `+N more · d to open`, or `no linked commits`; fails because the section does not exist.
-- [ ] **Change:** a `var findCommits = commits.Find` seam next to `rounds`, called in `reloadCmd` with HEAD plus board tree branches, carried in `reloadMsg` and stored on the model; section drawn after `stepLines`.
-- [ ] **Commit:** `feat(tui): show a task's commits in the detail pane`
+- [x] **Failing test:** a model fed a `reloadMsg` with a commits map renders `COMMITS`, up to 5 `sha  subject` rows, then `+N more · d to open`, or `no linked commits`; fails because the section does not exist.
+- [x] **Change:** a `var findCommits = commits.Find` seam next to `rounds`, called in `reloadCmd` with HEAD plus board tree branches, carried in `reloadMsg` and stored on the model; section drawn after `stepLines`.
+- [x] **Commit:** `feat(tui): show a task's commits in the detail pane`
 
 ### Task 07: Commits screen
 
