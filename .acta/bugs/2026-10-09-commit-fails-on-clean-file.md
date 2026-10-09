@@ -1,6 +1,8 @@
 ---
 id: BUG-0039
 hash: q24c7b4
+status: wontfix
+finished: "2026-10-09 21:25:54"
 ---
 # acta commit fails when the file has nothing new to commit
 
