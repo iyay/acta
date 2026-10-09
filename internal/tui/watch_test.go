@@ -107,3 +107,98 @@ func TestReloadKeyStillLoadsInManualMode(t *testing.T) {
 		t.Fatal("reload command did not call load")
 	}
 }
+
+func TestStartLoadsOnceAfterTheWatcherIsReady(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	var mu sync.Mutex
+	dirsRan := false
+	dirsFirst := false
+	loads := 0
+	msgs := make(chan tea.Msg, 10)
+	dirs := func() []string {
+		mu.Lock()
+		dirsRan = true
+		mu.Unlock()
+		return []string{dir}
+	}
+	reload := func() tea.Msg {
+		mu.Lock()
+		loads++
+		dirsFirst = dirsRan
+		mu.Unlock()
+		return reloadMsg{b: &board.Board{}}
+	}
+	stop := Start(dirs, reload, func(m tea.Msg) { msgs <- m })
+	defer stop()
+
+	select {
+	case m := <-msgs:
+		if _, ok := m.(reloadMsg); !ok {
+			t.Fatalf("got %T, want reloadMsg", m)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("no first load after the watcher started")
+	}
+	select {
+	case m := <-msgs:
+		t.Fatalf("got a second message %T, want only one load", m)
+	case <-time.After(2 * Debounce):
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if loads != 1 {
+		t.Fatalf("loads = %d, want 1", loads)
+	}
+	if !dirsFirst {
+		t.Fatal("the load ran before the watcher asked for its folders")
+	}
+}
+
+func TestStartStopWaitsForTheSetupToEnd(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+	msgs := make(chan tea.Msg, 10)
+	dirs := func() []string {
+		<-release
+		return nil
+	}
+	reload := func() tea.Msg { return reloadMsg{b: &board.Board{}} }
+	stop := Start(dirs, reload, func(m tea.Msg) { msgs <- m })
+
+	stopped := make(chan struct{})
+	go func() { stop(); close(stopped) }()
+	select {
+	case <-stopped:
+		t.Fatal("stop returned while the setup was still running")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case <-stopped:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stop never returned after the setup ended")
+	}
+}
+
+func TestInitStartsNoLoad(t *testing.T) {
+	t.Parallel()
+
+	m := newModel(t)
+	var mu sync.Mutex
+	loads := 0
+	m.load = func() (*board.Board, error) {
+		mu.Lock()
+		loads++
+		mu.Unlock()
+		return m.board, nil
+	}
+	runNow(m.Init(), 200*time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if loads != 0 {
+		t.Fatalf("Init loaded the board %d times, want 0", loads)
+	}
+}
