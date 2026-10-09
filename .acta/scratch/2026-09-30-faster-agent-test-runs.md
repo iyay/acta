@@ -14,7 +14,6 @@ finished: "2026-09-30"
 
 ### 2026-09-30
 
-## Words
 
 User (2026-09-30): "check SPC-0025 deh, ini kok tests masih lama ya. apalagi kalo agent yang running, lama banget" ... "masa buat running full suite bisa sampe 5 menit sendiri" ... "brainstorm B+C".
 
@@ -27,7 +26,6 @@ Measured 2026-09-30 on 8 cores, 16 GB: `go test -count=1 -short ./...` 67s, full
 At 06:15 three agent worktrees (tui-colors, batch-author-lookup, config-file-name) ran `go test ./...` at once. Load average 26, about 128 MB RAM free, swapping, Docker VM busy. One suite stretched to 3-5 minutes.
 Plans carry `go test ./...` in verify lines (62 times in 2026-09-29/30 plans). plugin/skills/build/SKILL.md:116 says `go test ./...`.
 
-## Context
 
 ## Log
 

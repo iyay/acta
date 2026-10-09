@@ -48,9 +48,7 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 			return Outcome{}, err
 		}
 	}
-	day := Now().Format("2006-01-02")
-	words := strings.TrimRight(string(body), "\n")
-	content = append(content, fmt.Sprintf("# %s\n\n## Words\n\n### %s\n\n%s\n\n## Context\n\n## Log\n\n## Open questions\n", title, day, words)...)
+	content = append(content, scratchBody(title, string(body))...)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return Outcome{}, err
 	}
@@ -60,6 +58,87 @@ func NewScratch(cfg config.Config, slug, title string, body []byte) (Outcome, er
 	o := finish(cfg, path, Subject(cfg, []string{path}, "new "+stem(path)), false)
 	o.ShortID = shortID
 	return o, nil
+}
+
+// scratchBody lays out the body of a new scratch item. A plain body goes
+// whole under Words. A body that brings its own "# " or "## " headings is
+// sorted into the matching parts, so no part shows up twice.
+func scratchBody(title, body string) string {
+	if !hasHeadings(body) {
+		day := Now().Format("2006-01-02")
+		words := strings.TrimRight(body, "\n")
+		return fmt.Sprintf("# %s\n\n## Words\n\n### %s\n\n%s\n\n## Context\n\n## Log\n\n## Open questions\n", title, day, words)
+	}
+	out := fmt.Sprintf("# %s\n\n## Words\n\n## Context\n\n## Log\n\n## Open questions\n", title)
+	parts := splitHeaded(body)
+	for _, key := range []string{"words", "context", "log", "questions"} {
+		text := strings.Join(parts[key], "\n\n")
+		if text == "" {
+			continue
+		}
+		sec := sections[key]
+		out = putInSection(out, sec.heading, sec.dated, []byte(text))
+	}
+	return out
+}
+
+// hasHeadings says whether any line of the body is a "# " or "## " heading.
+func hasHeadings(body string) bool {
+	for _, ln := range strings.Split(body, "\n") {
+		if strings.HasPrefix(ln, "# ") || strings.HasPrefix(ln, "## ") {
+			return true
+		}
+	}
+	return false
+}
+
+// splitHeaded cuts a headed body into text for each key of sections. The
+// first "# " line is the old title and is dropped, the new file has its own.
+// Text before the first "## " goes to Words. A "## " heading the schema does
+// not know becomes "### " and stays in Words with its text, so it is kept.
+// A part that comes twice is joined, so none of its text is lost.
+func splitHeaded(body string) map[string][]string {
+	parts := map[string][]string{}
+	key := "words"
+	var cur []string
+	flush := func(extra string) {
+		text := strings.Trim(strings.Join(cur, "\n"), "\n")
+		if extra != "" {
+			text = strings.TrimRight(extra+"\n\n"+text, "\n")
+		}
+		if strings.TrimSpace(text) != "" {
+			parts[key] = append(parts[key], text)
+		}
+		cur = nil
+	}
+	titleGone := false
+	extra := ""
+	for _, ln := range strings.Split(body, "\n") {
+		if !titleGone && strings.TrimSpace(ln) != "" {
+			titleGone = true
+			if strings.HasPrefix(ln, "# ") {
+				continue
+			}
+		}
+		name := sectionName(ln)
+		if name == "" {
+			cur = append(cur, ln)
+			continue
+		}
+		flush(extra)
+		extra = ""
+		key = "words"
+		for k, sec := range sections {
+			if sec.heading == name {
+				key = k
+			}
+		}
+		if key == "words" && name != sections["words"].heading {
+			extra = "### " + name
+		}
+	}
+	flush(extra)
+	return parts
 }
 
 // sections says which "## " heading a --section value fills. Words and log

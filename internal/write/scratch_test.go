@@ -596,3 +596,58 @@ func TestNewScratchThenAddFoldsIntoOneCommit(t *testing.T) {
 		t.Errorf("add after another file made %d commits, want 1 new one", got-mid)
 	}
 }
+
+func TestNewScratchSortsAHeadedBodyIntoItsSections(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	in := "# T\n\n## Words\n\nhello\n\n## Context\n\n- c\n\n## Log\n\nl\n\n## Open questions\n\n- q\n\n## Extra\n\nx\n"
+	o, err := NewScratch(cfg, "idea", "Idea", []byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(o.Path)
+	doc := board.Parse(src)
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nhello\n\n### Extra\n\nx\n\n## Context\n\n- c\n\n## Log\n\n### 2026-09-26\n\nl\n\n## Open questions\n\n- q\n"
+	if doc.Body != want {
+		t.Errorf("body\n%q\nwant\n%q", doc.Body, want)
+	}
+	if p := board.CheckBody(board.KindScratch, doc.Body); p != nil {
+		t.Errorf("headed body fails its schema: %v", p)
+	}
+	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "log", []byte("more")); err != nil {
+		t.Errorf("append to log after a headed new: %v", err)
+	}
+}
+
+func TestNewScratchKeepsTextBeforeTheFirstHeadingAndOddHeadings(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	in := "intro\n\n## Context\n\nc1\n\n## Context\n\nc2\n\n## Other\n\no\n"
+	o, err := NewScratch(cfg, "idea", "Idea", []byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(o.Path)
+	doc := board.Parse(src)
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\nintro\n\n### Other\n\no\n\n## Context\n\nc1\n\nc2\n\n## Log\n\n## Open questions\n"
+	if doc.Body != want {
+		t.Errorf("body\n%q\nwant\n%q", doc.Body, want)
+	}
+	if p := board.CheckBody(board.KindScratch, doc.Body); p != nil {
+		t.Errorf("fails its schema: %v", p)
+	}
+}
+
+func TestNewScratchPlainBodyGivesTheSameFileAsBefore(t *testing.T) {
+	fixNow(t)
+	cfg := repoWith(t, baseFiles)
+	o, err := NewScratch(cfg, "idea", "Idea", []byte("just words\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(o.Path)
+	want := "# Idea\n\n## Words\n\n### 2026-09-26\n\njust words\n\n## Context\n\n## Log\n\n## Open questions\n"
+	if got := board.Parse(src).Body; got != want {
+		t.Errorf("body\n%q\nwant\n%q", got, want)
+	}
+}

@@ -67,8 +67,12 @@ func CheckBody(k Kind, body string) []string {
 			continue
 		}
 		name := strings.TrimPrefix(ln, "## ")
-		seen[name] = true
 		i, known := pos[name]
+		if known && seen[name] {
+			// A second copy of a schema section hides text from readers.
+			probs = append(probs, "## "+name+" appears twice")
+		}
+		seen[name] = true
 		if !known {
 			// An extra section is fine only after every schema one, so
 			// remember it until a schema section shows up below it.
