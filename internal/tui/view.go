@@ -31,19 +31,20 @@ type box struct {
 // to it.
 func (b box) textW() int { return max(0, b.w-2) }
 
-// detailPad is the free space the detail box keeps on every side: one cell
-// before and after each line, one empty line above and one below.
+// detailPad is the free space the detail box keeps on its left and right: one
+// cell before and after each line. The top and bottom get none, because one
+// line of a terminal looks twice as tall as one cell is wide.
 const detailPad = 1
 
 // detailArea is the width and height the detail text gets inside its walls,
 // with the padding taken off. A box with no room to spare for the padding
-// gives all its inner space to the text instead.
+// gives all its inner width to the text instead.
 func (b box) detailArea() (w, h int) {
 	w, h = b.textW(), b.inner
-	if w < 2*detailPad+1 || h < 2*detailPad+1 {
+	if w < 2*detailPad+1 {
 		return w, h
 	}
-	return w - 2*detailPad, h - 2*detailPad
+	return w - 2*detailPad, h
 }
 
 // geom is the whole screen measured in cells from its top left corner. The
@@ -454,8 +455,8 @@ func plainSegs(segs []segment) string {
 }
 
 // paddedDetail lays the detail out inside its box: the lines built for the
-// narrower area, one blank cell on each side of them and one blank line above
-// and below. A box with no room for the padding gets the lines bare.
+// narrower area, with one blank cell on each side of them. A box with no room
+// for the padding gets the lines bare.
 func (m Model) paddedDetail(first int, b box) []string {
 	// The same sizes the scroll math in paneView used, so the two agree.
 	dw, dh := b.detailArea()
@@ -466,7 +467,6 @@ func (m Model) paddedDetail(first int, b box) []string {
 	}
 	side := strings.Repeat(" ", detailPad)
 	out := make([]string, 0, b.inner)
-	out = append(out, "")
 	for _, ln := range lines {
 		out = append(out, side+pad(ln, dw)+side)
 	}

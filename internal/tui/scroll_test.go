@@ -2312,7 +2312,7 @@ func unpadded(m Model, p pane, b box, rows []string) []string {
 		return rows
 	}
 	out := make([]string, 0, dh)
-	for _, ln := range rows[detailPad : len(rows)-detailPad] {
+	for _, ln := range rows {
 		out = append(out, strings.TrimPrefix(ln, strings.Repeat(" ", detailPad)))
 	}
 	return out

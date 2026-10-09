@@ -48,11 +48,7 @@ func TestDragCopiesThePaneText(t *testing.T) {
 	for _, p := range []pane{paneList, paneDetail} {
 		m := paneModel(t, p)
 		a, _ := scrollBox(m, p).textArea()
-		// The detail box keeps its first line empty, so the drag starts under it.
 		top := a.y0
-		if p == paneDetail {
-			top += detailPad
-		}
 		want := screenText(m, a.x0+1, top, a.x0+6, top+1, a)
 		before := plain(m.View())
 		m, got := dragged(m, a.x0+1, top, a.x0+6, top+1)

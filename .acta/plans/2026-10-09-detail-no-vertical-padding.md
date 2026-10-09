@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0133
 created: "2026-10-09 23:07:05"
 hash: h97v83m
+started: "2026-10-09 23:07:09"
+finished: "2026-10-09 23:08:02"
 ---
 # Detail box drops its top and bottom padding
 
@@ -31,6 +33,12 @@ hash: h97v83m
 
 **verify:** In every detail box, the first inner line holds the first detail line and the last inner line holds the last one, the left and right pad stay one column, and scroll, scrollbar and wheel count the full inner height. List the box sizes checked.
 
-- [ ] **Failing test:** `TestDetailBoxPadsEverySide` expects the first inner row to hold the ID line and the last inner row to hold the date line; fails because both rows are blank.
-- [ ] **Change:** `detailArea` takes the pad off the width only; `paddedDetail` adds no empty top line; tests that skipped the padding rows stop skipping them.
-- [ ] **Commit:** `feat(tui): drop the top and bottom padding of the detail box`
+- [x] **Failing test:** `TestDetailBoxPadsItsSides` (renamed from `TestDetailBoxPadsEverySide`) expects the first inner row to hold the ID line and the last inner row to hold the date line; fails because both rows are blank.
+- [x] **Change:** `detailArea` takes the pad off the width only; `paddedDetail` adds no empty top line; tests that skipped the padding rows stop skipping them.
+- [x] **Commit:** `feat(tui): drop the top and bottom padding of the detail box`
+
+## Review notes
+
+- Round 1: two reviewers (full tier), both CLEAN. Built inline at the user's ask.
+- In paddedDetail and the unpadded test helper, `dh == b.inner` is now always true, so only the width check picks bare or padded lines.
+- TestDetailBoxPadsItsSides checks one full-size box; larger sizes are covered through the scroll and wheel tests that read detailArea.
