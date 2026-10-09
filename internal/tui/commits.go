@@ -113,21 +113,66 @@ func commitRowsOf(it *board.Item, found map[string][]commits.Commit) []commitRow
 	return rows
 }
 
-// text is the row as the list shows it, before it is cut to the box width.
-func (r commitRow) text(plan bool) string {
-	sha := r.c.Sha
+// parts is the three words of a row: the short sha, the task labels (empty
+// outside a plan) and the subject.
+func (r commitRow) parts(plan bool) (sha, label, subject string) {
+	sha = r.c.Sha
 	if len(sha) > 7 {
 		sha = sha[:7]
 	}
-	label := ""
 	if plan && len(r.tasks) > 0 {
-		parts := make([]string, len(r.tasks))
+		names := make([]string, len(r.tasks))
 		for i, n := range r.tasks {
-			parts[i] = "#" + strconv.Itoa(n)
+			names[i] = "#" + strconv.Itoa(n)
 		}
-		label = strings.Join(parts, ",") + "  "
+		label = strings.Join(names, ",")
 	}
-	return sha + "  " + label + expandTabs(r.c.Subject)
+	return sha, label, expandTabs(r.c.Subject)
+}
+
+// text is the row as the list shows it, before it is cut to the box width.
+func (r commitRow) text(plan bool) string {
+	sha, label, subject := r.parts(plan)
+	if label != "" {
+		label += "  "
+	}
+	return sha + "  " + label + subject
+}
+
+// commitRowLine is the row cut to w cells and painted: the sha green when the commit is
+// on the checked-out branch and red when it is not, the task labels blue, the
+// subject plain. A chore row is faint from end to end. The cut comes first,
+// then the paint, so a row cut in the sha or in a label keeps its color, and
+// the color codes never count as cells.
+func (m Model) commitRowLine(r commitRow, plan bool, w int) string {
+	text := truncate(r.text(plan), w)
+	if r.c.Chore {
+		return m.styles.faint.Render(text)
+	}
+	sha, label, _ := r.parts(plan)
+	shaStyle := m.styles.problem
+	if r.c.Landed {
+		shaStyle = m.styles.done
+	}
+	// The sha and the label are plain ASCII, so a rune count is a cell count.
+	// The ellipsis of a cut lands in whichever word the cut fell in.
+	rs := []rune(text)
+	var b strings.Builder
+	take := func(n int, paint func(...string) string) {
+		n = min(n, len(rs))
+		if n > 0 {
+			b.WriteString(paint(string(rs[:n])))
+		}
+		rs = rs[n:]
+	}
+	plainText := func(s ...string) string { return s[0] }
+	take(len(sha), shaStyle.Render)
+	if label != "" {
+		take(2, plainText)
+		take(len(label), m.styles.blue.Render)
+	}
+	take(len(rs), plainText)
+	return b.String()
 }
 
 // visible is the rows the list shows: all of them, or without the chore commits.
@@ -478,12 +523,12 @@ func (m Model) commitListBox(v commitView, b box) []string {
 		lines = []string{m.styles.faint.Render("no linked commits")}
 	default:
 		for i := first; i < len(rows) && i < first+b.inner; i++ {
-			text := truncate(rows[i].text(v.plan), w)
 			if i == cur {
+				text := truncate(rows[i].text(v.plan), w)
 				lines = append(lines, m.styles.selected.Render(pad(text, w)))
 				continue
 			}
-			lines = append(lines, text)
+			lines = append(lines, m.commitRowLine(rows[i], v.plan, w))
 		}
 	}
 	title := "Commits"
