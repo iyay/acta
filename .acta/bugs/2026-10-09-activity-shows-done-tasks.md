@@ -2,6 +2,8 @@
 id: BUG-0038
 hash: yrz4tr9
 started: "2026-10-09 15:27:55"
+fixed_in: 7eb309f
+finished: "2026-10-09 15:31:27"
 ---
 # Activity tab keeps showing tasks that are already done
 
