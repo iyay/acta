@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/fsnotify/fsnotify"
 
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
@@ -180,6 +182,60 @@ func TestStartStopWaitsForTheSetupToEnd(t *testing.T) {
 	case <-stopped:
 	case <-time.After(3 * time.Second):
 		t.Fatal("stop never returned after the setup ended")
+	}
+}
+
+// It swaps a package variable, so it must not run in parallel. Go holds every
+// parallel test until the serial ones are done, so the others never see the swap.
+func TestStartStillLoadsWhenTheWatcherFails(t *testing.T) {
+	boom := errors.New("no watch slots")
+	old := newWatcher
+	newWatcher = func() (*fsnotify.Watcher, error) { return nil, boom }
+	t.Cleanup(func() { newWatcher = old })
+
+	var mu sync.Mutex
+	loads := 0
+	msgs := make(chan tea.Msg, 10)
+	reload := func() tea.Msg {
+		mu.Lock()
+		loads++
+		mu.Unlock()
+		return reloadMsg{b: &board.Board{}}
+	}
+	stop := Start(func() []string { return nil }, reload, func(m tea.Msg) { msgs <- m })
+
+	select {
+	case m := <-msgs:
+		failed, ok := m.(watchFailedMsg)
+		if !ok {
+			t.Fatalf("first message is %T, want watchFailedMsg", m)
+		}
+		if !errors.Is(failed.err, boom) {
+			t.Fatalf("watchFailedMsg err = %v, want %v", failed.err, boom)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("no watchFailedMsg after the watcher failed to start")
+	}
+	select {
+	case m := <-msgs:
+		if _, ok := m.(reloadMsg); !ok {
+			t.Fatalf("second message is %T, want reloadMsg", m)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("no load after the watcher failed to start")
+	}
+
+	stopped := make(chan struct{})
+	go func() { stop(); close(stopped) }()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("stop did not return after the watcher failed to start")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if loads != 1 {
+		t.Fatalf("loads = %d, want 1", loads)
 	}
 }
 
