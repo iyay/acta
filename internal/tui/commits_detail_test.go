@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/commits"
 	"github.com/iyay/acta/internal/config"
@@ -247,5 +248,59 @@ func TestCommitsDetailLoadUsesTheSeam(t *testing.T) {
 	m.openPlans = everyPlanOpen(m.board)
 	if got := detailText(t, m, "PLN-0001.01"); !strings.Contains(got, "feat: q change 1") {
 		t.Errorf("the load did not reach the detail:\n%s", got)
+	}
+}
+
+// firstCol is how many spaces a line starts with, ignoring colors.
+func firstCol(ln string) int {
+	p := plain(ln)
+	return len(p) - len(strings.TrimLeft(p, " "))
+}
+
+// The header, the commits and the date line start 2 columns in, where the
+// markdown body starts, and the rules stay at column 0. No line is wider than
+// the box.
+func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
+	m := loadedModel(t, map[string][]commits.Commit{"abcdefg#1": fakeCommits("a", 2)})
+	m.render = func(md string, _ int) string { return "  " + md }
+	it := m.board.Get("PLN-0001")
+	m = onItem(t, m, it.ID)
+	for _, w := range []int{20, 40, 100} {
+		head, mid, foot := m.buildDetailParts(w)
+		for i, ln := range head[:len(head)-1] {
+			if c := firstCol(ln); c != 2 {
+				t.Errorf("w=%d header line %d starts at %d: %q", w, i, c, plain(ln))
+			}
+		}
+		if c := firstCol(head[len(head)-1]); c != 0 {
+			t.Errorf("w=%d rule starts at %d", w, c)
+		}
+		var sawCommits, sawBody bool
+		for _, ln := range mid {
+			p := strings.TrimSpace(plain(ln))
+			switch {
+			case p == "COMMITS" || strings.HasPrefix(p, "a020000"):
+				sawCommits = true
+				if c := firstCol(ln); c != 2 {
+					t.Errorf("w=%d %q starts at %d", w, p, c)
+				}
+			case strings.HasPrefix(p, "# Plan A"):
+				sawBody = true
+				if c := firstCol(ln); c != 2 {
+					t.Errorf("w=%d body starts at %d", w, c)
+				}
+			}
+		}
+		if !sawCommits || !sawBody {
+			t.Errorf("w=%d commits=%v body=%v", w, sawCommits, sawBody)
+		}
+		if c := firstCol(foot); c != 2 {
+			t.Errorf("w=%d date line starts at %d: %q", w, c, plain(foot))
+		}
+		for _, ln := range append(append(head, mid...), foot) {
+			if lw := lipgloss.Width(ln); lw > w {
+				t.Errorf("w=%d line is %d wide: %q", w, lw, plain(ln))
+			}
+		}
 	}
 }

@@ -908,7 +908,7 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 	t.Parallel()
 
-	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
+	var colon = regexp.MustCompile(`^  ([A-Z]+) +: `)
 	m := sized(press(clocked(newModel(t), 20, 46), "j"), 120, 40)
 	g := m.geometry()
 	var at []int
@@ -931,7 +931,7 @@ func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 			t.Fatalf("the colons do not line up: %v", at)
 		}
 	}
-	if !strings.HasPrefix(first, "ID") {
+	if !strings.HasPrefix(first, "  ID") {
 		t.Errorf("the first label should be ID, got %q", first)
 	}
 }
@@ -960,7 +960,7 @@ func TestViewDebtDetail(t *testing.T) {
 	}
 
 	g := m.geometry()
-	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
+	var colon = regexp.MustCompile(`^  ([A-Z]+) +: `)
 	var at []int
 	var labels []string
 	for _, seg := range column(v, g.detail.x, g.detail.w) {
@@ -982,7 +982,7 @@ func TestViewDebtDetail(t *testing.T) {
 			t.Errorf("detail header is missing %q, got:\n%s", want, detail)
 		}
 	}
-	if ok, _ := regexp.MatchString(`(?m)^DEBT\s+:`, detail); ok {
+	if ok, _ := regexp.MatchString(`(?m)^ *DEBT\s+:`, detail); ok {
 		t.Errorf("detail header still has a DEBT line:\n%s", detail)
 	}
 
