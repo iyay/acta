@@ -14,12 +14,12 @@ Rulings:
 - Target: the first frame shows in under 100 ms on this repo, and that time does not grow with more commits or more worktrees.
 - The first frame shows only the items of the main checkout. Items from other worktrees and from unmerged branches come in with the background load a moment later. The cursor stays on its item, because a reload already keeps it by id.
 - Authors leave the board load. Only the TUI asks for them, in the background, after the first frame. The AUTHOR line shows up a moment late.
-- One `git log` for all planning files replaces the one per folder.
+- One `git log` per checkout replaces the one per folder. On this repo that is one call of about 90 to 150 ms instead of five that add up to about 780 ms.
 - The terminal color query stays as it is. It comes from Bubble Tea's own `init` and costs one round trip to the terminal, not the delay.
 
 Design:
 - `board.LoadTrees` stops calling `fillAuthors`. Filling authors becomes its own step, exported from `internal/board`, that a caller runs on a loaded board. `acta list`, `show`, `set`, `tick` and every other CLI command never run it, so they get about 0.8 s faster too. No CLI output shows the author today, so no output changes.
-- The author step asks git once, with every path in one `git log --diff-filter=A`, run from the repo root. Each answer must still land on the right item, files in legacy folders included.
+- The author step asks git once per checkout, with every path of that checkout in one `git log --diff-filter=A`, run from the checkout's root. A board with no other worktree on disk asks git once. Files read from another worktree sit under that worktree's folder, which the main checkout's git cannot see, so each checkout needs its own question. Each answer must still land on the right item, files in legacy folders and in nested worktrees included.
 - `runTUI` (`internal/cli/cli.go`) builds the first board with `board.Load(cfg)`: main tree only, no `git log`, no worktree scan.
 - The load function the TUI gets through `WithLoad` does the full load: `trees.Load`, then the author step. The startup load and every watcher reload use it.
 - Watcher setup moves off the first frame into a goroutine. The full load after the first frame starts only once the watcher is in place, so a file that changes during startup is never missed. Startup runs the full load once, not twice.
@@ -33,7 +33,11 @@ Out of scope:
 
 Testing:
 - `board.Load` and `trees.Load` run no author lookup. Count the calls through the `gitAuthors` variable.
-- The TUI's full load fills authors, and asks git once per load, not once per folder.
+- The TUI's full load fills authors, and asks git once per checkout, not once per folder.
 - An author still lands on the right item when files sit in several folders, a legacy folder included.
 - The full load after the first frame starts only after the watcher has its folders.
 - By hand before land: the pty probe from `.acta/wiki/tui-pty-probe.md`, with the binary as the foreground process, five runs, each first frame under 100 ms. The numbers go into the land report.
+
+Wiki (the user said yes on 2026-10-09; acta:build writes both):
+- New Decision page `tui-first-frame`: the first frame reads only the files of the main tree. Anything that runs git goes to the background load. The budget is 100 ms on this repo.
+- Update the Runbook `tui-pty-probe`: to time startup, start the binary as the foreground process of the pty (`pty.fork`), answer the OSC 11 color query and the DSR cursor query, and take the time of the first `\x1b[?1049h`. A child in its own session skips Bubble Tea's color query, so startup reads faster than it is.
