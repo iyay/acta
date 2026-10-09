@@ -1,5 +1,6 @@
 # Builds the release archives. The version comes from the tag, and the binary
-# gets its own version from plugin.json, so nothing is set at link time.
+# gets its own version from plugin.json. The only thing set at link time is the
+# release mark, so acta update can tell a release build from a source build.
 version: 2
 
 project_name: acta
@@ -11,6 +12,9 @@ builds:
     # A static binary runs on any machine, with no C library needed.
     env:
       - CGO_ENABLED=0
+    # Marks the binary as a release build. go install and go build never set it.
+    ldflags:
+      - -X github.com/iyay/acta/internal/update.release=true
     goos:
       - darwin
       - linux
