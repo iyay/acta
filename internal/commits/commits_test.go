@@ -185,6 +185,18 @@ func TestFindErrors(t *testing.T) {
 			t.Fatal("want an error for a folder that is not a repo")
 		}
 	})
+	t.Run("ref that starts with a dash", func(t *testing.T) {
+		dir := newRepo(t)
+		commit(t, dir, "2026-01-02T00:00:00Z", "feat: a\n\nTask: PLN-broaksz#1")
+		got, err := Find(dir, []Ref{{Name: "-x"}})
+		if err != nil || len(got) != 0 {
+			t.Fatalf("got %v, %v; want empty map and no error", got, err)
+		}
+		got, err = Find(dir, []Ref{{Name: "-x"}, {Name: "HEAD"}})
+		if err != nil || len(got["broaksz#1"]) != 1 {
+			t.Fatalf("got %v, %v; the later ref must still be searched", got, err)
+		}
+	})
 }
 
 func TestDiff(t *testing.T) {
@@ -204,5 +216,13 @@ func TestDiff(t *testing.T) {
 	}
 	if _, err := Diff(dir, "deadbeef"); err == nil {
 		t.Fatal("want an error for an unknown sha")
+	}
+}
+
+func TestDiffRefusesAShaThatStartsWithADash(t *testing.T) {
+	// A folder with no repo: if git ran, its error would not say "bad sha".
+	_, err := Diff(t.TempDir(), "-x")
+	if err == nil || !strings.Contains(err.Error(), "bad sha") {
+		t.Fatalf("got %v, want a bad sha error and no git run", err)
 	}
 }

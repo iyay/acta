@@ -206,6 +206,11 @@ type Model struct {
 
 	// The commits the last load found, by task key "<plan hash>#<n>", for the detail box.
 	taskCommits map[string][]commits.Commit
+
+	// The Commits screen; nil while it is closed. It takes every key and wheel
+	// notch while it is open, and the board under it stays as it was.
+	commitScreen *commitView
+	diffCache    map[string]diffResult // loaded diffs by sha, cleared on every reload
 }
 
 // New builds a model over b. dark picks the markdown style; ask the terminal
@@ -337,7 +342,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.states = msg.states
 		m.taskCommits = msg.commits
 		m.moveTo(m.cursor())
-		return m, m.armPulse()
+		next, load := m.reloadCommits()
+		return next, tea.Batch(load, next.armPulse())
 	case pulseMsg:
 		m.pulsing = false
 		if !m.hasWork() {
@@ -384,6 +390,14 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// back with mouse reporting off and nothing turned it back on.
 		next, cmd := m.afterEditor(msg)
 		return next, tea.Batch(cmd, tea.EnableMouseCellMotion)
+	case diffLoadedMsg:
+		return m.storeDiff(msg), nil
+	case pagerDoneMsg:
+		// The pager ran with the program suspended, so the mouse is off now.
+		if msg.err != nil {
+			m.status = "pager: " + msg.err.Error()
+		}
+		return m, tea.EnableMouseCellMotion
 	case tea.KeyMsg:
 		return m.key(msg)
 	case tea.MouseMsg:
@@ -584,6 +598,9 @@ func (m *Model) end() {
 func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Any key may move the screen, so the picked cells stop meaning anything.
 	m.drag = drag{}
+	if m.commitScreen != nil {
+		return m.commitKey(k)
+	}
 	if m.help {
 		// The help sits over the panes, so it takes the keys until it closes.
 		if s := k.String(); s == "?" || s == "esc" {
@@ -660,6 +677,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.slug = &s
 	case "e":
 		return m.edit()
+	case "d":
+		return m.openCommits()
 	case "y":
 		// Copy first, then return, so the status the timer carries is the
 		// one the copy just set.
@@ -684,6 +703,9 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // on a tab name switches tab, and the wheel works on the box under the
 // pointer, so the mouse and the keys always leave the same cursor.
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if m.commitScreen != nil {
+		return m.commitMouse(msg)
+	}
 	if m.help || m.popup != nil || m.slug != nil || m.searching {
 		m.same = true
 		return m, nil

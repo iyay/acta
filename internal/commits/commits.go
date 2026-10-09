@@ -133,6 +133,10 @@ func Trailers(body string) []string {
 
 // Diff returns git show --stat -p --no-color --no-ext-diff <sha> output.
 func Diff(repo, sha string) (string, error) {
+	// A leading dash would make git read the sha as an option.
+	if strings.HasPrefix(sha, "-") {
+		return "", fmt.Errorf("bad sha %q", sha)
+	}
 	return run(repo, "show", "--stat", "-p", "--no-color", "--no-ext-diff", sha, "--")
 }
 

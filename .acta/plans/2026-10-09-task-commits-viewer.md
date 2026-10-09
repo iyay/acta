@@ -6,6 +6,7 @@ id: PLN-0127
 created: "2026-10-09 20:47:04"
 hash: broaksz
 started: "2026-10-09 20:51:08"
+finished: "2026-10-09 21:09:24"
 ---
 # Task commits viewer
 
@@ -114,6 +115,36 @@ started: "2026-10-09 20:51:08"
 
 **verify:** While the Commits screen is open every key and wheel event goes to it, and esc or q always returns to the board with the same cursor. List every key checked: d on task, d on plan, d on other rows, j/k, tab, ctrl+d/ctrl+u, g/G, wheel, c, o (ExecProcess then mouse back on, wiki: exec-process-drops-mouse), esc, q; and widths under and over 80 columns.
 
-- [ ] **Failing test:** press `d` on a task row; the view shows the commit list left (about 35%) and the colored diff right, `tab` moves focus, `c` shows chore commits, `esc` restores the board and cursor, under 80 columns list and diff stack; fails because `d` does nothing.
-- [ ] **Change:** screen state on the model; diff loads async per picked sha through a `var showDiff = commits.Diff` seam, cached per sha and cleared on reload, drawn with `colorDiff`; `o` runs `git show <sha>` via `tea.ExecProcess`; `d commits` added to help and hint bar, own hint bar on the screen.
-- [ ] **Commit:** `feat(tui): Commits screen with list and diff`
+- [x] **Failing test:** press `d` on a task row; the view shows the commit list left (about 35%) and the colored diff right, `tab` moves focus, `c` shows chore commits, `esc` restores the board and cursor, under 80 columns list and diff stack; fails because `d` does nothing.
+- [x] **Change:** screen state on the model; diff loads async per picked sha through a `var showDiff = commits.Diff` seam, cached per sha and cleared on reload, drawn with `colorDiff`; `o` runs `git show <sha>` via `tea.ExecProcess`; `d commits` added to help and hint bar, own hint bar on the screen.
+- [x] **Commit:** `feat(tui): Commits screen with list and diff`
+
+## Polish
+
+### Task 08: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] Grader comment in `plugin/evals/task-trailer/graders/no-trailer-wrong-form.md` says only what the grader checks (the short-id form), not a zero-padded number.
+- [x] `commits.Diff` and the TUI `pagerCmd` refuse a sha that starts with `-`, so it can never reach git as an option; tests cover that guard and the `-` ref skip in `Find`.
+- [x] Board hint reads `Commits: d`, the `Name: key` form every other hint uses (`internal/tui/hints.go`, both places).
+- [x] Commit: `polish: review notes PLN-0127`
+
+## Review notes
+
+- Round 1 (full tier, two reviewers): CLEAN on both axes, no BLOCKER.
+- Task 07 had no watched RED: the implementer wrote code first, then broke 7 spots and saw tests fail; the Spec reviewer broke 12 spots across the branch and every one went red.
+- tick warns only when the task's last box is ticked (`done == total`), not on `--start` or middle steps; the spec did not say, the narrowing is on purpose.
+- Wiki page task-trailer.md is `type: Decision`; the spec said Convention, which is not a valid wiki type.
+- `RefsFor` puts the current checkout's branch first, not the main checkout's; only the `(branch)` label of a shared sha differs.
+- dispatch.md lost "Build already made the worktree." and "Waiting burns your context." to stay under the plugincheck cap.
+- The help popup merges the `+` and `-` lines so `d open commits` fits the 24-line cap.
+- tick reads HEAD only, so a late `tick --all` after a wave commit can warn even though the task commit has the trailer.
+- The trailer-in-commit grader passes on any Bash input that holds the line, not only `git commit`.
+- A pager error status on the Commits screen loses to a board search query and has no clear timer.
+- Every watcher reload clears the diff cache, so an open diff flickers back to loading during a live build (spec says reload clears it).
+- `ctrl+c` on the Commits screen still quits acta.
+- Polish review (full tier, two reviewers): CLEAN on both axes.
+- The pager dash guard sits in `commitPager`, the only caller of `pagerCmd`; a future caller of `pagerCmd` would not get it.
+- The `Find` dash-ref subtest stays green with the skip removed, since `rev-parse --verify` already rejects such a name.
+- Some failure messages in internal/tui/commits_test.go still say "miss d commits"; the spec text still says `d commits` while the hint now reads `Commits: d`.
