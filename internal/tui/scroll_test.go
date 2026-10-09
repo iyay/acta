@@ -55,7 +55,7 @@ func wrapModel(t *testing.T) Model {
 	// measures the body at, and needs three at the width one cell less that the
 	// view draws it at. A model and a view that measure differently drift a
 	// whole line apart, so the end of the body never lands on screen.
-	n := scrollBox(boardModel(t, "# Plan\n"), paneDetail).textW()
+	n := func() int { w, _ := scrollBox(boardModel(t, "# Plan\n"), paneDetail).detailArea(); return w }()
 	m := boardModel(t, "# Plan\n\n### Task 1: First step\n\n- [ ] **Step 1: Do it**\n\n"+
 		strings.Repeat("\n"+strings.Repeat("z", 2*n)+"\n", 20))
 	m.render = func(md string, w int) string {
@@ -144,7 +144,7 @@ func paneRows(m Model, p pane) []string {
 		}
 		out = append(out, cutWalls(plain(col[y])))
 	}
-	return out
+	return unpadded(m, p, b, out)
 }
 
 // cutWalls takes both walls off a drawn line of a pane, whichever glyph each
@@ -250,14 +250,15 @@ func drawnFirst(m Model, p pane) string {
 func shows(m Model, p pane, i int) bool {
 	if p == paneDetail {
 		b := scrollBox(m, p)
-		head, mid, foot := m.detailParts(b.textW())
-		if n := stickyMid(len(head), b.inner); n > 0 && foot != "" {
+		dw, dh := b.detailArea()
+		head, mid, foot := m.detailParts(dw)
+		if n := stickyMid(len(head), dh); n > 0 && foot != "" {
 			first := min(max(i, 0), max(0, len(mid)-n))
 			rows := paneRows(m, p)
 			return i >= 0 && i < len(mid) && len(head) < len(rows) &&
 				strings.TrimSpace(rows[len(head)]) == strings.TrimSpace(mid[first])
 		}
-		lines := m.detailLines(b.textW())
+		lines := m.detailLines(dw)
 		return i >= 0 && i < len(lines) && drawnFirst(m, p) == strings.TrimSpace(lines[i])
 	}
 	drawn := paneRows(m, p)
@@ -1163,7 +1164,7 @@ func TestAPaneShorterThanItsContentNeverScrolls(t *testing.T) {
 			t.Errorf("pane %d: content that fits draws a thumb on line %d", p, at)
 		}
 		if p == paneDetail {
-			lines := m.detailLines(scrollBox(m, p).textW())
+			lines := m.detailLines(func() int { w, _ := scrollBox(m, p).detailArea(); return w }())
 			if got, want := strings.TrimRight(paneRows(m, p)[0], " "), plain(strings.TrimRight(lines[0], " ")); got != want {
 				t.Errorf("pane %d: the first line on screen is %q, the body starts on %q", p, got, want)
 			}
@@ -1792,7 +1793,7 @@ func TestThumbAndTopLineFollowTheOffsetOnScreen(t *testing.T) {
 		// The last line on screen is the last line of the content.
 		drawn := paneRows(m, p)
 		if p == paneDetail {
-			lines := m.detailLines(b.textW())
+			lines := m.detailLines(innerW(scrollBox(m, paneDetail)))
 			if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 				t.Errorf("pane %d ends on %q, the content ends on %q", p, got, want)
 			}
@@ -1898,7 +1899,7 @@ func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
 		// The last line the box draws is the last line of its own content.
 		drawn := paneRows(m, p)
 		if p == paneDetail {
-			lines := m.detailLines(b.textW())
+			lines := m.detailLines(innerW(scrollBox(m, paneDetail)))
 			if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 				t.Errorf("pane %d ends on %q, the body ends on %q", p, got, want)
 			}
@@ -1917,9 +1918,8 @@ func TestTheLastWindowArrivesWithAWrappingBody(t *testing.T) {
 // isFirstLine says whether a drawn line is the first line of the content of
 // pane p, the row it starts on or the first line of the body.
 func isFirstLine(m Model, p pane, line string) bool {
-	b := scrollBox(m, p)
 	if p == paneDetail {
-		lines := m.detailLines(b.textW())
+		lines := m.detailLines(innerW(scrollBox(m, paneDetail)))
 		return strings.TrimRight(line, " ") == plain(strings.TrimRight(lines[0], " "))
 	}
 	rows, _, _ := m.slotOf(p)
@@ -2007,11 +2007,10 @@ func TestNarrowPanesAndOddBodiesKeepTheirWalls(t *testing.T) {
 	} {
 		m := boardModel(t, body)
 		m = press(m, tabKey(tabPlans), "shift+tab", "G")
-		b := scrollBox(m, paneDetail)
 		if !shows(m, paneDetail, m.lastOff(paneDetail)) {
 			t.Errorf("a body ending %s shows %q after G, want the last window", tail(body), drawnFirst(m, paneDetail))
 		}
-		lines := m.detailLines(b.textW())
+		lines := m.detailLines(innerW(scrollBox(m, paneDetail)))
 		drawn := paneRows(m, paneDetail)
 		if got, want := strings.TrimRight(drawn[len(drawn)-1], " "), plain(strings.TrimRight(lines[len(lines)-1], " ")); got != want {
 			t.Errorf("a body ending %q ends on screen on %q, its content ends on %q", tail(body), got, want)
@@ -2304,3 +2303,20 @@ func TestPaintIDLeavesACutIDPlain(t *testing.T) {
 		}
 	})
 }
+
+// unpadded cuts the padding off the rows of the detail box, so a test reads
+// only what sits inside it. Any other pane has none.
+func unpadded(m Model, p pane, b box, rows []string) []string {
+	dw, dh := b.detailArea()
+	if p != paneDetail || dw == b.textW() && dh == b.inner || len(rows) != b.inner {
+		return rows
+	}
+	out := make([]string, 0, dh)
+	for _, ln := range rows[detailPad : len(rows)-detailPad] {
+		out = append(out, strings.TrimPrefix(ln, strings.Repeat(" ", detailPad)))
+	}
+	return out
+}
+
+// innerW is the width the detail text gets inside its padding.
+func innerW(b box) int { w, _ := b.detailArea(); return w }

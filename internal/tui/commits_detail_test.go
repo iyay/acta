@@ -257,23 +257,20 @@ func firstCol(ln string) int {
 	return len(p) - len(strings.TrimLeft(p, " "))
 }
 
-// The header, the commits and the date line start 2 columns in, where the
-// markdown body starts, and the rules stay at column 0. No line is wider than
-// the box.
-func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
+// The header, the commits, the body, the rules and the date line all start in
+// column 0 of what the detail builds: the box adds the padding. No line is wider
+// than the box.
+func TestDetailTextStartsInOneColumn(t *testing.T) {
 	m := loadedModel(t, map[string][]commits.Commit{"abcdefg#1": fakeCommits("a", 2)})
-	m.render = func(md string, _ int) string { return "  " + md }
+	m.render = func(md string, _ int) string { return md }
 	it := m.board.Get("PLN-0001")
 	m = onItem(t, m, it.ID)
 	for _, w := range []int{20, 40, 100} {
 		head, mid, foot := m.buildDetailParts(w)
-		for i, ln := range head[:len(head)-1] {
-			if c := firstCol(ln); c != 2 {
+		for i, ln := range head {
+			if c := firstCol(ln); c != 0 {
 				t.Errorf("w=%d header line %d starts at %d: %q", w, i, c, plain(ln))
 			}
-		}
-		if c := firstCol(head[len(head)-1]); c != 0 {
-			t.Errorf("w=%d rule starts at %d", w, c)
 		}
 		var sawCommits, sawBody bool
 		for _, ln := range mid {
@@ -281,12 +278,12 @@ func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
 			switch {
 			case p == "COMMITS" || strings.HasPrefix(p, "a020000"):
 				sawCommits = true
-				if c := firstCol(ln); c != 2 {
+				if c := firstCol(ln); c != 0 {
 					t.Errorf("w=%d %q starts at %d", w, p, c)
 				}
 			case strings.HasPrefix(p, "# Plan A"):
 				sawBody = true
-				if c := firstCol(ln); c != 2 {
+				if c := firstCol(ln); c != 0 {
 					t.Errorf("w=%d body starts at %d", w, c)
 				}
 			}
@@ -294,7 +291,7 @@ func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
 		if !sawCommits || !sawBody {
 			t.Errorf("w=%d commits=%v body=%v", w, sawCommits, sawBody)
 		}
-		if c := firstCol(foot); c != 2 {
+		if c := firstCol(foot); c != 0 {
 			t.Errorf("w=%d date line starts at %d: %q", w, c, plain(foot))
 		}
 		for _, ln := range append(append(head, mid...), foot) {
@@ -302,5 +299,66 @@ func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
 				t.Errorf("w=%d line is %d wide: %q", w, lw, plain(ln))
 			}
 		}
+	}
+}
+
+// The detail draws its commits with the same row painter as the Commits
+// screen, so the two always look alike.
+func TestCommitsDetailRowsMatchTheCommitsScreen(t *testing.T) {
+	landed := fakeCommits("l", 1)
+	landed[0].Landed = true
+	both := fakeCommits("m", 1)
+	both[0].Landed = true
+	found := map[string][]commits.Commit{
+		"abcdefg#1": append(append([]commits.Commit{}, landed...), both...),
+		"abcdefg#2": append(fakeCommits("u", 1), both...),
+		"abcdefg#3": {choreCommit("c1", time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC))},
+	}
+	m := loadedModel(t, found)
+	const w = 60
+
+	plan := m.board.Get("PLN-0001")
+	var want []string
+	for _, r := range commitRowsOf(plan, m.taskCommits) {
+		if !r.c.Chore {
+			want = append(want, m.commitRowLine(r, true, w))
+		}
+	}
+	got := m.commitLines(plan, w)
+	if len(want) != 3 || len(got) != 1+len(want) {
+		t.Fatalf("got %d lines for %d rows: %q", len(got), len(want), got)
+	}
+	for i, ln := range want {
+		if got[i+1] != ln {
+			t.Errorf("plan row %d = %q, want %q", i, got[i+1], ln)
+		}
+	}
+	if !strings.Contains(plain(strings.Join(got, "\n")), "#1,#2") {
+		t.Errorf("the two-task commit lost its labels: %q", got)
+	}
+	if strings.Contains(plain(strings.Join(got, "\n")), "chore(plan)") {
+		t.Errorf("a chore row shows: %q", got)
+	}
+
+	task := m.board.Get("PLN-0001.01")
+	rows := commitRowsOf(task, m.taskCommits)
+	tl := m.commitLines(task, w)
+	if len(tl) != 1+len(rows) {
+		t.Fatalf("task lines = %q", tl)
+	}
+	for i, r := range rows {
+		if tl[i+1] != m.commitRowLine(r, false, w) {
+			t.Errorf("task row %d = %q, want %q", i, tl[i+1], m.commitRowLine(r, false, w))
+		}
+	}
+}
+
+func TestCommitsDetailMoreCountSkipsChores(t *testing.T) {
+	list := fakeCommits("b", 7)
+	list = append(list, choreCommit("c1", time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)))
+	m := loadedModel(t, map[string][]commits.Commit{"abcdefg#2": list})
+	got := m.commitLines(m.board.Get("PLN-0001.02"), 60)
+	if len(got) != 1+commitRows+1 || plain(got[len(got)-1]) != "+2 more · d to open" {
+		t.Errorf("lines = %q", got)
 	}
 }

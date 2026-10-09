@@ -67,7 +67,8 @@ func (m Model) boxOf(p pane) box {
 func (m Model) fitOf(p pane) int {
 	b := m.boxOf(p)
 	if p == paneDetail {
-		_, fit := m.detailScroll(b.textW(), b.inner)
+		w, h := b.detailArea()
+		_, fit := m.detailScroll(w, h)
 		return fit
 	}
 	return b.rows
@@ -75,6 +76,10 @@ func (m Model) fitOf(p pane) int {
 
 // linesOf is how many lines pane p holds in all, as wide as it is now.
 func (m Model) linesOf(p pane) int {
+	if p == paneDetail {
+		w, _ := m.boxOf(p).detailArea()
+		return m.linesAt(p, w)
+	}
 	return m.linesAt(p, m.boxOf(p).textW())
 }
 
@@ -82,7 +87,8 @@ func (m Model) linesOf(p pane) int {
 // rows of a list, or the body of the detail.
 func (m Model) linesAt(p pane, w int) int {
 	if p == paneDetail {
-		total, _ := m.detailScroll(w, m.boxOf(p).inner)
+		_, h := m.boxOf(p).detailArea()
+		total, _ := m.detailScroll(w, h)
 		return total
 	}
 	rows, _, _ := m.slotOf(p)

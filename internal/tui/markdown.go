@@ -78,6 +78,10 @@ func markdownStyle(t theme.Theme, dark bool) glamour.StyleConfig {
 	cfg.HTMLBlock = glamour.StyleBlock{StylePrimitive: glamour.StylePrimitive{Color: slot(slotDim)}}
 	cfg.HTMLSpan = glamour.StyleBlock{StylePrimitive: glamour.StylePrimitive{Color: slot(slotDim)}}
 
+	// The box pads the detail on its own, so the document adds no margin on
+	// top of it, and the body starts in the same column as the header.
+	cfg.Document.Margin = new(uint)
+
 	// The whole document and the code block around it take the body color, so
 	// no preset gray from the glamour palette can reach the screen. A text
 	// node gets no color of its own: it wears the color of the block it sits

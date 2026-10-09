@@ -31,6 +31,21 @@ type box struct {
 // to it.
 func (b box) textW() int { return max(0, b.w-2) }
 
+// detailPad is the free space the detail box keeps on every side: one cell
+// before and after each line, one empty line above and one below.
+const detailPad = 1
+
+// detailArea is the width and height the detail text gets inside its walls,
+// with the padding taken off. A box with no room to spare for the padding
+// gives all its inner space to the text instead.
+func (b box) detailArea() (w, h int) {
+	w, h = b.textW(), b.inner
+	if w < 2*detailPad+1 || h < 2*detailPad+1 {
+		return w, h
+	}
+	return w - 2*detailPad, h - 2*detailPad
+}
+
 // geom is the whole screen measured in cells from its top left corner. The
 // view and the mouse both read it, so a click lands where it looks.
 type geom struct {
@@ -370,11 +385,14 @@ func (m Model) paneView(p pane, b box) string {
 		return m.paneTop(p, b, edge)
 	}
 	inner := b.textW()
-	total, fit := m.linesAt(p, inner), b.inner
-	first := b.first
+	var total, fit, first int
 	if p == paneDetail {
-		total, fit = m.detailScroll(inner, b.inner)
+		// Only the detail box pads its text, so only it asks for the smaller area.
+		dw, dh := b.detailArea()
+		total, fit = m.detailScroll(dw, dh)
 		first = firstOf(m.off[p], total, fit)
+	} else {
+		total, fit, first = m.linesAt(p, inner), b.inner, b.first
 	}
 	// A thumb marks the window on the right wall, in the brush the wall
 	// already wears, so the focus reads the same on the border as inside.
@@ -389,7 +407,7 @@ func (m Model) paneView(p pane, b box) string {
 	}
 	var content []string
 	if p == paneDetail {
-		content = m.detailView(inner, first, b.inner)
+		content = m.paddedDetail(first, b)
 	} else {
 		content = m.listView(p, inner, b)
 	}
@@ -433,6 +451,26 @@ func plainSegs(segs []segment) string {
 		b.WriteString(s.text)
 	}
 	return b.String()
+}
+
+// paddedDetail lays the detail out inside its box: the lines built for the
+// narrower area, one blank cell on each side of them and one blank line above
+// and below. A box with no room for the padding gets the lines bare.
+func (m Model) paddedDetail(first int, b box) []string {
+	// The same sizes the scroll math in paneView used, so the two agree.
+	dw, dh := b.detailArea()
+	inner := b.textW()
+	lines := m.detailView(dw, first, dh)
+	if dw == inner && dh == b.inner {
+		return lines
+	}
+	side := strings.Repeat(" ", detailPad)
+	out := make([]string, 0, b.inner)
+	out = append(out, "")
+	for _, ln := range lines {
+		out = append(out, side+pad(ln, dw)+side)
+	}
+	return out
 }
 
 // detailView gives the lines of the detail box. With room to spare the
