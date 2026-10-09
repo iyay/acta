@@ -39,6 +39,8 @@ func detailLines(t *testing.T, cfg config.Config, id string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A load leaves the authors out, and the detail box shows one.
+	b.FillAuthors()
 	it := b.Get(id)
 	if it == nil {
 		t.Fatalf("the board holds no %s", id)

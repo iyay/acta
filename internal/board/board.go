@@ -84,6 +84,9 @@ type Board struct {
 	Items []*Item
 	byID  map[string]*Item
 	alias map[string]*Item // short IDs (number and hash, any case) to items
+	// roots are the checkouts read from disk, the main one first. FillAuthors
+	// asks git once in each.
+	roots []string
 }
 
 var (
@@ -181,7 +184,12 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 		}
 	}
 
-	b := &Board{byID: map[string]*Item{}, alias: map[string]*Item{}}
+	b := &Board{byID: map[string]*Item{}, alias: map[string]*Item{}, roots: []string{main.RepoRoot}}
+	for _, t := range others {
+		if t.Files == nil {
+			b.roots = append(b.roots, t.Cfg.RepoRoot)
+		}
+	}
 	var plans []planFile
 	var debts []debtFile
 	for _, f := range files {
@@ -212,7 +220,6 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 	b.linkCloses()
 	b.fillStarted(main, others)
 	b.derive()
-	b.fillAuthors(main.Root)
 	b.fillAgents(main, others)
 	b.sortItems()
 	return b, nil
