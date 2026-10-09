@@ -84,3 +84,23 @@ func Watch(dirs func() []string, reload func() tea.Msg, send func(tea.Msg)) (fun
 	}()
 	return func() { close(done); w.Close() }, nil
 }
+
+// Start sets the watcher up off the caller's goroutine, so the first frame
+// does not wait for it, and sends one full load once the watcher has its
+// folders. A change that lands during setup is then not lost, because the
+// load runs after the folders are added. When the watcher cannot start, the
+// model hears about it and the load still runs. stop waits for the setup to
+// end, then stops the watcher.
+func Start(dirs func() []string, reload func() tea.Msg, send func(tea.Msg)) (stop func()) {
+	stops := make(chan func(), 1)
+	go func() {
+		stopWatch, err := Watch(dirs, reload, send)
+		if err != nil {
+			send(watchFailedMsg{err: err})
+			stopWatch = func() {}
+		}
+		stops <- stopWatch
+		send(reload())
+	}()
+	return func() { (<-stops)() }
+}
