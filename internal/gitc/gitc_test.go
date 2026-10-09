@@ -328,6 +328,52 @@ func TestAuthorsAsksOnceForManyFiles(t *testing.T) {
 	}
 }
 
+// Authors names folders to git, never files, so the command line stays short
+// however many files the board asks about. A file in an asked folder that was
+// not asked about must not come back.
+func TestAuthorsAsksByFolder(t *testing.T) {
+	repo := firstCommitRepo(t, "Ana")
+	for _, d := range []string{"a", "b"} {
+		if err := os.MkdirAll(filepath.Join(repo, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeFile(t, filepath.Join(repo, "a", "x.md"), "x\n")
+	writeFile(t, filepath.Join(repo, "a", "z.md"), "z\n")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-qm", "ana writes a/x.md and a/z.md")
+	t.Setenv("GIT_AUTHOR_NAME", "Budi")
+	t.Setenv("GIT_COMMITTER_NAME", "Budi")
+	writeFile(t, filepath.Join(repo, "b", "y.md"), "y\n")
+	git(t, repo, "add", ".")
+	git(t, repo, "commit", "-qm", "budi writes b/y.md")
+
+	x, y := filepath.Join(repo, "a", "x.md"), filepath.Join(repo, "b", "y.md")
+	got := Authors(repo, []string{x, y})
+	want := map[string]string{x: "Ana", y: "Budi"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Authors = %v, want %v (a/z.md was not asked, so it has no entry)", got, want)
+	}
+
+	// Many files in two folders: the log gets each folder once and no file name.
+	var many []string
+	for i := 0; i < 300; i++ {
+		many = append(many, filepath.Join(repo, "a", "file-"+strings.Repeat("n", i%7)+string(rune('a'+i%26))+".md"))
+		many = append(many, filepath.Join(repo, "b", "file-"+strings.Repeat("m", i%5)+string(rune('a'+i%26))+".md"))
+	}
+	args := authorArgs(repo, many)
+	at := slices.Index(args, "--")
+	if at < 0 {
+		t.Fatalf("args %v have no --", args)
+	}
+	if got, want := args[at+1:], []string{"a", "b"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("pathspecs = %v, want %v", got, want)
+	}
+	if line := strings.Join(args, " "); strings.Contains(line, ".md") {
+		t.Errorf("the git log line names a file: %s", line)
+	}
+}
+
 // Some asks have nothing to find. None of them may answer with names.
 func TestAuthorsWithNothingToFind(t *testing.T) {
 	repo := firstCommitRepo(t, "Ana")
