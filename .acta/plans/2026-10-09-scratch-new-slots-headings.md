@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0130
 created: "2026-10-09 22:04:43"
 hash: kabnr4w
+started: "2026-10-09 22:06:39"
+finished: "2026-10-09 22:08:53"
 ---
 # acta scratch new puts a headed body into its sections
 
@@ -34,9 +36,9 @@ hash: kabnr4w
 
 **verify:** `CheckBody` on a scratch body returns `## <name> appears twice` for every schema section heading that shows up more than once, whatever the order, and keeps every result it gives today for bodies with no repeated heading. List each body shape checked and its result.
 
-- [ ] Failing test: in `schema_test.go`, a scratch body with `## Context` twice (in valid order otherwise) returns a problem `## Context appears twice`; a body with `## Words` twice returns `## Words appears twice`; a valid body still returns nil. Run `scripts/test ./internal/board/ -run CheckBody` and see it fail.
-- [ ] Code: in `CheckBody`, when a known section name is already in `seen`, append `"## "+name+" appears twice"`. Plain-English comment saying why.
-- [ ] Run `scripts/test ./internal/board/` passes, vet and gofmt clean, commit `fix(board): report a scratch section heading that appears twice`.
+- [x] Failing test: in `schema_test.go`, a scratch body with `## Context` twice (in valid order otherwise) returns a problem `## Context appears twice`; a body with `## Words` twice returns `## Words appears twice`; a valid body still returns nil. Run `scripts/test ./internal/board/ -run CheckBody` and see it fail.
+- [x] Code: in `CheckBody`, when a known section name is already in `seen`, append `"## "+name+" appears twice"`. Plain-English comment saying why.
+- [x] Run `scripts/test ./internal/board/` passes, vet and gofmt clean, commit `fix(board): report a scratch section heading that appears twice`.
 
 ### Task 02: scratch new sorts a headed body into its sections
 
@@ -46,9 +48,9 @@ hash: kabnr4w
 
 **verify:** For any body sent to `NewScratch`, the written file has each of `## Words`, `## Context`, `## Log`, `## Open questions` exactly once and passes `board.CheckBody`; a top `# ` title line is dropped; text before the first `## ` and under `## Words` lands in Words below the dated heading; text under Context, Log and Open questions lands in that section, with Log under a dated heading; any other `## ` heading becomes `### ` inside Words; a body with no heading lines gives exactly today's file. List each body shape checked and where each part landed.
 
-- [ ] Failing test: in `scratch_test.go`, `NewScratch` with body `"# T\n\n## Words\n\nhello\n\n## Context\n\n- c\n\n## Log\n\nl\n\n## Open questions\n\n- q\n\n## Extra\n\nx\n"` writes each schema heading once, `hello` and `### Extra` with `x` under Words, `- c` under Context, `l` under a `### <day>` heading in Log, `- q` under Open questions, and `CheckBody` returns nil; then `AppendScratch` with section `log` succeeds. A body `"just words\n"` gives the same bytes as before (assert the full expected file text). Run `scripts/test ./internal/write/ -run NewScratch` and see it fail.
-- [ ] Code: in `NewScratch`, split the body into parts by `## ` lines (drop a leading `# ` line), build today's empty skeleton, then fill each part with the existing `putInSection` using the `sections` map (Words and Log dated). Turn an unknown `## X` into `### X` and keep it with the Words text. A body with no headings keeps today's exact path. Plain-English comments saying why.
-- [ ] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit `fix(write): scratch new puts a headed body into its sections`.
+- [x] Failing test: in `scratch_test.go`, `NewScratch` with body `"# T\n\n## Words\n\nhello\n\n## Context\n\n- c\n\n## Log\n\nl\n\n## Open questions\n\n- q\n\n## Extra\n\nx\n"` writes each schema heading once, `hello` and `### Extra` with `x` under Words, `- c` under Context, `l` under a `### <day>` heading in Log, `- q` under Open questions, and `CheckBody` returns nil; then `AppendScratch` with section `log` succeeds. A body `"just words\n"` gives the same bytes as before (assert the full expected file text). Run `scripts/test ./internal/write/ -run NewScratch` and see it fail.
+- [x] Code: in `NewScratch`, split the body into parts by `## ` lines (drop a leading `# ` line), build today's empty skeleton, then fill each part with the existing `putInSection` using the `sections` map (Words and Log dated). Turn an unknown `## X` into `### X` and keep it with the Words text. A body with no headings keeps today's exact path. Plain-English comments saying why.
+- [x] Run `scripts/test ./internal/write/` passes, vet and gofmt clean, commit `fix(write): scratch new puts a headed body into its sections`.
 
 ### Task 03: Clean the one old scratch file with doubled sections
 
@@ -57,6 +59,16 @@ hash: kabnr4w
 
 **verify:** After the change, no scratch file in `.acta/scratch/` fails `acta doctor`'s schema check, and the cleaned file keeps every non-heading line it had before. List the lines compared and the doctor result.
 
-- [ ] Check first: with the branch binary (`go run ./cmd/acta doctor`), see the schema warning name `2026-09-30-faster-agent-test-runs.md`.
-- [ ] Edit: merge the two `## Words` sections into one and the two `## Context` sections into one, keeping every line and its order; touch nothing else.
-- [ ] Run `go run ./cmd/acta doctor` shows `ok schema`, then commit with `go run ./cmd/acta commit .acta/scratch/2026-09-30-faster-agent-test-runs.md -m "chore(scratch): merge doubled sections in faster-agent-test-runs"`.
+- [x] Check first: with the branch binary (`go run ./cmd/acta doctor`), see the schema warning name `2026-09-30-faster-agent-test-runs.md`.
+- [x] Edit: merge the two `## Words` sections into one and the two `## Context` sections into one, keeping every line and its order; touch nothing else.
+- [x] Run `go run ./cmd/acta doctor` shows `ok schema`, then commit with `go run ./cmd/acta commit .acta/scratch/2026-09-30-faster-agent-test-runs.md -m "chore(scratch): merge doubled sections in faster-agent-test-runs"`.
+
+## Review notes
+
+- Round 1, full tier (logic change in internal/write and internal/board), two reviewers: CLEAN, no BLOCKER.
+- The top `# ` line of a headed body is always dropped, even when it is not a title. The spec asks for this.
+- Log text that already has its own `### <day>` heading gets today's date heading stacked above it. The spec asks for this.
+- `splitHeaded` looks headings up by looping over the `sections` map; a direct lookup by name would read clearer.
+- The "appears twice" check runs for every kind in `Schema`, but only scratch has `schema: 1` today.
+- The plain-body test passes on the old code too; it guards the byte-for-byte rule, while the two headed tests prove the fix.
+- The cleaned faster-agent-test-runs scratch file has two blank lines in a row where the extra headings were; markdown renders it the same.
