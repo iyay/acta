@@ -86,7 +86,7 @@ func plainLines(lines []string) []string {
 
 // headerField is one "LABEL: value" line of the header, which is all the
 // lines above the rule under it.
-var headerField = regexp.MustCompile(`^  ([A-Z]+)\s*: (.*)$`)
+var headerField = regexp.MustCompile(`^([A-Z]+)\s*: (.*)$`)
 
 // labelsOf are the field labels of the header, in the order it draws them.
 func labelsOf(lines []string) []string {
@@ -259,7 +259,7 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 		"○ PLN-0002.01  Fix one")
 	// A spec with no plan shows its header and no list, not an empty line.
 	lines := detailOf(t, "SPEC-2")
-	if len(plainLines(lines)) < 3 || !strings.HasPrefix(plainLines(lines)[0], "  ID") {
+	if len(plainLines(lines)) < 3 || !strings.HasPrefix(plainLines(lines)[0], "ID") {
 		t.Errorf("a spec with no plan should still show its header:\n%s", strings.Join(plainLines(lines), "\n"))
 	}
 	if joined := strings.Join(plainLines(lines), "\n"); strings.ContainsAny(joined, "○●✓") {
@@ -415,7 +415,7 @@ func TestDetailIsNeverEmpty(t *testing.T) {
 			t.Errorf("%s: the detail pane is empty", id)
 			continue
 		}
-		if head := plainLines(lines)[0]; !strings.HasPrefix(head, "  ID") {
+		if head := plainLines(lines)[0]; !strings.HasPrefix(head, "ID") {
 			t.Errorf("%s: the detail starts on %q, want its ID line", id, head)
 		}
 		if blank := plainLines(lines)[2]; strings.TrimSpace(blank) == "" {
@@ -767,9 +767,9 @@ func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
 		{"SCRATCH-9", "created - · started - · finished -", "c - · s - · f -"},
 	} {
 		m := onItem(t, sized(base, 120, 40), c.id)
-		// The footer sits 2 columns in, so the dates get 2 cells fewer.
+		// The footer has no indent of its own now; the box pads it.
 		for w := 5; w <= 130; w++ {
-			inner := w - detailIndent
+			inner := w
 			want := c.long
 			if lipgloss.Width(want) > inner {
 				want = c.short
@@ -777,12 +777,12 @@ func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
 					want = truncate(c.short, inner)
 				}
 			}
-			if got := strings.TrimPrefix(plain(footAt(m, w)), "  "); got != want {
+			if got := plain(footAt(m, w)); got != want {
 				t.Errorf("%s at width %d: footer %q, want %q", c.id, w, got, want)
 			}
 		}
 		// Every width the short form fits in, all three dates are there whole.
-		for w := lipgloss.Width(c.short) + detailIndent; w <= 130; w++ {
+		for w := lipgloss.Width(c.short); w <= 130; w++ {
 			if got := plain(footAt(m, w)); strings.Contains(got, "…") {
 				t.Errorf("%s at width %d: the short form fits but the footer is cut: %q", c.id, w, got)
 			}
@@ -828,8 +828,9 @@ func TestDetailHeaderAndFooterStayWhileTheMiddleScrolls(t *testing.T) {
 
 	m := stickyModel(t, 40)
 	b := m.geometry().detail
-	head, mid, foot := m.detailParts(b.textW())
-	want := "  created 2026-09-20 · started 2026-09-21 · finished -"
+	dw, dh := b.detailArea()
+	head, mid, foot := m.detailParts(dw)
+	want := "created 2026-09-20 · started 2026-09-21 · finished -"
 	if plain(foot) != want {
 		t.Fatalf("footer %q, want %q", plain(foot), want)
 	}
@@ -838,13 +839,13 @@ func TestDetailHeaderAndFooterStayWhileTheMiddleScrolls(t *testing.T) {
 			t.Errorf("the header still holds %s", l)
 		}
 	}
-	n := stickyMid(len(head), b.inner)
+	n := stickyMid(len(head), dh)
 	if n < 3 {
 		t.Fatalf("a 40 line screen should stick, got %d middle lines", n)
 	}
 	// The box counts the lines that move: it scrolls over the middle and shows
 	// n of them at a time, so an offset can never leave the middle behind.
-	if total, fit := m.detailScroll(b.textW(), b.inner); total != len(mid) || fit != n {
+	if total, fit := m.detailScroll(dw, dh); total != len(mid) || fit != n {
 		t.Errorf("the detail scrolls over %d lines and shows %d at a time, want %d and %d",
 			total, fit, len(mid), n)
 	}
@@ -877,12 +878,13 @@ func TestShortDetailScrollsAsOneBlock(t *testing.T) {
 	for h := 8; h < 40; h++ {
 		m := stickyModel(t, h)
 		b := m.geometry().detail
-		head, _, _ := m.detailParts(b.textW())
-		if b.inner < 1 || stickyMid(len(head), b.inner) > 0 {
+		dw, dh := b.detailArea()
+		head, _, _ := m.detailParts(dw)
+		if dh < 1 || stickyMid(len(head), dh) > 0 {
 			continue
 		}
 		checked++
-		all := m.detailLines(b.textW())
+		all := m.detailLines(dw)
 		m.scrollPane(paneDetail, 1)
 		if got := innerLines(m, b); len(got) == 0 || said(got[0]) != strings.TrimRight(plain(all[1]), " ") {
 			t.Errorf("h=%d: after one line the box starts %q, want %q", h, got, plain(all[1]))
@@ -914,7 +916,7 @@ func TestDetailLinesAreBuiltOncePerChange(t *testing.T) {
 	m.dcache = &detailCache{}
 	// The width the detail box really has, so the draw below asks for the
 	// lines of the same width the calls above built.
-	w := scrollBox(m, paneDetail).textW()
+	w, _ := scrollBox(m, paneDetail).detailArea()
 	m.detailLines(w)
 	m.detailLines(w)
 	m.View()
@@ -1099,13 +1101,13 @@ func TestDetailLabelsAndIDWearColors(t *testing.T) {
 		var id, status string
 		for _, ln := range head {
 			switch {
-			case strings.HasPrefix(plain(ln), "  ID"):
+			case strings.HasPrefix(plain(ln), "ID"):
 				id = ln
-			case strings.HasPrefix(plain(ln), "  STATUS"):
+			case strings.HasPrefix(plain(ln), "STATUS"):
 				status = ln
 			}
 		}
-		if !strings.HasPrefix(status, "  "+m.styles.label.Render("STATUS")) {
+		if !strings.HasPrefix(status, m.styles.label.Render("STATUS")) {
 			t.Errorf("STATUS label is not cyan: %q", status)
 		}
 		if !strings.Contains(id, m.styles.kind(board.KindBug).Render("BUG-0002")) {

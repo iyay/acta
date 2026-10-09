@@ -6,6 +6,7 @@ id: PLN-0132
 created: "2026-10-09 22:49:52"
 hash: nxqb6zb
 started: "2026-10-09 22:50:44"
+finished: "2026-10-09 22:57:35"
 ---
 # Detail box padding, commit rows in the detail, no diff line numbers
 
@@ -60,6 +61,23 @@ started: "2026-10-09 22:50:44"
 
 **verify:** In every detail box state, each non-empty line starts in the screen column of the `D` of the `Detail` title, no line reaches the last inner column, the first and last inner lines are empty, and scroll, scrollbar and wheel count the same lines. List states checked: plan, task, spec, bug, debt file, debt note, idea, empty board, no item, a box too short for the sticky header, a box 1 to 4 lines tall, widths 1 to 10.
 
-- [ ] **Failing test:** draw the wide screen with a plan selected; find the column of `D` in the `Detail` title; the header line, the rule, `COMMITS`, a commit row, a body paragraph and the date line all start there; the first and last inner rows of the box are blank; fails because text starts one column further right and there is no top line.
-- [ ] **Change:** pad the detail content once, where the box is drawn: one column left and right, one empty line top and bottom, with the detail built at the narrower width and the scroll math (`detailScroll`, `detailView`, wheel) using the smaller height. Remove the per-line `detailIndent` from `buildDetailParts`, draw the rules at the padded width, and make the markdown body start at the same column as the header (set the glamour document margin so it adds nothing on top of the pad; check no other pane uses that renderer margin). A box too small for the padding draws without it.
-- [ ] **Commit:** `feat(tui): pad the detail box evenly on every side`
+- [x] **Failing test:** draw the wide screen with a plan selected; find the column of `D` in the `Detail` title; the header line, the rule, `COMMITS`, a commit row, a body paragraph and the date line all start there; the first and last inner rows of the box are blank; fails because text starts one column further right and there is no top line.
+- [x] **Change:** pad the detail content once, where the box is drawn: one column left and right, one empty line top and bottom, with the detail built at the narrower width and the scroll math (`detailScroll`, `detailView`, wheel) using the smaller height. Remove the per-line `detailIndent` from `buildDetailParts`, draw the rules at the padded width, and make the markdown body start at the same column as the header (set the glamour document margin so it adds nothing on top of the pad; check no other pane uses that renderer margin). A box too small for the padding draws without it.
+- [x] **Commit:** `feat(tui): pad the detail box evenly on every side`
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** Every NOTE below is applied, and nothing else changes.
+
+- [x] `TestColorDiffHasNoGutter` in `internal/tui/diffcolor_test.go` also feeds a `commit` and a `diff --git` header line and sweeps widths 1 to 40, checking no line carries a gutter and none is wider than the width.
+- [x] In `paneView` (`internal/tui/view.go`), compute `detailArea()` only inside the detail branch, and drop the `paddedDetail` parameter that repeats `b.textW()`.
+- [x] Commit: `polish: review notes for PLN-0132`
+
+## Review notes
+
+- Round 1: two reviewers (full tier), both CLEAN. Polish commit changed logic in view.go, so it got two reviewers too (full tier), both CLEAN.
+- The scrollbar thumb is drawn over the full inner wall while total and fit come from the padded area, so the thumb can sit beside a padding line.
+- paddedDetail never adds the bottom blank line itself; it stays blank because detailView returns at most dh lines and paneView fills the rest.
+- The unpadded test helper returns rows unchanged when their count is not b.inner; every caller passes exactly b.inner today.

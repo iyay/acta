@@ -180,11 +180,22 @@ func TestColorDiffWithThemeUsesThemeColors(t *testing.T) {
 // gutter in front would push the text right and break the plain diff look.
 func TestColorDiffHasNoGutter(t *testing.T) {
 	st := diffTestStyles(t)
-	text := "@@ -10,3 +10,4 @@ ctx\n keep\n-old\n+new\n"
-	want := []string{"@@ -10,3 +10,4 @@ ctx", " keep", "-old", "+new"}
-	for i, ln := range colorDiff(text, 40, st) {
-		if got := xansi.Strip(ln); got != want[i] {
-			t.Errorf("line %d = %q, want %q", i, got, want[i])
+	src := []string{"commit abc123", "diff --git a/x b/x", "@@ -10,3 +10,4 @@ ctx", " keep", "-old", "+new"}
+	text := strings.Join(src, "\n") + "\n"
+	// Every width, down to one cell, must cut the line and never pad it.
+	for w := 1; w <= 40; w++ {
+		got := colorDiff(text, w, st)
+		if len(got) != len(src) {
+			t.Fatalf("width %d: %d lines, want %d", w, len(got), len(src))
+		}
+		for i, ln := range got {
+			plain := xansi.Strip(ln)
+			if !strings.HasPrefix(src[i], plain[:min(1, len(plain))]) {
+				t.Errorf("width %d line %d = %q, does not start with %q", w, i, plain, src[i][:1])
+			}
+			if lipgloss.Width(ln) > w {
+				t.Errorf("width %d line %d is %d cells wide", w, i, lipgloss.Width(ln))
+			}
 		}
 	}
 }

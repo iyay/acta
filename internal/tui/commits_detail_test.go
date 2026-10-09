@@ -257,23 +257,20 @@ func firstCol(ln string) int {
 	return len(p) - len(strings.TrimLeft(p, " "))
 }
 
-// The header, the commits and the date line start 2 columns in, where the
-// markdown body starts, and the rules stay at column 0. No line is wider than
-// the box.
-func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
+// The header, the commits, the body, the rules and the date line all start in
+// column 0 of what the detail builds: the box adds the padding. No line is wider
+// than the box.
+func TestDetailTextStartsInOneColumn(t *testing.T) {
 	m := loadedModel(t, map[string][]commits.Commit{"abcdefg#1": fakeCommits("a", 2)})
-	m.render = func(md string, _ int) string { return "  " + md }
+	m.render = func(md string, _ int) string { return md }
 	it := m.board.Get("PLN-0001")
 	m = onItem(t, m, it.ID)
 	for _, w := range []int{20, 40, 100} {
 		head, mid, foot := m.buildDetailParts(w)
-		for i, ln := range head[:len(head)-1] {
-			if c := firstCol(ln); c != 2 {
+		for i, ln := range head {
+			if c := firstCol(ln); c != 0 {
 				t.Errorf("w=%d header line %d starts at %d: %q", w, i, c, plain(ln))
 			}
-		}
-		if c := firstCol(head[len(head)-1]); c != 0 {
-			t.Errorf("w=%d rule starts at %d", w, c)
 		}
 		var sawCommits, sawBody bool
 		for _, ln := range mid {
@@ -281,12 +278,12 @@ func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
 			switch {
 			case p == "COMMITS" || strings.HasPrefix(p, "a020000"):
 				sawCommits = true
-				if c := firstCol(ln); c != 2 {
+				if c := firstCol(ln); c != 0 {
 					t.Errorf("w=%d %q starts at %d", w, p, c)
 				}
 			case strings.HasPrefix(p, "# Plan A"):
 				sawBody = true
-				if c := firstCol(ln); c != 2 {
+				if c := firstCol(ln); c != 0 {
 					t.Errorf("w=%d body starts at %d", w, c)
 				}
 			}
@@ -294,7 +291,7 @@ func TestDetailTextStartsAtTheBodyMargin(t *testing.T) {
 		if !sawCommits || !sawBody {
 			t.Errorf("w=%d commits=%v body=%v", w, sawCommits, sawBody)
 		}
-		if c := firstCol(foot); c != 2 {
+		if c := firstCol(foot); c != 0 {
 			t.Errorf("w=%d date line starts at %d: %q", w, c, plain(foot))
 		}
 		for _, ln := range append(append(head, mid...), foot) {

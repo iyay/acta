@@ -508,6 +508,9 @@ func innerLines(m Model, b box) []string {
 		}
 		out = append(out, body(col[y]))
 	}
+	if d := m.geometry().detail; b.x == d.x && b.y == d.y {
+		return unpadded(m, paneDetail, b, out)
+	}
 	return out
 }
 
@@ -908,13 +911,13 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 	t.Parallel()
 
-	var colon = regexp.MustCompile(`^  ([A-Z]+) +: `)
+	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
 	m := sized(press(clocked(newModel(t), 20, 46), "j"), 120, 40)
 	g := m.geometry()
 	var at []int
 	first := ""
 	for _, seg := range column(m.View(), g.detail.x, g.detail.w) {
-		b := strings.TrimRight(strings.TrimPrefix(strings.TrimSuffix(seg, "│"), "│"), " ")
+		b := strings.TrimPrefix(strings.TrimRight(strings.TrimPrefix(strings.TrimSuffix(seg, "│"), "│"), " "), " ")
 		if !colon.MatchString(b) {
 			continue
 		}
@@ -931,7 +934,7 @@ func TestViewDetailHeaderAlignsItsColons(t *testing.T) {
 			t.Fatalf("the colons do not line up: %v", at)
 		}
 	}
-	if !strings.HasPrefix(first, "  ID") {
+	if !strings.HasPrefix(first, "ID") {
 		t.Errorf("the first label should be ID, got %q", first)
 	}
 }
@@ -960,11 +963,11 @@ func TestViewDebtDetail(t *testing.T) {
 	}
 
 	g := m.geometry()
-	var colon = regexp.MustCompile(`^  ([A-Z]+) +: `)
+	var colon = regexp.MustCompile(`^([A-Z]+) +: `)
 	var at []int
 	var labels []string
 	for _, seg := range column(v, g.detail.x, g.detail.w) {
-		row := strings.TrimRight(strings.TrimPrefix(strings.TrimSuffix(seg, "│"), "│"), " ")
+		row := strings.TrimPrefix(strings.TrimRight(strings.TrimPrefix(strings.TrimSuffix(seg, "│"), "│"), " "), " ")
 		if !colon.MatchString(row) {
 			continue
 		}
