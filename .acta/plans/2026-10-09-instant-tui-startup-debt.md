@@ -5,6 +5,8 @@ closes: [DBT-0104.01, DBT-0104.02, DBT-0104.03]
 id: PLN-0129
 created: "2026-10-09 21:43:04"
 hash: fm3h4ux
+started: "2026-10-09 21:45:11"
+finished: "2026-10-09 21:46:36"
 ---
 # Instant TUI startup debt
 
@@ -33,9 +35,9 @@ hash: fm3h4ux
 
 **verify:** The first frame's board never holds an item from another worktree or an author, and every later load holds both. List each load `runTUI` makes and where its board comes from.
 
-- [ ] **Failing test:** `TestTUIBoardsFirstFrameIsMainOnly` builds a git repo (user.name `Ana`) with a committed plan and a linked worktree holding a plan the main tree lacks, calls `tuiBoards(cfg)`, and wants the first board without the worktree plan and with an empty author, and the loader's board with the worktree plan and author `Ana` on the committed plan; it fails because `tuiBoards` does not exist.
-- [ ] **Code:** add `tuiBoards(cfg config.Config) (*board.Board, func() (*board.Board, error), error)` returning `board.Load(cfg)` and a func calling `trees.LoadWithAuthors(cfg)`; `runTUI` uses its board and passes the func to `WithLoad`.
-- [ ] **Commit:** `test(cli): cover the TUI first frame and later loads`
+- [x] **Failing test:** `TestTUIBoardsFirstFrameIsMainOnly` builds a git repo (user.name `Ana`) with a committed plan and a linked worktree holding a plan the main tree lacks, calls `tuiBoards(cfg)`, and wants the first board without the worktree plan and with an empty author, and the loader's board with the worktree plan and author `Ana` on the committed plan; it fails because `tuiBoards` does not exist.
+- [x] **Code:** add `tuiBoards(cfg config.Config) (*board.Board, func() (*board.Board, error), error)` returning `board.Load(cfg)` and a func calling `trees.LoadWithAuthors(cfg)`; `runTUI` uses its board and passes the func to `WithLoad`.
+- [x] **Commit:** `test(cli): cover the TUI first frame and later loads`
 
 ### Task 2: gitc.Authors names folders, not files
 
@@ -45,9 +47,9 @@ hash: fm3h4ux
 
 **verify:** The `git log` command line holds each asked folder once and no file name, whatever the number of files, and every asked path gets the same author as before while no path that was not asked comes back. List the cases checked.
 
-- [ ] **Failing test:** `TestAuthorsAsksByFolder` commits files in two folders as different names, plus one more committed file in one folder that is not asked, then calls `Authors` with the asked paths and wants exactly those paths with their authors; it also checks the args from a new `authorArgs(repo, paths)` hold each folder once and no file name; it fails because `authorArgs` does not exist and `Authors` names files.
-- [ ] **Code:** add `authorArgs` that builds the log args with the distinct folders of `paths`, relative to `repo`, as pathspecs; `Authors` uses it and keeps only entries whose joined path was asked.
-- [ ] **Commit:** `fix(gitc): ask git for authors by folder, so the command line stays short`
+- [x] **Failing test:** `TestAuthorsAsksByFolder` commits files in two folders as different names, plus one more committed file in one folder that is not asked, then calls `Authors` with the asked paths and wants exactly those paths with their authors; it also checks the args from a new `authorArgs(repo, paths)` hold each folder once and no file name; it fails because `authorArgs` does not exist and `Authors` names files.
+- [x] **Code:** add `authorArgs` that builds the log args with the distinct folders of `paths`, relative to `repo`, as pathspecs; `Authors` uses it and keeps only entries whose joined path was asked.
+- [x] **Commit:** `fix(gitc): ask git for authors by folder, so the command line stays short`
 
 ### Task 3: A watcher that cannot start is tested
 
@@ -57,6 +59,23 @@ hash: fm3h4ux
 
 **verify:** When the watcher cannot start, the TUI always hears why, always gets one full load after that, and `stop` always returns. List what the TUI receives in order.
 
-- [ ] **Failing test:** `TestStartStillLoadsWhenTheWatcherFails` swaps the new `newWatcher` variable for one that returns an error (restored in `t.Cleanup`, test not parallel), calls `Start`, and wants a `watchFailedMsg` then one `reloadMsg` within 3 s, and `stop()` to return within 1 s; it fails because `newWatcher` does not exist.
-- [ ] **Code:** add `var newWatcher = fsnotify.NewWatcher` with a one-line why comment and call it in `Watch`.
-- [ ] **Commit:** `test(tui): cover a watcher that cannot start`
+- [x] **Failing test:** `TestStartStillLoadsWhenTheWatcherFails` swaps the new `newWatcher` variable for one that returns an error (restored in `t.Cleanup`, test not parallel), calls `Start`, and wants a `watchFailedMsg` then one `reloadMsg` within 3 s, and `stop()` to return within 1 s; it fails because `newWatcher` does not exist.
+- [x] **Code:** add `var newWatcher = fsnotify.NewWatcher` with a one-line why comment and call it in `Watch`.
+- [x] **Commit:** `test(tui): cover a watcher that cannot start`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** Every NOTE below is applied, and nothing else changes.
+
+- [x] `internal/cli/tui_boards_test.go`: set `GIT_AUTHOR_NAME`, `GIT_COMMITTER_NAME` (and the two emails) with `t.Setenv`, the way `internal/gitc/gitc_test.go` does near line 345, so a caller's env cannot override `user.name`; fix the comment that says the author comes from the repo, not the env.
+- [x] `internal/cli/cli.go`: the `tuiBoards` doc comment and the comment inside it say the same thing; keep one.
+- [x] Commit: `polish: review notes for PLN-0129`
+
+## Review notes
+
+- Round 1: full tier, two reviewers (Spec, Standards), both CLEAN. Polish: full tier, two reviewers, both CLEAN.
+- Folder pathspecs change git's history simplification at merges: a file added on both sides of a merge could get the other side's author. History here is linear, so no user sees it today.
+- One asked file right under `repo` makes the pathspec `.`, so git logs every add in the repo; the filter keeps the answer right, only slower. Board files sit under `.acta/` subfolders.
+- The commit messages of Tasks 1 to 3 got their `Task:` trailers in a message-only rebase; the briefs had missed the new trailer rule. The polish commit carries Task 1's trailer, since both notes sat in Task 1's files.

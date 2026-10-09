@@ -389,15 +389,15 @@ func Authors(repo string, paths []string) map[string]string {
 	if len(paths) == 0 || !inRepo(repo) {
 		return found
 	}
-	// No renames: a file moved inside the folder counts as added where it is
-	// now, the same answer a one-file log gives. quotePath off keeps names
-	// with non-ASCII letters as they are. Each commit line starts with a NUL
-	// byte, so an author line never reads as a file name.
-	args := append([]string{"-c", "core.quotePath=false", "log", "--no-renames", "--diff-filter=A",
-		"--relative", "--name-only", "--format=%x00%an", "--"}, paths...)
-	out, err := run(repo, args...)
+	out, err := run(repo, authorArgs(repo, paths)...)
 	if err != nil {
 		return found
+	}
+	// Git was asked about whole folders, so it also names files nobody asked
+	// about. Keys are built the same way here and below, so they compare equal.
+	asked := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		asked[askedKey(repo, p)] = true
 	}
 	name := ""
 	for _, line := range strings.Split(out, "\n") {
@@ -406,10 +406,52 @@ func Authors(repo string, paths []string) map[string]string {
 			name = strings.TrimSpace(line[1:])
 		case line != "" && name != "":
 			// Git lists the newest commit first, so the last add seen is the first one.
-			found[filepath.Join(repo, line)] = name
+			if key := filepath.Join(repo, line); asked[key] {
+				found[key] = name
+			}
 		}
 	}
 	return found
+}
+
+// askedKey is the key a path gets in the Authors answer: the path cleaned, and
+// put under repo when it was given relative to it.
+func askedKey(repo, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	return filepath.Join(repo, path)
+}
+
+// authorArgs is the git log command line for Authors. It names each folder
+// once instead of each file. A board has hundreds of files, and a command line
+// with all their names grows past what Windows allows, but the folders stay a
+// handful. A folder under repo is named relative to repo, since git runs there.
+// A path outside repo keeps its folder as it was given.
+func authorArgs(repo string, paths []string) []string {
+	seen := map[string]bool{}
+	var folders []string
+	for _, p := range paths {
+		dir := filepath.Dir(p)
+		if filepath.IsAbs(p) {
+			if rel, err := filepath.Rel(repo, dir); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				dir = rel
+			}
+		}
+		dir = filepath.ToSlash(dir)
+		if !seen[dir] {
+			seen[dir] = true
+			folders = append(folders, dir)
+		}
+	}
+	// A fixed order keeps the command the same for the same files.
+	slices.Sort(folders)
+	// No renames: a file moved inside the folder counts as added where it is
+	// now, the same answer a one-file log gives. quotePath off keeps names
+	// with non-ASCII letters as they are. Each commit line starts with a NUL
+	// byte, so an author line never reads as a file name.
+	return append([]string{"-c", "core.quotePath=false", "log", "--no-renames", "--diff-filter=A",
+		"--relative", "--name-only", "--format=%x00%an", "--"}, folders...)
 }
 
 // UserName gives the name this checkout commits under, or "" when git has no

@@ -26,11 +26,14 @@ func WatchDirs(cfg config.Config) []string {
 	return dirs
 }
 
+// newWatcher makes the file watcher. A test swaps it to see a failed start.
+var newWatcher = fsnotify.NewWatcher
+
 // Watch reloads the board after files change and hands the result to send.
 // dirs is asked again after every reload, so a folder or worktree that appears
 // later is watched from then on. Missing folders are skipped.
 func Watch(dirs func() []string, reload func() tea.Msg, send func(tea.Msg)) (func(), error) {
-	w, err := fsnotify.NewWatcher()
+	w, err := newWatcher()
 	if err != nil {
 		return nil, err
 	}
