@@ -474,6 +474,7 @@ func TestAuthorComesFromTheFirstCommit(t *testing.T) {
 		"plans/2026-09-21-a.md": "---\nid: PLAN-1\n---\n# Plan A\n\n**Spec:** `.acta/specs/2026-09-20-a.md`\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n",
 	})
 	b := loadDir(t, dir)
+	b.FillAuthors()
 	for _, id := range []string{"SPC-0001", "PLN-0001", "PLN-0001.01", "PLN-0001.02"} {
 		it := b.Get(id)
 		if it == nil {
@@ -493,11 +494,14 @@ func TestAuthorComesFromTheFirstCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitRun(t, dir, "config", "user.name", "Sari")
-	if got := loadDir(t, dir).Get("BUG-0001").Author; got != "Sari" {
+	again := loadDir(t, dir)
+	again.FillAuthors()
+	if got := again.Get("BUG-0001").Author; got != "Sari" {
 		t.Errorf("a file with no commit has author %q, want the user.name Sari", got)
 	}
 
 	outside := boardWith(t, map[string]string{"plans/2026-09-21-a.md": "# Plan A\n"})
+	outside.FillAuthors()
 	if got := outside.Get("plans/2026-09-21-a").Author; got != "" {
 		t.Errorf("a board outside git has author %q, want empty", got)
 	}
@@ -512,6 +516,7 @@ func TestDebtItemTakesTheDebtFile(t *testing.T) {
 		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\nProse about the review.\n\n- [ ] first note\n- [x] second note\n",
 	})
 	b := loadDir(t, dir)
+	b.FillAuthors()
 	if got := b.Get("DBT-0001").Author; got != "Budi" {
 		t.Errorf("the debt file has author %q, want Budi", got)
 	}
@@ -528,49 +533,239 @@ func TestDebtItemTakesTheDebtFile(t *testing.T) {
 	}
 }
 
-// Git is asked once per folder, not once per file or per item: two specs, a
-// plan with three tasks and a debt file with two lines sit in three folders,
-// so git gets three questions, and no file is named twice in one question.
-func TestAuthorIsAskedOncePerFolder(t *testing.T) {
-	var calls [][]string
-	gitAuthors = func(_ string, paths []string) map[string]string {
-		calls = append(calls, append([]string{}, paths...))
+// authorAsk is one question the stubbed git got: the checkout it was asked in
+// and the files it was asked about.
+type authorAsk struct {
+	repo  string
+	paths []string
+}
+
+// stubAuthorQuestions swaps the two questions a board asks git for counters,
+// so a test can count them without a real repo, and puts the real ones back
+// when the test ends. It swaps package variables, so the test cannot run in
+// parallel.
+func stubAuthorQuestions(t *testing.T) (asks *[]authorAsk, names *[]string) {
+	t.Helper()
+	asks, names = &[]authorAsk{}, &[]string{}
+	gitAuthors = func(repo string, paths []string) map[string]string {
+		*asks = append(*asks, authorAsk{repo, append([]string{}, paths...)})
 		return map[string]string{}
 	}
-	names := 0
-	gitUserName = func(string) string {
-		names++
+	gitUserName = func(repo string) string {
+		*names = append(*names, repo)
 		return "Sari"
 	}
 	t.Cleanup(func() { gitAuthors, gitUserName = gitc.Authors, gitc.UserName })
+	return asks, names
+}
 
-	b := boardWith(t, map[string]string{
-		"specs/2026-09-20-a.md":    "---\nid: SPEC-1\n---\n# Spec A\n",
-		"specs/2026-09-20-b.md":    "---\nid: SPEC-2\n---\n# Spec B\n",
-		"plans/2026-09-21-a.md":    "---\nid: PLAN-1\n---\n# Plan A\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n\n### Task 3: Three\n- [ ] z\n",
-		"debt/2026-09-24-notes.md": "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] one\n- [ ] two\n",
+// writeUnder writes each file at its path inside dir, making the folders.
+func writeUnder(t *testing.T, dir string, files map[string]string) {
+	t.Helper()
+	for rel, body := range files {
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Loading a board is for showing it, and only the detail box reads an author,
+// so a load must never ask git for one: not for the main tree, not for another
+// worktree, not for a branch read from git.
+func TestLoadNeverAsksForAuthors(t *testing.T) {
+	asks, names := stubAuthorQuestions(t)
+
+	main, side := t.TempDir(), t.TempDir()
+	writeUnder(t, main, map[string]string{
+		".acta/specs/2026-09-20-a.md":              "---\nid: SPEC-1\n---\n# Spec A\n",
+		".acta/plans/2026-09-21-a.md":              "---\nid: PLAN-1\n---\n# Plan A\n\n### Task 1: One\n- [ ] x\n",
+		"docs/superpowers/specs/2026-09-19-old.md": "# Old spec\n",
 	})
-	if len(calls) != 3 {
-		t.Fatalf("git was asked %d times, want 3 (specs, plans, debt): %v", len(calls), calls)
+	writeUnder(t, side, map[string]string{".acta/specs/2026-09-22-b.md": "---\nid: SPEC-2\n---\n# Spec B\n"})
+	gone := Tree{Cfg: config.Default(filepath.Join(t.TempDir(), "gone")), Branch: "gone",
+		Files: map[string][]byte{".acta/specs/2026-09-23-c.md": []byte("# Spec C\n")}}
+
+	if _, err := Load(config.Default(main)); err != nil {
+		t.Fatal(err)
 	}
-	for _, paths := range calls {
-		seen := map[string]bool{}
-		for _, p := range paths {
-			if seen[p] {
-				t.Errorf("one question named %s twice: %v", p, paths)
+	b, err := LoadTrees(config.Default(main), []Tree{{Cfg: config.Default(side), Branch: "side"}, gone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(*asks) != 0 || len(*names) != 0 {
+		t.Errorf("a load asked git for authors %v and for user.name %v, want neither", *asks, *names)
+	}
+	for _, it := range b.Items {
+		if it.Author != "" {
+			t.Errorf("%s has author %q straight after a load, want it empty", it.ID, it.Author)
+		}
+	}
+}
+
+// Git is asked once per checkout, not once per file, per item or per folder.
+// The main checkout holds two specs, a plan with three tasks, a debt file with
+// two lines and a legacy spec, so git gets one question that names each file
+// once. A worktree nested inside the main folder is a checkout of its own: its
+// file goes to it, not to the main checkout. The name git commits under is
+// read once, in the main checkout.
+func TestAuthorIsAskedOncePerCheckout(t *testing.T) {
+	asks, names := stubAuthorQuestions(t)
+
+	dir := t.TempDir()
+	nested := filepath.Join(dir, ".worktrees", "feat")
+	writeUnder(t, dir, map[string]string{
+		".acta/specs/2026-09-20-a.md":              "---\nid: SPEC-1\n---\n# Spec A\n",
+		".acta/specs/2026-09-20-b.md":              "---\nid: SPEC-2\n---\n# Spec B\n",
+		".acta/plans/2026-09-21-a.md":              "---\nid: PLAN-1\n---\n# Plan A\n\n### Task 1: One\n- [ ] x\n\n### Task 2: Two\n- [ ] y\n\n### Task 3: Three\n- [ ] z\n",
+		".acta/debt/2026-09-24-notes.md":           "---\nid: DEBT-1\n---\n# Review NOTEs\n\n- [ ] one\n- [ ] two\n",
+		"docs/superpowers/specs/2026-09-19-old.md": "# Old spec\n",
+	})
+	writeUnder(t, nested, map[string]string{".acta/specs/2026-09-25-n.md": "---\nid: SPEC-3\n---\n# Spec N\n"})
+
+	b, err := LoadTrees(config.Default(dir), []Tree{{Cfg: config.Default(nested), Branch: "feat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.FillAuthors()
+
+	if len(*asks) != 2 {
+		t.Fatalf("git was asked %d times, want 2 (main checkout, nested worktree): %v", len(*asks), *asks)
+	}
+	byRepo := map[string][]string{}
+	for _, a := range *asks {
+		byRepo[a.repo] = a.paths
+	}
+	wantMain := []string{
+		filepath.Join(dir, ".acta", "debt", "2026-09-24-notes.md"),
+		filepath.Join(dir, ".acta", "plans", "2026-09-21-a.md"),
+		filepath.Join(dir, ".acta", "specs", "2026-09-20-a.md"),
+		filepath.Join(dir, ".acta", "specs", "2026-09-20-b.md"),
+		filepath.Join(dir, "docs", "superpowers", "specs", "2026-09-19-old.md"),
+	}
+	got := append([]string{}, byRepo[dir]...)
+	slices.Sort(got)
+	if !slices.Equal(got, wantMain) {
+		t.Errorf("the main checkout question named %v, want each of its files once: %v", got, wantMain)
+	}
+	wantNested := []string{filepath.Join(nested, ".acta", "specs", "2026-09-25-n.md")}
+	if !slices.Equal(byRepo[nested], wantNested) {
+		t.Errorf("the nested worktree question named %v, want only its own file %v", byRepo[nested], wantNested)
+	}
+	if len(*names) != 1 || (*names)[0] != dir {
+		t.Errorf("user.name was read in %v, want once, in the main checkout %s", *names, dir)
+	}
+	for _, id := range []string{"SPC-0001", "SPC-0002", "SPC-0003", "PLN-0001", "PLN-0001.03", "DBT-0001.01", "DBT-0001.02"} {
+		it := b.Get(id)
+		if it == nil {
+			t.Errorf("the board holds no %s", id)
+			continue
+		}
+		if it.Author != "Sari" {
+			t.Errorf("%s author = %q, want the one name the whole call read", id, it.Author)
+		}
+	}
+}
+
+// A file whose folder is under no checkout the board knows is asked about in
+// its own folder, as it always was, so a root set outside the repo still gets
+// its authors.
+func TestAuthorOfAFileOutsideEveryCheckoutIsAskedByItsFolder(t *testing.T) {
+	asks, _ := stubAuthorQuestions(t)
+
+	repo, away := t.TempDir(), t.TempDir()
+	cfg := config.Default(repo)
+	cfg.Root = filepath.Join(away, ".acta")
+	writeUnder(t, away, map[string]string{".acta/specs/2026-09-20-a.md": "# Spec A\n"})
+	b, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.FillAuthors()
+
+	folder := filepath.Join(away, ".acta", "specs")
+	if len(*asks) != 1 || (*asks)[0].repo != folder {
+		t.Fatalf("git was asked %v, want one question in %s", *asks, folder)
+	}
+}
+
+// A checkout owns the files below it, matched on whole path parts, and the
+// deepest one wins, so a worktree inside the main folder owns its own files.
+func TestCheckoutOfPicksTheDeepestWholePathMatch(t *testing.T) {
+	t.Parallel()
+
+	for _, roots := range [][]string{{"/r/a", "/r/a/wt"}, {"/r/a/wt", "/r/a"}} {
+		for path, want := range map[string]string{
+			"/r/a/x.md":    "/r/a",
+			"/r/a/wt/y.md": "/r/a/wt",
+			"/r/ab/x.md":   "",
+			"/r/b/x.md":    "",
+		} {
+			if got := checkoutOf(roots, filepath.FromSlash(path)); got != filepath.FromSlash(want) {
+				t.Errorf("checkoutOf(%v, %s) = %q, want %q", roots, path, got, want)
 			}
-			seen[p] = true
-		}
-		if filepath.Base(filepath.Dir(paths[0])) == "specs" && len(paths) != 2 {
-			t.Errorf("the specs question named %d files, want both specs: %v", len(paths), paths)
 		}
 	}
-	if names != 1 {
-		t.Errorf("user.name was read %d times in one load, want 1", names)
+}
+
+// Every kind of item gets the author the old per-folder lookup gave: a file
+// of the main tree, a legacy folder, a worktree beside the repo, a worktree
+// nested inside the repo folder, and a file nobody committed. A branch read
+// only from git is not on disk, so it gets none.
+func TestAuthorsReachEveryKindOfItem(t *testing.T) {
+	t.Parallel()
+
+	dir := authorRepo(t, "Ana", map[string]string{
+		"specs/2026-09-20-main.md":                    "# Main spec\n",
+		"../docs/superpowers/specs/2026-09-19-old.md": "# Old spec\n",
+	})
+	gitRun(t, dir, "config", "user.name", "Sari")
+	beside, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, id := range []string{"SPC-0001", "SPC-0002", "PLN-0001", "PLN-0001.03", "DBT-0001.01", "DBT-0001.02"} {
-		if got := b.Get(id).Author; got != "Sari" {
-			t.Errorf("%s author = %q, want the one name the whole load read", id, got)
+	beside = filepath.Join(beside, "wt")
+	nested := filepath.Join(dir, ".worktrees", "feat")
+	gitRun(t, dir, "worktree", "add", "-q", "-b", "side", beside)
+	gitRun(t, dir, "worktree", "add", "-q", "-b", "feat", nested)
+	commitFile(t, beside, "Budi", ".acta/specs/2026-09-21-beside.md", "# Beside spec\n")
+	commitFile(t, nested, "Citra", ".acta/specs/2026-09-22-nested.md", "# Nested spec\n")
+	writeUnder(t, nested, map[string]string{".acta/bugs/2026-09-23-new.md": "# Never committed\n"})
+	gone := Tree{Cfg: config.Default(filepath.Join(t.TempDir(), "gone")), Branch: "gone",
+		Files: map[string][]byte{".acta/specs/2026-09-24-branch.md": []byte("# Branch spec\n")}}
+
+	b, err := LoadTrees(config.Default(dir), []Tree{
+		{Cfg: config.Default(beside), Branch: "side"},
+		{Cfg: config.Default(nested), Branch: "feat"},
+		gone,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.FillAuthors()
+
+	for _, c := range []struct{ kind, path, want string }{
+		{"main tree", filepath.Join(dir, ".acta", "specs", "2026-09-20-main.md"), "Ana"},
+		{"legacy folder", filepath.Join(dir, "docs", "superpowers", "specs", "2026-09-19-old.md"), "Ana"},
+		{"worktree beside the repo", filepath.Join(beside, ".acta", "specs", "2026-09-21-beside.md"), "Budi"},
+		{"worktree inside the repo folder", filepath.Join(nested, ".acta", "specs", "2026-09-22-nested.md"), "Citra"},
+		{"file nobody committed", filepath.Join(nested, ".acta", "bugs", "2026-09-23-new.md"), "Sari"},
+		{"branch read from git", "gone:.acta/specs/2026-09-24-branch.md", ""},
+	} {
+		found := false
+		for _, it := range b.Items {
+			if it.Path == c.path {
+				found = true
+				if it.Author != c.want {
+					t.Errorf("%s: author = %q, want %q", c.kind, it.Author, c.want)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("%s: the board holds no item at %s", c.kind, c.path)
 		}
 	}
 }
@@ -590,11 +785,26 @@ func TestAuthorMixesCommittedAndNewFilesInOneFolder(t *testing.T) {
 	}
 	gitRun(t, dir, "config", "user.name", "Sari")
 	b := loadDir(t, dir)
+	b.FillAuthors()
 	if got := b.Get("SPC-0001").Author; got != "Ana" {
 		t.Errorf("the committed spec has author %q, want Ana", got)
 	}
 	if got := b.Get("SPC-0002").Author; got != "Sari" {
 		t.Errorf("the new spec has author %q, want the user.name Sari", got)
+	}
+}
+
+// commitFile writes one file into a checkout and commits it as name.
+func commitFile(t *testing.T, checkout, name, rel, body string) {
+	t.Helper()
+	writeUnder(t, checkout, map[string]string{rel: body})
+	gitRun(t, checkout, "add", rel)
+	cmd := exec.Command("git", "-C", checkout, "commit", "-q", "-m", "add "+rel)
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME="+name, "GIT_COMMITTER_NAME="+name,
+		"GIT_AUTHOR_EMAIL="+name+"@example.com", "GIT_COMMITTER_EMAIL="+name+"@example.com")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v %s", err, out)
 	}
 }
 
