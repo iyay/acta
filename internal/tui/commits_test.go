@@ -841,3 +841,78 @@ func TestCommitScreenHelpAndHints(t *testing.T) {
 		t.Errorf("the board search shows on the screen: %q", bar[len(bar)-1])
 	}
 }
+
+// commitListLines draws the commit list of a view with no screen around it.
+func commitListLines(m Model, rows []commitRow, plan bool, pick string, w int) []string {
+	v := commitView{all: rows, plan: plan, pick: pick, chore: true}
+	return m.commitListBox(v, box{w: w + 2, h: 8, inner: 6})
+}
+
+func TestCommitListPaintsEachPartOfARow(t *testing.T) {
+	landed := mk("aaaaaaa", 4, "feat: one")
+	landed.Landed = true
+	open := mk("bbbbbbb", 3, "feat: two")
+	chore := mk("ccccccc", 2, "chore(plan): ids")
+	chore.Landed = true
+	both := mk("ddddddd", 1, "feat: shared")
+	rows := []commitRow{{c: landed, tasks: []int{1}}, {c: open, tasks: []int{2}}, {c: chore, tasks: []int{3}}, {c: both, tasks: []int{1, 2}}}
+	// The pick sits on the last row, so the box check below skips it.
+	withColors(func() {
+		m := loadedModel(t, nil)
+		s := m.styles
+		want := []string{
+			s.done.Render("aaaaaaa") + "  " + s.blue.Render("#1") + "  feat: one",
+			s.problem.Render("bbbbbbb") + "  " + s.blue.Render("#2") + "  feat: two",
+			s.faint.Render("ccccccc  #3  chore(plan): ids"),
+			s.problem.Render("ddddddd") + "  " + s.blue.Render("#1,#2") + "  feat: shared",
+		}
+		box := strings.Join(commitListLines(m, rows, true, rows[3].c.Sha, 60), "\n")
+		for i, w := range want {
+			if got := m.commitRowLine(rows[i], true, 60); got != w {
+				t.Errorf("row %d:\n got %q\nwant %q", i, got, w)
+			}
+			if i < 3 && !strings.Contains(box, w) {
+				t.Errorf("row %d is not in the drawn list as painted:\n%q", i, box)
+			}
+		}
+	})
+}
+
+func TestCommitListPickedRowIsOnePlainBand(t *testing.T) {
+	landed := mk("aaaaaaa", 4, "feat: one")
+	landed.Landed = true
+	rows := []commitRow{{c: landed, tasks: []int{1}}}
+	withColors(func() {
+		m := loadedModel(t, nil)
+		box := strings.Join(commitListLines(m, rows, true, landed.Sha, 40), "\n")
+		want := m.styles.selected.Render(pad("aaaaaaa  #1  feat: one", 40))
+		if !strings.Contains(box, want) {
+			t.Errorf("picked row is not one plain band:\n got %q\nwant %q inside", box, want)
+		}
+		if strings.Contains(box, m.styles.done.Render("aaaaaaa")) {
+			t.Errorf("picked row has an inner color that breaks the band: %q", box)
+		}
+	})
+}
+
+func TestCommitListCutRowsStayPaintedAndInsideTheBox(t *testing.T) {
+	c := mk("aaaaaaa", 4, "feat: a long subject here")
+	c.Landed = true
+	r := commitRow{c: c, tasks: []int{12, 34}}
+	withColors(func() {
+		m := loadedModel(t, nil)
+		for w := 1; w <= 30; w++ {
+			if got := lipgloss.Width(m.commitRowLine(r, true, w)); got > w {
+				t.Errorf("w=%d: row is %d cells wide", w, got)
+			}
+		}
+		// Cut inside the sha: the part left still wears the sha color.
+		if got, want := m.commitRowLine(r, true, 4), m.styles.done.Render("aaa…"); got != want {
+			t.Errorf("cut in sha:\n got %q\nwant %q", got, want)
+		}
+		// Cut inside the label: sha, gap and the cut label.
+		if got, want := m.commitRowLine(r, true, 12), m.styles.done.Render("aaaaaaa")+"  "+m.styles.blue.Render("#1…"); got != want {
+			t.Errorf("cut in label:\n got %q\nwant %q", got, want)
+		}
+	})
+}

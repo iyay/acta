@@ -226,3 +226,50 @@ func TestDiffRefusesAShaThatStartsWithADash(t *testing.T) {
 		t.Fatalf("got %v, want a bad sha error and no git run", err)
 	}
 }
+
+func TestFindMarksCommitsLandedOnTheFirstRef(t *testing.T) {
+	dir := newRepo(t)
+	shared := commit(t, dir, "2026-01-02T00:00:00Z", "feat: shared\n\nTask: PLN-landed1#1")
+	git(t, dir, "2026-01-03T00:00:00Z", "checkout", "-q", "-b", "feat")
+	onlyFeat := commit(t, dir, "2026-01-03T00:00:00Z", "feat: only feat\n\nTask: PLN-landed1#2")
+	git(t, dir, "2026-01-04T00:00:00Z", "checkout", "-q", "main")
+	onlyHead := commit(t, dir, "2026-01-04T00:00:00Z", "feat: only head\n\nTask: PLN-landed1#3")
+
+	landed := func(got map[string][]Commit, key, sha string) bool {
+		t.Helper()
+		for _, c := range got[key] {
+			if c.Sha == sha {
+				return c.Landed
+			}
+		}
+		t.Fatalf("%s: sha %s not found in %+v", key, sha, got[key])
+		return false
+	}
+
+	got, err := Find(dir, []Ref{{Name: "HEAD"}, {Name: "feat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !landed(got, "landed1#1", shared) {
+		t.Fatal("commit on both refs must be landed")
+	}
+	if !landed(got, "landed1#3", onlyHead) {
+		t.Fatal("commit only on the first ref must be landed")
+	}
+	if landed(got, "landed1#2", onlyFeat) {
+		t.Fatal("commit only on a later ref must not be landed")
+	}
+
+	// The first ref cannot be resolved, so nothing counts as landed.
+	got, err = Find(dir, []Ref{{Name: "no-such-branch"}, {Name: "HEAD"}, {Name: "feat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, list := range got {
+		for _, c := range list {
+			if c.Landed {
+				t.Fatalf("%s: %s landed although the first ref was skipped", key, c.Sha)
+			}
+		}
+	}
+}

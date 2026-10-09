@@ -18,6 +18,7 @@ import (
 type styles struct {
 	accent, faint, dim, selected                           lipgloss.Style
 	label, footLabel, done, review, waiting, problem, live lipgloss.Style
+	blue                                                   lipgloss.Style // the task labels of a commit row
 	accentColor                                            lipgloss.TerminalColor
 	kinds                                                  map[board.Kind]lipgloss.Color
 	cyan                                                   lipgloss.Color            // the Activity tab, which holds no one kind
@@ -110,6 +111,7 @@ func newStyles(t theme.Theme, dark bool) styles {
 		waiting: lipgloss.NewStyle().Foreground(slot(slotDim)),
 		problem: lipgloss.NewStyle().Foreground(slot(slotRed)),
 		live:    lipgloss.NewStyle().Foreground(slot(slotGreen)),
+		blue:    lipgloss.NewStyle().Foreground(slot(slotBlue)),
 		kinds:   kinds,
 		// High is the one level that should catch the eye, so it gets the
 		// bright red. Low only needs to be there, so it is dim.

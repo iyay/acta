@@ -282,7 +282,7 @@ func TestAnEmptyListShowsNoItems(t *testing.T) {
 	m := sized(detailModel(t, cfg), 160, 50)
 	for _, i := range []int{tabActivity, tabScratchpad} {
 		m = press(m, tabKey(i))
-		if got := plainLines(m.detailLines(80)); len(got) != 1 || got[0] != "No items" {
+		if got := plainLines(m.detailLines(80)); len(got) != 1 || got[0] != "  No items" {
 			t.Errorf("tab %s with no rows shows %q, want No items", topTabs[i].name, got)
 		}
 	}

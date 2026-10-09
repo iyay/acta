@@ -86,7 +86,7 @@ func plainLines(lines []string) []string {
 
 // headerField is one "LABEL: value" line of the header, which is all the
 // lines above the rule under it.
-var headerField = regexp.MustCompile(`^([A-Z]+)\s*: (.*)$`)
+var headerField = regexp.MustCompile(`^  ([A-Z]+)\s*: (.*)$`)
 
 // labelsOf are the field labels of the header, in the order it draws them.
 func labelsOf(lines []string) []string {
@@ -119,7 +119,7 @@ func wantInOrder(t *testing.T, lines []string, want ...string) {
 	t.Helper()
 	at := 0
 	for _, ln := range plainLines(lines) {
-		if at < len(want) && ln == want[at] {
+		if at < len(want) && strings.TrimPrefix(ln, "  ") == want[at] {
 			at++
 		}
 	}
@@ -259,7 +259,7 @@ func TestDetailSpecAndBugListTheTasksOfTheirPlans(t *testing.T) {
 		"○ PLN-0002.01  Fix one")
 	// A spec with no plan shows its header and no list, not an empty line.
 	lines := detailOf(t, "SPEC-2")
-	if len(plainLines(lines)) < 3 || !strings.HasPrefix(plainLines(lines)[0], "ID") {
+	if len(plainLines(lines)) < 3 || !strings.HasPrefix(plainLines(lines)[0], "  ID") {
 		t.Errorf("a spec with no plan should still show its header:\n%s", strings.Join(plainLines(lines), "\n"))
 	}
 	if joined := strings.Join(plainLines(lines), "\n"); strings.ContainsAny(joined, "○●✓") {
@@ -415,7 +415,7 @@ func TestDetailIsNeverEmpty(t *testing.T) {
 			t.Errorf("%s: the detail pane is empty", id)
 			continue
 		}
-		if head := plainLines(lines)[0]; !strings.HasPrefix(head, "ID") {
+		if head := plainLines(lines)[0]; !strings.HasPrefix(head, "  ID") {
 			t.Errorf("%s: the detail starts on %q, want its ID line", id, head)
 		}
 		if blank := plainLines(lines)[2]; strings.TrimSpace(blank) == "" {
@@ -730,7 +730,7 @@ func TestDetailShowsTheDates(t *testing.T) {
 		{"SCRATCH-9", "created - · started - · finished -"},
 	} {
 		lines := detailLines(t, cfg, c.id)
-		if got := plain(lines[len(lines)-1]); got != c.foot {
+		if got := strings.TrimPrefix(plain(lines[len(lines)-1]), "  "); got != c.foot {
 			t.Errorf("%s footer %q, want %q", c.id, got, c.foot)
 		}
 		for _, l := range labelsOf(lines) {
@@ -767,20 +767,22 @@ func TestDetailFooterNamesEveryDateAtEveryWidth(t *testing.T) {
 		{"SCRATCH-9", "created - · started - · finished -", "c - · s - · f -"},
 	} {
 		m := onItem(t, sized(base, 120, 40), c.id)
+		// The footer sits 2 columns in, so the dates get 2 cells fewer.
 		for w := 5; w <= 130; w++ {
+			inner := w - detailIndent
 			want := c.long
-			if lipgloss.Width(want) > w {
+			if lipgloss.Width(want) > inner {
 				want = c.short
-				if lipgloss.Width(want) > w {
-					want = truncate(c.short, w)
+				if lipgloss.Width(want) > inner {
+					want = truncate(c.short, inner)
 				}
 			}
-			if got := plain(footAt(m, w)); got != want {
+			if got := strings.TrimPrefix(plain(footAt(m, w)), "  "); got != want {
 				t.Errorf("%s at width %d: footer %q, want %q", c.id, w, got, want)
 			}
 		}
 		// Every width the short form fits in, all three dates are there whole.
-		for w := lipgloss.Width(c.short); w <= 130; w++ {
+		for w := lipgloss.Width(c.short) + detailIndent; w <= 130; w++ {
 			if got := plain(footAt(m, w)); strings.Contains(got, "…") {
 				t.Errorf("%s at width %d: the short form fits but the footer is cut: %q", c.id, w, got)
 			}
@@ -827,7 +829,7 @@ func TestDetailHeaderAndFooterStayWhileTheMiddleScrolls(t *testing.T) {
 	m := stickyModel(t, 40)
 	b := m.geometry().detail
 	head, mid, foot := m.detailParts(b.textW())
-	want := "created 2026-09-20 · started 2026-09-21 · finished -"
+	want := "  created 2026-09-20 · started 2026-09-21 · finished -"
 	if plain(foot) != want {
 		t.Fatalf("footer %q, want %q", plain(foot), want)
 	}
@@ -1097,13 +1099,13 @@ func TestDetailLabelsAndIDWearColors(t *testing.T) {
 		var id, status string
 		for _, ln := range head {
 			switch {
-			case strings.HasPrefix(plain(ln), "ID"):
+			case strings.HasPrefix(plain(ln), "  ID"):
 				id = ln
-			case strings.HasPrefix(plain(ln), "STATUS"):
+			case strings.HasPrefix(plain(ln), "  STATUS"):
 				status = ln
 			}
 		}
-		if !strings.HasPrefix(status, m.styles.label.Render("STATUS")) {
+		if !strings.HasPrefix(status, "  "+m.styles.label.Render("STATUS")) {
 			t.Errorf("STATUS label is not cyan: %q", status)
 		}
 		if !strings.Contains(id, m.styles.kind(board.KindBug).Render("BUG-0002")) {

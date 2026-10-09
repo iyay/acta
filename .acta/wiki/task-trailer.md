@@ -3,7 +3,7 @@ type: Decision
 title: Task trailer on code commits
 description: "Each code commit of a plan task ends with a Task trailer, PLN-<hash>#<n>; acta commits and the Commits screen read it"
 paths: [internal/commits/, plugin/skills/build/, internal/cli/tick.go]
-timestamp: 2026-10-09T14:25:00Z
+timestamp: 2026-10-09T15:41:50Z
 ---
 
 Every code commit of a plan task ends with one line: `Task: PLN-<hash>#<n>`. The `<hash>` is the 7 character hash of the plan. The `<n>` is the task number with no leading zero.

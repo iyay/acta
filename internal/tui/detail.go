@@ -100,15 +100,24 @@ func (m Model) detailParts(w int) (head, mid []string, foot string) {
 // with no value is left out. With no item on show there is only a message,
 // so there is no header and no footer.
 func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
+	// The markdown body has a 2 column margin. The text lines built here are
+	// made 2 narrower and pushed in by the same 2, so they line up with it.
+	// A box too narrow for a margin keeps its full width and no indent.
+	full := w
+	pad := ""
+	if w > detailIndent {
+		pad = strings.Repeat(" ", detailIndent)
+		w -= detailIndent
+	}
 	it := m.Selected()
 	if it == nil {
 		if len(m.board.Items) == 0 {
-			return nil, cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w), ""
+			return nil, indentLines(pad, cut("this repo has no .acta/ yet.\n\npress n to write the first bug, or let the agent plugin create specs and plans.", w)), ""
 		}
 		if len(m.listOf()) == 0 {
-			return nil, []string{m.styles.faint.Render("No items")}, ""
+			return nil, indentLines(pad, []string{m.styles.faint.Render("No items")}), ""
 		}
-		return nil, []string{m.styles.faint.Render("enter opens the group")}, ""
+		return nil, indentLines(pad, []string{m.styles.faint.Render("enter opens the group")}), ""
 	}
 	title := it.Title
 	if it.Kind == board.KindDebtItem {
@@ -152,11 +161,12 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		if f.label != "" && strings.HasPrefix(line, f.label) {
 			line = m.styles.label.Render(f.label) + line[len(f.label):]
 		}
-		head = append(head, line)
+		head = append(head, pad+line)
 	}
-	head = append(head, m.rule(w))
+	// The rule keeps the full width, the margin is for text only.
+	head = append(head, m.rule(full))
 	for _, p := range it.Problems {
-		mid = append(mid, m.styles.problem.Render(truncate(expandTabs("! "+p), w)))
+		mid = append(mid, pad+m.styles.problem.Render(truncate(expandTabs("! "+p), w)))
 	}
 	if it.Kind == board.KindDebtItem {
 		// The list pane already names the other notes, so the middle is this
@@ -166,23 +176,38 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		// first. It can also leave a line wider than the pane, and fit
 		// would cut it, so Hardwrap breaks it.
 		note := strings.NewReplacer(`\`, `\\`, "&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(expandTabs(it.Title))
-		for _, ln := range strings.Split(xansi.Hardwrap(m.render(note, w), w, true), "\n") {
-			mid = append(mid, fit(ln, w))
+		for _, ln := range strings.Split(xansi.Hardwrap(m.render(note, full), full, true), "\n") {
+			mid = append(mid, fit(ln, full))
 		}
-		return head, mid, paintDates(m.styles, dateLine(it, w))
+		return head, mid, pad + paintDates(m.styles, dateLine(it, w))
 	}
-	mid = append(mid, m.workLines(it, w)...)
+	mid = append(mid, indentLines(pad, m.workLines(it, w))...)
 	if it.Kind == board.KindTask || it.Kind == board.KindPlan {
 		if len(mid) > 0 {
 			mid = append(mid, "")
 		}
-		mid = append(mid, m.commitLines(it, w)...)
+		mid = append(mid, indentLines(pad, m.commitLines(it, w))...)
 		mid = append(mid, "")
 	}
-	for _, ln := range strings.Split(m.render(expandTabs(it.Body), w), "\n") {
-		mid = append(mid, fit(ln, w))
+	for _, ln := range strings.Split(m.render(expandTabs(it.Body), full), "\n") {
+		mid = append(mid, fit(ln, full))
 	}
-	return head, mid, paintDates(m.styles, dateLine(it, w))
+	return head, mid, pad + paintDates(m.styles, dateLine(it, w))
+}
+
+// detailIndent is the left margin of the markdown body, in columns.
+const detailIndent = 2
+
+// indentLines puts pad in front of every line.
+func indentLines(pad string, lines []string) []string {
+	if pad == "" {
+		return lines
+	}
+	out := make([]string, len(lines))
+	for i, ln := range lines {
+		out[i] = pad + ln
+	}
+	return out
 }
 
 // detailLines is the whole detail as one block: the header, the middle, the
