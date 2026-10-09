@@ -17,6 +17,8 @@ Subagent (general-purpose):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
+    Trailer line for your commit: [TRAILER_LINE]
+
     ## Before You Begin
 
     If you have questions about:
@@ -44,6 +46,10 @@ Subagent (general-purpose):
     4. Run the repo's formatter and type checks before the commit.
     5. Commit your work, staged by path, never `git add -A` or `git add .`;
        formatting goes in the task commit, never in a commit of its own.
+       End the commit message with the trailer line the hand-off gives,
+       `Task: PLN-<hash>#<n>`, copied as it is; never look the hash up. A fix
+       round or polish hand-off gives one line per task fixed. Planning
+       `chore(` commits carry none.
     6. Right after each step, run the tick command from the worktree so the
        board shows live progress: `acta tick [TASK_ID] --step <n>`, where
        [TASK_ID] is plans/<stem>#task-N, for example

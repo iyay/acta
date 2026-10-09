@@ -5,6 +5,7 @@ closes: [SCR-0048]
 id: PLN-0127
 created: "2026-10-09 20:47:04"
 hash: broaksz
+started: "2026-10-09 20:51:08"
 ---
 # Task commits viewer
 
@@ -38,9 +39,9 @@ hash: broaksz
 
 **verify:** Every commit reachable from the given refs that carries a `Task:` trailer shows once under each task it names, and nothing else shows. List every case checked: no trailer, two trailers, a trailer-shaped line in the middle of the body, one sha seen from two refs (branch is the first ref, HEAD first), a chore subject, a bad trailer value.
 
-- [ ] **Failing test:** in a temp repo with a worktree branch, `Find(repo, []Ref{{Name:"HEAD"},{Name:"feat"}})` returns `map[string][]Commit` keyed `"<plan hash>#<n>"` (Commit holds Sha, Date, Subject, Branch, Chore), and `Diff(repo, sha)` returns `git show --stat -p --no-color --no-ext-diff` text; fails because the package does not exist.
-- [ ] **Change:** one `git log --grep='^Task: ' --format=<sha, author date, subject, branch, body>` per ref, parse trailers with an exported `Trailers(body string) []string`, dedupe by sha in ref order; `Diff` runs `git show`.
-- [ ] **Commit:** `feat(commits): find task commits by trailer`
+- [x] **Failing test:** in a temp repo with a worktree branch, `Find(repo, []Ref{{Name:"HEAD"},{Name:"feat"}})` returns `map[string][]Commit` keyed `"<plan hash>#<n>"` (Commit holds Sha, Date, Subject, Branch, Chore), and `Diff(repo, sha)` returns `git show --stat -p --no-color --no-ext-diff` text; fails because the package does not exist.
+- [x] **Change:** one `git log --grep='^Task: ' --format=<sha, author date, subject, branch, body>` per ref, parse trailers with an exported `Trailers(body string) []string`, dedupe by sha in ref order; `Diff` runs `git show`.
+- [x] **Commit:** `feat(commits): find task commits by trailer`
 
 ### Task 02: Build flow asks for the trailer
 
@@ -51,9 +52,9 @@ hash: broaksz
 
 **verify:** Every path that makes a code commit during a build (subagent implementer, omp dispatch, inline, fix round, polish) is told the exact `Task: PLN-<hash>#<n>` line, and planning `chore(` commits are told to carry none. List each path and the text that covers it.
 
-- [ ] **Failing test:** add `"Task: PLN-"` to the build skill's `Must` list in `skill_build_test.go`; fails because no build file says it yet.
-- [ ] **Change:** build hands the exact trailer line (plan hash from `acta show <plan>`) in each hand-off, fix-round and polish commits carry the trailers of the tasks they fix; add an eval case where a one-task minimal plan is built inline and a grader checks the code commit body has `Task: PLN-<hash>#1`; keep within the plugincheck caps (wiki: plugincheck-caps-per-folder) and embed any new plugin file the binary needs (wiki: plugin-ships-in-binary).
-- [ ] **Commit:** `feat(build): ask implementers for the Task trailer`
+- [x] **Failing test:** add `"Task: PLN-"` to the build skill's `Must` list in `skill_build_test.go`; fails because no build file says it yet.
+- [x] **Change:** build hands the exact trailer line (plan hash from `acta show <plan>`) in each hand-off, fix-round and polish commits carry the trailers of the tasks they fix; add an eval case where a one-task minimal plan is built inline and a grader checks the code commit body has `Task: PLN-<hash>#1`; keep within the plugincheck caps (wiki: plugincheck-caps-per-folder) and embed any new plugin file the binary needs (wiki: plugin-ships-in-binary).
+- [x] **Commit:** `feat(build): ask implementers for the Task trailer`
 
 ### Task 03: Diff coloring
 
@@ -63,9 +64,9 @@ hash: broaksz
 
 **verify:** Every line of `git show --stat -p` output gets exactly one style and is never wider than the given width. List each line kind checked: `commit` header, `diff --git` header, `---`/`+++` file lines, `@@` hunk, `+`, `-`, context, stat, empty, a line wider than the width, a line with wide runes.
 
-- [ ] **Failing test:** `colorDiff(text string, w int, pal palette) []string` over fixed diff text returns `+` lines green, `-` lines red, `@@` cyan, `diff --git` and `commit` bold, the rest plain FG, each cut to `w` cells; fails because the function does not exist.
-- [ ] **Change:** style by line prefix from the theme ANSI slots the TUI already uses, cut with the existing width helpers (wiki: xansi-wrap-overflows).
-- [ ] **Commit:** `feat(tui): color diff lines from the theme`
+- [x] **Failing test:** `colorDiff(text string, w int, pal palette) []string` over fixed diff text returns `+` lines green, `-` lines red, `@@` cyan, `diff --git` and `commit` bold, the rest plain FG, each cut to `w` cells; fails because the function does not exist.
+- [x] **Change:** style by line prefix from the theme ANSI slots the TUI already uses, cut with the existing width helpers (wiki: xansi-wrap-overflows).
+- [x] **Commit:** `feat(tui): color diff lines from the theme`
 
 ### Task 04: acta commits command
 

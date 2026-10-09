@@ -1,6 +1,6 @@
 # Dispatch: the plan in an omp tab
 
-Read this only when `acta:build` runs the `dispatch` executor and `HERDR_ENV=1` is set. Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent` (`## Executors` in SKILL.md). Build already made the worktree. `acta dispatch send` does the whole hand-off in one call. Review and landing stay `acta:review` and `acta:land`.
+Read this only when `acta:build` runs the `dispatch` executor and `HERDR_ENV=1` is set. Without `HERDR_ENV=1` there is no pane to hand the plan to: `dispatch` runs as `subagent` (`## Executors` in SKILL.md). `acta dispatch send` does the whole hand-off in one call. Review and landing stay `acta:review` and `acta:land`.
 
 ## Send
 
@@ -10,7 +10,7 @@ Run it in the worktree:
 acta dispatch send --plan .acta/plans/<stem>.md --rules <abs path> [--note-file <path>|-]
 ```
 
-`--rules` is the absolute path of this skill's base dir plus `../../references/house-rules.md`. Job facts the plan lacks (a locked call, a trap) go in a note file, or `-` for stdin.
+`--rules` is the absolute path of this skill's base dir plus `../../references/house-rules.md`. Job facts the plan lacks (a locked call, a trap) and each task's `Task: PLN-<hash>#<n>` line (those fixed, in a fix round or polish) go in a note file, or `-` for stdin.
 
 It writes the dispatch record and the brief, finds or makes the omp tab for the branch, sets the goal, waits about 20 seconds and reads the pane once. It prints `slug:`, `pane:`, `base:`, `brief:`, `checkpoint:` and `watcher:`. Read those lines and the exit code:
 
@@ -24,7 +24,7 @@ The omp harness needs `acta:build` installed too, because skills do not travel w
 
 ## Never wait for the recipient — HARD RULE
 
-After `send`, end your turn. Not allowed until the reply-back or the user's next message: a foreground `herdr agent wait`, polling loops, repeat pane reads, `sleep`, `Monitor` loops. Waiting burns your context.
+After `send`, end your turn. Not allowed until the reply-back or the user's next message: a foreground `herdr agent wait`, polling loops, repeat pane reads, `sleep`, `Monitor` loops.
 
 The report is short. First line is a fact: slug, pane, base, tasks sent, checkpoint. Last line is one next action: "on reply-back: verify, then `acta:review`, then land".
 
