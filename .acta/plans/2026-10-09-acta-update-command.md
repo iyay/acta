@@ -5,6 +5,7 @@ closes: [SCR-0053]
 id: PLN-0126
 created: "2026-10-09 16:13:15"
 hash: vbuiaa9
+started: "2026-10-09 16:15:34"
 ---
 # acta update command
 
@@ -38,11 +39,11 @@ hash: vbuiaa9
 
 **verify:** A binary counts as a release build only when goreleaser stamped it. List every way a binary is built in this repo (`go install`, `go build`, `go test`, goreleaser) and what `IsRelease` returns for each.
 
-- [ ] **Step 1: Check claude commands first.** Run `claude plugin marketplace update --help` and `claude plugin update --help`. Write the exact working forms with `acta state set <plan id> next`. If either does not exist, stop and report; Task 04 depends on them.
-- [ ] **Step 2: Failing test** `TestGoreleaserStampsRelease`: read `../../.goreleaser.yaml`, check it holds `-X github.com/iyay/acta/internal/update.release=true`. `TestIsReleaseUnstamped`: `IsRelease()` is false in a test binary.
-- [ ] **Step 3: Watch it fail:** `scripts/test ./internal/update -run 'TestGoreleaserStampsRelease|TestIsReleaseUnstamped'`
-- [ ] **Step 4: Minimal code:** `var release string` and `func IsRelease() bool { return release == "true" }`; add the `ldflags` line under `builds[0]` and fix the comment.
-- [ ] **Step 5: Pass, then commit** with gofmt and `go vet ./internal/update` clean: `feat(update): stamp release builds`
+- [x] **Step 1: Check claude commands first.** Run `claude plugin marketplace update --help` and `claude plugin update --help`. Write the exact working forms with `acta state set <plan id> next`. If either does not exist, stop and report; Task 04 depends on them.
+- [x] **Step 2: Failing test** `TestGoreleaserStampsRelease`: read `../../.goreleaser.yaml`, check it holds `-X github.com/iyay/acta/internal/update.release=true`. `TestIsReleaseUnstamped`: `IsRelease()` is false in a test binary.
+- [x] **Step 3: Watch it fail:** `scripts/test ./internal/update -run 'TestGoreleaserStampsRelease|TestIsReleaseUnstamped'`
+- [x] **Step 4: Minimal code:** `var release string` and `func IsRelease() bool { return release == "true" }`; add the `ldflags` line under `builds[0]` and fix the comment.
+- [x] **Step 5: Pass, then commit** with gofmt and `go vet ./internal/update` clean: `feat(update): stamp release builds`
 
 ### Task 02: Find and fetch the latest release
 
@@ -57,11 +58,11 @@ hash: vbuiaa9
 - Produces: `func Fetch(c *http.Client, base, tag, goos, goarch string) ([]byte, error)` downloads `<base>/download/<tag>/acta_<goos>_<goarch>.tar.gz` and `checksums.txt`, checks SHA-256 (accept `name` and `*name`), returns the `acta` file bytes from the archive.
 - Produces: `func NewClient() *http.Client` with 60 s timeout and a `CheckRedirect` that refuses any non-https target.
 
-- [ ] **Step 1: Failing tests**, table-driven over one `httptest.NewTLSServer`: good tag, good fetch, mismatch, missing line, `*name` line, archive without `acta`, redirect to `http://`. Use `srv.Client()` transport inside a client built like `NewClient` so TLS trusts the test cert.
-- [ ] **Step 2: Watch them fail:** `scripts/test ./internal/update -run 'TestLatest|TestFetch'`
-- [ ] **Step 3: Minimal code** in `fetch.go`.
-- [ ] **Step 4: Pass:** `scripts/test ./internal/update`
-- [ ] **Step 5: Commit** with gofmt and vet clean: `feat(update): fetch and verify the latest release`
+- [x] **Step 1: Failing tests**, table-driven over one `httptest.NewTLSServer`: good tag, good fetch, mismatch, missing line, `*name` line, archive without `acta`, redirect to `http://`. Use `srv.Client()` transport inside a client built like `NewClient` so TLS trusts the test cert.
+- [x] **Step 2: Watch them fail:** `scripts/test ./internal/update -run 'TestLatest|TestFetch'`
+- [x] **Step 3: Minimal code** in `fetch.go`.
+- [x] **Step 4: Pass:** `scripts/test ./internal/update`
+- [x] **Step 5: Commit** with gofmt and vet clean: `feat(update): fetch and verify the latest release`
 
 ### Task 03: Replace the binary in place
 
@@ -74,11 +75,11 @@ hash: vbuiaa9
 **Interfaces:**
 - Produces: `func Replace(exe string, data []byte) error`. Resolves `exe` with `filepath.EvalSymlinks`, writes `.acta.<pid>` in its dir, chmod 755, renames over it, removes the temp file on any failure. A dir without write access returns an error whose text is `no write access to <dir>`.
 
-- [ ] **Step 1: Failing tests:** good replace (content and mode 0755); symlinked exe replaces the target and keeps the link; read-only dir (chmod 0555 on a `t.TempDir()` subdir, skip when running as root) gives the exact message and leaves the old file and no `.acta.*`.
-- [ ] **Step 2: Watch them fail:** `scripts/test ./internal/update -run TestReplace`
-- [ ] **Step 3: Minimal code** in `replace.go`.
-- [ ] **Step 4: Pass:** `scripts/test ./internal/update`
-- [ ] **Step 5: Commit** with gofmt and vet clean: `feat(update): replace the binary atomically`
+- [x] **Step 1: Failing tests:** good replace (content and mode 0755); symlinked exe replaces the target and keeps the link; read-only dir (chmod 0555 on a `t.TempDir()` subdir, skip when running as root) gives the exact message and leaves the old file and no `.acta.*`.
+- [x] **Step 2: Watch them fail:** `scripts/test ./internal/update -run TestReplace`
+- [x] **Step 3: Minimal code** in `replace.go`.
+- [x] **Step 4: Pass:** `scripts/test ./internal/update`
+- [x] **Step 5: Commit** with gofmt and vet clean: `feat(update): replace the binary atomically`
 
 ### Task 04: acta update command
 
@@ -98,3 +99,12 @@ hash: vbuiaa9
 - [ ] **Step 3: Minimal code:** flow exactly as spec section "Flow of `acta update`", steps 1 to 5, messages verbatim. `--refresh-plugin` extracts, then when `exec.LookPath("claude")` finds it, runs the two commands recorded in Task 01's state note. Any refresh error: `plugin refresh failed: run acta setup`, exit 1.
 - [ ] **Step 4: Pass:** `scripts/test ./internal/cli -run TestUpdate` then `scripts/test ./internal/update ./internal/cli`
 - [ ] **Step 5: Commit** with gofmt and vet clean: `feat(cli): acta update command`
+
+## State
+
+### Next
+
+Verified with real claude (Task 01 step 1):
+- Refresh marketplace: claude plugin marketplace update acta-local  (optional --json; name arg optional, no name updates all)
+- Update plugin: claude plugin update acta@acta-local  (restart needed to apply; non-TTY needs -y/--yes; --json and -s user|project|local|managed available)
+Both commands exist. acta@acta-local is installed (user scope, 0.1.45).
