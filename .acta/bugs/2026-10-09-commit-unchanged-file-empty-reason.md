@@ -2,6 +2,8 @@
 id: BUG-0041
 hash: oizbc71
 priority: low
+status: wontfix
+finished: "2026-10-09 21:35:57"
 ---
 # acta commit on a file with nothing new fails with an empty reason
 

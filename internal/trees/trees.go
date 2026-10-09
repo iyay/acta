@@ -125,6 +125,17 @@ func Load(cfg config.Config) (*board.Board, error) {
 	return board.LoadTrees(cfg, Others(cfg))
 }
 
+// LoadWithAuthors is Load plus the author of each file. Only the TUI shows
+// authors, and asking git for them is slow, so a plain Load skips them.
+func LoadWithAuthors(cfg config.Config) (*board.Board, error) {
+	b, err := Load(cfg)
+	if err != nil {
+		return nil, err
+	}
+	b.FillAuthors()
+	return b, nil
+}
+
 // WatchDirs lists the folders to watch in the other worktrees, plus git's
 // worktrees folder so a new worktree causes a reload. dirsOf gives the folders
 // of one tree; the caller watches the main tree itself.
