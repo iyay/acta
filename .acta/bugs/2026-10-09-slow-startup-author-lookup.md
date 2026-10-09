@@ -2,6 +2,8 @@
 id: BUG-0040
 hash: nywhcia
 started: "2026-10-09 21:06:08"
+fixed_in: 252ae8436a7ff50bed4f1cb88c1541f2551acbb7
+finished: "2026-10-09 21:32:20"
 ---
 # acta takes over a second to open, and every board load is slow
 
