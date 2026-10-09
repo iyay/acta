@@ -22,6 +22,7 @@ type Commit struct {
 	Subject string
 	Branch  string // the Ref.Name it was first found from
 	Chore   bool   // subject starts with "chore("
+	Landed  bool   // found from the first ref, the checked-out branch
 }
 
 // trailerLine matches one Task: line. The hash is the plan's 7 character hash.
@@ -38,7 +39,9 @@ const (
 
 // Find returns map key "<plan hash>#<n>" -> commits, for example "broaksz#3".
 // Refs are walked in the given order, so a commit seen from two refs keeps
-// the Branch of the first one. A ref git cannot resolve is skipped. Each key
+// the Branch of the first one. A commit found from the first ref is Landed.
+// If that ref cannot be resolved, no commit is Landed. A ref git cannot
+// resolve is skipped. Each key
 // lists its commits oldest first by author date.
 func Find(repo string, refs []Ref) (map[string][]Commit, error) {
 	out := map[string][]Commit{}
@@ -46,7 +49,7 @@ func Find(repo string, refs []Ref) (map[string][]Commit, error) {
 		return nil, err
 	}
 	seen := map[string]bool{}
-	for _, ref := range refs {
+	for i, ref := range refs {
 		// A name that starts with "-" would be read as an option. It is no ref.
 		if ref.Name == "" || strings.HasPrefix(ref.Name, "-") {
 			continue
@@ -65,6 +68,7 @@ func Find(repo string, refs []Ref) (map[string][]Commit, error) {
 		slices.Reverse(recs)
 		for _, rec := range recs {
 			c, body, ok := parseRecord(rec, ref.Name)
+			c.Landed = ok && i == 0
 			if !ok || seen[c.Sha] {
 				continue
 			}
