@@ -35,6 +35,13 @@ func TestCheckBody(t *testing.T) {
 		{"trailing spaces", KindScratch, "# T\n## Words  \n", nil},
 		{"h3 does not count", KindScratch, "# T\n### Words\n", []string{"missing ## Words"}},
 
+		{"context twice", KindScratch, "# T\n## Words\n## Context\n## Context\n", []string{"## Context appears twice"}},
+		{"words twice", KindScratch, "# T\n## Words\n## Words\n", []string{"## Words appears twice"}},
+		{"twice, apart", KindScratch, "# T\n## Words\n## Context\n## Log\n## Context\n", []string{"## Context appears twice", "## Context is out of order"}},
+		{"two sections twice", KindScratch, "# T\n## Words\n## Words\n## Log\n## Log\n", []string{"## Words appears twice", "## Log appears twice"}},
+		{"extra twice is fine", KindScratch, "# T\n## Words\n## Extra\n## Extra\n", nil},
+		{"bug symptom twice", KindBug, "# T\n## Symptom\n## Symptom\n", []string{"## Symptom appears twice"}},
+
 		{"kind not in table", KindTask, "anything", nil},
 	}
 	for _, c := range cases {
