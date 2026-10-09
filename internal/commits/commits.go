@@ -41,8 +41,8 @@ const (
 // Refs are walked in the given order, so a commit seen from two refs keeps
 // the Branch of the first one. A commit found from the first ref is Landed.
 // If that ref cannot be resolved, no commit is Landed. A ref git cannot
-// resolve is skipped. Each key
-// lists its commits oldest first by author date.
+// resolve is skipped. Each key lists its commits oldest first by author
+// date.
 func Find(repo string, refs []Ref) (map[string][]Commit, error) {
 	out := map[string][]Commit{}
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {

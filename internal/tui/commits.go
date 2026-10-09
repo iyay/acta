@@ -139,11 +139,11 @@ func (r commitRow) text(plan bool) string {
 	return sha + "  " + label + subject
 }
 
-// commitRowLine is the row cut to w cells and painted: the sha green when the commit is
-// on the checked-out branch and red when it is not, the task labels blue, the
-// subject plain. A chore row is faint from end to end. The cut comes first,
-// then the paint, so a row cut in the sha or in a label keeps its color, and
-// the color codes never count as cells.
+// commitRowLine is the row cut to w cells and painted: the sha green when
+// the commit is on the checked-out branch and red when it is not, the task
+// labels blue, the subject plain. A chore row is faint from end to end. The
+// cut comes first, then the paint, so a row cut in the sha or in a label
+// keeps its color, and the color codes never count as cells.
 func (m Model) commitRowLine(r commitRow, plan bool, w int) string {
 	text := truncate(r.text(plan), w)
 	if r.c.Chore {
