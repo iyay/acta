@@ -3,7 +3,6 @@ type: Decision
 title: The TUI's first frame reads only the main tree
 description: Before the first frame runTUI only reads main tree files; git, worktrees, authors and the watcher load after it
 paths: [internal/cli/cli.go, internal/tui/watch.go, internal/tui/model.go, internal/board/closed.go, internal/trees/]
-timestamp: 2026-10-09T14:53:31Z
 ---
 
 The first frame of `acta` must show in under 100 ms, however many commits, worktrees or branches the repo has (SPC-0119, BUG-0040).

@@ -4,14 +4,12 @@ package wiki
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -24,8 +22,7 @@ type Page struct {
 	Title       string
 	Description string
 	Paths       []string // files and folders the page covers; a folder ends with /
-	Timestamp   time.Time
-	Words       int // words in the body, which is the text after the frontmatter
+	Words       int      // words in the body, which is the text after the frontmatter
 }
 
 // LoadError is a file or folder under the wiki that could not be loaded. File is
@@ -40,14 +37,13 @@ func (e *LoadError) Error() string { return e.File + ": " + e.Err.Error() }
 
 func (e *LoadError) Unwrap() error { return e.Err }
 
-// front is the frontmatter as written. The time stays text here so that a
-// date with no clock time is refused, not read as midnight.
+// front is the frontmatter as written. A timestamp key in an old page is not
+// read: freshness comes from git, so the key is ignored.
 type front struct {
 	Type        string   `yaml:"type"`
 	Title       string   `yaml:"title"`
 	Description string   `yaml:"description"`
 	Paths       []string `yaml:"paths"`
-	Timestamp   string   `yaml:"timestamp"`
 }
 
 // Load reads every .md file under <root>/wiki, folders inside it too, in the
@@ -117,11 +113,6 @@ func read(file string) (Page, error) {
 		Description: f.Description,
 		Paths:       f.Paths,
 		Words:       len(strings.Fields(body)),
-	}
-	if f.Timestamp != "" {
-		if page.Timestamp, err = time.Parse(time.RFC3339, f.Timestamp); err != nil {
-			return Page{}, &LoadError{File: file, Err: fmt.Errorf("timestamp: %w", err)}
-		}
 	}
 	return page, nil
 }

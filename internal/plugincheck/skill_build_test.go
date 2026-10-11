@@ -240,7 +240,7 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	for _, step := range []string{
 		"In the worktree, run `acta wiki check <parent>..HEAD`",
 		"Read [wiki.md](wiki.md) only when you will fix or add a page",
-		"Fix each touched page and bump its `timestamp`",
+		"Fix each touched page, or run `acta wiki ok <id>` if it is right",
 		"Write each page the spec approved (shape notes each yes in the spec)",
 		"Add any other page only for a lesson a fresh agent would lose time without",
 		"Make one commit",
@@ -264,11 +264,33 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	}
 }
 
+// TestWikiRecheckHasNoTimestamp guards the three places that once told an
+// agent to bump a page timestamp. A re-check is now a commit, so each place
+// has to name `acta wiki ok` and none may say timestamp.
+func TestWikiRecheckHasNoTimestamp(t *testing.T) {
+	for _, f := range []struct{ rel, name string }{
+		{"skills/build/wiki.md", "build/wiki.md"},
+		{"skills/build/SKILL.md", "build/SKILL.md"},
+		{"skills/land/SKILL.md", "land/SKILL.md"},
+	} {
+		txt := readSkill(t, f.rel)
+		if strings.Contains(txt, "`timestamp`") {
+			t.Errorf("%s still mentions a page `timestamp`", f.name)
+		}
+		if !strings.Contains(txt, "acta wiki ok") {
+			t.Errorf("%s does not name `acta wiki ok`", f.name)
+		}
+	}
+}
+
 // TestBuildWikiFileHoldsTheRules reads wiki.md on its own. It is the one place
 // that says how a page looks and when one is written, so each rule of the
 // design has to be in it. The words are joined first, since a line may wrap.
 func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 	txt := strings.Join(strings.Fields(readBuildFile(t, "wiki.md")), " ")
+	if strings.Contains(txt, "timestamp") {
+		t.Error("build/wiki.md still mentions a page timestamp")
+	}
 	for _, r := range []struct{ rule, want string }{
 		{"where pages live", "`.acta/wiki/` under the acta root"},
 		{"one concept per file", "One concept per file"},
@@ -280,7 +302,6 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		{"frontmatter title", "title: "},
 		{"frontmatter description", "description: "},
 		{"frontmatter paths", "paths: ["},
-		{"frontmatter timestamp", "timestamp: "},
 		{"the five types", "`Decision`"},
 		{"the five types", "`Gotcha`"},
 		{"the five types", "`Runbook`"},
@@ -291,8 +312,8 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		{"description is the hint", "the hint text"},
 		{"folder paths", "A folder ends with `/`"},
 		{"prefix, no globs", "by prefix, with no globs"},
-		{"timestamp format", "ISO 8601"},
-		{"timestamp bumps", "on every change and on every re-check"},
+		{"stale by commits", "a commit changed a file under its `paths` after the page was last checked"},
+		{"narrow paths", "a whole top-level folder makes the page stale on nearly every branch"},
 		{"body size", "250 words at most"},
 		{"split long pages", "Split a longer page"},
 		{"no index or log", "no `index.md` and no `log.md`"},
@@ -301,7 +322,7 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		{"who writes them", "The agent that ran the plan"},
 		{"the check", "`acta wiki check <parent>..HEAD`"},
 		{"fix lines that are now wrong", "fix every line that is now wrong"},
-		{"bump the timestamp", "Bump `timestamp`"},
+		{"record a re-check", "run `acta wiki ok <id>` when the page is still right"},
 		{"the pages the spec approved", "Write each page the spec approved"},
 		{"shape notes each yes", "Shape notes each yes in the spec"},
 		{"when to add a page", "a lesson a fresh agent would lose time without"},

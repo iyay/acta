@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 )
 
 // writePage puts one file under <root>/wiki and makes the folders it needs.
@@ -69,33 +68,35 @@ one two three four five six seven
 	pages, errs := Load(root)
 
 	// Pages come back sorted by name. A subfolder sits where its own name falls.
-	if got, want := ids(pages), []string{"crlf", "no-paths", "sub/deep", "tui-wrap"}; !slices.Equal(got, want) {
+	// A timestamp is no longer read, so a bad one or one with no clock time
+	// changes nothing: bad-time and date-only load.
+	if got, want := ids(pages), []string{"bad-time", "crlf", "date-only", "no-paths", "sub/deep", "tui-wrap"}; !slices.Equal(got, want) {
 		t.Fatalf("page ids = %v, want %v", got, want)
 	}
-	wrap := pages[3]
+	if bad := pages[0]; bad.Title != "Bad time" || bad.Type != "Gotcha" || !slices.Equal(bad.Paths, []string{"a.go"}) {
+		t.Errorf("bad-time = %+v, want a page that loaded with its fields", bad)
+	}
+	wrap := pages[5]
 	if wrap.Path != filepath.Join(root, "wiki", "tui-wrap.md") || wrap.ID != "tui-wrap" || wrap.Type != "Gotcha" ||
 		wrap.Title != "x/ansi Wrap overflows" || !slices.Equal(wrap.Paths, []string{"internal/tui/"}) || wrap.Words != 7 ||
 		wrap.Description != `Wrap can return lines wider than the limit after " -"; use Hardwrap(Wordwrap(...))` {
 		t.Errorf("tui-wrap = %+v", wrap)
 	}
-	if !wrap.Timestamp.Equal(time.Date(2026, 10, 4, 7, 5, 0, 0, time.UTC)) {
-		t.Errorf("tui-wrap timestamp = %v, want 2026-10-04T14:05:00+07:00", wrap.Timestamp)
-	}
 
-	deep := pages[2]
+	deep := pages[4]
 	if deep.Path != filepath.Join(root, "wiki", "sub", "deep.md") || deep.Type != "Decision" ||
 		!slices.Equal(deep.Paths, []string{"a.go", "b/"}) || deep.Words != 6 {
 		t.Errorf("sub/deep = %+v", deep)
 	}
-	if loose := pages[1]; len(loose.Paths) != 0 || loose.Title != "Loose" {
+	if loose := pages[3]; len(loose.Paths) != 0 || loose.Title != "Loose" {
 		t.Errorf("no-paths = %+v, want a page with no paths", loose)
 	}
-	if crlf := pages[0]; crlf.Description != "Written with Windows line ends" || crlf.Words != 2 {
+	if crlf := pages[1]; crlf.Description != "Written with Windows line ends" || crlf.Words != 2 {
 		t.Errorf("crlf = %+v", crlf)
 	}
 
 	// Each file that cannot load comes back once, with its file in the message.
-	wantErrs := []string{"bad-time.md", "bad-yaml.md", "date-only.md", "dead.md", "no-front.md", "paths-scalar.md", "sub/inner/broken.md", "unclosed.md"}
+	wantErrs := []string{"bad-yaml.md", "dead.md", "no-front.md", "paths-scalar.md", "sub/inner/broken.md", "unclosed.md"}
 	if len(errs) != len(wantErrs) {
 		t.Fatalf("got %d errors, want %d: %v", len(errs), len(wantErrs), errs)
 	}
@@ -113,14 +114,12 @@ func TestLoadErrorsKeepTheFile(t *testing.T) {
 	root := t.TempDir()
 	writePage(t, root, "sub/deep/bad.md", "---\ntype: [unclosed\n---\nbody\n")
 	writePage(t, root, "no-front.md", "just words\n")
-	writePage(t, root, "bad-time.md", "---\ntype: Gotcha\ntitle: t\ndescription: d\npaths: []\ntimestamp: yesterday\n---\nbody\n")
 	if err := os.Symlink("nowhere", filepath.Join(root, "wiki", "dead.md")); err != nil {
 		t.Fatal(err)
 	}
 
 	_, errs := Load(root)
 	want := []struct{ name, text string }{
-		{"bad-time.md", "timestamp: "},
 		{"dead.md", "no such file or directory"},
 		{"no-front.md", "no frontmatter between two --- lines"},
 		{"sub/deep/bad.md", "yaml: "},

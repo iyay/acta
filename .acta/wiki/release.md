@@ -3,7 +3,6 @@ type: Runbook
 title: Cutting a release
 description: How to cut a release with scripts/release, what the Release action then does, and the rules that keep versions honest
 paths: [scripts/release, scripts/install.sh, scripts/install.ps1, .goreleaser.yaml, .github/workflows/, internal/update/]
-timestamp: 2026-10-09T09:26:54Z
 ---
 
 From a clean `main`:
