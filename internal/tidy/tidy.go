@@ -357,6 +357,10 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	msg, err = withFoldedWikiChecks(repo, n, msg)
+	if err != nil {
+		return "", err
+	}
 	date := n.date.Format(time.RFC3339)
 	env := []string{
 		"GIT_AUTHOR_NAME=" + id[0], "GIT_AUTHOR_EMAIL=" + id[1], "GIT_AUTHOR_DATE=" + date,
@@ -364,6 +368,40 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	}
 	out, err := git(repo, env, strings.TrimSuffix(msg, "\n"), "commit-tree", n.tree, "-p", parent)
 	return strings.TrimSpace(out), err
+}
+
+// withFoldedWikiChecks adds the Wiki-Checked trailers of the folded commits to
+// the kept message. A re-check commit is empty, so tidy folds it away and its
+// trailer would be lost. Each page id lands once and only when the kept
+// message does not already name it. Nothing to add returns msg untouched.
+func withFoldedWikiChecks(repo string, n *node, msg string) (string, error) {
+	seen := map[string]bool{}
+	var add []string
+	// The kept commit goes first so its own values count as already present.
+	for _, sha := range append([]string{n.src.hash}, n.olds...) {
+		out, err := git(repo, nil, "", "log", "-1", "--format=%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)", sha)
+		if err != nil {
+			return "", err
+		}
+		for _, v := range strings.Split(out, "\x1f") {
+			v = strings.TrimSpace(v)
+			if v == "" || seen[v] {
+				continue
+			}
+			seen[v] = true
+			if sha != n.src.hash {
+				add = append(add, "Wiki-Checked: "+v)
+			}
+		}
+	}
+	if len(add) == 0 {
+		return msg, nil
+	}
+	args := []string{"interpret-trailers"}
+	for _, line := range add {
+		args = append(args, "--trailer", line)
+	}
+	return git(repo, nil, msg, args...)
 }
 
 // proof checks that the final tree is the three-way merge of base and branch

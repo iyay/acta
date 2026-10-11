@@ -477,3 +477,97 @@ func TestBadBranchNameIsRefused(t *testing.T) {
 		t.Fatal("ref written")
 	}
 }
+
+// body returns the full message of a commit without the final newline.
+func (r *repoT) body(rev string) string {
+	return r.git(nil, "log", "-1", "--format=%B", rev)
+}
+
+// wikiTrailers lists every Wiki-Checked value in a range, oldest commit first.
+func (r *repoT) wikiTrailers(rng string) []string {
+	out := r.git(nil, "log", "--reverse", "--format=%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)", rng)
+	var vals []string
+	for _, line := range strings.Split(out, "\n") {
+		for _, v := range strings.Split(line, "\x1f") {
+			if v = strings.TrimSpace(v); v != "" {
+				vals = append(vals, v)
+			}
+		}
+	}
+	return vals
+}
+
+func TestFoldedWikiCheckedTrailersLandOnceOnTheKeptCommit(t *testing.T) {
+	r := start(t)
+	base := r.rev("main")
+	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(wiki): re-check a\n\nWiki-Checked: a", d(2), "ann", nil)
+	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(3), "ann", nil)
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.subjects(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "feat: a" {
+		t.Fatalf("subjects %v", got)
+	}
+	want := "feat: a\n\nWiki-Checked: a\nWiki-Checked: b"
+	if got := r.body(res.Tip); got != want {
+		t.Fatalf("message %q, want %q", got, want)
+	}
+	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
+		t.Fatalf("trailers %v", got)
+	}
+}
+
+func TestFoldedWikiCheckedJoinsAnExistingTrailerBlock(t *testing.T) {
+	r := start(t)
+	base := r.rev("main")
+	r.commit("feat: a\n\nbody line\n\nTask: PLN-x#1\nWiki-Checked: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(2), "ann", nil)
+	r.commit("feat: c\n\nTask: PLN-x#2", d(3), "ann", map[string]string{"c.go": "c\n"})
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.body(res.Tip + "~1"); got != "feat: a\n\nbody line\n\nTask: PLN-x#1\nWiki-Checked: a\nWiki-Checked: b" {
+		t.Fatalf("first message %q", got)
+	}
+	// A commit that folded nothing keeps its message as it was.
+	if got := r.body(res.Tip); got != "feat: c\n\nTask: PLN-x#2" {
+		t.Fatalf("second message %q", got)
+	}
+	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
+		t.Fatalf("trailers %v", got)
+	}
+}
+
+func TestWikiCheckedWithoutTrailersChangesNothing(t *testing.T) {
+	r := start(t)
+	r.commit("feat: a\n\nTask: PLN-x#1", d(1), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(plan): tick a", d(2), "ann", map[string]string{".acta/tick.md": "tick\n"})
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.body(res.Tip); got != "feat: a\n\nTask: PLN-x#1" {
+		t.Fatalf("message %q", got)
+	}
+}
+
+func TestWikiCheckedKeptWhenNoCommitIsKept(t *testing.T) {
+	r := start(t)
+	base := r.rev("main")
+	r.commit("chore(plan): one", d(1), "ann", map[string]string{".acta/1.md": "1\n"})
+	r.commit("chore(wiki): re-check a\n\nWiki-Checked: a", d(2), "ann", nil)
+	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(3), "ann", nil)
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.NewCount != 1 {
+		t.Fatalf("counts %+v", res)
+	}
+	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
+		t.Fatalf("trailers %v", got)
+	}
+}
