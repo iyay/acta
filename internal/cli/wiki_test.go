@@ -338,6 +338,8 @@ func TestWikiBadArguments(t *testing.T) {
 		{"match with --type", []string{"match", "--type", "Gotcha", "scripts/test"}},
 		{"check with two ranges", []string{"check", "main..HEAD", "main..HEAD"}},
 		{"check with --type", []string{"check", "--type", "Gotcha"}},
+		{"ok with no id", []string{"ok"}},
+		{"ok with --type", []string{"ok", "--type", "Gotcha", "glossary"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			code, out, errOut := runWiki(t, repo, c.args...)
@@ -358,7 +360,159 @@ func TestRunKnowsTheWikiCommands(t *testing.T) {
 		t.Errorf("acta wiki ls --type Gotcha: exit %d, stdout %q, stderr %q", code, out.String(), errOut.String())
 	}
 	errOut.Reset()
-	if code := Run([]string{"nonsense"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput || !strings.Contains(errOut.String(), "wiki ls, wiki match, wiki check") {
-		t.Errorf("an unknown command: exit %d, stderr %q; want it to list wiki ls, wiki match, wiki check", code, errOut.String())
+	if code := Run([]string{"nonsense"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput || !strings.Contains(errOut.String(), "wiki ls, wiki match, wiki check, wiki ok") {
+		t.Errorf("an unknown command: exit %d, stderr %q; want it to list wiki ls, wiki match, wiki check, wiki ok", code, errOut.String())
 	}
+}
+
+// okRepo is a repo with two pages, a and sub/b, so ids with a slash get tested.
+func okRepo(t *testing.T) string {
+	t.Helper()
+	return wikiRepo(t, map[string]string{
+		".acta/wiki/a.md":     wikiPage("Gotcha", "Page a", ""),
+		".acta/wiki/sub/b.md": wikiPage("Gotcha", "Page b", ""),
+	})
+}
+
+// runOk runs acta wiki ok and gives back the exit code, stdout and stderr.
+func runOk(t *testing.T, ids ...string) (code int, out, errOut string) {
+	t.Helper()
+	var o, e strings.Builder
+	code = cmdWiki(append([]string{"ok"}, ids...), &o, &e)
+	return code, o.String(), e.String()
+}
+
+// okFails runs acta wiki ok and holds it to the failure promise: a non-zero
+// exit, a reason on stderr, nothing on stdout, and HEAD where it was.
+func okFails(t *testing.T, repo string, wantCode int, ids ...string) string {
+	t.Helper()
+	head := wikiGit(t, repo, "", "rev-parse", "HEAD")
+	code, out, errOut := runOk(t, ids...)
+	if code != wantCode || out != "" || strings.TrimSpace(errOut) == "" {
+		t.Errorf("acta wiki ok %v: exit %d, stdout %q, stderr %q; want exit %d, no stdout and a reason on stderr",
+			ids, code, out, errOut, wantCode)
+	}
+	if after := wikiGit(t, repo, "", "rev-parse", "HEAD"); after != head {
+		t.Errorf("acta wiki ok %v moved HEAD from %s to %s", ids, head, after)
+	}
+	return errOut
+}
+
+// A good re-check is one commit with the same files as its parent, a subject
+// that lists the ids in the order given, and one trailer per id.
+func TestWikiOkRecordsACheckWithoutChangingAFile(t *testing.T) {
+	repo := okRepo(t)
+	parent := wikiGit(t, repo, "", "rev-parse", "HEAD")
+	code, out, errOut := runOk(t, "a", "sub/b")
+	if code != exitOK || errOut != "" {
+		t.Fatalf("acta wiki ok a sub/b: exit %d, stderr %q", code, errOut)
+	}
+	if want := wikiGit(t, repo, "", "rev-parse", "--short", "HEAD") + "\n"; out != want {
+		t.Errorf("stdout %q; want the short sha %q", out, want)
+	}
+	if wikiGit(t, repo, "", "rev-parse", "HEAD^") != parent {
+		t.Error("the check is not a single commit on top of the old HEAD")
+	}
+	if wikiGit(t, repo, "", "rev-parse", "HEAD^{tree}") != wikiGit(t, repo, "", "rev-parse", parent+"^{tree}") {
+		t.Error("the check commit changed a file")
+	}
+	want := "chore(wiki): re-check a, sub/b\n\nWiki-Checked: a\nWiki-Checked: sub/b"
+	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != want {
+		t.Errorf("message %q; want %q", msg, want)
+	}
+	if st := wikiGit(t, repo, "", "status", "--porcelain"); st != "" {
+		t.Errorf("the repo is dirty after the check: %q", st)
+	}
+}
+
+// One bad id among good ones refuses the whole run, and names the bad one.
+func TestWikiOkRefusesAnUnknownId(t *testing.T) {
+	repo := okRepo(t)
+	if errOut := okFails(t, repo, exitBadInput, "a", "nope"); !strings.Contains(errOut, "nope") {
+		t.Errorf("stderr %q does not name the unknown id", errOut)
+	}
+}
+
+// With no ids there is nothing to record, so it is a usage error.
+func TestWikiOkWithNoIdsIsAUsageError(t *testing.T) {
+	repo := okRepo(t)
+	if errOut := okFails(t, repo, exitBadInput); !strings.Contains(errOut, "usage: acta wiki") {
+		t.Errorf("stderr %q is not the usage", errOut)
+	}
+}
+
+// The same id twice is one id, in the place it came first.
+func TestWikiOkDropsDuplicateIds(t *testing.T) {
+	repo := okRepo(t)
+	if code, _, errOut := runOk(t, "a", "sub/b", "a"); code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	want := "chore(wiki): re-check a, sub/b\n\nWiki-Checked: a\nWiki-Checked: sub/b"
+	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != want {
+		t.Errorf("message %q; want %q", msg, want)
+	}
+}
+
+// A file the user staged is not part of the check commit and is still staged.
+func TestWikiOkLeavesStagedFilesAlone(t *testing.T) {
+	repo := okRepo(t)
+	wikiWrite(t, repo, map[string]string{"notes.txt": "half done\n"})
+	wikiGit(t, repo, "", "add", "notes.txt")
+	parent := wikiGit(t, repo, "", "rev-parse", "HEAD")
+	if code, _, errOut := runOk(t, "a"); code != exitOK {
+		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	if wikiGit(t, repo, "", "rev-parse", "HEAD^{tree}") != wikiGit(t, repo, "", "rev-parse", parent+"^{tree}") {
+		t.Error("the staged file went into the check commit")
+	}
+	if st := wikiGit(t, repo, "", "status", "--porcelain"); st != "A  notes.txt" {
+		t.Errorf("status %q; want the file still staged", st)
+	}
+}
+
+// Outside a git repo the command stops with a reason and makes nothing.
+func TestWikiOkOutsideAGitRepo(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("ACTA_ROOT", "")
+	t.Setenv("PM_ROOT", "")
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wikiWrite(t, dir, map[string]string{".acta/wiki/a.md": wikiPage("Gotcha", "Page a", "")})
+	t.Chdir(dir)
+	code, out, errOut := runOk(t, "a")
+	if code == exitOK || out != "" || strings.TrimSpace(errOut) == "" {
+		t.Errorf("exit %d, stdout %q, stderr %q; want a failure with a reason", code, out, errOut)
+	}
+}
+
+// When git refuses the commit, the command fails with git's reason and HEAD stays.
+func TestWikiOkWhenGitRefusesTheCommit(t *testing.T) {
+	repo := okRepo(t)
+	hook := filepath.Join(repo, ".git", "hooks", "commit-msg")
+	if err := os.WriteFile(hook, []byte("#!/bin/sh\necho no commits today >&2\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if errOut := okFails(t, repo, exitOther, "a"); !strings.Contains(errOut, "no commits today") {
+		t.Errorf("stderr %q does not carry git's reason", errOut)
+	}
+}
+
+// Two branches that both re-checked the same page merge with no conflict,
+// because the check touches no file.
+func TestWikiOkBranchesMergeCleanly(t *testing.T) {
+	repo := okRepo(t)
+	wikiGit(t, repo, "", "checkout", "-q", "-b", "one")
+	if code, _, errOut := runOk(t, "a"); code != exitOK {
+		t.Fatalf("branch one: exit %d, stderr %q", code, errOut)
+	}
+	wikiGit(t, repo, "", "checkout", "-q", "main")
+	wikiGit(t, repo, "", "checkout", "-q", "-b", "two")
+	if code, _, errOut := runOk(t, "a"); code != exitOK {
+		t.Fatalf("branch two: exit %d, stderr %q", code, errOut)
+	}
+	wikiGit(t, repo, "", "checkout", "-q", "main")
+	wikiGit(t, repo, "", "merge", "--no-ff", "-q", "-m", "merge one", "one")
+	wikiGit(t, repo, "", "merge", "--no-ff", "-q", "-m", "merge two", "two")
 }

@@ -8,14 +8,16 @@ import (
 	"strings"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/wiki"
 )
 
-const wikiUsage = "usage: acta wiki ls [--type T] | match <file>... | check [<range>]"
+const wikiUsage = "usage: acta wiki ls [--type T] | match <file>... | check [<range>] | ok <page id>..."
 
-// cmdWiki runs ls, match and check. They only read: no file is written and
-// nothing is committed. A repo with no wiki folder has no pages, so all three
-// print nothing and exit 0.
+// cmdWiki runs ls, match, check and ok. The first three only read: no file is
+// written and nothing is committed. ok writes no file either, but it makes one
+// empty commit that records a re-check. A repo with no wiki folder has no pages,
+// so ls, match and check print nothing and exit 0.
 func cmdWiki(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, wikiUsage)
@@ -47,6 +49,8 @@ func cmdWiki(args []string, stdout, stderr io.Writer) int {
 		}
 	case "match":
 		wikiMatch(stdout, cfg, pages, pos)
+	case "ok":
+		return wikiOk(stdout, stderr, cfg, pages, pos)
 	default:
 		rng := ""
 		if len(pos) == 1 {
@@ -58,18 +62,56 @@ func cmdWiki(args []string, stdout, stderr io.Writer) int {
 }
 
 // wikiFits says whether n words after the command suit it: ls takes none, match
-// takes a file or more, and check takes at most one range. A word that is not a
-// command fits nothing.
+// takes a file or more, check takes at most one range, and ok takes a page id or
+// more. A word that is not a command fits nothing.
 func wikiFits(sub string, n int) bool {
 	switch sub {
 	case "ls":
 		return n == 0
-	case "match":
+	case "match", "ok":
 		return n > 0
 	case "check":
 		return n <= 1
 	}
 	return false
+}
+
+// wikiOk records that the pages were re-checked and nothing was wrong. The note
+// is an empty commit, not an edit of the page, so two branches that both
+// re-check a page still merge without a conflict. Every id must name a page
+// that loaded, or nothing is committed. A repeated id counts once.
+func wikiOk(stdout, stderr io.Writer, cfg config.Config, pages []wiki.Page, ids []string) int {
+	known := map[string]bool{}
+	for _, p := range pages {
+		known[p.ID] = true
+	}
+	var unique, unknown []string
+	seen := map[string]bool{}
+	for _, id := range ids {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		unique = append(unique, id)
+		if !known[id] {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) > 0 {
+		fmt.Fprintf(stderr, "unknown wiki page: %s\n", strings.Join(unknown, ", "))
+		return exitBadInput
+	}
+	msg := "chore(wiki): re-check " + strings.Join(unique, ", ") + "\n"
+	for _, id := range unique {
+		msg += "\nWiki-Checked: " + id
+	}
+	sha, err := gitc.CommitEmpty(cfg.RepoRoot, msg)
+	if err != nil {
+		fmt.Fprintln(stderr, "acta wiki ok: "+oneLine(err.Error()))
+		return exitOther
+	}
+	fmt.Fprintln(stdout, sha)
+	return exitOK
 }
 
 // wikiMatch prints each page that covers one of the files, once. It goes in
