@@ -1,6 +1,6 @@
 ---
 name: wiki-close
-description: Closing a built plan re-checks the wiki page that covers a file the branch changed, and bumps its timestamp, before review.
+description: Closing a built plan re-checks the wiki page that covers a file the branch changed and fixes it before review.
 tags: [wiki, build]
 runs: 1
 # The close is a chain: load the build skill, read its wiki steps, run the

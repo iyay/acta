@@ -36,14 +36,14 @@ def parse_row(line):
     row_id, name, qty = line.rstrip("\n").split(",")
     return {"id": row_id, "name": name, "qty": int(qty)}
 PY
-# The page is dated year 2000, so any commit on its file is newer than it.
+# The page goes in with the scaffold commit, before the code change on the
+# branch, so the branch commit on its file comes after the page was last checked.
 cat > .acta/wiki/parse-output.md <<'PAGE'
 ---
 type: Reference
 title: parse_row output
 description: parse_row returns a dict with the keys id, name and qty
 paths: [src/parse.py]
-timestamp: 2000-01-01T00:00:00Z
 ---
 `parse_row(line)` reads one row, `id,name,qty`, and returns a dict with the
 keys `id`, `name` and `qty`. `qty` is an int. The other two are text.

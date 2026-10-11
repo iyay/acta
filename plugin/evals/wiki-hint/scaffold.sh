@@ -35,7 +35,6 @@ type: Gotcha
 title: Row fields can hold commas
 description: A field can be quoted and hold commas, so read rows with csv.reader, never with line.split(",")
 paths: [src/parse.py]
-timestamp: 2026-10-04T00:00:00Z
 ---
 The feed puts a field in double quotes when the field holds a comma, like
 `7,"Lamp, small",3`. Splitting the line on commas cuts that name in two, and
