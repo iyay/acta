@@ -322,6 +322,80 @@ func LastChange(repo string, paths []string) (time.Time, error) {
 	return time.Parse(time.RFC3339, out)
 }
 
+// CheckCommits lists the full shas of the commits reachable from HEAD that
+// count as a check of a wiki page: a commit that changed the page file, or a
+// commit with a Wiki-Checked trailer whose value is exactly id. pageFile is a
+// plain name from the repo root. The newest page-file commit comes first. The
+// trailer is read by git itself, so a line of prose that only looks like one,
+// or a longer id that starts with this one, never counts.
+func CheckCommits(repo, pageFile, id string) ([]string, error) {
+	// Full history, so a change on either side of a merge shows up even when
+	// the other side has the same text. A merge brings no change of its own.
+	out, err := run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--format=%H", "--", pageFile)
+	if err != nil {
+		return nil, err
+	}
+	shas := strings.Fields(out)
+	// The grep only narrows the list. The trailer block decides what counts.
+	out, err = run(repo, "log", "--grep=^Wiki-Checked:",
+		"--format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)")
+	if err != nil {
+		return nil, err
+	}
+	for _, line := range strings.Split(out, "\n") {
+		sha, values, _ := strings.Cut(line, "\x00")
+		for _, v := range strings.Split(values, "\x1f") {
+			if strings.TrimSpace(v) == id && sha != "" && !slices.Contains(shas, sha) {
+				shas = append(shas, sha)
+			}
+		}
+	}
+	return shas, nil
+}
+
+// Unseen finds the newest commit reachable from HEAD that changed a file under
+// paths and is not reachable from any of the check commits, with its short sha
+// and subject. The sha is empty when there is none. A commit that sits on
+// another branch than the check is still unseen, whatever its date. The paths
+// are plain names, and a folder ends in a slash.
+func Unseen(repo string, checks, paths []string) (sha, subject string, err error) {
+	// With no paths, git would answer with the newest commit of the whole repo.
+	if len(paths) == 0 {
+		return "", "", nil
+	}
+	args := []string{"--literal-pathspecs", "log", "-1", "--full-history", "--no-merges", "--format=%h%x00%s", "HEAD"}
+	if len(checks) > 0 {
+		args = append(args, "--not")
+		args = append(args, checks...)
+	}
+	args = append(args, "--")
+	args = append(args, paths...)
+	out, err := run(repo, args...)
+	if err != nil {
+		return "", "", err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return "", "", nil
+	}
+	sha, subject, _ = strings.Cut(out, "\x00")
+	return sha, subject, nil
+}
+
+// CommitEmpty makes a commit with the message and no file change, and returns
+// its short sha. --only keeps anything already staged out of the commit and
+// still staged afterwards.
+func CommitEmpty(repo, msg string) (string, error) {
+	if _, err := run(repo, "commit", "--only", "--allow-empty", "-m", msg); err != nil {
+		return "", err
+	}
+	out, err := run(repo, "rev-parse", "--short", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // Changed lists the files that the commits in rng changed, from the repo root.
 // rng is a range like main..HEAD. A move shows as a file that left and a file
 // that came, so the folder a file moved out of counts as changed too. Names come

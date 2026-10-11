@@ -999,3 +999,342 @@ func TestCommitOrFold(t *testing.T) {
 		}
 	})
 }
+
+// commitFileAt writes one file, commits it with both git dates at when, and
+// returns the full sha. An empty when keeps the dates git picks itself.
+func commitFileAt(t *testing.T, repo, name, body, when, msg string) string {
+	t.Helper()
+	if when != "" {
+		t.Setenv("GIT_AUTHOR_DATE", when)
+		t.Setenv("GIT_COMMITTER_DATE", when)
+	}
+	writeFile(t, filepath.Join(repo, name), body)
+	git(t, repo, "add", name)
+	git(t, repo, "commit", "-q", "-m", msg)
+	return git(t, repo, "rev-parse", "HEAD")
+}
+
+// emptyCommitAt makes a commit with no file change and returns its full sha.
+func emptyCommitAt(t *testing.T, repo, when, msg string) string {
+	t.Helper()
+	if when != "" {
+		t.Setenv("GIT_AUTHOR_DATE", when)
+		t.Setenv("GIT_COMMITTER_DATE", when)
+	}
+	git(t, repo, "commit", "-q", "--allow-empty", "-m", msg)
+	return git(t, repo, "rev-parse", "HEAD")
+}
+
+// mergeSide merges the branch into the current one with a merge commit of its
+// own, so both sides stay visible in the history.
+func mergeSide(t *testing.T, repo, branch string) {
+	t.Helper()
+	git(t, repo, "merge", "-q", "--no-ff", "-m", "merge "+branch, branch)
+}
+
+func TestCheckCommits(t *testing.T) {
+	const page = "page.md"
+	// newRepo has a first commit that does not touch the page.
+	newRepo := func(t *testing.T) string { return setupRepo(t) }
+
+	t.Run("a commit that changed the page file", func(t *testing.T) {
+		repo := newRepo(t)
+		first := commitFileAt(t, repo, page, "one\n", "", "add page")
+		second := commitFileAt(t, repo, page, "two\n", "", "edit page")
+		commitFileAt(t, repo, "b.md", "other\n", "", "edit other file")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{second, first}; !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+	t.Run("nothing at all is an empty list", func(t *testing.T) {
+		repo := newRepo(t)
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("a trailer naming the id", func(t *testing.T) {
+		repo := newRepo(t)
+		c := emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || !reflect.DeepEqual(got, []string{c}) {
+			t.Errorf("got %v, %v, want [%s]", got, err, c)
+		}
+	})
+	t.Run("one commit with two trailers answers to both ids", func(t *testing.T) {
+		repo := newRepo(t)
+		c := emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p, wiki/q\n\nWiki-Checked: wiki/p\nWiki-Checked: wiki/q")
+		for _, id := range []string{"wiki/p", "wiki/q"} {
+			got, err := CheckCommits(repo, page, id)
+			if err != nil || !reflect.DeepEqual(got, []string{c}) {
+				t.Errorf("%s: got %v, %v, want [%s]", id, got, err, c)
+			}
+		}
+	})
+	t.Run("a trailer naming another id is not a check", func(t *testing.T) {
+		repo := newRepo(t)
+		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/other\n\nWiki-Checked: wiki/other")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("a trailer id that starts with the asked id is not a check", func(t *testing.T) {
+		repo := newRepo(t)
+		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/page-two\n\nWiki-Checked: wiki/page-two")
+		got, err := CheckCommits(repo, page, "wiki/page")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("an asked id that starts with the trailer id is not a check", func(t *testing.T) {
+		repo := newRepo(t)
+		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/page\n\nWiki-Checked: wiki/page")
+		got, err := CheckCommits(repo, page, "wiki/page-two")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("a trailer-shaped line above the trailer block is not a trailer", func(t *testing.T) {
+		repo := newRepo(t)
+		emptyCommitAt(t, repo, "", "note\n\nWiki-Checked: wiki/p\n\nThe line above is only prose.\n\nSigned-off-by: test <test@example.com>")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("a commit that does both is listed once", func(t *testing.T) {
+		repo := newRepo(t)
+		c := commitFileAt(t, repo, page, "one\n", "", "edit page\n\nWiki-Checked: wiki/p")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || !reflect.DeepEqual(got, []string{c}) {
+			t.Errorf("got %v, %v, want [%s]", got, err, c)
+		}
+	})
+	t.Run("a commit outside HEAD is not listed", func(t *testing.T) {
+		repo := newRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
+		commitFileAt(t, repo, page, "side\n", "", "edit page on side")
+		git(t, repo, "checkout", "-q", "main")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || len(got) != 0 {
+			t.Errorf("got %v, %v, want no commits", got, err)
+		}
+	})
+	t.Run("a page change on both sides of a merge is listed on both", func(t *testing.T) {
+		repo := newRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		onSide := commitFileAt(t, repo, page, "same\n", "", "edit page on side")
+		git(t, repo, "checkout", "-q", "main")
+		onMain := commitFileAt(t, repo, page, "same\n", "", "edit page on main")
+		mergeSide(t, repo, "side")
+		got, err := CheckCommits(repo, page, "wiki/p")
+		if err != nil || !slices.Contains(got, onSide) || !slices.Contains(got, onMain) {
+			t.Errorf("got %v, %v, want both %s and %s", got, err, onSide, onMain)
+		}
+	})
+	t.Run("a page file with odd characters is a plain name", func(t *testing.T) {
+		repo := newRepo(t)
+		commitFileAt(t, repo, page, "one\n", "", "add page")
+		got, err := CheckCommits(repo, "*.md", "wiki/p")
+		if err != nil || len(got) != 0 {
+			t.Errorf("a glob matched: got %v, %v", got, err)
+		}
+	})
+	t.Run("a folder that is no checkout is an error", func(t *testing.T) {
+		if got, err := CheckCommits(t.TempDir(), page, "wiki/p"); err == nil {
+			t.Errorf("got %v and no error", got)
+		}
+	})
+}
+
+func TestUnseen(t *testing.T) {
+	paths := []string{"src/"}
+	srcFile := func(t *testing.T, repo, body, when, msg string) string {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(repo, "src"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return commitFileAt(t, repo, "src/x.go", body, when, msg)
+	}
+	short := func(t *testing.T, repo, sha string) string { return git(t, repo, "rev-parse", "--short", sha) }
+	// wantNone and wantCommit check one answer from Unseen.
+	wantNone := func(t *testing.T, repo string, checks []string) {
+		t.Helper()
+		sha, subject, err := Unseen(repo, checks, paths)
+		if err != nil || sha != "" || subject != "" {
+			t.Errorf("got %q %q %v, want nothing unseen", sha, subject, err)
+		}
+	}
+	wantCommit := func(t *testing.T, repo string, checks []string, full, subject string) {
+		t.Helper()
+		sha, gotSubject, err := Unseen(repo, checks, paths)
+		if err != nil || sha != short(t, repo, full) || gotSubject != subject {
+			t.Errorf("got %q %q %v, want %q %q", sha, gotSubject, err, short(t, repo, full), subject)
+		}
+	}
+
+	t.Run("no check commits and a path change", func(t *testing.T) {
+		repo := setupRepo(t)
+		p := srcFile(t, repo, "one\n", "", "change src")
+		wantCommit(t, repo, nil, p, "change src")
+	})
+	t.Run("no check commits and no path change", func(t *testing.T) {
+		repo := setupRepo(t)
+		commitFileAt(t, repo, "b.md", "other\n", "", "change something else")
+		wantNone(t, repo, nil)
+	})
+	t.Run("the check commit is the path commit itself", func(t *testing.T) {
+		repo := setupRepo(t)
+		p := srcFile(t, repo, "one\n", "", "change src")
+		wantNone(t, repo, []string{p})
+	})
+	t.Run("a check after the path commit", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "", "change src")
+		c := emptyCommitAt(t, repo, "", "check")
+		wantNone(t, repo, []string{c})
+	})
+	t.Run("a path commit after the check", func(t *testing.T) {
+		repo := setupRepo(t)
+		c := emptyCommitAt(t, repo, "", "check")
+		p := srcFile(t, repo, "one\n", "", "change src")
+		wantCommit(t, repo, []string{c}, p, "change src")
+	})
+	t.Run("the newest of several unseen commits", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "", "first change")
+		p := srcFile(t, repo, "two\n", "", "second change")
+		wantCommit(t, repo, nil, p, "second change")
+	})
+	t.Run("only the path commits before the check count as seen", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "", "first change")
+		c := emptyCommitAt(t, repo, "", "check")
+		p := srcFile(t, repo, "two\n", "", "second change")
+		wantCommit(t, repo, []string{c}, p, "second change")
+	})
+	t.Run("a check on one side of a merge and the path change on the other", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		p := srcFile(t, repo, "side\n", "", "change src on side")
+		git(t, repo, "checkout", "-q", "main")
+		c := emptyCommitAt(t, repo, "", "check on main")
+		mergeSide(t, repo, "side")
+		wantCommit(t, repo, []string{c}, p, "change src on side")
+	})
+	t.Run("a check on both sides of a merge", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		srcFile(t, repo, "side\n", "", "change src on side")
+		onSide := emptyCommitAt(t, repo, "", "check on side")
+		git(t, repo, "checkout", "-q", "main")
+		onMain := emptyCommitAt(t, repo, "", "check on main")
+		mergeSide(t, repo, "side")
+		wantNone(t, repo, []string{onMain, onSide})
+	})
+	t.Run("checks on both sides cover a change on each side", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		srcFile(t, repo, "side\n", "", "change src on side")
+		onSide := emptyCommitAt(t, repo, "", "check on side")
+		git(t, repo, "checkout", "-q", "main")
+		if err := os.MkdirAll(filepath.Join(repo, "src"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		commitFileAt(t, repo, "src/y.go", "main\n", "", "change src on main")
+		onMain := emptyCommitAt(t, repo, "", "check on main")
+		mergeSide(t, repo, "side")
+		wantNone(t, repo, []string{onMain, onSide})
+	})
+	t.Run("a path commit dated before the check but not its ancestor", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		p := srcFile(t, repo, "side\n", "2020-01-01T00:00:00Z", "change src on side")
+		git(t, repo, "checkout", "-q", "main")
+		c := emptyCommitAt(t, repo, "2025-01-01T00:00:00Z", "check on main")
+		mergeSide(t, repo, "side")
+		wantCommit(t, repo, []string{c}, p, "change src on side")
+	})
+	t.Run("a path commit dated after the check but its ancestor", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "2030-01-01T00:00:00Z", "change src")
+		c := emptyCommitAt(t, repo, "2025-01-01T00:00:00Z", "check")
+		wantNone(t, repo, []string{c})
+	})
+	t.Run("the same change on both sides still counts on the unchecked side", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "checkout", "-q", "-b", "side")
+		p := srcFile(t, repo, "same\n", "", "change src on side")
+		git(t, repo, "checkout", "-q", "main")
+		srcFile(t, repo, "same\n", "", "change src on main")
+		c := emptyCommitAt(t, repo, "", "check on main")
+		mergeSide(t, repo, "side")
+		wantCommit(t, repo, []string{c}, p, "change src on side")
+	})
+	t.Run("no paths is not the whole repo", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "", "change src")
+		sha, subject, err := Unseen(repo, nil, nil)
+		if err != nil || sha != "" || subject != "" {
+			t.Errorf("got %q %q %v, want nothing", sha, subject, err)
+		}
+	})
+	t.Run("a glob is a name, not a pattern", func(t *testing.T) {
+		repo := setupRepo(t)
+		srcFile(t, repo, "one\n", "", "change src")
+		sha, _, err := Unseen(repo, nil, []string{"src/*.go"})
+		if err != nil || sha != "" {
+			t.Errorf("got %q %v, want nothing", sha, err)
+		}
+	})
+	t.Run("a folder that is no checkout is an error", func(t *testing.T) {
+		if sha, _, err := Unseen(t.TempDir(), nil, paths); err == nil {
+			t.Errorf("got %q and no error", sha)
+		}
+	})
+}
+
+func TestCommitEmpty(t *testing.T) {
+	repo := setupRepo(t)
+	parentTree := git(t, repo, "rev-parse", "HEAD^{tree}")
+	// A staged file must stay staged and stay out of the empty commit.
+	writeFile(t, filepath.Join(repo, "staged.md"), "staged\n")
+	git(t, repo, "add", "staged.md")
+
+	sha, err := CommitEmpty(repo, "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := git(t, repo, "rev-parse", "--short", "HEAD"); sha != want {
+		t.Errorf("sha = %q, want HEAD's short sha %q", sha, want)
+	}
+	if got := git(t, repo, "rev-parse", "HEAD^{tree}"); got != parentTree {
+		t.Errorf("the commit's tree is %s, want the parent's tree %s", got, parentTree)
+	}
+	if got := git(t, repo, "diff", "--cached", "--name-only"); got != "staged.md" {
+		t.Errorf("staged files = %q, want only staged.md", got)
+	}
+	if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(wiki): re-check wiki/p" {
+		t.Errorf("subject = %q", got)
+	}
+	if got := CheckCommitsFor(t, repo); got != 1 {
+		t.Errorf("the trailer was not read: %d check commits", got)
+	}
+}
+
+// CheckCommitsFor counts the check commits of wiki/p, so TestCommitEmpty can
+// show the message reached git whole.
+func CheckCommitsFor(t *testing.T, repo string) int {
+	t.Helper()
+	got, err := CheckCommits(repo, "page.md", "wiki/p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(got)
+}

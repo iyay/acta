@@ -5,6 +5,7 @@ closes: [SCR-0060]
 id: PLN-0134
 created: "2026-10-11 21:09:19"
 hash: kfizu27
+started: "2026-10-11 21:11:46"
 ---
 # Wiki freshness from git
 
@@ -39,9 +40,9 @@ hash: kfizu27
 
 **verify:** `Unseen` returns a commit exactly when some commit reachable from HEAD changed a file under the paths and is not an ancestor of (or equal to) any check commit, and `CheckCommits` returns every commit reachable from HEAD that changed the page file or carries a `Wiki-Checked:` trailer naming exactly that id. List every case checked: no check commits, the check commit is the path commit itself, a check on one side of a merge and the path change on the other, checks on both sides, a trailer naming a different id, a trailer id that is a prefix of the asked id, a trailer-shaped line in the body above the trailer block, a path commit dated earlier than the check but not its ancestor.
 
-- [ ] **Failing test:** temp repos with real commits (merges built with `git merge --no-ff`) call `CheckCommits(repo, pageFile, id string) ([]string, error)`, `Unseen(repo string, checks, paths []string) (sha, subject string, err error)` and `CommitEmpty(repo, msg string) (string, error)`; fails because the functions do not exist.
-- [ ] **Change:** `CheckCommits` unions `git log --format=%H -- <pageFile>` with the shas from `git log --grep=^Wiki-Checked: --format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)` whose values equal `id`. `Unseen` runs `git --literal-pathspecs log -1 --format=%h%x00%s HEAD --not <checks...> -- <paths...>`; empty output gives an empty sha. `CommitEmpty` runs `git commit --only --allow-empty -m <msg>` (staged changes stay staged and out of the commit) and returns the short sha of HEAD. Leave `LastChange` in place; Task 04 removes it.
-- [ ] **Commit:** `feat(gitc): find a page's check commits and unseen path changes`
+- [x] **Failing test:** temp repos with real commits (merges built with `git merge --no-ff`) call `CheckCommits(repo, pageFile, id string) ([]string, error)`, `Unseen(repo string, checks, paths []string) (sha, subject string, err error)` and `CommitEmpty(repo, msg string) (string, error)`; fails because the functions do not exist.
+- [x] **Change:** `CheckCommits` unions `git log --format=%H -- <pageFile>` with the shas from `git log --grep=^Wiki-Checked: --format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)` whose values equal `id`. `Unseen` runs `git --literal-pathspecs log -1 --format=%h%x00%s HEAD --not <checks...> -- <paths...>`; empty output gives an empty sha. `CommitEmpty` runs `git commit --only --allow-empty -m <msg>` (staged changes stay staged and out of the commit) and returns the short sha of HEAD. Leave `LastChange` in place; Task 04 removes it.
+- [x] **Commit:** `feat(gitc): find a page's check commits and unseen path changes`
 
 ### Task 02: tidy keeps Wiki-Checked trailers
 
@@ -51,9 +52,9 @@ hash: kfizu27
 
 **verify:** After tidy, every `Wiki-Checked:` value carried by any commit of the old branch appears on exactly one commit of the new chain: the commit its old commit folded into, once, even when two folded commits name the same page. Messages of commits that fold nothing come out byte for byte as before. List every case checked.
 
-- [ ] **Failing test:** a branch with a code commit, then a `chore(wiki): re-check a` empty commit with `Wiki-Checked: a`, then a `chore(wiki): re-check a, b` commit; after `Run`, the code commit's new message ends with `Wiki-Checked: a` and `Wiki-Checked: b`, each once; a branch with no such trailers keeps its messages unchanged. Fails because `commitNode` keeps only the source message.
-- [ ] **Change:** in `commitNode`, read `%(trailers:key=Wiki-Checked,valueonly)` of every sha in `n.olds`, drop values the source message already carries and repeats, and append the rest as `Wiki-Checked: <id>` lines to the source message's trailer block (a new block after a blank line when it has none).
-- [ ] **Commit:** `feat(tidy): keep Wiki-Checked trailers of folded commits`
+- [x] **Failing test:** a branch with a code commit, then a `chore(wiki): re-check a` empty commit with `Wiki-Checked: a`, then a `chore(wiki): re-check a, b` commit; after `Run`, the code commit's new message ends with `Wiki-Checked: a` and `Wiki-Checked: b`, each once; a branch with no such trailers keeps its messages unchanged. Fails because `commitNode` keeps only the source message.
+- [x] **Change:** in `commitNode`, read `%(trailers:key=Wiki-Checked,valueonly)` of every sha in `n.olds`, drop values the source message already carries and repeats, and append the rest as `Wiki-Checked: <id>` lines to the source message's trailer block (a new block after a blank line when it has none).
+- [x] **Commit:** `feat(tidy): keep Wiki-Checked trailers of folded commits`
 
 ### Task 03: plugin text and evals drop timestamp
 
@@ -65,9 +66,9 @@ hash: kfizu27
 
 **verify:** No plugin text or eval file tells an agent to write, bump or read a page `timestamp`, and every place that said to bump it now says to fix the page or run `acta wiki ok <id>`. List every file under `plugin/` that mentions a page timestamp before and after (grep `timestamp` across `plugin/`), and every rule line checked.
 
-- [ ] **Failing test:** in `skill_build_test.go`, replace the four timestamp expectations (lines near 243, 283, 294, 295, 304) with: wiki.md has no `timestamp`, wiki.md and build SKILL.md contain `acta wiki ok`, wiki.md contains a rule that a whole top-level folder in `paths` makes the page stale on nearly every branch, and land SKILL.md has no `timestamp` bump; fails on the current text.
-- [ ] **Change:** wiki.md: drop `timestamp` from the example and the field list; check step says a page is stale when a commit changed a file under its `paths` after the page was last checked; fix step says fix every wrong line, or run `acta wiki ok <id>` when the page is still right; add the narrow `paths` rule. build SKILL.md wiki step and land SKILL.md wiki gate: replace the bump with `acta wiki ok`. Both scaffolds drop the `timestamp:` line and its comment, and wiki-close commits the page before the code change so the page starts stale. New grader `page-fixed.md`: `type: regex`, pattern `note`, target file `.acta/wiki/parse-output.md`. Prompt description: "re-checks the wiki page that covers a file the branch changed and fixes it before review". Keep every skill under its plugincheck size cap.
-- [ ] **Commit:** `feat(plugin): wiki re-check uses acta wiki ok, not a timestamp`
+- [x] **Failing test:** in `skill_build_test.go`, replace the four timestamp expectations (lines near 243, 283, 294, 295, 304) with: wiki.md has no `timestamp`, wiki.md and build SKILL.md contain `acta wiki ok`, wiki.md contains a rule that a whole top-level folder in `paths` makes the page stale on nearly every branch, and land SKILL.md has no `timestamp` bump; fails on the current text.
+- [x] **Change:** wiki.md: drop `timestamp` from the example and the field list; check step says a page is stale when a commit changed a file under its `paths` after the page was last checked; fix step says fix every wrong line, or run `acta wiki ok <id>` when the page is still right; add the narrow `paths` rule. build SKILL.md wiki step and land SKILL.md wiki gate: replace the bump with `acta wiki ok`. Both scaffolds drop the `timestamp:` line and its comment, and wiki-close commits the page before the code change so the page starts stale. New grader `page-fixed.md`: `type: regex`, pattern `note`, target file `.acta/wiki/parse-output.md`. Prompt description: "re-checks the wiki page that covers a file the branch changed and fixes it before review". Keep every skill under its plugincheck size cap.
+- [x] **Commit:** `feat(plugin): wiki re-check uses acta wiki ok, not a timestamp`
 
 ### Task 04: check uses ancestry, timestamp dropped
 
@@ -103,3 +104,9 @@ hash: kfizu27
 - [ ] **Failing test:** `grep -rl '^timestamp:' .acta/wiki` lists pages (red).
 - [ ] **Change:** delete the `timestamp:` line from each page with `sed`; nothing else. Run `go run ./cmd/acta wiki check` and show the output.
 - [ ] **Commit:** `chore(wiki): drop timestamp from pages`
+
+## State
+
+### Findings
+
+gitc.CheckCommits and gitc.Unseen run git log with --full-history --no-merges: without full history git drops same-content side commits; without no-merges a merge commit counts as a path change forever. A conflict fix made only inside a merge commit is not seen as a path change.
