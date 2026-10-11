@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 )
 
 func setupRepo(t *testing.T) string {
@@ -462,71 +461,6 @@ func commitAllAt(t *testing.T, repo, when, msg string) {
 	t.Setenv("GIT_COMMITTER_DATE", when)
 	git(t, repo, "add", "-A")
 	git(t, repo, "commit", "-q", "--allow-empty", "-m", msg)
-}
-
-// LastChange is the commit time of the newest commit that touched one of the
-// paths. A path is a plain name: no glob and no git path magic, since a page
-// lists names and the wiki matches them by prefix.
-func TestLastChange(t *testing.T) {
-	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
-	if err := os.MkdirAll(filepath.Join(repo, "dir"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	writeFile(t, filepath.Join(repo, "dir", "c.md"), "c\n")
-	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "add dir/c.md")
-	writeFile(t, filepath.Join(repo, "a.md"), "a again\n")
-	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "edit a.md")
-	writeFile(t, filepath.Join(repo, "dir", "c.md"), "c again\n")
-	// Seven hours ahead of UTC: the same moment as midnight UTC.
-	commitAllAt(t, repo, "2023-01-01T07:00:00+07:00", "edit dir/c.md")
-
-	year := func(y int) time.Time { return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC) }
-	tests := []struct {
-		name  string
-		paths []string
-		want  time.Time
-	}{
-		{"a file only the first commit touched", []string{"b.md"}, year(2020)},
-		{"a file edited later", []string{"a.md"}, year(2022)},
-		{"the newest of several paths", []string{"b.md", "a.md"}, year(2022)},
-		{"a folder is the files in it", []string{"dir/"}, year(2023)},
-		{"a path no commit touched", []string{"nothing.md"}, time.Time{}},
-		{"no paths is not the whole repo", nil, time.Time{}},
-		{"a glob is a name, not a pattern", []string{"*.md"}, time.Time{}},
-		{"git path magic is a name, not magic", []string{":(top)a.md"}, time.Time{}},
-	}
-	for _, tt := range tests {
-		got, err := LastChange(repo, tt.paths)
-		if err != nil || !got.Equal(tt.want) {
-			t.Errorf("%s: LastChange(%v) = %v, %v, want %v", tt.name, tt.paths, got, err, tt.want)
-		}
-	}
-	if got, err := LastChange(t.TempDir(), []string{"a.md"}); err == nil {
-		t.Errorf("a folder that is no checkout gave %v and no error", got)
-	}
-}
-
-// A clean merge brings no change of its own. Landing a branch must not turn
-// every page that covers its files into a stale one, so the answer is the commit
-// that made the change and not the merge that carried it.
-func TestLastChangeSeesPastACleanMerge(t *testing.T) {
-	repo := repoAt(t, "2020-01-01T00:00:00Z") // a.md and b.md
-	git(t, repo, "checkout", "-q", "-b", "side")
-	writeFile(t, filepath.Join(repo, "a.md"), "side edits a\n")
-	commitAllAt(t, repo, "2021-01-01T00:00:00Z", "side edits a.md")
-	git(t, repo, "checkout", "-q", "main")
-	writeFile(t, filepath.Join(repo, "b.md"), "main edits b\n")
-	commitAllAt(t, repo, "2022-01-01T00:00:00Z", "main edits b.md")
-	t.Setenv("GIT_AUTHOR_DATE", "2023-01-01T00:00:00Z")
-	t.Setenv("GIT_COMMITTER_DATE", "2023-01-01T00:00:00Z")
-	git(t, repo, "merge", "-q", "--no-ff", "-m", "merge side", "side")
-
-	year := func(y int) time.Time { return time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC) }
-	for path, want := range map[string]time.Time{"a.md": year(2021), "b.md": year(2022)} {
-		if got, err := LastChange(repo, []string{path}); err != nil || !got.Equal(want) {
-			t.Errorf("LastChange(%s) = %v, %v, want %v, the commit before the merge", path, got, err, want)
-		}
-	}
 }
 
 // Changed lists the files that differ across a range. A move counts as a file

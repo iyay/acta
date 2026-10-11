@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/iyay/acta/internal/gitc"
@@ -105,22 +104,40 @@ func checkPage(repo string, p Page) []string {
 			usable = append(usable, entry)
 		}
 	}
-	// A page with no timestamp is stale against every commit, which says
-	// nothing more than the missing field already does.
-	if p.Timestamp.IsZero() || len(usable) == 0 {
+	if len(usable) == 0 {
 		return msgs
 	}
-	// Only entries that point into the repo go to git: an entry that climbs out
-	// of it would make git fail, and already has its own message.
-	last, err := gitc.LastChange(repo, usable)
+	return append(msgs, staleMsgs(repo, p, usable)...)
+}
+
+// staleMsgs says whether a path change of the page has no check commit behind
+// it. Only git history decides, never a date. usable holds the entries that
+// point into the repo: an entry that climbs out of it would make git fail, and
+// already has its own message.
+func staleMsgs(repo string, p Page, usable []string) []string {
+	file := pageName(repo, p)
+	// An edit that is not committed yet is the author checking the page right now.
+	// The commit that saves it is a check, so there is nothing to say before that.
+	dirty, err := gitc.IsDirty(repo, file)
+	if err != nil {
+		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
+	}
+	if dirty {
+		return nil
+	}
+	checks, err := gitc.CheckCommits(repo, file, p.ID)
+	if err != nil {
+		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
+	}
+	sha, subject, err := gitc.Unseen(repo, checks, usable)
 	switch {
 	case err != nil:
-		msgs = append(msgs, fmt.Sprintf("cannot read the git history: %v", err))
-	case last.After(p.Timestamp):
-		msgs = append(msgs, fmt.Sprintf("stale: its paths changed on %s, after its timestamp %s; re-check the page and bump the timestamp",
-			last.UTC().Format(time.RFC3339), p.Timestamp.UTC().Format(time.RFC3339)))
+		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
+	case sha != "":
+		return []string{fmt.Sprintf("stale: %s %q changed its paths after the page was last checked; fix the page, or run acta wiki ok %s when nothing is wrong",
+			sha, subject, p.ID)}
 	}
-	return msgs
+	return nil
 }
 
 // fieldMsgs checks the fields that sit in the page itself, with no look at disk or git.
@@ -136,9 +153,6 @@ func fieldMsgs(p Page) []string {
 		msgs = append(msgs, "title is missing")
 	}
 	msgs = append(msgs, descriptionMsgs(p.Description)...)
-	if p.Timestamp.IsZero() {
-		msgs = append(msgs, "timestamp is missing")
-	}
 	if p.Words > maxWords {
 		msgs = append(msgs, fmt.Sprintf("body is %d words, the limit is %d", p.Words, maxWords))
 	}

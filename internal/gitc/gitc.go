@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Result says whether the commit happened, and why not when it did not.
@@ -297,29 +296,6 @@ func IsAncestor(repo, a, b string) (bool, error) {
 		return false, fmt.Errorf("git merge-base --is-ancestor: %v: %s", err, strings.TrimSpace(errOut.String()))
 	}
 	return true, nil
-}
-
-// LastChange is the commit time of the newest commit on the way back from HEAD
-// that touched one of the paths, or the zero time when none did. Each path is a
-// plain name from the repo root, and a folder ends in a slash. The paths are not
-// globs and not git path magic, since the wiki lists names and matches them by
-// prefix. git stops at the first commit it finds, which is the newest unless a
-// clock was set wrong.
-func LastChange(repo string, paths []string) (time.Time, error) {
-	// With no paths, git would answer with the newest commit of the whole repo.
-	if len(paths) == 0 {
-		return time.Time{}, nil
-	}
-	args := append([]string{"--literal-pathspecs", "log", "-1", "--format=%cI", "--"}, paths...)
-	out, err := run(repo, args...)
-	if err != nil {
-		return time.Time{}, err
-	}
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return time.Time{}, nil
-	}
-	return time.Parse(time.RFC3339, out)
 }
 
 // CheckCommits lists the full shas of the commits reachable from HEAD that

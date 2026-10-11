@@ -3,7 +3,6 @@ type: Decision
 title: Finished scratch items are specced, never dropped
 description: Dropped means not done or not valid; a written dropped beats the derived specced status
 paths: [internal/board/]
-timestamp: 2026-10-09T15:09:55Z
 ---
 
 A scratch item shows specced when a spec names it as parent or with a `closes:` link. That status is derived, so the frontmatter status line alone can mislead; use `acta show`.

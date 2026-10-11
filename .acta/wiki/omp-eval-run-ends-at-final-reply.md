@@ -3,7 +3,6 @@ type: Gotcha
 title: omp keeps working after its final reply
 description: In print mode omp wakes the agent again after a stop reply while todos are open; the eval runner ends at the first one
 paths: [internal/evalomp/]
-timestamp: 2026-10-07T23:58:09Z
 ---
 
 In `omp -p --mode json`, the first assistant `message_end` with `stopReason: stop` is not the end of the run. When the agent's todo list still has open items, omp sends `agent_start` again and the agent keeps going, sometimes for minutes. A state-resume run answered at 283 s, then went on to review and land until the 300 s cap. `max_turns` does not exist in omp, so nothing stops it.

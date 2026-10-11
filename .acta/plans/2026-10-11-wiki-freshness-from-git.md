@@ -6,6 +6,7 @@ id: PLN-0134
 created: "2026-10-11 21:09:19"
 hash: kfizu27
 started: "2026-10-11 21:11:46"
+finished: "2026-10-11 21:18:32"
 ---
 # Wiki freshness from git
 
@@ -78,9 +79,9 @@ started: "2026-10-11 21:11:46"
 
 **verify:** No page is ever called stale while every path change reachable from HEAD is seen by one of its check commits, and no page with an unseen path change passes, with or without a range; the `timestamp` field changes no outcome. List every path through `checkPage` and what each returns: no usable paths, no check commits, a seen change, an unseen change, an uncommitted or untracked page file, a git error, a page with a `timestamp` that does not parse, a page with none.
 
-- [ ] **Failing test:** rewrite the date table in `check_test.go` as ancestry cases (path change after the last page edit is stale with the verbatim message; after `CommitEmpty` with a `Wiki-Checked:` trailer it is not; a later path change makes it stale again; the two-branch merge cases; an uncommitted edit to the page file is not stale); "timestamp missing" is no longer a problem; in `wiki_test.go`, a page whose `timestamp` does not parse loads with no error. Fails on the date rule.
-- [ ] **Change:** drop `Timestamp` from `Page` and `front` and its parse; drop the missing-field message; in `checkPage`, when `gitc.IsDirty` says the page file has changes, skip the stale test; else `CheckCommits` then `Unseen`, and a non-empty sha gives the verbatim stale message. A git error gives `cannot read the git history: <err>`. Remove `LastChange` and its tests.
-- [ ] **Commit:** `feat(wiki): judge stale pages by git ancestry, not timestamp`
+- [x] **Failing test:** rewrite the date table in `check_test.go` as ancestry cases (path change after the last page edit is stale with the verbatim message; after `CommitEmpty` with a `Wiki-Checked:` trailer it is not; a later path change makes it stale again; the two-branch merge cases; an uncommitted edit to the page file is not stale); "timestamp missing" is no longer a problem; in `wiki_test.go`, a page whose `timestamp` does not parse loads with no error. Fails on the date rule.
+- [x] **Change:** drop `Timestamp` from `Page` and `front` and its parse; drop the missing-field message; in `checkPage`, when `gitc.IsDirty` says the page file has changes, skip the stale test; else `CheckCommits` then `Unseen`, and a non-empty sha gives the verbatim stale message. A git error gives `cannot read the git history: <err>`. Remove `LastChange` and its tests.
+- [x] **Commit:** `feat(wiki): judge stale pages by git ancestry, not timestamp`
 
 ### Task 05: acta wiki ok
 
@@ -90,9 +91,9 @@ started: "2026-10-11 21:11:46"
 
 **verify:** `acta wiki ok` makes a commit only when every id names a loaded page, and that commit changes no file and carries one `Wiki-Checked:` trailer per id. List every path: no ids, one unknown id among good ones, duplicate ids, a staged file present, not a git repo, a commit that git refuses. Each failure exits non-zero, prints why, and leaves HEAD where it was.
 
-- [ ] **Failing test:** in a temp repo with pages `a` and `sub/b`, `ok a sub/b` exits 0, prints the short sha, HEAD's tree equals its parent's, the message is `chore(wiki): re-check a, sub/b` plus both trailers; `ok a nope` exits non-zero with HEAD unchanged; a staged file stays staged and outside the commit; two branches that each ran `ok a` merge with no conflict. Fails because `ok` is not a subcommand.
-- [ ] **Change:** add `ok` to `cmdWiki`, `wikiFits` (one id or more) and `wikiUsage`; drop duplicate ids keeping first order; refuse unknown ids before any git call; build the message and call `gitc.CommitEmpty`. Update the `cmdWiki` comment, which says the subcommands only read.
-- [ ] **Commit:** `feat(cli): acta wiki ok records a no-change re-check`
+- [x] **Failing test:** in a temp repo with pages `a` and `sub/b`, `ok a sub/b` exits 0, prints the short sha, HEAD's tree equals its parent's, the message is `chore(wiki): re-check a, sub/b` plus both trailers; `ok a nope` exits non-zero with HEAD unchanged; a staged file stays staged and outside the commit; two branches that each ran `ok a` merge with no conflict. Fails because `ok` is not a subcommand.
+- [x] **Change:** add `ok` to `cmdWiki`, `wikiFits` (one id or more) and `wikiUsage`; drop duplicate ids keeping first order; refuse unknown ids before any git call; build the message and call `gitc.CommitEmpty`. Update the `cmdWiki` comment, which says the subcommands only read.
+- [x] **Commit:** `feat(cli): acta wiki ok records a no-change re-check`
 
 ### Task 06: this repo's pages drop timestamp
 
@@ -101,9 +102,9 @@ started: "2026-10-11 21:11:46"
 
 **verify:** No page under `.acta/wiki/` keeps a `timestamp:` line, no other line of any page changed, and `acta wiki check` with the branch binary prints nothing new about field rules. Show `git diff --stat` and confirm every changed line is a removed `timestamp:` line.
 
-- [ ] **Failing test:** `grep -rl '^timestamp:' .acta/wiki` lists pages (red).
-- [ ] **Change:** delete the `timestamp:` line from each page with `sed`; nothing else. Run `go run ./cmd/acta wiki check` and show the output.
-- [ ] **Commit:** `chore(wiki): drop timestamp from pages`
+- [x] **Failing test:** `grep -rl '^timestamp:' .acta/wiki` lists pages (red).
+- [x] **Change:** delete the `timestamp:` line from each page with `sed`; nothing else. Run `go run ./cmd/acta wiki check` and show the output.
+- [x] **Commit:** `chore(wiki): drop timestamp from pages`
 
 ## State
 

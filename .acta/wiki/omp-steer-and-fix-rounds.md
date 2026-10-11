@@ -3,7 +3,6 @@ type: Gotcha
 title: Steering omp mid-goal and self-started fix rounds
 description: A plain prompt steers a working omp; omp starts an open fix round by itself when reply-back exits 1
 paths: [plugin/omp/]
-timestamp: 2026-10-06T00:00:00Z
 ---
 
 A plain `herdr agent prompt <slug> "<text>"` with no `/goal` to a working omp is a steer. omp adds it to its todo list inside the running goal. Use it for a small late finding that belongs in the fix round already running; read the pane once to confirm.

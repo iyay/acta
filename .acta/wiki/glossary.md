@@ -3,7 +3,6 @@ type: Glossary
 title: acta glossary
 description: "Short names for the moving parts: voices, rounds, stamps, gates, and the wiki itself"
 paths: []
-timestamp: 2026-10-05T15:28:00Z
 ---
 
 fix round: one review cycle on a branch, written into the plan, run by the recipient.

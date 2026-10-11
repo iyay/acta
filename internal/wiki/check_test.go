@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/iyay/acta/internal/gitc"
 )
 
 // pageFile is how a problem names the page file made by good: from the repo root.
@@ -85,8 +87,8 @@ func newHistory(t *testing.T) history {
 	return h
 }
 
-// good is a page that keeps every rule in the repo of newHistory. Its
-// timestamp is newer than every commit there.
+// good is a page that keeps every rule in the repo of newHistory. Its file was
+// last edited in 2024, after the last change of src/a.go, so it is not stale.
 func good(repo string) Page {
 	return Page{
 		Path:        filepath.Join(repo, ".acta", "wiki", "page.md"),
@@ -95,7 +97,6 @@ func good(repo string) Page {
 		Title:       "A title",
 		Description: "One short line.",
 		Paths:       []string{"src/a.go"},
-		Timestamp:   year(2026),
 		Words:       10,
 	}
 }
@@ -152,8 +153,6 @@ func TestCheckFieldRules(t *testing.T) {
 		{"description on two lines and too long", func(p *Page) { p.Description = strings.Repeat("x", 70) + "\n" + strings.Repeat("y", 60) },
 			[]string{"description is more than one line", "description is 131 characters"}},
 
-		{"timestamp missing", func(p *Page) { p.Timestamp = time.Time{} }, []string{"timestamp is missing"}},
-
 		{"body 250 words", func(p *Page) { p.Words = 250 }, nil},
 		{"body 251 words", func(p *Page) { p.Words = 251 }, []string{"body is 251 words, the limit is 250"}},
 
@@ -183,69 +182,230 @@ func TestCheckFieldRules(t *testing.T) {
 	}
 }
 
-// A page is stale when a commit that touched a file under its paths is newer
-// than its timestamp. Equal is not newer, and the time zone does not matter.
-func TestCheckStale(t *testing.T) {
-	t.Parallel()
-	h := newHistory(t)
-	at := func(s string) time.Time {
-		ts, err := time.Parse(time.RFC3339, s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return ts
-	}
-	tests := []struct {
-		name  string
-		paths []string
-		stamp time.Time
-		last  int // the year of the commit that makes the page stale; 0 for a page that is not
-	}{
-		{"file edited after the timestamp", []string{"src/a.go"}, at("2020-06-01T00:00:00Z"), 2021},
-		{"file edited before the timestamp, others after", []string{"src/a.go"}, at("2021-06-01T00:00:00Z"), 0},
-		{"timestamp at the very moment of the commit", []string{"src/a.go"}, year(2021), 0},
-		{"timestamp one second before the commit", []string{"src/a.go"}, year(2021).Add(-time.Second), 2021},
-		{"timestamp in another zone, before the commit", []string{"src/a.go"}, at("2021-01-01T00:30:00+07:00"), 2021},
-		{"timestamp in another zone, the same moment", []string{"src/a.go"}, at("2021-01-01T07:00:00+07:00"), 0},
-		{"folder, a file deep inside it edited after", []string{"src/"}, at("2022-06-01T00:00:00Z"), 2023},
-		{"folder, every edit before the timestamp", []string{"src/"}, at("2023-06-01T00:00:00Z"), 0},
-		{"folder, only a folder with a like name changed after", []string{"src/"}, at("2024-06-01T00:00:00Z"), 0},
-		{"the newest of several entries decides", []string{"src/a.go", "other/c.go"}, at("2021-06-01T00:00:00Z"), 2022},
-		{"no paths", nil, at("2000-01-01T00:00:00Z"), 0},
-	}
-	for _, tt := range tests {
-		p := good(h.repo)
-		p.Paths, p.Timestamp = tt.paths, tt.stamp
-		var want []string
-		if tt.last != 0 {
-			want = []string{"stale: its paths changed on " + year(tt.last).Format(time.RFC3339) + ", after its timestamp " + tt.stamp.UTC().Format(time.RFC3339)}
-		}
-		expect(t, tt.name, Check(h.repo, []Page{p}, ""), want)
-	}
+// staleMsg is the whole message of a stale page.
+func staleMsg(sha, subject, id string) string {
+	return fmt.Sprintf(`stale: %s "%s" changed its paths after the page was last checked; fix the page, or run acta wiki ok %s when nothing is wrong`, sha, subject, id)
+}
 
-	// A page with no timestamp has the missing field to fix first. Every commit
-	// is newer than no time at all, which would only repeat itself.
-	p := good(h.repo)
-	p.Timestamp = time.Time{}
-	expect(t, "no timestamp", Check(h.repo, []Page{p}, ""), []string{"timestamp is missing"})
+// ancestry is a repo for the stale rule. Its first commit adds src/a.go and
+// other/c.go. Its second commit adds the page file, so the page was checked
+// after src/a.go was written. Every commit below gets its own date, and the
+// dates are chosen to be misleading: the rule must follow the commit graph.
+type ancestry struct {
+	t    *testing.T
+	repo string
+}
 
-	// Git that cannot answer is a problem, not a page that passes.
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("a\n"), 0o644); err != nil {
+func newAncestry(t *testing.T) ancestry {
+	t.Helper()
+	repo, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
 		t.Fatal(err)
 	}
-	p = good(dir)
-	p.Paths = []string{"a.go"}
-	got := Check(dir, []Page{p}, "")
-	if len(got) != 1 || !strings.Contains(got[0].Msg, "cannot read the git history") {
-		t.Errorf("a folder with no repo: got %+v, want one problem about the git history", got)
+	gitAt(t, repo, year(2020), "init", "-q", "-b", "main")
+	gitAt(t, repo, year(2020), "config", "user.email", "test@example.com")
+	gitAt(t, repo, year(2020), "config", "user.name", "test")
+	a := ancestry{t: t, repo: repo}
+	a.commit("src/a.go", "first", year(2020))
+	a.commit("other/c.go", "other first", year(2020))
+	a.commit(pageFile, "write the page", year(2021))
+	return a
+}
+
+// commit writes the file with new text and commits it at when.
+func (a ancestry) commit(file, subject string, when time.Time) string {
+	a.t.Helper()
+	p := filepath.Join(a.repo, filepath.FromSlash(file))
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		a.t.Fatal(err)
 	}
+	old, _ := os.ReadFile(p)
+	if err := os.WriteFile(p, append(old, []byte(subject+"\n")...), 0o644); err != nil {
+		a.t.Fatal(err)
+	}
+	gitAt(a.t, a.repo, when, "add", file)
+	gitAt(a.t, a.repo, when, "commit", "-q", "-m", subject)
+	return a.head()
+}
+
+func (a ancestry) head() string {
+	return gitAt(a.t, a.repo, year(2020), "rev-parse", "--short", "HEAD")
+}
+
+// recheck makes the empty commit that says the page was checked.
+func (a ancestry) recheck(id string) {
+	a.t.Helper()
+	if _, err := gitc.CommitEmpty(a.repo, "chore(wiki): re-check "+id+"\n\nWiki-Checked: "+id); err != nil {
+		a.t.Fatal(err)
+	}
+}
+
+func (a ancestry) check(rng string) []Problem { return Check(a.repo, []Page{good(a.repo)}, rng) }
+
+// A page is stale when a commit that changed one of its paths is not behind
+// any of its check commits: a commit that changed the page file, or one that
+// carries a Wiki-Checked trailer with its id. Dates play no part.
+func TestCheckStale(t *testing.T) {
+	t.Parallel()
+	t.Run("a path change after the last page edit is stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		expect(t, "before the change", a.check(""), nil)
+		sha := a.commit("src/a.go", "change the code", year(2022))
+		expect(t, "after the change", a.check(""), []string{staleMsg(sha, "change the code", "page")})
+	})
+	t.Run("a check commit clears it and a later change brings it back", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		a.recheck("page")
+		expect(t, "after the re-check", a.check(""), nil)
+		sha := a.commit("src/a.go", "change it again", year(2023))
+		expect(t, "after a later change", a.check(""), []string{staleMsg(sha, "change it again", "page")})
+	})
+	t.Run("editing the page file is a check too", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		a.commit(pageFile, "update the page", year(2023))
+		expect(t, "after the page edit", a.check(""), nil)
+	})
+	t.Run("a check for another page or a longer id does not count", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		sha := a.commit("src/a.go", "change the code", year(2022))
+		a.recheck("other")
+		a.recheck("page2")
+		expect(t, "after the wrong re-checks", a.check(""), []string{staleMsg(sha, "change the code", "page")})
+	})
+	t.Run("a change outside the paths is not stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("other/c.go", "change something else", year(2022))
+		expect(t, "other file", a.check(""), nil)
+	})
+	t.Run("a folder entry sees a deep change", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		sha := a.commit("src/sub/b.go", "deep change", year(2022))
+		p := good(a.repo)
+		p.Paths = []string{"src/"}
+		expect(t, "folder", Check(a.repo, []Page{p}, ""), []string{staleMsg(sha, "deep change", "page")})
+	})
+	t.Run("the newest unseen change is the one named", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "older change", year(2022))
+		sha := a.commit("other/c.go", "newer change", year(2023))
+		p := good(a.repo)
+		p.Paths = []string{"src/a.go", "other/c.go"}
+		expect(t, "two entries", Check(a.repo, []Page{p}, ""), []string{staleMsg(sha, "newer change", "page")})
+	})
+	t.Run("a page with no usable paths is never stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		p := good(a.repo)
+		p.Paths = nil
+		expect(t, "no paths", Check(a.repo, []Page{p}, ""), nil)
+		p.Paths = []string{"../src/"}
+		expect(t, "path outside the repo", Check(a.repo, []Page{p}, ""), []string{`paths entry "../src/" is not inside the repo`})
+	})
+	t.Run("a page with no check commit at all is stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		p := good(a.repo)
+		p.ID, p.Path = "fresh", filepath.Join(a.repo, ".acta", "wiki", "fresh.md")
+		got := Check(a.repo, []Page{p}, "")
+		if len(got) != 1 || got[0].Page != ".acta/wiki/fresh.md" || !strings.HasPrefix(got[0].Msg, "stale: ") {
+			t.Errorf("a page nobody committed: got %+v, want one stale problem", got)
+		}
+	})
+	t.Run("an uncommitted edit to the page file is not stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		if err := os.WriteFile(filepath.Join(a.repo, filepath.FromSlash(pageFile)), []byte("edited\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		expect(t, "dirty page", a.check(""), nil)
+	})
+	t.Run("an untracked page file is not stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		p := good(a.repo)
+		p.ID, p.Path = "new", filepath.Join(a.repo, ".acta", "wiki", "new.md")
+		if err := os.WriteFile(p.Path, []byte("new page\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := Check(a.repo, []Page{p}, ""); len(got) != 0 {
+			t.Errorf("untracked page: got %+v, want no problem", got)
+		}
+	})
+	t.Run("git that cannot answer is a problem", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("a\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		p := good(dir)
+		p.Paths = []string{"a.go"}
+		got := Check(dir, []Page{p}, "")
+		if len(got) != 1 || !strings.Contains(got[0].Msg, "cannot read the git history") {
+			t.Errorf("a folder with no repo: got %+v, want one problem about the git history", got)
+		}
+	})
+}
+
+// Two branches. The check of one branch does not see the path change of the
+// other, whatever the dates say, so the merge is stale until the page is
+// checked again behind both.
+func TestCheckStaleAcrossBranches(t *testing.T) {
+	t.Parallel()
+	// setup: main re-checks the page; side, made from the same base, changes
+	// the code at a date before the re-check.
+	setup := func(t *testing.T) (ancestry, string) {
+		a := newAncestry(t)
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "-b", "side")
+		sha := a.commit("src/a.go", "side changes the code", year(2019))
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "main")
+		a.recheck("page")
+		return a, sha
+	}
+	t.Run("merging the other branch is stale", func(t *testing.T) {
+		t.Parallel()
+		a, sha := setup(t)
+		expect(t, "before the merge", a.check(""), nil)
+		gitAt(t, a.repo, year(2030), "merge", "-q", "--no-ff", "-m", "merge side", "side")
+		expect(t, "after the merge", a.check(""), []string{staleMsg(sha, "side changes the code", "page")})
+	})
+	t.Run("merging a branch that checked the page too is not stale", func(t *testing.T) {
+		t.Parallel()
+		a, _ := setup(t)
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "side")
+		a.recheck("page")
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "main")
+		gitAt(t, a.repo, year(2018), "merge", "-q", "--no-ff", "-m", "merge side", "side")
+		expect(t, "after the merge", a.check(""), nil)
+	})
+	t.Run("a path change dated before the page edit but not behind it is stale", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "-b", "side")
+		sha := a.commit("src/a.go", "old date, other branch", year(2000))
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "main")
+		a.commit(pageFile, "edit the page", year(2040))
+		gitAt(t, a.repo, year(2041), "merge", "-q", "--no-ff", "-m", "merge side", "side")
+		expect(t, "after the merge", a.check(""), []string{staleMsg(sha, "old date, other branch", "page")})
+	})
 }
 
 // With a range, only the pages it touches are checked. A page is touched when
 // a file changed in the range sits under one of its paths, or when the page
 // file itself changed. Every page below is broken the same way, so a page in
-// the answer is a page that was looked at.
+// the answer is a page that was looked at. A page can have more than one
+// problem, and it still shows once.
 func TestCheckRange(t *testing.T) {
 	t.Parallel()
 	h := newHistory(t)
@@ -279,7 +439,10 @@ func TestCheckRange(t *testing.T) {
 	for _, tt := range tests {
 		var got []string
 		for _, pr := range Check(h.repo, pages, tt.rng) {
-			got = append(got, strings.TrimSuffix(strings.TrimPrefix(pr.Page, ".acta/wiki/"), ".md"))
+			name := strings.TrimSuffix(strings.TrimPrefix(pr.Page, ".acta/wiki/"), ".md")
+			if len(got) == 0 || got[len(got)-1] != name {
+				got = append(got, name)
+			}
 		}
 		if !slices.Equal(got, tt.want) {
 			t.Errorf("%s: Check(%q) looked at %v, want %v", tt.name, tt.rng, got, tt.want)
@@ -287,22 +450,39 @@ func TestCheckRange(t *testing.T) {
 	}
 
 	// A stale page the range does not touch is left alone, and one it touches is
-	// not. A bump of the timestamp is what clears it.
-	old := func(id, path string) Page {
+	// not. Neither of these two page files was ever committed, so each is stale
+	// against any change of its paths.
+	fresh := func(id, path string) Page {
 		p := good(h.repo)
-		p.ID, p.Path, p.Paths, p.Timestamp = id, filepath.Join(h.repo, ".acta", "wiki", id+".md"), []string{path}, year(2000)
+		p.ID, p.Path, p.Paths = id, filepath.Join(h.repo, ".acta", "wiki", id+".md"), []string{path}
 		return p
 	}
 	rng := h.sha[2020] + ".." + h.sha[2021]
-	inside := old("inside", "src/a.go")
-	got := Check(h.repo, []Page{inside, old("outside", "other/c.go")}, rng)
+	got := Check(h.repo, []Page{fresh("inside", "src/a.go"), fresh("outside", "other/c.go")}, rng)
 	if len(got) != 1 || got[0].Page != ".acta/wiki/inside.md" || !strings.HasPrefix(got[0].Msg, "stale:") {
 		t.Errorf("stale pages in a range: got %+v, want only inside to be stale", got)
 	}
-	inside.Timestamp = year(2026)
-	if got := Check(h.repo, []Page{inside}, rng); len(got) != 0 {
+	// page.md was edited in 2024, behind the last change of src/a.go.
+	if got := Check(h.repo, []Page{good(h.repo)}, rng); len(got) != 0 {
 		t.Errorf("a touched page that keeps every rule: got %+v, want no problem", got)
 	}
+}
+
+// The range form follows the same rule as the whole check: a page the branch
+// touches is stale while a path change on it is not behind a check commit.
+func TestCheckRangeStale(t *testing.T) {
+	t.Parallel()
+	a := newAncestry(t)
+	gitAt(t, a.repo, year(2022), "checkout", "-q", "-b", "feature")
+	sha := a.commit("src/a.go", "feature changes the code", year(2022))
+	expect(t, "unseen change", a.check("main..HEAD"), []string{staleMsg(sha, "feature changes the code", "page")})
+	a.recheck("page")
+	expect(t, "after the re-check", a.check("main..HEAD"), nil)
+	// A page edit on the branch is a check as well.
+	gitAt(t, a.repo, year(2022), "checkout", "-q", "-b", "second", "main")
+	a.commit("src/a.go", "second changes the code", year(2023))
+	a.commit(pageFile, "second edits the page", year(2024))
+	expect(t, "after the page edit", a.check("main..HEAD"), nil)
 }
 
 // A range git cannot read must not pass as a check of nothing. A range that
