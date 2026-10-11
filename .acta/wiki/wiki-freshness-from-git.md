@@ -2,7 +2,7 @@
 type: Decision
 title: Wiki freshness comes from git ancestry
 description: A page is stale when a commit under its paths is not behind a check commit; acta wiki ok re-checks with no page edit
-paths: [internal/wiki/, internal/cli/wiki.go]
+paths: [internal/wiki/, internal/cli/wiki.go, internal/gitc/gitc.go, internal/tidy/tidy.go]
 ---
 
 A check commit of a page is a commit that changed the page file, or one with a `Wiki-Checked: <page id>` trailer. A page is stale when a commit reachable from HEAD changed a file under its `paths` and is not an ancestor of any check commit. An uncommitted or untracked page file counts as checked.

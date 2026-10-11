@@ -25,7 +25,7 @@ func cmdWiki(args []string, stdout, stderr io.Writer) int {
 	}
 	sub := args[0]
 	fs, root := flags("wiki "+sub, stderr)
-	// Only ls has --type, so the flag parser refuses it for the other two.
+	// Only ls has --type, so the flag parser refuses it for match, check and ok.
 	kind := ""
 	if sub == "ls" {
 		fs.StringVar(&kind, "type", "", "list only the pages of this type")

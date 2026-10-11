@@ -227,7 +227,8 @@ func TestWikiLoadErrors(t *testing.T) {
 func TestWikiLoadErrorsNameThePageFromTheRepoRoot(t *testing.T) {
 	files := wikiFiles()
 	files[".acta/wiki/sub/deep/broken.md"] = "no frontmatter here\n"
-	files[".acta/wiki/bad-time.md"] = "---\ntype: Gotcha\ntitle: A page\ndescription: x\npaths: []\ntimestamp: yesterday\n---\nbody\n"
+	// paths is a text here, not a list, so the frontmatter does not parse.
+	files[".acta/wiki/bad-paths.md"] = "---\ntype: Gotcha\ntitle: A page\ndescription: x\npaths: internal/tui/\n---\nbody\n"
 	repo := wikiRepo(t, files)
 	// A link that points nowhere cannot be read.
 	if err := os.Symlink("nowhere", filepath.Join(repo, ".acta", "wiki", "dead.md")); err != nil {
@@ -236,7 +237,7 @@ func TestWikiLoadErrorsNameThePageFromTheRepoRoot(t *testing.T) {
 
 	code, out, errOut := runWiki(t, repo, "check")
 	want := []string{
-		".acta/wiki/bad-time.md: timestamp: ",
+		".acta/wiki/bad-paths.md: ",
 		".acta/wiki/dead.md: ",
 		".acta/wiki/sub/deep/broken.md: no frontmatter between two --- lines",
 	}

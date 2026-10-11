@@ -1272,3 +1272,40 @@ func CheckCommitsFor(t *testing.T, repo string) int {
 	}
 	return len(got)
 }
+
+// stopOnConflict leaves the repo in the middle of op ("cherry-pick" or
+// "rebase"), stopped on a conflict in a.md.
+func stopOnConflict(t *testing.T, repo, op string) {
+	t.Helper()
+	git(t, repo, "checkout", "-q", "-b", "side")
+	writeFile(t, filepath.Join(repo, "a.md"), "side\n")
+	git(t, repo, "commit", "-q", "-am", "side edit")
+	git(t, repo, "checkout", "-q", "main")
+	writeFile(t, filepath.Join(repo, "a.md"), "main\n")
+	git(t, repo, "commit", "-q", "-am", "main edit")
+	args := []string{"-C", repo, "cherry-pick", "side"}
+	if op == "rebase" {
+		git(t, repo, "checkout", "-q", "side")
+		args = []string{"-C", repo, "rebase", "main"}
+	}
+	// Both branches changed a.md, so git stops on a conflict.
+	if out, err := exec.Command("git", args...).CombinedOutput(); err == nil {
+		t.Fatalf("%s should conflict: %s", op, out)
+	}
+}
+
+func TestCommitEmptyRefusesWhileGitIsStopped(t *testing.T) {
+	for _, op := range []string{"cherry-pick", "rebase"} {
+		t.Run(op, func(t *testing.T) {
+			repo := setupRepo(t)
+			stopOnConflict(t, repo, op)
+			before := git(t, repo, "rev-parse", "HEAD")
+			if sha, err := CommitEmpty(repo, "chore(wiki): re-check p"); err == nil {
+				t.Fatalf("CommitEmpty made %s in the middle of a %s", sha, op)
+			}
+			if after := git(t, repo, "rev-parse", "HEAD"); after != before {
+				t.Fatalf("HEAD moved from %s to %s", before, after)
+			}
+		})
+	}
+}

@@ -397,7 +397,9 @@ func withFoldedWikiChecks(repo string, n *node, msg string) (string, error) {
 	if len(add) == 0 {
 		return msg, nil
 	}
-	args := []string{"interpret-trailers"}
+	// --no-divider: a body line of three dashes is not a patch start here.
+	// --if-exists add: a user config of trailer.ifexists=replace must not drop a value.
+	args := []string{"interpret-trailers", "--no-divider", "--if-exists", "add"}
 	for _, line := range add {
 		args = append(args, "--trailer", line)
 	}

@@ -571,3 +571,34 @@ func TestWikiCheckedKeptWhenNoCommitIsKept(t *testing.T) {
 		t.Fatalf("trailers %v", got)
 	}
 }
+
+func TestFoldedWikiCheckedLeavesADividerLineInTheBodyAlone(t *testing.T) {
+	r := start(t)
+	// A body line of three dashes looks like the start of a patch to git. The
+	// new trailer must still go to the end, and the Notes line must stay as it is.
+	msg := "feat: a\n\nNotes: keep this\n---\n\nTask: PLN-x#1"
+	r.commit(msg, d(1), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(wiki): re-check p\n\nWiki-Checked: p", d(2), "ann", nil)
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := r.body(res.Tip), msg+"\nWiki-Checked: p"; got != want {
+		t.Fatalf("message %q, want %q", got, want)
+	}
+}
+
+func TestFoldedWikiCheckedKeepsBothValuesWhenGitConfigReplacesTrailers(t *testing.T) {
+	r := start(t)
+	// A user may set trailer.ifexists=replace. That must not drop the older value.
+	r.git(nil, "config", "trailer.ifexists", "replace")
+	r.commit("feat: a\n\nTask: PLN-x#1\nWiki-Checked: a", d(1), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(wiki): re-check b\n\nWiki-Checked: b", d(2), "ann", nil)
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := r.body(res.Tip), "feat: a\n\nTask: PLN-x#1\nWiki-Checked: a\nWiki-Checked: b"; got != want {
+		t.Fatalf("message %q, want %q", got, want)
+	}
+}

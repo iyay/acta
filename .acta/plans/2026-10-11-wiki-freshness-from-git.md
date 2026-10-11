@@ -106,6 +106,32 @@ finished: "2026-10-11 21:18:32"
 - [x] **Change:** delete the `timestamp:` line from each page with `sed`; nothing else. Run `go run ./cmd/acta wiki check` and show the output.
 - [x] **Commit:** `chore(wiki): drop timestamp from pages`
 
+## Polish
+
+### Task 07: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] `internal/tidy/tidy.go` `withFoldedWikiChecks`: pass `--no-divider` to `git interpret-trailers`, so a body line of `---` is not read as a patch start (the trailer landed inside the body and the message changed); test with a kept message holding a `---` line.
+- [x] Same call: pass `--if-exists add`, so a user's `trailer.ifexists=replace` config cannot drop a `Wiki-Checked:` value; test with `-c trailer.ifexists=replace` set in the temp repo config.
+- [x] `internal/gitc/gitc.go` `CommitEmpty`: refuse with the same `busy(repo)` guard `Commit`, `CommitOrFold` and `CommitPaths` use, so `acta wiki ok` cannot add a commit in the middle of a rebase or cherry-pick; test during a cherry-pick stop.
+- [x] `internal/cli/wiki.go` the `--type` comment in `cmdWiki`: it still says "the other two"; there are three other subcommands now.
+- [x] `.acta/wiki/wiki-freshness-from-git.md`: add `internal/gitc/gitc.go` and `internal/tidy/tidy.go` to `paths`, since the page describes the git queries and the trailer carry.
+- [x] Commit: `polish: review notes PLN-0134`
+
+## Review notes
+
+- Round 1 full tier (two reviewers, Spec and Standards), both CLEAN, no BLOCKER.
+- The wiki-close eval grades the page fix only; it never runs the `acta wiki ok` path (the scenario needs a real page fix).
+- A page fixed only inside a merge-conflict resolution does not count as a check; the page then reads stale until `acta wiki ok`, never falsely fresh.
+- `acta wiki ok` calls a page that exists but failed to load an "unknown wiki page"; it still refuses and makes no commit.
+- `CheckCommits` narrows with a case-sensitive `--grep=^Wiki-Checked:`; acta always writes that exact form.
+- On failure `acta wiki ok` prints the whole git command with the message, following the `run` helper pattern.
+- No git version guard for the `%(trailers:key=...)` format in `wiki check`; tidy already guards 2.40.
+- Polish review full tier (two reviewers), both CLEAN, no BLOCKER.
+- The `CommitEmpty` cherry-pick subtest passes without the busy guard, since git already refuses with unmerged paths; the rebase subtest is the one that proves the guard.
+- `acta wiki ok` now refuses on a detached HEAD, like the other commit helpers, where before it made a commit no branch pointed to.
+
 ## State
 
 ### Findings

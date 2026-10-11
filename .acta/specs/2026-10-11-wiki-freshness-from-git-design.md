@@ -3,6 +3,8 @@ parent: scratch/2026-10-11-wiki-recheck-merge-conflicts
 id: SPC-0124
 created: "2026-10-11 21:07:09"
 hash: lo9pw0v
+started: "2026-10-11 21:11:46"
+finished: "2026-10-11 21:18:32"
 ---
 # Wiki freshness from git, re-check without a page edit
 
