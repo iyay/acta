@@ -1,5 +1,8 @@
 ---
 closes: [DBT-0034.07, DBT-0044.05]
+id: SPC-0128
+created: "2026-10-12 09:45:52"
+hash: xc00wjw
 ---
 
 # acta Help, Version and Man Page
