@@ -212,7 +212,7 @@ When writing or changing any test, read the rules that keep tests honest in [wri
 
 Write the plan's cases and no others: every branch, error path, validation rule and guard the plan names gets one test, and you test it once, at the layer that owns it. A layer above tests wiring only: one success path and one error passed up from below. Do not prove a lower layer's cases again.
 
-Add adversarial inputs only where the input crosses a trust boundary: user input, files, network, auth, money, migrations, deletes. There, try empty, null, 0, negative, huge, unicode, off-by-one on both sides, wildcard and escape characters, a value from the wrong domain.
+Adversarial inputs go only where the input crosses a trust boundary: user input, files, network, auth, money, migrations, deletes. There the plan names which adversarial inputs to try, and you write the ones it names. The kinds to pick from: empty, null, 0, negative, huge, unicode, off-by-one on both sides, wildcard and escape characters, a value from the wrong domain.
 
 A bug fix gets a regression test that reproduces the exact bug and fails before the fix. A test for a path the plan does not cover is a note for a later plan, not work now.
 

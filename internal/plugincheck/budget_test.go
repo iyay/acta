@@ -27,7 +27,7 @@ var fileCaps = map[string]int{
 	"skills/bug/SKILL.md":                     2327,
 	"skills/build/SKILL.md":                   16222,
 	"skills/build/dispatch.md":                6477,
-	"skills/build/implementer-prompt.md":      7555,
+	"skills/build/implementer-prompt.md":      7557,
 	"skills/build/wiki.md":                    2750,
 	"skills/debug/SKILL.md":                   10401,
 	"skills/debug/condition-based-waiting.md": 3516,
@@ -47,8 +47,8 @@ var fileCaps = map[string]int{
 	"skills/setup/SKILL.md":                   5536,
 	"skills/shape/SKILL.md":                   7815,
 	"skills/shape/probe.md":                   1717,
-	"skills/slice/SKILL.md":                   12300,
-	"skills/tdd/SKILL.md":                     10333,
+	"skills/slice/SKILL.md":                   12453,
+	"skills/tdd/SKILL.md":                     10432,
 	"skills/tdd/writing-good-tests.md":        8239,
 }
 

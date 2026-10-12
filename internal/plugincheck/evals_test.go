@@ -65,7 +65,8 @@ func TestEvalCases(t *testing.T) {
 
 // TestEvalLLMGradersAreOnlyTheJudgementCalls keeps the judge, which costs a
 // model call, on the cases that cannot be checked with files or commands. The
-// lean-tests case reads what the tests say, so only a judge can grade it.
+// lean-tests case reads what the tests say, so only a judge can grade it. One
+// check there only lists the files the run made, so a regex does it for free.
 func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true}
 	for _, c := range evalCases {
@@ -77,6 +78,9 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			t.Errorf("case %s has no graders", c.folder)
 		}
 		for _, f := range files {
+			if c.folder == "lean-tests" && filepath.Base(f) == "no-extra-test-files.md" {
+				continue
+			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != want[c.folder] {
 				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}

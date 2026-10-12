@@ -394,12 +394,15 @@ func TestImplementerPromptWritesOnlyPlanCases(t *testing.T) {
 	for _, want := range []string{
 		"A case the plan does not name is not a test",
 		"Does every plan case have a test, and nothing beyond?",
+		"Did I handle every case the plan names?",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("implementer-prompt.md missing %q", want)
 		}
 	}
-	if strings.Contains(txt, "Are tests comprehensive?") {
-		t.Error("implementer-prompt.md still asks \"Are tests comprehensive?\"")
+	for _, old := range []string{"Are tests comprehensive?", "Are there edge cases I didn't handle?"} {
+		if strings.Contains(txt, old) {
+			t.Errorf("implementer-prompt.md still asks %q", old)
+		}
 	}
 }

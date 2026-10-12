@@ -79,18 +79,45 @@ finished: "2026-10-12 08:16:16"
 
 **verify:** The eval fails any run that tests a case the plan does not name, in any test file, and the omp runner never grades this case; and no sentence in the tdd, slice or build text both forbids unnamed cases and invites adversarial cases the plan did not name. List each grader and the failure it rejects, and each skill sentence about adversarial inputs or extra cases.
 
-- [ ] **B1:** `cli-wiring-only.md` FAILs on any case the plan does not name, parse or not (for example empty argv or a usage message); a new `regex` grader with `target: files` and `match: not_contains` FAILs when the run creates a test file other than `tests/test_age.py` and `tests/test_cli.py`.
-- [ ] **B2:** tag the case `claude-only` in `prompt.md` with a plain comment why (the omp runner judges the final reply and cannot read a `focus` file).
-- [ ] **[fix]** `slice/SKILL.md`: the `minimal` task shape clause and the full template's `verify:` placeholder also say an upper layer is wiring only, as spec Design 1 asks.
-- [ ] **[fix]** `tdd/SKILL.md` adversarial paragraph: keep `only where the input crosses a trust boundary`; at a trust boundary the plan names which adversarial inputs to try, and you write the ones it names. `slice/SKILL.md` verify section: a case that crosses a trust boundary names the adversarial inputs to try in its verify line. Pin both in plugincheck.
-- [ ] **[fix]** `implementer-prompt.md`: "Are there edge cases I didn't handle?" becomes "Did I handle every case the plan names?"; pin the new line and refuse the old one.
-- [ ] **[fix]** `age-three-cases.md`: an extra non-number string such as "1.5" inside the non-number test is fine; a separate test for a float is an added case.
-- [ ] **[fix]** `prompt.md` / `case.yaml`: drop Write and Edit from `allowed_tools` and fix the comment, since `FACTS.md` says those come only from `--allow-tools`; the Bash fallback line stays.
-- [ ] **Run:** `scripts/test ./internal/plugincheck ./plugin`, `go vet ./internal/plugincheck`, `gofmt -l internal`; then the eval once with the branch binary first on PATH: `scripts/eval --case lean-tests`; all graders pass.
-- [ ] **Commit:** `fix(evals): lean-tests graders catch every unnamed case`, with trailers `Task: PLN-baqoidu#1`, `Task: PLN-baqoidu#2`, `Task: PLN-baqoidu#3`, `Task: PLN-baqoidu#4`
+- [x] **B1:** `cli-wiring-only.md` FAILs on any case the plan does not name, parse or not (for example empty argv or a usage message); a new `regex` grader with `target: files` and `match: not_contains` FAILs when the run creates a test file other than `tests/test_age.py` and `tests/test_cli.py`.
+- [x] **B2:** tag the case `claude-only` in `prompt.md` with a plain comment why (the omp runner judges the final reply and cannot read a `focus` file).
+- [x] **[fix]** `slice/SKILL.md`: the `minimal` task shape clause and the full template's `verify:` placeholder also say an upper layer is wiring only, as spec Design 1 asks.
+- [x] **[fix]** `tdd/SKILL.md` adversarial paragraph: keep `only where the input crosses a trust boundary`; at a trust boundary the plan names which adversarial inputs to try, and you write the ones it names. `slice/SKILL.md` verify section: a case that crosses a trust boundary names the adversarial inputs to try in its verify line. Pin both in plugincheck.
+- [x] **[fix]** `implementer-prompt.md`: "Are there edge cases I didn't handle?" becomes "Did I handle every case the plan names?"; pin the new line and refuse the old one.
+- [x] **[fix]** `age-three-cases.md`: an extra non-number string such as "1.5" inside the non-number test is fine; a separate test for a float is an added case.
+- [x] **[fix]** `prompt.md` / `case.yaml`: drop Write and Edit from `allowed_tools` and fix the comment, since `FACTS.md` says those come only from `--allow-tools`; the Bash fallback line stays.
+- [x] **Run:** `scripts/test ./internal/plugincheck ./plugin`, `go vet ./internal/plugincheck`, `gofmt -l internal`; then the eval once with the branch binary first on PATH: `scripts/eval --case lean-tests`; all graders pass.
+- [x] **Commit:** `fix(evals): lean-tests graders catch every unnamed case`, with trailers `Task: PLN-baqoidu#1`, `Task: PLN-baqoidu#2`, `Task: PLN-baqoidu#3`, `Task: PLN-baqoidu#4`
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] `graders/no-extra-test-files.md`: the run writes test files with Bash, and FACTS.md does not say the `files` target sees Bash-made files, so switch the grader to `target: trace` with a pattern that finds a third test file name anywhere in the session; prove it with node: no match on the real trace `/private/tmp/e-UNeNwl/out/trace.jsonl`, a match on a sample Bash line that writes `tests/test_edge.py` and one that writes `src/age_test.py`.
+- [x] `graders/cli-wiring-only.md`: the one error test may use any bad age (a negative number or a non-number); FAIL only on a second error case or an unnamed case.
+- [x] `graders/age-three-cases.md`: rewrap the long comment line to the width of the others.
+- [x] `internal/plugincheck/evals_test.go`: phrase the llm rule as "a non-judgement case has no llm grader, and a judgement case has at least one", and drop the skip by file name.
+- [x] `internal/plugincheck/skill_slice_test.go`: pin each "wiring only" copy in `slice/SKILL.md` with its own surrounding text, so reverting either one goes red.
+- [x] Commit: `polish: review notes for PLN-0136`, trailers `Task: PLN-baqoidu#2` and `Task: PLN-baqoidu#4`
+
+Reverted in `revert: polish for PLN-0136`: the polish review found a BLOCKER in the new trace pattern (a bare `test_age.py`, as in `ls tests` output, fails a correct run). All five items moved to debt.
+
+## Review notes
+
+- Round 1: full tier, deep depth (no floor raised it): two reviewers, both BLOCKED; fact-check kept both BLOCKERs (cli grader too loose, omp runner ignores `focus`). Fix round 1 (Task 05). Round 2: two reviewers, both CLEAN. Polish (Task 06): full tier, two reviewers; one BLOCKER kept by the fact-check, so the polish commit was reverted and its items went to debt.
+- [note] `tdd/SKILL.md` "Cover the flag-off path of every flag the change adds" stays: a flag the change adds is a case the plan names.
+- [note] The tdd rationalization table ("miss the edge case you forgot", "doesn't prove edge cases") argues tests-first over tests-after; it does not ask for more cases.
+- [note] The tdd trust-boundary list is wider than the review deep lens wording; the plan named this list.
+- [note] Byte caps were raised to the exact new sizes; line caps unchanged.
+- [note] The dispatch (omp) path gets the unnamed-case rule only through tdd, since it sends house rules plus a brief, not `implementer-prompt.md`.
+- [note] The old plan `2026-10-03-output-style-and-lean.md` still names the renamed eval test; it is history.
+- [note] The `files`-target regex only catches `test_*.py` and `*_test.py` names; other names like `check_age.py` slip past.
+- [note] Neither the fix nor the polish commit records the eval output; it is in the implementer reports for this plan only.
 
 ## State
 
 ### Next
 
-All tasks done; next is acta:review round 1
+Fix round 1 committed; next is acta:review round 2

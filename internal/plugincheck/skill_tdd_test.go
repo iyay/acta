@@ -15,6 +15,7 @@ func TestSkillTDD(t *testing.T) {
 			"wiring only: one success path and one error passed up from below",
 			"only where the input crosses a trust boundary",
 			"Every case the plan names has a test, and no other",
+			"the plan names which adversarial inputs to try, and you write the ones it names",
 			// CheckSkill reads every markdown file in the folder, so this one is in writing-good-tests.md.
 			"Missing validation the plan names",
 		},

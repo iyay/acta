@@ -120,7 +120,7 @@ Subagent (general-purpose):
     **Completeness:**
     - Did I fully implement everything in the spec?
     - Did I miss any requirements?
-    - Are there edge cases I didn't handle?
+    - Did I handle every case the plan names?
 
     **Quality:**
     - Is this my best work?
