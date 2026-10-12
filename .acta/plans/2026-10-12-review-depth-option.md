@@ -6,6 +6,7 @@ id: PLN-0135
 created: "2026-10-12 07:03:08"
 hash: xego2mn
 started: "2026-10-12 07:05:58"
+finished: "2026-10-12 07:12:11"
 ---
 # Review depth option
 
@@ -64,6 +65,28 @@ started: "2026-10-12 07:05:58"
 
 **verify:** The case passes only when both a Spec and a Standards reviewer subagent run on a diff that changes an auth check while `.acta.yaml` sets `review_depth: quick`; a run that does one combined review or an inline review fails at least one grader.
 
-- [ ] **Failing test:** copy the shape of `plugin/evals/polish-full-review` (same scaffold guards, `./bin/acta` and `./bin/git`, `allowed_tools: [Skill, Read, Agent]`). The scaffold writes `.acta.yaml` with `review_depth: quick`, a one-task plan, and one commit that changes an auth check in `src/auth.py`. The two graders are `tool_used` on `Agent` with `input_match` `Spec` and `Standards`, each with a `# guards:` line naming `## Review depth`. Run `scripts/test ./internal/plugincheck`; it fails until the case layout is valid, then passes.
-- [ ] **Run:** with the branch binary on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`, then PATH first), `claude plugin eval` for this one case only; both graders pass.
-- [ ] **Commit:** `test(evals): review-depth-floor case`
+- [x] **Failing test:** copy the shape of `plugin/evals/polish-full-review` (same scaffold guards, `./bin/acta` and `./bin/git`, `allowed_tools: [Skill, Read, Agent]`). The scaffold writes `.acta.yaml` with `review_depth: quick`, a one-task plan, and one commit that changes an auth check in `src/auth.py`. The two graders are `tool_used` on `Agent` with `input_match` `Spec` and `Standards`, each with a `# guards:` line naming `## Review depth`. Run `scripts/test ./internal/plugincheck`; it fails until the case layout is valid, then passes.
+- [x] **Run:** with the branch binary on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`, then PATH first), `claude plugin eval` for this one case only; both graders pass.
+- [x] **Commit:** `test(evals): review-depth-floor case`
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Register `review-depth-floor` in `evalCases` in `internal/plugincheck/evals_test.go` with file `skills/review/SKILL.md` and phrase `## Review depth`, so renaming that heading turns a test red (Task 03 named the eval layout tests).
+- [x] Add `[--review-depth quick|standard|deep]` after `--plan-depth` in the user part of `configUsage` in `internal/cli/config_cmd.go`, and `[--review-depth R]` after `[--plan-depth D]` in the `--repo` part.
+- [x] In `plugin/skills/review/depth.md`: the floors line says no level, from the argument or the setting, goes below them; the standard and deep bullets say a light-tier diff keeps the inline light review; the quick reviewer runs on your own model, never lower.
+- [x] In `plugin/skills/review/depth.md` deep bullet (or `fact-check.md`): the orchestrator numbers the BLOCKERs before the fact-check, and a moved one becomes a NOTE that is sorted into a bucket like any other.
+- [x] Pin `With no BLOCKER it does not run` and `Rounds 2 and 3 hand the reviewers the earlier findings` in `TestReviewDepthFiles` (`internal/plugincheck/skill_review_test.go`), plus any new depth.md phrase from the boxes above; raise the depth.md byte cap in `internal/plugincheck/budget_test.go` only as far as needed.
+- [x] Commit: `polish: review notes for PLN-0135`
+
+## Review notes
+
+- Round 1: full tier, standard depth (no floor raised it): two reviewers, both CLEAN. Polish (Task 04): full tier (skill text), two reviewers, both CLEAN.
+- [note] The fact-check never moves a BLOCKER about a behaviour change, and most real BLOCKERs are one, so it will rarely move anything; this is the spec's own wording.
+- [note] Rounds 2 and 3 tell reviewers "do not repeat these", which could keep a reviewer quiet about a round-1 BLOCKER the fix did not fix; this is the spec's design.
+- [note] The eval grader `two-reviewers-dispatched` (min 2 Agent calls) would also pass one combined reviewer plus some other Agent call.
+- [note] The setup form label says "inline for docs-only changes", a little narrower than the light tier, which also covers comments, log text and test names.
+- [note] depth.md's byte cap has 18 bytes of room; the next wording fix raises it in the same commit.

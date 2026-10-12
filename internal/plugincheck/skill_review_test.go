@@ -130,6 +130,13 @@ func TestReviewDepthFiles(t *testing.T) {
 			"`dispatch` executor wrote runs at least `standard` in the full tier",
 			"never lower it below these",
 			"`## Review notes`",
+			"With no BLOCKER it does not run",
+			"Rounds 2 and 3 hand the reviewers the earlier findings",
+			"No level, from the argument or the setting, goes below them",
+			"A light-tier diff keeps the inline light review",
+			"It runs on your own model, never lower",
+			"The orchestrator numbers the BLOCKERs before the fact-check",
+			"becomes a NOTE, sorted into a bucket like any other",
 		},
 		"skills/review/fact-check.md": {
 			"(A) the code it names is not in the diff under review",

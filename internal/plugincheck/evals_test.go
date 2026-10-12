@@ -35,6 +35,7 @@ var evalCases = []struct {
 	{"polish-light-review", "skills/review/SKILL.md", "Light review: the orchestrator reads the full diff"},
 	{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""},
 	{"polish-full-review", "skills/review/SKILL.md", "## Review tiers"},
+	{"review-depth-floor", "skills/review/SKILL.md", "## Review depth"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it
