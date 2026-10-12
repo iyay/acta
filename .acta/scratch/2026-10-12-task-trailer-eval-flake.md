@@ -22,4 +22,8 @@ Not known yet: which Bash call carries the short id (the commit itself, or a pro
 
 ## Log
 
+### 2026-10-12
+
+2026-10-12, land of PLN-0136: branch runs 3, failed 2 (full suite run 0.50, then --runs 2 gave 1.00 and 0.50). Kept trace /private/tmp/e-YaFoaQ/out/trace.jsonl shows the commit itself carries the short id: `git commit -m "feat(shout): add the shout helper" ... Task: PLN-0001#1`. So the agent writes the wrong trailer form; the grader is right. The earlier `acta show PLN-0001 --path` probe also matches `PLN-0001` but not `Task: PLN-0001`. PLN-0136 changed implementer-prompt.md test lines only, not the trailer lines.
+
 ## Open questions
