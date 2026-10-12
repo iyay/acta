@@ -1,6 +1,8 @@
 ---
 id: BUG-0043
 hash: uus6jd5
+fixed_in: 96fbdbe8b7c85a99c52f2acb005d98d40c4fdda3
+finished: "2026-10-12 09:03:06"
 ---
 # acta tidy names the folded commit after the last chore commit
 

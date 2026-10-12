@@ -1,6 +1,7 @@
 package tidy
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -269,6 +270,50 @@ func TestNoKeptCommitMakesOneCommit(t *testing.T) {
 	}
 	if r.rev(res.Tip+"^{tree}") != r.rev("feat^{tree}") {
 		t.Fatal("tree differs")
+	}
+}
+
+// A full fold must keep the real message. A planning chore at the end of the
+// range must not hide it.
+func TestFullFoldTakesNewestNonChoreMessage(t *testing.T) {
+	cases := []struct {
+		name string
+		// Each step is a message and the file it touches.
+		steps [][2]string
+		want  int // index of the step whose message the tip must carry
+	}{
+		{"chores after a docs commit", [][2]string{
+			{"docs(wiki): narrow paths\n\nonly the touched paths now\n\nTask: PLN-x#1", "docs/wiki.md"},
+			{"chore(plan): tick and review notes", ".acta/plan.md"},
+			{"chore(spec): mark started", ".acta/spec.md"},
+		}, 0},
+		{"newer non-chore wins over older one", [][2]string{
+			{"docs: a", "docs/a.md"},
+			{"docs: b", "docs/b.md"},
+			{"chore(plan): c", ".acta/c.md"},
+		}, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := start(t)
+			for i, s := range tc.steps {
+				r.commit(s[0], d(i+1), "ann", map[string]string{s[1]: "x\n"})
+			}
+			want := r.git(nil, "log", "-1", "--format=%B", fmt.Sprintf("feat~%d", len(tc.steps)-1-tc.want))
+			res, err := Run(r.dir, opt("main", "feat"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.OldCount != len(tc.steps) || res.NewCount != 1 {
+				t.Fatalf("counts %+v", res)
+			}
+			if got := r.git(nil, "log", "-1", "--format=%B", res.Tip); got != want {
+				t.Fatalf("message %q, want %q", got, want)
+			}
+			if r.rev(res.Tip+"^{tree}") != r.rev("feat^{tree}") {
+				t.Fatal("tree differs")
+			}
+		})
 	}
 }
 

@@ -204,8 +204,16 @@ func plan(repo string, commits []commit, root, cur string, pendDate time.Time) (
 	}
 	if len(nodes) == 0 {
 		// Nothing was worth keeping. The whole range becomes one commit.
-		lastC := commits[len(commits)-1]
-		nodes = append(nodes, &node{tree: cur, src: lastC, date: pendDate, olds: pendOlds})
+		// A planning chore at the end must not hide the real message, so take
+		// the newest commit that is not a chore. All chores: take the newest.
+		src := commits[len(commits)-1]
+		for i := len(commits) - 1; i >= 0; i-- {
+			if subjectType(commits[i].subject) != "chore" {
+				src = commits[i]
+				break
+			}
+		}
+		nodes = append(nodes, &node{tree: cur, src: src, date: pendDate, olds: pendOlds})
 	}
 	return nodes, nil
 }
