@@ -3,6 +3,8 @@ parent: bugs/2026-10-11-tidy-names-fold-after-last-chore
 id: SPC-0127
 created: "2026-10-12 08:53:39"
 hash: dc9ddn3
+started: "2026-10-12 08:56:34"
+finished: "2026-10-12 08:57:33"
 ---
 # acta tidy names a full fold after its newest non-chore commit
 
