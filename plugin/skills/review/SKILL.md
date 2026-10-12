@@ -1,15 +1,19 @@
 ---
 name: review
-description: "acta: Use once, when every task of a plan is committed, on each fix round, and over a polish commit. By `## Review tiers`, runs two read-only reviewers (Spec axis and Standards axis) in parallel or a light inline review, over an explicit git range; sorts findings into BLOCKER or NOTE; stops at three rounds. CLEAN-round flow: `## After a CLEAN round`. Also covers receiving findings."
+description: "acta: Use once, when every task of a plan is committed, on each fix round, and over a polish commit. By `## Review tiers`, runs the read-only reviewers its depth names (Spec and Standards axis) or a light inline review, over an explicit git range; sorts findings into BLOCKER or NOTE; stops at three rounds. CLEAN-round flow: `## After a CLEAN round`. Also covers receiving findings."
 ---
 
 # Review
 
 Review happens once, when every task of the plan is committed, then once per fix round. Never after each task. A CLEAN round runs the polish flow in `## After a CLEAN round`.
 
+## Review depth
+
+Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting never lowers a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`.
+
 ## Two reviewers, in parallel
 
-A full review (`## Review tiers`) dispatches two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
+The standard and deep levels (`## Review depth`) dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
 
 **Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
 
@@ -88,14 +92,14 @@ A polish sent to another agent goes out with `acta dispatch send --round polish`
 
 ## Review tiers
 
-This is the one place that says how deep a review goes. Tiers apply to round 1 and to a polish commit. A fix round always takes the two reviewers.
+This is the one place that says which diffs get a full review; `## Review depth` says how deep it goes. Tiers apply to round 1 and to a polish commit. A fix round always takes the two reviewers.
 
 - **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
 - **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.
 
-Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the two reviewers. A full review means you dispatch the two reviewer subagents. Reading the diff yourself never replaces the two reviewers, however small the diff.
+Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the reviewers its depth names (`## Review depth`). A full review means you dispatch those reviewer subagents. Reading the diff yourself never replaces the reviewers its depth names, however small the diff.
 
-Work another agent wrote (the `dispatch` executor) takes the two reviewers in the full tier. A light review that finds any line outside the light tier switches to the full review.
+Work another agent wrote (the `dispatch` executor) takes at least the standard level in the full tier. A light review that finds any line outside the light tier switches to the full review.
 
 ## Receiving findings
 

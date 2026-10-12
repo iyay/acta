@@ -23,6 +23,7 @@ type Defaults struct {
 	BuildExecutor  string
 	SubagentModels string
 	PlanDepth      string
+	ReviewDepth    string
 	CommitHistory  string
 	Questions      string
 	OfferDispatch  bool
@@ -45,6 +46,9 @@ func FormDefaults(e Env) Defaults {
 	if c.PlanDepth == "" {
 		c.PlanDepth = "full"
 	}
+	if c.ReviewDepth == "" {
+		c.ReviewDepth = "standard"
+	}
 	if c.CommitHistory == "" {
 		c.CommitHistory = "tidy"
 	}
@@ -59,6 +63,7 @@ func FormDefaults(e Env) Defaults {
 		BuildExecutor:  c.BuildExecutor,
 		SubagentModels: c.SubagentModels,
 		PlanDepth:      c.PlanDepth,
+		ReviewDepth:    c.ReviewDepth,
 		CommitHistory:  c.CommitHistory,
 		Questions:      c.Questions,
 		OfferDispatch:  herdr,
@@ -158,6 +163,13 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("one: one question at a time", "one"),
 					huh.NewOption("probe: a batch, each with the agent's pick", "probe"),
 				).Value(&d.Questions), text(&d.Questions)},
+		{"Review depth", "",
+			huh.NewSelect[string]().
+				Options(
+					huh.NewOption("quick: one combined reviewer, inline for docs-only changes", "quick"),
+					huh.NewOption("standard: two reviewers, Spec and Standards", "standard"),
+					huh.NewOption("deep: two reviewers plus a fact-check of every BLOCKER", "deep"),
+				).Value(&d.ReviewDepth), text(&d.ReviewDepth)},
 	}
 
 	// Only a tool that still needs the plugin gets a row, and only when a
@@ -254,6 +266,7 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 		BuildExecutor:  d.BuildExecutor,
 		SubagentModels: d.SubagentModels,
 		PlanDepth:      d.PlanDepth,
+		ReviewDepth:    d.ReviewDepth,
 		CommitHistory:  d.CommitHistory,
 		Questions:      d.Questions,
 	}

@@ -74,6 +74,109 @@ func TestConfigShowPlanDepthDefault(t *testing.T) {
 	}
 }
 
+// review_depth shows as standard with the default mark when nothing sets it,
+// and JSON never carries the mark.
+func TestConfigShowReviewDepthDefault(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: standard (default)\n") {
+		t.Errorf("show lacks review_depth: standard (default):\n%s", out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["review_depth"] != "standard" {
+		t.Errorf("json review_depth %v, want standard", got["review_depth"])
+	}
+}
+
+// A review_depth set in either file gets no default mark; the repo one is
+// marked, and says what the user had when it differs.
+func TestConfigShowReviewDepthMarks(t *testing.T) {
+	cases := []struct{ global, repo, want string }{
+		{"review_depth: standard\n", "", "review_depth: standard\n"},
+		{"review_depth: quick\n", "", "review_depth: quick\n"},
+		{"", "review_depth: standard\n", "review_depth: standard (repo)\n"},
+		{"", "review_depth: deep\n", "review_depth: deep (repo; yours: standard)\n"},
+		{"review_depth: quick\n", "review_depth: deep\n", "review_depth: deep (repo; yours: quick)\n"},
+	}
+	for _, c := range cases {
+		repoWithGlobal(t, c.global, c.repo)
+		out := mustRun(t, "config", "show")
+		var line string
+		for _, l := range strings.Split(out, "\n") {
+			if strings.HasPrefix(l, "review_depth:") {
+				line = l
+			}
+		}
+		if !strings.Contains(out, c.want) || strings.Contains(line, "(default)") {
+			t.Errorf("global %q repo %q: want %q, no (default):\n%s", c.global, c.repo, c.want, out)
+		}
+	}
+	repoWithGlobal(t, "", "review_depth: deep\n")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["review_depth"] != "deep" {
+		t.Errorf("json review_depth %v, want deep", got["review_depth"])
+	}
+	if from, _ := got["from_repo"].([]any); len(from) != 1 || from[0] != "review_depth" {
+		t.Errorf("json from_repo %v", got["from_repo"])
+	}
+}
+
+// set --repo --review-depth writes .acta.yaml and never the global file;
+// without --repo it goes to the global file and never to .acta.yaml.
+func TestConfigSetReviewDepth(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n", "")
+	before, _ := os.ReadFile(globalPath)
+	mustRun(t, "config", "set", "--repo", "--review-depth", "deep")
+	if after, _ := os.ReadFile(globalPath); string(before) != string(after) {
+		t.Errorf("global file changed:\n%s", after)
+	}
+	if raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); !strings.Contains(string(raw), "review_depth: deep") {
+		t.Errorf(".acta.yaml:\n%s", raw)
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: deep (repo; yours: standard)\n") {
+		t.Errorf("show:\n%s", out)
+	}
+
+	dir, globalPath = repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--review-depth", "quick")
+	if v, _, err := config.LoadUser(globalPath); err != nil || v.ReviewDepth != "quick" {
+		t.Errorf("global file holds %+v, %v; want review_depth quick", v, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("set without --repo wrote .acta.yaml")
+	}
+	mustRun(t, "config", "set", "--repo", "--unset", "review_depth")
+}
+
+// A bad review_depth is refused with its name on both paths, and the files
+// keep the bytes they had.
+func TestConfigSetReviewDepthRefusesBadValue(t *testing.T) {
+	for _, bad := range []string{"minimal", "full", "Deep", "quick deep"} {
+		dir, globalPath := repoWithGlobal(t, "", "plan_depth: minimal\n")
+		repoBefore, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+		for _, args := range [][]string{
+			{"config", "set", "--repo", "--review-depth", bad},
+			{"config", "set", "--review-depth", bad},
+		} {
+			code, _, errs := runCodeOut(args...)
+			if code != exitBadInput || !strings.Contains(errs, "review_depth") {
+				t.Errorf("%v: exit %d stderr %q, want bad input naming review_depth", args, code, errs)
+			}
+		}
+		if after, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); string(after) != string(repoBefore) {
+			t.Errorf("%q: .acta.yaml changed:\n%s", bad, after)
+		}
+		if _, err := os.Stat(globalPath); err == nil {
+			t.Errorf("%q: the global file was written", bad)
+		}
+	}
+}
+
 // A plan_depth set in either file, even to full, gets no (default) mark.
 func TestConfigShowPlanDepthSetHasNoDefaultMark(t *testing.T) {
 	cases := []struct{ global, repo, want string }{

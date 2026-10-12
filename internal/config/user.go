@@ -25,6 +25,9 @@ type User struct {
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
+	// ReviewDepth says how much review a plan gets: quick, standard or deep.
+	// Empty means standard.
+	ReviewDepth string `yaml:"review_depth,omitempty"`
 	// CommitHistory says how a landed branch reads: tidy (one commit per
 	// code task, a straight line) or full (every commit plus a merge).
 	// Empty means tidy.
@@ -210,6 +213,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_depth must be minimal or full, not %q", ErrBadUser, v.PlanDepth)
 	}
+	switch v.ReviewDepth {
+	case "", "quick", "standard", "deep":
+	default:
+		return fmt.Errorf("%w: review_depth must be quick, standard or deep, not %q", ErrBadUser, v.ReviewDepth)
+	}
 	switch v.CommitHistory {
 	case "", "tidy", "full":
 	default:
@@ -238,6 +246,7 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
+	v.ReviewDepth = strings.TrimSpace(v.ReviewDepth)
 	v.CommitHistory = strings.TrimSpace(v.CommitHistory)
 	v.Questions = strings.TrimSpace(v.Questions)
 	v.CodingGuide = strings.TrimSpace(v.CodingGuide)

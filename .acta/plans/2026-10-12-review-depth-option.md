@@ -5,6 +5,8 @@ closes: [SCR-0061]
 id: PLN-0135
 created: "2026-10-12 07:03:08"
 hash: xego2mn
+started: "2026-10-12 07:05:58"
+finished: "2026-10-12 07:12:11"
 ---
 # Review depth option
 
@@ -36,10 +38,10 @@ hash: xego2mn
 
 **verify:** `review_depth` behaves like `plan_depth` on every path that reads or writes `plan_depth`. List each path checked: user file load and validate, repo `.acta.yaml` load and validate, repo beats user, `acta config show` text and JSON with and without the repo mark and the default mark, the repo set flag, the user set flag, the setup form default and save. Any value other than the three (and empty) is refused with an error naming `review_depth`.
 
-- [ ] **Failing test:** in `repo_user_test.go`, a repo `review_depth: deep` beats a user `quick` and a bad value fails naming the key; in `config_repo_test.go`, `acta config show` prints `review_depth: standard` with the default mark when unset and `deep` with the repo mark when the repo sets it, and the repo set flag writes it; in `form_test.go`, the form defaults to `standard` and saves the picked value. Run the three packages; they fail because the key does not exist.
-- [ ] **Change:** add `ReviewDepth string \`yaml:"review_depth,omitempty"\`` with a comment beside `PlanDepth` in `User`, trim and validate it next to `plan_depth`, add it to `RepoKeys` and each `plan_depth` case in `repo_user.go` with default `standard`, and mirror every `plan_depth` line in `config_cmd.go` (show text, show JSON, set flags) and `setup/form.go` (field, default, select with the three values, save).
-- [ ] **Run:** `scripts/test ./internal/config ./internal/cli ./internal/setup`, then `go vet ./internal/... && gofmt -l internal`; all pass, gofmt prints nothing.
-- [ ] **Commit:** `feat(config): review_depth setting`
+- [x] **Failing test:** in `repo_user_test.go`, a repo `review_depth: deep` beats a user `quick` and a bad value fails naming the key; in `config_repo_test.go`, `acta config show` prints `review_depth: standard` with the default mark when unset and `deep` with the repo mark when the repo sets it, and the repo set flag writes it; in `form_test.go`, the form defaults to `standard` and saves the picked value. Run the three packages; they fail because the key does not exist.
+- [x] **Change:** add `ReviewDepth string \`yaml:"review_depth,omitempty"\`` with a comment beside `PlanDepth` in `User`, trim and validate it next to `plan_depth`, add it to `RepoKeys` and each `plan_depth` case in `repo_user.go` with default `standard`, and mirror every `plan_depth` line in `config_cmd.go` (show text, show JSON, set flags) and `setup/form.go` (field, default, select with the three values, save).
+- [x] **Run:** `scripts/test ./internal/config ./internal/cli ./internal/setup`, then `go vet ./internal/... && gofmt -l internal`; all pass, gofmt prints nothing.
+- [x] **Commit:** `feat(config): review_depth setting`
 
 ### Task 02: review levels in the review skill
 
@@ -50,10 +52,10 @@ hash: xego2mn
 
 **verify:** No sentence in the review folder lets a review run below a floor or past three rounds. List every place that names how many reviewers run or how deep a review goes, and show each one agrees with `depth.md`: the level pick order, `quick` (light tier inline, else one combined reviewer), `standard` (today), `deep` (two reviewers then fact-check over BLOCKERs only, never on zero BLOCKERs), the three floors, and the review-notes line that names the level used and any floor that raised it.
 
-- [ ] **Failing test:** in `TestSkillReview`, add to `Must`: `review_depth`, `depth.md`, `fact-check.md`, `/acta:review quick|standard|deep`, `Fix rounds run at least \`standard\``; replace the `Must` line `Reading the diff yourself never replaces the two reviewers, however small the diff.` with `Reading the diff yourself never replaces the reviewers its depth names, however small the diff.`. Add a test that `depth.md` holds `quick`, `standard`, `deep`, the three floors, `never a round 4`; that `fact-check.md` holds both grounds, `In doubt, it stays a BLOCKER`, and the never-moved subjects (security, data loss, concurrency, behaviour change); and that `code-reviewer.md` holds `[EARLIER_FINDINGS]` and `every changed file gets its own pass`. Add byte caps for the two new files in `budget_test.go`. Run `scripts/test ./internal/plugincheck`; it fails.
-- [ ] **Change:** write `depth.md` from spec section 2 and 3, and `fact-check.md` as a read-only subagent prompt from spec section 2 (reasoning before the moved ids, each move names its ground and the line, first line states the model). In `SKILL.md`, add a short `## Review depth` section with the pick order and a link to `depth.md`, make `## Review tiers` say the full tier runs the reviewers the depth names, and keep `A fix round always takes the two reviewers.` In `code-reviewer.md`, add the coverage rule and an `## Earlier Findings` block with `[EARLIER_FINDINGS]` ("do not repeat these; look for others", empty in round 1) plus its placeholder line. Raise the `review/SKILL.md` and `code-reviewer.md` byte caps and the review `MaxLines` only as far as the new text needs.
-- [ ] **Run:** `scripts/test ./internal/plugincheck ./plugin`; pass.
-- [ ] **Commit:** `feat(review): review depth levels and fact-check pass`
+- [x] **Failing test:** in `TestSkillReview`, add to `Must`: `review_depth`, `depth.md`, `fact-check.md`, `/acta:review quick|standard|deep`, `Fix rounds run at least \`standard\``; replace the `Must` line `Reading the diff yourself never replaces the two reviewers, however small the diff.` with `Reading the diff yourself never replaces the reviewers its depth names, however small the diff.`. Add a test that `depth.md` holds `quick`, `standard`, `deep`, the three floors, `never a round 4`; that `fact-check.md` holds both grounds, `In doubt, it stays a BLOCKER`, and the never-moved subjects (security, data loss, concurrency, behaviour change); and that `code-reviewer.md` holds `[EARLIER_FINDINGS]` and `every changed file gets its own pass`. Add byte caps for the two new files in `budget_test.go`. Run `scripts/test ./internal/plugincheck`; it fails.
+- [x] **Change:** write `depth.md` from spec section 2 and 3, and `fact-check.md` as a read-only subagent prompt from spec section 2 (reasoning before the moved ids, each move names its ground and the line, first line states the model). In `SKILL.md`, add a short `## Review depth` section with the pick order and a link to `depth.md`, make `## Review tiers` say the full tier runs the reviewers the depth names, and keep `A fix round always takes the two reviewers.` In `code-reviewer.md`, add the coverage rule and an `## Earlier Findings` block with `[EARLIER_FINDINGS]` ("do not repeat these; look for others", empty in round 1) plus its placeholder line. Raise the `review/SKILL.md` and `code-reviewer.md` byte caps and the review `MaxLines` only as far as the new text needs.
+- [x] **Run:** `scripts/test ./internal/plugincheck ./plugin`; pass.
+- [x] **Commit:** `feat(review): review depth levels and fact-check pass`
 
 ### Task 03: eval for the sensitive-path floor
 
@@ -63,6 +65,28 @@ hash: xego2mn
 
 **verify:** The case passes only when both a Spec and a Standards reviewer subagent run on a diff that changes an auth check while `.acta.yaml` sets `review_depth: quick`; a run that does one combined review or an inline review fails at least one grader.
 
-- [ ] **Failing test:** copy the shape of `plugin/evals/polish-full-review` (same scaffold guards, `./bin/acta` and `./bin/git`, `allowed_tools: [Skill, Read, Agent]`). The scaffold writes `.acta.yaml` with `review_depth: quick`, a one-task plan, and one commit that changes an auth check in `src/auth.py`. The two graders are `tool_used` on `Agent` with `input_match` `Spec` and `Standards`, each with a `# guards:` line naming `## Review depth`. Run `scripts/test ./internal/plugincheck`; it fails until the case layout is valid, then passes.
-- [ ] **Run:** with the branch binary on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`, then PATH first), `claude plugin eval` for this one case only; both graders pass.
-- [ ] **Commit:** `test(evals): review-depth-floor case`
+- [x] **Failing test:** copy the shape of `plugin/evals/polish-full-review` (same scaffold guards, `./bin/acta` and `./bin/git`, `allowed_tools: [Skill, Read, Agent]`). The scaffold writes `.acta.yaml` with `review_depth: quick`, a one-task plan, and one commit that changes an auth check in `src/auth.py`. The two graders are `tool_used` on `Agent` with `input_match` `Spec` and `Standards`, each with a `# guards:` line naming `## Review depth`. Run `scripts/test ./internal/plugincheck`; it fails until the case layout is valid, then passes.
+- [x] **Run:** with the branch binary on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`, then PATH first), `claude plugin eval` for this one case only; both graders pass.
+- [x] **Commit:** `test(evals): review-depth-floor case`
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Register `review-depth-floor` in `evalCases` in `internal/plugincheck/evals_test.go` with file `skills/review/SKILL.md` and phrase `## Review depth`, so renaming that heading turns a test red (Task 03 named the eval layout tests).
+- [x] Add `[--review-depth quick|standard|deep]` after `--plan-depth` in the user part of `configUsage` in `internal/cli/config_cmd.go`, and `[--review-depth R]` after `[--plan-depth D]` in the `--repo` part.
+- [x] In `plugin/skills/review/depth.md`: the floors line says no level, from the argument or the setting, goes below them; the standard and deep bullets say a light-tier diff keeps the inline light review; the quick reviewer runs on your own model, never lower.
+- [x] In `plugin/skills/review/depth.md` deep bullet (or `fact-check.md`): the orchestrator numbers the BLOCKERs before the fact-check, and a moved one becomes a NOTE that is sorted into a bucket like any other.
+- [x] Pin `With no BLOCKER it does not run` and `Rounds 2 and 3 hand the reviewers the earlier findings` in `TestReviewDepthFiles` (`internal/plugincheck/skill_review_test.go`), plus any new depth.md phrase from the boxes above; raise the depth.md byte cap in `internal/plugincheck/budget_test.go` only as far as needed.
+- [x] Commit: `polish: review notes for PLN-0135`
+
+## Review notes
+
+- Round 1: full tier, standard depth (no floor raised it): two reviewers, both CLEAN. Polish (Task 04): full tier (skill text), two reviewers, both CLEAN.
+- [note] The fact-check never moves a BLOCKER about a behaviour change, and most real BLOCKERs are one, so it will rarely move anything; this is the spec's own wording.
+- [note] Rounds 2 and 3 tell reviewers "do not repeat these", which could keep a reviewer quiet about a round-1 BLOCKER the fix did not fix; this is the spec's design.
+- [note] The eval grader `two-reviewers-dispatched` (min 2 Agent calls) would also pass one combined reviewer plus some other Agent call.
+- [note] The setup form label says "inline for docs-only changes", a little narrower than the light tier, which also covers comments, log text and test names.
+- [note] depth.md's byte cap has 18 bytes of room; the next wording fix raises it in the same commit.

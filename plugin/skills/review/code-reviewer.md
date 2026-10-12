@@ -12,7 +12,7 @@ Subagent (general-purpose):
     design patterns, and best practices. Your job is to review completed work
     against its plan or requirements and identify issues before they cascade.
 
-    **Axis:** [Spec | Standards]
+    **Axis:** [Spec | Standards | both]
 
     First line of your report: the model you ran on.
 
@@ -47,7 +47,15 @@ Subagent (general-purpose):
     verdict counts for nothing. If the diff feels too large for one
     pass, review it in passes yourself and say so in your report.
 
+    ## Earlier Findings
+
+    [EARLIER_FINDINGS]
+
+    Do not repeat these; look for others.
+
     ## What to Check
+
+    Rule: every changed file gets its own pass. A file being small or secondary in the diff is no reason to skip it.
 
     Answer the review skill's three questions for your axis. Use the deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) only where the diff touches a trust boundary, auth, money, a migration or a delete.
 
@@ -87,3 +95,4 @@ Subagent (general-purpose):
 - `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
+- `[EARLIER_FINDINGS]` — the findings of the earlier rounds; empty in round 1
