@@ -384,3 +384,25 @@ func TestBuildTrailerEverywhere(t *testing.T) {
 		}
 	}
 }
+
+// TestImplementerPromptWritesOnlyPlanCases reads implementer-prompt.md on its
+// own. The implementer only reads this file, so the rule that an unnamed case
+// is reported and not tested has to live in it. The words are joined first,
+// since a line may wrap.
+func TestImplementerPromptWritesOnlyPlanCases(t *testing.T) {
+	txt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
+	for _, want := range []string{
+		"A case the plan does not name is not a test",
+		"Does every plan case have a test, and nothing beyond?",
+		"Did I handle every case the plan names?",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("implementer-prompt.md missing %q", want)
+		}
+	}
+	for _, old := range []string{"Are tests comprehensive?", "Are there edge cases I didn't handle?"} {
+		if strings.Contains(txt, old) {
+			t.Errorf("implementer-prompt.md still asks %q", old)
+		}
+	}
+}
