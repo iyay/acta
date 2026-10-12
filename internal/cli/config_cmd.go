@@ -68,6 +68,11 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// No file sets it. Say so, or setup thinks full was chosen.
 			depth, depthMark = "full", " (default)"
 		}
+		reviewDepth, reviewDepthMark := v.ReviewDepth, ""
+		if reviewDepth == "" {
+			// Same here: an unset review depth is standard, and show says so.
+			reviewDepth, reviewDepthMark = "standard", " (default)"
+		}
 		history, historyMark := v.CommitHistory, ""
 		if history == "" {
 			// Same here: an unset history is tidy, and show says so.
@@ -117,7 +122,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo, "overrides": overrideList,
+				"theme": v.Theme, "plan_depth": depth, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -135,6 +140,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
 		}
 		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
+		fmt.Fprintf(stdout, "review_depth: %s%s%s\n", reviewDepth, mark("review_depth"), reviewDepthMark)
 		fmt.Fprintf(stdout, "commit_history: %s%s%s\n", history, mark("commit_history"), historyMark)
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
@@ -159,6 +165,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
+		reviewDepth := fs.String("review-depth", "", "how much review a plan gets: quick, standard or deep")
 		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
@@ -169,7 +176,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
@@ -179,7 +186,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		if *repoOnly {
-			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "commit_history": *history, "coding_guide": *guide},
+			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide},
 				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
@@ -209,6 +216,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *depth != "" {
 			v.PlanDepth = *depth
+		}
+		if *reviewDepth != "" {
+			v.ReviewDepth = *reviewDepth
 		}
 		if *history != "" {
 			v.CommitHistory = *history
@@ -262,7 +272,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 // agent talks to everyone who clones the repo.
 func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, unset []string) int {
 	if personal {
-		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --commit-history and --coding-guide; set the others without --repo\n")
+		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --review-depth, --commit-history and --coding-guide; set the others without --repo\n")
 		return exitBadInput
 	}
 	set := map[string]string{}
@@ -310,6 +320,8 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, un
 			check.BuildExecutor = val
 		case k == "plan_depth":
 			check.PlanDepth = val
+		case k == "review_depth":
+			check.ReviewDepth = val
 		case k == "commit_history":
 			check.CommitHistory = val
 		case k == "coding_guide":

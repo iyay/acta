@@ -15,7 +15,7 @@ import (
 // RepoKeys are the user settings a repo may set for itself in .acta.yaml,
 // in the order config show prints them. Everything else in User belongs to
 // the person and follows them from repo to repo.
-var RepoKeys = []string{"repo_language", "build_executor", "plan_depth", "commit_history", "coding_guide"}
+var RepoKeys = []string{"repo_language", "build_executor", "plan_depth", "review_depth", "commit_history", "coding_guide"}
 
 // personalKeys may never sit in .acta.yaml: that file is committed, so a
 // value there would change how the agent talks to everyone who clones it.
@@ -56,6 +56,8 @@ func MergeRepo(v User, repoRoot string) (User, map[string]bool, error) {
 			out.BuildExecutor = strings.TrimSpace(s)
 		case "plan_depth":
 			out.PlanDepth = strings.TrimSpace(s)
+		case "review_depth":
+			out.ReviewDepth = strings.TrimSpace(s)
 		case "commit_history":
 			out.CommitHistory = strings.TrimSpace(s)
 		case "coding_guide":
@@ -136,6 +138,8 @@ func repoValue(u User, key string) string {
 		v = u.BuildExecutor
 	case "plan_depth":
 		v, def = u.PlanDepth, "full"
+	case "review_depth":
+		v, def = u.ReviewDepth, "standard"
 	case "commit_history":
 		v, def = u.CommitHistory, "tidy"
 	case "coding_guide":

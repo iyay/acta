@@ -58,9 +58,9 @@ func TestFormGroups(t *testing.T) {
 	}
 	groups := formGroupText(t, env)
 
-	// Nine question screens, then one screen with a yes/no per harness.
-	if len(groups) != 10 {
-		t.Fatalf("got %d groups, want 10", len(groups))
+	// Ten question screens, then one screen with a yes/no per harness.
+	if len(groups) != 11 {
+		t.Fatalf("got %d groups, want 11", len(groups))
 	}
 
 	// Fixed order: every screen opens with the blue-diamond title line,
@@ -70,16 +70,17 @@ func TestFormGroups(t *testing.T) {
 		count string
 		desc  string
 	}{
-		{"Chat language", "(1/10)", "The language the agent chats in. Code and files use the repo language."},
-		{"Reply style", "(2/10)", ""},
-		{"Tone", "(3/10)", "Optional. Your own words, like \"casual, no jargon\"."},
-		{"Repo language", "(4/10)", "Code, comments, commits, specs and plans."},
-		{"Build executor", "(5/10)", ""},
-		{"Subagent models", "(6/10)", "Claude Code only."},
-		{"Plan detail", "(7/10)", ""},
-		{"Commit history", "(8/10)", ""},
-		{"Questions", "(9/10)", ""},
-		{"Plugin install", "(10/10)", "One row per tool found."},
+		{"Chat language", "(1/11)", "The language the agent chats in. Code and files use the repo language."},
+		{"Reply style", "(2/11)", ""},
+		{"Tone", "(3/11)", "Optional. Your own words, like \"casual, no jargon\"."},
+		{"Repo language", "(4/11)", "Code, comments, commits, specs and plans."},
+		{"Build executor", "(5/11)", ""},
+		{"Subagent models", "(6/11)", "Claude Code only."},
+		{"Plan detail", "(7/11)", ""},
+		{"Commit history", "(8/11)", ""},
+		{"Questions", "(9/11)", ""},
+		{"Review depth", "(10/11)", ""},
+		{"Plugin install", "(11/11)", "One row per tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")
@@ -100,8 +101,8 @@ func TestFormGroups(t *testing.T) {
 
 	// The harness screen lists every harness found.
 	content := formGroupContent(t, env)
-	if !strings.Contains(content[9], "claude") || !strings.Contains(content[9], "omp") {
-		t.Errorf("harness group lists every harness, got %q", content[9])
+	if !strings.Contains(content[10], "claude") || !strings.Contains(content[10], "omp") {
+		t.Errorf("harness group lists every harness, got %q", content[10])
 	}
 }
 
@@ -113,12 +114,12 @@ func TestFormGroupsNoHarness(t *testing.T) {
 
 	env := setup.Env{Current: config.User{}}
 	groups := formGroupText(t, env)
-	if len(groups) != 9 {
-		t.Fatalf("got %d groups, want 9", len(groups))
+	if len(groups) != 10 {
+		t.Fatalf("got %d groups, want 10", len(groups))
 	}
 	content := formGroupContent(t, env)
-	if strings.Contains(content[8], "claude") || strings.Contains(content[8], "omp") {
-		t.Errorf("last group must not name a harness, got %q", content[8])
+	if strings.Contains(content[9], "claude") || strings.Contains(content[9], "omp") {
+		t.Errorf("last group must not name a harness, got %q", content[9])
 	}
 }
 
@@ -185,6 +186,37 @@ func TestFormPlanDepthTitle(t *testing.T) {
 	}
 }
 
+// TestFormReviewDepth checks the review depth question sits right after the
+// questions one, shows the three levels, starts on standard when nothing is saved,
+// and starts on the saved value otherwise.
+func TestFormReviewDepth(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
+	t.Setenv("TMPDIR", home)
+
+	header := formGroupText(t, setup.Env{Current: config.User{}})[9]
+	if !strings.Contains(header, "Review depth") {
+		t.Errorf("question after questions must read %q, got %q", "Review depth", header)
+	}
+	content := formGroupContent(t, setup.Env{Current: config.User{}})[9]
+	for _, want := range []string{"quick", "standard", "deep", "› ● standard"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("review depth screen must show %q, got %q", want, content)
+		}
+	}
+	if d := setup.FormDefaults(setup.Env{}); d.ReviewDepth != "standard" {
+		t.Errorf("default = %q, want standard", d.ReviewDepth)
+	}
+	if d := setup.FormDefaults(setup.Env{Current: config.User{ReviewDepth: "deep"}}); d.ReviewDepth != "deep" {
+		t.Errorf("default from config = %q, want deep", d.ReviewDepth)
+	}
+	shown := formGroupContent(t, setup.Env{Current: config.User{ReviewDepth: "deep"}})[9]
+	if !strings.Contains(shown, "› ● deep") {
+		t.Errorf("screen must start on deep, got %q", shown)
+	}
+}
+
 // TestFormRail checks every content line of every screen sits on the rail,
 // and that select options use the clack marks: ● chosen, ○ the rest, › on
 // the focused row.
@@ -210,8 +242,8 @@ func TestFormRail(t *testing.T) {
 		}
 	}
 	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
-	if !strings.Contains(content[9], "claude") || !strings.Contains(content[9], "● Yes  ○ No") {
-		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[9])
+	if !strings.Contains(content[10], "claude") || !strings.Contains(content[10], "● Yes  ○ No") {
+		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[10])
 	}
 }
 
@@ -244,10 +276,10 @@ func TestFormInstallRows(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			content := formGroupContent(t, c.env)
 			if c.wantGroup {
-				if len(content) != 10 {
-					t.Fatalf("got %d groups, want 10", len(content))
+				if len(content) != 11 {
+					t.Fatalf("got %d groups, want 11", len(content))
 				}
-				last := content[9]
+				last := content[10]
 				for _, h := range c.has {
 					if !strings.Contains(last, h) {
 						t.Errorf("install screen misses %q: %q", h, last)
@@ -260,8 +292,8 @@ func TestFormInstallRows(t *testing.T) {
 				}
 				return
 			}
-			if len(content) != 9 {
-				t.Fatalf("got %d groups, want 9 (no install screen)", len(content))
+			if len(content) != 10 {
+				t.Fatalf("got %d groups, want 10 (no install screen)", len(content))
 			}
 		})
 	}
@@ -295,7 +327,7 @@ func TestFormFirstRunEmpty(t *testing.T) {
 		t.Fatalf("text defaults = %q/%q/%q, want all empty", d.Language, d.RepoLanguage, d.Tone)
 	}
 	if d.Style != "adhd" || d.BuildExecutor != "subagent" || d.SubagentModels != "default" ||
-		d.PlanDepth != "full" || d.Questions != "one" {
+		d.PlanDepth != "full" || d.ReviewDepth != "standard" || d.Questions != "one" {
 		t.Fatalf("select defaults = %+v, want the first options", d)
 	}
 

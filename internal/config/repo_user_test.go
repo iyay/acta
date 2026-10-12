@@ -55,6 +55,23 @@ func TestMergeRepoBeatsGlobal(t *testing.T) {
 	}
 }
 
+// review_depth follows plan_depth: the repo value beats the user one, the
+// key shows in the from set, and a blank or non-text value is ignored.
+func TestMergeRepoReviewDepthBeatsGlobal(t *testing.T) {
+	global := UserDefault()
+	global.ReviewDepth = "quick"
+	got, from, err := MergeRepo(global, writeRepoYAML(t, "review_depth: deep\n"))
+	if err != nil || got.ReviewDepth != "deep" || !from["review_depth"] || len(from) != 1 {
+		t.Errorf("repo deep over user quick: %+v %v %v", got, from, err)
+	}
+	for _, body := range []string{"review_depth: \"\"\n", "review_depth: 3\n", "review_depth:\n  - deep\n"} {
+		got, from, err := MergeRepo(global, writeRepoYAML(t, body))
+		if err != nil || got.ReviewDepth != "quick" || len(from) != 0 {
+			t.Errorf("%q: %+v %v %v, want user quick kept", body, got, from, err)
+		}
+	}
+}
+
 // No .acta.yaml means the global config is the whole answer.
 func TestMergeRepoMissingFile(t *testing.T) {
 	global := User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
@@ -72,6 +89,58 @@ func TestMergeRepoRefusesPersonalKeys(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), k) {
 			t.Errorf("%s in .acta.yaml: err %v, want one naming the key", k, err)
 		}
+	}
+}
+
+// A bad review_depth fails the same way in either file and names the key.
+func TestReviewDepthBadValue(t *testing.T) {
+	for _, bad := range []string{"review_depth: minimal\n", "review_depth: Deep\n", "review_depth: full\n"} {
+		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, bad))
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_depth") {
+			t.Errorf(".acta.yaml %q: err %v, want ErrBadUser naming review_depth", bad, err)
+		}
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = LoadUser(path)
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_depth") {
+			t.Errorf("global %q: err %v, want ErrBadUser naming review_depth", bad, err)
+		}
+	}
+	for _, ok := range []string{"", "quick", "standard", "deep"} {
+		v := UserDefault()
+		v.ReviewDepth = ok
+		if err := v.Validate(); err != nil {
+			t.Errorf("review_depth %q: %v", ok, err)
+		}
+	}
+}
+
+// review_depth is a repo key: it saves into .acta.yaml, shows as an override
+// only when it differs from the user's value, and an unset user value counts
+// as standard.
+func TestReviewDepthRepoKey(t *testing.T) {
+	fresh := t.TempDir()
+	if _, err := SaveRepoUser(fresh, map[string]string{"review_depth": "deep"}); err != nil {
+		t.Fatal(err)
+	}
+	if v, from, err := MergeRepo(UserDefault(), fresh); err != nil || v.ReviewDepth != "deep" || !from["review_depth"] {
+		t.Errorf("fresh file: %+v %v %v", v, from, err)
+	}
+	got, err := Overrides(UserDefault(), fresh)
+	if err != nil || len(got) != 1 || got[0] != (Override{"review_depth", "deep", "standard"}) {
+		t.Errorf("unset user: %+v, %v, want deep over standard", got, err)
+	}
+	same := writeRepoYAML(t, "review_depth: standard\n")
+	if got, err := Overrides(UserDefault(), same); err != nil || len(got) != 0 {
+		t.Errorf("standard over unset: %+v, %v, want no override", got, err)
+	}
+	if _, err := UnsetRepoUser(fresh, []string{"review_depth"}); err != nil {
+		t.Fatal(err)
+	}
+	if v, from, err := MergeRepo(UserDefault(), fresh); err != nil || v.ReviewDepth != "" || len(from) != 0 {
+		t.Errorf("after unset: %+v %v %v", v, from, err)
 	}
 }
 
