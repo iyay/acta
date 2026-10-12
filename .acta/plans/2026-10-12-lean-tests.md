@@ -5,6 +5,7 @@ id: PLN-0136
 created: "2026-10-12 08:08:00"
 hash: baqoidu
 started: "2026-10-12 08:10:19"
+finished: "2026-10-12 08:16:16"
 ---
 **Goal:** The tdd, slice and build skill text makes implementers write one test per case the plan names, at the layer that owns it, with upper layers testing wiring only and adversarial inputs kept to trust boundaries.
 
@@ -65,13 +66,31 @@ started: "2026-10-12 08:10:19"
 
 **verify:** The case fails a run that tests a lower-layer case again at the upper layer or adds a case the plan does not name, and passes a run that writes exactly the plan's cases. Name which grader rejects each of those two failures.
 
-- [ ] **Failing test:** register `{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"}` in `evalCases`; `scripts/test ./internal/plugincheck -run TestEvalCases` fails until the folder is valid.
-- [ ] **Change:** copy the shape of `plugin/evals/review-depth-floor` (scaffold guards, `./bin/acta`, `./bin/git`, voice file). The scaffold writes a Python repo with a minimal two-task plan: task 1 `src/age.py` `parse_age(text)` with three cases (a whole number returns it, a negative number raises `ValueError`, a non-number raises `ValueError`); task 2 `src/cli.py` `main(argv)` prints the age, wiring only. The prompt asks for both tasks with acta:tdd, no worktree, no review. Graders: one `llm` on `{ source: file, path: tests/test_cli.py }` (FAIL when it re-tests the negative or non-number rules beyond one passed-up error), one `llm` on `tests/test_age.py` (FAIL on any case beyond the three, like empty, unicode or huge), each with a `# guards:` line; allow `Skill, Read, Write, Edit, Bash`.
-- [ ] **Run:** with the branch binary first on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`), `claude plugin eval` for this one case only; both graders pass.
-- [ ] **Commit:** `test(evals): lean-tests case`
+- [x] **Failing test:** register `{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"}` in `evalCases`; `scripts/test ./internal/plugincheck -run TestEvalCases` fails until the folder is valid.
+- [x] **Change:** copy the shape of `plugin/evals/review-depth-floor` (scaffold guards, `./bin/acta`, `./bin/git`, voice file). The scaffold writes a Python repo with a minimal two-task plan: task 1 `src/age.py` `parse_age(text)` with three cases (a whole number returns it, a negative number raises `ValueError`, a non-number raises `ValueError`); task 2 `src/cli.py` `main(argv)` prints the age, wiring only. The prompt asks for both tasks with acta:tdd, no worktree, no review. Graders: one `llm` on `{ source: file, path: tests/test_cli.py }` (FAIL when it re-tests the negative or non-number rules beyond one passed-up error), one `llm` on `tests/test_age.py` (FAIL on any case beyond the three, like empty, unicode or huge), each with a `# guards:` line; allow `Skill, Read, Write, Edit, Bash`.
+- [x] **Run:** with the branch binary first on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`), `claude plugin eval` for this one case only; both graders pass.
+- [x] **Commit:** `test(evals): lean-tests case`
+
+## Fix round 1
+
+### Task 05: Fix round 1
+
+**Files:** Modify `plugin/evals/lean-tests/graders/cli-wiring-only.md`, `plugin/evals/lean-tests/graders/age-three-cases.md`, `plugin/evals/lean-tests/prompt.md`, `plugin/evals/lean-tests/case.yaml`, `plugin/skills/tdd/SKILL.md`, `plugin/skills/slice/SKILL.md`, `plugin/skills/build/implementer-prompt.md`, `internal/plugincheck/skill_tdd_test.go`, `internal/plugincheck/skill_slice_test.go`, `internal/plugincheck/skill_build_test.go`, `internal/plugincheck/budget_test.go`; Create one new grader file under `plugin/evals/lean-tests/graders/`
+
+**verify:** The eval fails any run that tests a case the plan does not name, in any test file, and the omp runner never grades this case; and no sentence in the tdd, slice or build text both forbids unnamed cases and invites adversarial cases the plan did not name. List each grader and the failure it rejects, and each skill sentence about adversarial inputs or extra cases.
+
+- [ ] **B1:** `cli-wiring-only.md` FAILs on any case the plan does not name, parse or not (for example empty argv or a usage message); a new `regex` grader with `target: files` and `match: not_contains` FAILs when the run creates a test file other than `tests/test_age.py` and `tests/test_cli.py`.
+- [ ] **B2:** tag the case `claude-only` in `prompt.md` with a plain comment why (the omp runner judges the final reply and cannot read a `focus` file).
+- [ ] **[fix]** `slice/SKILL.md`: the `minimal` task shape clause and the full template's `verify:` placeholder also say an upper layer is wiring only, as spec Design 1 asks.
+- [ ] **[fix]** `tdd/SKILL.md` adversarial paragraph: keep `only where the input crosses a trust boundary`; at a trust boundary the plan names which adversarial inputs to try, and you write the ones it names. `slice/SKILL.md` verify section: a case that crosses a trust boundary names the adversarial inputs to try in its verify line. Pin both in plugincheck.
+- [ ] **[fix]** `implementer-prompt.md`: "Are there edge cases I didn't handle?" becomes "Did I handle every case the plan names?"; pin the new line and refuse the old one.
+- [ ] **[fix]** `age-three-cases.md`: an extra non-number string such as "1.5" inside the non-number test is fine; a separate test for a float is an added case.
+- [ ] **[fix]** `prompt.md` / `case.yaml`: drop Write and Edit from `allowed_tools` and fix the comment, since `FACTS.md` says those come only from `--allow-tools`; the Bash fallback line stays.
+- [ ] **Run:** `scripts/test ./internal/plugincheck ./plugin`, `go vet ./internal/plugincheck`, `gofmt -l internal`; then the eval once with the branch binary first on PATH: `scripts/eval --case lean-tests`; all graders pass.
+- [ ] **Commit:** `fix(evals): lean-tests graders catch every unnamed case`, with trailers `Task: PLN-baqoidu#1`, `Task: PLN-baqoidu#2`, `Task: PLN-baqoidu#3`, `Task: PLN-baqoidu#4`
 
 ## State
 
 ### Next
 
-Task 04: lean-tests eval case
+All tasks done; next is acta:review round 1

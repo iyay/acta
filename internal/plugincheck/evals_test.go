@@ -36,6 +36,7 @@ var evalCases = []struct {
 	{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""},
 	{"polish-full-review", "skills/review/SKILL.md", "## Review tiers"},
 	{"review-depth-floor", "skills/review/SKILL.md", "## Review depth"},
+	{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it
@@ -62,10 +63,11 @@ func TestEvalCases(t *testing.T) {
 	}
 }
 
-// TestEvalLLMGradersAreOnlyTheTwoJudgementCalls keeps the judge, which costs a
-// model call, on the two cases that cannot be checked with files or commands.
-func TestEvalLLMGradersAreOnlyTheTwoJudgementCalls(t *testing.T) {
-	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true}
+// TestEvalLLMGradersAreOnlyTheJudgementCalls keeps the judge, which costs a
+// model call, on the cases that cannot be checked with files or commands. The
+// lean-tests case reads what the tests say, so only a judge can grade it.
+func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
+	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
 		if err != nil {
@@ -76,7 +78,7 @@ func TestEvalLLMGradersAreOnlyTheTwoJudgementCalls(t *testing.T) {
 		}
 		for _, f := range files {
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != want[c.folder] {
-				t.Errorf("case %s grader %s: an llm grader belongs only to the two judgement cases", c.folder, filepath.Base(f))
+				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}
 		}
 	}

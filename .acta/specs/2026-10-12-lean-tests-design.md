@@ -2,6 +2,8 @@
 id: SPC-0126
 created: "2026-10-12 08:04:30"
 hash: edur6db
+started: "2026-10-12 08:10:19"
+finished: "2026-10-12 08:16:16"
 ---
 # Lean tests: one test per behaviour, at the layer that owns it
 
