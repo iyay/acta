@@ -55,9 +55,9 @@ started: "2026-10-12 08:10:19"
 
 **verify:** The implementer prompt never invites a test for a case the plan does not name. List every line of the prompt that mentions tests (work steps, self-review, report format) and show each agrees, and that an unnamed case goes to the report as one line.
 
-- [ ] **Failing test:** a test in `skill_build_test.go` that reads `implementer-prompt.md` on its own (like `TestBuildStartTickPrompt`) requires `A case the plan does not name is not a test` and `Does every plan case have a test, and nothing beyond?` and refuses `Are tests comprehensive?`; `scripts/test ./internal/plugincheck -run 'TestBuild|TestBudget'` fails.
-- [ ] **Change:** add the unnamed-case rule next to the `acta:tdd` work step (it goes in the report as one line, the orchestrator decides), add one report line for it, and swap the self-review question.
-- [ ] **Commit:** `feat(build): implementers write only the plan's test cases`
+- [x] **Failing test:** a test in `skill_build_test.go` that reads `implementer-prompt.md` on its own (like `TestBuildStartTickPrompt`) requires `A case the plan does not name is not a test` and `Does every plan case have a test, and nothing beyond?` and refuses `Are tests comprehensive?`; `scripts/test ./internal/plugincheck -run 'TestBuild|TestBudget'` fails.
+- [x] **Change:** add the unnamed-case rule next to the `acta:tdd` work step (it goes in the report as one line, the orchestrator decides), add one report line for it, and swap the self-review question.
+- [x] **Commit:** `feat(build): implementers write only the plan's test cases`
 
 ### Task 04: lean-tests eval
 
@@ -74,4 +74,4 @@ started: "2026-10-12 08:10:19"
 
 ### Next
 
-Task 03: implementer prompt writes only the plan cases
+Task 04: lean-tests eval case

@@ -39,7 +39,9 @@ Subagent (general-purpose):
     Once you're clear on requirements:
     Very first action: run `acta tick [TASK_ID] --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
     1. `acta:tdd` at every step: write the failing test first, watch it fail,
-       then the minimum code, watch it pass.
+       then the minimum code, watch it pass. A case the plan does not name is
+       not a test: put it in your report as one line, and the orchestrator
+       decides.
     2. Implement exactly what the task specifies — the task's verify line
        is the definition of done.
     3. Verify the task's verify line passes.
@@ -133,7 +135,7 @@ Subagent (general-purpose):
     **Testing:**
     - Do tests actually verify behavior (not just mock behavior)?
     - Did every change start from a failing test I watched fail?
-    - Are tests comprehensive?
+    - Does every plan case have a test, and nothing beyond?
     - Is the test output pristine (no stray warnings or noise)?
 
     If you find issues during self-review, fix them now before reporting.
@@ -146,6 +148,7 @@ Subagent (general-purpose):
     - TDD evidence, one RED line (command + key failing line) and one GREEN
       line (command + passing output)
     - Files changed
+    - Cases the plan did not name, one line each, or none
     - Self-review findings
     - Concerns, if any
 
