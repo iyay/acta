@@ -1,5 +1,8 @@
 ---
 parent: scratch/2026-10-12-review-depth-option
+id: SPC-0125
+created: "2026-10-12 07:01:50"
+hash: pu65prv
 ---
 # Review depth option
 

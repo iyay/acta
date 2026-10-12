@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-10-12 06:53:28"
 schema: "1"
 started: "2026-10-12 06:53:38"
+finished: "2026-10-12 07:01:50"
 ---
 # Review depth option, ideas from alibaba/open-code-review
 
