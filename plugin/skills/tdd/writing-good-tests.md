@@ -162,7 +162,7 @@ should fail for each realistic mutation:
 - Wrong branch handler
 - Missing state change or side effect
 - Empty or default return
-- Missing validation for zero, empty, nil, unauthorized, or malformed input
+- Missing validation the plan names
 
 A mutation nothing catches marks the behavior as unprotected — or the
 test as tautological.

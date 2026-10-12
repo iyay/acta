@@ -210,7 +210,11 @@ When writing or changing any test, read the rules that keep tests honest in [wri
 
 ## Cover the plan, not the universe
 
-Write one test per behaviour the plan names: every branch, error path, validation rule and guard the plan adds. Add adversarial inputs where the input can take them: empty, null, 0, negative, huge, unicode, off-by-one on both sides, wildcard and escape characters, a value from the wrong domain. A bug fix gets a regression test that reproduces the exact bug and fails before the fix. A test for a path the plan does not cover is a note for a later plan, not work now.
+Write the plan's cases and no others: every branch, error path, validation rule and guard the plan names gets one test, and you test it once, at the layer that owns it. A layer above tests wiring only: one success path and one error passed up from below. Do not prove a lower layer's cases again.
+
+Add adversarial inputs only where the input crosses a trust boundary: user input, files, network, auth, money, migrations, deletes. There, try empty, null, 0, negative, huge, unicode, off-by-one on both sides, wildcard and escape characters, a value from the wrong domain.
+
+A bug fix gets a regression test that reproduces the exact bug and fails before the fix. A test for a path the plan does not cover is a note for a later plan, not work now.
 
 ## Quality bar
 
@@ -294,14 +298,13 @@ Extract validation for multiple fields if needed.
 
 Before marking work complete:
 
-- [ ] Every new function/method has a test
+- [ ] Every case the plan names has a test, and no other
 - [ ] Watched each test fail before implementing
 - [ ] Each test failed for expected reason (feature missing, not typo)
 - [ ] Wrote minimal code to pass each test
 - [ ] The task's tests and the tests of the code it touched pass (the full suite runs in `acta:land`)
 - [ ] Output pristine (no errors, warnings)
 - [ ] Tests use real code (mocks only if unavoidable)
-- [ ] Edge cases and errors covered
 
 Can't check all boxes? You skipped TDD. Start over.
 

@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0136
 created: "2026-10-12 08:08:00"
 hash: baqoidu
+started: "2026-10-12 08:10:19"
 ---
 **Goal:** The tdd, slice and build skill text makes implementers write one test per case the plan names, at the layer that owns it, with upper layers testing wiring only and adversarial inputs kept to trust boundaries.
 
@@ -34,9 +35,9 @@ hash: baqoidu
 
 **verify:** No sentence in the tdd folder asks for a test beyond the plan's cases or for the same case at a second layer, and the adversarial list applies only at trust boundaries. List every sentence in `SKILL.md` and `writing-good-tests.md` that tells the reader which tests to write (cover section, quality bar, checklist, mutation check, rationalization table) and show each agrees.
 
-- [ ] **Failing test:** in `TestSkillTDD`, add the tdd pinned phrases and `Missing validation the plan names` to `Must` (or a sibling test reading `writing-good-tests.md` if `CheckSkill` does not read it) and the tdd removed phrases to `MustNot`; `scripts/test ./internal/plugincheck -run 'TestSkillTDD|TestBudget'` fails on the missing phrases.
-- [ ] **Change:** rewrite `## Cover the plan, not the universe` (plan's cases, tested once at the owning layer, upper layers wiring only, adversarial list only at trust boundaries named as user input, files, network, auth, money, migrations, deletes), swap the two checklist lines for the one pinned line, and change the mutation item in `writing-good-tests.md`.
-- [ ] **Commit:** `feat(tdd): one test per plan case, at the layer that owns it`
+- [x] **Failing test:** in `TestSkillTDD`, add the tdd pinned phrases and `Missing validation the plan names` to `Must` (or a sibling test reading `writing-good-tests.md` if `CheckSkill` does not read it) and the tdd removed phrases to `MustNot`; `scripts/test ./internal/plugincheck -run 'TestSkillTDD|TestBudget'` fails on the missing phrases.
+- [x] **Change:** rewrite `## Cover the plan, not the universe` (plan's cases, tested once at the owning layer, upper layers wiring only, adversarial list only at trust boundaries named as user input, files, network, auth, money, migrations, deletes), swap the two checklist lines for the one pinned line, and change the mutation item in `writing-good-tests.md`.
+- [x] **Commit:** `feat(tdd): one test per plan case, at the layer that owns it`
 
 ### Task 02: slice names each case once
 
@@ -68,3 +69,9 @@ hash: baqoidu
 - [ ] **Change:** copy the shape of `plugin/evals/review-depth-floor` (scaffold guards, `./bin/acta`, `./bin/git`, voice file). The scaffold writes a Python repo with a minimal two-task plan: task 1 `src/age.py` `parse_age(text)` with three cases (a whole number returns it, a negative number raises `ValueError`, a non-number raises `ValueError`); task 2 `src/cli.py` `main(argv)` prints the age, wiring only. The prompt asks for both tasks with acta:tdd, no worktree, no review. Graders: one `llm` on `{ source: file, path: tests/test_cli.py }` (FAIL when it re-tests the negative or non-number rules beyond one passed-up error), one `llm` on `tests/test_age.py` (FAIL on any case beyond the three, like empty, unicode or huge), each with a `# guards:` line; allow `Skill, Read, Write, Edit, Bash`.
 - [ ] **Run:** with the branch binary first on PATH (`go build -o "$TMPDIR/acta" ./cmd/acta`), `claude plugin eval` for this one case only; both graders pass.
 - [ ] **Commit:** `test(evals): lean-tests case`
+
+## State
+
+### Next
+
+Task 02: slice skill names each case once
