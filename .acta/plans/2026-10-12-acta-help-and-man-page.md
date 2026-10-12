@@ -6,6 +6,7 @@ id: PLN-0138
 created: "2026-10-12 09:47:15"
 hash: gbwihvg
 started: "2026-10-12 09:49:31"
+finished: "2026-10-12 10:00:50"
 ---
 
 # acta Help, Version and Man Page Implementation Plan
@@ -69,6 +70,32 @@ Every `usage: acta ...` string and `*Usage` constant in `internal/cli` is replac
 
 **verify:** No `usage: acta` literal is left in a non-test Go file of `internal/cli` outside `help.go`, checked by a test that scans the package source. Each bad-call path that printed a usage line before still prints the same usage text to stderr with the same exit code. List every command checked.
 
-- [ ] **Step 1:** Write the failing source-scan test in `internal/cli/help_test.go`; run `scripts/test ./internal/cli -run TestNoUsageLiteral` and watch it fail.
-- [ ] **Step 2:** Replace each usage string and `*Usage` constant with a table lookup; run the same command and watch it pass.
-- [ ] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#3`.
+- [x] **Step 1:** Write the failing source-scan test in `internal/cli/help_test.go`; run `scripts/test ./internal/cli -run TestNoUsageLiteral` and watch it fail.
+- [x] **Step 2:** Replace each usage string and `*Usage` constant with a table lookup; run the same command and watch it pass.
+- [x] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#3`.
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** Each NOTE below is applied, and nothing else changes.
+
+- [x] `internal/cli/update_cmd_test.go`: the four `TestUpdateRefreshPlugin*` tests stub `exePath` to a binary under `t.TempDir()` (the `useExe` helper from `man_test.go`), so no run writes `acta.1` outside the test folder.
+- [x] `internal/cli/man.go`: the escape comment says a backslash becomes `\e`, as the code does.
+- [x] `internal/cli/man.go`: the install-path comment says links are kept on macOS but followed on Linux, where `os.Executable` reads `/proc/self/exe`.
+- [x] `internal/cli/man.go`: every `-` in rendered roff text becomes `\-`, not only a leading one, so `-h, --help` and the usage lines copy as plain ASCII dashes; a test pins `\-\-help` after the comma.
+- [x] `internal/cli/help.go`: `tidy`, `migrate-root`, `doctor`, `setup` and `update` get an example, the `tick` usage line names `--agent NAME`, and the writing-commands test list covers the five new names.
+- [x] Commit: `polish: review notes PLN-0138`
+
+## Review notes
+
+- Review: deep level, full tier, round 1 CLEAN from both reviewers (no BLOCKER, so no fact-check); polish commit e666ee9 reviewed by both reviewers, CLEAN. Debt filed for three NOTEs.
+- `acta help help` prints `unknown command "help"; run acta help`; exit code is right, the wording reads oddly.
+- Help detection treats a flag value that is literally `-h` or `--help` as a help request (`acta commit p -m -h` prints help and commits nothing); no agent passes such values.
+- `--h` and `-version` are not caught by the help and version routes and fall back to Go's flag output.
+- The `.TH` line has no date, so `mandoc -T lint` warns; long summary lines give STYLE warnings only.
+- Task 03 changed the bad-call usage text of `acta dispatch` and `acta wiki` to repeat the command before each subcommand; accepted, nothing parses it.
+- Task 01 edited four existing tests outside its file list, because the spec moved help to stdout; accepted.
+- The `tidy` example names this repo's branch `acta-help-man`; a neutral name would age better.
+- No test pins `--agent NAME` in the `tick` usage line or the `useExe` stubs in the `TestUpdateRefreshPlugin*` tests.
+

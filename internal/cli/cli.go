@@ -112,19 +112,19 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdState(args[1:], stdin, stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
-			fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
+			fmt.Fprintln(stderr, usageLine("bug"))
 			return exitBadInput
 		}
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "debt":
 		if len(args) < 2 || args[1] != "new" {
-			fmt.Fprintln(stderr, "usage: acta debt new <plan id> [--title T] < notes.md")
+			fmt.Fprintln(stderr, usageLine("debt"))
 			return exitBadInput
 		}
 		return cmdDebtNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "scratch":
 		if len(args) < 2 || (args[1] != "new" && args[1] != "add") {
-			fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md | acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md")
+			fmt.Fprintln(stderr, usageLine("scratch"))
 			return exitBadInput
 		}
 		if args[1] == "new" {
@@ -153,7 +153,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdWiki(args[1:], stdout, stderr)
 	case "dispatch":
 		if len(args) < 2 || (args[1] != "init" && args[1] != "send" && args[1] != "close") {
-			fmt.Fprintln(stderr, "usage: acta dispatch init --pane <id> --plan <path> [--round <slug>] | send --plan <path> --rules <path> [--round <slug>] [--note-file <path>|-] | close")
+			fmt.Fprintln(stderr, usageLine("dispatch"))
 			return exitBadInput
 		}
 		switch args[1] {
@@ -329,7 +329,7 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	onlyPath := fs.Bool("path", false, "print the file path only")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta show <id> [--json] [--path]")
+		fmt.Fprintln(stderr, usageLine("show"))
 		return exitBadInput
 	}
 	if *onlyPath {
@@ -478,7 +478,7 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
-		fmt.Fprintln(stderr, "usage: acta set <id> status|type|title|fixed_in|ref|priority <value>")
+		fmt.Fprintln(stderr, usageLine("set"))
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)
@@ -496,7 +496,7 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 	priority := fs.String("priority", "", "high, medium or low")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta bug new <slug> [--ref X] [--title T] [--priority P] < body.md")
+		fmt.Fprintln(stderr, usageLine("bug"))
 		return exitBadInput
 	}
 	cfg, code := loadConfig(*root, stderr)
@@ -534,7 +534,7 @@ func cmdDebtNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr 
 	title := fs.String("title", "", "debt heading (default: Review NOTEs: <plan title>)")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta debt new <plan id> [--title T] < notes.md")
+		fmt.Fprintln(stderr, usageLine("debt"))
 		return exitBadInput
 	}
 	if stdinIsTTY {
@@ -559,7 +559,7 @@ func cmdScratchNew(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 	title := fs.String("title", "", "scratch title (default: the slug)")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta scratch new <slug> [--title T] < body.md")
+		fmt.Fprintln(stderr, usageLine("scratch", "new"))
 		return exitBadInput
 	}
 	cfg, code := loadConfig(*root, stderr)
@@ -580,7 +580,7 @@ func cmdScratchAdd(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 	section := fs.String("section", "", "words, context, log or questions (default: words)")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 1 {
-		fmt.Fprintln(stderr, "usage: acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md")
+		fmt.Fprintln(stderr, usageLine("scratch", "add"))
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)

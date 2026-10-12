@@ -277,6 +277,8 @@ func fakeClaude(t *testing.T, exit int) (log string) {
 }
 
 func TestUpdateRefreshPluginRunsClaude(t *testing.T) {
+	// The refresh also writes the man page. Point it into a temp folder.
+	useExe(t, filepath.Join(t.TempDir(), "bin", "acta"), nil)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	log := fakeClaude(t, 0)
@@ -298,6 +300,8 @@ func TestUpdateRefreshPluginRunsClaude(t *testing.T) {
 }
 
 func TestUpdateRefreshPluginClaudeFails(t *testing.T) {
+	// The refresh also writes the man page. Point it into a temp folder.
+	useExe(t, filepath.Join(t.TempDir(), "bin", "acta"), nil)
 	t.Setenv("HOME", t.TempDir())
 	fakeClaude(t, 1)
 	code, _, errOut := runUpdate("--refresh-plugin")
@@ -310,6 +314,8 @@ func TestUpdateRefreshPluginClaudeFails(t *testing.T) {
 }
 
 func TestUpdateRefreshPluginWithoutClaude(t *testing.T) {
+	// The refresh also writes the man page. Point it into a temp folder.
+	useExe(t, filepath.Join(t.TempDir(), "bin", "acta"), nil)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("PATH", t.TempDir())
@@ -323,6 +329,8 @@ func TestUpdateRefreshPluginWithoutClaude(t *testing.T) {
 }
 
 func TestUpdateRefreshPluginExtractFails(t *testing.T) {
+	// The refresh also writes the man page. Point it into a temp folder.
+	useExe(t, filepath.Join(t.TempDir(), "bin", "acta"), nil)
 	t.Setenv("HOME", "relative-home")
 	t.Setenv("PATH", t.TempDir())
 	code, _, errOut := runUpdate("--refresh-plugin")

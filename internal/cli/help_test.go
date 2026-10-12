@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -108,7 +109,7 @@ func TestHelpDetailShowsEveryPartOfTheEntry(t *testing.T) {
 
 // Commands that write files carry an example.
 func TestHelpWritingCommandsHaveAnExample(t *testing.T) {
-	for _, name := range []string{"bug", "debt", "scratch", "commit", "id", "wiki", "set", "state", "tick"} {
+	for _, name := range []string{"bug", "debt", "scratch", "commit", "id", "wiki", "set", "state", "tick", "tidy", "migrate-root", "doctor", "setup", "update"} {
 		c, ok := findHelpCmd(name)
 		if !ok || c.example == "" {
 			t.Errorf("%s: no example in the table", name)
@@ -224,5 +225,29 @@ func TestRunOneHelpBeforeTheDoubleDash(t *testing.T) {
 	code, out, _ := helpRun("run-one", "--help")
 	if code != exitOK || !strings.Contains(out, "acta run-one") {
 		t.Fatalf("exit %d, stdout %q", code, out)
+	}
+}
+
+// Bad-call usage lines come from the help table. A "usage: acta" text
+// typed into another file could drift from acta help, so none may be left.
+func TestNoUsageLiteral(t *testing.T) {
+	files, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		name := f.Name()
+		if f.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "help.go" {
+			continue
+		}
+		src, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(src), "\n") {
+			if strings.Contains(line, "usage: acta") {
+				t.Errorf("%s:%d has a usage literal; read it from the help table with usageLine", name, i+1)
+			}
+		}
 	}
 }

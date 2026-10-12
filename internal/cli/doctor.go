@@ -19,7 +19,7 @@ import (
 	"github.com/iyay/acta/plugin"
 )
 
-const doctorUsage = "usage: acta doctor [--fix] [--known <file>]"
+var doctorUsage = usageLine("doctor")
 
 // The clashes list names plugins that overlap acta and pull an agent two ways.
 // It lives in the plugin folder, which an installed binary does not carry,

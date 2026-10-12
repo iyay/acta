@@ -14,7 +14,7 @@ import (
 // so scripts treat both runners the same.
 const exitCaseFailed = 1
 
-const evalOmpUsage = "usage: acta eval-omp [--eval-dir <dir>] [--case <glob>] [plugin-dir]"
+var evalOmpUsage = usageLine("eval-omp")
 
 // cmdEvalOmp runs the plugin's eval cases through omp. Each case costs model
 // quota, so no test runs it with the real omp.

@@ -16,23 +16,19 @@ const manIntro = "acta shows and changes the planning files of the repo it runs 
 	"With no arguments it opens the board."
 
 // manEscape makes one line of table text safe inside a roff page. A
-// backslash would start an escape, so it is doubled. A dot or a quote at the
-// start of a line would make roff read the line as a macro, so a zero-width
-// mark goes in front.
+// backslash would start an escape, so it becomes \e. Every dash becomes \-,
+// a plain minus, so flags and usage lines copy out of the page with ASCII
+// dashes. The dash step runs after the backslash step, and \e has no dash,
+// so one cannot break the other. A dot or a quote at the start of a line
+// would make roff read the line as a macro, so a zero-width mark goes in
+// front.
 func manEscape(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\e`)
+	s = strings.ReplaceAll(s, "-", `\-`)
 	if strings.HasPrefix(s, ".") || strings.HasPrefix(s, "'") {
 		s = `\&` + s
 	}
 	return s
-}
-
-// manFlagName escapes a flag name. A dash that opens the flag is a minus
-// sign, not a hyphen, so it becomes \- and copies out of the page right.
-func manFlagName(s string) string {
-	rest := strings.TrimLeft(s, "-")
-	dashes := len(s) - len(rest)
-	return strings.Repeat(`\-`, dashes) + manEscape(rest)
 }
 
 // manBold puts one line of text in bold.
@@ -74,13 +70,13 @@ func manRoff(cmds []helpCmd) string {
 // manTag writes one flag with its meaning.
 func manTag(b *strings.Builder, flag, meaning string) {
 	b.WriteString(".TP\n")
-	b.WriteString(`\fB` + manFlagName(flag) + `\fR` + "\n")
+	b.WriteString(manBold(flag) + "\n")
 	b.WriteString(manEscape(meaning) + "\n")
 }
 
 // manCmd writes the part of the page for one command.
 func manCmd(b *strings.Builder, c helpCmd) {
-	b.WriteString(".SS " + c.name + "\n")
+	b.WriteString(".SS " + manEscape(c.name) + "\n")
 	b.WriteString(manEscape(c.summary) + "\n")
 	b.WriteString(".PP\n")
 	for i, u := range c.usage {
@@ -104,8 +100,10 @@ func renderMan() string {
 }
 
 // manPath is where the page goes: next to the binary, in the share folder of
-// the same prefix. Links are not followed, so a page for a binary reached
-// through a link lands beside the link, where the user's man path looks.
+// the same prefix. On macOS os.Executable keeps a link as it was called, so
+// the page lands beside the link, where the user's man path looks. On Linux
+// os.Executable reads /proc/self/exe, which follows the link, so the page
+// lands beside the real binary.
 func manPath() (string, error) {
 	exe, err := exePath()
 	if err != nil {

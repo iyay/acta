@@ -16,7 +16,7 @@ import (
 	"github.com/iyay/acta/plugin"
 )
 
-const setupUsage = "usage: acta setup [--plugin-dir <path>]"
+var setupUsage = usageLine("setup")
 
 // setupRunner runs harness install commands through the real process, so
 // the wizard carries out what the user said yes to.

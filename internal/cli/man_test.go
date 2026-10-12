@@ -48,7 +48,7 @@ func parseMan(roff string) manDoc {
 		case strings.HasPrefix(l, ".SH "):
 			section = strings.TrimPrefix(l, ".SH ")
 		case strings.HasPrefix(l, ".SS "):
-			d.commands = append(d.commands, strings.TrimPrefix(l, ".SS "))
+			d.commands = append(d.commands, unroff(strings.TrimPrefix(l, ".SS ")))
 		case l == ".TP" && i+1 < len(lines):
 			tag := unroff(lines[i+1])
 			if section == "OPTIONS" {
@@ -148,11 +148,29 @@ func TestManEscape(t *testing.T) {
 			t.Errorf("manEscape(%q) = %q, want %q", c.in, got, c.want)
 		}
 	}
-	if got := manFlagName("--type T"); got != `\-\-type T` {
-		t.Errorf("manFlagName = %q", got)
+	if got := manEscape("--type T"); got != `\-\-type T` {
+		t.Errorf("manEscape = %q", got)
 	}
-	if got := manFlagName("-m MESSAGE"); got != `\-m MESSAGE` {
-		t.Errorf("manFlagName = %q", got)
+	if got := manEscape("-m MESSAGE"); got != `\-m MESSAGE` {
+		t.Errorf("manEscape = %q", got)
+	}
+}
+
+// Every dash in the page text is a plain minus, not only the first one, so
+// "-h, --help" and the usage lines copy out with ASCII dashes.
+func TestManDashesAreMinusSigns(t *testing.T) {
+	if !strings.Contains(renderMan(), `\-h, \-\-help`) {
+		t.Error(`page lacks \-h, \-\-help`)
+	}
+	cases := []struct{ in, want string }{
+		{`acta tick <id> [--step N | --all]`, `acta tick <id> [\-\-step N | \-\-all]`},
+		{`migrate-root`, `migrate\-root`},
+		{`a\-b`, `a\e\-b`},
+	}
+	for _, c := range cases {
+		if got := manEscape(c.in); got != c.want {
+			t.Errorf("manEscape(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }
 

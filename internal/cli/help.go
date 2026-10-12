@@ -70,7 +70,7 @@ var helpTable = []helpCmd{
 		name:    "tick",
 		group:   "Board",
 		summary: "Tick the checkboxes of a plan task so the board shows live progress.",
-		usage:   []string{"acta tick <id> [--step N | --all | --start | --wontfix | --undo]"},
+		usage:   []string{"acta tick <id> [--step N | --all | --start | --wontfix | --undo] [--agent NAME]"},
 		flags: []string{
 			"--step N  tick this checkbox, counting from 1",
 			"--all  tick every checkbox of the task",
@@ -164,6 +164,7 @@ var helpTable = []helpCmd{
 		summary: "Run the setup wizard in a terminal: your settings, the plugin install and the doctor checks.",
 		usage:   []string{"acta setup [--plugin-dir <path>]"},
 		flags:   []string{"--plugin-dir PATH  folder holding the acta plugin, used for harness installs"},
+		example: "acta setup",
 	},
 	{
 		name:    "config",
@@ -205,6 +206,7 @@ var helpTable = []helpCmd{
 			"--fix  fix repo problems (.acta folder, .gitignore)",
 			"--known FILE  file listing plugins that overlap acta",
 		},
+		example: "acta doctor --fix",
 	},
 	{
 		name:    "update",
@@ -212,12 +214,14 @@ var helpTable = []helpCmd{
 		summary: "Replace this binary with the latest release, then refresh the plugin copies.",
 		usage:   []string{"acta update [--check]"},
 		flags:   []string{"--check  show the current and latest version, change nothing"},
+		example: "acta update --check",
 	},
 	{
 		name:    "migrate-root",
 		group:   "Setup",
 		summary: "Move the old .pm folder of this repo to .acta in one commit.",
 		usage:   []string{"acta migrate-root"},
+		example: "acta migrate-root",
 	},
 	{
 		name:    "tidy",
@@ -225,6 +229,7 @@ var helpTable = []helpCmd{
 		summary: "Fold a branch into one commit per code task, leaving every ref as it was when a step fails.",
 		usage:   []string{"acta tidy <base> <branch> [--onto <ref>]"},
 		flags:   []string{"--onto REF  ref whose chore commits fold forward into the first new commit"},
+		example: "acta tidy main acta-help-man",
 	},
 
 	// Agent plumbing
@@ -291,6 +296,28 @@ func findHelpCmd(name string) (helpCmd, bool) {
 		}
 	}
 	return helpCmd{}, false
+}
+
+// usageLine is the short usage a bad call prints on stderr. It reads the
+// help table, so it can never differ from acta help. With no sub it joins
+// every usage line of the command. With a sub it gives only the line that
+// starts with "acta <name> <sub>". A name or sub the table lacks is a
+// mistake in the code, so it panics and the tests show it at once.
+func usageLine(name string, sub ...string) string {
+	c, ok := findHelpCmd(name)
+	if !ok {
+		panic("usageLine: no help entry for " + name)
+	}
+	if len(sub) == 0 {
+		return "usage: " + strings.Join(c.usage, " | ")
+	}
+	prefix := "acta " + name + " " + sub[0]
+	for _, u := range c.usage {
+		if strings.HasPrefix(u, prefix) {
+			return "usage: " + u
+		}
+	}
+	panic("usageLine: no usage line of " + name + " starts with " + prefix)
 }
 
 // renderHelp is the text of acta help: every group and every command.

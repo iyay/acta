@@ -14,7 +14,7 @@ import (
 	"github.com/iyay/acta/internal/wiki"
 )
 
-const hookUsage = "usage: acta hook session-start [--known <file>] | acta hook prompt | acta hook pre-tool | acta hook post-tool"
+var hookUsage = usageLine("hook")
 
 // exitBlock is the code a tool hook uses to tell the agent the command is
 // stopped. It is the only non-zero code an acta hook ever returns.

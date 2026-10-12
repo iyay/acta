@@ -14,8 +14,9 @@ import (
 	"github.com/iyay/acta/plugin"
 )
 
+var updateUsage = usageLine("update")
+
 const (
-	updateUsage         = "usage: acta update [--check]"
 	defaultDownloadBase = "https://github.com/iyay/acta/releases"
 	refreshFailedMsg    = "plugin refresh failed: run acta setup"
 )

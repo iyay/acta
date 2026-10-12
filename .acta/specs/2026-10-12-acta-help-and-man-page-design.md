@@ -4,6 +4,7 @@ id: SPC-0128
 created: "2026-10-12 09:45:52"
 hash: xc00wjw
 started: "2026-10-12 09:49:31"
+finished: "2026-10-12 10:00:50"
 ---
 
 # acta Help, Version and Man Page

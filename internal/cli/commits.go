@@ -39,7 +39,7 @@ func cmdCommits(args []string, stdout, stderr io.Writer) int {
 	all := fs.Bool("all", false, "include chore commits")
 	asJSON := fs.Bool("json", false, "print JSON")
 	usage := func() int {
-		fmt.Fprintln(stderr, "usage: acta commits <plan> [task] [--all] [--json]")
+		fmt.Fprintln(stderr, usageLine("commits"))
 		return exitBadInput
 	}
 	pos, err := parseMixed(fs, args)

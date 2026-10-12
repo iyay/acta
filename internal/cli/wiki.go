@@ -12,7 +12,7 @@ import (
 	"github.com/iyay/acta/internal/wiki"
 )
 
-const wikiUsage = "usage: acta wiki ls [--type T] | match <file>... | check [<range>] | ok <page id>..."
+var wikiUsage = usageLine("wiki")
 
 // cmdWiki runs ls, match, check and ok. The first three only read: no file is
 // written and nothing is committed. ok writes no file either, but it makes one
