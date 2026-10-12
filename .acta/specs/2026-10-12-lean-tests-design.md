@@ -1,3 +1,8 @@
+---
+id: SPC-0126
+created: "2026-10-12 08:04:30"
+hash: edur6db
+---
 # Lean tests: one test per behaviour, at the layer that owns it
 
 Status: Bounded, design approved by the user in chat on 2026-10-12.
