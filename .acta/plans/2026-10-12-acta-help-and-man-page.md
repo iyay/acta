@@ -2,6 +2,9 @@
 parent: specs/2026-10-12-acta-help-and-man-page-design
 depth: minimal
 closes: [DBT-0034.07, DBT-0044.05]
+id: PLN-0138
+created: "2026-10-12 09:47:15"
+hash: gbwihvg
 ---
 
 # acta Help, Version and Man Page Implementation Plan
