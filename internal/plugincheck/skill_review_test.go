@@ -17,7 +17,9 @@ func TestSkillReview(t *testing.T) {
 			"## Review tiers",
 			"Light review: the orchestrator reads the full diff",
 			"A fix round always takes the two reviewers.",
-			"Reading the diff yourself never replaces the two reviewers, however small the diff.",
+			"Reading the diff yourself never replaces the reviewers its depth names, however small the diff.",
+			"review_depth", "depth.md", "fact-check.md", "/acta:review quick|standard|deep",
+			"Fix rounds run at least `standard`",
 			"In doubt: full.",
 			"acta debt new",
 			"drop the bucket tag",
@@ -111,5 +113,42 @@ func TestCodeReviewerTemplateBucketTags(t *testing.T) {
 	bucket, priority, note := strings.Index(txt, "bucket tag"), strings.Index(txt, "priority tag"), strings.Index(txt, "then the note")
 	if bucket < 0 || priority < 0 || note < 0 || !(bucket < priority && priority < note) {
 		t.Errorf("code-reviewer.md must say bucket tag, then the priority tag, then the note; got indexes %d, %d, %d", bucket, priority, note)
+	}
+}
+
+// TestReviewDepthFiles pins the three files that carry the review levels. The
+// floors and the fact-check limits are the safety part, so each phrase that
+// keeps a review from running too light or a BLOCKER from being dropped is
+// checked here.
+func TestReviewDepthFiles(t *testing.T) {
+	files := map[string][]string{
+		"skills/review/depth.md": {
+			"quick", "standard", "deep",
+			"Fix rounds run at least `standard`",
+			"never a round 4",
+			"security, auth, data migration, money or delete path runs at least `standard` with the deep lens",
+			"`dispatch` executor wrote runs at least `standard` in the full tier",
+			"never lower it below these",
+			"`## Review notes`",
+		},
+		"skills/review/fact-check.md": {
+			"(A) the code it names is not in the diff under review",
+			"(B) one line of the diff contradicts the claim",
+			"In doubt, it stays a BLOCKER.",
+			"security", "data loss", "concurrency", "behaviour change",
+			"First line of your report: the model you ran on.",
+		},
+		"skills/review/code-reviewer.md": {
+			"[EARLIER_FINDINGS]",
+			"every changed file gets its own pass",
+		},
+	}
+	for rel, wants := range files {
+		txt := readSkill(t, rel)
+		for _, want := range wants {
+			if !strings.Contains(txt, want) {
+				t.Errorf("%s missing %q", rel, want)
+			}
+		}
 	}
 }
