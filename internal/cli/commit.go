@@ -17,7 +17,7 @@ func cmdCommit(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("commit", stderr)
 	msg := fs.String("m", "", "commit message")
 	usage := func() int {
-		fmt.Fprintln(stderr, `usage: acta commit <path> -m "<message>"`)
+		fmt.Fprintln(stderr, usageLine("commit"))
 		return exitBadInput
 	}
 	pos, err := parseMixed(fs, args)

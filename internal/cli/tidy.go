@@ -24,7 +24,7 @@ func cmdTidy(args []string, stdout, stderr io.Writer) int {
 		return exitBadInput
 	}
 	if len(pos) != 2 {
-		fmt.Fprintln(stderr, "usage: acta tidy <base> <branch> [--onto <ref>]")
+		fmt.Fprintln(stderr, usageLine("tidy"))
 		return exitBadInput
 	}
 	cfg, code := loadConfig(*root, stderr)

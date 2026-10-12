@@ -455,12 +455,12 @@ func TestTickUndoRefusesAnItemThatIsNotATask(t *testing.T) {
 
 func TestTickUsageNamesUndo(t *testing.T) {
 	dir := tickRepo(t)
-	code, _, errOut := runTick(t, dir, "--help")
+	code, out, _ := runTick(t, dir, "--help")
 	if code != exitOK {
 		t.Fatalf("help: %d", code)
 	}
-	if !strings.Contains(errOut, "--undo") {
-		t.Fatalf("help hides --undo: %q", errOut)
+	if !strings.Contains(out, "--undo") {
+		t.Fatalf("help hides --undo: %q", out)
 	}
 }
 

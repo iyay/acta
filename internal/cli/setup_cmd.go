@@ -16,7 +16,7 @@ import (
 	"github.com/iyay/acta/plugin"
 )
 
-const setupUsage = "usage: acta setup [--plugin-dir <path>]"
+var setupUsage = usageLine("setup")
 
 // setupRunner runs harness install commands through the real process, so
 // the wizard carries out what the user said yes to.
@@ -70,6 +70,7 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 		// the rest of setup still runs.
 		fmt.Fprint(stdout, setup.RailProblem("could not unpack the plugin: "+extractErr.Error()))
 	}
+	setupManStep(stdout)
 	answers, err := setup.Ask(env, stdout)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

@@ -13,7 +13,7 @@ import (
 // command needs no arguments.
 func cmdMigrateRoot(args []string, stdout, stderr io.Writer) int {
 	if len(args) != 0 {
-		fmt.Fprintln(stderr, "usage: acta migrate-root")
+		fmt.Fprintln(stderr, usageLine("migrate-root"))
 		return exitBadInput
 	}
 	cwd, err := os.Getwd()

@@ -17,7 +17,7 @@ import (
 // command's own output and exit code come back unchanged.
 func cmdRunOne(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) < 2 || args[0] != "--" {
-		fmt.Fprintln(stderr, "usage: acta run-one -- <command> [args...]")
+		fmt.Fprintln(stderr, usageLine("run-one"))
 		return exitBadInput
 	}
 	release, err := write.HoldRunOne(func() {

@@ -16,7 +16,7 @@ func cmdState(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case len(args) > 0 && args[0] == "set":
 		return cmdStateSet(args[1:], stdin, stdout, stderr)
 	case len(args) > 1:
-		fmt.Fprintln(stderr, "usage: acta state [plan]")
+		fmt.Fprintln(stderr, usageLine("state", "[plan]"))
 		return exitBadInput
 	}
 	cfg, code := loadConfig("", stderr)
@@ -58,7 +58,7 @@ func cmdStateSet(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	clear := fs.Bool("clear", false, "empty the State part instead of writing lines")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 2 {
-		fmt.Fprintln(stderr, "usage: acta state set <plan> next|findings|rulings [--clear] < text.md")
+		fmt.Fprintln(stderr, usageLine("state", "set"))
 		return exitBadInput
 	}
 	cfg, b, code := loadBoard(*root, stderr)

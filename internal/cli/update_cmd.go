@@ -14,8 +14,9 @@ import (
 	"github.com/iyay/acta/plugin"
 )
 
+var updateUsage = usageLine("update")
+
 const (
-	updateUsage         = "usage: acta update [--check]"
 	defaultDownloadBase = "https://github.com/iyay/acta/releases"
 	refreshFailedMsg    = "plugin refresh failed: run acta setup"
 )
@@ -113,11 +114,17 @@ func execRefresh(exe string) error {
 // claude is installed it also asks claude to take the new copy, because
 // claude keeps its own. omp reads the unpacked folder and needs nothing.
 func cmdRefreshPlugin(stderr io.Writer) int {
+	code := exitOK
 	if err := refreshPlugin(); err != nil {
 		fmt.Fprintln(stderr, refreshFailedMsg)
-		return exitBadInput
+		code = exitBadInput
 	}
-	return exitOK
+	// The man page comes from this new binary. A failure only warns, so the
+	// exit code stays the one the plugin refresh gave.
+	if err := installMan(); err != nil {
+		fmt.Fprintln(stderr, manWarning(err))
+	}
+	return code
 }
 
 func refreshPlugin() error {

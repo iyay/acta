@@ -18,7 +18,7 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-const tickUsage = "usage: acta tick <id> [--step N | --all | --start | --wontfix | --undo]"
+var tickUsage = usageLine("tick")
 
 // cmdTick ticks checkboxes in a plan so the board shows progress while an
 // agent works. It never commits: the plan file is shared, and the
