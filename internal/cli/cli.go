@@ -85,6 +85,11 @@ func voiceTheme() string {
 // Run handles one command line call and reports its exit code, so both
 // binaries share it instead of copying the dispatch.
 func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writer) int {
+	// Help and version come first: they need no repo, so they must answer
+	// before any config is read or the TUI opens.
+	if code, done := helpRoute(args, stdout, stderr); done {
+		return code
+	}
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
 		fs, root := flags("acta", stderr)
 		if err := fs.Parse(args); err != nil {
@@ -169,8 +174,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "update":
 		return cmdUpdate(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "unknown command %q; use doctor, setup, id, commit, commits, list, show, set, state, state set, tick, migrate-root, bug new, debt new, scratch new, scratch add, wiki ls, wiki match, wiki check, wiki ok, dispatch init, dispatch send, dispatch close, reply-back, run-one, eval-omp, tidy or update\n", args[0])
-		return exitBadInput
+		return unknownCommand(args[0], stderr)
 	}
 }
 

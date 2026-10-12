@@ -5,6 +5,7 @@ closes: [DBT-0034.07, DBT-0044.05]
 id: PLN-0138
 created: "2026-10-12 09:47:15"
 hash: gbwihvg
+started: "2026-10-12 09:49:31"
 ---
 
 # acta Help, Version and Man Page Implementation Plan
@@ -40,6 +41,10 @@ One table in `help.go` holds every command (name, group, summary, usage, flags, 
 
 **verify:** Every way of asking for help (`help`, `help <cmd>`, `-h`, `--help`, `<cmd> -h`, `<cmd> --help`, `-root X --help`) prints table text to stdout with exit 0, and none prints the Go flag default `Usage of`; `help <unknown>` and an unknown command go to stderr with exit 1. Every `case` string in `Run`'s switch has a table entry, checked by a test that reads `cli.go` with `go/ast`, so a new command without an entry fails. `--version` prints `acta <version>` for a release build and `acta <version> (source build)` otherwise. List every entry path checked, and show that a `--help` after `--` in `run-one` still reaches the child.
 
+- [x] **Step 1:** Write failing tests in `internal/cli/help_test.go` for every help path, `--version` and the unknown-command hint; run `scripts/test ./internal/cli -run 'TestHelp|TestVersion|TestUnknown'` and watch them fail.
+- [x] **Step 2:** Add the table and routing in `help.go` and `cli.go`; run the same command and watch it pass.
+- [x] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#1`.
+
 ### Task 02: Man page written by setup and update
 
 **Files:**
@@ -50,6 +55,10 @@ One table in `help.go` holds every command (name, group, summary, usage, flags, 
 
 **verify:** The man page lists every command and flag that `acta help` lists, and no other, checked by a test that walks the table; roff special characters in table text (a leading `.` or `'`, a backslash) are escaped. The file lands at the path derived from the binary location for a binary under a temp `bin/`. List every failure path (unwritable folder, a file where the folder should be, `exePath` error) and show that each only warns while setup and update keep their exit code.
 
+- [ ] **Step 1:** Write failing tests in `internal/cli/man_test.go` for the roff text, the escape rules, the install path and each failure path; run `scripts/test ./internal/cli -run TestMan` and watch them fail.
+- [ ] **Step 2:** Add `man.go` and the calls in `cmdSetup` and the plugin refresh; run the same command and watch it pass.
+- [ ] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#2`.
+
 ### Task 03: Usage strings read from the table
 
 **Files:**
@@ -59,3 +68,7 @@ One table in `help.go` holds every command (name, group, summary, usage, flags, 
 Every `usage: acta ...` string and `*Usage` constant in `internal/cli` is replaced by a lookup into the Task 01 table, so the short usage line on a bad call and `acta help <cmd>` come from one place.
 
 **verify:** No `usage: acta` literal is left in a non-test Go file of `internal/cli` outside `help.go`, checked by a test that scans the package source. Each bad-call path that printed a usage line before still prints the same usage text to stderr with the same exit code. List every command checked.
+
+- [ ] **Step 1:** Write the failing source-scan test in `internal/cli/help_test.go`; run `scripts/test ./internal/cli -run TestNoUsageLiteral` and watch it fail.
+- [ ] **Step 2:** Replace each usage string and `*Usage` constant with a table lookup; run the same command and watch it pass.
+- [ ] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#3`.

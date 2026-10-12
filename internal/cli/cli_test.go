@@ -272,15 +272,15 @@ func TestScratchAddHelpNamesTheSectionFlag(t *testing.T) {
 	dir := debtRepo(t)
 	var out, errOut strings.Builder
 	inDir(t, dir, func() {
-		if code := Run([]string{"scratch", "add", "-h"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput {
+		if code := Run([]string{"scratch", "add", "-h"}, strings.NewReader(""), false, &out, &errOut); code != exitOK {
 			t.Fatalf("exit %d stderr %q", code, errOut.String())
 		}
 		for _, want := range []string{
-			"usage: acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md",
+			"acta scratch add <SCRATCH-n> [--section words|context|log|questions] < text.md",
 			"words, context, log or questions (default: words)",
 		} {
-			if !strings.Contains(errOut.String(), want) {
-				t.Fatalf("stderr %q lacks %q", errOut.String(), want)
+			if !strings.Contains(out.String(), want) {
+				t.Fatalf("stdout %q lacks %q", out.String(), want)
 			}
 		}
 	})
@@ -997,19 +997,4 @@ func TestConfigSetNamesBrokenUnmovableVoiceFile(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(home, ".acta", "config.yaml")); !os.IsNotExist(err) {
 		t.Errorf("set wrote config.yaml after a read error: %v", err)
 	}
-}
-
-// A word nobody typed gets the list of words that are commands. The bare
-// state command prints what is running, so it belongs in that list too.
-func TestUnknownCommandHelpListsState(t *testing.T) {
-	var out, errOut strings.Builder
-	if code := Run([]string{"frobnicate"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput {
-		t.Fatalf("exit %d, want %d", code, exitBadInput)
-	}
-	for _, cmd := range strings.Split(errOut.String(), ", ") {
-		if strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(cmd), "or ")) == "state" {
-			return
-		}
-	}
-	t.Fatalf("the help does not list the bare state command: %q", errOut.String())
 }

@@ -352,8 +352,8 @@ func TestWikiBadArguments(t *testing.T) {
 	}
 }
 
-// The real command line reaches the wiki commands, and its list of commands
-// names them.
+// The real command line reaches the wiki commands, and an unknown word points
+// at acta help.
 func TestRunKnowsTheWikiCommands(t *testing.T) {
 	wikiRepo(t, wikiFiles())
 	var out, errOut strings.Builder
@@ -361,8 +361,8 @@ func TestRunKnowsTheWikiCommands(t *testing.T) {
 		t.Errorf("acta wiki ls --type Gotcha: exit %d, stdout %q, stderr %q", code, out.String(), errOut.String())
 	}
 	errOut.Reset()
-	if code := Run([]string{"nonsense"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput || !strings.Contains(errOut.String(), "wiki ls, wiki match, wiki check, wiki ok") {
-		t.Errorf("an unknown command: exit %d, stderr %q; want it to list wiki ls, wiki match, wiki check, wiki ok", code, errOut.String())
+	if code := Run([]string{"nonsense"}, strings.NewReader(""), false, &out, &errOut); code != exitBadInput || !strings.Contains(errOut.String(), "run acta help") {
+		t.Errorf("an unknown command: exit %d, stderr %q; want it to point at acta help", code, errOut.String())
 	}
 }
 

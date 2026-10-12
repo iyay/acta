@@ -3,6 +3,7 @@ closes: [DBT-0034.07, DBT-0044.05]
 id: SPC-0128
 created: "2026-10-12 09:45:52"
 hash: xc00wjw
+started: "2026-10-12 09:49:31"
 ---
 
 # acta Help, Version and Man Page
@@ -21,7 +22,7 @@ Status: approved by the user on 2026-10-12 (Bounded, probe mode, every recommend
    - Write: `bug`, `debt`, `scratch`, `commit`, `id`, `wiki`
    - Setup: `setup`, `config`, `doctor`, `update`, `migrate-root`, `tidy`
    - Agent plumbing: `hook`, `dispatch`, `reply-back`, `run-one`, `eval-omp`
-   - `voice` is an old alias and stays out of the list. It still works.
+   - `voice` was removed earlier (`acta voice` already gives the unknown-command error), so it is not in the list.
 3. **Terminal help.**
    - `acta help`, `acta --help` and `acta -h` print every group to stdout and exit 0.
    - `acta help <cmd>` and `acta <cmd> --help` (and `-h`) print that command's detail to stdout and exit 0.

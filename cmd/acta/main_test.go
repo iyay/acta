@@ -360,15 +360,15 @@ func TestUsageSaysActa(t *testing.T) {
 	t.Parallel()
 
 	dir := fixtureRepo(t)
-	_, noArgsErr, _ := acta(t, dir, "", "-h")
-	if !strings.Contains(noArgsErr, "acta") || strings.Contains(noArgsErr, "pmb") {
-		t.Fatalf("acta -h stderr %q, want acta without pmb", noArgsErr)
+	noArgsOut, _, _ := acta(t, dir, "", "-h")
+	if !strings.Contains(noArgsOut, "acta") || strings.Contains(noArgsOut, "pmb") {
+		t.Fatalf("acta -h stdout %q, want acta without pmb", noArgsOut)
 	}
-	_, tickErr, tickCode := acta(t, dir, "", "tick", "-h")
+	tickOut, _, tickCode := acta(t, dir, "", "tick", "-h")
 	if tickCode != 0 {
 		t.Fatalf("acta tick -h exit %d", tickCode)
 	}
-	if !strings.Contains(tickErr, "acta") || strings.Contains(tickErr, "pmb") {
-		t.Fatalf("acta tick -h stderr %q, want acta without pmb", tickErr)
+	if !strings.Contains(tickOut, "acta") || strings.Contains(tickOut, "pmb") {
+		t.Fatalf("acta tick -h stdout %q, want acta without pmb", tickOut)
 	}
 }
