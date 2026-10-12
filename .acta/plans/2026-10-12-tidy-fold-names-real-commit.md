@@ -1,6 +1,9 @@
 ---
 parent: specs/2026-10-12-tidy-fold-names-real-commit
 depth: minimal
+id: PLN-0137
+created: "2026-10-12 08:54:21"
+hash: e4bdwzw
 ---
 # acta tidy names a full fold after its newest non-chore commit
 
