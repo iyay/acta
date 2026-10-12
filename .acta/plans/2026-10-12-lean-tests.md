@@ -45,9 +45,9 @@ started: "2026-10-12 08:10:19"
 
 **verify:** A plan written from the slice skill cannot name one case in two tasks. List every place the skill describes a task's tests or `verify:` line (verify section, full task template, `minimal` task shape) and show each says the case is named once at the owning layer and upper layers are wiring only.
 
-- [ ] **Failing test:** add `named once, in the task whose layer owns the behaviour` and `wiring only: one success path and one error passed up from below` to `Must` in `TestSkillSlice`; `scripts/test ./internal/plugincheck -run 'TestSkillSlice|TestBudget'` fails.
-- [ ] **Change:** add the rule to `## Verify lines are properties` and to the `minimal` task shape sentence; the full template's `verify:` placeholder points at it.
-- [ ] **Commit:** `feat(slice): name each test case once, at the owning layer`
+- [x] **Failing test:** add `named once, in the task whose layer owns the behaviour` and `wiring only: one success path and one error passed up from below` to `Must` in `TestSkillSlice`; `scripts/test ./internal/plugincheck -run 'TestSkillSlice|TestBudget'` fails.
+- [x] **Change:** add the rule to `## Verify lines are properties` and to the `minimal` task shape sentence; the full template's `verify:` placeholder points at it.
+- [x] **Commit:** `feat(slice): name each test case once, at the owning layer`
 
 ### Task 03: implementer writes only the plan's cases
 
@@ -74,4 +74,4 @@ started: "2026-10-12 08:10:19"
 
 ### Next
 
-Task 02: slice skill names each case once
+Task 03: implementer prompt writes only the plan cases

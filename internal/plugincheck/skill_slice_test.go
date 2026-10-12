@@ -31,6 +31,8 @@ func TestSkillSlice(t *testing.T) {
 			"run `acta config show`", "When it prints `build_executor: <name>`, that executor is chosen",
 			"do not ask",
 			"## Test commands", "Never `./...` in a task", "**Tests:**",
+			"named once, in the task whose layer owns the behaviour",
+			"wiring only: one success path and one error passed up from below",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",
