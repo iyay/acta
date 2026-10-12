@@ -166,9 +166,9 @@ func buildFormState(e Env) *formState {
 		{"Review depth", "",
 			huh.NewSelect[string]().
 				Options(
-					huh.NewOption("quick: one light pass, no reviewers", "quick"),
-					huh.NewOption("standard: two reviewers, three rounds at most", "standard"),
-					huh.NewOption("deep: full review at every step", "deep"),
+					huh.NewOption("quick: one combined reviewer, inline for docs-only changes", "quick"),
+					huh.NewOption("standard: two reviewers, Spec and Standards", "standard"),
+					huh.NewOption("deep: two reviewers plus a fact-check of every BLOCKER", "deep"),
 				).Value(&d.ReviewDepth), text(&d.ReviewDepth)},
 	}
 
