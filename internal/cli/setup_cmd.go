@@ -70,6 +70,7 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 		// the rest of setup still runs.
 		fmt.Fprint(stdout, setup.RailProblem("could not unpack the plugin: "+extractErr.Error()))
 	}
+	setupManStep(stdout)
 	answers, err := setup.Ask(env, stdout)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

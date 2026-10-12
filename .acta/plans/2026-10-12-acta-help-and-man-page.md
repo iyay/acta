@@ -55,9 +55,9 @@ One table in `help.go` holds every command (name, group, summary, usage, flags, 
 
 **verify:** The man page lists every command and flag that `acta help` lists, and no other, checked by a test that walks the table; roff special characters in table text (a leading `.` or `'`, a backslash) are escaped. The file lands at the path derived from the binary location for a binary under a temp `bin/`. List every failure path (unwritable folder, a file where the folder should be, `exePath` error) and show that each only warns while setup and update keep their exit code.
 
-- [ ] **Step 1:** Write failing tests in `internal/cli/man_test.go` for the roff text, the escape rules, the install path and each failure path; run `scripts/test ./internal/cli -run TestMan` and watch them fail.
-- [ ] **Step 2:** Add `man.go` and the calls in `cmdSetup` and the plugin refresh; run the same command and watch it pass.
-- [ ] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#2`.
+- [x] **Step 1:** Write failing tests in `internal/cli/man_test.go` for the roff text, the escape rules, the install path and each failure path; run `scripts/test ./internal/cli -run TestMan` and watch them fail.
+- [x] **Step 2:** Add `man.go` and the calls in `cmdSetup` and the plugin refresh; run the same command and watch it pass.
+- [x] **Step 3:** Run `scripts/test ./internal/cli`, `go vet ./internal/cli`, `gofmt -l internal/cli`, then commit with trailer `Task: PLN-gbwihvg#2`.
 
 ### Task 03: Usage strings read from the table
 
