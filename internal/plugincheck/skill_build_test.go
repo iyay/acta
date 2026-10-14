@@ -21,6 +21,8 @@ func TestSkillBuild(t *testing.T) {
 			"acta show <plan id> --json", "progress.done",
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
 			"acta config show", "build_executor",
+			"The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.",
+			"| `inline` | you | when the order below picks it |",
 			"The spec and plan from acta:shape and acta:slice stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
@@ -42,7 +44,7 @@ func TestSkillBuild(t *testing.T) {
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
 		},
-		MustNot: []string{"git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
+		MustNot: []string{`only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
 			// out of the skill text, and so does the name of the format its
 			// fields came from.

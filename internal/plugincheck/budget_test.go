@@ -25,7 +25,7 @@ var fileCaps = map[string]int{
 	"output-styles/acta.md":                   1773,
 	"references/house-rules.md":               3787,
 	"skills/bug/SKILL.md":                     2327,
-	"skills/build/SKILL.md":                   16222,
+	"skills/build/SKILL.md":                   16293,
 	"skills/build/dispatch.md":                6477,
 	"skills/build/implementer-prompt.md":      7557,
 	"skills/build/wiki.md":                    2750,
@@ -72,7 +72,7 @@ var descriptionCaps = map[string]int{
 
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too.
-const sessionStartCap = 2733
+const sessionStartCap = 2861
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

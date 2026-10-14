@@ -15,7 +15,7 @@ Refuse to start unless the spec is approved (for Bounded work with no spec file,
 |---|---|---|
 | `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 | `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. Without it `dispatch` runs as `subagent`. On omp, `dispatch` runs as `subagent` |
-| `inline` | you | only when the user says "inline" |
+| `inline` | you | when the order below picks it |
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
@@ -24,6 +24,8 @@ Pick the executor in this order. When one of the first two gives an answer, do n
 1. The argument of `/build <executor>`: `subagent`, `dispatch` or `inline`. It is for this run only; never save it.
 2. `build_executor: <name>` from `acta config show`.
 3. Neither: ask which executor to run, as the table above describes.
+
+The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.
 
 Two fallbacks, each told to the user in one line:
 

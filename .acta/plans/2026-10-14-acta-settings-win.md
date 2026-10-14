@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0139
 created: "2026-10-14 14:56:00"
 hash: kknlolf
+started: "2026-10-14 14:59:02"
+finished: "2026-10-14 14:59:03"
 ---
 **Goal:** The effective acta behaviour settings reach every session as rules that win over conflicting CLAUDE.md or AGENTS.md text, while every other user rule keeps winning.
 
@@ -34,8 +36,8 @@ hash: kknlolf
 
 **verify:** The settings list shows exactly the effective config and nothing on a missing or broken config, and no hook text can still tell the agent that the user's CLAUDE.md beats an acta setting. List every path: each build_executor value (`subagent`, `dispatch`, `inline`), each other setting set and empty, a repo `.acta.yaml` value that differs from the user value, config missing, config unreadable; and every place rule 6 appears (`coreRules`, `default-rules.md`) plus the `Prompt` line in each config state.
 
-- [ ] **Failing test:** in `hook_test.go`, cases for the paths above: each executor value gives its own fixed sentence under the pinned heading; empty settings give no line; a repo override value wins; missing or unreadable config gives no heading; `Prompt` names the build executor when set; `coreRules` and `default-rules.md` hold the new rule 6 and not the removed one. `scripts/test ./internal/hook` fails.
-- [ ] **Change:** add a settings list builder fed by `in.Voice` and write it right after the core rules in `SessionStart`; one fixed sentence per value (inline: "The main agent writes the code itself; no implementer subagents."); extend `Prompt` with `, build executor <value>` when set; swap rule 6 in `coreRules` and `default-rules.md`.
+- [x] **Failing test:** in `hook_test.go`, cases for the paths above: each executor value gives its own fixed sentence under the pinned heading; empty settings give no line; a repo override value wins; missing or unreadable config gives no heading; `Prompt` names the build executor when set; `coreRules` and `default-rules.md` hold the new rule 6 and not the removed one. `scripts/test ./internal/hook` fails.
+- [x] **Change:** add a settings list builder fed by `in.Voice` and write it right after the core rules in `SessionStart`; one fixed sentence per value (inline: "The main agent writes the code itself; no implementer subagents."); extend `Prompt` with `, build executor <value>` when set; swap rule 6 in `coreRules` and `default-rules.md`.
 
 ### Task 02: CLAUDE.md block carries the priority line
 
@@ -43,8 +45,8 @@ hash: kknlolf
 
 **verify:** Every block acta writes holds the priority line once, right after the first line, and still holds no setting values. List every write path `WriteBlock` takes (new file, file without markers, file with a marker pair, CRLF file) and show the line lands once on each; show this repo's `CLAUDE.md` block equals `Block`.
 
-- [ ] **Failing test:** in `block_test.go`, assert `Block` holds the pinned block line once, as its second content line, and holds none of `inline`, `subagent`, `dispatch`, `minimal`, `tidy`; existing write-path tests keep passing. `scripts/test ./internal/setup` fails.
-- [ ] **Change:** add the line to `Block`; rewrite the `## acta` block in this repo's `CLAUDE.md` to match.
+- [x] **Failing test:** in `block_test.go`, assert `Block` holds the pinned block line once, as its second content line, and holds none of `inline`, `subagent`, `dispatch`, `minimal`, `tidy`; existing write-path tests keep passing. `scripts/test ./internal/setup` fails.
+- [x] **Change:** add the line to `Block`; rewrite the `## acta` block in this repo's `CLAUDE.md` to match.
 
 ### Task 03: build skill states that the configured executor wins
 
@@ -52,5 +54,26 @@ hash: kknlolf
 
 **verify:** The build skill says the configured or passed executor wins over the user's CLAUDE.md or AGENTS.md, and no sentence in it still lets a user file override the executor. List every sentence in the build skill folder that picks the executor and show each agrees.
 
-- [ ] **Failing test:** add to the build skill's `Must` list in plugincheck the phrase `The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.`; `scripts/test ./internal/plugincheck` fails.
-- [ ] **Change:** add that sentence where the skill picks the executor.
+- [x] **Failing test:** add to the build skill's `Must` list in plugincheck the phrase `The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.`; `scripts/test ./internal/plugincheck` fails.
+- [x] **Change:** add that sentence where the skill picks the executor.
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** Each NOTE below is applied, and nothing else changes.
+
+- [x] The dispatch sentence names the subagent fallback when herdr is missing or the harness is omp.
+- [x] The split sentence says it applies in Claude Code.
+- [x] `TestPromptNamesExecutor` prints the wanted text on failure.
+- [x] Commit: `polish: review notes PLN-0139`
+
+## Review notes
+
+- Round 1: deep, two reviewers, both CLEAN. Polish: two reviewers, both CLEAN.
+- Rule 6 says "settings below" even when no list is printed (default config, first run, fallback file); harmless.
+- No test checks that a missing or broken config keeps the executor out of the Prompt line; the code returns early there.
+- Session start and build SKILL.md caps were raised to the exact new sizes, so they have no headroom.
+- Repos with an older CLAUDE.md block keep it until acta setup runs again.
+- The dispatch sentence says "when herdr is missing"; the skill's real trigger is no HERDR_ENV=1 (outside a herdr pane).
+- The spec example still shows the split sentence without "In Claude Code".
