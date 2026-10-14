@@ -2,6 +2,7 @@ package wiki
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,16 +11,16 @@ import (
 )
 
 // CheckedFile sits in the wiki folder. It holds one line per page, the page id
-// and the day it was last checked. Freshness reads the commits that added a
-// line, never the date: the date only makes the line change on each check.
+// and the time it was last checked. Freshness reads the commits that added a
+// line, never the time: the time only makes the line change on each check.
 const CheckedFile = ".checked"
 
 // RewriteChecked gives the new text of the checked file. Every touched page
-// gets today. A page named twice keeps its newest date, which is what a union
+// gets now. A page named twice keeps its newest time, which is what a union
 // merge of two branches leaves behind. A page that is not known any more is
-// dropped, and so is a line that is not "<id> <date>". Lines come out sorted,
+// dropped, and so is a line that is not "<id> <time>". Lines come out sorted,
 // so the same pages always give the same file.
-func RewriteChecked(old string, known, touched []string, today string) string {
+func RewriteChecked(old string, known, touched []string, now string) string {
 	dates := map[string]string{}
 	for _, line := range strings.Split(old, "\n") {
 		f := strings.Fields(line)
@@ -32,7 +33,7 @@ func RewriteChecked(old string, known, touched []string, today string) string {
 	}
 	for _, id := range touched {
 		if slices.Contains(known, id) {
-			dates[id] = today
+			dates[id] = now
 		}
 	}
 	ids := make([]string, 0, len(dates))
@@ -48,12 +49,16 @@ func RewriteChecked(old string, known, touched []string, today string) string {
 }
 
 // MarkChecked rewrites the checked file in dir, the wiki folder, and gives its
-// path. A missing file counts as empty.
-func MarkChecked(dir string, known, touched []string, today string) (string, error) {
+// path. A missing file counts as empty. A link is refused: writing through it
+// would wipe a file that is not the wiki's.
+func MarkChecked(dir string, known, touched []string, now string) (string, error) {
 	p := filepath.Join(dir, CheckedFile)
+	if fi, err := os.Lstat(p); err == nil && !fi.Mode().IsRegular() {
+		return "", fmt.Errorf("%s is not a plain file", p)
+	}
 	old, err := os.ReadFile(p)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
-	return p, os.WriteFile(p, []byte(RewriteChecked(string(old), known, touched, today)), 0o644)
+	return p, os.WriteFile(p, []byte(RewriteChecked(string(old), known, touched, now)), 0o644)
 }

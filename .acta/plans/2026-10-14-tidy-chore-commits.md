@@ -65,3 +65,47 @@ finished: "2026-10-14 15:56:09"
 
 - [x] **Failing test:** cases above in `gitc_test.go` and `ids_test.go`. `scripts/test ./internal/gitc ./internal/write` fails.
 - [x] **Change:** `canFold` compares kind and checks the root instead of same file; `foldArgs` rebuilds the subject with `FoldSubject` and keeps the body lines; `ids.go` routes through a fold-aware commit with the folder kind.
+
+## Fix round 1
+
+### Task 05: Fix round 1
+
+**Files:** Modify `internal/gitc/subject.go`, `internal/gitc/subject_test.go`, `internal/gitc/gitc.go`, `internal/gitc/gitc_test.go`, `internal/wiki/checked.go`, `internal/wiki/checked_test.go`, `internal/wiki/check_test.go`, `internal/doctor/wiki.go`, `internal/doctor/wiki_test.go`, `internal/cli/doctor.go`, `internal/cli/wiki.go`, `.acta/wiki/wiki-freshness-from-git.md`
+
+**verify:** Every BLOCKER below has a test that was red before the fix, and no fold, freshness read or doctor fix gives the wrong answer on any input it names.
+
+- [x] BLOCKER: `FoldSubject` never passes 72 characters; when even one name with `+N more` does not fit it gives "" so the caller keeps HEAD's subject.
+- [x] BLOCKER: a `+<id> ` line counts as a check only when the same commit has no identical `-` line (a re-sort after a union merge is no check).
+- [x] BLOCKER: the `.checked` log read uses `--no-color --no-ext-diff`, so a coloured git config still reads checks.
+- [x] BLOCKER: `doctor --fix` does not commit `.gitattributes` or `.checked` when either was dirty before it ran.
+- [x] [fix] `.checked` and `.gitattributes` are never written through a symlink.
+- [x] [fix] `--fix` appends the union line to `.gitattributes` and keeps the file's other bytes as they are.
+- [x] [fix] the migration reads freshness before it writes any file, and keeps the same usable paths as `wiki check`.
+- [x] [fix] a same-kind fold onto a HEAD folded by an old binary keeps HEAD's subject as a body line.
+- [x] [fix] test: HEAD holding a file outside the root does not fold.
+- [x] [fix] comments and wiki page say time, not day; the page lists `internal/doctor/wiki.go`; `CommitOrFold` and the doctor `--fix` comments match the new behaviour.
+
+## Polish
+
+### Task 06: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] a link at `.gitattributes` or `.checked` skips only the wiki fix with a reason; the rest of `doctor --fix` still runs
+- [x] `TestDoctorFixWritesNothingWhenTheMigrationFails` makes the migration really fail and checks the error
+- [x] the odd-path migration test goes red with the old path filter
+- [x] a test for a dirty `.checked` under `doctor --fix`
+- [x] the `fixWiki` comment says only what holds
+- [x] Commit: `polish: review notes for PLN-0140`
+
+## Review notes
+
+- Review: deep level (setting), full tier; round 1 BLOCKED (4 BLOCKERs, fixed in Task 05), round 2 CLEAN, polish review CLEAN.
+- doctor says "is a link" for any non-plain .gitattributes or .checked, a folder included.
+- FoldSubject keeps HEAD's subject when one name cannot fit; that subject then also shows as a body line.
+- The .checked log read has no --no-textconv; a user textconv driver on .checked could hide lines.
+- An unreadable but regular .gitattributes is read as empty before the union line is appended.
+- Two wiki ok runs in the same second make no diff; the second fails with "written, not committed".
+- A page id starting with "++" or holding a space never counts as checked.
+- Trailer checks made by an old binary after main migrated are read by nothing; those pages turn stale.
+- Task 05 commit carries Task trailers for #1-#4, not #5.

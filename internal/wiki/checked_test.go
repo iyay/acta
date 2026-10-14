@@ -56,3 +56,20 @@ func TestMarkChecked(t *testing.T) {
 		t.Errorf("file %q", got)
 	}
 }
+
+func TestMarkCheckedRefusesALink(t *testing.T) {
+	t.Parallel()
+	dir, other := t.TempDir(), filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(other, []byte("keep me\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(other, filepath.Join(dir, CheckedFile)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MarkChecked(dir, []string{"a"}, []string{"a"}, "2026-10-14T00:00:00Z"); err == nil {
+		t.Error("MarkChecked wrote through a link")
+	}
+	if raw, _ := os.ReadFile(other); string(raw) != "keep me\n" {
+		t.Errorf("the link target changed: %q", raw)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -24,6 +25,10 @@ func checkWiki(e Env) Result {
 	pages, _ := wiki.Load(e.ActaRoot)
 	if e.RepoRoot == "" || len(pages) == 0 {
 		r.Msg = "no wiki pages"
+		return r
+	}
+	if link := linkedWikiFile(e); link != "" {
+		r.Level, r.Msg, r.Fix = Warn, link+" is a link, so acta will not write it", "replace it with a plain file"
 		return r
 	}
 	var msgs []string
@@ -47,20 +52,19 @@ func checkWiki(e Env) Result {
 
 // fixWiki adds the union line and rewrites the checked file. With no checked
 // file yet, every page that is fresh by the old trailer rule gets a line, so
-// moving to the file turns no fresh page stale. It gives the paths it changed.
+// moving to the file turns no fresh page stale. The git history is read before
+// any wiki file is written, so a failed read writes neither of them. It gives
+// the paths it changed.
 func fixWiki(e Env) ([]string, error) {
 	pages, _ := wiki.Load(e.ActaRoot)
 	if len(pages) == 0 {
 		return nil, nil
 	}
-	var changed []string
 	attrs := filepath.Join(e.RepoRoot, ".gitattributes")
-	if have := lines(attrs); !slices.Contains(have, unionLine(e)) {
-		body := strings.Join(append(have, unionLine(e)), "\n") + "\n"
-		if err := os.WriteFile(attrs, []byte(body), 0o644); err != nil {
-			return nil, err
-		}
-		changed = append(changed, attrs)
+	// A link carries the write to a file that is not this repo's. Skip only
+	// this part, so the rest of --fix still runs; checkWiki says why.
+	if linkedWikiFile(e) != "" {
+		return nil, nil
 	}
 	old, err := os.ReadFile(checkedPath(e))
 	missing := errors.Is(err, fs.ErrNotExist)
@@ -72,6 +76,18 @@ func fixWiki(e Env) ([]string, error) {
 		if touched, err = freshByTrailers(e, pages); err != nil {
 			return nil, err
 		}
+	}
+	var changed []string
+	if !slices.Contains(lines(attrs), unionLine(e)) {
+		// Append, so the user's own lines and blank lines stay as they are.
+		raw, _ := os.ReadFile(attrs)
+		if len(raw) > 0 && raw[len(raw)-1] != '\n' {
+			raw = append(raw, '\n')
+		}
+		if err := os.WriteFile(attrs, append(raw, unionLine(e)+"\n"...), 0o644); err != nil {
+			return nil, err
+		}
+		changed = append(changed, attrs)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	body := wiki.RewriteChecked(string(old), pageIDs(pages), touched, now)
@@ -88,7 +104,7 @@ func fixWiki(e Env) ([]string, error) {
 // the checked file: a check was a page edit or an empty commit with a
 // Wiki-Checked trailer. Only the move to the checked file reads it.
 func freshByTrailers(e Env, pages []wiki.Page) ([]string, error) {
-	raw, err := exec.Command("git", "-C", e.RepoRoot, "log", "--grep=^Wiki-Checked:",
+	raw, err := exec.Command("git", "-C", e.RepoRoot, "log", "--no-color", "--grep=^Wiki-Checked:",
 		"--format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)").Output()
 	if err != nil {
 		return nil, fmt.Errorf("git log: %w", err)
@@ -114,11 +130,11 @@ func freshByTrailers(e Env, pages []wiki.Page) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		// A path that climbs out of the repo would make git fail. acta wiki
-		// check reports those, so here they are left out.
+		// Keep the same paths acta wiki check keeps, so a page is fresh here
+		// exactly when it was fresh there.
 		var paths []string
 		for _, entry := range p.Paths {
-			if entry != "" && !strings.HasPrefix(entry, "/") && !strings.HasPrefix(entry, "../") {
+			if usable(entry) {
 				paths = append(paths, entry)
 			}
 		}
@@ -131,6 +147,30 @@ func freshByTrailers(e Env, pages []wiki.Page) ([]string, error) {
 		}
 	}
 	return fresh, nil
+}
+
+// usable says whether a paths entry is a plain path inside the repo, the only
+// kind acta wiki check asks git about.
+func usable(entry string) bool {
+	plain := path.Clean(entry)
+	if entry == "" || plain == "." || plain == ".." || strings.HasPrefix(plain, "../") || strings.HasPrefix(plain, "/") {
+		return false
+	}
+	if strings.HasSuffix(entry, "/") {
+		plain += "/"
+	}
+	return plain == entry
+}
+
+// linkedWikiFile names .gitattributes or the checked file when either is a
+// link or not a plain file, else "".
+func linkedWikiFile(e Env) string {
+	for _, p := range []string{filepath.Join(e.RepoRoot, ".gitattributes"), checkedPath(e)} {
+		if fi, err := os.Lstat(p); err == nil && !fi.Mode().IsRegular() {
+			return p
+		}
+	}
+	return ""
 }
 
 func checkedPath(e Env) string { return filepath.Join(e.ActaRoot, "wiki", wiki.CheckedFile) }

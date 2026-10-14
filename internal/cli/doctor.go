@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/theme"
+	"github.com/iyay/acta/internal/wiki"
 	"github.com/iyay/acta/plugin"
 )
 
@@ -36,11 +38,19 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	e := doctorEnv(*known)
 	if *fix {
-		// The file was dirty before --fix touched it, so its other lines
-		// are the user's own and are not ours to commit. A status git cannot
-		// read means dirty cannot be told from clean, so the err travels with
-		// it into skipReason instead of being dropped.
-		dirty, dirtyErr := gitc.IsDirty(e.RepoRoot, filepath.Join(e.ActaRoot, ".gitignore"))
+		// A file that was dirty before --fix touched it holds lines that are
+		// the user's own, and those are not ours to commit. A status git
+		// cannot read means dirty cannot be told from clean, so the err
+		// travels with it into skipReason instead of being dropped.
+		dirty, dirtyErr := false, error(nil)
+		for _, f := range []string{
+			filepath.Join(e.ActaRoot, ".gitignore"),
+			filepath.Join(e.RepoRoot, ".gitattributes"),
+			filepath.Join(e.ActaRoot, "wiki", wiki.CheckedFile),
+		} {
+			d, err := gitc.IsDirty(e.RepoRoot, f)
+			dirty, dirtyErr = dirty || d, errors.Join(dirtyErr, err)
+		}
 		paths, err := doctor.Fix(e)
 		if err != nil {
 			fmt.Fprintln(stderr, err)

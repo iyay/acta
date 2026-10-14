@@ -52,9 +52,10 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 // CommitOrFold is Commit, except that it amends HEAD instead of adding a new
 // commit when HEAD is this tool's own earlier planning commit of the same file
 // and nothing else can hold that commit. A run of repeat edits then leaves one
-// commit. The amended commit keeps HEAD's subject and adds the new subject as
-// a body line, so no subject is lost. Any doubt, or a failed amend, ends in
-// the plain Commit.
+// commit. The new subject is added as a body line, so no subject is lost. HEAD's
+// subject stays, except when both are chores of one kind: then foldArgs builds
+// a subject that names them all. Any doubt, or a failed amend, ends in the
+// plain Commit.
 func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	return CommitOrFoldIn(repo, "", path, msg, wasDirty)
 }
@@ -121,27 +122,33 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 	said := func(s string) bool {
 		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
 	}
-	if sameKind && strings.TrimSpace(lines[0]) != msg && !said(msg) &&
-		!slices.ContainsFunc(lines[1:], func(ln string) bool { return SubjectKind(strings.TrimSpace(ln)) == kind }) {
-		// The first fold: HEAD's subject is about to change, so keep it below.
+	if sameKind && strings.TrimSpace(lines[0]) != msg && !said(msg) && !said(strings.TrimSpace(lines[0])) &&
+		strings.TrimSpace(lines[0]) != FoldSubject(kindLines(lines[1:], kind)) {
+		// HEAD's subject is about to change and was not built from the body,
+		// so it is a subject of its own. Keep it below.
 		lines = insertFoldLine(lines, lines[0])
 	}
 	if strings.TrimSpace(lines[0]) != msg && !said(msg) {
 		lines = insertFoldLine(lines, msg)
 	}
 	if sameKind {
-		var subjects []string
-		for _, ln := range lines[1:] {
-			if SubjectKind(strings.TrimSpace(ln)) == kind {
-				subjects = append(subjects, strings.TrimSpace(ln))
-			}
-		}
-		if s := FoldSubject(subjects); s != "" {
+		if s := FoldSubject(kindLines(lines[1:], kind)); s != "" {
 			lines[0] = s
 		}
 	}
 	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
 	return append(args, paths...), true
+}
+
+// kindLines gives the body lines that are chore subjects of kind.
+func kindLines(body []string, kind string) []string {
+	var out []string
+	for _, ln := range body {
+		if SubjectKind(strings.TrimSpace(ln)) == kind {
+			out = append(out, strings.TrimSpace(ln))
+		}
+	}
+	return out
 }
 
 // insertFoldLine puts msg into the message lines: after the last body line
@@ -410,17 +417,29 @@ func CheckCommits(repo, pageFile, checkedFile, id string) ([]string, error) {
 		return nil, err
 	}
 	shas := strings.Fields(out)
-	out, err = run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "-p", "-U0", "--format=%x00%H", "--", checkedFile)
+	// No colour and no outside diff tool, so every line reads the same
+	// whatever the user set up.
+	out, err = run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--no-color", "--no-ext-diff",
+		"-p", "-U0", "--format=%x00%H", "--", checkedFile)
 	if err != nil {
 		return nil, err
 	}
-	sha := ""
-	for _, line := range strings.Split(out, "\n") {
-		switch {
-		case strings.HasPrefix(line, "\x00"):
-			sha = strings.TrimPrefix(line, "\x00")
-		case strings.HasPrefix(line, "+"+id+" ") && !strings.HasPrefix(line, "+++"):
-			if sha != "" && !slices.Contains(shas, sha) {
+	for _, c := range strings.Split(out, "\x00")[1:] {
+		sha, diff, _ := strings.Cut(c, "\n")
+		added, removed := map[string]bool{}, map[string]bool{}
+		for _, line := range strings.Split(diff, "\n") {
+			switch {
+			case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
+			case strings.HasPrefix(line, "+"+id+" "):
+				added[line[1:]] = true
+			case strings.HasPrefix(line, "-"+id+" "):
+				removed[line[1:]] = true
+			}
+		}
+		// A line taken out and put back the same is only a move, like the
+		// re-sort after a union merge. It says nothing new about the page.
+		for line := range added {
+			if !removed[line] && !slices.Contains(shas, sha) {
 				shas = append(shas, sha)
 			}
 		}

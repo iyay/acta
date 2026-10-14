@@ -1330,3 +1330,55 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 		}
 	})
 }
+
+func TestCheckCommitsRoundOne(t *testing.T) {
+	const page, checked = "page.md", ".checked"
+	t.Run("a re-sort that moves a line is not a check", func(t *testing.T) {
+		repo := setupRepo(t)
+		add := commitFileAt(t, repo, checked, "z 2026-01-03T00:00:00Z\na 2026-01-01T00:00:00Z\n", "", "union leaves it unsorted")
+		commitFileAt(t, repo, checked, "a 2026-01-01T00:00:00Z\nz 2026-01-03T00:00:00Z\n", "", "sorted rewrite")
+		got, err := CheckCommits(repo, page, checked, "z")
+		if err != nil || !reflect.DeepEqual(got, []string{add}) {
+			t.Errorf("got %v, %v, want only [%s]", got, err, add)
+		}
+	})
+	t.Run("a coloured git config still reads checks", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "config", "color.ui", "always")
+		git(t, repo, "config", "color.diff", "always")
+		c := commitFileAt(t, repo, checked, "z 2026-01-03T00:00:00Z\n", "", "check z")
+		got, err := CheckCommits(repo, page, checked, "z")
+		if err != nil || !reflect.DeepEqual(got, []string{c}) {
+			t.Errorf("got %v, %v, want [%s]", got, err, c)
+		}
+	})
+}
+
+func TestCommitOrFoldInRoundOne(t *testing.T) {
+	t.Run("a head file outside the root does not fold", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		writeFile(t, filepath.Join(repo, "code.go"), "x\n")
+		git(t, repo, "add", "code.go")
+		git(t, repo, "commit", "-q", "--amend", "--no-edit")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
+		}
+	})
+	t.Run("a head folded by an old binary keeps its subject", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		git(t, repo, "commit", "-q", "--amend", "-m", "chore(scratch): tick one\n\nchore(scratch): tick two")
+		writeFile(t, a, "a2\n")
+		if r := CommitOrFoldIn(repo, root, a, "chore(scratch): tick three", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		body := git(t, repo, "log", "-1", "--format=%B")
+		for _, want := range []string{"tick one", "tick two", "tick three"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("message %q lost %q", body, want)
+			}
+		}
+	})
+}

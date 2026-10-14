@@ -4,6 +4,7 @@ id: SPC-0130
 created: "2026-10-14 15:28:47"
 hash: d5cq97i
 started: "2026-10-14 15:40:18"
+finished: "2026-10-14 15:56:09"
 ---
 # Tidy chore commits: wiki checks in a file, same-kind chores fold
 

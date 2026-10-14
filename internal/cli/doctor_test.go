@@ -817,3 +817,74 @@ func TestTuiVersionFor(t *testing.T) {
 		}
 	}
 }
+
+// --fix never commits a .gitattributes the user was still editing.
+func TestDoctorCLIFixDoesNotCommitADirtyGitattributes(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	page := filepath.Join(dir, ".acta", "wiki", "a.md")
+	if err := os.MkdirAll(filepath.Dir(page), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(page, []byte("---\ntype: Gotcha\ntitle: A\ndescription: A\npaths: []\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "-C", dir, "add", ".").CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", dir, "commit", "-q", "-m", "page").CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitattributes"), []byte("*.psd half done\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %d, want %d: the dirty .gitattributes was committed", got, before)
+	}
+	if !strings.Contains(stderr.String(), "not committed") {
+		t.Fatalf("stderr %q does not say why the commit was skipped", stderr.String())
+	}
+}
+
+// --fix never commits a checked file the user was still editing.
+func TestDoctorCLIFixDoesNotCommitADirtyCheckedFile(t *testing.T) {
+	home := doctorHome(t)
+	dir := doctorRepo(t)
+	ompActa(t, home)
+	files := map[string]string{
+		".acta/wiki/a.md":     "---\ntype: Gotcha\ntitle: A\ndescription: A\npaths: []\n---\nbody\n",
+		".acta/wiki/.checked": "a 2026-01-01T00:00:00Z\n",
+	}
+	for name, body := range files {
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{{"add", "."}, {"commit", "-q", "-m", "page"}} {
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("%v %s", err, out)
+		}
+	}
+	// The user's own edit, not yet committed.
+	if err := os.WriteFile(filepath.Join(dir, ".acta/wiki/.checked"), []byte("a 2026-01-01T00:00:00Z\na 2026-02-01T00:00:00Z\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		Run([]string{"doctor", "--fix"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if got := commitCount(t, dir); got != before {
+		t.Fatalf("commits %d, want %d: the dirty checked file was committed", got, before)
+	}
+}

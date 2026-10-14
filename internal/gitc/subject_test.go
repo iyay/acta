@@ -23,6 +23,10 @@ func TestFoldSubject(t *testing.T) {
 		{"a name seen twice is said once", []string{"chore(plan): assign short ids", "chore(plan): assign short ids"}, "chore(plan): assign short ids"},
 		{"a subject with one word is a verb with no names", []string{"chore(plan): tidy", "chore(plan): new p"}, "chore(plan): tidy; new p"},
 		{"no subjects give nothing", nil, ""},
+		{"one name that cannot fit gives nothing", []string{
+			"chore(scratch): new 2026-10-13-plan-status-stale-when-tasks-done",
+			"chore(scratch): scratch/2026-10-13-plan-status-stale-when-tasks-done status brainstorming",
+		}, ""},
 		{"different kinds do not fold", []string{"chore(bug): new x", "chore(scratch): new y"}, ""},
 		{"a subject that is not a chore does not fold", []string{"feat: x", "chore(bug): new y"}, ""},
 		{"too long ends with a count", long, "chore(scratch): new alpha-one, bravo-two, charlie-three, +4 more"},
