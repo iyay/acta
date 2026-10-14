@@ -26,8 +26,11 @@ func SubjectKind(subject string) string {
 // commits holds: the names of each verb joined, verbs in the order first
 // seen. Names that do not fit in maxSubject become "+N more", so none is
 // lost without a count. It gives "" when the subjects are not all chores of
-// one kind, so the caller must not fold them.
+// one kind, or there are none, so the caller keeps the subject it has.
 func FoldSubject(subjects []string) string {
+	if len(subjects) == 0 {
+		return ""
+	}
 	if len(subjects) == 1 {
 		return subjects[0]
 	}

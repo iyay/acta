@@ -22,6 +22,7 @@ func TestFoldSubject(t *testing.T) {
 		{"mixed verbs group per verb", []string{"chore(bug): new x", "chore(bug): fixed_in y", "chore(bug): new z"}, "chore(bug): new x, z; fixed_in y"},
 		{"a name seen twice is said once", []string{"chore(plan): assign short ids", "chore(plan): assign short ids"}, "chore(plan): assign short ids"},
 		{"a subject with one word is a verb with no names", []string{"chore(plan): tidy", "chore(plan): new p"}, "chore(plan): tidy; new p"},
+		{"no subjects give nothing", nil, ""},
 		{"different kinds do not fold", []string{"chore(bug): new x", "chore(scratch): new y"}, ""},
 		{"a subject that is not a chore does not fold", []string{"feat: x", "chore(bug): new y"}, ""},
 		{"too long ends with a count", long, "chore(scratch): new alpha-one, bravo-two, charlie-three, +4 more"},

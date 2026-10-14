@@ -707,7 +707,8 @@ func TestCommitOrFold(t *testing.T) {
 		if r := CommitOrFold(repo, a, "chore(spec): fix wording", false); !r.Folded {
 			t.Fatalf("repeat got %+v", r)
 		}
-		want := msg + "\n\nchore(spec): fix wording\nchore(scratch): third"
+		// The third is the same kind as HEAD, so the subject now names both.
+		want := "chore(scratch): add to item; third\n\nchore(spec): fix wording\nchore(scratch): add to item\nchore(scratch): third"
 		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
 			t.Fatalf("message %q, want %q", got, want)
 		}
@@ -1226,6 +1227,106 @@ func TestUnseen(t *testing.T) {
 	t.Run("a folder that is no checkout is an error", func(t *testing.T) {
 		if sha, _, err := Unseen(t.TempDir(), nil, paths); err == nil {
 			t.Errorf("got %q and no error", sha)
+		}
+	})
+}
+
+// kindRepo is a checkout whose newest commit is "chore(scratch): new a",
+// made by acta and holding only plan/scratch/a.md.
+func kindRepo(t *testing.T) (repo, root string) {
+	t.Helper()
+	repo = setupRepo(t)
+	git(t, repo, "config", "user.name", "test")
+	root = filepath.Join(repo, "plan")
+	for _, d := range []string{"scratch", "bugs"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a := filepath.Join(root, "scratch", "a.md")
+	writeFile(t, a, "a\n")
+	if r := CommitOrFoldIn(repo, root, a, "chore(scratch): new a", false); !r.Committed || r.Folded {
+		t.Fatalf("first call = %+v, want a plain commit", r)
+	}
+	return repo, root
+}
+
+func TestCommitOrFoldInSameKind(t *testing.T) {
+	t.Run("two chores of one kind on two files fold under one subject", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		before := commitCount(t, repo)
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+		want := "chore(scratch): new a, b\n\nchore(scratch): new a\nchore(scratch): new b"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+		// A third one joins the same list, and the body keeps every original.
+		c := filepath.Join(root, "scratch", "c.md")
+		writeFile(t, c, "c\n")
+		if r := CommitOrFoldIn(repo, root, c, "chore(scratch): new c", false); !r.Folded {
+			t.Fatalf("third got %+v", r)
+		}
+		want = "chore(scratch): new a, b, c\n\nchore(scratch): new a\nchore(scratch): new b\nchore(scratch): new c"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+	})
+	t.Run("several paths of one kind fold too", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		b, c := filepath.Join(root, "scratch", "b.md"), filepath.Join(root, "scratch", "c.md")
+		writeFile(t, b, "b\n")
+		writeFile(t, c, "c\n")
+		if r := CommitPathsIn(repo, root, []string{b, c}, "chore(scratch): assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a; assign short ids" {
+			t.Fatalf("subject %q", got)
+		}
+	})
+	no := []struct {
+		name, msg string
+		file      func(repo, root string) string
+	}{
+		{"another kind", "chore(bug): new x", func(_, root string) string { return filepath.Join(root, "bugs", "x.md") }},
+		{"a file outside the root", "chore(scratch): new x", func(repo, _ string) string { return filepath.Join(repo, "x.md") }},
+		{"a subject that is no chore", "feat: x", func(_, root string) string { return filepath.Join(root, "scratch", "x.md") }},
+	}
+	for _, c := range no {
+		t.Run(c.name+" does not fold", func(t *testing.T) {
+			repo, root := kindRepo(t)
+			before := commitCount(t, repo)
+			f := c.file(repo, root)
+			writeFile(t, f, "x\n")
+			if r := CommitOrFoldIn(repo, root, f, c.msg, false); !r.Committed || r.Folded {
+				t.Fatalf("got %+v, want a new commit", r)
+			}
+			if got := commitCount(t, repo); got == before {
+				t.Fatal("no new commit")
+			}
+		})
+	}
+	t.Run("no root means same file only", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFold(repo, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
+		}
+	})
+	t.Run("a pushed head does not fold", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		git(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
 		}
 	})
 }

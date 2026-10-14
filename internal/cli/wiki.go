@@ -120,7 +120,7 @@ func wikiOk(stdout, stderr io.Writer, cfg config.Config, pages []wiki.Page, ids 
 		fmt.Fprintln(stderr, "acta wiki ok: "+oneLine(err.Error()))
 		return exitOther
 	}
-	r := gitc.CommitOrFold(cfg.RepoRoot, path, "chore(wiki): re-check "+strings.Join(unique, ", "), dirty)
+	r := gitc.CommitOrFoldIn(cfg.RepoRoot, cfg.Root, path, "chore(wiki): re-check "+strings.Join(unique, ", "), dirty)
 	if !r.Committed {
 		fmt.Fprintln(stderr, "acta wiki ok: written, not committed: "+oneLine(r.Reason))
 		return exitOther

@@ -5,6 +5,7 @@ id: PLN-0140
 created: "2026-10-14 15:29:55"
 hash: q59rynr
 started: "2026-10-14 15:40:18"
+finished: "2026-10-14 15:56:09"
 ---
 # Tidy chore commits Implementation Plan
 
@@ -17,9 +18,9 @@ started: "2026-10-14 15:40:18"
 ## Global Constraints
 
 - Follow acta:lean: understand the task and the code first; skip it, reuse code here, stdlib, native feature, installed dependency, one line, minimum; never cut validation, security or accessibility.
-- File path `.acta/wiki/.checked` (under the planning root), line form `<page id> <YYYY-MM-DD>`, sorted by page id, one line per page.
+- File path `.acta/wiki/.checked` (under the planning root), line form `<page id> <UTC time, RFC 3339>`, sorted by page id, one line per page.
 - `.gitattributes` line, verbatim: `.acta/wiki/.checked merge=union` (path follows the planning root).
-- The string `Wiki-Checked` must not remain in any non-test Go file after this plan.
+- The string `Wiki-Checked` must not remain in any non-test Go file after this plan, except the doctor migration reader in `internal/doctor/wiki.go`.
 - Subject cap 72 characters; overflow names become `+N more`; verb groups joined with `; `.
 - Tests never run `rm -rf` or `rm -f`; temp repos under `t.TempDir()`. Write commands auto-commit, so tests use temp repos only.
 - No version bump. Not a task: running `acta doctor --fix` on this repo and rebuilding the PATH binary; both go in the landing report.
@@ -53,8 +54,8 @@ started: "2026-10-14 15:40:18"
 
 **verify:** `acta wiki ok` never makes an empty commit or a trailer, and `doctor --fix` never turns a fresh page stale. List every path: `wiki ok` with known ids (file rewritten, one `chore(wiki): re-check <ids>` commit through `CommitOrFold`), unknown id (error, no write), two branches re-checking the same page then merging (no conflict); doctor on a missing union line, duplicate line, orphan line, a repo with only old trailers (`--fix` writes a line for each page fresh now and none for stale ones, then all pages keep their state), and a clean repo (no warning, no commit).
 
-- [ ] **Failing test:** cases above in `wiki_test.go` and `doctor_test.go`. `scripts/test ./internal/cli ./internal/doctor` fails.
-- [ ] **Change:** `wikiOk` calls `wiki.Rewrite` and `gitc.CommitOrFold` in place of `CommitEmpty`; doctor gains the `.checked` and `.gitattributes` checks and the fix. Migration reads freshness with the old trailer rule only inside the doctor fix, from git log, then never again.
+- [x] **Failing test:** cases above in `wiki_test.go` and `doctor_test.go`. `scripts/test ./internal/cli ./internal/doctor` fails.
+- [x] **Change:** `wikiOk` calls `wiki.Rewrite` and `gitc.CommitOrFold` in place of `CommitEmpty`; doctor gains the `.checked` and `.gitattributes` checks and the fix. Migration reads freshness with the old trailer rule only inside the doctor fix, from git log, then never again.
 
 ### Task 04: same-kind chores fold
 
@@ -62,5 +63,5 @@ started: "2026-10-14 15:40:18"
 
 **verify:** A fold happens only when HEAD and the new commit are chores of the same kind, every file sits under the planning root or is `.gitattributes`, and every old guard holds; the folded subject comes from `FoldSubject`. List every path: two `chore(scratch): new` fold; `chore(bug)` after `chore(scratch)` does not; HEAD pushed, tagged, a merge, another author, or holding a file outside the root does not; same-file repeat still folds; `assign short ids` in one folder gets that kind and folds, across folders keeps no kind and does not.
 
-- [ ] **Failing test:** cases above in `gitc_test.go` and `ids_test.go`. `scripts/test ./internal/gitc ./internal/write` fails.
-- [ ] **Change:** `canFold` compares kind and checks the root instead of same file; `foldArgs` rebuilds the subject with `FoldSubject` and keeps the body lines; `ids.go` routes through a fold-aware commit with the folder kind.
+- [x] **Failing test:** cases above in `gitc_test.go` and `ids_test.go`. `scripts/test ./internal/gitc ./internal/write` fails.
+- [x] **Change:** `canFold` compares kind and checks the root instead of same file; `foldArgs` rebuilds the subject with `FoldSubject` and keeps the body lines; `ids.go` routes through a fold-aware commit with the folder kind.

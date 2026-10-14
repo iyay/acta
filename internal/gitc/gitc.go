@@ -56,6 +56,14 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 // a body line, so no subject is lost. Any doubt, or a failed amend, ends in
 // the plain Commit.
 func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
+	return CommitOrFoldIn(repo, "", path, msg, wasDirty)
+}
+
+// CommitOrFoldIn is CommitOrFold that also folds a chore of the same kind
+// on another file, when every file of HEAD and path sit under root, the
+// planning folder. The subject then names what the fold holds (FoldSubject).
+// An empty root folds the same file only.
+func CommitOrFoldIn(repo, root, path, msg string, wasDirty bool) Result {
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
 	}
@@ -65,44 +73,75 @@ func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	if reason := busy(repo); reason != "" {
 		return Result{Reason: reason}
 	}
-	if canFold(repo, path) {
-		if _, err := run(repo, "add", "--", path); err == nil {
-			if args, ok := foldArgs(repo, path, msg); ok {
-				if _, err := run(repo, args...); err == nil {
-					return Result{Committed: true, Folded: true}
-				}
-			}
-		}
+	if r, ok := tryFold(repo, root, []string{path}, msg); ok {
+		return r
 	}
 	return Commit(repo, path, msg, wasDirty)
+}
+
+// tryFold amends HEAD with paths when canFold allows it. ok is false when it
+// did not fold, so the caller makes a plain commit instead.
+func tryFold(repo, root string, paths []string, msg string) (Result, bool) {
+	if !canFold(repo, root, paths, msg) {
+		return Result{}, false
+	}
+	if _, err := run(repo, append([]string{"add", "--"}, paths...)...); err != nil {
+		return Result{}, false
+	}
+	args, ok := foldArgs(repo, paths, msg)
+	if !ok {
+		return Result{}, false
+	}
+	if _, err := run(repo, args...); err != nil {
+		return Result{}, false
+	}
+	return Result{Committed: true, Folded: true}, true
 }
 
 // trailerLine matches a line like "Co-Authored-By: X". A paragraph made only
 // of such lines is a trailer block, the way git reads one.
 var trailerLine = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*:\s+\S`)
 
-// foldArgs builds the git amend call for a fold. HEAD's message stays exactly
-// as written. msg is added as one more line when HEAD does not say it yet: it
-// goes before the trailer block, so trailers stay trailers, or at the end when
-// there is none. It says false when HEAD's message cannot be read.
-func foldArgs(repo, path, msg string) ([]string, bool) {
+// foldArgs builds the git amend call for a fold. msg is added as one more
+// line when HEAD does not say it yet: it goes before the trailer block, so
+// trailers stay trailers, or at the end when there is none. When HEAD and msg
+// are chores of one kind, HEAD's own subject goes in the body too and the
+// subject is built anew from every chore line there, so it names them all.
+// Otherwise HEAD's subject stays. It says false when HEAD's message cannot be
+// read.
+func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 	out, err := run(repo, "log", "-1", "--format=%B")
 	if err != nil {
 		return nil, false
 	}
 	lines := strings.Split(strings.TrimRight(out, " \t\r\n"), "\n")
 	msg = strings.TrimSpace(msg)
-	said := false
-	for _, ln := range lines {
-		if strings.TrimSpace(ln) == msg {
-			said = true
-		}
+	kind := SubjectKind(msg)
+	sameKind := kind != "" && SubjectKind(lines[0]) == kind
+	said := func(s string) bool {
+		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
 	}
-	if !said {
+	if sameKind && strings.TrimSpace(lines[0]) != msg && !said(msg) &&
+		!slices.ContainsFunc(lines[1:], func(ln string) bool { return SubjectKind(strings.TrimSpace(ln)) == kind }) {
+		// The first fold: HEAD's subject is about to change, so keep it below.
+		lines = insertFoldLine(lines, lines[0])
+	}
+	if strings.TrimSpace(lines[0]) != msg && !said(msg) {
 		lines = insertFoldLine(lines, msg)
 	}
-	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n")}
-	return append(args, "--", path), true
+	if sameKind {
+		var subjects []string
+		for _, ln := range lines[1:] {
+			if SubjectKind(strings.TrimSpace(ln)) == kind {
+				subjects = append(subjects, strings.TrimSpace(ln))
+			}
+		}
+		if s := FoldSubject(subjects); s != "" {
+			lines[0] = s
+		}
+	}
+	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
+	return append(args, paths...), true
 }
 
 // insertFoldLine puts msg into the message lines: after the last body line
@@ -143,11 +182,19 @@ func trailerStart(lines []string) int {
 	return start
 }
 
-// canFold says whether HEAD may be rewritten with a new edit of path. Each
+// canFold says whether HEAD may be rewritten with new edits of paths. Each
 // rule keeps a rewrite from hurting someone else, and any error means no.
-func canFold(repo, path string) bool {
+func canFold(repo, root string, paths []string, msg string) bool {
 	// A file with no change would only rewrite HEAD. Commit says no to it.
-	if dirty, err := IsDirty(repo, path); err != nil || !dirty {
+	dirty := false
+	for _, p := range paths {
+		d, err := IsDirty(repo, p)
+		if err != nil {
+			return false
+		}
+		dirty = dirty || d
+	}
+	if !dirty {
 		return false
 	}
 	// A tag marks a release, so its commit must never be rewritten.
@@ -168,11 +215,7 @@ func canFold(repo, path string) bool {
 	if me := UserName(repo); me == "" || f[1] != me {
 		return false
 	}
-	// HEAD must hold only this file. Asking with and without the path gives
-	// the same list when nothing else is in it.
-	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
-	one, err2 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD", "--", path)
-	if err1 != nil || err2 != nil || one == "" || all != one {
+	if !sameFiles(repo, paths) && !sameKindInRoot(repo, root, paths, f[0], msg) {
 		return false
 	}
 	// A commit that was pushed, or can be fetched from a remote, is shared.
@@ -194,6 +237,50 @@ func canFold(repo, path string) bool {
 		}
 	}
 	return !otherCheckoutHolds(repo)
+}
+
+// sameFiles says whether HEAD holds exactly paths. Asking with and without
+// the paths gives the same list when nothing else is in it.
+func sameFiles(repo string, paths []string) bool {
+	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	some, err2 := run(repo, append([]string{"diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD", "--"}, paths...)...)
+	return err1 == nil && err2 == nil && some != "" && all == some
+}
+
+// sameKindInRoot says whether HEAD and msg are chores of one kind and every
+// file of HEAD and every path sit under root. Only planning files fold this
+// way, so a chore that also touched code always stands alone.
+func sameKindInRoot(repo, root string, paths []string, headSubject, msg string) bool {
+	kind := SubjectKind(msg)
+	if root == "" || kind == "" || SubjectKind(headSubject) != kind {
+		return false
+	}
+	top, err := run(repo, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return false
+	}
+	out, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	if err != nil {
+		return false
+	}
+	files := slices.Clone(paths)
+	for _, f := range strings.Split(strings.TrimRight(out, "\x00"), "\x00") {
+		files = append(files, filepath.Join(strings.TrimSpace(top), f))
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		realRoot = root
+	}
+	for _, f := range files {
+		rel, err := filepath.Rel(realRoot, f)
+		if err != nil {
+			rel, err = filepath.Rel(root, f)
+		}
+		if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			return false
+		}
+	}
+	return true
 }
 
 // otherCheckoutHolds says whether another worktree stands on HEAD or on a
@@ -231,14 +318,25 @@ func otherCheckoutHolds(repo string) bool {
 // outside the list stays out, so one run of a tool is one commit. One path
 // is a one-file write, so it may fold like CommitOrFold. More paths never do.
 func CommitPaths(repo string, paths []string, msg string) Result {
+	return CommitPathsIn(repo, "", paths, msg)
+}
+
+// CommitPathsIn is CommitPaths that may also fold into a HEAD chore of the
+// same kind, the way CommitOrFoldIn does, when root is the planning folder.
+func CommitPathsIn(repo, root string, paths []string, msg string) Result {
 	if len(paths) == 1 {
-		return CommitOrFold(repo, paths[0], msg, false)
+		return CommitOrFoldIn(repo, root, paths[0], msg, false)
 	}
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
 	}
 	if reason := busy(repo); reason != "" {
 		return Result{Reason: reason}
+	}
+	if root != "" {
+		if r, ok := tryFold(repo, root, paths, msg); ok {
+			return r
+		}
 	}
 	args := append([]string{"add", "--"}, paths...)
 	if _, err := run(repo, args...); err != nil {
