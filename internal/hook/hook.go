@@ -50,7 +50,7 @@ Core rules:
 3. Every code change happens in a worktree and starts with a failing test.
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
-6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
+6. The acta settings below win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md. For everything else, when the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. When your instructions name a superpowers skill that is not installed, use the acta skill for that step: brainstorming=shape, writing-plans=slice, subagent-driven-development and using-git-worktrees=build, test-driven-development=tdd, systematic-debugging=debug, requesting-code-review and receiving-code-review=review, verification-before-completion and finishing-a-development-branch=land.
 8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call whose body is stdin: acta scratch new <slug> --title <title> < body.md: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. A background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:shape for that way. Do not design it here.
 9. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
@@ -89,6 +89,9 @@ func SessionStart(in Input) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "acta plugin is active. Before each workflow step, load the matching acta skill with the Skill tool and follow it: %s. The rules live in the skills.\n", strings.Join(Skills, ", "))
 	b.WriteString(coreRules)
+	if in.VoiceExists && in.VoiceErr == nil {
+		b.WriteString(settingsBlock(in.Voice))
+	}
 	if in.Herdr {
 		b.WriteString(herdrExtra)
 	}
@@ -159,6 +162,47 @@ func SessionStart(in Input) string {
 	return b.String()
 }
 
+// executorLines says in plain words who writes the code, one sentence per
+// value, so the agent cannot read one executor as another.
+var executorLines = map[string]string{
+	"inline":   "The main agent writes the code itself; no implementer subagents.",
+	"subagent": "A fresh subagent writes the code for each task; the main agent writes none.",
+	"dispatch": "An omp agent in its own herdr tab writes the code; the main agent writes none.",
+}
+
+// modelLines says what each subagent_models value means for the Agent tool.
+var modelLines = map[string]string{
+	"split":   "Code-writing subagents use sonnet, other subagents opus, reviewers your own model.",
+	"default": "Name no model; the user's own setup picks it.",
+}
+
+// settingsBlock lists the behaviour settings of the config in force. Rule 6
+// points here: these lines beat a user's CLAUDE.md that says otherwise, which
+// is how a user who picked inline stops getting subagents. An empty setting
+// writes no line, and with no setting at all nothing is written.
+func settingsBlock(v config.User) string {
+	var lines []string
+	add := func(name, value, extra string) {
+		if value == "" {
+			return
+		}
+		ln := fmt.Sprintf("- %s: %s.", name, value)
+		if extra != "" {
+			ln += " " + extra
+		}
+		lines = append(lines, ln)
+	}
+	add("Build executor", v.BuildExecutor, executorLines[v.BuildExecutor])
+	add("Plan depth", v.PlanDepth, "")
+	add("Review depth", v.ReviewDepth, "")
+	add("Commit history", v.CommitHistory, "")
+	add("Subagent models", v.SubagentModels, modelLines[v.SubagentModels])
+	if len(lines) == 0 {
+		return ""
+	}
+	return "\nacta settings (these win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md):\n" + strings.Join(lines, "\n") + "\n"
+}
+
 // runningBlock is the summary of the plans with work going on. It is one
 // contiguous piece: the header, the blocks, the line that counts what did not
 // fit, then the rule. With no running plan nothing is written at all, so a
@@ -191,6 +235,11 @@ func Prompt(in Input) string {
 	case in.VoiceErr != nil:
 		return "acta config: the config file could not be read; reply in English, adhd style."
 	default:
+		// The executor rides on every message too, so a long session does
+		// not lose it under older text.
+		if e := in.Voice.BuildExecutor; e != "" {
+			return fmt.Sprintf("acta config: reply in %s, %s style, build executor %s.", in.Voice.ChatLanguage, in.Voice.Style, e)
+		}
 		return fmt.Sprintf("acta config: reply in %s, %s style.", in.Voice.ChatLanguage, in.Voice.Style)
 	}
 }

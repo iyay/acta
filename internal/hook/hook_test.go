@@ -358,6 +358,9 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.Herdr = true // the herdr line counts against the cap too
 	// The wiki line counts against the cap too.
 	worst.WikiPages = 100
+	// The settings list counts against the cap too.
+	worst.Voice.BuildExecutor, worst.Voice.PlanDepth, worst.Voice.ReviewDepth = "inline", "minimal", "deep"
+	worst.Voice.CommitHistory, worst.Voice.SubagentModels = "tidy", "split"
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
@@ -773,5 +776,93 @@ func TestSessionStartRunningRuleNamesStdin(t *testing.T) {
 	out := SessionStart(in)
 	if !strings.Contains(out, "run acta state set <plan> next with the lines on stdin") {
 		t.Errorf("running rule does not name stdin:\n%s", out)
+	}
+}
+
+const settingsHeading = "acta settings (these win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md):"
+
+// Each build executor gets its own sentence, so the agent cannot read one
+// value as another. The voice is already merged with .acta.yaml when it gets
+// here, so the list shows whatever value won.
+func TestSessionStartSettingsExecutor(t *testing.T) {
+	for exec, want := range map[string]string{
+		"inline":   "- Build executor: inline. The main agent writes the code itself; no implementer subagents.",
+		"subagent": "- Build executor: subagent. A fresh subagent writes the code for each task; the main agent writes none.",
+		"dispatch": "- Build executor: dispatch. An omp agent in its own herdr tab writes the code; the main agent writes none.",
+	} {
+		in := korean()
+		in.Voice.BuildExecutor = exec
+		out := SessionStart(in)
+		if !strings.Contains(out, settingsHeading+"\n"+want+"\n") {
+			t.Errorf("%s: missing %q under the heading", exec, want)
+		}
+	}
+}
+
+func TestSessionStartSettingsLines(t *testing.T) {
+	in := korean()
+	in.Voice.PlanDepth = "minimal"
+	in.Voice.ReviewDepth = "deep"
+	in.Voice.CommitHistory = "tidy"
+	in.Voice.SubagentModels = "split"
+	out := SessionStart(in)
+	for _, want := range []string{
+		settingsHeading,
+		"- Plan depth: minimal.\n",
+		"- Review depth: deep.\n",
+		"- Commit history: tidy.\n",
+		"- Subagent models: split. Code-writing subagents use sonnet, other subagents opus, reviewers your own model.\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if strings.Contains(out, "Build executor:") {
+		t.Error("an empty build executor still wrote a line")
+	}
+	in.Voice.SubagentModels = "default"
+	if out := SessionStart(in); !strings.Contains(out, "- Subagent models: default. Name no model; the user's own setup picks it.\n") {
+		t.Error("default subagent models line missing")
+	}
+}
+
+// No settings, a missing config or a broken one: no heading at all, so the
+// agent never reads an empty list as a rule.
+func TestSessionStartSettingsAbsent(t *testing.T) {
+	for name, in := range map[string]Input{
+		"none set": korean(),
+		"missing":  {Voice: config.User{BuildExecutor: "inline"}},
+		"broken":   {Voice: config.User{BuildExecutor: "inline"}, VoiceExists: true, VoiceErr: errors.New("x")},
+	} {
+		if strings.Contains(SessionStart(in), "acta settings (") {
+			t.Errorf("%s: settings heading written", name)
+		}
+	}
+}
+
+// Rule 6 lets the acta settings win and keeps every other user rule winning.
+// The old rule alone let the user's file beat the build executor.
+func TestSessionStartRuleSixSplit(t *testing.T) {
+	newRule := "6. The acta settings below win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md. For everything else, when the user's own CLAUDE.md or AGENTS.md says otherwise, follow it."
+	oldRule := "6. When the user's own CLAUDE.md or AGENTS.md says otherwise, follow it."
+	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{"coreRules": coreRules, "default-rules.md": string(raw)} {
+		if !strings.Contains(text, newRule) {
+			t.Errorf("%s: new rule 6 missing", name)
+		}
+		if strings.Contains(text, oldRule) {
+			t.Errorf("%s: old rule 6 still there", name)
+		}
+	}
+}
+
+func TestPromptNamesExecutor(t *testing.T) {
+	in := korean()
+	in.Voice.BuildExecutor = "inline"
+	if got, want := Prompt(in), "acta config: reply in Korean, adhd style, build executor inline."; got != want {
+		t.Errorf("got %q", got)
 	}
 }
