@@ -1,16 +1,20 @@
 ---
 type: Decision
 title: Wiki freshness comes from git ancestry
-description: A page is stale when a commit under its paths is not behind a check commit; acta wiki ok re-checks with no page edit
-paths: [internal/wiki/, internal/cli/wiki.go, internal/gitc/gitc.go, internal/tidy/tidy.go]
+description: A page is stale when a commit under its paths is not behind a check commit; checks are lines added to wiki/.checked
+paths: [internal/wiki/, internal/cli/wiki.go, internal/gitc/gitc.go, internal/doctor/doctor.go]
 ---
 
-A check commit of a page is a commit that changed the page file, or one with a `Wiki-Checked: <page id>` trailer. A page is stale when a commit reachable from HEAD changed a file under its `paths` and is not an ancestor of any check commit. An uncommitted or untracked page file counts as checked.
+A check commit of a page is a commit that changed the page file, or one whose diff adds a line `<page id> <date>` to `.acta/wiki/.checked`. A page is stale when a commit reachable from HEAD changed a file under its `paths` and is not an ancestor of any check commit. An uncommitted page file counts as checked.
 
-`acta wiki ok <id>...` makes an empty `chore(wiki): re-check` commit with one trailer per page. `acta tidy` moves those trailers onto the commit they fold into.
+`acta wiki ok <id>...` rewrites `.checked` with today on those pages and commits it as `chore(wiki): re-check <ids>`. Every write sorts it, keeps one line per page and drops gone pages. A commit that only removes a line is never a check.
 
-Why no `timestamp` field: every re-check bumped the same line with a new value, so every merge of two branches conflicted on it. An empty commit has no diff, so it cannot conflict. Dates were also wrong: a branch with old commit dates passed against a newer timestamp it never saw.
+Why not empty commits with `Wiki-Checked` trailers: they piled up, and tidy pushed the trailers into kept messages.
 
-The git queries use `--full-history --no-merges`. Without full history git drops side commits with the same content. Without no-merges a merge commit counts as a path change forever. So a conflict fix made only inside a merge commit is not seen.
+Why one line per page with a date: the date makes the line change on each check, so the commit has a diff. Freshness never reads it.
 
-An old `timestamp` line in a page is ignored, never an error.
+Why `merge=union` in `.gitattributes`: two branches that re-check one page both change its line. Union keeps both lines with no conflict; the next rewrite drops the extra one. `acta doctor --fix` adds the line.
+
+Why the file is never cleared at land: tidy would fold the add and the clear into one commit with no diff, and the check would be lost.
+
+The git queries use `--full-history --no-merges`: without the first git drops side commits with the same content; without the second a merge counts as a path change forever. A conflict fix made only inside a merge is not seen.

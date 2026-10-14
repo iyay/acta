@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/iyay/acta/internal/gitc"
 )
 
 // pageFile is how a problem names the page file made by good: from the repo root.
@@ -232,19 +230,34 @@ func (a ancestry) head() string {
 	return gitAt(a.t, a.repo, year(2020), "rev-parse", "--short", "HEAD")
 }
 
-// recheck makes the empty commit that says the page was checked.
+// recheck writes a fresh line for the page into the checked file and commits it.
 func (a ancestry) recheck(id string) {
 	a.t.Helper()
-	if _, err := gitc.CommitEmpty(a.repo, "chore(wiki): re-check "+id+"\n\nWiki-Checked: "+id); err != nil {
+	dir := filepath.Join(a.repo, ".acta", "wiki")
+	if _, err := MarkChecked(dir, []string{"page", "other", "page2"}, []string{id}, "2026-10-14"); err != nil {
 		a.t.Fatal(err)
 	}
+	gitAt(a.t, a.repo, year(2024), "add", ".acta/wiki/"+CheckedFile)
+	gitAt(a.t, a.repo, year(2024), "commit", "-q", "-m", "chore(wiki): re-check "+id)
+}
+
+// writeChecked puts text in the checked file and commits it, so a test can
+// make any change to the file it needs.
+func (a ancestry) writeChecked(text, subject string) {
+	a.t.Helper()
+	p := filepath.Join(a.repo, ".acta", "wiki", CheckedFile)
+	if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+		a.t.Fatal(err)
+	}
+	gitAt(a.t, a.repo, year(2024), "add", ".acta/wiki/"+CheckedFile)
+	gitAt(a.t, a.repo, year(2024), "commit", "-q", "-m", subject)
 }
 
 func (a ancestry) check(rng string) []Problem { return Check(a.repo, []Page{good(a.repo)}, rng) }
 
 // A page is stale when a commit that changed one of its paths is not behind
 // any of its check commits: a commit that changed the page file, or one that
-// carries a Wiki-Checked trailer with its id. Dates play no part.
+// added a line for its id to the checked file. Dates play no part.
 func TestCheckStale(t *testing.T) {
 	t.Parallel()
 	t.Run("a path change after the last page edit is stale", func(t *testing.T) {
@@ -277,6 +290,30 @@ func TestCheckStale(t *testing.T) {
 		a.recheck("other")
 		a.recheck("page2")
 		expect(t, "after the wrong re-checks", a.check(""), []string{staleMsg(sha, "change the code", "page")})
+	})
+	t.Run("a commit that only removes the line is not a check", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.writeChecked("other 2026-01-01\npage 2026-01-01\n", "check both")
+		sha := a.commit("src/a.go", "change the code", year(2025))
+		a.writeChecked("other 2026-01-01\n", "drop the page line")
+		expect(t, "after the removal", a.check(""), []string{staleMsg(sha, "change the code", "page")})
+	})
+	t.Run("two branches that both re-check merge clean and stay fresh", func(t *testing.T) {
+		t.Parallel()
+		a := newAncestry(t)
+		a.commit("src/a.go", "change the code", year(2022))
+		if err := os.WriteFile(filepath.Join(a.repo, ".gitattributes"), []byte(".acta/wiki/.checked merge=union\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		gitAt(t, a.repo, year(2022), "add", ".gitattributes")
+		gitAt(t, a.repo, year(2022), "commit", "-q", "-m", "union merge")
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "-b", "side")
+		a.writeChecked("page 2026-10-13\n", "check on side")
+		gitAt(t, a.repo, year(2022), "checkout", "-q", "main")
+		a.writeChecked("page 2026-10-14\n", "check on main")
+		gitAt(t, a.repo, year(2025), "merge", "-q", "--no-edit", "side")
+		expect(t, "after the merge", a.check(""), nil)
 	})
 	t.Run("a change outside the paths is not stale", func(t *testing.T) {
 		t.Parallel()

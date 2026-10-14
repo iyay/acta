@@ -300,11 +300,11 @@ func IsAncestor(repo, a, b string) (bool, error) {
 
 // CheckCommits lists the full shas of the commits reachable from HEAD that
 // count as a check of a wiki page: a commit that changed the page file, or a
-// commit with a Wiki-Checked trailer whose value is exactly id. pageFile is a
-// plain name from the repo root. The newest page-file commit comes first. The
-// trailer is read by git itself, so a line of prose that only looks like one,
-// or a longer id that starts with this one, never counts.
-func CheckCommits(repo, pageFile, id string) ([]string, error) {
+// commit whose diff adds a line for id to the checked file. pageFile and
+// checkedFile are plain names from the repo root. The newest page-file commit
+// comes first. A commit that only removes the line is not a check, and a
+// longer id that starts with this one never counts.
+func CheckCommits(repo, pageFile, checkedFile, id string) ([]string, error) {
 	// Full history, so a change on either side of a merge shows up even when
 	// the other side has the same text. A merge brings no change of its own.
 	out, err := run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--format=%H", "--", pageFile)
@@ -312,16 +312,17 @@ func CheckCommits(repo, pageFile, id string) ([]string, error) {
 		return nil, err
 	}
 	shas := strings.Fields(out)
-	// The grep only narrows the list. The trailer block decides what counts.
-	out, err = run(repo, "log", "--grep=^Wiki-Checked:",
-		"--format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)")
+	out, err = run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "-p", "-U0", "--format=%x00%H", "--", checkedFile)
 	if err != nil {
 		return nil, err
 	}
+	sha := ""
 	for _, line := range strings.Split(out, "\n") {
-		sha, values, _ := strings.Cut(line, "\x00")
-		for _, v := range strings.Split(values, "\x1f") {
-			if strings.TrimSpace(v) == id && sha != "" && !slices.Contains(shas, sha) {
+		switch {
+		case strings.HasPrefix(line, "\x00"):
+			sha = strings.TrimPrefix(line, "\x00")
+		case strings.HasPrefix(line, "+"+id+" ") && !strings.HasPrefix(line, "+++"):
+			if sha != "" && !slices.Contains(shas, sha) {
 				shas = append(shas, sha)
 			}
 		}
