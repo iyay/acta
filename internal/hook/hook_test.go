@@ -788,7 +788,7 @@ func TestSessionStartSettingsExecutor(t *testing.T) {
 	for exec, want := range map[string]string{
 		"inline":   "- Build executor: inline. The main agent writes the code itself; no implementer subagents.",
 		"subagent": "- Build executor: subagent. A fresh subagent writes the code for each task; the main agent writes none.",
-		"dispatch": "- Build executor: dispatch. An omp agent in its own herdr tab writes the code; the main agent writes none.",
+		"dispatch": "- Build executor: dispatch. An omp agent in its own herdr tab writes the code (a subagent when herdr is missing or the harness is omp); the main agent writes none.",
 	} {
 		in := korean()
 		in.Voice.BuildExecutor = exec
@@ -811,7 +811,7 @@ func TestSessionStartSettingsLines(t *testing.T) {
 		"- Plan depth: minimal.\n",
 		"- Review depth: deep.\n",
 		"- Commit history: tidy.\n",
-		"- Subagent models: split. Code-writing subagents use sonnet, other subagents opus, reviewers your own model.\n",
+		"- Subagent models: split. In Claude Code, code-writing subagents use sonnet, other subagents opus, reviewers your own model.\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -863,6 +863,6 @@ func TestPromptNamesExecutor(t *testing.T) {
 	in := korean()
 	in.Voice.BuildExecutor = "inline"
 	if got, want := Prompt(in), "acta config: reply in Korean, adhd style, build executor inline."; got != want {
-		t.Errorf("got %q", got)
+		t.Errorf("got %q, want %q", got, want)
 	}
 }

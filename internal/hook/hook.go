@@ -167,12 +167,12 @@ func SessionStart(in Input) string {
 var executorLines = map[string]string{
 	"inline":   "The main agent writes the code itself; no implementer subagents.",
 	"subagent": "A fresh subagent writes the code for each task; the main agent writes none.",
-	"dispatch": "An omp agent in its own herdr tab writes the code; the main agent writes none.",
+	"dispatch": "An omp agent in its own herdr tab writes the code (a subagent when herdr is missing or the harness is omp); the main agent writes none.",
 }
 
 // modelLines says what each subagent_models value means for the Agent tool.
 var modelLines = map[string]string{
-	"split":   "Code-writing subagents use sonnet, other subagents opus, reviewers your own model.",
+	"split":   "In Claude Code, code-writing subagents use sonnet, other subagents opus, reviewers your own model.",
 	"default": "Name no model; the user's own setup picks it.",
 }
 

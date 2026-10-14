@@ -3,6 +3,8 @@ parent: scratch/2026-10-14-config-sync-to-claude-md
 id: SPC-0129
 created: "2026-10-14 14:55:13"
 hash: ifcuusc
+started: "2026-10-14 14:59:02"
+finished: "2026-10-14 14:59:03"
 ---
 # acta settings win over conflicting CLAUDE.md rules
 
