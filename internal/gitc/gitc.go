@@ -359,21 +359,10 @@ func Unseen(repo string, checks, paths []string) (sha, subject string, err error
 	return sha, subject, nil
 }
 
-// CommitEmpty makes a commit with the message and no file change, and returns
-// its short sha. --only keeps anything already staged out of the commit and
-// still staged afterwards.
-func CommitEmpty(repo, msg string) (string, error) {
-	if reason := busy(repo); reason != "" {
-		return "", errors.New(reason)
-	}
-	if _, err := run(repo, "commit", "--only", "--allow-empty", "-m", msg); err != nil {
-		return "", err
-	}
+// ShortHead gives the short sha of HEAD.
+func ShortHead(repo string) (string, error) {
 	out, err := run(repo, "rev-parse", "--short", "HEAD")
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out), nil
+	return strings.TrimSpace(out), err
 }
 
 // Changed lists the files that the commits in rng changed, from the repo root.

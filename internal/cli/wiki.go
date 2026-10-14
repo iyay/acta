@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/gitc"
@@ -15,8 +16,8 @@ import (
 var wikiUsage = usageLine("wiki")
 
 // cmdWiki runs ls, match, check and ok. The first three only read: no file is
-// written and nothing is committed. ok writes no file either, but it makes one
-// empty commit that records a re-check. A repo with no wiki folder has no pages,
+// written and nothing is committed. ok writes only the checked file and
+// commits it, to record a re-check. A repo with no wiki folder has no pages,
 // so ls, match and check print nothing and exit 0.
 func cmdWiki(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -77,9 +78,10 @@ func wikiFits(sub string, n int) bool {
 }
 
 // wikiOk records that the pages were re-checked and nothing was wrong. The note
-// is an empty commit, not an edit of the page, so two branches that both
-// re-check a page still merge without a conflict. Every id must name a page
-// that loaded, or nothing is committed. A repeated id counts once.
+// is a new line for each page in the checked file, not an edit of the page.
+// Git merges that file by union, so two branches that both re-check a page
+// still merge without a conflict. Every id must name a page that loaded, or
+// nothing is written. A repeated id counts once.
 func wikiOk(stdout, stderr io.Writer, cfg config.Config, pages []wiki.Page, ids []string) int {
 	known := map[string]bool{}
 	for _, p := range pages {
@@ -101,11 +103,29 @@ func wikiOk(stdout, stderr io.Writer, cfg config.Config, pages []wiki.Page, ids 
 		fmt.Fprintf(stderr, "unknown wiki page: %s\n", strings.Join(unknown, ", "))
 		return exitBadInput
 	}
-	msg := "chore(wiki): re-check " + strings.Join(unique, ", ") + "\n"
-	for _, id := range unique {
-		msg += "\nWiki-Checked: " + id
+	all := make([]string, 0, len(pages))
+	for _, p := range pages {
+		all = append(all, p.ID)
 	}
-	sha, err := gitc.CommitEmpty(cfg.RepoRoot, msg)
+	dir := filepath.Join(cfg.Root, "wiki")
+	dirty, err := gitc.IsDirty(cfg.RepoRoot, filepath.Join(dir, wiki.CheckedFile))
+	if err != nil {
+		fmt.Fprintln(stderr, "acta wiki ok: "+oneLine(err.Error()))
+		return exitOther
+	}
+	// The time down to the second, so a second check on the same day still
+	// changes the line and makes a commit of its own.
+	path, err := wiki.MarkChecked(dir, all, unique, time.Now().UTC().Format(time.RFC3339))
+	if err != nil {
+		fmt.Fprintln(stderr, "acta wiki ok: "+oneLine(err.Error()))
+		return exitOther
+	}
+	r := gitc.CommitOrFold(cfg.RepoRoot, path, "chore(wiki): re-check "+strings.Join(unique, ", "), dirty)
+	if !r.Committed {
+		fmt.Fprintln(stderr, "acta wiki ok: written, not committed: "+oneLine(r.Reason))
+		return exitOther
+	}
+	sha, err := gitc.ShortHead(cfg.RepoRoot)
 	if err != nil {
 		fmt.Fprintln(stderr, "acta wiki ok: "+oneLine(err.Error()))
 		return exitOther

@@ -61,6 +61,7 @@ func Run(e Env) []Result {
 		checkRepo(e),
 		checkSchema(e),
 		checkFiles(e),
+		checkWiki(e),
 		checkAgentsView(e),
 		checkSetup(e),
 		checkTheme(e),
@@ -167,8 +168,8 @@ func hasTaskHeading(raw []byte) bool {
 	return false
 }
 
-// Fix writes what only the repo can fix: the .acta folder and its .gitignore
-// line. It returns the paths it changed, so the caller can commit them. It
+// Fix writes what only the repo can fix: the .acta folder, its .gitignore
+// line and the wiki check record (see fixWiki). It returns the paths it changed, so the caller can commit them. It
 // never writes under Home: Claude Code and omp own those files.
 func Fix(e Env) ([]string, error) {
 	if refusal(e) != "" {
@@ -182,11 +183,15 @@ func Fix(e Env) ([]string, error) {
 	if err := hook.EnsureGitignore(e.ActaRoot, ".agents.json"); err != nil {
 		return nil, err
 	}
-	after, err := os.ReadFile(gi)
-	if err != nil || string(after) == string(before) {
-		return nil, nil
+	var changed []string
+	if after, err := os.ReadFile(gi); err == nil && string(after) != string(before) {
+		changed = append(changed, gi)
 	}
-	return []string{gi}, nil
+	wikiPaths, err := fixWiki(e)
+	if err != nil {
+		return nil, err
+	}
+	return append(changed, wikiPaths...), nil
 }
 
 // refusal says why --fix must not write, or "" when it may. Fix and

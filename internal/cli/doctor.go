@@ -28,7 +28,7 @@ var doctorUsage = usageLine("doctor")
 func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fix := fs.Bool("fix", false, "fix repo problems (.acta folder, .gitignore)")
+	fix := fs.Bool("fix", false, "fix repo problems (.acta folder, .gitignore, wiki check record)")
 	known := fs.String("known", "", "file listing plugins that overlap acta")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, doctorUsage)

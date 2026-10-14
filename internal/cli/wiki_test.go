@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Every test repo has two dates. Its files are committed on wikiLongAgo. A page
@@ -372,7 +374,20 @@ func okRepo(t *testing.T) string {
 	return wikiRepo(t, map[string]string{
 		".acta/wiki/a.md":     wikiPage("Gotcha", "Page a", ""),
 		".acta/wiki/sub/b.md": wikiPage("Gotcha", "Page b", ""),
+		".gitattributes":      ".acta/wiki/.checked merge=union\n",
 	})
+}
+
+// checkedLines gives the page ids in the committed checked file, in file order.
+func checkedLines(t *testing.T, repo string) []string {
+	t.Helper()
+	var ids []string
+	for _, line := range strings.Split(wikiGit(t, repo, "", "show", "HEAD:.acta/wiki/.checked"), "\n") {
+		if f := strings.Fields(line); len(f) == 2 {
+			ids = append(ids, f[0])
+		}
+	}
+	return ids
 }
 
 // runOk runs acta wiki ok and gives back the exit code, stdout and stderr.
@@ -399,9 +414,9 @@ func okFails(t *testing.T, repo string, wantCode int, ids ...string) string {
 	return errOut
 }
 
-// A good re-check is one commit with the same files as its parent, a subject
-// that lists the ids in the order given, and one trailer per id.
-func TestWikiOkRecordsACheckWithoutChangingAFile(t *testing.T) {
+// A good re-check is one commit that writes only the checked file, with a
+// subject that lists the ids in the order given and no trailer.
+func TestWikiOkWritesTheCheckedFile(t *testing.T) {
 	repo := okRepo(t)
 	parent := wikiGit(t, repo, "", "rev-parse", "HEAD")
 	code, out, errOut := runOk(t, "a", "sub/b")
@@ -414,15 +429,38 @@ func TestWikiOkRecordsACheckWithoutChangingAFile(t *testing.T) {
 	if wikiGit(t, repo, "", "rev-parse", "HEAD^") != parent {
 		t.Error("the check is not a single commit on top of the old HEAD")
 	}
-	if wikiGit(t, repo, "", "rev-parse", "HEAD^{tree}") != wikiGit(t, repo, "", "rev-parse", parent+"^{tree}") {
-		t.Error("the check commit changed a file")
+	if files := wikiGit(t, repo, "", "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"); files != ".acta/wiki/.checked" {
+		t.Errorf("the check commit changed %q; want only the checked file", files)
 	}
-	want := "chore(wiki): re-check a, sub/b\n\nWiki-Checked: a\nWiki-Checked: sub/b"
-	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != want {
-		t.Errorf("message %q; want %q", msg, want)
+	if got := checkedLines(t, repo); strings.Join(got, " ") != "a sub/b" {
+		t.Errorf("checked file holds %v", got)
+	}
+	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != "chore(wiki): re-check a, sub/b" {
+		t.Errorf("message %q", msg)
 	}
 	if st := wikiGit(t, repo, "", "status", "--porcelain"); st != "" {
 		t.Errorf("the repo is dirty after the check: %q", st)
+	}
+	var e strings.Builder
+	if code := cmdWiki([]string{"check"}, io.Discard, &e); code != exitOK {
+		t.Errorf("wiki check after ok: exit %d, %s", code, e.String())
+	}
+}
+
+// A second re-check right after the first still changes the file, so it is a
+// check of its own and never a commit with nothing in it.
+func TestWikiOkTwiceInARowStillRecords(t *testing.T) {
+	repo := okRepo(t)
+	if code, _, errOut := runOk(t, "a"); code != exitOK {
+		t.Fatalf("first: exit %d, stderr %q", code, errOut)
+	}
+	first := wikiGit(t, repo, "", "show", "HEAD:.acta/wiki/.checked")
+	time.Sleep(1100 * time.Millisecond)
+	if code, _, errOut := runOk(t, "a"); code != exitOK {
+		t.Fatalf("second: exit %d, stderr %q", code, errOut)
+	}
+	if again := wikiGit(t, repo, "", "show", "HEAD:.acta/wiki/.checked"); again == first {
+		t.Errorf("the second check left the file as it was: %q", again)
 	}
 }
 
@@ -448,9 +486,8 @@ func TestWikiOkDropsDuplicateIds(t *testing.T) {
 	if code, _, errOut := runOk(t, "a", "sub/b", "a"); code != exitOK {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
-	want := "chore(wiki): re-check a, sub/b\n\nWiki-Checked: a\nWiki-Checked: sub/b"
-	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != want {
-		t.Errorf("message %q; want %q", msg, want)
+	if msg := wikiGit(t, repo, "", "log", "-1", "--format=%B"); msg != "chore(wiki): re-check a, sub/b" {
+		t.Errorf("message %q", msg)
 	}
 }
 
@@ -463,8 +500,8 @@ func TestWikiOkLeavesStagedFilesAlone(t *testing.T) {
 	if code, _, errOut := runOk(t, "a"); code != exitOK {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
-	if wikiGit(t, repo, "", "rev-parse", "HEAD^{tree}") != wikiGit(t, repo, "", "rev-parse", parent+"^{tree}") {
-		t.Error("the staged file went into the check commit")
+	if files := wikiGit(t, repo, "", "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"); files != ".acta/wiki/.checked" || wikiGit(t, repo, "", "rev-parse", "HEAD^") != parent {
+		t.Errorf("the check commit holds %q; want only the checked file", files)
 	}
 	if st := wikiGit(t, repo, "", "status", "--porcelain"); st != "A  notes.txt" {
 		t.Errorf("status %q; want the file still staged", st)
@@ -501,7 +538,7 @@ func TestWikiOkWhenGitRefusesTheCommit(t *testing.T) {
 }
 
 // Two branches that both re-checked the same page merge with no conflict,
-// because the check touches no file.
+// because the checked file merges by union, and the page stays fresh.
 func TestWikiOkBranchesMergeCleanly(t *testing.T) {
 	repo := okRepo(t)
 	wikiGit(t, repo, "", "checkout", "-q", "-b", "one")
@@ -516,4 +553,8 @@ func TestWikiOkBranchesMergeCleanly(t *testing.T) {
 	wikiGit(t, repo, "", "checkout", "-q", "main")
 	wikiGit(t, repo, "", "merge", "--no-ff", "-q", "-m", "merge one", "one")
 	wikiGit(t, repo, "", "merge", "--no-ff", "-q", "-m", "merge two", "two")
+	var e strings.Builder
+	if code := cmdWiki([]string{"check"}, io.Discard, &e); code != exitOK {
+		t.Errorf("wiki check after the merge: exit %d, %s", code, e.String())
+	}
 }

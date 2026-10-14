@@ -3,6 +3,7 @@ parent: scratch/2026-10-14-tidy-chore-commits
 id: SPC-0130
 created: "2026-10-14 15:28:47"
 hash: d5cq97i
+started: "2026-10-14 15:40:18"
 ---
 # Tidy chore commits: wiki checks in a file, same-kind chores fold
 
@@ -25,15 +26,15 @@ Status: Architectural, approved by the user in chat on 2026-10-14, section by se
 
 ### 1. Wiki check record in `.acta/wiki/.checked`
 
-- One line per page: `<page id> <YYYY-MM-DD>`. The date only makes the line change on each check. Freshness never reads it.
+- One line per page: `<page id> <UTC time, RFC 3339>`, for example `wiki-freshness-from-git 2026-10-14T08:50:01Z`. The time only makes the line change on each check; a date alone would leave a second check on the same day with no diff and no commit. Freshness never reads it.
 - Every acta write of the file rewrites it whole: sorted by page id, one line per page (newest date wins), lines for pages that no longer exist dropped.
 - `.gitattributes` holds `.acta/wiki/.checked merge=union`, so two branches that both re-check a page merge with no conflict. The duplicate line this leaves is removed by the next rewrite.
-- `acta wiki ok <id>...` rewrites the file with today's date on those pages and commits it as `chore(wiki): re-check <ids>` through `gitc.CommitOrFold`. No empty commit, no trailer.
+- `acta wiki ok <id>...` rewrites the file with the current time on those pages and commits it as `chore(wiki): re-check <ids>` through `gitc.CommitOrFold`. No empty commit, no trailer.
 - Check commit of a page: a commit that changed the page file, or a commit whose diff adds a line `+<id> ` to `.checked` (read from `git log -p --full-history --no-merges -- .acta/wiki/.checked`). A commit that only removes a line is never a check commit. Every other freshness rule stays as it is today (ancestry, `--full-history --no-merges`, uncommitted page counts as checked).
 - The file is never cleared at land. Tidy would fold the add and the delete into one commit with no diff, and the check would be lost.
 - `acta doctor` warns when `.checked` has duplicate or orphan lines, or `.gitattributes` lacks the union line. `acta doctor --fix` rewrites the file and adds the line.
 - Migration: `acta doctor --fix` writes one line for every page that is fresh today, in one commit. Pages stale today stay stale.
-- Remove all `Wiki-Checked` code: the reader in `internal/gitc/gitc.go` (around line 303), the writer in `internal/cli/wiki.go` (around line 106), and `withFoldedWikiChecks` in `internal/tidy/tidy.go`.
+- Remove all `Wiki-Checked` code except the one migration reader inside the doctor fix (`internal/doctor/wiki.go`): the reader in `internal/gitc/gitc.go` (around line 303), the writer in `internal/cli/wiki.go` (around line 106), `withFoldedWikiChecks` in `internal/tidy/tidy.go`, and `gitc.CommitEmpty`.
 - `internal/cli/wiki_test.go` two-branch case must still pass: both branches re-check the same page, the merge has no conflict, and the page is fresh.
 
 ### 2. Same-kind chores fold at commit time
