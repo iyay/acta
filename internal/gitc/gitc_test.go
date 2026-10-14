@@ -707,7 +707,8 @@ func TestCommitOrFold(t *testing.T) {
 		if r := CommitOrFold(repo, a, "chore(spec): fix wording", false); !r.Folded {
 			t.Fatalf("repeat got %+v", r)
 		}
-		want := msg + "\n\nchore(spec): fix wording\nchore(scratch): third"
+		// The third is the same kind as HEAD, so the subject now names both.
+		want := "chore(scratch): add to item; third\n\nchore(spec): fix wording\nchore(scratch): add to item\nchore(scratch): third"
 		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
 			t.Fatalf("message %q, want %q", got, want)
 		}
@@ -967,7 +968,7 @@ func mergeSide(t *testing.T, repo, branch string) {
 }
 
 func TestCheckCommits(t *testing.T) {
-	const page = "page.md"
+	const page, checked = "page.md", ".checked"
 	// newRepo has a first commit that does not touch the page.
 	newRepo := func(t *testing.T) string { return setupRepo(t) }
 
@@ -976,7 +977,7 @@ func TestCheckCommits(t *testing.T) {
 		first := commitFileAt(t, repo, page, "one\n", "", "add page")
 		second := commitFileAt(t, repo, page, "two\n", "", "edit page")
 		commitFileAt(t, repo, "b.md", "other\n", "", "edit other file")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -986,65 +987,61 @@ func TestCheckCommits(t *testing.T) {
 	})
 	t.Run("nothing at all is an empty list", func(t *testing.T) {
 		repo := newRepo(t)
-		got, err := CheckCommits(repo, page, "wiki/p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || len(got) != 0 {
 			t.Errorf("got %v, %v, want no commits", got, err)
 		}
 	})
-	t.Run("a trailer naming the id", func(t *testing.T) {
+	t.Run("a commit that adds the id line to the checked file", func(t *testing.T) {
 		repo := newRepo(t)
-		c := emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		c := commitFileAt(t, repo, checked, "wiki/p 2026-01-01\n", "", "chore(wiki): re-check wiki/p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || !reflect.DeepEqual(got, []string{c}) {
 			t.Errorf("got %v, %v, want [%s]", got, err, c)
 		}
 	})
-	t.Run("one commit with two trailers answers to both ids", func(t *testing.T) {
+	t.Run("a new date on the line is a check again", func(t *testing.T) {
 		repo := newRepo(t)
-		c := emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p, wiki/q\n\nWiki-Checked: wiki/p\nWiki-Checked: wiki/q")
+		first := commitFileAt(t, repo, checked, "wiki/p 2026-01-01\n", "", "check one")
+		second := commitFileAt(t, repo, checked, "wiki/p 2026-02-01\n", "", "check two")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
+		if err != nil || !slices.Contains(got, first) || !slices.Contains(got, second) {
+			t.Errorf("got %v, %v, want %s and %s", got, err, first, second)
+		}
+	})
+	t.Run("one commit with two lines answers to both ids", func(t *testing.T) {
+		repo := newRepo(t)
+		c := commitFileAt(t, repo, checked, "wiki/p 2026-01-01\nwiki/q 2026-01-01\n", "", "check both")
 		for _, id := range []string{"wiki/p", "wiki/q"} {
-			got, err := CheckCommits(repo, page, id)
+			got, err := CheckCommits(repo, page, checked, id)
 			if err != nil || !reflect.DeepEqual(got, []string{c}) {
 				t.Errorf("%s: got %v, %v, want [%s]", id, got, err, c)
 			}
 		}
 	})
-	t.Run("a trailer naming another id is not a check", func(t *testing.T) {
+	t.Run("a commit that only removes the line is not a check", func(t *testing.T) {
 		repo := newRepo(t)
-		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/other\n\nWiki-Checked: wiki/other")
-		got, err := CheckCommits(repo, page, "wiki/p")
-		if err != nil || len(got) != 0 {
-			t.Errorf("got %v, %v, want no commits", got, err)
+		add := commitFileAt(t, repo, checked, "wiki/p 2026-01-01\nwiki/q 2026-01-01\n", "", "check both")
+		commitFileAt(t, repo, checked, "wiki/q 2026-01-01\n", "", "drop p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
+		if err != nil || !reflect.DeepEqual(got, []string{add}) {
+			t.Errorf("got %v, %v, want [%s]", got, err, add)
 		}
 	})
-	t.Run("a trailer id that starts with the asked id is not a check", func(t *testing.T) {
+	t.Run("a line for another id or a longer id is not a check", func(t *testing.T) {
 		repo := newRepo(t)
-		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/page-two\n\nWiki-Checked: wiki/page-two")
-		got, err := CheckCommits(repo, page, "wiki/page")
-		if err != nil || len(got) != 0 {
-			t.Errorf("got %v, %v, want no commits", got, err)
-		}
-	})
-	t.Run("an asked id that starts with the trailer id is not a check", func(t *testing.T) {
-		repo := newRepo(t)
-		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/page\n\nWiki-Checked: wiki/page")
-		got, err := CheckCommits(repo, page, "wiki/page-two")
-		if err != nil || len(got) != 0 {
-			t.Errorf("got %v, %v, want no commits", got, err)
-		}
-	})
-	t.Run("a trailer-shaped line above the trailer block is not a trailer", func(t *testing.T) {
-		repo := newRepo(t)
-		emptyCommitAt(t, repo, "", "note\n\nWiki-Checked: wiki/p\n\nThe line above is only prose.\n\nSigned-off-by: test <test@example.com>")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		commitFileAt(t, repo, checked, "wiki/other 2026-01-01\nwiki/p-two 2026-01-01\n", "", "check others")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || len(got) != 0 {
 			t.Errorf("got %v, %v, want no commits", got, err)
 		}
 	})
 	t.Run("a commit that does both is listed once", func(t *testing.T) {
 		repo := newRepo(t)
-		c := commitFileAt(t, repo, page, "one\n", "", "edit page\n\nWiki-Checked: wiki/p")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		writeFile(t, filepath.Join(repo, checked), "wiki/p 2026-01-01\n")
+		git(t, repo, "add", checked)
+		c := commitFileAt(t, repo, page, "one\n", "", "edit page and check it")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || !reflect.DeepEqual(got, []string{c}) {
 			t.Errorf("got %v, %v, want [%s]", got, err, c)
 		}
@@ -1052,10 +1049,10 @@ func TestCheckCommits(t *testing.T) {
 	t.Run("a commit outside HEAD is not listed", func(t *testing.T) {
 		repo := newRepo(t)
 		git(t, repo, "checkout", "-q", "-b", "side")
-		emptyCommitAt(t, repo, "", "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
+		commitFileAt(t, repo, checked, "wiki/p 2026-01-01\n", "", "check on side")
 		commitFileAt(t, repo, page, "side\n", "", "edit page on side")
 		git(t, repo, "checkout", "-q", "main")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || len(got) != 0 {
 			t.Errorf("got %v, %v, want no commits", got, err)
 		}
@@ -1067,7 +1064,7 @@ func TestCheckCommits(t *testing.T) {
 		git(t, repo, "checkout", "-q", "main")
 		onMain := commitFileAt(t, repo, page, "same\n", "", "edit page on main")
 		mergeSide(t, repo, "side")
-		got, err := CheckCommits(repo, page, "wiki/p")
+		got, err := CheckCommits(repo, page, checked, "wiki/p")
 		if err != nil || !slices.Contains(got, onSide) || !slices.Contains(got, onMain) {
 			t.Errorf("got %v, %v, want both %s and %s", got, err, onSide, onMain)
 		}
@@ -1075,13 +1072,13 @@ func TestCheckCommits(t *testing.T) {
 	t.Run("a page file with odd characters is a plain name", func(t *testing.T) {
 		repo := newRepo(t)
 		commitFileAt(t, repo, page, "one\n", "", "add page")
-		got, err := CheckCommits(repo, "*.md", "wiki/p")
+		got, err := CheckCommits(repo, "*.md", checked, "wiki/p")
 		if err != nil || len(got) != 0 {
 			t.Errorf("a glob matched: got %v, %v", got, err)
 		}
 	})
 	t.Run("a folder that is no checkout is an error", func(t *testing.T) {
-		if got, err := CheckCommits(t.TempDir(), page, "wiki/p"); err == nil {
+		if got, err := CheckCommits(t.TempDir(), page, checked, "wiki/p"); err == nil {
 			t.Errorf("got %v and no error", got)
 		}
 	})
@@ -1234,78 +1231,154 @@ func TestUnseen(t *testing.T) {
 	})
 }
 
-func TestCommitEmpty(t *testing.T) {
-	repo := setupRepo(t)
-	parentTree := git(t, repo, "rev-parse", "HEAD^{tree}")
-	// A staged file must stay staged and stay out of the empty commit.
-	writeFile(t, filepath.Join(repo, "staged.md"), "staged\n")
-	git(t, repo, "add", "staged.md")
-
-	sha, err := CommitEmpty(repo, "chore(wiki): re-check wiki/p\n\nWiki-Checked: wiki/p")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := git(t, repo, "rev-parse", "--short", "HEAD"); sha != want {
-		t.Errorf("sha = %q, want HEAD's short sha %q", sha, want)
-	}
-	if got := git(t, repo, "rev-parse", "HEAD^{tree}"); got != parentTree {
-		t.Errorf("the commit's tree is %s, want the parent's tree %s", got, parentTree)
-	}
-	if got := git(t, repo, "diff", "--cached", "--name-only"); got != "staged.md" {
-		t.Errorf("staged files = %q, want only staged.md", got)
-	}
-	if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(wiki): re-check wiki/p" {
-		t.Errorf("subject = %q", got)
-	}
-	if got := CheckCommitsFor(t, repo); got != 1 {
-		t.Errorf("the trailer was not read: %d check commits", got)
-	}
-}
-
-// CheckCommitsFor counts the check commits of wiki/p, so TestCommitEmpty can
-// show the message reached git whole.
-func CheckCommitsFor(t *testing.T, repo string) int {
+// kindRepo is a checkout whose newest commit is "chore(scratch): new a",
+// made by acta and holding only plan/scratch/a.md.
+func kindRepo(t *testing.T) (repo, root string) {
 	t.Helper()
-	got, err := CheckCommits(repo, "page.md", "wiki/p")
-	if err != nil {
-		t.Fatal(err)
+	repo = setupRepo(t)
+	git(t, repo, "config", "user.name", "test")
+	root = filepath.Join(repo, "plan")
+	for _, d := range []string{"scratch", "bugs"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
-	return len(got)
+	a := filepath.Join(root, "scratch", "a.md")
+	writeFile(t, a, "a\n")
+	if r := CommitOrFoldIn(repo, root, a, "chore(scratch): new a", false); !r.Committed || r.Folded {
+		t.Fatalf("first call = %+v, want a plain commit", r)
+	}
+	return repo, root
 }
 
-// stopOnConflict leaves the repo in the middle of op ("cherry-pick" or
-// "rebase"), stopped on a conflict in a.md.
-func stopOnConflict(t *testing.T, repo, op string) {
-	t.Helper()
-	git(t, repo, "checkout", "-q", "-b", "side")
-	writeFile(t, filepath.Join(repo, "a.md"), "side\n")
-	git(t, repo, "commit", "-q", "-am", "side edit")
-	git(t, repo, "checkout", "-q", "main")
-	writeFile(t, filepath.Join(repo, "a.md"), "main\n")
-	git(t, repo, "commit", "-q", "-am", "main edit")
-	args := []string{"-C", repo, "cherry-pick", "side"}
-	if op == "rebase" {
-		git(t, repo, "checkout", "-q", "side")
-		args = []string{"-C", repo, "rebase", "main"}
+func TestCommitOrFoldInSameKind(t *testing.T) {
+	t.Run("two chores of one kind on two files fold under one subject", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		before := commitCount(t, repo)
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := commitCount(t, repo); got != before {
+			t.Fatalf("commit count %s, want %s", got, before)
+		}
+		want := "chore(scratch): new a, b\n\nchore(scratch): new a\nchore(scratch): new b"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+		// A third one joins the same list, and the body keeps every original.
+		c := filepath.Join(root, "scratch", "c.md")
+		writeFile(t, c, "c\n")
+		if r := CommitOrFoldIn(repo, root, c, "chore(scratch): new c", false); !r.Folded {
+			t.Fatalf("third got %+v", r)
+		}
+		want = "chore(scratch): new a, b, c\n\nchore(scratch): new a\nchore(scratch): new b\nchore(scratch): new c"
+		if got := git(t, repo, "log", "-1", "--format=%B"); got != want {
+			t.Fatalf("message %q, want %q", got, want)
+		}
+	})
+	t.Run("several paths of one kind fold too", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		b, c := filepath.Join(root, "scratch", "b.md"), filepath.Join(root, "scratch", "c.md")
+		writeFile(t, b, "b\n")
+		writeFile(t, c, "c\n")
+		if r := CommitPathsIn(repo, root, []string{b, c}, "chore(scratch): assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a; assign short ids" {
+			t.Fatalf("subject %q", got)
+		}
+	})
+	no := []struct {
+		name, msg string
+		file      func(repo, root string) string
+	}{
+		{"another kind", "chore(bug): new x", func(_, root string) string { return filepath.Join(root, "bugs", "x.md") }},
+		{"a file outside the root", "chore(scratch): new x", func(repo, _ string) string { return filepath.Join(repo, "x.md") }},
+		{"a subject that is no chore", "feat: x", func(_, root string) string { return filepath.Join(root, "scratch", "x.md") }},
 	}
-	// Both branches changed a.md, so git stops on a conflict.
-	if out, err := exec.Command("git", args...).CombinedOutput(); err == nil {
-		t.Fatalf("%s should conflict: %s", op, out)
-	}
-}
-
-func TestCommitEmptyRefusesWhileGitIsStopped(t *testing.T) {
-	for _, op := range []string{"cherry-pick", "rebase"} {
-		t.Run(op, func(t *testing.T) {
-			repo := setupRepo(t)
-			stopOnConflict(t, repo, op)
-			before := git(t, repo, "rev-parse", "HEAD")
-			if sha, err := CommitEmpty(repo, "chore(wiki): re-check p"); err == nil {
-				t.Fatalf("CommitEmpty made %s in the middle of a %s", sha, op)
+	for _, c := range no {
+		t.Run(c.name+" does not fold", func(t *testing.T) {
+			repo, root := kindRepo(t)
+			before := commitCount(t, repo)
+			f := c.file(repo, root)
+			writeFile(t, f, "x\n")
+			if r := CommitOrFoldIn(repo, root, f, c.msg, false); !r.Committed || r.Folded {
+				t.Fatalf("got %+v, want a new commit", r)
 			}
-			if after := git(t, repo, "rev-parse", "HEAD"); after != before {
-				t.Fatalf("HEAD moved from %s to %s", before, after)
+			if got := commitCount(t, repo); got == before {
+				t.Fatal("no new commit")
 			}
 		})
 	}
+	t.Run("no root means same file only", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFold(repo, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
+		}
+	})
+	t.Run("a pushed head does not fold", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		git(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
+		}
+	})
+}
+
+func TestCheckCommitsRoundOne(t *testing.T) {
+	const page, checked = "page.md", ".checked"
+	t.Run("a re-sort that moves a line is not a check", func(t *testing.T) {
+		repo := setupRepo(t)
+		add := commitFileAt(t, repo, checked, "z 2026-01-03T00:00:00Z\na 2026-01-01T00:00:00Z\n", "", "union leaves it unsorted")
+		commitFileAt(t, repo, checked, "a 2026-01-01T00:00:00Z\nz 2026-01-03T00:00:00Z\n", "", "sorted rewrite")
+		got, err := CheckCommits(repo, page, checked, "z")
+		if err != nil || !reflect.DeepEqual(got, []string{add}) {
+			t.Errorf("got %v, %v, want only [%s]", got, err, add)
+		}
+	})
+	t.Run("a coloured git config still reads checks", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "config", "color.ui", "always")
+		git(t, repo, "config", "color.diff", "always")
+		c := commitFileAt(t, repo, checked, "z 2026-01-03T00:00:00Z\n", "", "check z")
+		got, err := CheckCommits(repo, page, checked, "z")
+		if err != nil || !reflect.DeepEqual(got, []string{c}) {
+			t.Errorf("got %v, %v, want [%s]", got, err, c)
+		}
+	})
+}
+
+func TestCommitOrFoldInRoundOne(t *testing.T) {
+	t.Run("a head file outside the root does not fold", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		writeFile(t, filepath.Join(repo, "code.go"), "x\n")
+		git(t, repo, "add", "code.go")
+		git(t, repo, "commit", "-q", "--amend", "--no-edit")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, b, "b\n")
+		if r := CommitOrFoldIn(repo, root, b, "chore(scratch): new b", false); r.Folded {
+			t.Fatalf("got %+v, want a new commit", r)
+		}
+	})
+	t.Run("a head folded by an old binary keeps its subject", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		git(t, repo, "commit", "-q", "--amend", "-m", "chore(scratch): tick one\n\nchore(scratch): tick two")
+		writeFile(t, a, "a2\n")
+		if r := CommitOrFoldIn(repo, root, a, "chore(scratch): tick three", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		body := git(t, repo, "log", "-1", "--format=%B")
+		for _, want := range []string{"tick one", "tick two", "tick three"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("message %q lost %q", body, want)
+			}
+		}
+	})
 }

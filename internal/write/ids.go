@@ -143,7 +143,7 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		what = "migrate ids to 3-letter prefix"
 	}
 	msg := Subject(cfg, paths, what)
-	r := gitc.CommitPaths(cfg.RepoRoot, paths, msg)
+	r := gitc.CommitPathsIn(cfg.RepoRoot, cfg.Root, paths, msg)
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
 }
 
@@ -219,7 +219,7 @@ func FixDuplicates(cfg config.Config, b *board.Board) ([]string, Outcome, error)
 	if !cfg.AutoCommit {
 		return changes, Outcome{Reason: "auto_commit is off"}, nil
 	}
-	r := gitc.CommitPaths(cfg.RepoRoot, paths, Subject(cfg, paths, "fix duplicate short ids"))
+	r := gitc.CommitPathsIn(cfg.RepoRoot, cfg.Root, paths, Subject(cfg, paths, "fix duplicate short ids"))
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason}, nil
 }
 

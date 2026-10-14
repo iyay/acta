@@ -446,7 +446,7 @@ func finish(cfg config.Config, path, msg string, dirty bool) Outcome {
 		o.Reason = "auto_commit is off"
 		return o
 	}
-	r := gitc.CommitOrFold(cfg.RepoRoot, path, msg, dirty)
+	r := gitc.CommitOrFoldIn(cfg.RepoRoot, cfg.Root, path, msg, dirty)
 	o.Committed, o.Reason = r.Committed, r.Reason
 	o.Skipped = !r.Committed
 	return o

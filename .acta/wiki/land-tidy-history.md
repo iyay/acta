@@ -16,3 +16,5 @@ Fold rules: the fold point is `@{upstream}`, else `refs/acta/last-land`, else no
 Why `-D` is safe: the old branch is not an ancestor any more, so `-d` refuses. Tidy proved the tip equals the merge of parent and branch, so `-D` loses nothing. Delete `refs/acta/tidy/<branch>` after.
 
 Known limit: a hash that lands in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
+
+Tidy keeps commit messages as written. It moves no trailers: wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iyay/acta/internal/gitc"
 	"github.com/iyay/acta/internal/testguard"
 )
 
@@ -528,122 +529,21 @@ func (r *repoT) body(rev string) string {
 	return r.git(nil, "log", "-1", "--format=%B", rev)
 }
 
-// wikiTrailers lists every Wiki-Checked value in a range, oldest commit first.
-func (r *repoT) wikiTrailers(rng string) []string {
-	out := r.git(nil, "log", "--reverse", "--format=%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)", rng)
-	var vals []string
-	for _, line := range strings.Split(out, "\n") {
-		for _, v := range strings.Split(line, "\x1f") {
-			if v = strings.TrimSpace(v); v != "" {
-				vals = append(vals, v)
-			}
-		}
-	}
-	return vals
-}
-
-func TestFoldedWikiCheckedTrailersLandOnceOnTheKeptCommit(t *testing.T) {
-	r := start(t)
-	base := r.rev("main")
-	r.commit("feat: a", d(1), "ann", map[string]string{"a.go": "a\n"})
-	r.commit("chore(wiki): re-check a\n\nWiki-Checked: a", d(2), "ann", nil)
-	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(3), "ann", nil)
-	res, err := Run(r.dir, opt("main", "feat"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := r.subjects(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "feat: a" {
-		t.Fatalf("subjects %v", got)
-	}
-	want := "feat: a\n\nWiki-Checked: a\nWiki-Checked: b"
-	if got := r.body(res.Tip); got != want {
-		t.Fatalf("message %q, want %q", got, want)
-	}
-	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
-		t.Fatalf("trailers %v", got)
-	}
-}
-
-func TestFoldedWikiCheckedJoinsAnExistingTrailerBlock(t *testing.T) {
-	r := start(t)
-	base := r.rev("main")
-	r.commit("feat: a\n\nbody line\n\nTask: PLN-x#1\nWiki-Checked: a", d(1), "ann", map[string]string{"a.go": "a\n"})
-	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(2), "ann", nil)
-	r.commit("feat: c\n\nTask: PLN-x#2", d(3), "ann", map[string]string{"c.go": "c\n"})
-	res, err := Run(r.dir, opt("main", "feat"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := r.body(res.Tip + "~1"); got != "feat: a\n\nbody line\n\nTask: PLN-x#1\nWiki-Checked: a\nWiki-Checked: b" {
-		t.Fatalf("first message %q", got)
-	}
-	// A commit that folded nothing keeps its message as it was.
-	if got := r.body(res.Tip); got != "feat: c\n\nTask: PLN-x#2" {
-		t.Fatalf("second message %q", got)
-	}
-	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
-		t.Fatalf("trailers %v", got)
-	}
-}
-
-func TestWikiCheckedWithoutTrailersChangesNothing(t *testing.T) {
+func TestFoldedWikiCheckStaysACheckOnTheKeptCommit(t *testing.T) {
 	r := start(t)
 	r.commit("feat: a\n\nTask: PLN-x#1", d(1), "ann", map[string]string{"a.go": "a\n"})
-	r.commit("chore(plan): tick a", d(2), "ann", map[string]string{".acta/tick.md": "tick\n"})
+	r.commit("chore(wiki): re-check p", d(2), "ann", map[string]string{".acta/wiki/.checked": "p 2026-10-14\n"})
 	res, err := Run(r.dir, opt("main", "feat"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The message stays as written: no trailer is carried over any more.
 	if got := r.body(res.Tip); got != "feat: a\n\nTask: PLN-x#1" {
 		t.Fatalf("message %q", got)
 	}
-}
-
-func TestWikiCheckedKeptWhenNoCommitIsKept(t *testing.T) {
-	r := start(t)
-	base := r.rev("main")
-	r.commit("chore(plan): one", d(1), "ann", map[string]string{".acta/1.md": "1\n"})
-	r.commit("chore(wiki): re-check a\n\nWiki-Checked: a", d(2), "ann", nil)
-	r.commit("chore(wiki): re-check a, b\n\nWiki-Checked: a\nWiki-Checked: b", d(3), "ann", nil)
-	res, err := Run(r.dir, opt("main", "feat"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.NewCount != 1 {
-		t.Fatalf("counts %+v", res)
-	}
-	if got := r.wikiTrailers(base + "..refs/acta/tidy/feat"); strings.Join(got, "|") != "a|b" {
-		t.Fatalf("trailers %v", got)
-	}
-}
-
-func TestFoldedWikiCheckedLeavesADividerLineInTheBodyAlone(t *testing.T) {
-	r := start(t)
-	// A body line of three dashes looks like the start of a patch to git. The
-	// new trailer must still go to the end, and the Notes line must stay as it is.
-	msg := "feat: a\n\nNotes: keep this\n---\n\nTask: PLN-x#1"
-	r.commit(msg, d(1), "ann", map[string]string{"a.go": "a\n"})
-	r.commit("chore(wiki): re-check p\n\nWiki-Checked: p", d(2), "ann", nil)
-	res, err := Run(r.dir, opt("main", "feat"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := r.body(res.Tip), msg+"\nWiki-Checked: p"; got != want {
-		t.Fatalf("message %q, want %q", got, want)
-	}
-}
-
-func TestFoldedWikiCheckedKeepsBothValuesWhenGitConfigReplacesTrailers(t *testing.T) {
-	r := start(t)
-	// A user may set trailer.ifexists=replace. That must not drop the older value.
-	r.git(nil, "config", "trailer.ifexists", "replace")
-	r.commit("feat: a\n\nTask: PLN-x#1\nWiki-Checked: a", d(1), "ann", map[string]string{"a.go": "a\n"})
-	r.commit("chore(wiki): re-check b\n\nWiki-Checked: b", d(2), "ann", nil)
-	res, err := Run(r.dir, opt("main", "feat"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := r.body(res.Tip), "feat: a\n\nTask: PLN-x#1\nWiki-Checked: a\nWiki-Checked: b"; got != want {
-		t.Fatalf("message %q, want %q", got, want)
+	r.git(nil, "checkout", "-q", res.Tip)
+	got, err := gitc.CheckCommits(r.dir, ".acta/wiki/p.md", ".acta/wiki/.checked", "p")
+	if err != nil || len(got) != 1 || got[0] != res.Tip {
+		t.Fatalf("check commits %v, %v, want the kept commit %s", got, err, res.Tip)
 	}
 }

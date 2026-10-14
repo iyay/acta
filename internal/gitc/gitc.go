@@ -52,10 +52,19 @@ func Commit(repo, path, msg string, wasDirty bool) Result {
 // CommitOrFold is Commit, except that it amends HEAD instead of adding a new
 // commit when HEAD is this tool's own earlier planning commit of the same file
 // and nothing else can hold that commit. A run of repeat edits then leaves one
-// commit. The amended commit keeps HEAD's subject and adds the new subject as
-// a body line, so no subject is lost. Any doubt, or a failed amend, ends in
-// the plain Commit.
+// commit. The new subject is added as a body line, so no subject is lost. HEAD's
+// subject stays, except when both are chores of one kind: then foldArgs builds
+// a subject that names them all. Any doubt, or a failed amend, ends in the
+// plain Commit.
 func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
+	return CommitOrFoldIn(repo, "", path, msg, wasDirty)
+}
+
+// CommitOrFoldIn is CommitOrFold that also folds a chore of the same kind
+// on another file, when every file of HEAD and path sit under root, the
+// planning folder. The subject then names what the fold holds (FoldSubject).
+// An empty root folds the same file only.
+func CommitOrFoldIn(repo, root, path, msg string, wasDirty bool) Result {
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
 	}
@@ -65,44 +74,81 @@ func CommitOrFold(repo, path, msg string, wasDirty bool) Result {
 	if reason := busy(repo); reason != "" {
 		return Result{Reason: reason}
 	}
-	if canFold(repo, path) {
-		if _, err := run(repo, "add", "--", path); err == nil {
-			if args, ok := foldArgs(repo, path, msg); ok {
-				if _, err := run(repo, args...); err == nil {
-					return Result{Committed: true, Folded: true}
-				}
-			}
-		}
+	if r, ok := tryFold(repo, root, []string{path}, msg); ok {
+		return r
 	}
 	return Commit(repo, path, msg, wasDirty)
+}
+
+// tryFold amends HEAD with paths when canFold allows it. ok is false when it
+// did not fold, so the caller makes a plain commit instead.
+func tryFold(repo, root string, paths []string, msg string) (Result, bool) {
+	if !canFold(repo, root, paths, msg) {
+		return Result{}, false
+	}
+	if _, err := run(repo, append([]string{"add", "--"}, paths...)...); err != nil {
+		return Result{}, false
+	}
+	args, ok := foldArgs(repo, paths, msg)
+	if !ok {
+		return Result{}, false
+	}
+	if _, err := run(repo, args...); err != nil {
+		return Result{}, false
+	}
+	return Result{Committed: true, Folded: true}, true
 }
 
 // trailerLine matches a line like "Co-Authored-By: X". A paragraph made only
 // of such lines is a trailer block, the way git reads one.
 var trailerLine = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*:\s+\S`)
 
-// foldArgs builds the git amend call for a fold. HEAD's message stays exactly
-// as written. msg is added as one more line when HEAD does not say it yet: it
-// goes before the trailer block, so trailers stay trailers, or at the end when
-// there is none. It says false when HEAD's message cannot be read.
-func foldArgs(repo, path, msg string) ([]string, bool) {
+// foldArgs builds the git amend call for a fold. msg is added as one more
+// line when HEAD does not say it yet: it goes before the trailer block, so
+// trailers stay trailers, or at the end when there is none. When HEAD and msg
+// are chores of one kind, HEAD's own subject goes in the body too and the
+// subject is built anew from every chore line there, so it names them all.
+// Otherwise HEAD's subject stays. It says false when HEAD's message cannot be
+// read.
+func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 	out, err := run(repo, "log", "-1", "--format=%B")
 	if err != nil {
 		return nil, false
 	}
 	lines := strings.Split(strings.TrimRight(out, " \t\r\n"), "\n")
 	msg = strings.TrimSpace(msg)
-	said := false
-	for _, ln := range lines {
-		if strings.TrimSpace(ln) == msg {
-			said = true
-		}
+	kind := SubjectKind(msg)
+	sameKind := kind != "" && SubjectKind(lines[0]) == kind
+	said := func(s string) bool {
+		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
 	}
-	if !said {
+	if sameKind && strings.TrimSpace(lines[0]) != msg && !said(msg) && !said(strings.TrimSpace(lines[0])) &&
+		strings.TrimSpace(lines[0]) != FoldSubject(kindLines(lines[1:], kind)) {
+		// HEAD's subject is about to change and was not built from the body,
+		// so it is a subject of its own. Keep it below.
+		lines = insertFoldLine(lines, lines[0])
+	}
+	if strings.TrimSpace(lines[0]) != msg && !said(msg) {
 		lines = insertFoldLine(lines, msg)
 	}
-	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n")}
-	return append(args, "--", path), true
+	if sameKind {
+		if s := FoldSubject(kindLines(lines[1:], kind)); s != "" {
+			lines[0] = s
+		}
+	}
+	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
+	return append(args, paths...), true
+}
+
+// kindLines gives the body lines that are chore subjects of kind.
+func kindLines(body []string, kind string) []string {
+	var out []string
+	for _, ln := range body {
+		if SubjectKind(strings.TrimSpace(ln)) == kind {
+			out = append(out, strings.TrimSpace(ln))
+		}
+	}
+	return out
 }
 
 // insertFoldLine puts msg into the message lines: after the last body line
@@ -143,11 +189,19 @@ func trailerStart(lines []string) int {
 	return start
 }
 
-// canFold says whether HEAD may be rewritten with a new edit of path. Each
+// canFold says whether HEAD may be rewritten with new edits of paths. Each
 // rule keeps a rewrite from hurting someone else, and any error means no.
-func canFold(repo, path string) bool {
+func canFold(repo, root string, paths []string, msg string) bool {
 	// A file with no change would only rewrite HEAD. Commit says no to it.
-	if dirty, err := IsDirty(repo, path); err != nil || !dirty {
+	dirty := false
+	for _, p := range paths {
+		d, err := IsDirty(repo, p)
+		if err != nil {
+			return false
+		}
+		dirty = dirty || d
+	}
+	if !dirty {
 		return false
 	}
 	// A tag marks a release, so its commit must never be rewritten.
@@ -168,11 +222,7 @@ func canFold(repo, path string) bool {
 	if me := UserName(repo); me == "" || f[1] != me {
 		return false
 	}
-	// HEAD must hold only this file. Asking with and without the path gives
-	// the same list when nothing else is in it.
-	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
-	one, err2 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD", "--", path)
-	if err1 != nil || err2 != nil || one == "" || all != one {
+	if !sameFiles(repo, paths) && !sameKindInRoot(repo, root, paths, f[0], msg) {
 		return false
 	}
 	// A commit that was pushed, or can be fetched from a remote, is shared.
@@ -194,6 +244,50 @@ func canFold(repo, path string) bool {
 		}
 	}
 	return !otherCheckoutHolds(repo)
+}
+
+// sameFiles says whether HEAD holds exactly paths. Asking with and without
+// the paths gives the same list when nothing else is in it.
+func sameFiles(repo string, paths []string) bool {
+	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	some, err2 := run(repo, append([]string{"diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD", "--"}, paths...)...)
+	return err1 == nil && err2 == nil && some != "" && all == some
+}
+
+// sameKindInRoot says whether HEAD and msg are chores of one kind and every
+// file of HEAD and every path sit under root. Only planning files fold this
+// way, so a chore that also touched code always stands alone.
+func sameKindInRoot(repo, root string, paths []string, headSubject, msg string) bool {
+	kind := SubjectKind(msg)
+	if root == "" || kind == "" || SubjectKind(headSubject) != kind {
+		return false
+	}
+	top, err := run(repo, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return false
+	}
+	out, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	if err != nil {
+		return false
+	}
+	files := slices.Clone(paths)
+	for _, f := range strings.Split(strings.TrimRight(out, "\x00"), "\x00") {
+		files = append(files, filepath.Join(strings.TrimSpace(top), f))
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		realRoot = root
+	}
+	for _, f := range files {
+		rel, err := filepath.Rel(realRoot, f)
+		if err != nil {
+			rel, err = filepath.Rel(root, f)
+		}
+		if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			return false
+		}
+	}
+	return true
 }
 
 // otherCheckoutHolds says whether another worktree stands on HEAD or on a
@@ -231,14 +325,25 @@ func otherCheckoutHolds(repo string) bool {
 // outside the list stays out, so one run of a tool is one commit. One path
 // is a one-file write, so it may fold like CommitOrFold. More paths never do.
 func CommitPaths(repo string, paths []string, msg string) Result {
+	return CommitPathsIn(repo, "", paths, msg)
+}
+
+// CommitPathsIn is CommitPaths that may also fold into a HEAD chore of the
+// same kind, the way CommitOrFoldIn does, when root is the planning folder.
+func CommitPathsIn(repo, root string, paths []string, msg string) Result {
 	if len(paths) == 1 {
-		return CommitOrFold(repo, paths[0], msg, false)
+		return CommitOrFoldIn(repo, root, paths[0], msg, false)
 	}
 	if _, err := run(repo, "rev-parse", "--git-dir"); err != nil {
 		return Result{Reason: "not a git repo"}
 	}
 	if reason := busy(repo); reason != "" {
 		return Result{Reason: reason}
+	}
+	if root != "" {
+		if r, ok := tryFold(repo, root, paths, msg); ok {
+			return r
+		}
 	}
 	args := append([]string{"add", "--"}, paths...)
 	if _, err := run(repo, args...); err != nil {
@@ -300,11 +405,11 @@ func IsAncestor(repo, a, b string) (bool, error) {
 
 // CheckCommits lists the full shas of the commits reachable from HEAD that
 // count as a check of a wiki page: a commit that changed the page file, or a
-// commit with a Wiki-Checked trailer whose value is exactly id. pageFile is a
-// plain name from the repo root. The newest page-file commit comes first. The
-// trailer is read by git itself, so a line of prose that only looks like one,
-// or a longer id that starts with this one, never counts.
-func CheckCommits(repo, pageFile, id string) ([]string, error) {
+// commit whose diff adds a line for id to the checked file. pageFile and
+// checkedFile are plain names from the repo root. The newest page-file commit
+// comes first. A commit that only removes the line is not a check, and a
+// longer id that starts with this one never counts.
+func CheckCommits(repo, pageFile, checkedFile, id string) ([]string, error) {
 	// Full history, so a change on either side of a merge shows up even when
 	// the other side has the same text. A merge brings no change of its own.
 	out, err := run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--format=%H", "--", pageFile)
@@ -312,16 +417,29 @@ func CheckCommits(repo, pageFile, id string) ([]string, error) {
 		return nil, err
 	}
 	shas := strings.Fields(out)
-	// The grep only narrows the list. The trailer block decides what counts.
-	out, err = run(repo, "log", "--grep=^Wiki-Checked:",
-		"--format=%H%x00%(trailers:key=Wiki-Checked,valueonly,separator=%x1f)")
+	// No colour and no outside diff tool, so every line reads the same
+	// whatever the user set up.
+	out, err = run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--no-color", "--no-ext-diff",
+		"-p", "-U0", "--format=%x00%H", "--", checkedFile)
 	if err != nil {
 		return nil, err
 	}
-	for _, line := range strings.Split(out, "\n") {
-		sha, values, _ := strings.Cut(line, "\x00")
-		for _, v := range strings.Split(values, "\x1f") {
-			if strings.TrimSpace(v) == id && sha != "" && !slices.Contains(shas, sha) {
+	for _, c := range strings.Split(out, "\x00")[1:] {
+		sha, diff, _ := strings.Cut(c, "\n")
+		added, removed := map[string]bool{}, map[string]bool{}
+		for _, line := range strings.Split(diff, "\n") {
+			switch {
+			case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
+			case strings.HasPrefix(line, "+"+id+" "):
+				added[line[1:]] = true
+			case strings.HasPrefix(line, "-"+id+" "):
+				removed[line[1:]] = true
+			}
+		}
+		// A line taken out and put back the same is only a move, like the
+		// re-sort after a union merge. It says nothing new about the page.
+		for line := range added {
+			if !removed[line] && !slices.Contains(shas, sha) {
 				shas = append(shas, sha)
 			}
 		}
@@ -358,21 +476,10 @@ func Unseen(repo string, checks, paths []string) (sha, subject string, err error
 	return sha, subject, nil
 }
 
-// CommitEmpty makes a commit with the message and no file change, and returns
-// its short sha. --only keeps anything already staged out of the commit and
-// still staged afterwards.
-func CommitEmpty(repo, msg string) (string, error) {
-	if reason := busy(repo); reason != "" {
-		return "", errors.New(reason)
-	}
-	if _, err := run(repo, "commit", "--only", "--allow-empty", "-m", msg); err != nil {
-		return "", err
-	}
+// ShortHead gives the short sha of HEAD.
+func ShortHead(repo string) (string, error) {
 	out, err := run(repo, "rev-parse", "--short", "HEAD")
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out), nil
+	return strings.TrimSpace(out), err
 }
 
 // Changed lists the files that the commits in rng changed, from the repo root.

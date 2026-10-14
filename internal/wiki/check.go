@@ -125,7 +125,10 @@ func staleMsgs(repo string, p Page, usable []string) []string {
 	if dirty {
 		return nil
 	}
-	checks, err := gitc.CheckCommits(repo, file, p.ID)
+	// The wiki folder is the page file minus its id, so a page in a sub folder
+	// still finds the one checked file of its wiki.
+	checked := strings.TrimSuffix(file, p.ID+".md") + CheckedFile
+	checks, err := gitc.CheckCommits(repo, file, checked, p.ID)
 	if err != nil {
 		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
 	}

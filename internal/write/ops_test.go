@@ -331,9 +331,9 @@ func TestSetValueFixedInAndRef(t *testing.T) {
 	if string(body) != "---\nref: New-261\nfixed_in: d2277688f\nfinished: \"2026-09-26 10:00:00\"\n---\n# Crash\n\n## Symptom\nIt crashes.\n" {
 		t.Fatalf("file = %q", body)
 	}
-	// The ref write folds into the fixed_in commit: the first subject stays on
-	// top and the ref subject is a body line.
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash fixed_in d2277688f" {
+	// The ref write folds into the fixed_in commit: the subject names both
+	// writes and each subject is a body line.
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(bug): bugs/2026-09-24-crash fixed_in d2277688f, ref New-261" {
 		t.Fatalf("commit message %q", got)
 	}
 	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%b"); !strings.Contains(got, "chore(bug): bugs/2026-09-24-crash ref New-261") {

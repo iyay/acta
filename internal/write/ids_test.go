@@ -926,3 +926,53 @@ func mustAtoi(t *testing.T, s string) int {
 	}
 	return n
 }
+
+// Ids for files of one folder fold into a HEAD chore of that kind, so a new
+// spec and its id are one commit. Files from two folders carry no kind and
+// stand alone.
+func TestAssignIDsFoldsIntoAChoreOfTheSameKind(t *testing.T) {
+	t.Parallel()
+	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
+	spec := filepath.Join(cfg.Root, "specs", "2026-09-21-b-design.md")
+	if err := os.MkdirAll(filepath.Dir(spec), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Two specs, so the ids are a write of two files, not one.
+	for _, f := range []string{spec, filepath.Join(cfg.Root, "specs", "2026-09-21-e-design.md")} {
+		if err := os.WriteFile(f, []byte("# B\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitRun(t, cfg.RepoRoot, "add", ".")
+	gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", "chore(spec): new 2026-09-21-b-design")
+	before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
+	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after != before {
+		t.Fatalf("commits went from %s to %s, want a fold", before, after)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(spec): new 2026-09-21-b-design; assign short ids" {
+		t.Fatalf("subject %q", got)
+	}
+
+	bug := filepath.Join(cfg.Root, "bugs", "2026-09-23-c.md")
+	if err := os.MkdirAll(filepath.Dir(bug), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{bug, filepath.Join(cfg.Root, "specs", "2026-09-22-d-design.md")} {
+		if err := os.WriteFile(f, []byte("# C\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before = gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
+	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after == before {
+		t.Fatal("two folders folded, want a commit of their own")
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore: assign short ids" {
+		t.Fatalf("subject %q", got)
+	}
+}

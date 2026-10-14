@@ -39,7 +39,7 @@ func cmdCommit(args []string, stdout, stderr io.Writer) int {
 	}
 	o := gitc.Result{Reason: "auto_commit is off"}
 	if cfg.AutoCommit {
-		o = gitc.CommitOrFold(cfg.RepoRoot, abs, *msg, false)
+		o = gitc.CommitOrFoldIn(cfg.RepoRoot, cfg.Root, abs, *msg, false)
 	}
 	// Show the path as the caller typed it, not the link-free one git got.
 	line := pos[0]
