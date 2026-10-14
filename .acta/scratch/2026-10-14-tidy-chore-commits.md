@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-10-14 15:19:56"
 schema: "1"
 started: "2026-10-14 15:20:42"
+finished: "2026-10-14 15:28:47"
 ---
 # Tidy chore commits: no empty wiki re-checks, squash same-kind chores, fold messages that fit
 
