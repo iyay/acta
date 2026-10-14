@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0140
 created: "2026-10-14 15:29:55"
 hash: q59rynr
+started: "2026-10-14 15:40:18"
 ---
 # Tidy chore commits Implementation Plan
 
@@ -34,8 +35,8 @@ hash: q59rynr
 
 **verify:** A page is fresh exactly when every commit under its paths is an ancestor of a commit that changed the page file or added a `+<id> ` line to `.checked`. List every path checked: line added, line date changed, line only removed (never a check), duplicate lines after a union merge of two branches (no conflict, page fresh), line folded by tidy into a work commit (still fresh), orphan line, page file edit, uncommitted page; and that `Rewrite` output is sorted, deduped keeping the newest date, and drops unknown ids for every input order.
 
-- [ ] **Failing test:** cases above in `checked_test.go` (parse and `Rewrite(lines, known ids, touched ids, today)`) and `check_test.go` / `tidy_test.go` (freshness through git). `scripts/test ./internal/wiki ./internal/tidy` fails.
-- [ ] **Change:** `checked.go` holds read, `Rewrite` and write of the file. `gitc.CheckCommits` reads `git log -p --full-history --no-merges` of `.checked` for added lines plus page-file commits, no trailer query. Drop `withFoldedWikiChecks`. Rewrite both wiki pages for the new record and tidy no longer moving trailers.
+- [x] **Failing test:** cases above in `checked_test.go` (parse and `Rewrite(lines, known ids, touched ids, today)`) and `check_test.go` / `tidy_test.go` (freshness through git). `scripts/test ./internal/wiki ./internal/tidy` fails.
+- [x] **Change:** `checked.go` holds read, `Rewrite` and write of the file. `gitc.CheckCommits` reads `git log -p --full-history --no-merges` of `.checked` for added lines plus page-file commits, no trailer query. Drop `withFoldedWikiChecks`. Rewrite both wiki pages for the new record and tidy no longer moving trailers.
 
 ### Task 02: folded subject builder
 
@@ -43,8 +44,8 @@ hash: q59rynr
 
 **verify:** `FoldSubject(subjects []string) string` never drops a name silently and never passes 72 characters. List every path: same verb, mixed verbs grouped with `; `, unparsed subject as one name with empty verb, names exactly at the cap, one past the cap (`+N more`), a single subject (returned unchanged), subjects of different kinds (returns "" so the caller does not fold).
 
-- [ ] **Failing test:** table test with the cases above. `scripts/test ./internal/gitc -run TestFoldSubject` fails.
-- [ ] **Change:** parse `chore(<kind>): <verb> <names>` (names split on `, `), group by verb in first-seen order, cap and count overflow.
+- [x] **Failing test:** table test with the cases above. `scripts/test ./internal/gitc -run TestFoldSubject` fails.
+- [x] **Change:** parse `chore(<kind>): <verb> <names>` (names split on `, `), group by verb in first-seen order, cap and count overflow.
 
 ### Task 03: `wiki ok` writes `.checked`; doctor warns and migrates
 
