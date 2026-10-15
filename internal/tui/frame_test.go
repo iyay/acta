@@ -279,3 +279,23 @@ func TestHelpListsTheSortKey(t *testing.T) {
 		t.Fatalf("help does not list o: %q", helpLines)
 	}
 }
+
+// TestSortKeepsTheCursorRow checks that o leaves the cursor on the row number
+// it was on. Before, the cursor followed its item to the far end of the list,
+// so the reader had to scroll back to where they were.
+func TestSortKeepsTheCursorRow(t *testing.T) {
+	t.Parallel()
+
+	// Row 1 of a long list is never the middle row, so an item that moves
+	// with the sort always lands on another row number.
+	m := press(newModel(t), tabKey(tabSpecs))
+	if n := len(m.listOf()); n < 4 {
+		t.Fatalf("%d rows, the test needs 4", n)
+	}
+	m = press(m, "j")
+	before := m.cursor()
+	m = press(m, "o")
+	if got := m.cursor(); got != before {
+		t.Fatalf("cursor on row %d after o, want %d", got, before)
+	}
+}

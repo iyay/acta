@@ -242,23 +242,6 @@ func TestOFlipsOnlyTheFocusedBox(t *testing.T) {
 // TestOKeepsTheSelectedItemSelected reads the selection by its id, because
 // the row number moves when the list is reversed. The board is the real
 // fixture, so Get can still find the item behind the cursor.
-func TestOKeepsTheSelectedItemSelected(t *testing.T) {
-	t.Parallel()
-
-	m := press(newModel(t), tabKey(tabSpecs))
-	m = press(m, "j")
-	before := m.Selected().ID
-	m = press(m, "o")
-	// The rows are reversed, so the cursor has to change its row number to
-	// stay on the same item.
-	if got, want := m.rowsOf(paneList)[m.cursor()].id, before; got != want {
-		t.Fatalf("after o the cursor is on row %q, want %q", got, want)
-	}
-	if got := m.Selected().ID; got != before {
-		t.Fatalf("o moved the selection from %q to %q", before, got)
-	}
-}
-
 func TestOInTheDetailBoxChangesNoPane(t *testing.T) {
 	t.Parallel()
 

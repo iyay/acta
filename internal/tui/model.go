@@ -671,7 +671,11 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "o":
 		// The detail box has no list to sort.
 		if m.focus != paneDetail {
+			// Keep the row number, not the item, so the view does not jump
+			// to wherever the sort sent the item.
+			row := m.cursor()
 			m.newest[m.focus] = !m.newest[m.focus]
+			m.moveTo(row)
 		}
 	case "n":
 		s := ""
