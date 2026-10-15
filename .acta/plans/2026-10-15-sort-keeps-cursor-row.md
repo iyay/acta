@@ -3,6 +3,8 @@ depth: minimal
 id: PLN-0149
 created: "2026-10-15 13:00:00"
 hash: feun362
+started: "2026-10-15 13:03:16"
+finished: "2026-10-15 13:03:16"
 ---
 # Sort keeps cursor row Implementation Plan
 
@@ -29,4 +31,16 @@ hash: feun362
 
 **verify:** After `o` on a list pane with the cursor on row 3 (Done list included), the cursor is still on row 3 and its scroll offset does not move.
 
-- [ ] Red test, change, commit
+- [x] Red test, change, commit
+
+## Fix round 1
+
+### Task 02: Sort leaves a wheeled list where it is
+
+**Files:**
+- Modify: `internal/tui/model.go` (`case "o"`)
+- Test: `internal/tui/frame_test.go`, plus the stale doc comment in `internal/tui/order_test.go`
+
+**verify:** After the wheel scrolls a list so the cursor is out of sight, `o` leaves the list's scroll offset as it was.
+
+- [x] Red test, fix, commit
