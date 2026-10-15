@@ -118,6 +118,13 @@ func (m Model) WithVersion(v string) Model {
 	return m
 }
 
+// WithUpdate sets the newer release the bottom line points at, read once
+// when the TUI opens. Empty shows nothing.
+func (m Model) WithUpdate(v string) Model {
+	m.newer = v
+	return m
+}
+
 // normalizeVersion keeps a tagged build number and reads every local build
 // as dev, so the footer never shows a blank or a raw "(devel)".
 func normalizeVersion(v string) string {

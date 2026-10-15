@@ -5,6 +5,7 @@ id: PLN-0142
 created: "2026-10-15 09:34:51"
 hash: u1b98a8
 started: "2026-10-15 09:36:30"
+finished: "2026-10-15 09:41:22"
 ---
 # Update notice Implementation Plan
 
@@ -66,4 +67,11 @@ started: "2026-10-15 09:36:30"
 
 **verify:** The footer shows `↑ v<latest>` only when `WithUpdate` got a non-empty version, and the footer never grows wider than the screen at any width the existing footer tests sweep; list the widths checked.
 
-- [ ] Write failing tests, watch them fail, implement, watch them pass, commit.
+- [x] Write failing tests, watch them fail, implement, watch them pass, commit.
+
+## Review notes
+
+- Round 1, deep, two reviewers (spec, standards): both CLEAN, no BLOCKER.
+- Hooks also start the daily check; the spec skip list names only `update`, and the per-prompt cost is one config read and one stat.
+- A failed background check leaves an empty touched `update.json`; the next try comes 24 hours later, as the spec says.
+- The badge test lives in `view_test.go` beside the other footer tests, following the approved footer placement.

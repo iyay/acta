@@ -525,7 +525,11 @@ func (m Model) statusPieces() []statusPiece {
 	if m.cfg.Links.Feedback != "" {
 		links = append(links, statusPiece{text: "Feedback", url: m.cfg.Links.Feedback})
 	}
-	tail := append(links, statusPiece{text: m.version})
+	version := m.version
+	if m.newer != "" {
+		version += "  ↑ " + m.newer
+	}
+	tail := append(links, statusPiece{text: version})
 	return joinStatus(info, tail, m.width)
 }
 

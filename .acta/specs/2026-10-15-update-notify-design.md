@@ -3,6 +3,8 @@ parent: scratch/2026-10-15-update-notify
 id: SPC-0132
 created: "2026-10-15 09:32:35"
 hash: b5r37ho
+started: "2026-10-15 09:36:30"
+finished: "2026-10-15 09:41:22"
 ---
 # Update notice: tell the user when a newer acta exists
 

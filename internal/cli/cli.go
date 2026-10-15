@@ -45,7 +45,7 @@ var runTUI = func(cfg config.Config, stderr io.Writer) int {
 	// Ask the terminal for its background now; asking inside the program
 	// fights Bubble Tea for stdin.
 	dark := lipgloss.HasDarkBackground()
-	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithLoad(loader)
+	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithUpdate(newerRelease()).WithLoad(loader)
 	// 120fps halves how long a new frame waits to reach the screen.
 	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
 	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
