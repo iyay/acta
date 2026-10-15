@@ -1,5 +1,5 @@
 ---
-id: DBT-0122
+id: DBT-0123
 hash: cxd9rdt
 parent: plans/2026-10-15-tui-list-filter
 ---
