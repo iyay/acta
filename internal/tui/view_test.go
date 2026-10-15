@@ -2404,6 +2404,7 @@ func TestEveryHelpLineNamesOneKeyOrOnePairOfOpposites(t *testing.T) {
 		"h l":           true,
 		"ctrl+d ctrl+u": true,
 		"+ -":           true,
+		"f F":           true,
 	}
 	for _, ln := range strings.Split(helpLines, "\n") {
 		k, w, cut := strings.Cut(ln, "  ")

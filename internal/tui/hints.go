@@ -71,6 +71,9 @@ func (m Model) hints() []string {
 		out = append(out, "Commits: d")
 	}
 	out = append(out, "New bug: n", "Sort: o")
+	if m.focus == paneList {
+		out = append(out, m.filterHints()...)
+	}
 	if m.foldsRow() {
 		out = append(out, "Fold: space")
 	}

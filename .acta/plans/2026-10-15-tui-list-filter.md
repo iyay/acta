@@ -5,6 +5,8 @@ depth: minimal
 id: PLN-0153
 created: "2026-10-15 17:18:47"
 hash: lcuevco
+started: "2026-10-15 17:20:35"
+finished: "2026-10-15 17:28:07"
 ---
 
 # TUI list filter by priority and status Implementation Plan
@@ -37,7 +39,7 @@ hash: lcuevco
 
 **verify:** The List box shows exactly the open items matching every active filter of the active tab: list each tab (Specs, Plans, Bugs, Debt, Scratch) and what `f` and `F` cycle there; priority "none" keeps only unset items; a plan head stays only when it or a task under it matches; `F` on Debt leaves rows unchanged and sets the status text; an empty result keeps the cursor in range; switching tab keeps each tab's own filters.
 
-- [ ] Red tests per key and tab; add per-tab filter state and the cycle lists in `filter.go`; handle `f`/`F` in `Update`; apply the filters in `openRows` after the sort; `go test ./internal/tui/ -run Filter`; commit.
+- [x] Red tests per key and tab; add per-tab filter state and the cycle lists in `filter.go`; handle `f`/`F` in `Update`; apply the filters in `openRows` after the sort; `go test ./internal/tui/ -run Filter`; commit.
 
 ### Task 02: Title, hints and help
 
@@ -49,4 +51,4 @@ hash: lcuevco
 
 **verify:** The List box title shows every active filter and only those (`Bugs [H · fixing]`, `Bugs [H]`, plain `Bugs` at All) on every tab; an empty filtered list draws "no items match"; `f` and `F` show in the hints of tabs where they do something and in the `?` help.
 
-- [ ] Red tests on title, empty text, hints and help; draw them; `go test ./internal/tui/`; commit.
+- [x] Red tests on title, empty text, hints and help; draw them; `go test ./internal/tui/`; commit.

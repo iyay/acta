@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/iyay/acta/internal/board"
 )
@@ -94,4 +95,38 @@ func (m Model) filterRows(rows []row) []row {
 		}
 		return f.status == "" || it.Status == f.status
 	})
+}
+
+// filterLabel is what the List box title adds for the filters of the open
+// tab, like " [H · fixing]", or "" when none is set.
+func (m Model) filterLabel() string {
+	f := m.filters[m.top]
+	var parts []string
+	switch f.priority {
+	case "":
+	case noPriority:
+		parts = append(parts, noPriority)
+	default:
+		parts = append(parts, strings.ToUpper(f.priority[:1]))
+	}
+	if f.status != "" {
+		parts = append(parts, f.status)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " [" + strings.Join(parts, " · ") + "]"
+}
+
+// filterHints names the filter keys that do something on the open tab.
+func (m Model) filterHints() []string {
+	kind := topTabs[m.top].kind
+	var out []string
+	if hasPriority(kind) {
+		out = append(out, "Priority filter: f")
+	}
+	if kind != "" && len(statusChoices(kind)) > 2 {
+		out = append(out, "Status filter: F")
+	}
+	return out
 }

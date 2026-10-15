@@ -2,10 +2,10 @@ block-write-keeps-symlinks 2026-10-15T09:54:33Z
 codex-harness 2026-10-15T10:33:37Z
 commit-subject-form 2026-10-14T08:56:42Z
 dispatch-plan-path 2026-10-15T03:37:27Z
-erase-line-full-width 2026-10-15T10:04:20Z
+erase-line-full-width 2026-10-15T10:28:17Z
 eval-red-case-debug 2026-10-14T08:56:42Z
 eval-sandbox-greenfield 2026-10-14T08:56:42Z
-exec-process-drops-mouse 2026-10-15T10:04:21Z
+exec-process-drops-mouse 2026-10-15T10:28:17Z
 fix-duplicate-ids 2026-10-15T03:37:27Z
 dispatch-plan-path 2026-10-15T10:33:04Z
 erase-line-full-width 2026-10-15T06:35:35Z
@@ -14,7 +14,7 @@ eval-sandbox-greenfield 2026-10-14T08:56:42Z
 exec-process-drops-mouse 2026-10-15T06:35:36Z
 fix-duplicate-ids 2026-10-15T10:33:04Z
 ghostty-minimum-contrast 2026-10-14T08:56:42Z
-glamour-chroma-traps 2026-10-15T10:04:22Z
+glamour-chroma-traps 2026-10-15T10:28:18Z
 glossary 2026-10-14T08:56:42Z
 land-gates-then-merge 2026-10-15T03:44:12Z
 land-reuse-gates-planning-only 2026-10-15T03:44:12Z
@@ -36,6 +36,7 @@ plugin-loads-from-repo 2026-10-15T09:54:36Z
 plugin-ships-in-binary 2026-10-15T09:54:47Z
 plugincheck-caps-per-folder 2026-10-15T09:54:36Z
 rebuild-binary-after-merge 2026-10-15T09:54:37Z
+rebuild-binary-after-merge 2026-10-15T10:28:18Z
 release 2026-10-15T02:45:47Z
 review-mutants-pin-home 2026-10-15T09:54:38Z
 reviewer-temp-clone 2026-10-15T09:54:38Z
@@ -44,8 +45,8 @@ skill-text-fits-everyone 2026-10-15T09:54:39Z
 task-trailer 2026-10-15T09:54:39Z
 test-locked-runs 2026-10-15T02:45:47Z
 tick-stamps-spec 2026-10-15T03:37:27Z
-tui-first-frame 2026-10-15T09:55:44Z
-tui-pty-probe 2026-10-15T10:04:23Z
+tui-first-frame 2026-10-15T10:28:19Z
+tui-pty-probe 2026-10-15T10:28:19Z
 wiki-freshness-from-git 2026-10-15T02:54:54Z
 xansi-wrap-overflows 2026-10-15T10:04:24Z
 tick-stamps-spec 2026-10-15T10:33:05Z
@@ -53,3 +54,4 @@ tui-first-frame 2026-10-15T06:12:51Z
 tui-pty-probe 2026-10-15T06:35:37Z
 wiki-freshness-from-git 2026-10-15T10:33:05Z
 xansi-wrap-overflows 2026-10-15T06:35:37Z
+xansi-wrap-overflows 2026-10-15T10:28:20Z

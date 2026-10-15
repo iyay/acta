@@ -155,7 +155,7 @@ func (m Model) tabsOf(p pane) []string {
 		if topTabs[m.top].kind == "" {
 			return []string{"Tasks"}
 		}
-		return []string{"Open"}
+		return []string{"Open" + m.filterLabel()}
 	case paneDone:
 		return m.doneTabNames()
 	}

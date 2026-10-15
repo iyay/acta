@@ -2,6 +2,8 @@
 created: "2026-10-15 17:17:23"
 id: SPC-0141
 hash: z7x13ls
+started: "2026-10-15 17:20:35"
+finished: "2026-10-15 17:28:07"
 ---
 # TUI list filter by priority and status
 

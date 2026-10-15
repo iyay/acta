@@ -78,13 +78,13 @@ tab shift+tab    next / previous pane of the tab
 j k              move down / up a list, scroll the detail
 g G              go to the top / bottom
 ctrl+d ctrl+u    page down / up
-space            open or shut a plan row
-h l              shut / open a plan row, h on a task too
+h l              shut / open a plan row (space flips it), h on a task too
 enter            open or shut a plan row or group
 d                open commits
 z                expand the focused pane
 o                flip the sort: oldest / newest
 /                search the rows
+f F              filter the open list by priority / by status
 r                reload the board from disk
 e                open the row in the editor
 y                copy the id of the row

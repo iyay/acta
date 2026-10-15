@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -79,5 +80,55 @@ func TestEachTabKeepsItsOwnFilter(t *testing.T) {
 	m = press(m, tabKey(tabSpecs))
 	if got := rowIDs(m); !slices.Equal(got, specs) {
 		t.Fatalf("Specs lost its filter: %v, want %v", got, specs)
+	}
+}
+
+func TestListTitleNamesTheActiveFilters(t *testing.T) {
+	t.Parallel()
+
+	m := press(prioModel(t), tabKey(tabBugs))
+	for _, tc := range []struct {
+		keys []string
+		want string
+	}{
+		{nil, "Open"},
+		{[]string{"f"}, "Open [H]"},
+		{[]string{"F"}, "Open [H · open]"},
+		{[]string{"f", "f", "f"}, "Open [none · open]"},
+		{[]string{"f", "F", "F"}, "Open"},
+	} {
+		m = press(m, tc.keys...)
+		if got := m.tabsOf(paneList); !slices.Equal(got, []string{tc.want}) {
+			t.Fatalf("after %v the title is %v, want %q", tc.keys, got, tc.want)
+		}
+	}
+}
+
+func TestEmptyFilteredListSaysNoItemsMatch(t *testing.T) {
+	t.Parallel()
+
+	m := sized(press(prioModel(t), tabKey(tabBugs), "f", "F", "F"), 120, 40)
+	if v := m.View(); !strings.Contains(v, "no items match") {
+		t.Fatalf("empty filtered list view lacks the no items match text:\n%s", v)
+	}
+}
+
+func TestFilterKeysInHintsAndHelp(t *testing.T) {
+	t.Parallel()
+
+	bugs := strings.Join(press(prioModel(t), tabKey(tabBugs)).hints(), " ")
+	if !strings.Contains(bugs, "Priority filter: f") || !strings.Contains(bugs, "Status filter: F") {
+		t.Fatalf("Bugs hints %q lack the filter keys", bugs)
+	}
+	specs := strings.Join(press(newModel(t), tabKey(tabSpecs)).hints(), " ")
+	if strings.Contains(specs, "Priority filter") || !strings.Contains(specs, "Status filter: F") {
+		t.Fatalf("Specs hints %q", specs)
+	}
+	debt := strings.Join(press(prioModel(t), tabKey(tabDebt)).hints(), " ")
+	if strings.Contains(debt, "Status filter") || !strings.Contains(debt, "Priority filter: f") {
+		t.Fatalf("Debt hints %q", debt)
+	}
+	if !strings.Contains(helpLines, "\nf F ") || !strings.Contains(helpLines, "by priority / by status") {
+		t.Fatal("the ? help names neither f nor F")
 	}
 }
