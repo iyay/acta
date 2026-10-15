@@ -2521,10 +2521,50 @@ func TestStatusLineSaysFilter(t *testing.T) {
 	t.Parallel()
 
 	m := press(sized(newModel(t), 160, 50), "/", "abc")
-	for _, step := range []Model{m, press(m, "enter")} {
-		line := step.statusLine()
-		if !strings.Contains(line, "Filter: abc") || strings.Contains(line, "/abc") {
-			t.Errorf("status line %q, want Filter: abc", line)
-		}
+	if line := m.statusLine(); !strings.Contains(line, "Filter: abc") || strings.Contains(line, "/abc") {
+		t.Errorf("status line %q, want Filter: abc", line)
 	}
+}
+
+// While a filter is typed the keys go to the status bar, so the box looks
+// inactive, its picked row is dim, and the status bar shows a cursor. After
+// enter the box is active again and the status bar says the filter is kept.
+func TestFilterModeLook(t *testing.T) {
+	withColors(func() {
+		base := sized(newModel(t), 160, 50)
+		b := base.geometry().at(paneList)
+		picked := func(m Model) string {
+			rows := m.rowsOf(paneList)
+			return pad(m.rowText(rows[m.cursor()], m.board.Get(rows[m.cursor()].id), b.w), b.w)
+		}
+
+		typing := press(base, "/", "a")
+		if got, want := typing.edge(paneList).Render("x"), typing.styles.faint.Render("x"); got != want {
+			t.Errorf("typing: border %q, want the inactive brush %q", got, want)
+		}
+		lines := strings.Join(typing.listView(paneList, b.w, b), "\n")
+		if !strings.Contains(lines, typing.styles.selectedDim.Render(picked(typing))) {
+			t.Errorf("typing: the picked row is not dim:\n%q", lines)
+		}
+		if line := plain(typing.statusLine()); !strings.Contains(line, "Filter: a"+filterCursor) {
+			t.Errorf("typing: status line %q has no cursor after the query", line)
+		}
+
+		kept := press(typing, "enter")
+		if got, want := kept.edge(paneList).Render("x"), kept.styles.accent.Render("x"); got != want {
+			t.Errorf("kept: border %q, want the active brush %q", got, want)
+		}
+		lines = strings.Join(kept.listView(paneList, b.w, b), "\n")
+		if !strings.Contains(lines, kept.styles.selected.Render(picked(kept))) {
+			t.Errorf("kept: the picked row is not the normal band:\n%q", lines)
+		}
+		line := plain(kept.statusLine())
+		if !strings.Contains(line, `Filtered by "a" · esc clears`) || strings.Contains(line, filterCursor) {
+			t.Errorf("kept: status line %q", line)
+		}
+
+		if got, want := base.edge(paneList).Render("x"), base.styles.accent.Render("x"); got != want {
+			t.Errorf("no filter: border %q, want %q", got, want)
+		}
+	})
 }

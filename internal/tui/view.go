@@ -593,6 +593,9 @@ func osc8(url, text string) string {
 // statusLine draws the bottom line: the keys of the focused pane, the search
 // box or the last message on the left, and the project, the watch mode, the
 // date and time, the links and the version on the right.
+// filterCursor marks where the next typed key lands in the filter.
+const filterCursor = "█"
+
 func (m Model) statusLine() string {
 	// faintLeft says whether the left of the line is only a hint, so it wears
 	// the faint brush while the words next to it keep their own color.
@@ -600,8 +603,10 @@ func (m Model) statusLine() string {
 	switch {
 	case m.commitScreen != nil && m.status == "":
 		// The Commits screen has no search, so a query of the board stays hidden.
-	case m.searching || m.query != "":
-		left, faintLeft = "Filter: "+m.query, false
+	case m.searching:
+		left, faintLeft = "Filter: "+m.query+filterCursor, false
+	case m.query != "":
+		left, faintLeft = `Filtered by "`+m.query+`" · esc clears`, false
 	case m.status != "":
 		left, faintLeft = m.status, false
 	}
@@ -763,8 +768,10 @@ func (m Model) mode() string {
 
 // edge is the brush of a pane border: the accent on the pane with the focus,
 // dim on the others, so the focus is plain to see.
+// While a filter is typed the keys go to the status bar, so no box looks
+// like it has them.
 func (m Model) edge(p pane) lipgloss.Style {
-	if m.focus == p {
+	if m.focus == p && !m.searching {
 		return m.styles.accent
 	}
 	return m.styles.faint

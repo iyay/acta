@@ -153,7 +153,13 @@ func (m Model) listView(p pane, w int, b box) []string {
 		r := rows[n]
 		text := pad(m.rowText(r, it, w), w)
 		if n == cur {
-			out = append(out, m.styles.selected.Render(text))
+			sel := m.styles.selected
+			if m.searching {
+				// The keys go to the filter, so the picked row stays in view
+				// but does not look live.
+				sel = m.styles.selectedDim
+			}
+			out = append(out, sel.Render(text))
 			continue
 		}
 		base := lipgloss.NewStyle()

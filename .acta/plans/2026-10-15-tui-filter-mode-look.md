@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0150
 created: "2026-10-15 13:28:05"
 hash: dx5g52e
+started: "2026-10-15 13:28:06"
+finished: "2026-10-15 13:30:12"
 ---
 # TUI filter mode look
 
@@ -32,6 +34,6 @@ hash: dx5g52e
 
 **verify:** While typing, the focused box border is the inactive brush, its selected row uses `selectedDim`, and the status bar ends with a cursor cell; after enter every one of these is back to normal and the status bar says `Filtered by "<query>" · esc clears` with no cursor; with no filter nothing changes. List each state checked.
 
-- [ ] Failing tests for the typing state, the kept state and no filter.
-- [ ] Add `selectedDim` (selection band, dim text, no bold); edge and listView use the inactive looks while `searching`; statusLine draws the two texts.
-- [ ] Commit.
+- [x] Failing tests for the typing state, the kept state and no filter.
+- [x] Add `selectedDim` (selection band, dim text, no bold); edge and listView use the inactive looks while `searching`; statusLine draws the two texts.
+- [x] Commit.

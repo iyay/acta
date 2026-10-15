@@ -16,7 +16,7 @@ import (
 // styles are the brushes the TUI paints with. They come from one theme, so
 // changing the theme changes every color at once.
 type styles struct {
-	accent, faint, dim, selected                           lipgloss.Style
+	accent, faint, dim, selected, selectedDim              lipgloss.Style
 	label, footLabel, done, review, waiting, problem, live lipgloss.Style
 	blue                                                   lipgloss.Style // the task labels of a commit row
 	accentColor                                            lipgloss.TerminalColor
@@ -102,10 +102,15 @@ func newStyles(t theme.Theme, dark bool) styles {
 		dim: lipgloss.NewStyle().Foreground(slot(slotDim)),
 		// selected is a band across the row with bright text on it, never
 		// reversed video, so the words stay readable wherever it falls.
-		selected:  lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
-		label:     lipgloss.NewStyle().Foreground(slot(slotCyan)),
-		footLabel: lipgloss.NewStyle().Foreground(slot(slotMagenta)),
-		done:      lipgloss.NewStyle().Foreground(slot(slotGreen)),
+		selected: lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
+		// selectedDim is the same band while the keys go to the filter, so
+		// the row still shows where the cursor is but no longer looks live.
+		// It uses slot 8, not faint, so terminals with a minimum contrast
+		// do not draw it bright.
+		selectedDim: lipgloss.NewStyle().Foreground(slot(slotDim)).Background(selBG),
+		label:       lipgloss.NewStyle().Foreground(slot(slotCyan)),
+		footLabel:   lipgloss.NewStyle().Foreground(slot(slotMagenta)),
+		done:        lipgloss.NewStyle().Foreground(slot(slotGreen)),
 		// Plans waiting for merge read yellow: not done green, not plain.
 		review:  lipgloss.NewStyle().Foreground(slot(slotReview)),
 		waiting: lipgloss.NewStyle().Foreground(slot(slotDim)),
