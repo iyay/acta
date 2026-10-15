@@ -78,3 +78,29 @@ finished: "2026-10-15 09:45:27"
 - [x] **Failing test:** doctor and version tests look for the build line and fail.
 - [x] **Change:** add the doctor info line and the build word in the version output.
 - [x] **Commit:** `feat(doctor): show which build is installed`
+
+## Fix round 1
+
+### Task 06: Review round 1 fixes
+
+**Files:** Modify `scripts/install_test.go`, `scripts/install.sh`, `internal/doctor/doctor.go`, `internal/plugincheck/release_test.go`, `.acta/wiki/release.md`
+
+**verify:** The installer tests pin the platform on every host, so they pass or fail the same on darwin/arm64, Intel Mac and the ubuntu runner; no installer test can hang past its own deadline; any `ACTA_TUI` value but `0` and `1`, the word `unset` included, fails before a download; every archive rule is tar.gz.
+
+- [x] **Failing test:** `bothRig` serves Linux x86_64 only, so the pty test fails on this Mac while it runs the real `uname`; `ACTA_TUI=unset` joins the bad values; the format check runs on every archive.
+- [x] **Change:** pass the python3 dir through `pathExtra`, give the pty driver a real deadline with `select` and skip when python3 is missing, read `ACTA_TUI` with `${ACTA_TUI+set}`, move the `checkBinary` comment back, name `ACTA_TUI` in the wiki.
+- [x] **Commit:** `fix: round 1 review findings for PLN-0143`
+
+## Review notes
+
+- Round 1 (deep, two reviewers): BLOCKED on one finding, the pty test running the real uname (passed only on darwin/arm64). Fixed in Task 06.
+- Round 2 (deep, two reviewers): CLEAN. Range also held the merge of main (update-notify); the cli.go conflict moved `.WithUpdate(newerRelease())` into `tui_full.go`.
+- install.sh: typing `n` then Ctrl-D twice with no Enter gives the full build, a safe default; tagged [fix] by a reviewer, kept as a note because changing it needs another full review.
+- After Ctrl-D at the prompt no newline is printed, so "Downloading ..." lands on the prompt line.
+- The notui build still links bubbletea and lipgloss through internal/setup (huh); the spec bans only internal/tui and glamour.
+- On a Mac without the command line tools, LookPath finds the /usr/bin/python3 stub, so the pty test fails instead of skipping.
+- `scripts/test --full ./...` passes `./...` to the notui call too, so that run tests the whole repo twice.
+- release.yml runs only `go test ./...`, not the notui tests; ci.yml covers them.
+- Setsid in install_test.go does not build on Windows; matters only for the Windows port (SCR-0058).
+- Bare `acta` in the notui build never shows the update notice; every other command does.
+- Task 05 touched internal/doctor/doctor.go and internal/cli/help.go, which the plan did not list, because the checks and versionLine live there.

@@ -28,27 +28,26 @@ esac
 # Pick the build before any download. ACTA_TUI wins. With no ACTA_TUI, ask on
 # the terminal. With no terminal, nobody can answer, so take the full build,
 # which is what every install got before this choice existed.
-case "${ACTA_TUI-unset}" in
-1) name=acta ;;
-0) name=acta-cli ;;
-unset)
-	name=acta
-	if ( : </dev/tty ) 2>/dev/null; then
-		while :; do
-			printf 'Install the TUI board too? It adds about 7M. [Y/n] ' >/dev/tty
-			read -r answer </dev/tty || break
-			case "$answer" in
-			"" | y | Y) break ;;
-			n | N)
-				name=acta-cli
-				break
-				;;
-			esac
-		done
-	fi
-	;;
-*) fail "ACTA_TUI must be 0 or 1" ;;
-esac
+name=acta
+if [ -n "${ACTA_TUI+set}" ]; then
+	case "$ACTA_TUI" in
+	1) ;;
+	0) name=acta-cli ;;
+	*) fail "ACTA_TUI must be 0 or 1" ;;
+	esac
+elif ( : </dev/tty ) 2>/dev/null; then
+	while :; do
+		printf 'Install the TUI board too? It adds about 7M. [Y/n] ' >/dev/tty
+		read -r answer </dev/tty || break
+		case "$answer" in
+		"" | y | Y) break ;;
+		n | N)
+			name=acta-cli
+			break
+			;;
+		esac
+	done
+fi
 
 if [ -n "${ACTA_VERSION:-}" ]; then
 	# Release tags start with v, so 0.1.44 and v0.1.44 mean the same.

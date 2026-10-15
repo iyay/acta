@@ -454,22 +454,23 @@ func TestInstallNeverEditsRcFiles(t *testing.T) {
 	}
 }
 
-// bothRig serves the full and the acta-cli archive for darwin/arm64, so a
-// test can see which one install.sh asked for.
+// bothRig serves the full and the acta-cli archive for linux/amd64, so a
+// test can see which one install.sh asked for. The fake uname must win over
+// the real one; a Linux rig makes that fail loudly on a Mac too.
 func bothRig(t *testing.T) *installRig {
 	t.Helper()
 	archive := tarGz(t, "acta", fakeActa)
-	sums := sum(archive) + "  acta_darwin_arm64.tar.gz\n" + sum(archive) + "  acta-cli_darwin_arm64.tar.gz\n"
+	sums := sum(archive) + "  acta_linux_amd64.tar.gz\n" + sum(archive) + "  acta-cli_linux_amd64.tar.gz\n"
 	return newRig(t, map[string][]byte{
-		"acta_darwin_arm64.tar.gz":     archive,
-		"acta-cli_darwin_arm64.tar.gz": archive,
-		"checksums.txt":                []byte(sums),
-	}, "Darwin", "arm64")
+		"acta_linux_amd64.tar.gz":     archive,
+		"acta-cli_linux_amd64.tar.gz": archive,
+		"checksums.txt":               []byte(sums),
+	}, "Linux", "x86_64")
 }
 
 const (
-	fullAsset = "/latest/download/acta_darwin_arm64.tar.gz"
-	cliAsset  = "/latest/download/acta-cli_darwin_arm64.tar.gz"
+	fullAsset = "/latest/download/acta_linux_amd64.tar.gz"
+	cliAsset  = "/latest/download/acta-cli_linux_amd64.tar.gz"
 )
 
 // assetIs fails unless install.sh fetched want and not the other archive.
@@ -506,7 +507,7 @@ func TestInstallActaTUIPicksTheBuild(t *testing.T) {
 func TestInstallBadActaTUIFailsBeforeDownload(t *testing.T) {
 	t.Parallel()
 
-	for _, v := range []string{"2", "yes", " 1"} {
+	for _, v := range []string{"2", "yes", " 1", "unset", ""} {
 		r := bothRig(t)
 		out, err := r.run(t, "", "ACTA_TUI="+v)
 		if err == nil || !strings.Contains(out, "ACTA_TUI must be 0 or 1") {
@@ -548,14 +549,24 @@ func (r *installRig) ptyRun(t *testing.T, answers ...string) string {
 	// Python's pty.fork gives the child a real controlling terminal, which
 	// Go cannot do without a new dependency.
 	const driver = `
-import os, pty, sys, time
+import os, pty, select, signal, sys, time
 answers = sys.argv[2:]
 pid, fd = pty.fork()
 if pid == 0:
     os.execv("/bin/sh", ["/bin/sh", sys.argv[1]])
 seen, asked = b"", 0
-end = time.time() + 60
-while time.time() < end:
+end = time.time() + 30
+while True:
+    left = end - time.time()
+    # A script stuck on a question it never gets an answer to must not hang
+    # the test, so give up and stop it when time runs out.
+    if left <= 0:
+        os.kill(pid, signal.SIGKILL)
+        sys.stdout.write(seen.decode(errors="replace") + "\nTIMEOUT\n")
+        sys.exit(1)
+    ready, _, _ = select.select([fd], [], [], left)
+    if not ready:
+        continue
     try:
         chunk = os.read(fd, 4096)
     except OSError:
@@ -569,8 +580,14 @@ while time.time() < end:
 os.waitpid(pid, 0)
 sys.stdout.write(seen.decode(errors="replace"))
 `
-	cmd := exec.Command("python3", append([]string{"-I", "-c", driver, script}, answers...)...)
-	cmd.Env = r.env("", "PATH="+os.Getenv("PATH"))
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 is not installed, so there is no way to open a terminal")
+	}
+	// Run python by its full path. The script keeps the rig PATH, so its
+	// fake uname still wins over the real one.
+	cmd := exec.Command(py, append([]string{"-I", "-c", driver, script}, answers...)...)
+	cmd.Env = r.env("")
 	cmd.Dir = t.TempDir()
 	out, err := cmd.CombinedOutput()
 	if err != nil {

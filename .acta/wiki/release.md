@@ -11,7 +11,7 @@ From a clean `main`:
 2. It never pushes. Run the `git push origin main vX.Y.Z` it prints.
 3. A `v*` tag starts the Release action (`.github/workflows/release.yml`).
 
-It runs `go test ./...`, then goreleaser (`.goreleaser.yaml`), which builds static darwin and linux binaries (amd64, arm64). It publishes `acta_<os>_<arch>.tar.gz`, `acta-cli_<os>_<arch>.tar.gz` (no TUI), `checksums.txt` and `install.sh`. Windows is not released yet (SCR-0058). Names carry no version, so `releases/latest/download/<file>` links stay stable.
+It runs `go test ./...`, then goreleaser (`.goreleaser.yaml`), which builds static darwin and linux binaries (amd64, arm64). It publishes `acta_<os>_<arch>.tar.gz`, `acta-cli_<os>_<arch>.tar.gz` (no TUI, `ACTA_TUI=0`), `checksums.txt` and `install.sh`. Windows is not released yet (SCR-0058). Names carry no version, so `releases/latest/download/<file>` links stay stable.
 
 `acta update` fetches its own build's archive and `checksums.txt`. Do not rename them.
 

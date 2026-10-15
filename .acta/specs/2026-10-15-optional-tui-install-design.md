@@ -3,6 +3,8 @@ parent: scratch/2026-10-15-optional-tui-install
 id: SPC-0133
 created: "2026-10-15 09:34:43"
 hash: m1t1xxh
+started: "2026-10-15 09:37:25"
+finished: "2026-10-15 09:45:27"
 ---
 # Optional TUI at install time
 

@@ -34,9 +34,10 @@ rebuild-binary-after-merge 2026-10-15T02:42:23Z
 release 2026-10-15T02:42:23Z
 review-mutants-pin-home 2026-10-15T02:22:15Z
 plugincheck-caps-per-folder 2026-10-15T02:45:47Z
+plugincheck-caps-per-folder 2026-10-15T02:54:54Z
 rebuild-binary-after-merge 2026-10-14T08:56:42Z
 release 2026-10-15T02:45:47Z
-review-mutants-pin-home 2026-10-15T02:45:47Z
+review-mutants-pin-home 2026-10-15T02:54:54Z
 reviewer-temp-clone 2026-10-14T08:56:42Z
 scratch-dropped-vs-specced 2026-10-14T08:56:42Z
 skill-text-fits-everyone 2026-10-14T08:56:42Z
@@ -51,5 +52,5 @@ test-locked-runs 2026-10-15T02:45:47Z
 tick-stamps-spec 2026-10-15T02:45:47Z
 tui-first-frame 2026-10-15T02:45:47Z
 tui-pty-probe 2026-10-14T08:56:42Z
-wiki-freshness-from-git 2026-10-15T02:45:47Z
+wiki-freshness-from-git 2026-10-15T02:54:54Z
 xansi-wrap-overflows 2026-10-14T08:56:42Z

@@ -299,8 +299,6 @@ func Format(rs []Result) string {
 	return b.String()
 }
 
-// checkBinary names the acta that runs, so a stale hand-built binary in the
-// path is visible in the report.
 // checkBuild says which build is installed. Both builds are fine, so it is
 // only ever OK; it is there so a user can see it.
 func checkBuild(e Env) Result {
@@ -310,6 +308,8 @@ func checkBuild(e Env) Result {
 	return Result{Name: "build", Level: OK, Msg: e.Build}
 }
 
+// checkBinary names the acta that runs, so a stale hand-built binary in the
+// path is visible in the report.
 func checkBinary(e Env) Result {
 	if e.Binary == "" {
 		return Result{Name: "binary", Level: Fail, Msg: "no acta binary path known"}

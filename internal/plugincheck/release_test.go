@@ -142,18 +142,18 @@ func TestReleaseGoreleaserAssets(t *testing.T) {
 		if got := strs(at(a, "ids")); !reflect.DeepEqual(got, []string{id}) {
 			t.Errorf("archive %q ids = %v, want only its own build", id, got)
 		}
+		// Every archive is a tar.gz now that no Windows zip ships. install.sh
+		// and acta update only open tar.gz.
+		if at(a, "format_overrides") != nil {
+			t.Errorf("archive %q format_overrides = %v, want none", id, at(a, "format_overrides"))
+		}
+		if !reflect.DeepEqual(strs(at(a, "formats")), []string{"tar.gz"}) {
+			t.Errorf("archive %q formats = %v, want only tar.gz", id, at(a, "formats"))
+		}
 		delete(wantNames, id)
 	}
-	a := archives[0]
 	if strings.Contains(releaseFile(t, ".goreleaser.yaml"), "Version") {
 		t.Error(".goreleaser.yaml mentions Version, asset names must not carry it")
-	}
-	// Every archive is a tar.gz now that no Windows zip ships.
-	if at(a, "format_overrides") != nil {
-		t.Errorf("format_overrides = %v, want none", at(a, "format_overrides"))
-	}
-	if !reflect.DeepEqual(strs(at(a, "formats")), []string{"tar.gz"}) {
-		t.Errorf("archive formats = %v, want only tar.gz", at(a, "formats"))
 	}
 	if at(cfg, "checksum", "name_template") != "checksums.txt" {
 		t.Errorf("checksum name_template = %v", at(cfg, "checksum", "name_template"))
