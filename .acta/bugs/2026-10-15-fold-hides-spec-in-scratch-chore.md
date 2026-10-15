@@ -18,3 +18,5 @@ Not proven yet. Likely `internal/gitc/gitc.go:251-254`, `sameFiles`. It checks o
 
 ## Found in
 main, 2026-10-15, found by reading `git show --stat HEAD` after `acta id` on SPC-0131.
+
+Seen again the same day: SPC-0133 folded into 9adcda7 `chore(scratch): add to 2026-10-15-optional-tui-install`, after only `acta scratch add` calls.
