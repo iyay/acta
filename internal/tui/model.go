@@ -828,7 +828,14 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		m.same = true
 		return m, nil
 	}
+	// The wheel can scroll a box without the focus, so the cursor may sit off
+	// screen. A click on a row the reader can see must not pull the box back
+	// to that old cursor first, so the scroll is put back after the focus.
+	off := m.off[p]
 	m.focusPane(p)
+	if rowIdx >= 0 && p != paneDetail {
+		m.off[p] = off
+	}
 	switch {
 	case tabIdx >= 0:
 		m.clickTab(p, tabIdx)

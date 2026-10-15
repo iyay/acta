@@ -1404,15 +1404,18 @@ func wheelKeepsTheZoom(t *testing.T) {
 	if got.expanded != int(paneList) {
 		t.Errorf("a notch over the detail box changed the zoom, expanded is %d, want pane %d", got.expanded, paneList+1)
 	}
-	if got.off[paneDetail] == before && m.lastOff(paneDetail) > 0 {
+	if m.lastOff(paneDetail) == 0 {
+		t.Fatalf("the detail box has nothing to scroll, so a notch over it would prove nothing")
+	}
+	if got.off[paneDetail] == before {
 		t.Errorf("a notch over the detail box left it at %d", got.off[paneDetail])
 	}
 }
 
-// Notches gathered for one box are that box's own, so a notch that takes the
-// focus somewhere else hands them over instead of dropping them. The control
-// run is the same two notches with no focus change, so the test says what
-// nothing lost is rather than a number written down here.
+// Notches gathered for one box are that box's own, so a notch that lands on
+// another box hands them over instead of dropping them. The control run is the
+// same two notches on one box, so the test says what nothing lost is rather
+// than a number written down here.
 func TestWheelKeepsGatheredNotchesWhenANotchMovesToAnotherPane(t *testing.T) {
 	t.Parallel()
 
@@ -1474,7 +1477,7 @@ func gatheredNotchesSurviveAPaneChange(t *testing.T, from, to pane) {
 	control := wheelTick(twoNotchesOn(t, focusOnWithADoneRow(t, from), from))
 	want := min(2*wheelStep, control.lastOff(from))
 	if control.off[from] != want {
-		t.Fatalf("pane %d then pane %d: two notches with no focus change left pane %d at %d, two steps from the top is %d",
+		t.Fatalf("pane %d then pane %d: two notches on one box left pane %d at %d, two steps from the top is %d",
 			from+1, to+1, from+1, control.off[from], want)
 	}
 
@@ -1498,10 +1501,10 @@ func gatheredNotchesSurviveAPaneChange(t *testing.T, from, to pane) {
 		t.Errorf("pane %d gathers and a notch lands on pane %d: pane %d ends at %d, the same two notches on one pane end at %d, so %d lines were dropped",
 			from+1, to+1, from+1, m.off[from], want, want-m.off[from])
 	}
-	// The notch that took the focus is a notch of its own, so it moves the box
+	// The notch over the other box is a notch of its own, so it moves the box
 	// it landed on by one step.
 	if step := min(wheelStep, m.lastOff(to)); m.off[to] != step {
-		t.Errorf("pane %d then pane %d: the notch that took the focus left pane %d at %d, one step from the top is %d",
+		t.Errorf("pane %d then pane %d: the notch over it left pane %d at %d, one step from the top is %d",
 			from+1, to+1, to+1, m.off[to], step)
 	}
 }
@@ -2217,3 +2220,36 @@ func unpadded(m Model, p pane, b box, rows []string) []string {
 
 // innerW is the width the detail text gets inside its padding.
 func innerW(b box) int { w, _ := b.detailArea(); return w }
+
+// The wheel scrolls a list box without the focus, so the cursor can sit far
+// above what the box shows. A click on a row the reader can see picks that
+// row and must not pull the box back to the old cursor first.
+func TestClickAfterAWheelOnAnUnfocusedListKeepsTheScroll(t *testing.T) {
+	t.Parallel()
+
+	m := press(paneModel(t, paneList), "shift+tab")
+	if m.focus != paneDetail {
+		t.Fatalf("the walk left the focus on pane %d, want the detail box", m.focus+1)
+	}
+	b := scrollBox(m, paneList)
+	for range 2 {
+		m = wheel(m, b.x+1, b.y+2, false)
+	}
+	scrolled := m.off[paneList]
+	if scrolled == 0 {
+		t.Fatalf("two notches left the list box at the top, so a click would prove nothing")
+	}
+	m = click(m, b.x+1, b.y+2)
+	if m.focus != paneList {
+		t.Errorf("the click left the focus on pane %d, want the list box", m.focus+1)
+	}
+	if m.off[paneList] != scrolled {
+		t.Errorf("the click moved the list box from %d to %d, want it to stay where the wheel put it",
+			scrolled, m.off[paneList])
+	}
+	// The cell sits on the second line of the box, so the click picks the
+	// second row the box shows.
+	if got := m.cursor(); got != scrolled+1 {
+		t.Errorf("the click picked row %d, want row %d under the pointer", got, scrolled+1)
+	}
+}
