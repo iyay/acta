@@ -590,12 +590,12 @@ func osc8(url, text string) string {
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 
-// statusLine draws the bottom line: the keys of the focused pane, the search
-// box or the last message on the left, and the project, the watch mode, the
-// date and time, the links and the version on the right.
 // filterCursor marks where the next typed key lands in the filter.
 const filterCursor = "█"
 
+// statusLine draws the bottom line: the keys of the focused pane, the search
+// box or the last message on the left, and the project, the watch mode, the
+// date and time, the links and the version on the right.
 func (m Model) statusLine() string {
 	// faintLeft says whether the left of the line is only a hint, so it wears
 	// the faint brush while the words next to it keep their own color.

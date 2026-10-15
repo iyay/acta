@@ -37,3 +37,32 @@ finished: "2026-10-15 13:30:12"
 - [x] Failing tests for the typing state, the kept state and no filter.
 - [x] Add `selectedDim` (selection band, dim text, no bold); edge and listView use the inactive looks while `searching`; statusLine draws the two texts.
 - [x] Commit.
+
+## Fix round 1
+
+### Task 02: Dim band keeps its contrast
+
+**Files:**
+- Modify: `internal/tui/styles.go` (`selectedDim`), `internal/tui/view.go` (`filterCursor` comment place)
+- Test: `internal/tui/styles_test.go`
+
+**Seam:** `newStyles(theme, dark)`
+
+**verify:** On every built-in theme with hex colors, the `selectedDim` text keeps a contrast of 1.6 or more over its band, and the band is calmer than the `selected` band (closer to the theme background). List each theme checked.
+
+- [x] Failing test over every built-in theme.
+- [x] The dim band is the selection band mixed half way toward the theme background, with the selection text, not bold; `statusLine` keeps its own doc comment.
+- [x] Commit.
+
+## Polish
+
+### Task 03: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] The contrast test also checks that the dim band is never bold.
+- [x] Commit: `polish: review notes for PLN-0150`
+
+## Review notes
+
+Deep review, two rounds plus polish: notes left as is were the cursor glyph width on CJK terminals and contrived low-contrast user themes; two medium notes went to debt.

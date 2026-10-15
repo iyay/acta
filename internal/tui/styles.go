@@ -103,11 +103,12 @@ func newStyles(t theme.Theme, dark bool) styles {
 		// selected is a band across the row with bright text on it, never
 		// reversed video, so the words stay readable wherever it falls.
 		selected: lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
-		// selectedDim is the same band while the keys go to the filter, so
-		// the row still shows where the cursor is but no longer looks live.
-		// It uses slot 8, not faint, so terminals with a minimum contrast
-		// do not draw it bright.
-		selectedDim: lipgloss.NewStyle().Foreground(slot(slotDim)).Background(selBG),
+		// selectedDim is the band while the keys go to the filter, so the
+		// row still shows where the cursor is but no longer looks live. The
+		// band moves half way toward the background and keeps the selection
+		// text, so the words stay far enough from the band that terminals
+		// with a minimum contrast leave them alone.
+		selectedDim: lipgloss.NewStyle().Foreground(selFG).Background(dimBand(selBG, t.BG)),
 		label:       lipgloss.NewStyle().Foreground(slot(slotCyan)),
 		footLabel:   lipgloss.NewStyle().Foreground(slot(slotMagenta)),
 		done:        lipgloss.NewStyle().Foreground(slot(slotGreen)),
@@ -187,6 +188,12 @@ func farthestMix(fg, bg string, floor float64) float64 {
 		best = f
 	}
 	return best
+}
+
+// dimBand is the selection band moved half way toward the background. The
+// terminal theme gives slot numbers, not colors, so it keeps the band as is.
+func dimBand(band lipgloss.Color, bg string) lipgloss.Color {
+	return lipgloss.Color(mixHex(string(band), bg, 0.5))
 }
 
 // mixHex moves the #rrggbb color a the part f of the way toward b. When

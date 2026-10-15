@@ -154,7 +154,7 @@ func (m Model) listView(p pane, w int, b box) []string {
 		text := pad(m.rowText(r, it, w), w)
 		if n == cur {
 			sel := m.styles.selected
-			if m.searching {
+			if m.searching && p == m.listPane() {
 				// The keys go to the filter, so the picked row stays in view
 				// but does not look live.
 				sel = m.styles.selectedDim

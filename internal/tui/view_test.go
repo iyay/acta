@@ -2568,3 +2568,21 @@ func TestFilterModeLook(t *testing.T) {
 		}
 	})
 }
+
+// Only the box being filtered goes dim. The other box keeps its live band.
+func TestFilterDimsOnlyTheFocusedBox(t *testing.T) {
+	withColors(func() {
+		m := press(sized(newModel(t), 160, 50), tabKey(tabPlans), "/", "a")
+		b := m.geometry().at(paneDone)
+		rows := m.rowsOf(paneDone)
+		if len(rows) == 0 {
+			t.Fatal("the Done box has no rows")
+		}
+		_, sel, idx := m.slotOf(paneDone)
+		r := rows[cursorOf(rows, *sel, *idx)]
+		want := m.styles.selected.Render(pad(m.viewOf(paneDone).rowText(r, m.board.Get(r.id), b.w), b.w))
+		if lines := strings.Join(m.listView(paneDone, b.w, b), "\n"); !strings.Contains(lines, want) {
+			t.Errorf("the Done box lost its live band while List is filtered:\n%q", lines)
+		}
+	})
+}

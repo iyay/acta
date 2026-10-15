@@ -513,3 +513,30 @@ func TestFarthestMixKeepsTheFloor(t *testing.T) {
 		t.Errorf("mixHex on a bad color = %s, want it back as it came", got)
 	}
 }
+
+// The dim band shows the picked row while a filter is typed. Its text must
+// keep enough contrast that a terminal with a minimum contrast leaves it
+// alone, and the band must be calmer than the live one.
+func TestSelectedDimKeepsContrast(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range theme.Names() {
+		th, ok := theme.Builtin(name)
+		if !ok || th.BG == "" {
+			continue
+		}
+		s := newStyles(th, true)
+		fg := string(s.selectedDim.GetForeground().(lipgloss.Color))
+		bg := string(s.selectedDim.GetBackground().(lipgloss.Color))
+		live := string(s.selected.GetBackground().(lipgloss.Color))
+		if s.selectedDim.GetBold() {
+			t.Errorf("%s: the dim band is bold, so it looks as live as the picked row", name)
+		}
+		if r := contrast(t, fg, bg); r < 1.6 {
+			t.Errorf("%s: dim band text %s on %s has contrast %.2f, want at least 1.6", name, fg, bg, r)
+		}
+		if contrast(t, bg, th.BG) >= contrast(t, live, th.BG) && bg != th.BG {
+			t.Errorf("%s: dim band %s is not calmer than the live band %s", name, bg, live)
+		}
+	}
+}
