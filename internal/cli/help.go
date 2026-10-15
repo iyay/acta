@@ -108,8 +108,8 @@ var helpTable = []helpCmd{
 	{
 		name:    "debt",
 		group:   "Write",
-		summary: "File the review notes of a plan as a debt item.",
-		usage:   []string{"acta debt new <plan id> [--title T] < notes.md", "Every note line must start with (medium) or (high); one other line refuses the batch."},
+		summary: "File the review notes of a plan as a debt item. Every note line must start with (medium) or (high). drop-low closes every open low or untagged line in one commit.",
+		usage:   []string{"acta debt new <plan id> [--title T] < notes.md", "acta debt drop-low"},
 		flags:   []string{"--title T  debt heading (default: Review NOTEs: <plan title>)"},
 		example: "printf '(medium) retry loop has no cap\\n' | acta debt new PLN-0138",
 	},

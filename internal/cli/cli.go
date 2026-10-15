@@ -84,6 +84,9 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		}
 		return cmdBugNew(args[2:], stdin, stdinIsTTY, stdout, stderr)
 	case "debt":
+		if len(args) == 2 && args[1] == "drop-low" {
+			return cmdDebtDropLow(stdout, stderr)
+		}
 		if len(args) < 2 || args[1] != "new" {
 			fmt.Fprintln(stderr, usageLine("debt"))
 			return exitBadInput
@@ -518,6 +521,15 @@ func cmdDebtNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr 
 		return exitOther
 	}
 	o, err := write.NewDebt(cfg, b, pos[0], *title, body)
+	return report(o, err, stdout, stderr)
+}
+
+func cmdDebtDropLow(stdout, stderr io.Writer) int {
+	cfg, code := loadConfig("", stderr)
+	if code != exitOK {
+		return code
+	}
+	o, err := write.DropLowDebt(cfg)
 	return report(o, err, stdout, stderr)
 }
 

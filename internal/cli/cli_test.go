@@ -998,3 +998,30 @@ func TestConfigSetNamesBrokenUnmovableVoiceFile(t *testing.T) {
 		t.Errorf("set wrote config.yaml after a read error: %v", err)
 	}
 }
+
+// drop-low is wiring only: write.DropLowDebt owns which lines close.
+func TestDebtDropLowClosesLowLines(t *testing.T) {
+	dir := debtRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, dir, func() {
+		if code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("(medium) keep\n"), false, &stdout, &stderr); code != exitOK {
+			t.Fatalf("seed: exit %d stderr %q", code, stderr.String())
+		}
+		entries, _ := os.ReadDir(filepath.Join(dir, ".pm", "debt"))
+		path := filepath.Join(dir, ".pm", "debt", entries[0].Name())
+		body, _ := os.ReadFile(path)
+		if err := os.WriteFile(path, append(body, []byte("- [ ] (low) drop me\n")...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command("git", "-C", dir, "commit", "-qam", "add low").CombinedOutput(); err != nil {
+			t.Fatalf("%s %v", out, err)
+		}
+		if code := Run([]string{"debt", "drop-low"}, strings.NewReader(""), false, &stdout, &stderr); code != exitOK {
+			t.Fatalf("drop-low: exit %d stderr %q", code, stderr.String())
+		}
+		got, _ := os.ReadFile(path)
+		if !strings.Contains(string(got), "- [-] (low) drop me\n") || !strings.Contains(string(got), "- [ ] (medium) keep\n") {
+			t.Fatalf("file after drop-low:\n%s", got)
+		}
+	})
+}
