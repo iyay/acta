@@ -109,9 +109,9 @@ var helpTable = []helpCmd{
 		name:    "debt",
 		group:   "Write",
 		summary: "File the review notes of a plan as a debt item.",
-		usage:   []string{"acta debt new <plan id> [--title T] < notes.md"},
+		usage:   []string{"acta debt new <plan id> [--title T] < notes.md", "Every note line must start with (medium) or (high); one other line refuses the batch."},
 		flags:   []string{"--title T  debt heading (default: Review NOTEs: <plan title>)"},
-		example: "acta debt new PLN-0138 < notes.md",
+		example: "printf '(medium) retry loop has no cap\\n' | acta debt new PLN-0138",
 	},
 	{
 		name:    "scratch",

@@ -127,11 +127,11 @@ func TestStartBugPriority(t *testing.T) {
 func TestNewDebtKeepsTheTag(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(high) big one\n(hgh) typo one\nplain one\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(high) big one\n(medium) mid one\n")); err != nil {
 		t.Fatal(err)
 	}
 	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
-	for _, want := range []string{"- [ ] (high) big one\n", "- [ ] (hgh) typo one\n", "- [ ] plain one\n"} {
+	for _, want := range []string{"- [ ] (high) big one\n", "- [ ] (medium) mid one\n"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}

@@ -388,7 +388,7 @@ func TestCommitMessagesNeverUsePmPrefix(t *testing.T) {
 	if _, err := NewBug(cfg, "guard-bug", "", "", "", []byte("## Symptom\nx\n")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "", []byte("a\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "", []byte("(medium) a\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil {
@@ -510,11 +510,11 @@ func TestSetStateFoldsRepeatWrites(t *testing.T) {
 func TestNewDebtFoldsRepeatAppends(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("one\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) one\n")); err != nil {
 		t.Fatal(err)
 	}
 	before := commitCount(t, cfg)
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("two\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) two\n")); err != nil {
 		t.Fatal(err)
 	}
 	if got := commitCount(t, cfg); got != before {

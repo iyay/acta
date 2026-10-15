@@ -82,7 +82,7 @@ func TestDebtNewWritesFileAndCommits(t *testing.T) {
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder
 	inDir(t, dir, func() {
-		code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("x\n"), false, &stdout, &stderr)
+		code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("(medium) x\n"), false, &stdout, &stderr)
 		if code != exitOK {
 			t.Fatalf("exit %d stderr %q", code, stderr.String())
 		}
@@ -92,7 +92,7 @@ func TestDebtNewWritesFileAndCommits(t *testing.T) {
 		t.Fatalf("debt dir entries=%v err=%v", entries, err)
 	}
 	body, _ := os.ReadFile(filepath.Join(dir, ".pm", "debt", entries[0].Name()))
-	if !strings.Contains(string(body), "- [ ] x\n") {
+	if !strings.Contains(string(body), "- [ ] (medium) x\n") {
 		t.Fatalf("file lost its note: %q", body)
 	}
 	if out, err := exec.Command("git", "-C", dir, "log", "-1", "--format=%s").CombinedOutput(); err != nil || !strings.HasPrefix(strings.TrimSpace(string(out)), "chore(debt): new debt ") {
@@ -118,7 +118,7 @@ func TestDebtNewTTYRefusesWithoutReadingStdin(t *testing.T) {
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder
 	inDir(t, dir, func() {
-		code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("x\n"), true, &stdout, &stderr)
+		code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("(medium) x\n"), true, &stdout, &stderr)
 		if code != exitBadInput {
 			t.Fatalf("exit %d stderr %q", code, stderr.String())
 		}

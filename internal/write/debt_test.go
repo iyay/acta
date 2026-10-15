@@ -33,12 +33,12 @@ func fixNowAt(t *testing.T, date string) {
 func TestNewDebtWritesChecklist(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("- first note\nsecond note\n\n"))
+	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("- (medium) first note\n(medium) second note\n\n"))
 	if err != nil || !out.Committed {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}
 	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
-	for _, want := range []string{"id: DBT-0001\n", "parent: plans/2026-09-26-short-ids\n", "# Review NOTEs: Short IDs\n", "- [ ] first note\n", "- [ ] second note\n"} {
+	for _, want := range []string{"id: DBT-0001\n", "parent: plans/2026-09-26-short-ids\n", "# Review NOTEs: Short IDs\n", "- [ ] (medium) first note\n", "- [ ] (medium) second note\n"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
@@ -51,7 +51,7 @@ func TestNewDebtWritesChecklist(t *testing.T) {
 func TestNewDebtWritesNewFormatIDAndHash(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("- one\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("- (medium) one\n")); err != nil {
 		t.Fatal(err)
 	}
 	file := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
@@ -66,14 +66,14 @@ func TestNewDebtWritesNewFormatIDAndHash(t *testing.T) {
 func TestNewDebtAppendsWithoutDuplicates(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("a\nb\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) a\n(medium) b\n")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-26-short-ids", "", []byte("b\nc\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "plans/2026-09-26-short-ids", "", []byte("(medium) b\n(medium) c\n")); err != nil {
 		t.Fatal(err)
 	}
 	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
-	if strings.Count(got, "- [ ] b\n") != 1 || !strings.Contains(got, "- [ ] c\n") {
+	if strings.Count(got, "- [ ] (medium) b\n") != 1 || !strings.Contains(got, "- [ ] (medium) c\n") {
 		t.Fatalf("got\n%s", got)
 	}
 	// The append folds into the create commit, and it has the same subject, so
@@ -86,12 +86,12 @@ func TestNewDebtAppendsWithoutDuplicates(t *testing.T) {
 func TestNewDebtAllDuplicatesIsNoOp(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("a\nb\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) a\n(medium) b\n")); err != nil {
 		t.Fatal(err)
 	}
 	before := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
 	beforeLog := gitRun(t, cfg.RepoRoot, "log", "--oneline")
-	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("a\nb\n"))
+	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) a\n(medium) b\n"))
 	if err != nil || out.Committed {
 		t.Fatalf("out=%+v err=%v, want no commit", out, err)
 	}
@@ -126,7 +126,7 @@ func TestNewDebtRejectsBadInput(t *testing.T) {
 func TestNewDebtTitleOverridesHeading(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "Custom Title", []byte("x\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "Custom Title", []byte("(medium) x\n")); err != nil {
 		t.Fatal(err)
 	}
 	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md"))
@@ -138,7 +138,7 @@ func TestNewDebtTitleOverridesHeading(t *testing.T) {
 func TestNewDebtHashIDResolves(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
-	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-k3f2", "", []byte("x\n")); err != nil {
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-k3f2", "", []byte("(medium) x\n")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")); err != nil {
@@ -150,7 +150,7 @@ func TestNewDebtAutoCommitOff(t *testing.T) {
 	fixNowAt(t, "2026-09-27")
 	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
 	cfg.AutoCommit = false
-	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("x\n"))
+	out, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(medium) x\n"))
 	if err != nil || out.Committed || out.Skipped {
 		t.Fatalf("outcome %+v err %v", out, err)
 	}
@@ -171,7 +171,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 	cfg.IsGit = false
 	b := mustLoad(t, cfg)
 	path := filepath.Join(cfg.Root, "debt", "2026-09-29-short-ids.md")
-	const first = "---\nid: DEBT-1\n---\n# Review NOTEs: Locks\n\n- [ ] first note\n"
+	const first = "---\nid: DEBT-1\n---\n# Review NOTEs: Locks\n\n- [ ] (medium) first note\n"
 
 	// start puts the file back to one open box.
 	start := func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 	boxLine := func(t *testing.T) int {
 		t.Helper()
 		for i, line := range strings.Split(readFile(t, path), "\n") {
-			if line == "- [ ] first note" {
+			if line == "- [ ] (medium) first note" {
 				return i + 1
 			}
 		}
@@ -205,7 +205,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 	wantBoth := func(t *testing.T, what string) {
 		t.Helper()
 		got := readFile(t, path)
-		if !strings.Contains(got, "- [x] first note\n") || !strings.Contains(got, "- [ ] new note\n") {
+		if !strings.Contains(got, "- [x] (medium) first note\n") || !strings.Contains(got, "- [ ] (medium) new note\n") {
 			t.Fatalf("%s:\n%s", what, got)
 		}
 		noTempLeft(t)
@@ -213,7 +213,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 
 	t.Run("append then tick keeps both", func(t *testing.T) {
 		start(t)
-		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n")); err != nil {
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) new note\n")); err != nil {
 			t.Fatal(err)
 		}
 		if err := TickLine(path, boxLine(t), "first note", 'x'); err != nil {
@@ -228,7 +228,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 		if err := TickLine(path, boxLine(t), "first note", 'x'); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n")); err != nil {
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) new note\n")); err != nil {
 			t.Fatal(err)
 		}
 		wantBoth(t, "the tick was lost")
@@ -236,7 +236,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 
 	t.Run("nothing new leaves the file alone", func(t *testing.T) {
 		start(t)
-		out, err := NewDebt(cfg, b, "PLAN-3", "", []byte("first note\n"))
+		out, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) first note\n"))
 		if err != nil || out.Committed {
 			t.Fatalf("out=%+v err=%v, want no write and no commit", out, err)
 		}
@@ -249,7 +249,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 			t.Fatal(err)
 		}
 		ticked := readFile(t, path)
-		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("first note\n")); err != nil {
+		if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) first note\n")); err != nil {
 			t.Fatal(err)
 		}
 		if got := readFile(t, path); got != ticked {
@@ -273,7 +273,7 @@ func TestNewDebtAndTickLineKeepBoth(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-gate
-			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("new note\n"))
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) new note\n"))
 			failed <- err
 		}()
 		close(gate)
@@ -302,12 +302,12 @@ func TestConcurrentNewDebtKeepsBothNotes(t *testing.T) {
 		failed := make(chan error, 2)
 		go func() {
 			<-gate
-			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("alpha\n"))
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) alpha\n"))
 			failed <- err
 		}()
 		go func() {
 			<-gate
-			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("beta\n"))
+			_, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) beta\n"))
 			failed <- err
 		}()
 		close(gate)
@@ -317,7 +317,7 @@ func TestConcurrentNewDebtKeepsBothNotes(t *testing.T) {
 			}
 		}
 		got := readFile(t, path)
-		if !strings.Contains(got, "- [ ] alpha\n") || !strings.Contains(got, "- [ ] beta\n") {
+		if !strings.Contains(got, "- [ ] (medium) alpha\n") || !strings.Contains(got, "- [ ] (medium) beta\n") {
 			t.Fatalf("round %d lost a NOTE:\n%s", round, got)
 		}
 	}
@@ -332,13 +332,13 @@ func TestNewDebtCommitHoldsNoTick(t *testing.T) {
 	b := mustLoad(t, cfg)
 	path := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
 	rel := ".acta/debt/2026-09-27-short-ids.md"
-	if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("seed\n")); err != nil {
+	if _, err := NewDebt(cfg, b, "PLAN-3", "", []byte("(medium) seed\n")); err != nil {
 		t.Fatal(err)
 	}
 	// The seed box stays the first checklist line; later NOTEs append below.
 	boxLine := 0
 	for i, line := range strings.Split(readFile(t, path), "\n") {
-		if line == "- [ ] seed" {
+		if line == "- [ ] (medium) seed" {
 			boxLine = i + 1
 			break
 		}
@@ -347,7 +347,7 @@ func TestNewDebtCommitHoldsNoTick(t *testing.T) {
 		t.Fatalf("seed box not found:\n%s", readFile(t, path))
 	}
 	for round := range 20 {
-		note := fmt.Sprintf("race note %d", round)
+		note := fmt.Sprintf("(medium) race note %d", round)
 		before := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
 		done := make(chan error, 1)
 		go func() {
@@ -381,7 +381,7 @@ func TestNewDebtCommitHoldsNoTick(t *testing.T) {
 	// Every NOTE must still be on disk after all rounds.
 	got := readFile(t, path)
 	for round := range 20 {
-		if want := fmt.Sprintf("- [ ] race note %d\n", round); !strings.Contains(got, want) {
+		if want := fmt.Sprintf("- [ ] (medium) race note %d\n", round); !strings.Contains(got, want) {
 			t.Fatalf("race note %d was lost:\n%s", round, got)
 		}
 	}
@@ -399,4 +399,38 @@ func waitForNote(t *testing.T, path, want string) {
 		time.Sleep(time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for %q in %s", want, path)
+}
+
+// Only medium and high NOTEs are debt. One low or untagged line refuses
+// the whole batch, so a mixed paste never files half of itself.
+func TestNewDebtRefusesLowAndUntaggedLines(t *testing.T) {
+	fixNowAt(t, "2026-09-27")
+	cfg := repoWith(t, map[string]string{".acta/plans/2026-09-26-short-ids.md": debtPlan})
+	for name, c := range map[string]struct{ notes, line string }{
+		"low":        {"(medium) a\n(low) b\n", "line 2"},
+		"untagged":   {"plain note\n(high) b\n", "line 1"},
+		"wrong case": {"(Medium) a\n", "line 1"},
+		"bad last":   {"(high) a\n(medium) b\n\n- c\n", "line 4"},
+	} {
+		_, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte(c.notes))
+		if err == nil || !strings.Contains(err.Error(), c.line) {
+			t.Errorf("%s: err=%v, want it to name %s", name, err, c.line)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Root, "debt")); !os.IsNotExist(err) {
+		t.Fatal("debt folder must not exist after a refused batch")
+	}
+	// The append path refuses too and leaves the file as it was.
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(high) keep\n")); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(cfg.Root, "debt", "2026-09-27-short-ids.md")
+	before := readFile(t, path)
+	beforeLog := gitRun(t, cfg.RepoRoot, "log", "--oneline")
+	if _, err := NewDebt(cfg, mustLoad(t, cfg), "PLAN-3", "", []byte("(low) drop\n")); err == nil {
+		t.Fatal("append path: want error")
+	}
+	if readFile(t, path) != before || gitRun(t, cfg.RepoRoot, "log", "--oneline") != beforeLog {
+		t.Fatal("append path: refused batch changed the file or the log")
+	}
 }
