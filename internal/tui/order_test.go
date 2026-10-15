@@ -239,9 +239,6 @@ func TestOFlipsOnlyTheFocusedBox(t *testing.T) {
 	}
 }
 
-// TestOKeepsTheSelectedItemSelected reads the selection by its id, because
-// the row number moves when the list is reversed. The board is the real
-// fixture, so Get can still find the item behind the cursor.
 func TestOInTheDetailBoxChangesNoPane(t *testing.T) {
 	t.Parallel()
 

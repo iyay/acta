@@ -672,10 +672,12 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// The detail box has no list to sort.
 		if m.focus != paneDetail {
 			// Keep the row number, not the item, so the view does not jump
-			// to wherever the sort sent the item.
-			row := m.cursor()
+			// to wherever the sort sent the item. The wheel can scroll the
+			// cursor out of sight, so put the scroll back as it was too.
+			row, off := m.cursor(), m.off[m.focus]
 			m.newest[m.focus] = !m.newest[m.focus]
 			m.moveTo(row)
+			m.off[m.focus] = off
 		}
 	case "n":
 		s := ""

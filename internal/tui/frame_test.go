@@ -299,3 +299,21 @@ func TestSortKeepsTheCursorRow(t *testing.T) {
 		t.Fatalf("cursor on row %d after o, want %d", got, before)
 	}
 }
+
+// TestSortLeavesAWheeledListWhereItIs scrolls the list with the wheel so the
+// cursor is out of sight, then sorts. The reader stays on the rows they
+// scrolled to; o must not pull the view back to the cursor.
+func TestSortLeavesAWheeledListWhereItIs(t *testing.T) {
+	t.Parallel()
+
+	m := press(sized(newModel(t), 100, 12), tabKey(tabSpecs))
+	m.scrollPane(paneList, 3)
+	off := m.off[paneList]
+	if off == 0 {
+		t.Fatalf("the wheel did not scroll the list, the test needs a longer list")
+	}
+	m = press(m, "o")
+	if got := m.off[paneList]; got != off {
+		t.Fatalf("offset %d after o, want %d", got, off)
+	}
+}
