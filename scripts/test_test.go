@@ -66,12 +66,17 @@ func TestScriptTurnsOffGitAutoMaintenance(t *testing.T) {
 		{"--full"},
 		{"--full", "./internal/tui/"},
 	} {
-		if got := callScriptGitEnv(t, args...); got != "1 maintenance.auto false" {
-			t.Errorf("%q: got %q, want %q", args, got, "1 maintenance.auto false")
+		// A whole --full run makes two go calls; each one must get the env.
+		for _, got := range strings.Split(callScriptGitEnv(t, args...), "\n") {
+			if got != "1 maintenance.auto false" {
+				t.Errorf("%q: got %q, want %q", args, got, "1 maintenance.auto false")
+			}
 		}
 	}
 }
 
+// A whole --full run also tests internal/cli in the notui build, so the small
+// build is checked on every land and not only in CI.
 func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 	t.Parallel()
 
@@ -90,8 +95,8 @@ func TestScriptMapsEachCallToOneGoCall(t *testing.T) {
 		{[]string{"-run", "TestX", "./internal/tui/"}, "test -short -run TestX ./internal/tui/"},
 		{[]string{"./..."}, "run ./cmd/acta run-one -- go test -short ./..."},
 		{[]string{"-run", "TestX", "./..."}, "run ./cmd/acta run-one -- go test -short -run TestX ./..."},
-		{[]string{"--full"}, "run ./cmd/acta run-one -- go test ./..."},
-		{[]string{"--full", "-count=1"}, "run ./cmd/acta run-one -- go test -count=1 ./..."},
+		{[]string{"--full"}, "run ./cmd/acta run-one -- go test ./...\n" + root + " run ./cmd/acta run-one -- go test -tags notui ./internal/cli/"},
+		{[]string{"--full", "-count=1"}, "run ./cmd/acta run-one -- go test -count=1 ./...\n" + root + " run ./cmd/acta run-one -- go test -tags notui -count=1 ./internal/cli/"},
 		{[]string{"--full", "./internal/cli/"}, "run ./cmd/acta run-one -- go test ./internal/cli/"},
 		{[]string{"./internal/..."}, "test -short ./internal/..."},
 		{[]string{"./internal/cli/", "./..."}, "run ./cmd/acta run-one -- go test -short ./internal/cli/ ./..."},

@@ -41,6 +41,7 @@ type Env struct {
 	ActaRoot       string // the .acta folder for RepoRoot
 	Binary         string // os.Executable()
 	Version        string // from runtime/debug build info
+	Build          string // which build this is: full, or cli with no TUI
 	KnownFile      string // workflow-plugins.txt; "" skips the conflicts list
 	AutoCommit     bool   // false when .acta.yaml turns auto_commit off
 	ConfigErr      error  // the config.Load error, when the config does not parse
@@ -55,6 +56,7 @@ type Env struct {
 func Run(e Env) []Result {
 	return []Result{
 		checkBinary(e),
+		checkBuild(e),
 		checkHarness(e),
 		checkStaleLinks(e),
 		checkConflicts(e),
@@ -295,6 +297,15 @@ func Format(rs []Result) string {
 		}
 	}
 	return b.String()
+}
+
+// checkBuild says which build is installed. Both builds are fine, so it is
+// only ever OK; it is there so a user can see it.
+func checkBuild(e Env) Result {
+	if e.Build == "" {
+		return Result{Name: "build", Level: OK, Msg: "unknown"}
+	}
+	return Result{Name: "build", Level: OK, Msg: e.Build}
 }
 
 // checkBinary names the acta that runs, so a stale hand-built binary in the

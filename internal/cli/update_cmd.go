@@ -101,7 +101,7 @@ func updateBinary(check bool, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "acta %s is the latest\n", current)
 		return exitOK
 	}
-	data, err := update.Fetch(client, base, latest, runtime.GOOS, runtime.GOARCH)
+	data, err := update.Fetch(client, base, latest, assetPrefix(), runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitBadInput
@@ -176,4 +176,13 @@ func refreshPlugin() error {
 		}
 	}
 	return nil
+}
+
+// assetPrefix names the release archive of this build, so an update keeps a
+// user on the build they picked at install.
+func assetPrefix() string {
+	if Variant == "cli" {
+		return "acta-cli"
+	}
+	return "acta"
 }

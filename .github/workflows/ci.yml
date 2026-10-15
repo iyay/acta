@@ -27,6 +27,9 @@ jobs:
           fi
       - name: Test
         run: go test ./...
+      # The notui build compiles internal/cli another way, so test it too.
+      - name: Test notui build
+        run: go test -tags notui ./internal/cli/
       # The release builds these four pairs. A syscall that only exists on one
       # OS would break the release run, so catch it on every push instead.
       - name: Cross-build release targets
@@ -34,6 +37,7 @@ jobs:
           for os in darwin linux; do
             for arch in amd64 arm64; do
               GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o /dev/null ./cmd/acta
+              GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -tags notui -o /dev/null ./cmd/acta
             done
           done
 

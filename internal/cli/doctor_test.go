@@ -88,6 +88,9 @@ func TestDoctorCLIFailsWhenRepoIsBroken(t *testing.T) {
 	if !strings.Contains(stdout.String(), "fail repo:") {
 		t.Fatalf("stdout %q has no fail repo line", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "ok build: "+wantDoctorBuild+"\n") {
+		t.Errorf("stdout %q has no build line for %s", stdout.String(), wantDoctorBuild)
+	}
 	if _, err := os.Stat(filepath.Join(dir, ".acta")); !os.IsNotExist(err) {
 		t.Fatal("a plain run wrote .acta")
 	}

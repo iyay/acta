@@ -97,6 +97,10 @@ func doctorEnv(known string) doctor.Env {
 	if p, err := os.Executable(); err == nil {
 		e.Binary, e.Version = p, buildVersion()
 	}
+	e.Build = "full"
+	if Variant == "cli" {
+		e.Build = "cli (no TUI)"
+	}
 	v, exists, _ := config.ResolveUser()
 	e.Voice, e.VoiceExists = v, exists
 	// Load the theme the voice file names, so the check reports the same

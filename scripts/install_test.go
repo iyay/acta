@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 )
 
@@ -126,7 +127,8 @@ func goodRig(t *testing.T, asset, osName, arch string) *installRig {
 }
 
 // run executes install.sh and returns its output and error. PATH holds only
-// the fake uname plus the system dirs, as in runScript.
+// the fake uname plus the system dirs, as in runScript. The script runs in a
+// new session with no terminal, so it never stops to ask a question.
 func (r *installRig) run(t *testing.T, pathExtra string, env ...string) (string, error) {
 	t.Helper()
 	script, err := filepath.Abs("install.sh")
@@ -134,7 +136,15 @@ func (r *installRig) run(t *testing.T, pathExtra string, env ...string) (string,
 		t.Fatal(err)
 	}
 	cmd := exec.Command("/bin/sh", script)
+	cmd.Env = r.env(pathExtra, env...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Dir = t.TempDir()
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// env is the environment one run of install.sh gets.
+func (r *installRig) env(pathExtra string, env ...string) []string {
 	keep := make([]string, 0, len(os.Environ())+8)
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "GIT_CONFIG_") && !strings.HasPrefix(e, "PATH=") &&
@@ -154,9 +164,7 @@ func (r *installRig) run(t *testing.T, pathExtra string, env ...string) (string,
 		"ACTA_ARGS_FILE="+r.args,
 		"PATH="+path,
 	)
-	cmd.Env = append(keep, env...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return append(keep, env...)
 }
 
 func (r *installRig) installed() bool {
@@ -443,5 +451,173 @@ func TestInstallNeverEditsRcFiles(t *testing.T) {
 	entries, _ := os.ReadDir(r.home)
 	if len(entries) != len(rc) {
 		t.Errorf("home gained files: %v", entries)
+	}
+}
+
+// bothRig serves the full and the acta-cli archive for linux/amd64, so a
+// test can see which one install.sh asked for. The fake uname must win over
+// the real one; a Linux rig makes that fail loudly on a Mac too.
+func bothRig(t *testing.T) *installRig {
+	t.Helper()
+	archive := tarGz(t, "acta", fakeActa)
+	sums := sum(archive) + "  acta_linux_amd64.tar.gz\n" + sum(archive) + "  acta-cli_linux_amd64.tar.gz\n"
+	return newRig(t, map[string][]byte{
+		"acta_linux_amd64.tar.gz":     archive,
+		"acta-cli_linux_amd64.tar.gz": archive,
+		"checksums.txt":               []byte(sums),
+	}, "Linux", "x86_64")
+}
+
+const (
+	fullAsset = "/latest/download/acta_linux_amd64.tar.gz"
+	cliAsset  = "/latest/download/acta-cli_linux_amd64.tar.gz"
+)
+
+// assetIs fails unless install.sh fetched want and not the other archive.
+func (r *installRig) assetIs(t *testing.T, name, want string) {
+	t.Helper()
+	other := fullAsset
+	if want == fullAsset {
+		other = cliAsset
+	}
+	if !r.sawPath(want) || r.sawPath(other) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		t.Errorf("%s: fetched %v, want %s only", name, r.hits, want)
+	}
+}
+
+func TestInstallActaTUIPicksTheBuild(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ env, want string }{
+		{"ACTA_TUI=1", fullAsset},
+		{"ACTA_TUI=0", cliAsset},
+	} {
+		r := bothRig(t)
+		out, err := r.run(t, "", tc.env)
+		if err != nil || !r.installed() {
+			t.Fatalf("%s: err %v, installed %v\n%s", tc.env, err, r.installed(), out)
+		}
+		r.assetIs(t, tc.env, tc.want)
+	}
+}
+
+// A bad ACTA_TUI must stop the script before it asks the server for anything.
+func TestInstallBadActaTUIFailsBeforeDownload(t *testing.T) {
+	t.Parallel()
+
+	for _, v := range []string{"2", "yes", " 1", "unset", ""} {
+		r := bothRig(t)
+		out, err := r.run(t, "", "ACTA_TUI="+v)
+		if err == nil || !strings.Contains(out, "ACTA_TUI must be 0 or 1") {
+			t.Errorf("ACTA_TUI=%q: err %v, out %q", v, err, out)
+		}
+		r.mu.Lock()
+		hits := len(r.hits)
+		r.mu.Unlock()
+		if hits != 0 || r.installed() {
+			t.Errorf("ACTA_TUI=%q: %d requests made, installed %v", v, hits, r.installed())
+		}
+	}
+}
+
+// With no terminal and no ACTA_TUI, nobody can answer, so the full build
+// comes down the same as before this choice existed.
+func TestInstallNoTerminalGetsFullBuild(t *testing.T) {
+	t.Parallel()
+
+	r := bothRig(t)
+	out, err := r.run(t, "")
+	if err != nil || !r.installed() {
+		t.Fatalf("err %v\n%s", err, out)
+	}
+	if strings.Contains(out, "[Y/n]") {
+		t.Errorf("asked with no terminal: %q", out)
+	}
+	r.assetIs(t, "no terminal", fullAsset)
+}
+
+// ptyRun runs install.sh on a fresh terminal, types each answer when the
+// question shows, and gives back what the terminal showed.
+func (r *installRig) ptyRun(t *testing.T, answers ...string) string {
+	t.Helper()
+	script, err := filepath.Abs("install.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Python's pty.fork gives the child a real controlling terminal, which
+	// Go cannot do without a new dependency.
+	const driver = `
+import os, pty, select, signal, sys, time
+answers = sys.argv[2:]
+pid, fd = pty.fork()
+if pid == 0:
+    os.execv("/bin/sh", ["/bin/sh", sys.argv[1]])
+seen, asked = b"", 0
+end = time.time() + 30
+while True:
+    left = end - time.time()
+    # A script stuck on a question it never gets an answer to must not hang
+    # the test, so give up and stop it when time runs out.
+    if left <= 0:
+        os.kill(pid, signal.SIGKILL)
+        sys.stdout.write(seen.decode(errors="replace") + "\nTIMEOUT\n")
+        sys.exit(1)
+    ready, _, _ = select.select([fd], [], [], left)
+    if not ready:
+        continue
+    try:
+        chunk = os.read(fd, 4096)
+    except OSError:
+        break
+    if not chunk:
+        break
+    seen += chunk
+    if asked < len(answers) and seen.count(b"[Y/n]") > asked:
+        os.write(fd, answers[asked].encode() + b"\n")
+        asked += 1
+os.waitpid(pid, 0)
+sys.stdout.write(seen.decode(errors="replace"))
+`
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 is not installed, so there is no way to open a terminal")
+	}
+	// Run python by its full path. The script keeps the rig PATH, so its
+	// fake uname still wins over the real one.
+	cmd := exec.Command(py, append([]string{"-I", "-c", driver, script}, answers...)...)
+	cmd.Env = r.env("")
+	cmd.Dir = t.TempDir()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("pty run: %v\n%s", err, out)
+	}
+	return string(out)
+}
+
+func TestInstallAsksOnTerminal(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name    string
+		answers []string
+		asks    int
+		want    string
+	}{
+		{"enter", []string{""}, 1, fullAsset},
+		{"y", []string{"y"}, 1, fullAsset},
+		{"n", []string{"n"}, 1, cliAsset},
+		{"bad then n", []string{"maybe", "n"}, 2, cliAsset},
+	} {
+		r := bothRig(t)
+		out := r.ptyRun(t, tc.answers...)
+		if got := strings.Count(out, "Install the TUI board too? It adds about 7M. [Y/n]"); got != tc.asks {
+			t.Errorf("%s: asked %d times, want %d\n%s", tc.name, got, tc.asks, out)
+		}
+		if !r.installed() {
+			t.Fatalf("%s: not installed\n%s", tc.name, out)
+		}
+		r.assetIs(t, tc.name, tc.want)
 	}
 }

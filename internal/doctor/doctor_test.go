@@ -132,9 +132,27 @@ func TestBrokenThemeDoesNotFailTheRun(t *testing.T) {
 }
 
 func TestDoctorChecksRunInFixedOrder(t *testing.T) {
-	want := []string{"binary", "harness", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "agents-view", "setup", "theme"}
+	want := []string{"binary", "build", "harness", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "agents-view", "setup", "theme"}
 	if got := names(Run(env(t))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
+	}
+}
+
+// The build line only tells which build is installed. It never warns or
+// fails, so a missing name cannot change what a run reports.
+func TestDoctorBuild(t *testing.T) {
+	for _, tc := range []struct{ build, msg string }{
+		{"full", "full"},
+		{"cli (no TUI)", "cli (no TUI)"},
+		{"", "unknown"},
+	} {
+		e := env(t)
+		e.Build = tc.build
+		r := byName(Run(e), "build")
+		wantLevel(t, r, OK, "")
+		if r.Msg != tc.msg {
+			t.Errorf("build %q: msg %q, want %q", tc.build, r.Msg, tc.msg)
+		}
 	}
 }
 

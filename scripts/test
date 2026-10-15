@@ -41,7 +41,13 @@ if [ -n "$all" ] || [ -z "$pkg" ]; then
 	whole=1
 fi
 if [ -n "$full" ]; then
-	exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+	if [ -z "$whole" ]; then
+		exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+	fi
+	# The notui build leaves the TUI out, so internal/cli compiles another
+	# way there. A whole run tests that build too, so a land catches a break.
+	go run ./cmd/acta run-one -- go test "$@" $pkgs
+	exec go run ./cmd/acta run-one -- go test -tags notui "$@" ./internal/cli/
 fi
 if [ -n "$whole" ]; then
 	exec go run ./cmd/acta run-one -- go test -short "$@" $pkgs

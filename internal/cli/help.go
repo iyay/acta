@@ -368,10 +368,15 @@ func renderCmdHelp(c helpCmd) string {
 // versionLine is what acta --version prints. A binary that goreleaser did
 // not build says so, so a go install copy is easy to tell from the release.
 func versionLine() string {
-	if isRelease() {
-		return "acta " + plugin.Version()
+	// Name the build, so a user can tell the small one apart.
+	build := "full"
+	if Variant == "cli" {
+		build = "cli, no TUI"
 	}
-	return "acta " + plugin.Version() + " (source build)"
+	if isRelease() {
+		return "acta " + plugin.Version() + " (" + build + ")"
+	}
+	return "acta " + plugin.Version() + " (" + build + ", source build)"
 }
 
 // isHelpFlag says whether one argument asks for help.

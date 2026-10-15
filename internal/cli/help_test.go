@@ -195,8 +195,8 @@ func TestVersionPrintsReleaseAndSourceBuild(t *testing.T) {
 		release bool
 		want    string
 	}{
-		{true, "acta " + plugin.Version() + "\n"},
-		{false, "acta " + plugin.Version() + " (source build)\n"},
+		{true, "acta " + plugin.Version() + " (" + wantVersionWord + ")\n"},
+		{false, "acta " + plugin.Version() + " (" + wantVersionWord + ", source build)\n"},
 	} {
 		isRelease = func() bool { return tc.release }
 		for _, args := range [][]string{{"--version"}, {"-root", "X", "--version"}} {
