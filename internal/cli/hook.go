@@ -68,7 +68,10 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			_ = hook.RecordBrainstorm(root, ev)
 			return exitOK
 		}
-		if hasRoot {
+		// A Codex patch carries file content in its command field. That text
+		// never runs, so the shell guards below must not read it.
+		shell := ev.ToolName != "apply_patch"
+		if hasRoot && shell {
 			if block, msg := hook.PreTool(root, ev); block {
 				fmt.Fprintln(stderr, msg)
 				return exitBlock
@@ -77,7 +80,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// The go test block reads the folder the agent works in, not the
 		// planning root, so it comes after the brainstorm one.
 		cwd, _ := os.Getwd()
-		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); block {
+		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); shell && block {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -99,6 +102,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		sessionID, source := readSessionStart(stdin)
 		in := loadVoice()
 		in.Herdr = os.Getenv("HERDR_ENV") == "1"
+		in.Codex = hook.IsCodex()
 		in.Update, in.Current = newerRelease(), "v"+plugin.Version()
 		repo, _ := os.Getwd()
 		if cfg, err := config.Load(repo, ""); err == nil {

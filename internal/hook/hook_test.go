@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/plugin"
 )
 
 var update = flag.Bool("update", false, "rewrite plugin/hooks/default-rules.md")
@@ -356,6 +357,7 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.Voice.Tone = strings.TrimSpace(strings.Repeat("A tone line.\n", 8))
 	worst.Conflicts = []string{"superpowers@a", "gstack@b", "x@mattpocock"}
 	worst.Herdr = true // the herdr line counts against the cap too
+	worst.Codex = true // so does the Codex block with the output style
 	// The wiki line counts against the cap too.
 	worst.WikiPages = 100
 	// The settings list counts against the cap too.
@@ -366,7 +368,10 @@ func TestSessionStartStaysShort(t *testing.T) {
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
 		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x"), Conflicts: worst.Conflicts},
 	} {
-		if n := strings.Count(SessionStart(in), "\n"); n > 60 {
+		// The style text is not counted: Claude Code loads the same text as
+		// its output style, so Codex gets no more than Claude Code does.
+		note := strings.Replace(SessionStart(in), plugin.OutputStyle(), "", 1)
+		if n := strings.Count(note, "\n"); n > 60 {
 			t.Errorf("%s: %d lines, cap is 60", name, n)
 		}
 	}
@@ -811,7 +816,7 @@ func TestSessionStartSettingsLines(t *testing.T) {
 		"- Plan depth: minimal.\n",
 		"- Review depth: deep.\n",
 		"- Commit history: tidy.\n",
-		"- Subagent models: split. In Claude Code, code-writing subagents use sonnet, other subagents opus, reviewers your own model.\n",
+		"- Subagent models: split. In Claude Code, code-writing subagents use sonnet, other subagents (mapping, explore, planning help, debug investigation, spikes) opus, reviewers your own model alias.\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -881,5 +886,34 @@ func TestSessionStartUpdateLine(t *testing.T) {
 	}
 	if strings.Contains(Prompt(in), "acta update") {
 		t.Errorf("prompt hook holds the update line: %q", Prompt(in))
+	}
+}
+
+// Codex has no output styles, so under Codex the note carries the style text,
+// and says how Codex picks a subagent model. Claude Code loads the style
+// itself, so its note must not carry it twice.
+func TestSessionStartCodexBlock(t *testing.T) {
+	const styleLine = "Open with the answer or the result."
+	const subagentLine = "In Codex, subagents are Codex subagents"
+	in := korean()
+	in.Voice.SubagentModels = "split"
+	out := SessionStart(in)
+	for _, s := range []string{styleLine, subagentLine} {
+		if strings.Contains(out, s) {
+			t.Errorf("Claude Code note has Codex text %q", s)
+		}
+	}
+	if !strings.Contains(out, modelLines["split"]) {
+		t.Errorf("Claude Code note lost the split model rule")
+	}
+	in.Codex = true
+	out = SessionStart(in)
+	for _, s := range []string{styleLine, subagentLine} {
+		if !strings.Contains(out, s) {
+			t.Errorf("Codex note misses %q:\n%s", s, out)
+		}
+	}
+	if strings.Contains(out, "keep-coding-instructions") {
+		t.Error("Codex note carries the style file's frontmatter")
 	}
 }

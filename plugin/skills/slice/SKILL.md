@@ -220,4 +220,4 @@ Save the plan, show it to the user, and wait for a yes (a minimal plan skips the
 
 Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. When the line is missing and the user has not said, ask which one: `subagent`, `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).
 
-**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.

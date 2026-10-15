@@ -7,5 +7,5 @@ import "embed"
 // harness never reads them. The all: prefix keeps dot dirs like
 // .claude-plugin.
 //
-//go:embed all:.claude-plugin all:hooks all:omp all:output-styles all:references all:skills NOTICE README.md package.json
+//go:embed all:.claude-plugin all:hooks all:codex all:omp all:output-styles all:references all:skills NOTICE README.md package.json
 var Files embed.FS

@@ -289,6 +289,9 @@ func hintFiles(ev ToolEvent, cwd string) []string {
 	if p := ev.ToolInput.FilePath; p != "" {
 		return hintWord(nil, cwd, p)
 	}
+	if ev.ToolName == "apply_patch" {
+		return patchFiles(ev.ToolInput.Command, cwd)
+	}
 	var files []string
 	dir := cwd
 	for _, piece := range goTestCut(ev.ToolInput.Command, goTestSep+"\n") {
@@ -301,6 +304,26 @@ func hintFiles(ev ToolEvent, cwd string) []string {
 		// so the words after it get no hint, which is better than a wrong one.
 		if len(words) > 1 && words[0] == "cd" {
 			dir = fromDir(dir, strings.Trim(words[1], `"'`))
+		}
+	}
+	return files
+}
+
+// patchHeaders are the line starts in a Codex patch that name a file. A line
+// of file content starts with +, - or a space, so it can never match one.
+var patchHeaders = []string{"*** Update File: ", "*** Add File: ", "*** Delete File: ", "*** Move to: "}
+
+// patchFiles lists the files a Codex apply_patch touches. The whole patch comes
+// in one string, and only its header lines name files. The rest is file
+// content, and reading it as words would give hints for paths it only mentions.
+func patchFiles(patch, cwd string) []string {
+	var files []string
+	for _, line := range strings.Split(patch, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		for _, h := range patchHeaders {
+			if p, ok := strings.CutPrefix(line, h); ok {
+				files = append(files, fromDir(cwd, p))
+			}
 		}
 	}
 	return files

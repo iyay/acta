@@ -105,7 +105,7 @@ func pluginDirFor(given, home string) (string, error) {
 // and the current user config the form shows as defaults.
 func setupEnv(pluginDir string) setup.Env {
 	env := setup.Env{TTY: true, PluginDir: pluginDir}
-	for _, h := range []string{"claude", "omp"} {
+	for _, h := range []string{"claude", "omp", "codex"} {
 		if _, err := exec.LookPath(h); err == nil {
 			env.Harnesses = append(env.Harnesses, h)
 		}
@@ -122,6 +122,7 @@ func setupEnv(pluginDir string) setup.Env {
 		}
 	}
 	denv := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), RepoRoot: env.RepoRoot}
+	denv.CodexDir = codexDir(denv.Home)
 	env.Installed = map[string]bool{}
 	for _, h := range env.Harnesses {
 		env.Installed[h] = doctor.PluginInstalled(denv, h)

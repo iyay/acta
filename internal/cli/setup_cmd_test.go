@@ -94,7 +94,7 @@ func TestSetupEnvFindings(t *testing.T) {
 		}
 	}
 	bin := t.TempDir()
-	for _, name := range []string{"claude", "omp"} {
+	for _, name := range []string{"claude", "omp", "codex"} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -102,8 +102,8 @@ func TestSetupEnvFindings(t *testing.T) {
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	inDir(t, dir, func() {
 		got := setupEnv("/p")
-		if len(got.Harnesses) != 2 || got.Harnesses[0] != "claude" || got.Harnesses[1] != "omp" {
-			t.Fatalf("harnesses = %v, want [claude omp]", got.Harnesses)
+		if strings.Join(got.Harnesses, " ") != "claude omp codex" {
+			t.Fatalf("harnesses = %v, want [claude omp codex]", got.Harnesses)
 		}
 		if got.PluginDir != "/p" {
 			t.Fatalf("plugin dir = %q, want /p", got.PluginDir)

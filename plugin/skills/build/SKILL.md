@@ -13,7 +13,7 @@ Refuse to start unless the spec is approved (for Bounded work with no spec file,
 
 | Executor | Who writes the code | How |
 |---|---|---|
-| `subagent` | a fresh subagent per task | Claude Code: the Agent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
+| `subagent` | a fresh subagent per task | Your harness's own subagent tool, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
 | `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. Without it `dispatch` runs as `subagent`. On omp, `dispatch` runs as `subagent` |
 | `inline` | you | when the order below picks it |
 
@@ -34,7 +34,7 @@ Two fallbacks, each told to the user in one line:
 
 ## Models
 
-**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
 
 - Implementers and other workers: the model the paragraph above names, or none. On omp, `agent="task"` and its role config picks the model.
 - Reviewers (`acta:review`): your own model alias, never lower.

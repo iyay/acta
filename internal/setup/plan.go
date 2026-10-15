@@ -160,6 +160,11 @@ func installArgv(harness, dir string) ([][]string, bool) {
 		}, true
 	case "omp":
 		return [][]string{{"omp", "plugin", "link", dir}}, true
+	case "codex":
+		return [][]string{
+			{"codex", "plugin", "marketplace", "add", dir},
+			{"codex", "plugin", "add", "acta@acta-local"},
+		}, true
 	}
 	return nil, false
 }
@@ -173,6 +178,9 @@ func installHint(harness string) (string, bool) {
 			"claude plugin install acta@acta-local", true
 	case "omp":
 		return "omp plugin link <plugin dir>", true
+	case "codex":
+		return "codex plugin marketplace add <plugin dir>\n" +
+			"codex plugin add acta@acta-local", true
 	}
 	return "", false
 }

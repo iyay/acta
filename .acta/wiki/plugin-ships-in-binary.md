@@ -5,7 +5,7 @@ description: The binary embeds the plugin; acta setup unpacks it to ~/.acta/plug
 paths: [plugin/, internal/setup/]
 ---
 
-`plugin/embed.go` embeds every plugin file except `evals/`, `evals-routing/` and Go files. `acta setup` unpacks that tree to `~/.acta/plugin` and installs Claude Code and omp from there, so a user needs only the binary. `--plugin-dir` points at a checkout instead and skips the unpack.
+`plugin/embed.go` embeds every plugin file except `evals/`, `evals-routing/` and Go files. `acta setup` unpacks that tree to `~/.acta/plugin` and installs Claude Code, omp and Codex from there, so a user needs only the binary. `--plugin-dir` points at a checkout instead and skips the unpack.
 
 `plugin/embed_test.go` compares the embed with the files on disk: add a plugin file or folder and the test fails until `embed.go` lists it. Hook scripts lose their mode in the embed; the unpacker sets 0755 on extensionless files and `.sh` files, so a new executable with another extension needs that rule changed.
 
