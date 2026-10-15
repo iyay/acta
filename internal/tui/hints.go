@@ -55,7 +55,6 @@ func (m Model) hints() []string {
 		}
 		return append(out, "Back: esc")
 	}
-	out = append(out, "Detail: enter")
 	if own && !tick {
 		out = append(out, "Status: s", "Type: t")
 	}
@@ -75,6 +74,9 @@ func (m Model) hints() []string {
 	if m.foldsRow() {
 		out = append(out, "Fold: space")
 	}
+	if m.onGroupRow() {
+		out = append(out, "Fold: enter")
+	}
 	if m.focus == paneDone {
 		out = append(out, "Done tab: [ ]")
 	}
@@ -88,6 +90,14 @@ func (m Model) foldsRow() bool {
 	rows := m.listOf()
 	i := m.cursor()
 	return i >= 0 && i < len(rows) && rows[i].tree && rows[i].depth == 0
+}
+
+// onGroupRow says whether the cursor sits on the legacy group row, which
+// only enter folds. A search holds the group open, so the hint hides then.
+func (m Model) onGroupRow() bool {
+	rows := m.listOf()
+	i := m.cursor()
+	return m.focus != paneDetail && !m.filtering() && i >= 0 && i < len(rows) && rows[i].group
 }
 
 // hintLine joins the hints that fit in w cells. It drops them from the right,

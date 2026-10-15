@@ -14,10 +14,13 @@ func TestHintsFollowTheFocusedPane(t *testing.T) {
 	t.Parallel()
 
 	list := press(sized(newModel(t), 200, 40), tabKey(tabSpecs))
-	for _, h := range []string{"Detail: enter", "Status: s", "Type: t", "Edit: e", "Copy id: y", "New bug: n", "Sort: o"} {
+	for _, h := range []string{"Status: s", "Type: t", "Edit: e", "Copy id: y", "New bug: n", "Sort: o"} {
 		if !slices.Contains(list.hints(), h) {
 			t.Errorf("the list pane is missing %q: %v", h, list.hints())
 		}
+	}
+	if slices.Contains(list.hints(), "Detail: enter") {
+		t.Errorf("the list still offers enter for the detail: %v", list.hints())
 	}
 	if slices.Contains(list.hints(), "Done tab: [ ]") || slices.Contains(list.hints(), "Fold: space") {
 		t.Errorf("the Specs list shows a key it cannot use: %v", list.hints())
@@ -26,16 +29,16 @@ func TestHintsFollowTheFocusedPane(t *testing.T) {
 	if done.focus != paneDone || !slices.Contains(done.hints(), "Done tab: [ ]") {
 		t.Errorf("the Done pane is missing Done tab: %v", done.hints())
 	}
-	detail := press(list, "enter")
+	detail := press(list, "shift+tab")
 	if detail.focus != paneDetail {
-		t.Fatalf("enter gave focus %d", detail.focus)
+		t.Fatalf("shift+tab gave focus %d", detail.focus)
 	}
 	for _, h := range []string{"Scroll: j k", "Status: s", "Edit: e", "Copy id: y", "Back: esc"} {
 		if !slices.Contains(detail.hints(), h) {
 			t.Errorf("the detail pane is missing %q: %v", h, detail.hints())
 		}
 	}
-	if slices.Contains(detail.hints(), "Detail: enter") {
+	if slices.Contains(detail.hints(), "Fold: enter") {
 		t.Errorf("the detail pane offers enter: %v", detail.hints())
 	}
 	plans := press(list, tabKey(tabPlans))
@@ -106,7 +109,7 @@ func TestHintsSkipTheKeysARowRefuses(t *testing.T) {
 			t.Errorf("the group row shows %q, which does nothing: %v", h, group.hints())
 		}
 	}
-	if !slices.Contains(group.hints(), "Detail: enter") {
+	if !slices.Contains(group.hints(), "Fold: enter") {
 		t.Errorf("the group row should still open or shut itself: %v", group.hints())
 	}
 

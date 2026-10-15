@@ -63,7 +63,7 @@ const (
 )
 
 // paneKey is what a box wears at the start of its title. No box has a key of
-// its own any more: tab and enter reach the detail.
+// its own any more: tab reaches the detail.
 func paneKey(pane) string { return "─" }
 
 // tabState is what a tab keeps while another one is open: the focused pane,

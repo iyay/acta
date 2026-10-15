@@ -87,17 +87,6 @@ func TestBranchItemsAreNotOpened(t *testing.T) {
 	if v := m.View(); !strings.Contains(v, "Branch bug") || !strings.Contains(plain(v), "WORKTREE  : feat-x (not checked out)") {
 		t.Fatalf("branch item not labelled:\n%s", v)
 	}
-	next, cmd := m.Update(key("enter"))
-	m = next.(Model)
-	// The command must send the hide timer for this warning and nothing else,
-	// so the editor never opened for a file that is not there.
-	want := clearStatusMsg{text: m.status}
-	if msgs := runNow(cmd, 2*toastFor); len(msgs) != 1 || msgs[0] != want {
-		t.Fatalf("enter on a branch item sent %v, want only the toast timer %#v", msgs, want)
-	}
-	if !strings.Contains(m.status, "git worktree add") {
-		t.Fatalf("enter on a branch item should warn: %q", m.status)
-	}
 	m = press(m, "s")
 	if m.popup != nil {
 		t.Fatal("s must not open a popup for a branch item")

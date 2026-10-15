@@ -80,7 +80,7 @@ g G              go to the top / bottom
 ctrl+d ctrl+u    page down / up
 space            open or shut a plan row
 h l              shut / open a plan row, h on a task too
-enter            open or shut a plan row, or focus the detail
+enter            open or shut a plan row or group
 d                open commits
 z                expand the focused pane
 o                flip the sort: oldest / newest
