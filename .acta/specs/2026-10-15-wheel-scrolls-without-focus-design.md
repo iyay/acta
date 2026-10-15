@@ -2,6 +2,7 @@
 id: SPC-0136
 created: "2026-10-15 12:33:37"
 hash: nv1w4c6
+started: "2026-10-15 12:34:49"
 ---
 # Wheel scrolls the pane under the pointer without taking the focus
 

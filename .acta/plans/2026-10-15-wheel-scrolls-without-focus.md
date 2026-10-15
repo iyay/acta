@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0146
 created: "2026-10-15 12:34:13"
 hash: s6unktz
+started: "2026-10-15 12:34:49"
 ---
 # Wheel scrolls without focus Implementation Plan
 

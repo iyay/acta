@@ -766,32 +766,19 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		cleared := m.drag.on
 		m.drag = drag{}
 		// The frame the reader has goes stale as soon as the notch clears a
-		// drag, takes the focus or hands gathered notches to another box, so
-		// one flag carries all three.
+		// drag or hands gathered notches to another box, so one flag carries
+		// both.
 		stale := cleared
 		// The notches of a frame belong to the screen the reader had when the
-		// notch arrived, so that screen is read here. Taking the focus below
-		// shows another box's row, which is not a screen the reader asked for
-		// with a key, so the notches gathered for the old box are not lost.
+		// notch arrived, so that screen is read here.
 		screen := m.mark()
-		// A notch belongs to the box under the pointer, so it takes the focus
-		// the way a click does and scrolls the pane it landed on. A pane the
-		// tab does not have refuses the focus, so a notch over one is ignored
-		// as before.
-		if p != m.focus {
-			m.focusPane(p)
-			if m.focus != p {
-				m.same = !stale
-				return m, nil
-			}
-			// A box with the focus wears another border, and the focus moves
-			// the room of a zoomed box, so the reader has a new frame to see.
-			stale = true
-		}
+		// A notch scrolls the box under the pointer and leaves the focus
+		// where it is, so the reader can read the detail without losing
+		// their place in the list. A pane the tab does not draw is ignored.
 		// hit answers the focused pane for a cell that lands on no pane at
 		// all, like the tab bar or the status line, so the notch asks the
 		// geometry before it moves a word.
-		if !m.onPane(p, msg.X, msg.Y) {
+		if !slices.Contains(append(m.panes(), paneDetail), p) || !m.onPane(p, msg.X, msg.Y) {
 			m.same = !stale
 			return m, nil
 		}
