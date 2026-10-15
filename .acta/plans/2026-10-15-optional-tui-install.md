@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0143
 created: "2026-10-15 09:35:38"
 hash: hp5mv0h
+started: "2026-10-15 09:37:25"
 ---
 # Optional TUI at install time Implementation Plan
 
@@ -33,9 +34,9 @@ hash: hp5mv0h
 
 **verify:** A `notui` build never links the TUI, and both builds still run every command. List checked: `go list -deps -tags notui ./cmd/acta` holds neither `internal/tui` nor `github.com/charmbracelet/glamour`; `cli.Variant` is `full` without the tag and `cli` with it; bare `acta` in the `notui` build prints help plus the `ACTA_TUI=1` line and exits 0; `scripts/test --full` also runs `go test -tags notui ./internal/cli`.
 
-- [ ] **Failing test:** `variant_test.go` checks `Variant` per build and the deps list; the `notui` package does not build yet, so `scripts/test ./internal/cli` fails.
-- [ ] **Change:** move `runTUI` and its imports to `tui_full.go` (`!notui`), add `tui_none.go` (`notui`) with `Variant` and the help line, tag `tuitrace.go`, and add the tagged run to `scripts/test --full`.
-- [ ] **Commit:** `feat(cli): notui build tag leaves the TUI out`
+- [x] **Failing test:** `variant_test.go` checks `Variant` per build and the deps list; the `notui` package does not build yet, so `scripts/test ./internal/cli` fails.
+- [x] **Change:** move `runTUI` and its imports to `tui_full.go` (`!notui`), add `tui_none.go` (`notui`) with `Variant` and the help line, tag `tuitrace.go`, and add the tagged run to `scripts/test --full`.
+- [x] **Commit:** `feat(cli): notui build tag leaves the TUI out`
 
 ### Task 02: release ships the acta-cli build
 
@@ -43,9 +44,9 @@ hash: hp5mv0h
 
 **verify:** The release config can never drop either build or mix their flags. List checked: exactly two builds, both stripped with the release flag; only `acta-cli` has `tags: [notui]`; archives `acta_{{ .Os }}_{{ .Arch }}` and `acta-cli_{{ .Os }}_{{ .Arch }}`, each holding `acta`; CI builds with `-tags notui` for the four os/arch pairs and runs `go test -tags notui ./internal/cli`.
 
-- [ ] **Failing test:** extend `TestReleaseGoreleaserBuilds`, `TestReleaseGoreleaserStrips` and `TestReleaseGoreleaserAssets` for two builds; they fail on the one-build config.
-- [ ] **Change:** add the `acta-cli` build and archive, the CI steps, and one sentence in the wiki page.
-- [ ] **Commit:** `build: release an acta-cli asset with no TUI`
+- [x] **Failing test:** extend `TestReleaseGoreleaserBuilds`, `TestReleaseGoreleaserStrips` and `TestReleaseGoreleaserAssets` for two builds; they fail on the one-build config.
+- [x] **Change:** add the `acta-cli` build and archive, the CI steps, and one sentence in the wiki page.
+- [x] **Commit:** `build: release an acta-cli asset with no TUI`
 
 ### Task 03: install.sh picks the build
 
@@ -53,9 +54,9 @@ hash: hp5mv0h
 
 **verify:** The installer never fetches a build the user did not pick, and never fetches anything on a bad `ACTA_TUI`. List checked: `ACTA_TUI=1`, `ACTA_TUI=0`, `ACTA_TUI=2` (fails, no request made), unset with no tty (full), and through a pty: Enter (full), `n` (small), a bad answer then `n` (asks again, small). Each case names the asset fetched.
 
-- [ ] **Failing test:** the cases above in `install_test.go`; the script ignores `ACTA_TUI`, so they fail.
-- [ ] **Change:** read `ACTA_TUI` or ask on `/dev/tty` before the download, then set the asset prefix.
-- [ ] **Commit:** `feat(install): ACTA_TUI or a prompt picks the build`
+- [x] **Failing test:** the cases above in `install_test.go`; the script ignores `ACTA_TUI`, so they fail.
+- [x] **Change:** read `ACTA_TUI` or ask on `/dev/tty` before the download, then set the asset prefix.
+- [x] **Commit:** `feat(install): ACTA_TUI or a prompt picks the build`
 
 ### Task 04: acta update keeps the build
 
