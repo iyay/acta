@@ -2,6 +2,8 @@
 id: BUG-0046
 hash: bwkrdzr
 started: "2026-10-15 13:00:28"
+fixed_in: 5b96f6854415a67b89b0f6d794f8d261b23742b2
+finished: "2026-10-15 13:15:19"
 ---
 # Search in the Open box also filters the Done box
 
