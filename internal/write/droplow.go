@@ -63,7 +63,16 @@ func dropLowIn(path string) (bool, error) {
 	}
 	lines := strings.Split(string(src), "\n")
 	did := false
+	inFence := false
 	for i, ln := range lines {
+		// A box inside a code fence is an example, not an item; tick skips it too.
+		if strings.HasPrefix(strings.TrimSpace(ln), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		m := tickAnyBoxRe.FindStringSubmatch(ln)
 		if m == nil || m[2] != " " {
 			continue

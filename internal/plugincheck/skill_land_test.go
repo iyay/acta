@@ -12,6 +12,7 @@ func TestSkillLand(t *testing.T) {
 		Name:     "land",
 		MaxLines: 300,
 		Must: []string{
+			"each debt line starts with `(medium) ` or `(high) `",
 			"Iron Law", "--no-ff", "Do not show a menu", "git worktree remove", "git branch -d",
 			"Never `git push`", "120000", "fixed_in", "The Gate Function",
 			"`acta id --fix-duplicates`", "renumber",

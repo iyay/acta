@@ -43,3 +43,15 @@ started: "2026-10-15 10:27:58"
 **Files:** `internal/write` (new bulk wontfix over debt lines), `internal/cli` (`acta debt drop-low`), their tests, then the `.acta/debt/` files
 
 **verify:** After `acta debt drop-low` runs, no open debt line without a `(medium) ` or `(high) ` prefix is left, no medium or high line changes, and the whole change lands in one commit whose message carries `low, under new debt bar`. A second run changes nothing and makes no commit. List every path checked.
+
+## Fix round 1
+
+### Task 4: Round 1 findings
+
+**Files:** `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_land_test.go`, `internal/write/droplow.go`, `internal/write/droplow_test.go`
+
+**verify:** Land's state gate no longer sends untagged Findings to `acta debt new`; drop-low never changes a box inside a code fence.
+
+## Review notes
+
+- Deep, full tier. Round 1 CLEAN on both axes; land state-gate finding raised to a BLOCKER, fixed in round 1 with the fence [fix]. Round 2 CLEAN on both axes; 11 low notes dropped.

@@ -54,3 +54,19 @@ func TestDropLowDebtClosesOnlyLowAndUntagged(t *testing.T) {
 		t.Fatal("second run added a commit")
 	}
 }
+
+// A box inside a code fence is an example, not a debt item, so drop-low
+// must leave it alone, the same way tick does.
+func TestDropLowDebtSkipsFencedLines(t *testing.T) {
+	cfg := repoWith(t, map[string]string{
+		".acta/plans/2026-09-26-short-ids.md": debtPlan,
+		".acta/debt/2026-09-27-a.md":          "---\nid: DBT-0001\n---\n# A\n\n```\n- [ ] (low) example\n```\n- [ ] (low) real\n",
+	})
+	if _, err := DropLowDebt(cfg); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(cfg.Root, "debt", "2026-09-27-a.md"))
+	if !strings.Contains(got, "- [ ] (low) example\n") || !strings.Contains(got, "- [-] (low) real\n") {
+		t.Fatalf("got:\n%s", got)
+	}
+}
