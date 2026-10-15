@@ -6,6 +6,12 @@ eval-red-case-debug 2026-10-14T08:56:42Z
 eval-sandbox-greenfield 2026-10-14T08:56:42Z
 exec-process-drops-mouse 2026-10-15T02:42:21Z
 fix-duplicate-ids 2026-10-15T02:42:22Z
+dispatch-plan-path 2026-10-15T02:45:47Z
+erase-line-full-width 2026-10-14T08:56:42Z
+eval-red-case-debug 2026-10-14T08:56:42Z
+eval-sandbox-greenfield 2026-10-14T08:56:42Z
+exec-process-drops-mouse 2026-10-14T08:56:42Z
+fix-duplicate-ids 2026-10-15T02:45:47Z
 ghostty-minimum-contrast 2026-10-14T08:56:42Z
 glamour-chroma-traps 2026-10-15T02:42:22Z
 glossary 2026-10-14T08:56:42Z
@@ -18,7 +24,7 @@ omp-message-session 2026-10-14T08:56:42Z
 omp-report-file 2026-10-14T08:56:42Z
 omp-skill-names 2026-10-14T08:56:42Z
 omp-steer-and-fix-rounds 2026-10-14T08:56:42Z
-orphan-test-binaries 2026-10-14T08:56:42Z
+orphan-test-binaries 2026-10-15T02:45:47Z
 parallel-implementers-one-worktree 2026-10-14T08:56:42Z
 plan-spec-line 2026-10-14T08:56:42Z
 plugin-loads-from-repo 2026-10-14T08:56:42Z
@@ -27,6 +33,10 @@ plugincheck-caps-per-folder 2026-10-15T02:22:15Z
 rebuild-binary-after-merge 2026-10-15T02:42:23Z
 release 2026-10-15T02:42:23Z
 review-mutants-pin-home 2026-10-15T02:22:15Z
+plugincheck-caps-per-folder 2026-10-15T02:45:47Z
+rebuild-binary-after-merge 2026-10-14T08:56:42Z
+release 2026-10-15T02:45:47Z
+review-mutants-pin-home 2026-10-15T02:45:47Z
 reviewer-temp-clone 2026-10-14T08:56:42Z
 scratch-dropped-vs-specced 2026-10-14T08:56:42Z
 skill-text-fits-everyone 2026-10-14T08:56:42Z
@@ -37,3 +47,9 @@ tui-first-frame 2026-10-15T02:42:24Z
 tui-pty-probe 2026-10-15T02:42:24Z
 wiki-freshness-from-git 2026-10-14T09:22:35Z
 xansi-wrap-overflows 2026-10-15T02:42:25Z
+test-locked-runs 2026-10-15T02:45:47Z
+tick-stamps-spec 2026-10-15T02:45:47Z
+tui-first-frame 2026-10-15T02:45:47Z
+tui-pty-probe 2026-10-14T08:56:42Z
+wiki-freshness-from-git 2026-10-15T02:45:47Z
+xansi-wrap-overflows 2026-10-14T08:56:42Z

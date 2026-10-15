@@ -5,6 +5,7 @@ id: PLN-0143
 created: "2026-10-15 09:35:38"
 hash: hp5mv0h
 started: "2026-10-15 09:37:25"
+finished: "2026-10-15 09:45:27"
 ---
 # Optional TUI at install time Implementation Plan
 
@@ -64,9 +65,9 @@ started: "2026-10-15 09:37:25"
 
 **verify:** `update` never swaps one build for the other and never installs bytes that failed a check. List checked at the `Fetch` layer: prefix `acta-cli` fetches and checks `acta-cli_*`; a release with no `acta-cli_*` checksum line fails with a clear error and no bytes. `update_cmd.go` is wiring only: it passes the prefix for `cli.Variant`, one success path.
 
-- [ ] **Failing test:** `Fetch` cases above; `Fetch` has no prefix argument yet, so the test does not build.
-- [ ] **Change:** add the prefix argument and pass it from `update_cmd.go`.
-- [ ] **Commit:** `feat(update): fetch the asset that matches the build`
+- [x] **Failing test:** `Fetch` cases above; `Fetch` has no prefix argument yet, so the test does not build.
+- [x] **Change:** add the prefix argument and pass it from `update_cmd.go`.
+- [x] **Commit:** `feat(update): fetch the asset that matches the build`
 
 ### Task 05: doctor and --version name the build
 
@@ -74,6 +75,6 @@ started: "2026-10-15 09:37:25"
 
 **verify:** The build is named the same way everywhere a user can see it. List checked: `acta doctor` prints `build: full` or `build: cli (no TUI)` as info, in both builds, and its exit code does not change; `acta --version` names the build in both.
 
-- [ ] **Failing test:** doctor and version tests look for the build line and fail.
-- [ ] **Change:** add the doctor info line and the build word in the version output.
-- [ ] **Commit:** `feat(doctor): show which build is installed`
+- [x] **Failing test:** doctor and version tests look for the build line and fail.
+- [x] **Change:** add the doctor info line and the build word in the version output.
+- [x] **Commit:** `feat(doctor): show which build is installed`

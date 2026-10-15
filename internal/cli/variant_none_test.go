@@ -29,3 +29,9 @@ func TestNotuiBareActaPrintsHelp(t *testing.T) {
 		t.Errorf("bare acta did not say how to get the TUI: %q", out.String())
 	}
 }
+
+// What this build must call itself in acta --version and acta doctor.
+const (
+	wantVersionWord = "cli, no TUI"
+	wantDoctorBuild = "cli (no TUI)"
+)
