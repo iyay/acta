@@ -891,3 +891,24 @@ func TestDoctorCLIFixDoesNotCommitADirtyCheckedFile(t *testing.T) {
 		t.Fatalf("commits %d, want %d: the dirty checked file was committed", got, before)
 	}
 }
+
+// Doctor looks for Codex only when codex is on PATH, and then in CODEX_HOME,
+// or in ~/.codex when that is not set.
+func TestCodexDir(t *testing.T) {
+	bin := t.TempDir()
+	t.Setenv("PATH", bin)
+	t.Setenv("CODEX_HOME", "")
+	if got := codexDir("/home/u"); got != "" {
+		t.Fatalf("codexDir without codex on PATH = %q, want empty", got)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := codexDir("/home/u"); got != filepath.Join("/home/u", ".codex") {
+		t.Fatalf("codexDir = %q, want /home/u/.codex", got)
+	}
+	t.Setenv("CODEX_HOME", "/elsewhere")
+	if got := codexDir("/home/u"); got != "/elsewhere" {
+		t.Fatalf("codexDir with CODEX_HOME = %q, want /elsewhere", got)
+	}
+}

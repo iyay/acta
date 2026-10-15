@@ -53,9 +53,9 @@ The spike showed Codex reads `.claude-plugin/marketplace.json` and runs the plug
 
 **verify:** Every file an apply_patch touches (Update, Add, Delete, Move to) gets its wiki hint, and no other text in the patch is ever read as a path. Adversarial inputs: a content line that quotes a header, CRLF line ends, paths with spaces, `..` paths outside the repo. `IsCodex` is true only when `PLUGIN_ROOT` is set. The PreToolUse matcher in hooks.json includes `apply_patch`.
 
-- [ ] Failing test: `hintFiles` on an apply_patch event returns no paths today.
-- [ ] Change: parse patch headers in `hintFiles`, add `IsCodex`, add `apply_patch` to the matcher.
-- [ ] Commit: `feat(hook): wiki hints for Codex apply_patch edits`.
+- [x] Failing test: `hintFiles` on an apply_patch event returns no paths today.
+- [x] Change: parse patch headers in `hintFiles`, add `IsCodex`, add `apply_patch` to the matcher.
+- [x] Commit: `feat(hook): wiki hints for Codex apply_patch edits`.
 
 ### Task 3: Session note carries style and subagent rules; skills go neutral
 
@@ -77,9 +77,9 @@ The spike showed Codex reads `.claude-plugin/marketplace.json` and runs the plug
 
 **verify:** With `codex` not on PATH doctor says nothing about Codex. With `codex` on PATH, doctor reports whether the acta plugin is installed and tells the user to trust its hooks in `/hooks`; it never fails the run or changes files outside the repo. List each state checked.
 
-- [ ] Failing test: doctor with a fake `codex` on PATH reports nothing about Codex today.
-- [ ] Change: add a Codex check that reads `codex plugin list`.
-- [ ] Commit: `feat(doctor): check the acta plugin in Codex`.
+- [x] Failing test: doctor with a fake `codex` on PATH reports nothing about Codex today.
+- [x] Change: add a Codex check that reads `codex plugin list`.
+- [x] Commit: `feat(doctor): check the acta plugin in Codex`.
 
 ### Task 5: Docs and wiki
 

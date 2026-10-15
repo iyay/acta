@@ -49,15 +49,22 @@ type Env struct {
 	Voice          config.User
 	ThemeErr       error    // the theme.Load error for Voice.Theme
 	SchemaProblems []string // board files with schema: 1 that lost a section
+	CodexDir       string   // Codex's home folder; "" when codex is not on PATH
 }
 
 // Run does every check in a fixed order, so two runs print the same lines in
 // the same order and a user can diff them.
 func Run(e Env) []Result {
-	return []Result{
+	rs := []Result{
 		checkBinary(e),
 		checkBuild(e),
 		checkHarness(e),
+	}
+	// A user without Codex gets no line about it.
+	if e.CodexDir != "" {
+		rs = append(rs, checkCodex(e))
+	}
+	return append(rs,
 		checkStaleLinks(e),
 		checkConflicts(e),
 		checkRepo(e),
@@ -67,7 +74,7 @@ func Run(e Env) []Result {
 		checkAgentsView(e),
 		checkSetup(e),
 		checkTheme(e),
-	}
+	)
 }
 
 // checkSchema reports files that opted in to the body schema but lost a
@@ -341,6 +348,8 @@ func PluginInstalled(e Env, tool string) bool {
 	case "omp":
 		_, err := os.Stat(filepath.Join(e.Home, ".omp", "plugins", "node_modules", "acta"))
 		return err == nil
+	case "codex":
+		return codexHasPlugin(e)
 	}
 	return false
 }
@@ -353,10 +362,14 @@ func checkHarness(e Env) Result {
 		r.Level, r.Msg = OK, "acta plugin enabled in Claude Code"
 		return r
 	}
+	if codexHasPlugin(e) {
+		r.Level, r.Msg = OK, "acta plugin enabled in Codex"
+		return r
+	}
 	link := filepath.Join(e.Home, ".omp", "plugins", "node_modules", "acta")
 	fi, err := os.Lstat(link)
 	if err != nil {
-		r.Level, r.Msg = Fail, "acta plugin is not installed in Claude Code or omp"
+		r.Level, r.Msg = Fail, "acta plugin is not installed in Claude Code, omp or Codex"
 		r.Fix = `install it: see the acta plugin README "## Install"`
 		return r
 	}

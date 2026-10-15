@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
@@ -81,6 +82,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 // can report it instead of hiding it behind a skip.
 func doctorEnv(known string) doctor.Env {
 	e := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), KnownFile: known, AutoCommit: true}
+	e.CodexDir = codexDir(e.Home)
 	if e.KnownFile == "" {
 		e.KnownFile = linkedKnownFile(e.Home)
 	}
@@ -178,6 +180,18 @@ func linkedKnownFile(home string) string {
 
 // homeDir is the user home, or "" when the system cannot say. Every path
 // under it is then simply missing, which the checks already handle.
+// codexDir is the folder Codex keeps its config in, or "" when codex is not on
+// PATH, so a user without Codex gets no check for it.
+func codexDir(home string) string {
+	if _, err := exec.LookPath("codex"); err != nil {
+		return ""
+	}
+	if d := os.Getenv("CODEX_HOME"); d != "" {
+		return d
+	}
+	return filepath.Join(home, ".codex")
+}
+
 func homeDir() string {
 	home, _ := os.UserHomeDir()
 	return home
