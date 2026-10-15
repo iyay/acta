@@ -18,6 +18,11 @@ func TestSkillTDD(t *testing.T) {
 			"the plan names which adversarial inputs to try, and you write the ones it names",
 			// CheckSkill reads every markdown file in the folder, so this one is in writing-good-tests.md.
 			"Missing validation the plan names",
+			// Tests go through the seam the plan names, and same-path inputs share one table test.
+			"through the seam the plan names", "one table-driven test, one row each",
+			"Never write all the tests before any code", "with none named the public interface callers use",
+			// writing-good-tests.md: names follow the project's own words.
+			"`.acta/wiki/glossary.md`",
 		},
 		MustNot: []string{
 			"superpowers:", "- [ ] All tests pass", "- Configuration files", "## Final Rule", "Add tests for existing code",
