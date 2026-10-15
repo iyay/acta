@@ -56,15 +56,12 @@ func TestTreeRowsSelectTheirOwnDetail(t *testing.T) {
 		t.Fatalf("a task row selects %v, want the task", it)
 	}
 	before := rowIDs(m)
-	// space leaves a task row alone, and enter opens its own detail, because
-	// only a head folds.
+	// space and enter leave a task row alone, because only a head folds.
 	if got := rowIDs(press(m, " ")); !slices.Equal(got, before) {
 		t.Errorf("space on a task row changed the list to %q", got)
 	}
-	if after := press(m, "enter"); after.focus != paneDetail {
-		t.Error("enter on a task row did not move the focus to the detail")
-	} else if got := after.Selected(); got == nil || got.ID != "plans/2026-09-21-alpha#task-1" {
-		t.Errorf("the detail shows %v, want the task the cursor was on", got)
+	if after := press(m, "enter"); after.focus == paneDetail || !slices.Equal(rowIDs(after), before) {
+		t.Error("enter on a task row moved the focus or changed the list")
 	}
 }
 
@@ -228,10 +225,8 @@ func TestHAndLDoNothingWhileTheDetailHasTheFocus(t *testing.T) {
 	t.Parallel()
 
 	open := []string{"plans/2026-09-21-alpha", "plans/2026-09-21-alpha#task-1", "plans/2026-09-21-alpha#task-2", "plans/2026-09-23-lonely"}
-	m := press(toPlans(planModel(t)), " ", "j", "enter")
-	if m.focus != paneDetail {
-		t.Fatalf("enter on a task row left the focus on pane %d, want the detail", m.focus)
-	}
+	m := press(toPlans(planModel(t)), " ", "j")
+	m.focusPane(paneDetail)
 	// Each key is tried on its own, so one cannot undo what the other did.
 	for _, k := range []string{"h", "l"} {
 		after := press(m, k)

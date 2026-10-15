@@ -5,6 +5,8 @@ depth: minimal
 id: PLN-0152
 created: "2026-10-15 16:52:43"
 hash: xp3dtwo
+started: "2026-10-15 16:53:23"
+finished: "2026-10-15 16:55:28"
 ---
 
 # TUI enter no longer opens the detail Implementation Plan
@@ -34,4 +36,21 @@ hash: xp3dtwo
 
 **verify:** No list row reaches the detail through enter: list every row kind (plan head, plan task, group row, plain item, item not on disk) and what enter does on it; no hint, help line or comment still says enter opens the detail.
 
-- [ ] Red test, enter keeps list focus on non-tree rows; rename `enter()` to `toggleGroup`, drop the focus move; update hints, help and comments; `go test ./internal/tui/`; commit.
+- [x] Red test, enter keeps list focus on non-tree rows; rename `enter()` to `toggleGroup`, drop the focus move; update hints, help and comments; `go test ./internal/tui/`; commit.
+
+## Polish
+
+### Task 02: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] hints_test failure message names shift+tab, not enter
+- [x] A test checks the list hints no longer show `Detail: enter`
+- [x] TestEnterNeverFocusesTheDetail checks the rows stay the same
+- [x] The group row hides `Fold: enter` during a search, where enter does nothing
+- [x] Commit: `polish: review notes PLN-0152`
+
+## Review notes
+
+- Round 1 (deep, two reviewers): CLEAN. Notes kept as notes: enter still folds the group from the detail pane (as before); the branch-item warning now shows only on e.
+- Polish review (two reviewers): CLEAN. Note: the search guard on the Fold: enter hint has no test of its own.

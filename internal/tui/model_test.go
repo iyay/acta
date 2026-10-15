@@ -1625,42 +1625,35 @@ func TestClickOnTheSpaceBelowTheRowsKeepsTheSelection(t *testing.T) {
 	}
 }
 
-// TestEnterFocusesDetailFromBothListPanes walks every tab of the bar and both
-// of its list panes, so enter reaches the detail from anywhere a reader can
-// put the focus.
-func TestEnterFocusesDetailFromBothListPanes(t *testing.T) {
+// TestEnterNeverFocusesTheDetail walks every tab of the bar and both of its
+// list panes. Tab reaches the detail, so enter on a plain row must leave the
+// focus and the cursor where they were.
+func TestEnterNeverFocusesTheDetail(t *testing.T) {
 	t.Parallel()
 
 	for i := range topTabs {
 		for _, p := range press(newModel(t), tabKey(i)).panes() {
-			// Enter on a plan row opens the plan instead, and a task row is
-			// read from the tree, so both are covered by the tree tests in
-			// plantree_test.go. A box that lists nothing has no row to move
-			// from either.
 			m := press(newModel(t), tabKey(i))
 			m.focusPane(p)
 			if rows, _, _ := m.slotOf(p); len(rows) == 0 {
 				continue
 			}
-			if it := m.Selected(); it != nil && it.Kind == board.KindPlan {
-				continue
-			}
-			if it := m.Selected(); it != nil && it.Kind == board.KindTask {
-				// A task row has no detail of its own to open into either,
-				// so it is read from the Activity tab below.
+			// A plan row folds on enter; plantree_test.go covers it.
+			if it := m.Selected(); it != nil && (it.Kind == board.KindPlan || it.Kind == board.KindTask) {
 				continue
 			}
 			id := m.Selected().ID
+			before := rowIDs(m)
 			next, cmd := m.Update(key("enter"))
 			m = next.(Model)
+			if after := rowIDs(m); !slices.Equal(after, before) {
+				t.Errorf("tab %s pane %d: enter changed the list to %v", topTabs[i].name, p, after)
+			}
 			if cmd != nil {
-				t.Errorf("tab %s pane %d: enter opened the editor", topTabs[i].name, p)
+				t.Errorf("tab %s pane %d: enter sent a command", topTabs[i].name, p)
 			}
-			if m.focus != paneDetail {
-				t.Errorf("tab %s pane %d: enter left the focus on pane %d", topTabs[i].name, p, m.focus)
-			}
-			if m.last != p {
-				t.Errorf("tab %s pane %d: enter left the detail showing pane %d", topTabs[i].name, p, m.last)
+			if m.focus != p {
+				t.Errorf("tab %s pane %d: enter moved the focus to pane %d", topTabs[i].name, p, m.focus)
 			}
 			if m.Selected() == nil || m.Selected().ID != id {
 				t.Errorf("tab %s pane %d: enter moved from %s to %v", topTabs[i].name, p, id, m.Selected())
@@ -1685,7 +1678,7 @@ func TestEnterOnTheGroupRowStillToggles(t *testing.T) {
 	}
 }
 
-func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
+func TestEnterOnABranchItemDoesNothing(t *testing.T) {
 	t.Parallel()
 
 	main := treeCfg(t, map[string]string{".acta/bugs/2026-09-20-main.md": "# Main bug\n\n## Symptom\nx\n"})
@@ -1701,14 +1694,11 @@ func TestEnterOnABranchItemWarnsAndFocuses(t *testing.T) {
 	m = press(sized(m, 120, 40), tabKey(tabBugs), "j") // oldest first: the branch bug of 09-25 is the second row
 	next, cmd := m.Update(key("enter"))
 	m = next.(Model)
-	if extra := notToast(cmd); len(extra) > 0 {
-		t.Fatalf("enter on a branch item opened something: %T", extra[0])
+	if cmd != nil {
+		t.Fatalf("enter on a branch item sent a command")
 	}
-	if !strings.Contains(m.status, "git worktree add") {
-		t.Fatalf("enter on a branch item should warn: %q", m.status)
-	}
-	if m.focus != paneDetail {
-		t.Fatalf("enter on a branch item should focus the detail, got pane %d", m.focus)
+	if m.focus == paneDetail {
+		t.Fatal("enter on a branch item should not focus the detail")
 	}
 }
 
@@ -1770,9 +1760,9 @@ func TestEscInDetailReturnsToTheListPane(t *testing.T) {
 	for _, p := range []pane{paneList, paneDone} {
 		m := press(newModel(t), tabKey(tabSpecs))
 		m.focusPane(p)
-		m = press(m, "enter")
-		if m.focus != paneDetail || m.last != p {
-			t.Fatalf("enter from pane %d: focus %d last %d", p, m.focus, m.last)
+		m.focusPane(paneDetail)
+		if m.last != p {
+			t.Fatalf("focus from pane %d: last %d", p, m.last)
 		}
 		m = press(m, "esc")
 		if m.focus != p {
@@ -1784,7 +1774,8 @@ func TestEscInDetailReturnsToTheListPane(t *testing.T) {
 func TestEscInDetailKeepsTheSelection(t *testing.T) {
 	t.Parallel()
 
-	m := press(newModel(t), "j", "enter")
+	m := press(newModel(t), "j")
+	m.focusPane(paneDetail)
 	id := m.Selected().ID
 	m = press(m, "esc")
 	if m.Selected() == nil || m.Selected().ID != id {
@@ -1832,40 +1823,6 @@ func TestTabRingStillReachesTheDetailFromEveryListBox(t *testing.T) {
 			}
 			if !reached {
 				t.Errorf("tab %s box %d: neither tab nor shift+tab reaches the detail", topTabs[i].name, p)
-			}
-		}
-	}
-}
-
-// TestEnterOpensTheDetailOnAPlainRow checks the second way into the detail
-// still works: on a row that is not a tree row, enter leaves the list alone
-// and moves the focus to the detail.
-func TestEnterOpensTheDetailOnAPlainRow(t *testing.T) {
-	t.Parallel()
-
-	for i := range topTabs {
-		for _, p := range press(newModel(t), tabKey(i)).panes() {
-			m := press(newModel(t), tabKey(i))
-			m.focusPane(p)
-			rows := m.rowsOf(p)
-			row := -1
-			for k, r := range rows {
-				if !r.tree && !r.group && m.board.Get(r.id) != nil {
-					row = k
-					break
-				}
-			}
-			if row < 0 {
-				continue
-			}
-			m.moveTo(row)
-			before := rowIDs(m)
-			m = press(m, "enter")
-			if m.focus != paneDetail || m.last != p {
-				t.Errorf("tab %s box %d: enter on a plain row gave focus %d last %d", topTabs[i].name, p, m.focus, m.last)
-			}
-			if after := rowIDs(m); !slices.Equal(after, before) {
-				t.Errorf("tab %s box %d: enter on a plain row changed the list to %v", topTabs[i].name, p, after)
 			}
 		}
 	}
@@ -1974,10 +1931,10 @@ func TestEnterShutsOneActivityGroup(t *testing.T) {
 	if got := len(press(m, "enter").rowsOf(paneList)); got != 5 {
 		t.Errorf("a second enter left %d rows, want 5", got)
 	}
-	// A task row is not a head: enter opens it in the detail. The last row of
-	// the board is a task, not a head.
-	if got := press(actModel(t), "G", "enter"); got.focus != paneDetail {
-		t.Error("enter on a task row did not open the detail")
+	// A task row is not a head: enter leaves it alone. The last row of the
+	// board is a task, not a head.
+	if got := press(actModel(t), "G", "enter"); got.focus == paneDetail {
+		t.Error("enter on a task row moved the focus to the detail")
 	}
 	// A group the reader shut on Activity leaves the Plans tab alone: no
 	// plan opens there on its own.

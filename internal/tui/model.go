@@ -707,7 +707,7 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.toggleRow() {
 			return m, nil
 		}
-		return m.enter()
+		m.toggleGroup()
 	}
 	return m, nil
 }
@@ -1041,7 +1041,7 @@ func (m Model) searchKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // toggleRow opens or shuts the head under the cursor of a tree list. It says
-// false on a task row, so enter goes on to open the detail of the task.
+// false on a task row, where enter does nothing.
 func (m *Model) toggleRow() bool {
 	if m.focus == paneDetail {
 		return false
@@ -1085,38 +1085,21 @@ func (m *Model) foldRow(open bool) {
 	m.moveTo(i)
 }
 
-// enter moves the focus to the detail pane with the row's item, so it can
-// be read and scrolled there. The legacy group row still folds open and shut,
-// and an item missing from disk still warns how to check its branch out.
-func (m Model) enter() (tea.Model, tea.Cmd) {
+// toggleGroup folds the legacy group row open and shut. Enter does nothing
+// on any other row; tab reaches the detail.
+func (m *Model) toggleGroup() {
 	rows := m.listOf()
 	i := m.cursor()
-	if i < 0 {
-		return m, nil
+	// A search shows the group open, so a fold changed then would only show
+	// up after the search ends.
+	if i < 0 || !rows[i].group || m.filtering() {
+		return
 	}
-	if rows[i].group {
-		// A search shows the group open, so a fold changed then would only
-		// show up after the search ends.
-		if !m.filtering() {
-			m.groupOpen = !m.groupOpen
-		}
-		return m, nil
-	}
-	it := m.board.Get(rows[i].id)
-	if it == nil {
-		return m, nil
-	}
-	if !it.OnDisk {
-		m.status = "branch " + it.Worktree + " is not checked out; open it with: git worktree add ../<repo>-" + it.Worktree + " " + it.Worktree
-		m.focusPane(paneDetail)
-		return m, nil
-	}
-	m.focusPane(paneDetail)
-	return m, nil
+	m.groupOpen = !m.groupOpen
 }
 
-// edit opens the selected item in the editor from any pane, the way enter did
-// before. Items missing from disk still warn how to check their branch out.
+// edit opens the selected item in the editor from any pane. Items missing
+// from disk still warn how to check their branch out.
 func (m Model) edit() (tea.Model, tea.Cmd) {
 	it := m.Selected()
 	if it == nil {

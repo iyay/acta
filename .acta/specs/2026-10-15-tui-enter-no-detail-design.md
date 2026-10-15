@@ -4,6 +4,8 @@ status: draft
 id: SPC-0140
 created: "2026-10-15 16:51:40"
 hash: afwu9x7
+started: "2026-10-15 16:53:23"
+finished: "2026-10-15 16:55:28"
 ---
 
 # TUI enter no longer opens the detail

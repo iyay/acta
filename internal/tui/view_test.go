@@ -1618,7 +1618,7 @@ func TestViewHelpListsTheNewKeys(t *testing.T) {
 
 	m := sized(press(newModel(t), "?"), 120, 40)
 	v := plain(m.View())
-	for _, want := range []string{"enter", "focus the detail", "e", "open the row", "esc", "back to the list"} {
+	for _, want := range []string{"enter", "open or shut a plan row or group", "e", "open the row", "esc", "back to the list"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("the help shows no %q:\n%s", want, v)
 		}
