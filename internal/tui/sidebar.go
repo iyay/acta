@@ -196,6 +196,10 @@ func (m Model) viewOf(p pane) Model {
 	if p != m.listPane() {
 		m.query = ""
 	}
+	// The filters belong to the Open list, so no other box sees them.
+	if p != paneList {
+		m.filters[m.top] = listFilter{}
+	}
 	return m
 }
 
@@ -324,7 +328,8 @@ func (m Model) isOpen(id string) bool {
 // A search shows every head open, so a fold changed then would only show up
 // after the search ends. It is left alone instead.
 func (m *Model) setOpen(id string, open bool) {
-	if m.filtering() {
+	// A filter on the Open list shows every head open in the same way.
+	if v := m.viewOf(m.listPane()); v.filtering() || v.filterOn() {
 		return
 	}
 	acts := topTabs[m.top].kind == ""
@@ -368,7 +373,7 @@ func (m Model) openRows() []row {
 		return rows
 	}
 	rows = append(rows, row{id: groupRowID, group: true})
-	if m.groupOpen || m.filtering() {
+	if m.groupOpen || m.filtering() || m.filterOn() {
 		rows = append(rows, toRows(legacy, 1)...)
 	}
 	return rows

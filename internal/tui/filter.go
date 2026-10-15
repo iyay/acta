@@ -55,6 +55,10 @@ func (m *Model) cycleFilter(priority bool) {
 		m.status = "Activity has no filter"
 		return
 	}
+	if m.focus != paneList {
+		m.status = "f and F filter the Open list"
+		return
+	}
 	f := m.filters[m.top]
 	if priority && hasPriority(kind) {
 		f.priority = next(priorityChoices, f.priority)
@@ -125,8 +129,12 @@ func (m Model) filterHints() []string {
 	if hasPriority(kind) {
 		out = append(out, "Priority filter: f")
 	}
-	if kind != "" && len(statusChoices(kind)) > 2 {
-		out = append(out, "Status filter: F")
+	if kind == "" || len(statusChoices(kind)) < 3 {
+		return out
 	}
-	return out
+	// With no priority on the tab, f does the same as F.
+	if hasPriority(kind) {
+		return append(out, "Status filter: F")
+	}
+	return append(out, "Status filter: f F")
 }

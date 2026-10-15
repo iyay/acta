@@ -52,3 +52,24 @@ finished: "2026-10-15 17:28:07"
 **verify:** The List box title shows every active filter and only those (`Bugs [H · fixing]`, `Bugs [H]`, plain `Bugs` at All) on every tab; an empty filtered list draws "no items match"; `f` and `F` show in the hints of tabs where they do something and in the `?` help.
 
 - [x] Red tests on title, empty text, hints and help; draw them; `go test ./internal/tui/`; commit.
+
+## Fix round 1
+
+### Task 03: Keep the filter inside the Open list
+
+**Files:**
+- Modify: `internal/tui/sidebar.go`, `internal/tui/model.go`, `internal/tui/filter.go`, `internal/tui/hints.go`
+- Test: `internal/tui/filter_test.go`
+
+**Seam:** `Model.Update` with key messages, then `rowIDs`, `doneRowIDs`, `hints()`.
+
+**verify:** A filter changes only the Open list of its tab: list every reader of the fold state (List rows, Done rows, space, h, l) and show the Done box and the saved folds are the same with the filter on as off; a legacy spec that passes the filter shows under its group row; `f` and `F` do nothing outside the Open list; the hints name `f` wherever it works.
+
+- [x] Red tests: Done rows unchanged under F; space under F leaves openPlans as it was; legacy approved spec shows under F=approved; F=in-progress keeps alpha and drops lonely; F on the Done box leaves its cursor; Specs hints name f. Fix in `viewOf`, `setOpen`, `toggleRow`, `openRows`, `cycleFilter`, `filterHints`; `scripts/test ./internal/tui`; commit.
+
+## State
+
+### Next
+
+User asked: do not land; user reviews the worktree first.
+Round 2 spec review BLOCKED: toggleGroup (model.go:1098), rowText group arrow (scroll.go:248), onGroupRow hint (hints.go:103) check only filtering(), not filterOn(). Fix round 2 waits for the user.

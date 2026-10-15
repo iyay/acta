@@ -121,7 +121,7 @@ func TestFilterKeysInHintsAndHelp(t *testing.T) {
 		t.Fatalf("Bugs hints %q lack the filter keys", bugs)
 	}
 	specs := strings.Join(press(newModel(t), tabKey(tabSpecs)).hints(), " ")
-	if strings.Contains(specs, "Priority filter") || !strings.Contains(specs, "Status filter: F") {
+	if strings.Contains(specs, "Priority filter") || !strings.Contains(specs, "Status filter: f F") {
 		t.Fatalf("Specs hints %q", specs)
 	}
 	debt := strings.Join(press(prioModel(t), tabKey(tabDebt)).hints(), " ")
@@ -130,5 +130,72 @@ func TestFilterKeysInHintsAndHelp(t *testing.T) {
 	}
 	if !strings.Contains(helpLines, "\nf F ") || !strings.Contains(helpLines, "by priority / by status") {
 		t.Fatal("the ? help names neither f nor F")
+	}
+}
+
+func TestFilterLeavesTheDoneBoxAlone(t *testing.T) {
+	t.Parallel()
+
+	m := toPlans(planModel(t))
+	done := func(m Model) []string { return ids(m.rowsOf(paneDone)) }
+	before := done(m)
+	m = press(m, "F")
+	if got := done(m); !slices.Equal(got, before) {
+		t.Fatalf("Done rows under a filter %v, want %v", got, before)
+	}
+	// The Done box keeps its own fold keys while the Open list is filtered.
+	m = press(m, "tab", " ")
+	if got := done(m); slices.Equal(got, before) {
+		t.Fatal("space on the Done box did nothing while a filter was on")
+	}
+}
+
+func TestFoldUnderAFilterKeepsTheSavedFolds(t *testing.T) {
+	t.Parallel()
+
+	// Open alpha, filter, then press space on it: the filter shows every
+	// plan open, so the fold must stay as the reader left it.
+	m := press(toPlans(planModel(t)), " ", "F", "F", " ")
+	if !m.openPlans["plans/2026-09-21-alpha"] {
+		t.Fatal("space under a filter shut alpha behind the reader's back")
+	}
+}
+
+func TestFilterShowsAMatchingLegacySpec(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabSpecs), "F", "F")
+	if got := rowIDs(m); !slices.Contains(got, "docs/superpowers/specs/2026-01-01-old") {
+		t.Fatalf("approved filter rows %v lack the legacy approved spec", got)
+	}
+}
+
+func TestInProgressFilterKeepsOnlyPlansWithSuchTasks(t *testing.T) {
+	t.Parallel()
+
+	m := press(toPlans(planModel(t)), "F", "F")
+	got := rowIDs(m)
+	if !slices.Contains(got, "plans/2026-09-21-alpha#task-2") || slices.Contains(got, "plans/2026-09-23-lonely") {
+		t.Fatalf("in-progress filter rows %v", got)
+	}
+}
+
+func TestFilterKeysDoNothingOnTheDoneBox(t *testing.T) {
+	t.Parallel()
+
+	m := press(prioModel(t), tabKey(tabBugs), "tab", "j")
+	cur := m.cursor()
+	m = press(m, "F", "f")
+	if m.cursor() != cur || m.filterOn() {
+		t.Fatalf("f F on the Done box moved the cursor to %d or set a filter %+v", m.cursor(), m.filters[m.top])
+	}
+}
+
+func TestStatusOnlyTabsHintBothFilterKeys(t *testing.T) {
+	t.Parallel()
+
+	specs := strings.Join(press(newModel(t), tabKey(tabSpecs)).hints(), " ")
+	if !strings.Contains(specs, "Status filter: f F") {
+		t.Fatalf("Specs hints %q do not name f", specs)
 	}
 }

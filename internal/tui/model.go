@@ -1057,7 +1057,7 @@ func (m *Model) toggleRow() bool {
 	if rows[i].depth > 0 {
 		return false
 	}
-	m.setOpen(rows[i].id, !m.isOpen(rows[i].id))
+	m.setOpen(rows[i].id, !m.viewOf(m.listPane()).isOpen(rows[i].id))
 	return true
 }
 
