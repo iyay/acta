@@ -176,9 +176,26 @@ func TestFetch(t *testing.T) {
 		checksums string
 		status    map[string]int // path suffix -> status override
 		redirect  bool           // archive redirects to http://
+		prefix    string         // asset prefix; empty means acta
 		want      []byte
 		wantErr   string
 	}{
+		{
+			name:      "cli build fetches its own archive",
+			prefix:    "acta-cli",
+			archive:   good,
+			checksums: sum(good) + "  " + testArchive + "\n" + sum(good) + "  acta-cli_darwin_arm64.tar.gz\n",
+			want:      testBinary,
+		},
+		{
+			// A release cut before the acta-cli build has only the full
+			// archive. The small build must stop, not swap itself for it.
+			name:      "cli build on a release with no cli archive",
+			prefix:    "acta-cli",
+			archive:   good,
+			checksums: sum(good) + "  " + testArchive + "\n",
+			wantErr:   "no checksum line for acta-cli_darwin_arm64.tar.gz",
+		},
 		{
 			name:      "good fetch",
 			archive:   good,
@@ -261,12 +278,19 @@ func TestFetch(t *testing.T) {
 					w.Write(body)
 				})
 			}
-			serve(testArchive, tc.archive)
+			prefix := tc.prefix
+			if prefix == "" {
+				prefix = "acta"
+			}
+			serve(prefix+"_"+testOS+"_"+testArch+".tar.gz", tc.archive)
+			if prefix != "acta" {
+				serve(testArchive, tc.archive)
+			}
 			serve("checksums.txt", []byte(tc.checksums))
 			srv := httptest.NewTLSServer(mux)
 			defer srv.Close()
 
-			got, err := Fetch(testClient(srv), srv.URL+"/rel", testTag, testOS, testArch)
+			got, err := Fetch(testClient(srv), srv.URL+"/rel", testTag, prefix, testOS, testArch)
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("err = %v, want containing %q", err, tc.wantErr)
@@ -296,7 +320,7 @@ func TestFetchTimeout(t *testing.T) {
 	defer srv.Close()
 	c := testClient(srv)
 	c.Timeout = 50 * time.Millisecond
-	got, err := Fetch(c, srv.URL, testTag, testOS, testArch)
+	got, err := Fetch(c, srv.URL, testTag, "acta", testOS, testArch)
 	if err == nil {
 		t.Fatal("want a timeout error")
 	}

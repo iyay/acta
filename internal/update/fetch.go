@@ -78,9 +78,11 @@ func Latest(c *http.Client, base string) (string, error) {
 // Fetch downloads the release archive for this system and its checksums.txt,
 // checks the archive against the checksum, and only then opens it. It returns
 // the bytes of the acta file inside. On any failure it returns no bytes, so
-// nothing that failed the check can ever be installed.
-func Fetch(c *http.Client, base, tag, goos, goarch string) ([]byte, error) {
-	name := fmt.Sprintf("acta_%s_%s.tar.gz", goos, goarch)
+// nothing that failed the check can ever be installed. prefix is acta for the
+// full build and acta-cli for the build with no TUI, so each build only ever
+// replaces itself with the same kind.
+func Fetch(c *http.Client, base, tag, prefix, goos, goarch string) ([]byte, error) {
+	name := fmt.Sprintf("%s_%s_%s.tar.gz", prefix, goos, goarch)
 	dir := strings.TrimRight(base, "/") + "/download/" + tag + "/"
 
 	sums, err := get(c, dir+"checksums.txt", maxChecksumsBytes)

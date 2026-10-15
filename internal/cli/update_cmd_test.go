@@ -57,7 +57,13 @@ func releaseServer(t *testing.T, tag string, badSum bool) string {
 	if badSum {
 		hexSum = strings.Repeat("0", 64)
 	}
-	name := "acta_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
+	// Each build must ask for its own archive. The names are spelled out, so a
+	// build that asks for the other one finds nothing and the test fails.
+	prefix := "acta_"
+	if Variant == "cli" {
+		prefix = "acta-cli_"
+	}
+	name := prefix + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rel/latest", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/rel/tag/"+tag, http.StatusFound)
