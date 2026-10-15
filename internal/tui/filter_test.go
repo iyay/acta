@@ -199,3 +199,44 @@ func TestStatusOnlyTabsHintBothFilterKeys(t *testing.T) {
 		t.Fatalf("Specs hints %q do not name f", specs)
 	}
 }
+
+func TestGroupRowUnderAFilterKeepsItsFold(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabSpecs), "F", "F")
+	rows := rowIDs(m)
+	i := slices.Index(rows, groupRowID)
+	if i < 0 {
+		t.Fatalf("no group row in %v", rows)
+	}
+	m.moveTo(i)
+	if strings.Contains(strings.Join(m.hints(), " "), "Fold: enter") {
+		t.Fatal("the group row offers Fold: enter while the filter holds it open")
+	}
+	if got := m.rowText(row{id: groupRowID, group: true}, nil, 80); !strings.HasPrefix(got, "▾") {
+		t.Fatalf("group row %q draws shut while its specs show", got)
+	}
+	m = press(m, "enter")
+	if m.groupOpen {
+		t.Fatal("enter under a filter opened the group behind the reader's back")
+	}
+}
+
+func TestFilterDropsTheWheelNotchesGatheredBeforeIt(t *testing.T) {
+	t.Parallel()
+
+	// j then k picks row 0 by name, so the filter below keeps the same
+	// row under the cursor and only the filter tells the screens apart.
+	m := press(paneModel(t, paneList), "j", "k")
+	b := scrollBox(m, paneList)
+	// The first notch scrolls at once; the second waits for the tick.
+	m = wheelOnly(wheelOnly(m, b.x+1, b.y+2, false), b.x+1, b.y+2, false)
+	if m.wheelDelta == 0 {
+		t.Fatal("no notch was gathered, so the test proves nothing")
+	}
+	m = press(m, "F")
+	off := m.off[paneList]
+	if m = wheelTick(m); m.off[paneList] != off {
+		t.Fatalf("a notch from before the filter scrolled the filtered list from %d to %d", off, m.off[paneList])
+	}
+}

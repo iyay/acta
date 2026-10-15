@@ -71,5 +71,46 @@ finished: "2026-10-15 17:28:07"
 
 ### Next
 
-User asked: do not land; user reviews the worktree first.
-Round 2 spec review BLOCKED: toggleGroup (model.go:1098), rowText group arrow (scroll.go:248), onGroupRow hint (hints.go:103) check only filtering(), not filterOn(). Fix round 2 waits for the user.
+Review round 3 CLEAN, polish committed, full suite green.
+Not landed: user reviews the worktree first, then says land.
+
+## Fix round 2
+
+### Task 04: The group row follows the filter too
+
+**Files:**
+- Modify: `internal/tui/scroll.go`, `internal/tui/model.go`, `internal/tui/hints.go`
+- Test: `internal/tui/filter_test.go`
+
+**Seam:** `Model.Update` with key messages, then `rowText`, `hints()` and `groupOpen`.
+
+**verify:** While a filter shows the legacy group open, no reader of the group fold disagrees with the screen: the arrow draws open, enter changes nothing saved, and no `Fold: enter` hint shows.
+
+- [x] Red test on Specs `F F`: enter on the group row keeps groupOpen, the row draws ▾, the hints lack `Fold: enter`; add `filterOn()` beside `filtering()` in rowText, toggleGroup, onGroupRow; `scripts/test ./internal/tui`; commit.
+
+## Polish
+
+### Task 05: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] The onGroupRow comment names the filter beside the search
+- [x] Commit: `polish: review notes for PLN-0153`
+
+## Review notes
+
+Round 3 CLEAN. Notes left as is: the group count shows every legacy spec while a filter hides some; a refused fold under a filter sets no status text; one hints test repeats another. Polish review: light tier, one comment line.
+
+## User review fix
+
+### Task 06: Drop wheel notches gathered before a filter change
+
+**Files:**
+- Modify: `internal/tui/model.go`
+- Test: `internal/tui/filter_test.go`
+
+**Seam:** `Model.Update` with wheel mouse messages, `F`, then `wheelTickMsg`.
+
+**verify:** No wheel notch gathered on one filter scrolls the list under another filter, even when the same row stays under the cursor.
+
+- [x] Red test: gather a notch, press F, tick; the offset must not move. Add the filter to `wheelMark`; `scripts/test ./internal/tui`; commit.

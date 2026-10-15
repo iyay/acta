@@ -96,11 +96,12 @@ func (m Model) foldsRow() bool {
 }
 
 // onGroupRow says whether the cursor sits on the legacy group row, which
-// only enter folds. A search holds the group open, so the hint hides then.
+// only enter folds. A search or a filter holds the group open, so the hint
+// hides then.
 func (m Model) onGroupRow() bool {
 	rows := m.listOf()
 	i := m.cursor()
-	return m.focus != paneDetail && !m.filtering() && i >= 0 && i < len(rows) && rows[i].group
+	return m.focus != paneDetail && !m.filtering() && !m.filterOn() && i >= 0 && i < len(rows) && rows[i].group
 }
 
 // hintLine joins the hints that fit in w cells. It drops them from the right,
