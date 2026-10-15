@@ -139,12 +139,13 @@ func (m *Model) armPulse() tea.Cmd {
 }
 
 // wheelMark is the screen a frame of notches was gathered on: the open tab, its
-// Done sub-tab, the search and the row under the cursor. A tick scrolls only
+// Done sub-tab, the search, the filter and the row under the cursor. A tick scrolls only
 // while all of it still stands, so notches meant for one item never land on
 // another.
 type wheelMark struct {
 	top, done int
 	query     string
+	filter    listFilter
 	sel       string
 }
 
@@ -168,7 +169,8 @@ type Model struct {
 	sel        []string
 	idx        []int // selected row number per pane, used when the id vanishes
 	query      string
-	expanded   int // the pane that takes the room, a list box or the detail box, -1 when none does
+	filters    [len(topTabs)]listFilter // what f and F picked, per tab
+	expanded   int                      // the pane that takes the room, a list box or the detail box, -1 when none does
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
@@ -489,7 +491,7 @@ func (m Model) Selected() *board.Item {
 // a screen they did not come from. It reads the cursor the model keeps rather
 // than the rows on show, so a notch costs no more than the frame it is part of.
 func (m Model) mark() wheelMark {
-	return wheelMark{top: m.top, done: m.done, query: m.query, sel: m.sel[m.listPane()]}
+	return wheelMark{top: m.top, done: m.done, query: m.query, filter: m.filters[m.top], sel: m.sel[m.listPane()]}
 }
 
 // cursorOf finds the selected id; when it is gone it falls back to the old
@@ -666,6 +668,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.moveTo(0)
 	case "?":
 		m.help = true
+	case "f", "F":
+		m.cycleFilter(k.String() == "f")
 	case "r":
 		return m, m.reloadCmd()
 	case "t", "s", "p":
@@ -1054,7 +1058,7 @@ func (m *Model) toggleRow() bool {
 	if rows[i].depth > 0 {
 		return false
 	}
-	m.setOpen(rows[i].id, !m.isOpen(rows[i].id))
+	m.setOpen(rows[i].id, !m.viewOf(m.listPane()).isOpen(rows[i].id))
 	return true
 }
 
@@ -1090,9 +1094,9 @@ func (m *Model) foldRow(open bool) {
 func (m *Model) toggleGroup() {
 	rows := m.listOf()
 	i := m.cursor()
-	// A search shows the group open, so a fold changed then would only show
-	// up after the search ends.
-	if i < 0 || !rows[i].group || m.filtering() {
+	// A search or a filter shows the group open, so a fold changed then
+	// would only show up after it ends.
+	if i < 0 || !rows[i].group || m.filtering() || m.filterOn() {
 		return
 	}
 	m.groupOpen = !m.groupOpen

@@ -140,6 +140,11 @@ func (m Model) listView(p pane, w int, b box) []string {
 	m = m.viewOf(p)
 	rows, sel, idx := m.slotOf(p)
 	if len(rows) == 0 {
+		// Say why the box is empty, so a filter left on does not look like
+		// a board with nothing on it.
+		if p == paneList && m.filterOn() {
+			return []string{m.styles.faint.Render("no items match")}
+		}
 		return []string{m.styles.faint.Render("nothing here")}
 	}
 	cur := cursorOf(rows, *sel, *idx)
@@ -240,7 +245,7 @@ func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string
 func (m Model) rowText(r row, it *board.Item, w int) string {
 	if r.group {
 		arrow := "▸"
-		if m.groupOpen || m.filtering() {
+		if m.groupOpen || m.filtering() || m.filterOn() {
 			arrow = "▾"
 		}
 		return truncate(fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false))), w)

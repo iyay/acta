@@ -155,7 +155,7 @@ func (m Model) tabsOf(p pane) []string {
 		if topTabs[m.top].kind == "" {
 			return []string{"Tasks"}
 		}
-		return []string{"Open"}
+		return []string{"Open" + m.filterLabel()}
 	case paneDone:
 		return m.doneTabNames()
 	}
@@ -184,7 +184,7 @@ func (m Model) rowsOf(p pane) []row {
 	case topTabs[m.top].kind == "":
 		rows = m.activityRows()
 	default:
-		rows = m.openRows()
+		rows = m.filterRows(m.openRows())
 	}
 	return m.matchRows(rows)
 }
@@ -195,6 +195,10 @@ func (m Model) rowsOf(p pane) []row {
 func (m Model) viewOf(p pane) Model {
 	if p != m.listPane() {
 		m.query = ""
+	}
+	// The filters belong to the Open list, so no other box sees them.
+	if p != paneList {
+		m.filters[m.top] = listFilter{}
 	}
 	return m
 }
@@ -207,13 +211,19 @@ func (m Model) matchRows(rows []row) []row {
 		return rows
 	}
 	q := strings.ToLower(strings.TrimSpace(m.query))
+	return keepRows(rows, func(r row) bool { return m.rowMatches(r, q) })
+}
+
+// keepRows keeps the rows that match. A head row stays when a row under it
+// stays, so a matching task still shows the plan it belongs to.
+func keepRows(rows []row, match func(row) bool) []row {
 	keep := make([]bool, len(rows))
 	// Walk from the bottom, so each head already knows whether a row under
 	// it was kept.
 	under := map[int]bool{}
 	for i := len(rows) - 1; i >= 0; i-- {
 		r := rows[i]
-		keep[i] = m.rowMatches(r, q) || under[r.depth+1]
+		keep[i] = match(r) || under[r.depth+1]
 		for d := range under {
 			if d > r.depth {
 				delete(under, d)
@@ -302,7 +312,8 @@ func (m Model) headOf(t *board.Item) *board.Item {
 // how it starts. A search looks inside every head, so a match is never
 // hidden under one the reader left shut.
 func (m Model) isOpen(id string) bool {
-	if m.filtering() {
+	// A filter opens every plan too, so a task that passes is never hidden.
+	if m.filtering() || m.filterOn() {
 		return true
 	}
 	if topTabs[m.top].kind == "" {
@@ -317,7 +328,8 @@ func (m Model) isOpen(id string) bool {
 // A search shows every head open, so a fold changed then would only show up
 // after the search ends. It is left alone instead.
 func (m *Model) setOpen(id string, open bool) {
-	if m.filtering() {
+	// A filter on the Open list shows every head open in the same way.
+	if v := m.viewOf(m.listPane()); v.filtering() || v.filterOn() {
 		return
 	}
 	acts := topTabs[m.top].kind == ""
@@ -361,7 +373,7 @@ func (m Model) openRows() []row {
 		return rows
 	}
 	rows = append(rows, row{id: groupRowID, group: true})
-	if m.groupOpen || m.filtering() {
+	if m.groupOpen || m.filtering() || m.filterOn() {
 		rows = append(rows, toRows(legacy, 1)...)
 	}
 	return rows
