@@ -6,7 +6,7 @@ through `acta`, the acta CLI.
 
 ## Install
 
-1. Run the installer for your system. It installs `acta`, then runs `acta setup`, which installs the plugin for Claude Code and omp.
+1. Run the installer for your system. It installs `acta`, then runs `acta setup`, which installs the plugin for Claude Code, omp and Codex.
    macOS and Linux:
    ```bash
    curl -fsSL https://github.com/iyay/acta/releases/latest/download/install.sh | sh
@@ -32,6 +32,22 @@ re-running it changes nothing when there is nothing left to fix.
 
 In omp, skill names carry no prefix: the skill is `setup`, not `acta:setup`.
 Every acta skill description starts with `acta: ` so the index is readable.
+
+## Codex
+
+`acta setup` installs the plugin in Codex when `codex` is on PATH. To do it by hand:
+
+```bash
+codex plugin marketplace add ~/.acta/plugin
+codex plugin add acta@acta-local
+```
+
+Then open Codex once and trust the acta hooks in `/hooks`. Codex skips plugin
+hooks until you do, so without this step the skills load but the session note,
+wiki hints and the brainstorm guard do not. `acta doctor` reminds you.
+
+In Codex you open a skill by its name, for example `$acta:shape`. Codex has no
+output styles, so the acta session note carries the style text there.
 
 ## Voice
 

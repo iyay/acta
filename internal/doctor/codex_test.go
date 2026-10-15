@@ -43,6 +43,13 @@ func TestDoctorCodexStates(t *testing.T) {
 	}{
 		{"enabled", codexOn, OK},
 		{"enabled under another marketplace", "[plugins.\"acta@iyay-acta\"]\nenabled = true\n", OK},
+		{"enabled with a comment after it", "[plugins.\"acta@acta-local\"]\nenabled = true # installed\n", OK},
+		{"a tab before true", "[plugins.\"acta@acta-local\"]\nenabled =\ttrue\n", OK},
+		{"windows line ends", "[plugins.\"acta@acta-local\"]\r\nenabled = true\r\n", OK},
+		{"a quoted enabled key", "[plugins.\"acta@acta-local\"]\n\"enabled\" = true\n", OK},
+		{"a single-quoted header with spaces", "[ plugins.'acta@acta-local' ]\nenabled = true\n", OK},
+		{"enabled only inside a comment", "[plugins.\"acta@acta-local\"]\n# enabled = true\n", Warn},
+		{"enabled is not exactly true", "[plugins.\"acta@acta-local\"]\nenabled = truex\n", Warn},
 		{"no config file", "", Warn},
 		{"plugin turned off", "[plugins.\"acta@acta-local\"]\nenabled = false\n", Warn},
 		{"enabled line under another plugin", "[plugins.\"acta@acta-local\"]\n\n[plugins.\"other@x\"]\nenabled = true\n", Warn},

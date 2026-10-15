@@ -318,6 +318,41 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 	})
 }
 
+// A Codex patch is file content, not a shell command. A patch line that only
+// looks like a blocked command must never block the edit, and the patched
+// file still gets its hint.
+func TestHookPreToolNeverBlocksPatchContent(t *testing.T) {
+	for name, line := range map[string]string{
+		"a go test line":     "+echo ok; go test ./...; echo done",
+		"a brainstorm line":  "+acta set scratch/two status brainstorming",
+		"a bare go test too": "+go test ./scripts/...",
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := hintRepo(t, "scripts/")
+			if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "scripts", "test"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Chdir(dir)
+			hookScratch(t, dir)
+			if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
+				t.Fatalf("recording the first brainstorm: exit %d", code)
+			}
+			patch := "*** Begin Patch\n*** Update File: scripts/run.sh\n@@\n-x\n" + line + "\n*** End Patch"
+			stdin := toolEvent(t, "s1", "", "apply_patch", map[string]string{"command": patch})
+			code, out, errb := runHook(t, "pre-tool", stdin)
+			if code != exitOK || errb != "" {
+				t.Fatalf("exit %d, stderr %q, want exit 0 and no block", code, errb)
+			}
+			if out != tuiHint {
+				t.Fatalf("stdout %q, want the hint for scripts/run.sh %q", out, tuiHint)
+			}
+		})
+	}
+}
+
 // branchHint is the hint of the page tui-wrap as the worktree branch has it.
 const branchHint = `{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":` +
 	`"wiki: .acta/wiki/tui-wrap.md: On the branch: wrap is fixed"}}` + "\n"

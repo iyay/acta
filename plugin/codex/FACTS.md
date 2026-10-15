@@ -38,3 +38,23 @@ PreToolUse for an edit:
 ```
 
 PostToolUse for Bash adds `tool_response` as a plain string: `"spike\n"`.
+
+## Smoke run with the branch binary
+
+Checked on 2026-10-15: a scratch repo with one wiki page covering `src/`, the acta plugin added from a local marketplace, and `codex exec --dangerously-bypass-hook-trust`.
+
+```text
+$ acta doctor | grep codex
+ok codex: acta plugin enabled in Codex; trust its hooks once in /hooks
+
+codex reply:
+(a) `wiki: .acta/wiki/parser.md: SMOKE-HINT parser keeps quotes`   <- hint from an apply_patch edit of src/a.go
+(b) `Codex: this session runs in Codex.`                            <- Codex block in the session note
+(c) Ya.                                                             <- style text "Open with the answer or the result." is in context
+```
+
+The second-brainstorm block is row G above.
+
+## Install from GitHub
+
+`codex plugin marketplace add iyay/acta` fails: "marketplace root does not contain a supported manifest". `--sparse plugin` only narrows the checkout; the root stays the repo root. So the install goes through `acta setup`, which adds the unpacked `~/.acta/plugin` as a local marketplace.

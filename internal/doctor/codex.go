@@ -20,12 +20,17 @@ func codexHasPlugin(e Env) bool {
 	}
 	inActa := false
 	for _, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
+		// A user may edit the file by hand, so a trailing comment, Windows
+		// line ends, tabs and either quote style must read the same as the
+		// plain form Codex writes.
+		line, _, _ = strings.Cut(line, "#")
+		line = strings.Join(strings.Fields(line), "")
+		line = strings.ReplaceAll(line, `'`, `"`)
 		if strings.HasPrefix(line, "[") {
 			inActa = strings.HasPrefix(line, `[plugins."acta@`)
 			continue
 		}
-		if inActa && strings.ReplaceAll(line, " ", "") == "enabled=true" {
+		if inActa && (line == "enabled=true" || line == `"enabled"=true`) {
 			return true
 		}
 	}

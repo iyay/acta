@@ -101,6 +101,27 @@ func TestPlan(t *testing.T) {
 			},
 		},
 		{
+			name: "codex with dir installs from the local marketplace",
+			a:    setup.Answers{User: u, Install: map[string]bool{"codex": true}},
+			e:    setup.Env{TTY: true, Harnesses: []string{"codex"}, PluginDir: "/p", Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "install", Harness: "codex", Argv: [][]string{
+					{"codex", "plugin", "marketplace", "add", "/p"},
+					{"codex", "plugin", "add", "acta@acta-local"},
+				}},
+			},
+		},
+		{
+			name: "codex without dir prints the placeholder command",
+			a:    setup.Answers{User: u, Install: map[string]bool{"codex": true}},
+			e:    setup.Env{TTY: true, Harnesses: []string{"codex"}, Current: other},
+			want: []setup.Action{
+				{Kind: "config", User: u},
+				{Kind: "print", Harness: "codex", Path: "codex plugin marketplace add <plugin dir>\ncodex plugin add acta@acta-local"},
+			},
+		},
+		{
 			name: "harness found but user said no writes nothing for it",
 			a:    setup.Answers{User: u, Install: map[string]bool{"claude": false}},
 			e: setup.Env{TTY: true, Harnesses: []string{"claude", "omp"},

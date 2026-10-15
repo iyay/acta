@@ -1,10 +1,12 @@
 ---
 parent: specs/2026-10-15-codex-harness-design
+closes: [DBT-0122]
 depth: minimal
 id: PLN-0151
 created: "2026-10-15 16:35:17"
 hash: aob4ljd
 started: "2026-10-15 16:37:32"
+finished: "2026-10-15 16:54:02"
 ---
 # Run acta inside Codex Implementation Plan
 
@@ -89,6 +91,48 @@ The spike showed Codex reads `.claude-plugin/marketplace.json` and runs the plug
 
 **verify:** A fresh user can install acta in Codex from README alone, including the install from GitHub (tested: with or without `--sparse plugin`) and the `/hooks` trust step; the wiki page names how acta detects Codex and each way its hooks differ from Claude Code, and its paths cover `internal/hook` and `plugin/hooks`. The manual smoke run (note, wiki hint on edit, second brainstorm blocked) is recorded in FACTS.md with output.
 
-- [ ] Failing test: none, docs; plugincheck guards must stay green.
-- [ ] Change: README Codex part, wiki page, smoke run in FACTS.md.
-- [ ] Commit: `docs(codex): install guide and codex-harness wiki page`.
+- [x] Failing test: none, docs; plugincheck guards must stay green.
+- [x] Change: README Codex part, wiki page, smoke run in FACTS.md.
+- [x] Commit: `docs(codex): install guide and codex-harness wiki page`.
+
+## Rulings during build
+
+- Task 4: the doctor check reads Codex's `config.toml` (the `[plugins."acta@..."]` table) instead of running `codex plugin list`, so doctor stays fast and offline. `checkHarness` passes when acta is in Codex only, so a Codex-only user does not get a false fail.
+- Task 5: `codex plugin marketplace add iyay/acta` fails (FACTS.md, "Install from GitHub"), so `acta setup` installs Codex from the unpacked local plugin, like Claude Code. Files added to the task: `internal/setup/plan.go`, `internal/cli/setup_cmd.go` and their tests.
+
+## Polish
+
+### Task 6: Review polish
+
+**verify:** the NOTEs below applied, and nothing else changes.
+
+- [x] Move `codexDir` below `homeDir` so the `homeDir` comment sits on its own function.
+- [x] Doctor reads a hand-edited Codex config the same as Codex's own: inline comments, tabs, a quoted `enabled` key, a single-quoted header with spaces.
+- [x] Record the Task 4 and Task 5 rulings in this plan.
+- [x] Commit: `polish: review notes PLN-0151`
+
+Polish reverted (afd8a90): the polish review found a BLOCKER, the config parser no longer stripped \r, so CRLF config files read as not installed. The parser item moved to debt; the codexDir comment move is a low note and was dropped with the revert.
+
+## Review notes
+
+Round 1 CLEAN on both axes. Notes kept as notes: IsCodex trusts any PLUGIN_ROOT; patchFiles leaves paths outside the repo to the wiki match, which finds no page; checkHarness stops at Codex before the omp link check; codexDir sits between homeDir and its comment.
+
+## Fix round 1
+
+User review found two P2s after round 1 was CLEAN.
+
+### Task 7: Fix round 1
+
+**Files:** Modify `internal/cli/hook.go`, `internal/doctor/codex.go`; Test `internal/cli/hook_test.go`, `internal/doctor/codex_test.go`
+
+**verify:** No apply_patch call is ever blocked for its file content: the brainstorm and test-runner guards read shell commands only, and a patch still gets its wiki hint. Doctor reads every form of `enabled = true` a user may write in the acta table (trailing comment, tab, CRLF, quoted key, single-quoted header) as installed, and a commented-out line or a non-true value as not. Closes DBT-0122.
+
+- [x] Failing test: patch content lines that look like blocked commands exit 2; hand-written TOML forms read as not installed.
+- [x] Change: skip both shell guards for apply_patch; read config lines with comment, whitespace and quote handling.
+- [x] Commit: `fix(hook): patch content never trips shell guards; doctor reads hand-written TOML`.
+
+## State
+
+### Next
+
+Land paused 2026-10-15: user reviews the worktree first. All gates green except land itself: full suite exit 0, wiki check exit 0, evals 19 cases (answers-appended flaked 1 of 9 runs on branch, 5/5 on last rerun, 3/3 on main). Next: after user review, run acta:land in tidy mode.
