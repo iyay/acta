@@ -73,26 +73,40 @@ func TestReleaseGoreleaserBuilds(t *testing.T) {
 		t.Errorf("version = %v, want 2", cfg["version"])
 	}
 	builds := list(cfg["builds"])
-	if len(builds) != 1 {
-		t.Fatalf("want one build, got %d", len(builds))
+	// The full build holds the TUI. The acta-cli build leaves it out with the
+	// notui tag, so users who skip the board get a smaller binary.
+	wantTags := map[string][]string{"acta": nil, "acta-cli": {"notui"}}
+	if len(builds) != len(wantTags) {
+		t.Fatalf("want %d builds, got %d", len(wantTags), len(builds))
 	}
-	b := builds[0]
-	if at(b, "main") != "./cmd/acta" {
-		t.Errorf("main = %v", at(b, "main"))
-	}
-	// A static binary runs on any Linux, with no C library needed.
-	if !reflect.DeepEqual(strs(at(b, "env")), []string{"CGO_ENABLED=0"}) {
-		t.Errorf("env = %v, want only CGO_ENABLED=0", at(b, "env"))
-	}
-	if got := strs(at(b, "goos")); !reflect.DeepEqual(got, []string{"darwin", "linux"}) {
-		t.Errorf("goos = %v", got)
-	}
-	if got := strs(at(b, "goarch")); !reflect.DeepEqual(got, []string{"amd64", "arm64"}) {
-		t.Errorf("goarch = %v", got)
-	}
-	// Ignore rules would drop one of the four pairs.
-	if at(b, "ignore") != nil {
-		t.Errorf("builds[0].ignore = %v, all four os/arch pairs must build", at(b, "ignore"))
+	for i, b := range builds {
+		id, _ := at(b, "id").(string)
+		tags, ok := wantTags[id]
+		if !ok {
+			t.Errorf("builds[%d].id = %q, want acta or acta-cli", i, id)
+			continue
+		}
+		delete(wantTags, id)
+		if got := strs(at(b, "tags")); !reflect.DeepEqual(got, tags) {
+			t.Errorf("%s tags = %v, want %v", id, got, tags)
+		}
+		if at(b, "main") != "./cmd/acta" || at(b, "binary") != "acta" {
+			t.Errorf("%s main = %v, binary = %v", id, at(b, "main"), at(b, "binary"))
+		}
+		// A static binary runs on any Linux, with no C library needed.
+		if !reflect.DeepEqual(strs(at(b, "env")), []string{"CGO_ENABLED=0"}) {
+			t.Errorf("%s env = %v, want only CGO_ENABLED=0", id, at(b, "env"))
+		}
+		if got := strs(at(b, "goos")); !reflect.DeepEqual(got, []string{"darwin", "linux"}) {
+			t.Errorf("%s goos = %v", id, got)
+		}
+		if got := strs(at(b, "goarch")); !reflect.DeepEqual(got, []string{"amd64", "arm64"}) {
+			t.Errorf("%s goarch = %v", id, got)
+		}
+		// Ignore rules would drop one of the four pairs.
+		if at(b, "ignore") != nil {
+			t.Errorf("%s ignore = %v, all four os/arch pairs must build", id, at(b, "ignore"))
+		}
 	}
 }
 
@@ -113,14 +127,24 @@ func TestReleaseGoreleaserStrips(t *testing.T) {
 func TestReleaseGoreleaserAssets(t *testing.T) {
 	cfg := parseYAML(t, ".goreleaser.yaml")
 	archives := list(cfg["archives"])
-	if len(archives) != 1 {
-		t.Fatalf("want one archive rule, got %d", len(archives))
+	// Each build gets its own archive. No version in the name, so the
+	// latest/download URL never changes. The old acta_ name stays, so install
+	// links already shared still work.
+	wantNames := map[string]string{"acta": "acta_{{ .Os }}_{{ .Arch }}", "acta-cli": "acta-cli_{{ .Os }}_{{ .Arch }}"}
+	if len(archives) != len(wantNames) {
+		t.Fatalf("want %d archive rules, got %d", len(wantNames), len(archives))
+	}
+	for i, a := range archives {
+		id, _ := at(a, "id").(string)
+		if at(a, "name_template") != wantNames[id] {
+			t.Errorf("archives[%d] %q name_template = %v, want %q", i, id, at(a, "name_template"), wantNames[id])
+		}
+		if got := strs(at(a, "ids")); !reflect.DeepEqual(got, []string{id}) {
+			t.Errorf("archive %q ids = %v, want only its own build", id, got)
+		}
+		delete(wantNames, id)
 	}
 	a := archives[0]
-	// No version in the name, so the latest/download URL never changes.
-	if at(a, "name_template") != "acta_{{ .Os }}_{{ .Arch }}" {
-		t.Errorf("archive name_template = %v", at(a, "name_template"))
-	}
 	if strings.Contains(releaseFile(t, ".goreleaser.yaml"), "Version") {
 		t.Error(".goreleaser.yaml mentions Version, asset names must not carry it")
 	}
@@ -240,7 +264,9 @@ func TestReleaseCI(t *testing.T) {
 	if at(wf, "jobs", "test", "runs-on") != "ubuntu-latest" {
 		t.Errorf("test job runs on %v", at(wf, "jobs", "test", "runs-on"))
 	}
-	for _, want := range []string{"go vet ./...", "gofmt -l .", "go test ./..."} {
+	// The notui build compiles internal/cli another way, so CI tests and
+	// cross-builds it too. Otherwise a break there shows up only at release.
+	for _, want := range []string{"go vet ./...", "gofmt -l .", "go test ./...", "go test -tags notui ./internal/cli/", "go build -tags notui"} {
 		if stepIndex(test, func(s any) bool { return strings.Contains(runOf(s), want) }) < 0 {
 			t.Errorf("test job has no step that runs %q", want)
 		}

@@ -11,9 +11,9 @@ From a clean `main`:
 2. It never pushes. Run the `git push origin main vX.Y.Z` it prints.
 3. A `v*` tag starts the Release action (`.github/workflows/release.yml`).
 
-It runs `go test ./...`, then goreleaser (`.goreleaser.yaml`), which builds static darwin and linux binaries (amd64, arm64). It publishes `acta_<os>_<arch>.tar.gz`, `checksums.txt` and `install.sh`. Windows is not released yet (SCR-0058). Names carry no version, so `releases/latest/download/<file>` links stay stable.
+It runs `go test ./...`, then goreleaser (`.goreleaser.yaml`), which builds static darwin and linux binaries (amd64, arm64). It publishes `acta_<os>_<arch>.tar.gz`, `acta-cli_<os>_<arch>.tar.gz` (no TUI), `checksums.txt` and `install.sh`. Windows is not released yet (SCR-0058). Names carry no version, so `releases/latest/download/<file>` links stay stable.
 
-`acta update` downloads `acta_<os>_<arch>.tar.gz` and `checksums.txt` from the same release. Do not rename them.
+`acta update` fetches its own build's archive and `checksums.txt`. Do not rename them.
 
 `.goreleaser.yaml` sets ldflag `-X github.com/iyay/acta/internal/update.release=true`; `update.IsRelease()` reads it. `acta update` refuses a binary without it, so a source build is never replaced by a release. It also strips with `-s -w`.
 
@@ -24,4 +24,4 @@ Rules:
 - Plans never bump the version. Only `scripts/release` does.
 - `release.yml` refuses a tag that is not `v` plus the `plugin.json` version.
 - A commit a tag points at never folds. `canFold` in `internal/gitc/gitc.go` says no, so a planning write cannot rewrite the release commit.
-- `ci.yml` runs on every push: vet, gofmt, tests, the "Cross-build release targets" step (builds `./cmd/acta` for the four pairs, `CGO_ENABLED=0`), and a Windows job.
+- `ci.yml` runs on every push: vet, gofmt, tests, the "Cross-build release targets" step (both builds, four pairs), and a Windows job.

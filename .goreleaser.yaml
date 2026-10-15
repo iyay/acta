@@ -26,10 +26,36 @@ builds:
       - amd64
       - arm64
 
+  # Same build with the TUI board left out, for users who skip it at install.
+  - id: acta-cli
+    main: ./cmd/acta
+    binary: acta
+    tags:
+      - notui
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/iyay/acta/internal/update.release=true
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
 archives:
   - id: acta
+    ids:
+      - acta
     # No version in the name, so the latest/download links never change.
     name_template: "acta_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+  - id: acta-cli
+    ids:
+      - acta-cli
+    name_template: "acta-cli_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
 
