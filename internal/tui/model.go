@@ -168,7 +168,8 @@ type Model struct {
 	sel        []string
 	idx        []int // selected row number per pane, used when the id vanishes
 	query      string
-	expanded   int // the pane that takes the room, a list box or the detail box, -1 when none does
+	filters    [len(topTabs)]listFilter // what f and F picked, per tab
+	expanded   int                      // the pane that takes the room, a list box or the detail box, -1 when none does
 	searching  bool
 	groupOpen  bool
 	openPlans  map[string]bool // the plans the reader opened in a tree list
@@ -666,6 +667,8 @@ func (m Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.moveTo(0)
 	case "?":
 		m.help = true
+	case "f", "F":
+		m.cycleFilter(k.String() == "f")
 	case "r":
 		return m, m.reloadCmd()
 	case "t", "s", "p":
