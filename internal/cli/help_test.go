@@ -251,3 +251,12 @@ func TestNoUsageLiteral(t *testing.T) {
 		}
 	}
 }
+
+// The debt help must say which notes it takes, so a refused batch is no
+// surprise.
+func TestHelpDebtNamesPriorityRule(t *testing.T) {
+	_, out, _ := helpRun("debt", "--help")
+	if !strings.Contains(out, "(medium) or (high)") {
+		t.Fatalf("debt help does not name the priority rule:\n%s", out)
+	}
+}

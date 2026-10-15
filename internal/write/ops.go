@@ -281,6 +281,9 @@ func NewDebt(cfg config.Config, b *board.Board, planID, title string, notes []by
 	if len(texts) == 0 {
 		return Outcome{}, bad("no notes on stdin")
 	}
+	if err := checkDebtPriority(notes); err != nil {
+		return Outcome{}, err
+	}
 	// The debt file names itself after today, not the day the plan was
 	// written, so it keeps the plan's slug and drops the plan's own date.
 	path := filepath.Join(cfg.Root, cfg.Dirs.Debt, Now().Format("2006-01-02")+"-"+it.Slug+".md")
@@ -412,6 +415,21 @@ func splitNotes(notes []byte) []string {
 		}
 	}
 	return out
+}
+
+// checkDebtPriority refuses the batch when any note is not medium or high.
+// Low notes piled up as debt nobody fixed, so they are not debt any more.
+// The line number counts every stdin line, blank ones too, so it matches
+// what the user pasted.
+func checkDebtPriority(notes []byte) error {
+	for i, ln := range strings.Split(string(notes), "\n") {
+		ln = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(ln), "- "))
+		if ln == "" || strings.HasPrefix(ln, "(medium) ") || strings.HasPrefix(ln, "(high) ") {
+			continue
+		}
+		return bad("line %d: debt takes only notes that start with (medium) or (high): %q", i+1, ln)
+	}
+	return nil
 }
 
 func bugPath(cfg config.Config, slug string) (string, error) {

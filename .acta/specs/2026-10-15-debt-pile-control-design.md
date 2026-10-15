@@ -3,6 +3,7 @@ parent: scratch/2026-10-15-debt-pile-control
 id: SPC-0135
 created: "2026-10-15 10:22:39"
 hash: z4ct5tl
+started: "2026-10-15 10:27:58"
 ---
 # Debt pile control: only real debt goes in, review notes stop piling up
 

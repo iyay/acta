@@ -11,4 +11,4 @@ started: "2026-10-06 09:30:59"
 - [x] (medium) On a reused tab (fix round, polish) the last round's Todo card can still be in the 60 recent lines, so a slow agent gives a false drift on the new task ids. Read only the pane text after the newest goal.
 - [ ] (medium) deliverGoal on a reused tab passes when a goal mark from an older goal is still on screen, so it can report success before the new goal is set. Require the mark to be new, for example by comparing with the read taken before the prompt.
 - [ ] (medium) acta dispatch send writes .claude/dispatch/<slug>-brief.md without checking that .claude/ is git-ignored. In a repo that does not ignore it, a recipient's git add -A can commit the brief. The old herdr-delivery.md had this check.
-- [ ] (low) findOrMakeTab reuses any agent with the slug's name without checking that it runs omp in this worktree, so two repos with the same branch name would share one agent.
+- [-] (low) findOrMakeTab reuses any agent with the slug's name without checking that it runs omp in this worktree, so two repos with the same branch name would share one agent.
