@@ -22,7 +22,7 @@ Write the plan for a skilled implementer who knows nothing about this codebase, 
 Pick the depth in this order, and do not ask when one answers: the argument of `/slice minimal` or `/slice full` (this run only, never saved), then `plan_depth` from `acta config show`, then `full`.
 
 - `full`: everything below, with real code in every code step, and a wait for the user's yes.
-- `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the lean line, unless coding_guide is off, plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, `**Seam:**`, a property-shaped `**verify:**` (each case named once, at the layer that owns it; a layer above is wiring only) and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 6 lines a task.
+- `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the lean line, unless coding_guide is off, plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, `**Seam:**`, a property-shaped `**verify:**` (each case named once, at the layer that owns it; a layer above is wiring only) and three one-sentence boxes: the failing test and why it fails, the code change, the commit message. No code blocks. About 7 lines a task.
 
 The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
 
@@ -81,7 +81,7 @@ Never give a line range as the target; a range is an instance. Name the rule and
 
 Each case a verify line lists is named once, in the task whose layer owns the behaviour. A task for a layer above says it is wiring only: one success path and one error passed up from below. It lists no lower-layer case again. A case that crosses a trust boundary names the adversarial inputs to try in its verify line.
 
-Inputs that run the same code path are one case. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams.
+Inputs that run the same code path are one case. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams; for a minimal plan, the spec's yes.
 
 ## Test commands
 

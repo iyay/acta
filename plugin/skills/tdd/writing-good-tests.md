@@ -146,6 +146,8 @@ BEFORE adding a mock or test helper:
     Unmock it or delete the assertion.
 ```
 
+**Name tests in the project's words.** When `.acta/wiki/glossary.md` exists, use its terms.
+
 ## Tests Ship With the Implementation
 
 The TDD cycle — failing test, minimal implementation, refactor — is what

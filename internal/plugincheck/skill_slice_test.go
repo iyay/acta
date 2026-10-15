@@ -37,7 +37,7 @@ func TestSkillSlice(t *testing.T) {
 			"a layer above is wiring only",
 			"names the adversarial inputs to try in its verify line",
 			// Each task names the public interface its tests go through.
-			"`**Seam:**`", "The yes to the plan is the yes to its seams",
+			"`**Files:**`, `**Seam:**`", "**Seam:** [public interface", "The yes to the plan is the yes to its seams",
 			// Cases are counted by behavior, so same-path inputs do not bloat the tests.
 			"Inputs that run the same code path are one case",
 		},

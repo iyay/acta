@@ -3,6 +3,8 @@ parent: scratch/2026-10-15-tdd-test-count-cap
 id: SPC-0134
 created: "2026-10-15 09:56:04"
 hash: d9cgg48
+started: "2026-10-15 10:02:46"
+finished: "2026-10-15 10:03:42"
 ---
 # Lean tests: seams, behavior cases, table tests
 
