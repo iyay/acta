@@ -56,7 +56,7 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 - A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
 - A NOTE is one line, and it sorts into a bucket. A NOTE that fails the first test falls to the next one.
   - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
-  - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff.
+  - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff. A `[debt]` NOTE must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` or has no priority tag is a `[note]`.
   - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
 **Who sorts.** Reviewers stay read-only. Each NOTE they print starts with its suggested bucket tag. The orchestrator decides: it checks every tag against the code, the same way it checks any finding, and moves it when the tag does not hold.
@@ -84,8 +84,8 @@ The polish commit counts as no round. Each polish commit gets the review its tie
    N is the next task number. Then one polish commit holding all of them. The orchestrator runs the full test suite with the output shown, then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
-5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. A NOTE may start with `(high) `, `(medium) ` or `(low) ` when it matters more or less than the rest; with no tag it is unset. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
-6. The `[note]` NOTEs go into a `## Review notes` section in the plan file, one line each, and that section is committed with the plan.
+5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
+6. The `[note]` NOTEs are not written one by one. Write one summary line under `## Review notes` in the plan file, and that section is committed with the plan.
 7. Then `acta:land`.
 
 A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the full test suite with the output shown, the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward. The `--round polish` send hands over the plan's `## Polish` task.
