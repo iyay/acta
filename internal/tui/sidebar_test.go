@@ -605,3 +605,29 @@ func TestBlankQueryIsNoSearch(t *testing.T) {
 		t.Errorf("a blank query changed the rows: %v, want %v", got, want)
 	}
 }
+
+// A search narrows the box that has the focus. The other box draws as if no
+// search ran: the same rows, with the same plans open or shut.
+func TestSearchLeavesTheOtherBoxAlone(t *testing.T) {
+	t.Parallel()
+
+	base := newModel(t)
+	for top := range topTabs {
+		if len(topTabs[top].done) == 0 {
+			continue
+		}
+		for _, focus := range []pane{paneList, paneDone} {
+			other := paneDone
+			if focus == paneDone {
+				other = paneList
+			}
+			m := base
+			m.top, m.focus = top, focus
+			want := ids(m.rowsOf(other))
+			m.query = "a"
+			if got := ids(m.rowsOf(other)); !slices.Equal(got, want) {
+				t.Errorf("tab %s focus %d: the other box shows %v, want %v", topTabs[top].name, focus, got, want)
+			}
+		}
+	}
+}

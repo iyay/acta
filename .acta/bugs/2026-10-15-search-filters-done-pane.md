@@ -1,6 +1,7 @@
 ---
 id: BUG-0046
 hash: bwkrdzr
+started: "2026-10-15 13:00:28"
 ---
 # Search in the Open box also filters the Done box
 
