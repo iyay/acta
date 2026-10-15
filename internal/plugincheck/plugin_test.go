@@ -78,8 +78,9 @@ func TestHooksJSON(t *testing.T) {
 	}
 	pre, post := h.Hooks["PreToolUse"], h.Hooks["PostToolUse"]
 	// The wiki hint needs the file tools too. PowerShell is the shell tool on
-	// Windows, so both shell hooks must name it next to Bash.
-	if len(pre) != 1 || pre[0].Matcher != "Bash|PowerShell|Read|Edit|Write|MultiEdit" || pre[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool"` {
+	// Windows, so both shell hooks must name it next to Bash. apply_patch is
+	// how Codex edits a file.
+	if len(pre) != 1 || pre[0].Matcher != "Bash|PowerShell|Read|Edit|Write|MultiEdit|apply_patch" || pre[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool"` {
 		t.Fatalf("PreToolUse = %+v", pre)
 	}
 	if len(post) != 1 || post[0].Matcher != "Bash|PowerShell" || post[0].Hooks[0].Command != `"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool"` {

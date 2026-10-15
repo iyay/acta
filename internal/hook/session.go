@@ -183,3 +183,10 @@ func itemLabel(root, stem string) string {
 	}
 	return stem
 }
+
+// IsCodex says the hook runs under Codex. Codex sets PLUGIN_ROOT for plugin
+// hooks next to CLAUDE_PLUGIN_ROOT, and Claude Code sets only the second one.
+// See plugin/codex/FACTS.md.
+func IsCodex() bool {
+	return os.Getenv("PLUGIN_ROOT") != ""
+}

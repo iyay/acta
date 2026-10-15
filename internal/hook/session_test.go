@@ -395,3 +395,17 @@ func mustRead(t *testing.T, path string) string {
 	}
 	return string(b)
 }
+
+// Codex sets PLUGIN_ROOT for plugin hooks. Claude Code sets only
+// CLAUDE_PLUGIN_ROOT, so that one alone must not count.
+func TestIsCodex(t *testing.T) {
+	t.Setenv("PLUGIN_ROOT", "")
+	t.Setenv("CLAUDE_PLUGIN_ROOT", "/p")
+	if IsCodex() {
+		t.Error("IsCodex() = true with only CLAUDE_PLUGIN_ROOT set")
+	}
+	t.Setenv("PLUGIN_ROOT", "/p")
+	if !IsCodex() {
+		t.Error("IsCodex() = false with PLUGIN_ROOT set")
+	}
+}

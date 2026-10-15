@@ -908,3 +908,43 @@ func TestWikiHintsForgedGitFileGetsNoHint(t *testing.T) {
 		}
 	}
 }
+
+func patchEv(session, patch string) ToolEvent {
+	var e ToolEvent
+	e.ToolName, e.SessionID, e.ToolInput.Command = "apply_patch", session, patch
+	return e
+}
+
+// Codex edits files with apply_patch. Its command is the whole patch, so only
+// the file header lines name files. Lines of file content must never count,
+// even when they look like a path or like a header.
+func TestWikiHintsApplyPatch(t *testing.T) {
+	both := parserLine + "\n" + tuiLine
+	patch := func(lines ...string) string {
+		return "*** Begin Patch\n" + strings.Join(lines, "\n") + "\n*** End Patch"
+	}
+	cases := []struct{ name, patch, want string }{
+		{"an update with a full path", patch("*** Update File: {repo}/internal/tui/a.go", "@@", "-x", "+y"), tuiLine},
+		{"an add with a relative path", patch("*** Add File: src/parser.go", "+package src"), parserLine},
+		{"a delete", patch("*** Delete File: docs/a.md"), parserLine},
+		{"a move names both files", patch("*** Update File: internal/tui/a.go", "*** Move to: src/parser.go", "@@", "-x", "+y"), both},
+		{"two files in one patch", patch("*** Add File: src/parser.go", "+x", "*** Update File: internal/tui/a.go", "@@", "-x", "+y"), both},
+		{"content that names a path", patch("*** Update File: internal/tui/a.go", "@@", "-x", "+cat src/parser.go"), tuiLine},
+		{"content that quotes a header", patch("*** Update File: internal/tui/a.go", "@@", "+*** Add File: src/parser.go"), tuiLine},
+		{"windows line ends", strings.ReplaceAll(patch("*** Update File: internal/tui/a.go", "@@", "-x", "+y"), "\n", "\r\n"), tuiLine},
+		{"a path with a space", patch("*** Add File: internal/tui/a b.go", "+x"), tuiLine},
+		{"a path that climbs out of the repo", patch("*** Add File: ../internal/tui/a.go", "+x"), ""},
+		{"a full path outside the repo", patch("*** Update File: /etc/hosts", "@@", "-x", "+y"), ""},
+		{"no header at all", "cat src/parser.go", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root, repo := hintWiki(t)
+			t.Chdir(repo)
+			p := strings.ReplaceAll(c.patch, "{repo}", repo)
+			if got := WikiHints(root, repo, patchEv("s1", p)); got != c.want {
+				t.Errorf("hint for %q = %q, want %q", p, got, c.want)
+			}
+		})
+	}
+}

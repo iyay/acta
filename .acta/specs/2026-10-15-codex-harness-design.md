@@ -3,6 +3,7 @@ parent: scratch/2026-10-15-codex-harness
 id: SPC-0139
 created: "2026-10-15 16:34:08"
 hash: ks4azfr
+started: "2026-10-15 16:37:32"
 ---
 # Run acta inside Codex
 
@@ -27,6 +28,8 @@ Measured on 2026-10-15 against Codex 0.162.1 and its docs (developers.openai.com
 - Open risk: `codex features list` shows `plugin_hooks` as removed, while the docs say plugin hooks load. Task 1 settles it.
 
 ## Section 1: packaging and install
+
+Ruling 2026-10-15 after the spike (`plugin/codex/FACTS.md`): Codex reads the existing `.claude-plugin/marketplace.json` and runs the plugin hooks unchanged. Items 1, 3 and 5 below are dropped: no Codex `plugin.json`, no fourth version file, no `acta setup` fallback. The Codex signal is env `PLUGIN_ROOT`.
 
 1. Add a Codex `plugin.json` to `plugin/`. Add `.agents/plugins/marketplace.json` at the repo root, pointing at `plugin/`.
 2. Keep one `plugin/hooks/hooks.json` for both harnesses. Matchers Codex never fires (`Read`, `MultiEdit`, `PowerShell`) stay. Add `apply_patch` to the PreToolUse matcher.
