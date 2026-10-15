@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0147
 created: "2026-10-15 12:35:44"
 hash: t48ia8a
+started: "2026-10-15 12:37:38"
+finished: "2026-10-15 12:39:28"
 ---
 # TUI search filters the active pane only
 
@@ -33,11 +35,11 @@ hash: t48ia8a
 
 **verify:** With a query set, every pane (open tab, tree tab, Activity, Done) shows only rows it would show with no query, and among those only matching rows plus the head rows (lower depth, or group rows) that have a matching row under them; no item from another tab or pane ever appears. List each pane kind checked.
 
-- [ ] Write failing tests: two tabs each with a "foo" item, search on one tab shows only its item; Done pane with a query shows only matching done items; a plan tree with an open plan whose task matches keeps the plan head, a plan with no match is gone.
-- [ ] Run `go test ./internal/tui/ -run TestSearch` and watch it fail.
-- [ ] In `rowsOf`, build the normal rows, then when `m.query != ""` pass them through one filter that keeps matching rows and the heads above them. Remove the `m.query` branches from `openRows` and `activityRows`, and delete `searchRows`.
-- [ ] Run `go test ./internal/tui/` and watch it pass.
-- [ ] Commit.
+- [x] Write failing tests: two tabs each with a "foo" item, search on one tab shows only its item; Done pane with a query shows only matching done items; a plan tree with an open plan whose task matches keeps the plan head, a plan with no match is gone.
+- [x] Run `go test ./internal/tui/ -run TestSearch` and watch it fail.
+- [x] In `rowsOf`, build the normal rows, then when `m.query != ""` pass them through one filter that keeps matching rows and the heads above them. Remove the `m.query` branches from `openRows` and `activityRows`, and delete `searchRows`.
+- [x] Run `go test ./internal/tui/` and watch it pass.
+- [x] Commit.
 
 ### Task 02: Remove the unused global board search
 
@@ -49,6 +51,57 @@ hash: t48ia8a
 
 **verify:** No caller of `Board.Search` is left anywhere in the repo, and the match rule used by the TUI filter is the only search code. List the grep run.
 
-- [ ] Delete `Board.Search` and `TestSearch`.
-- [ ] Run `go build ./... && go test ./internal/board/` and watch it pass.
-- [ ] Commit.
+- [x] Delete `Board.Search` and `TestSearch`.
+- [x] Run `go build ./... && go test ./internal/board/` and watch it pass.
+- [x] Commit.
+
+## State
+
+### Next
+
+next: review the branch, then land
+
+## Fix round 1
+
+### Task 03: Search reaches rows under shut heads
+
+**Files:**
+- Modify: `internal/tui/sidebar.go` (`isOpen`, `openRows`, `treeRows`)
+- Test: `internal/tui/sidebar_test.go`
+
+**Seam:** `Model.rowsOf(pane)`
+
+**verify:** With a query set, no matching item of the active box is hidden because its plan, Activity head or legacy group is shut, and a head kept for a match cannot be shut away while the query stays. Covers the spec cases: "foo" in two tabs shows only the active tab's item; a shut plan with one matching task shows the task under its plan head.
+
+- [x] Failing tests: a task title found on the Plans tab with every plan shut; "crash" on Bugs shows the bug and not the plan, on Plans the plan and not the bug.
+- [x] While a query is set, treat every head and the legacy group as open.
+- [x] Commit.
+
+## Fix round 2
+
+### Task 04: Folds stay put while a search shows every head open
+
+**Files:**
+- Modify: `internal/tui/sidebar.go` (`isOpen`, `setOpen`, `openRows`), `internal/tui/model.go` (`enter`), `internal/tui/scroll.go` (`rowText`)
+- Test: `internal/tui/sidebar_test.go`
+
+**Seam:** key presses through `Model.Update`, `Model.rowsOf(pane)`, `Model.rowText`
+
+**verify:** While a query is set, no key changes a plan, Activity head or legacy group fold that the reader cannot see, and every arrow drawn matches what the list shows; a query of spaces only behaves as no query. List each fold key and row kind checked.
+
+- [x] Failing tests: space, enter, h and l on a head during a search leave the folds as they were after esc; the group arrow shows open during a search and enter there keeps groupOpen; a shut Activity head and the shut legacy group are searched; a spaces-only query leaves the rows as they are.
+- [x] One helper says a search is on (trimmed query not empty); isOpen, openRows, rowText use it, and setOpen and the group toggle do nothing while it is on.
+- [x] Commit.
+
+## Polish
+
+### Task 05: Review polish
+
+**verify:** The NOTE below is applied, and nothing else changes.
+
+- [x] The fold-key test also presses l on a plan that starts shut.
+- [x] Commit: `polish: review notes PLN-0147`
+
+## Review notes
+
+Deep review, three rounds plus polish: notes left as is were taste only (whitespace query, empty-state wording, map size in matchRows); two medium notes went to debt.

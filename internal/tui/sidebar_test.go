@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -445,5 +447,161 @@ func TestScratchDetailNamesTheLinkedSpec(t *testing.T) {
 	used := plainLines(detailLines(t, fixtureCfg, "scratch/2026-09-28-idea-used"))
 	if !strings.Contains(strings.Join(used, "\n"), "specs/2026-09-28-from-scratch-design") {
 		t.Errorf("the detail of the used idea does not name its spec:\n%s", strings.Join(used, "\n"))
+	}
+}
+
+// A search narrows the box the reader is in and nothing else: every row it
+// shows is a row that box shows with no query, and each one either matches or
+// is a head with a match under it. This holds on every tab, in both boxes,
+// with every plan opened so the trees have children to search.
+func TestSearchStaysInActivePane(t *testing.T) {
+	t.Parallel()
+
+	base := newModel(t)
+	base.openPlans = everyPlanOpen(base.board)
+	base.groupOpen = true
+	for top := range topTabs {
+		for _, p := range []pane{paneList, paneDone} {
+			for _, q := range []string{"crash", "a", "e", "zzzq"} {
+				m := base
+				m.top, m.focus = top, p
+				plain := m.rowsOf(p)
+				m.query = q
+				got := m.rowsOf(p)
+				where := fmt.Sprintf("tab %s pane %d query %q", topTabs[top].name, p, q)
+				checkSearchRows(t, m, where, plain, got, q)
+			}
+		}
+	}
+}
+
+func checkSearchRows(t *testing.T, m Model, where string, plain, got []row, q string) {
+	t.Helper()
+	// got must be plain with some rows left out, in the same order.
+	j := 0
+	for _, r := range got {
+		for j < len(plain) && plain[j] != r {
+			j++
+		}
+		if j == len(plain) {
+			t.Errorf("%s: row %s is not a row of this box", where, r.id)
+			return
+		}
+		j++
+	}
+	matches := func(r row) bool {
+		it := m.board.Get(r.id)
+		return it != nil && strings.Contains(strings.ToLower(it.Title+"\x00"+it.Ref+"\x00"+it.Slug), q)
+	}
+	for i, r := range got {
+		if matches(r) {
+			continue
+		}
+		if i+1 < len(got) && got[i+1].depth > r.depth {
+			continue
+		}
+		t.Errorf("%s: row %s neither matches nor heads a match", where, r.id)
+	}
+}
+
+// Plans start shut, so a search has to look inside them: a task that matches
+// shows up under its plan even when the reader never opened that plan.
+func TestSearchFindsTaskUnderShutPlan(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), "/", "second step")
+	got := m.rowsOf(paneList)
+	for i, r := range got {
+		it := m.board.Get(r.id)
+		if it == nil || it.Kind != board.KindTask || !strings.Contains(strings.ToLower(it.Title), "second step") {
+			continue
+		}
+		if i == 0 || got[i-1].id != it.PlanID {
+			t.Fatalf("task %s is not under its plan head: %v", r.id, ids(got))
+		}
+		return
+	}
+	t.Fatalf("the matching task is missing: %v", ids(got))
+}
+
+// The same word lives on two tabs. Each tab finds only its own item.
+func TestSearchKeepsToItsTab(t *testing.T) {
+	t.Parallel()
+
+	bugs := ids(press(newModel(t), tabKey(tabSpecs), "/", "alpha").rowsOf(paneList))
+	if !slices.Contains(bugs, "specs/2026-09-20-alpha") || slices.Contains(bugs, "plans/2026-09-21-alpha") {
+		t.Errorf("Specs tab search: %v", bugs)
+	}
+	plans := ids(press(newModel(t), tabKey(tabPlans), "/", "alpha").rowsOf(paneList))
+	if !slices.Contains(plans, "plans/2026-09-21-alpha") || slices.Contains(plans, "specs/2026-09-20-alpha") {
+		t.Errorf("Plans tab search: %v", plans)
+	}
+}
+
+// A search shows every head open, so the fold keys must not change a fold
+// the reader cannot see. After esc the tree is the way it was.
+func TestFoldKeysDuringSearchKeepTheFolds(t *testing.T) {
+	t.Parallel()
+
+	for _, keys := range [][]string{{" "}, {"h"}, {"l"}, {"j", "h"}} {
+		m := press(newModel(t), tabKey(tabPlans), "l", "/", "step", "enter")
+		before := maps.Clone(m.openPlans)
+		m = press(press(m, keys...), "esc")
+		if !maps.Equal(m.openPlans, before) {
+			t.Errorf("keys %q during a search changed the plan folds: %v, want %v", keys, m.openPlans, before)
+		}
+	}
+	// l only opens, so it needs a plan that starts shut to show a change.
+	shut := press(newModel(t), tabKey(tabPlans), "/", "step", "enter", "l", "esc")
+	if len(shut.openPlans) != 0 {
+		t.Errorf("l on a shut plan during a search opened it: %v", shut.openPlans)
+	}
+	a := press(newModel(t), tabKey(tabActivity), "/", "step", "enter", " ", "esc")
+	if len(a.shutActs) != 0 {
+		t.Errorf("space on an Activity head during a search shut it: %v", a.shutActs)
+	}
+}
+
+// The legacy group lists its files during a search, so its arrow says open
+// and enter on it leaves the fold alone.
+func TestSearchOpensTheLegacyGroup(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabSpecs), "/", "old story", "enter")
+	got := m.rowsOf(paneList)
+	if !slices.Contains(ids(got), "docs/superpowers/specs/2026-01-01-old") {
+		t.Fatalf("the legacy file is missing: %v", ids(got))
+	}
+	if txt := m.rowText(row{id: groupRowID, group: true}, nil, 40); !strings.HasPrefix(txt, "▾") {
+		t.Errorf("the group arrow reads %q during a search", txt)
+	}
+	for i, r := range got {
+		if r.group {
+			m.moveTo(i)
+		}
+	}
+	if m = press(m, "enter"); m.groupOpen {
+		t.Error("enter on the group row during a search opened the fold")
+	}
+}
+
+// A search looks inside an Activity head the reader shut.
+func TestSearchLooksInsideShutActivityHead(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabActivity), " ", "/", "second step")
+	if !slices.Contains(ids(m.rowsOf(paneList)), "plans/2026-09-21-alpha#task-2") {
+		t.Fatalf("the task under the shut head is missing: %v", ids(m.rowsOf(paneList)))
+	}
+}
+
+// A query of spaces is no search: no fold opens and no row goes.
+func TestBlankQueryIsNoSearch(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans))
+	want := ids(m.rowsOf(paneList))
+	if got := ids(press(m, "/", " ").rowsOf(paneList)); !slices.Equal(got, want) {
+		t.Errorf("a blank query changed the rows: %v, want %v", got, want)
 	}
 }

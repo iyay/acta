@@ -233,7 +233,7 @@ func (s styles) paintID(text string, it *board.Item, base lipgloss.Style) string
 func (m Model) rowText(r row, it *board.Item, w int) string {
 	if r.group {
 		arrow := "▸"
-		if m.groupOpen {
+		if m.groupOpen || m.filtering() {
 			arrow = "▾"
 		}
 		return truncate(fmt.Sprintf("%s untyped (%d)", arrow, len(m.board.Untyped(false))), w)

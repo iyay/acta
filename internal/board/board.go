@@ -367,23 +367,6 @@ func (b *Board) Untyped(all bool) []*Item {
 	return out
 }
 
-// Search matches title, ref and slug of every item, case-insensitive.
-func (b *Board) Search(q string) []*Item {
-	q = strings.ToLower(strings.TrimSpace(q))
-	if q == "" {
-		return nil
-	}
-	var out []*Item
-	for _, it := range b.Items {
-		if strings.Contains(strings.ToLower(it.Title), q) ||
-			strings.Contains(strings.ToLower(it.Ref), q) ||
-			strings.Contains(strings.ToLower(it.Slug), q) {
-			out = append(out, it)
-		}
-	}
-	return out
-}
-
 func (b *Board) add(it *Item) {
 	if old := b.byID[it.ID]; old != nil {
 		old.Problems = append(old.Problems, "duplicate id "+it.ID)
