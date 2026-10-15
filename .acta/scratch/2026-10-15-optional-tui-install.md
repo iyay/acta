@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-10-15 09:09:17"
 schema: "1"
 started: "2026-10-15 09:09:19"
+finished: "2026-10-15 09:34:43"
 ---
 # Setup asks whether to install the TUI
 
@@ -54,5 +55,13 @@ Approach chosen: build tag notui (option 1). runTUI in two files by tag; gorelea
 ### 2026-10-15
 
 Section 1 approved (build and release): runTUI in tui_full.go (!notui) and tui_none.go (notui, prints help + one line on ACTA_TUI=1, exit 0); cli.Variant full|cli shown by --version and doctor; goreleaser second build acta-cli with tags [notui], archive acta-cli_{{ .Os }}_{{ .Arch }}.tar.gz, old asset name unchanged; tests: plugincheck two builds both stripped, only acta-cli has notui; CI builds -tags notui on 4 pairs; go list -deps -tags notui must not hold internal/tui or glamour.
+
+### 2026-10-15
+
+Section 2 approved (install.sh): ACTA_TUI 1 full, 0 small, other value fails before download; unset + tty asks once "Install the TUI board too? It adds about 7M. [Y/n]" (Enter/y full, n small, else ask again); unset + no tty = full, no prompt; asset acta_ or acta-cli_, file on disk stays acta; install.ps1 untouched (SCR-0058); tests in scripts/install_test.go for env values, no tty, pty prompt.
+
+### 2026-10-15
+
+Section 3 approved (update and doctor): update.Fetch takes asset prefix acta or acta-cli from cli.Variant; doctor info line "build: cli (no TUI)" or "build: full", never warn or fail; switch variant only by rerunning install.sh with ACTA_TUI; wiki release.md gets one sentence; tests: Fetch with acta-cli prefix, release without acta-cli asset fails clearly and replaces nothing, doctor line in both variants.
 
 ## Open questions
