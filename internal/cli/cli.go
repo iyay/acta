@@ -14,14 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/editor"
 	"github.com/iyay/acta/internal/trees"
-	"github.com/iyay/acta/internal/tui"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -31,37 +27,6 @@ const (
 	exitSkipped  = 2
 	exitOther    = 3
 )
-
-// runTUI opens the TUI with live reload. The board on the first frame holds
-// only the main tree. The watcher's start brings the full one, with the other
-// worktrees, branches and authors. When the watcher cannot start, the TUI
-// still opens in manual mode.
-var runTUI = func(cfg config.Config, stderr io.Writer) int {
-	b, loader, err := tuiBoards(cfg)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitOther
-	}
-	// Ask the terminal for its background now; asking inside the program
-	// fights Bubble Tea for stdin.
-	dark := lipgloss.HasDarkBackground()
-	m := tui.New(cfg, b, dark).WithTheme(voiceTheme(), dark).WithVersion(tuiVersion()).WithUpdate(newerRelease()).WithLoad(loader)
-	// 120fps halves how long a new frame waits to reach the screen.
-	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithFPS(120)}
-	tr, traceOpts, traceDone := tuiTrace(os.Getenv("ACTA_TUI_TRACE"), os.Stdout, stderr)
-	defer traceDone()
-	m = m.WithTrace(tr)
-	p := tea.NewProgram(m, append(opts, traceOpts...)...)
-	load := m.Reload()
-	dirs := func() []string { return append(tui.WatchDirs(cfg), trees.WatchDirs(cfg, tui.WatchDirs)...) }
-	stop := tui.Start(dirs, load, p.Send)
-	defer stop()
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitOther
-	}
-	return exitOK
-}
 
 // tuiBoards gives the board for the first frame and the loader for every
 // later load. The first frame must not wait for git, so its board reads only
@@ -101,7 +66,7 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		if code != exitOK {
 			return code
 		}
-		return runTUI(cfg, stderr)
+		return runTUI(cfg, stdout, stderr)
 	}
 	switch args[0] {
 	case "list":

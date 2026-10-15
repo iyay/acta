@@ -1,3 +1,5 @@
+//go:build !notui
+
 package cli
 
 import (
