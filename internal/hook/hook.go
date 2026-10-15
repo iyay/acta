@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/plugin"
 )
 
 // Skills is the index printed every session: names only, because Claude Code
@@ -27,6 +28,7 @@ type Input struct {
 	Conflicts   []string          // enabled plugins that overlap acta
 	Overrides   []config.Override // repo keys whose .acta.yaml value differs from the user's own; empty when RepoErr is set
 	Herdr       bool              // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
+	Codex       bool              // the hook runs under Codex; see IsCodex
 	WikiPages   int               // pages in the project wiki; with none, the wiki line is left out
 	Running     []string          // one block per plan with work going on, the lines already joined; with none, no block is printed
 	Update      string            // a newer release, like v0.1.47; empty when none is known
@@ -100,6 +102,10 @@ func SessionStart(in Input) string {
 	}
 	if in.Herdr {
 		b.WriteString(herdrExtra)
+	}
+	if in.Codex {
+		b.WriteString(codexExtra)
+		b.WriteString(plugin.OutputStyle())
 	}
 	if len(in.Running) > 0 {
 		b.WriteString(runningBlock(in.Running))
@@ -179,9 +185,19 @@ var executorLines = map[string]string{
 	"dispatch": "An omp agent in its own herdr tab writes the code (a subagent when herdr is missing or the harness is omp); the main agent writes none.",
 }
 
+// codexExtra tells a Codex agent what stands in for the Claude Code parts of
+// acta: Codex opens a skill by name, has its own subagents, and has no output
+// styles, so the style text follows this block.
+const codexExtra = `
+Codex: this session runs in Codex.
+- Open a skill by its name, for example $acta:shape.
+- In Codex, subagents are Codex subagents. Name no model: the [agents] defaults in config.toml pick it.
+- Codex has no output styles, so follow this style in every chat reply:
+`
+
 // modelLines says what each subagent_models value means for the Agent tool.
 var modelLines = map[string]string{
-	"split":   "In Claude Code, code-writing subagents use sonnet, other subagents opus, reviewers your own model.",
+	"split":   "In Claude Code, code-writing subagents use sonnet, other subagents (mapping, explore, planning help, debug investigation, spikes) opus, reviewers your own model alias.",
 	"default": "Name no model; the user's own setup picks it.",
 }
 

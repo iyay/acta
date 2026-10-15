@@ -99,6 +99,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		sessionID, source := readSessionStart(stdin)
 		in := loadVoice()
 		in.Herdr = os.Getenv("HERDR_ENV") == "1"
+		in.Codex = hook.IsCodex()
 		in.Update, in.Current = newerRelease(), "v"+plugin.Version()
 		repo, _ := os.Getwd()
 		if cfg, err := config.Load(repo, ""); err == nil {

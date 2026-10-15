@@ -71,7 +71,7 @@ up, file it as a scratch item and ask the user to pick one of:
 Plan, build, review and land may continue in this session. Only the
 brainstorm itself is one per session.
 
-**Subagent models.** Only when `acta config show` lists `subagent_models: split` and you run in Claude Code: subagents that write code use `model: "sonnet"`; all other subagents (mapping, explore, planning help, debug investigation, spikes) use `model: "opus"`; reviewers use your own model alias. Otherwise name no model and follow the user's own config.
+**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
 
 ## Checklist
 

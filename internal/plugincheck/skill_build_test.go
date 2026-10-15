@@ -13,7 +13,7 @@ func TestSkillBuild(t *testing.T) {
 		MaxLines: 1000,
 		Must: []string{
 			"## Executors", "`subagent`", "`dispatch`", "`inline`",
-			`model: "sonnet"`, `agent="task"`, "Do not ask whether to create a worktree",
+			"Follow the `Subagent models` line in the acta session note", `agent="task"`, "Do not ask whether to create a worktree",
 			"../<repo>-<slug>", "git rev-parse --show-toplevel", "git add -A",
 			"acta:tdd", "acta:review", "acta:land", "no per-task reviewer",
 			"acta tick plans/<stem>#task-N --step <n>", "acta tick [TASK_ID] --step <n>", "chore(plan): tick wave",

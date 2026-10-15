@@ -65,9 +65,9 @@ The spike showed Codex reads `.claude-plugin/marketplace.json` and runs the plug
 
 **verify:** Under Codex the note holds the output style text from `plugin/output-styles/` and the Codex subagent rule; under Claude Code it holds the split model rule and no style text. No skill under `plugin/skills/**` names `Agent` tool, `subagent_type`, `model: "sonnet"` or `model: "opus"` in any form, and each rule the skills lost is now in the note. List each moved rule.
 
-- [ ] Failing test: SessionStart under Codex has no style text, and the neutral-skills guard finds Claude-only names.
-- [ ] Change: add the style and subagent blocks to SessionStart; reword the five skills.
-- [ ] Commit: `feat(hook): Codex session note carries style and subagent rules`.
+- [x] Failing test: SessionStart under Codex has no style text, and the neutral-skills guard finds Claude-only names.
+- [x] Change: add the style and subagent blocks to SessionStart; reword the five skills.
+- [x] Commit: `feat(hook): Codex session note carries style and subagent rules`.
 
 ### Task 4: Doctor checks Codex
 
