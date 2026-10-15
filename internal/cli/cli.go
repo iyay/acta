@@ -90,6 +90,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	if code, done := helpRoute(args, stdout, stderr); done {
 		return code
 	}
+	startUpdateCheck(args)
+	defer printUpdateNotice(args, stderr)
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
 		fs, root := flags("acta", stderr)
 		if err := fs.Parse(args); err != nil {

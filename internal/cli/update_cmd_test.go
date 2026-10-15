@@ -83,6 +83,8 @@ func releaseServer(t *testing.T, tag string, badSum bool) string {
 // It returns the path of a fake binary holding the old bytes.
 func updateEnv(t *testing.T, release bool) (exe string, refreshed *[]string) {
 	t.Helper()
+	// A good update writes the update cache next to the user config.
+	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "config.yaml"))
 	exe = filepath.Join(t.TempDir(), "acta")
 	if err := os.WriteFile(exe, oldBytes, 0o755); err != nil {
 		t.Fatal(err)
