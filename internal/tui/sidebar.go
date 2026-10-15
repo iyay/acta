@@ -97,6 +97,11 @@ func (m *Model) openTab(i int) {
 	if s.sel == nil {
 		s = freshTab()
 	}
+	// The search belongs to one list box. A tab that opens on the other box
+	// ends it, the same as moving the focus there.
+	if s.last != m.last {
+		m.query, m.searching = "", false
+	}
 	m.top = i
 	m.focus, m.last, m.sel, m.idx, m.off, m.done = s.focus, s.last, s.sel, s.idx, s.off, s.done
 	// The room and the detail place belonged to the tab that is gone now.
@@ -171,6 +176,7 @@ func (m Model) onTab(p pane) int {
 // A query narrows only that box, so a search never pulls in rows from
 // another tab or box.
 func (m Model) rowsOf(p pane) []row {
+	m = m.viewOf(p)
 	var rows []row
 	switch {
 	case p == paneDone:
@@ -181,6 +187,16 @@ func (m Model) rowsOf(p pane) []row {
 		rows = m.openRows()
 	}
 	return m.matchRows(rows)
+}
+
+// viewOf gives the model as box p sees it. The search belongs to the box
+// with the focus, so the other box gets a copy with no query and draws its
+// rows and fold marks as if no search ran.
+func (m Model) viewOf(p pane) Model {
+	if p != m.listPane() {
+		m.query = ""
+	}
+	return m
 }
 
 // matchRows keeps the rows whose item has the query in its title, ref or

@@ -22,4 +22,8 @@ Not yet decided: which seat (Spec, Standards, or both), how the reviewer is reac
 
 ## Log
 
+### 2026-10-15
+
+2026-10-15, from SCR-0072: also cover Codex as a build executor, not only a reviewer. acta would drive it from outside with codex exec, like dispatch to omp today.
+
 ## Open questions

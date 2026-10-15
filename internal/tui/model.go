@@ -537,6 +537,12 @@ func (m *Model) focusPane(p pane) {
 	// The room belongs to the box that has the focus, so a box that is no
 	// longer the one on top of the screen cannot keep it.
 	m.expanded = -1
+	// The search belongs to one list box. Leaving it ends the search, so the
+	// new box shows the rows the reader saw there, and a click lands on the
+	// row under the pointer. The detail box is not a list, so it keeps it.
+	if p != paneDetail && p != m.last {
+		m.query, m.searching = "", false
+	}
 	m.focus = p
 	if p != paneDetail {
 		m.last = p

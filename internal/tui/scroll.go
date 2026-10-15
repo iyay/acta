@@ -137,6 +137,7 @@ func (m *Model) clampOff(p pane) {
 // listView draws the rows of a list box. Every row takes one line, so a click
 // on any cell of a row lands on that row.
 func (m Model) listView(p pane, w int, b box) []string {
+	m = m.viewOf(p)
 	rows, sel, idx := m.slotOf(p)
 	if len(rows) == 0 {
 		return []string{m.styles.faint.Render("nothing here")}
