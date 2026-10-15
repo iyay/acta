@@ -15,7 +15,7 @@ It runs `go test ./...`, then goreleaser (`.goreleaser.yaml`), which builds stat
 
 `acta update` downloads `acta_<os>_<arch>.tar.gz` and `checksums.txt` from the same release. Do not rename them.
 
-`.goreleaser.yaml` sets ldflag `-X github.com/iyay/acta/internal/update.release=true`; `update.IsRelease()` reads it. `acta update` refuses a binary without it, so a source build is never replaced by a release.
+`.goreleaser.yaml` sets ldflag `-X github.com/iyay/acta/internal/update.release=true`; `update.IsRelease()` reads it. `acta update` refuses a binary without it, so a source build is never replaced by a release. It also strips with `-s -w`.
 
 `install.sh` checks SHA-256: it catches a broken download, not a tampered release.
 

@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0141
 created: "2026-10-15 09:18:01"
 hash: ekuf4fr
+started: "2026-10-15 09:18:23"
 ---
 # Strip the release binary Implementation Plan
 
@@ -31,4 +32,24 @@ hash: ekuf4fr
 
 **verify:** Every build in `.goreleaser.yaml` passes both `-s` and `-w` in `ldflags` and still passes the `update.release=true` flag; the test fails if any one of the three is missing, in any build. Run `go test ./internal/plugincheck -run TestReleaseGoreleaser`.
 
-Write a failing test that reads `ldflags` of each build and wants `-s`, `-w` and the release flag; watch it fail; add `- -s -w` before the `-X` line with a one-line comment on why; watch it pass; commit.
+- [x] **Failing test:** `TestReleaseGoreleaserStrips` reads `ldflags` of each build and wants `-s`, `-w` and the release flag. `scripts/test ./internal/plugincheck -run TestReleaseGoreleaserStrips` fails.
+- [x] **Change:** add `- -s -w` before the `-X` line in `.goreleaser.yaml`, with a comment on why.
+
+## Polish
+
+### Task 02: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] `.goreleaser.yaml` header names the strip next to the release mark.
+- [x] Size comment in `.goreleaser.yaml` and `release_test.go` says about 6M, as measured.
+- [x] Commit: `polish: review notes PLN-0141`
+
+## Review notes
+
+- Round 1 (deep, two reviewers): CLEAN.
+- The test checks the release value as its own word, not that `-X` comes right before it; a missing `-X` makes the linker fail the release loudly.
+- `.acta/wiki/release.md` and `.acta/wiki/.checked` changed outside the task Files list, under the wiki rule.
+- The verify line says `go test`; this repo runs `scripts/test`.
+- goreleaser is not installed locally, so `goreleaser check` was not run; YAML parse and the new test cover the shape.
+- Polish (light tier, comments only): read the diff, plugincheck tests and gofmt green.
