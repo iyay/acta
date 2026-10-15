@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-10-15 10:15:11"
 schema: "1"
 started: "2026-10-15 10:15:14"
+finished: "2026-10-15 10:22:39"
 ---
 # Stop the debt pile and drop line-by-line review notes
 
@@ -30,5 +31,9 @@ Q2 existing low items: A. Close all 542 open (low) items in one commit as droppe
 ### 2026-10-15
 
 Q3 guard: A. acta debt new accepts only lines starting (medium) or (high); any other line is an error. Untagged counts as low. The 5 untagged open items close with the low ones.
+
+### 2026-10-15
+
+Design approved: 1 review skill (debt only medium/high, notes one summary line), 2 debt new guard rejects whole batch, 3 one-time close of 547 low/untagged items. Out: TUI, cap, doctor warning.
 
 ## Open questions
