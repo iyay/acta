@@ -1594,7 +1594,7 @@ func TestSearchListsEveryMatch(t *testing.T) {
 
 	m := splitModel(t)
 	m = press(m, tabKey(tabSpecs), "/", "A", "l", "p", "h", "a")
-	rows := ids(m.openRows())
+	rows := ids(m.rowsOf(paneList))
 	if len(rows) == 0 {
 		t.Fatal("the search found nothing")
 	}

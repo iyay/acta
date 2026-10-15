@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -445,5 +446,59 @@ func TestScratchDetailNamesTheLinkedSpec(t *testing.T) {
 	used := plainLines(detailLines(t, fixtureCfg, "scratch/2026-09-28-idea-used"))
 	if !strings.Contains(strings.Join(used, "\n"), "specs/2026-09-28-from-scratch-design") {
 		t.Errorf("the detail of the used idea does not name its spec:\n%s", strings.Join(used, "\n"))
+	}
+}
+
+// A search narrows the box the reader is in and nothing else: every row it
+// shows is a row that box shows with no query, and each one either matches or
+// is a head with a match under it. This holds on every tab, in both boxes,
+// with every plan opened so the trees have children to search.
+func TestSearchStaysInActivePane(t *testing.T) {
+	t.Parallel()
+
+	base := newModel(t)
+	base.openPlans = everyPlanOpen(base.board)
+	base.groupOpen = true
+	for top := range topTabs {
+		for _, p := range []pane{paneList, paneDone} {
+			for _, q := range []string{"crash", "a", "e", "zzzq"} {
+				m := base
+				m.top, m.focus = top, p
+				plain := m.rowsOf(p)
+				m.query = q
+				got := m.rowsOf(p)
+				where := fmt.Sprintf("tab %s pane %d query %q", topTabs[top].name, p, q)
+				checkSearchRows(t, m, where, plain, got, q)
+			}
+		}
+	}
+}
+
+func checkSearchRows(t *testing.T, m Model, where string, plain, got []row, q string) {
+	t.Helper()
+	// got must be plain with some rows left out, in the same order.
+	j := 0
+	for _, r := range got {
+		for j < len(plain) && plain[j] != r {
+			j++
+		}
+		if j == len(plain) {
+			t.Errorf("%s: row %s is not a row of this box", where, r.id)
+			return
+		}
+		j++
+	}
+	matches := func(r row) bool {
+		it := m.board.Get(r.id)
+		return it != nil && strings.Contains(strings.ToLower(it.Title+"\x00"+it.Ref+"\x00"+it.Slug), q)
+	}
+	for i, r := range got {
+		if matches(r) {
+			continue
+		}
+		if i+1 < len(got) && got[i+1].depth > r.depth {
+			continue
+		}
+		t.Errorf("%s: row %s neither matches nor heads a match", where, r.id)
 	}
 }

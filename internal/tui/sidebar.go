@@ -3,6 +3,7 @@ package tui
 import (
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/iyay/acta/internal/board"
 )
@@ -167,20 +168,62 @@ func (m Model) onTab(p pane) int {
 
 // rowsOf gives the rows a box shows: the finished items in Done, the tasks
 // under way on Activity, and the open items of the tab anywhere else.
+// A query narrows only that box, so a search never pulls in rows from
+// another tab or box.
 func (m Model) rowsOf(p pane) []row {
+	var rows []row
 	switch {
 	case p == paneDone:
-		return m.doneRows()
+		rows = m.doneRows()
 	case topTabs[m.top].kind == "":
-		return m.activityRows()
+		rows = m.activityRows()
+	default:
+		rows = m.openRows()
 	}
-	return m.openRows()
+	return m.matchRows(rows)
 }
 
-// searchRows gives a searching reader every item whose text matches, whatever
-// box asked, so one search never depends on which box has the focus.
-func (m Model) searchRows() []row {
-	return toRows(m.board.Search(m.query), 0)
+// matchRows keeps the rows whose item has the query in its title, ref or
+// slug. A head row stays when a row under it stays, so a matching task
+// still shows the plan it belongs to.
+func (m Model) matchRows(rows []row) []row {
+	q := strings.ToLower(strings.TrimSpace(m.query))
+	if q == "" {
+		return rows
+	}
+	keep := make([]bool, len(rows))
+	// Walk from the bottom, so each head already knows whether a row under
+	// it was kept.
+	under := map[int]bool{}
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		keep[i] = m.rowMatches(r, q) || under[r.depth+1]
+		for d := range under {
+			if d > r.depth {
+				delete(under, d)
+			}
+		}
+		if keep[i] {
+			under[r.depth] = true
+		}
+	}
+	var out []row
+	for i, r := range rows {
+		if keep[i] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (m Model) rowMatches(r row, q string) bool {
+	it := m.board.Get(r.id)
+	if it == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(it.Title), q) ||
+		strings.Contains(strings.ToLower(it.Ref), q) ||
+		strings.Contains(strings.ToLower(it.Slug), q)
 }
 
 // activityRows gives Activity the tasks under way, each under its head: the
@@ -188,9 +231,6 @@ func (m Model) searchRows() []row {
 // a head keep the order of the pane. A task whose plan is gone has no head,
 // so it stands on its own row at the end.
 func (m Model) activityRows() []row {
-	if m.query != "" {
-		return m.searchRows()
-	}
 	newest := m.newest[paneList]
 	under := map[string][]*board.Item{}
 	var heads, loose []*board.Item
@@ -270,9 +310,6 @@ func (m *Model) setOpen(id string, open bool) {
 // flipped. Plans come as a tree. The files outside the root folder have no
 // tab of their own, so the Specs tab ends with a single row that opens them.
 func (m Model) openRows() []row {
-	if m.query != "" {
-		return m.searchRows()
-	}
 	tab := topTabs[m.top]
 	items := ordered(m.board.List(tab.kind, false), m.newest[paneList])
 	// Bugs and debt are where the user picks what to fix next, so the most
