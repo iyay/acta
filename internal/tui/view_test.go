@@ -1079,7 +1079,7 @@ func TestViewStatusLineShowsHelpAndClock(t *testing.T) {
 		t.Error("the last message should take the place of the hints")
 	}
 	m.searching, m.query = true, "alpha"
-	if !strings.Contains(plain(m.View()), "/alpha") {
+	if !strings.Contains(plain(m.View()), "Filter: alpha") {
 		t.Error("the search box should take the place of the hints")
 	}
 	for w := 30; w <= 200; w++ {
@@ -2512,6 +2512,19 @@ func TestViewStatusLineUpdateBadge(t *testing.T) {
 		}
 		if w == 200 && !strings.Contains(plain(line), "↑ v0.1.47") {
 			t.Fatalf("badge missing at %d columns: %q", w, plain(line))
+		}
+	}
+}
+
+// The status bar names the search, so a reader knows the list is filtered.
+func TestStatusLineSaysFilter(t *testing.T) {
+	t.Parallel()
+
+	m := press(sized(newModel(t), 160, 50), "/", "abc")
+	for _, step := range []Model{m, press(m, "enter")} {
+		line := step.statusLine()
+		if !strings.Contains(line, "Filter: abc") || strings.Contains(line, "/abc") {
+			t.Errorf("status line %q, want Filter: abc", line)
 		}
 	}
 }

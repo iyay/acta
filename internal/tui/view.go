@@ -601,7 +601,7 @@ func (m Model) statusLine() string {
 	case m.commitScreen != nil && m.status == "":
 		// The Commits screen has no search, so a query of the board stays hidden.
 	case m.searching || m.query != "":
-		left, faintLeft = "/"+m.query, false
+		left, faintLeft = "Filter: "+m.query, false
 	case m.status != "":
 		left, faintLeft = m.status, false
 	}

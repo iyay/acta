@@ -687,3 +687,17 @@ func TestFocusChangeEndsTheSearch(t *testing.T) {
 		t.Errorf("click on the first Done row selected %s, want %s", id, drawn[0].id)
 	}
 }
+
+// A tab that opens on the other list box ends the search, the same as moving
+// the focus there. A tab that opens on the same box keeps it.
+func TestTabSwitchKeepsSearchOnlyInTheSameBox(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabSpecs), "tab", tabKey(tabPlans), "/", "a", "enter")
+	if got := press(m, tabKey(tabSpecs)); got.query != "" {
+		t.Errorf("Specs opened on Done and kept the query %q", got.query)
+	}
+	if got := press(m, tabKey(tabBugs)); got.query != "a" {
+		t.Errorf("Bugs opened on List and lost the query: %q", got.query)
+	}
+}

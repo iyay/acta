@@ -24,8 +24,9 @@ looking at.
 - Tree panes (Plans) and Activity keep a head row when the head matches or
   when any row under it matches. A head with no match and no matching child
   is dropped.
-- Switching tab while a query is set keeps the query; it now filters the
-  same box on the new tab.
+- Switching tab while a query is set keeps the query when the new tab opens
+  on the same list box, and filters that box there. A tab that opens on the
+  other list box ends the search.
 - Moving the focus to the other list box, by key or by click, ends the search:
   the query is cleared, so a click lands on the row the reader saw. (Ruled by
   the user on 2026-10-15 during PLN-0148.)

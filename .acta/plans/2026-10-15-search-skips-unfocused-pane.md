@@ -52,3 +52,30 @@ finished: "2026-10-15 13:00:57"
 - [x] Failing tests: tab from Open to Done clears the query; a click on a Done row during a search selects that drawn row; the other box's drawn lines are equal with and without a query on every two-box tab.
 - [x] focusPane clears query and searching when the list box changes; one helper gives a box its view of the model, used by rowsOf and listView.
 - [x] Commit.
+
+### Task 03: Status bar says Filter
+
+**Files:**
+- Modify: `internal/tui/view.go` (`statusLine`)
+- Test: `internal/tui/view_test.go`
+
+**Seam:** `Model.statusLine()`
+
+**verify:** While a search is typed or kept, the status bar shows `Filter: ` then the query, and never a bare `/` before it. Asked by the user on 2026-10-15.
+
+- [x] Failing test: after `/` and `abc`, the status line holds `Filter: abc`; after enter it still does.
+- [x] Change the left text in statusLine.
+- [x] Commit.
+
+## Polish
+
+### Task 04: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Switching top tab keeps the query only when the new tab opens on the same list box; a tab that opens on the other box ends the search, as the spec says.
+- [x] Commit: `polish: review notes for PLN-0148`
+
+## Review notes
+
+Deep review, two rounds plus a review of Task 03 and polish: notes left as is were test gaps with no failing case (click from detail, lower Done rows); two medium notes went to debt.

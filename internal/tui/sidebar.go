@@ -97,6 +97,11 @@ func (m *Model) openTab(i int) {
 	if s.sel == nil {
 		s = freshTab()
 	}
+	// The search belongs to one list box. A tab that opens on the other box
+	// ends it, the same as moving the focus there.
+	if s.last != m.last {
+		m.query, m.searching = "", false
+	}
 	m.top = i
 	m.focus, m.last, m.sel, m.idx, m.off, m.done = s.focus, s.last, s.sel, s.idx, s.off, s.done
 	// The room and the detail place belonged to the tab that is gone now.
