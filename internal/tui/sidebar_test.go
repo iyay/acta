@@ -502,3 +502,37 @@ func checkSearchRows(t *testing.T, m Model, where string, plain, got []row, q st
 		t.Errorf("%s: row %s neither matches nor heads a match", where, r.id)
 	}
 }
+
+// Plans start shut, so a search has to look inside them: a task that matches
+// shows up under its plan even when the reader never opened that plan.
+func TestSearchFindsTaskUnderShutPlan(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans), "/", "second step")
+	got := m.rowsOf(paneList)
+	for i, r := range got {
+		it := m.board.Get(r.id)
+		if it == nil || it.Kind != board.KindTask || !strings.Contains(strings.ToLower(it.Title), "second step") {
+			continue
+		}
+		if i == 0 || got[i-1].id != it.PlanID {
+			t.Fatalf("task %s is not under its plan head: %v", r.id, ids(got))
+		}
+		return
+	}
+	t.Fatalf("the matching task is missing: %v", ids(got))
+}
+
+// The same word lives on two tabs. Each tab finds only its own item.
+func TestSearchKeepsToItsTab(t *testing.T) {
+	t.Parallel()
+
+	bugs := ids(press(newModel(t), tabKey(tabSpecs), "/", "alpha").rowsOf(paneList))
+	if !slices.Contains(bugs, "specs/2026-09-20-alpha") || slices.Contains(bugs, "plans/2026-09-21-alpha") {
+		t.Errorf("Specs tab search: %v", bugs)
+	}
+	plans := ids(press(newModel(t), tabKey(tabPlans), "/", "alpha").rowsOf(paneList))
+	if !slices.Contains(plans, "plans/2026-09-21-alpha") || slices.Contains(plans, "specs/2026-09-20-alpha") {
+		t.Errorf("Plans tab search: %v", plans)
+	}
+}

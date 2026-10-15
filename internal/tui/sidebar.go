@@ -277,8 +277,12 @@ func (m Model) headOf(t *board.Item) *board.Item {
 
 // isOpen says whether a tree head shows its tasks. Plans start shut and
 // Activity groups start open, so each tab keeps the set that differs from
-// how it starts.
+// how it starts. A search looks inside every head, so a match is never
+// hidden under one the reader left shut.
 func (m Model) isOpen(id string) bool {
+	if m.query != "" {
+		return true
+	}
 	if topTabs[m.top].kind == "" {
 		return !m.shutActs[id]
 	}
@@ -329,7 +333,7 @@ func (m Model) openRows() []row {
 		return rows
 	}
 	rows = append(rows, row{id: groupRowID, group: true})
-	if m.groupOpen {
+	if m.groupOpen || m.query != "" {
 		rows = append(rows, toRows(legacy, 1)...)
 	}
 	return rows
@@ -342,7 +346,7 @@ func (m Model) treeRows(plans []*board.Item) []row {
 	out := make([]row, 0, len(plans))
 	for _, p := range plans {
 		out = append(out, row{id: p.ID, tree: true})
-		if !m.openPlans[p.ID] {
+		if !m.isOpen(p.ID) {
 			continue
 		}
 		for _, id := range p.Children {

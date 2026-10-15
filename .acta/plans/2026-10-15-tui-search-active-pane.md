@@ -60,3 +60,19 @@ finished: "2026-10-15 12:39:28"
 ### Next
 
 next: review the branch, then land
+
+## Fix round 1
+
+### Task 03: Search reaches rows under shut heads
+
+**Files:**
+- Modify: `internal/tui/sidebar.go` (`isOpen`, `openRows`, `treeRows`)
+- Test: `internal/tui/sidebar_test.go`
+
+**Seam:** `Model.rowsOf(pane)`
+
+**verify:** With a query set, no matching item of the active box is hidden because its plan, Activity head or legacy group is shut, and a head kept for a match cannot be shut away while the query stays. Covers the spec cases: "foo" in two tabs shows only the active tab's item; a shut plan with one matching task shows the task under its plan head.
+
+- [x] Failing tests: a task title found on the Plans tab with every plan shut; "crash" on Bugs shows the bug and not the plan, on Plans the plan and not the bug.
+- [x] While a query is set, treat every head and the legacy group as open.
+- [x] Commit.
