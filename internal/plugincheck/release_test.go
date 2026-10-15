@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -92,6 +93,20 @@ func TestReleaseGoreleaserBuilds(t *testing.T) {
 	// Ignore rules would drop one of the four pairs.
 	if at(b, "ignore") != nil {
 		t.Errorf("builds[0].ignore = %v, all four os/arch pairs must build", at(b, "ignore"))
+	}
+}
+
+func TestReleaseGoreleaserStrips(t *testing.T) {
+	cfg := parseYAML(t, ".goreleaser.yaml")
+	for i, b := range list(cfg["builds"]) {
+		flags := strings.Fields(strings.Join(strs(at(b, "ldflags")), " "))
+		// -s and -w cut the symbol table and debug info, so the download is
+		// about 6M smaller. The release flag tells acta it is a real release.
+		for _, want := range []string{"-s", "-w", "github.com/iyay/acta/internal/update.release=true"} {
+			if !slices.Contains(flags, want) {
+				t.Errorf("builds[%d].ldflags = %v, missing %s", i, flags, want)
+			}
+		}
 	}
 }
 
