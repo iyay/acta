@@ -2,6 +2,8 @@
 id: SPC-0137
 created: "2026-10-15 12:34:53"
 hash: t7qvxyw
+started: "2026-10-15 12:37:38"
+finished: "2026-10-15 12:39:28"
 ---
 # TUI search filters the active pane only
 

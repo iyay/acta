@@ -377,21 +377,6 @@ func TestLists(t *testing.T) {
 	}
 }
 
-func TestSearch(t *testing.T) {
-	t.Parallel()
-
-	b := loadFixture(t)
-	if got := ids(b.Search("b-1")); !contains(got, "bugs/2026-09-24-crash") {
-		t.Errorf("search by ref = %v", got)
-	}
-	if !contains(ids(b.Search("OLD STORY")), "docs/superpowers/specs/2026-01-01-old") {
-		t.Error("search misses legacy items or is case sensitive")
-	}
-	if len(b.Search("  ")) != 0 {
-		t.Error("blank search should find nothing")
-	}
-}
-
 func TestLoadMissingRoot(t *testing.T) {
 	t.Parallel()
 

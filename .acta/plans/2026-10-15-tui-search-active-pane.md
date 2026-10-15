@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0147
 created: "2026-10-15 12:35:44"
 hash: t48ia8a
+started: "2026-10-15 12:37:38"
+finished: "2026-10-15 12:39:28"
 ---
 # TUI search filters the active pane only
 
@@ -33,11 +35,11 @@ hash: t48ia8a
 
 **verify:** With a query set, every pane (open tab, tree tab, Activity, Done) shows only rows it would show with no query, and among those only matching rows plus the head rows (lower depth, or group rows) that have a matching row under them; no item from another tab or pane ever appears. List each pane kind checked.
 
-- [ ] Write failing tests: two tabs each with a "foo" item, search on one tab shows only its item; Done pane with a query shows only matching done items; a plan tree with an open plan whose task matches keeps the plan head, a plan with no match is gone.
-- [ ] Run `go test ./internal/tui/ -run TestSearch` and watch it fail.
-- [ ] In `rowsOf`, build the normal rows, then when `m.query != ""` pass them through one filter that keeps matching rows and the heads above them. Remove the `m.query` branches from `openRows` and `activityRows`, and delete `searchRows`.
-- [ ] Run `go test ./internal/tui/` and watch it pass.
-- [ ] Commit.
+- [x] Write failing tests: two tabs each with a "foo" item, search on one tab shows only its item; Done pane with a query shows only matching done items; a plan tree with an open plan whose task matches keeps the plan head, a plan with no match is gone.
+- [x] Run `go test ./internal/tui/ -run TestSearch` and watch it fail.
+- [x] In `rowsOf`, build the normal rows, then when `m.query != ""` pass them through one filter that keeps matching rows and the heads above them. Remove the `m.query` branches from `openRows` and `activityRows`, and delete `searchRows`.
+- [x] Run `go test ./internal/tui/` and watch it pass.
+- [x] Commit.
 
 ### Task 02: Remove the unused global board search
 
@@ -49,6 +51,12 @@ hash: t48ia8a
 
 **verify:** No caller of `Board.Search` is left anywhere in the repo, and the match rule used by the TUI filter is the only search code. List the grep run.
 
-- [ ] Delete `Board.Search` and `TestSearch`.
-- [ ] Run `go build ./... && go test ./internal/board/` and watch it pass.
-- [ ] Commit.
+- [x] Delete `Board.Search` and `TestSearch`.
+- [x] Run `go build ./... && go test ./internal/board/` and watch it pass.
+- [x] Commit.
+
+## State
+
+### Next
+
+next: review the branch, then land
