@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -534,5 +535,73 @@ func TestSearchKeepsToItsTab(t *testing.T) {
 	plans := ids(press(newModel(t), tabKey(tabPlans), "/", "alpha").rowsOf(paneList))
 	if !slices.Contains(plans, "plans/2026-09-21-alpha") || slices.Contains(plans, "specs/2026-09-20-alpha") {
 		t.Errorf("Plans tab search: %v", plans)
+	}
+}
+
+// A search shows every head open, so the fold keys must not change a fold
+// the reader cannot see. After esc the tree is the way it was.
+func TestFoldKeysDuringSearchKeepTheFolds(t *testing.T) {
+	t.Parallel()
+
+	for _, keys := range [][]string{{" "}, {"h"}, {"l"}, {"j", "h"}} {
+		m := press(newModel(t), tabKey(tabPlans), "l", "/", "step", "enter")
+		before := maps.Clone(m.openPlans)
+		m = press(press(m, keys...), "esc")
+		if !maps.Equal(m.openPlans, before) {
+			t.Errorf("keys %q during a search changed the plan folds: %v, want %v", keys, m.openPlans, before)
+		}
+	}
+	// l only opens, so it needs a plan that starts shut to show a change.
+	shut := press(newModel(t), tabKey(tabPlans), "/", "step", "enter", "l", "esc")
+	if len(shut.openPlans) != 0 {
+		t.Errorf("l on a shut plan during a search opened it: %v", shut.openPlans)
+	}
+	a := press(newModel(t), tabKey(tabActivity), "/", "step", "enter", " ", "esc")
+	if len(a.shutActs) != 0 {
+		t.Errorf("space on an Activity head during a search shut it: %v", a.shutActs)
+	}
+}
+
+// The legacy group lists its files during a search, so its arrow says open
+// and enter on it leaves the fold alone.
+func TestSearchOpensTheLegacyGroup(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabSpecs), "/", "old story", "enter")
+	got := m.rowsOf(paneList)
+	if !slices.Contains(ids(got), "docs/superpowers/specs/2026-01-01-old") {
+		t.Fatalf("the legacy file is missing: %v", ids(got))
+	}
+	if txt := m.rowText(row{id: groupRowID, group: true}, nil, 40); !strings.HasPrefix(txt, "▾") {
+		t.Errorf("the group arrow reads %q during a search", txt)
+	}
+	for i, r := range got {
+		if r.group {
+			m.moveTo(i)
+		}
+	}
+	if m = press(m, "enter"); m.groupOpen {
+		t.Error("enter on the group row during a search opened the fold")
+	}
+}
+
+// A search looks inside an Activity head the reader shut.
+func TestSearchLooksInsideShutActivityHead(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabActivity), " ", "/", "second step")
+	if !slices.Contains(ids(m.rowsOf(paneList)), "plans/2026-09-21-alpha#task-2") {
+		t.Fatalf("the task under the shut head is missing: %v", ids(m.rowsOf(paneList)))
+	}
+}
+
+// A query of spaces is no search: no fold opens and no row goes.
+func TestBlankQueryIsNoSearch(t *testing.T) {
+	t.Parallel()
+
+	m := press(newModel(t), tabKey(tabPlans))
+	want := ids(m.rowsOf(paneList))
+	if got := ids(press(m, "/", " ").rowsOf(paneList)); !slices.Equal(got, want) {
+		t.Errorf("a blank query changed the rows: %v, want %v", got, want)
 	}
 }

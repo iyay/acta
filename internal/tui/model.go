@@ -1083,7 +1083,11 @@ func (m Model) enter() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if rows[i].group {
-		m.groupOpen = !m.groupOpen
+		// A search shows the group open, so a fold changed then would only
+		// show up after the search ends.
+		if !m.filtering() {
+			m.groupOpen = !m.groupOpen
+		}
 		return m, nil
 	}
 	it := m.board.Get(rows[i].id)

@@ -76,3 +76,32 @@ next: review the branch, then land
 - [x] Failing tests: a task title found on the Plans tab with every plan shut; "crash" on Bugs shows the bug and not the plan, on Plans the plan and not the bug.
 - [x] While a query is set, treat every head and the legacy group as open.
 - [x] Commit.
+
+## Fix round 2
+
+### Task 04: Folds stay put while a search shows every head open
+
+**Files:**
+- Modify: `internal/tui/sidebar.go` (`isOpen`, `setOpen`, `openRows`), `internal/tui/model.go` (`enter`), `internal/tui/scroll.go` (`rowText`)
+- Test: `internal/tui/sidebar_test.go`
+
+**Seam:** key presses through `Model.Update`, `Model.rowsOf(pane)`, `Model.rowText`
+
+**verify:** While a query is set, no key changes a plan, Activity head or legacy group fold that the reader cannot see, and every arrow drawn matches what the list shows; a query of spaces only behaves as no query. List each fold key and row kind checked.
+
+- [x] Failing tests: space, enter, h and l on a head during a search leave the folds as they were after esc; the group arrow shows open during a search and enter there keeps groupOpen; a shut Activity head and the shut legacy group are searched; a spaces-only query leaves the rows as they are.
+- [x] One helper says a search is on (trimmed query not empty); isOpen, openRows, rowText use it, and setOpen and the group toggle do nothing while it is on.
+- [x] Commit.
+
+## Polish
+
+### Task 05: Review polish
+
+**verify:** The NOTE below is applied, and nothing else changes.
+
+- [x] The fold-key test also presses l on a plan that starts shut.
+- [x] Commit: `polish: review notes PLN-0147`
+
+## Review notes
+
+Deep review, three rounds plus polish: notes left as is were taste only (whitespace query, empty-state wording, map size in matchRows); two medium notes went to debt.

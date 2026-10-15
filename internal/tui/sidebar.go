@@ -187,10 +187,10 @@ func (m Model) rowsOf(p pane) []row {
 // slug. A head row stays when a row under it stays, so a matching task
 // still shows the plan it belongs to.
 func (m Model) matchRows(rows []row) []row {
-	q := strings.ToLower(strings.TrimSpace(m.query))
-	if q == "" {
+	if !m.filtering() {
 		return rows
 	}
+	q := strings.ToLower(strings.TrimSpace(m.query))
 	keep := make([]bool, len(rows))
 	// Walk from the bottom, so each head already knows whether a row under
 	// it was kept.
@@ -214,6 +214,12 @@ func (m Model) matchRows(rows []row) []row {
 		}
 	}
 	return out
+}
+
+// filtering says a search is on. A query of spaces only matches every row,
+// so it counts as no search.
+func (m Model) filtering() bool {
+	return strings.TrimSpace(m.query) != ""
 }
 
 func (m Model) rowMatches(r row, q string) bool {
@@ -280,7 +286,7 @@ func (m Model) headOf(t *board.Item) *board.Item {
 // how it starts. A search looks inside every head, so a match is never
 // hidden under one the reader left shut.
 func (m Model) isOpen(id string) bool {
-	if m.query != "" {
+	if m.filtering() {
 		return true
 	}
 	if topTabs[m.top].kind == "" {
@@ -291,7 +297,13 @@ func (m Model) isOpen(id string) bool {
 
 // setOpen opens or shuts a tree head. It builds a new map each time, so an
 // older copy of the model keeps the tree it drew.
+//
+// A search shows every head open, so a fold changed then would only show up
+// after the search ends. It is left alone instead.
 func (m *Model) setOpen(id string, open bool) {
+	if m.filtering() {
+		return
+	}
 	acts := topTabs[m.top].kind == ""
 	src := m.openPlans
 	if acts {
@@ -333,7 +345,7 @@ func (m Model) openRows() []row {
 		return rows
 	}
 	rows = append(rows, row{id: groupRowID, group: true})
-	if m.groupOpen || m.query != "" {
+	if m.groupOpen || m.filtering() {
 		rows = append(rows, toRows(legacy, 1)...)
 	}
 	return rows
@@ -342,6 +354,7 @@ func (m Model) openRows() []row {
 // treeRows lays plans out as a tree: one row per plan, and under a plan the
 // reader opened, one row per task in file order, whatever its status. Each
 // row's id is the item it selects, so the detail box needs nothing else.
+// A search opens every plan, so a matching task is never hidden.
 func (m Model) treeRows(plans []*board.Item) []row {
 	out := make([]row, 0, len(plans))
 	for _, p := range plans {
