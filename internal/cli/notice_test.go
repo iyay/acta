@@ -165,3 +165,25 @@ func TestUpdateWritesCache(t *testing.T) {
 		t.Fatalf("cache = %q, want v99.0.0", got)
 	}
 }
+
+// session-start only passes the cached newer version on. One run with a
+// newer version cached, one with none.
+func TestHookSessionStartUpdateLine(t *testing.T) {
+	for _, tc := range []struct {
+		cached string
+		want   bool
+	}{{"v99.0.0", true}, {"", false}} {
+		cache, _ := noticeEnv(t, true, false)
+		t.Chdir(t.TempDir())
+		if tc.cached != "" {
+			if err := update.WriteCache(cache, tc.cached); err != nil {
+				t.Fatal(err)
+			}
+		}
+		out := mustRun(t, "hook", "session-start")
+		line := "acta update available: v99.0.0 (you have v" + plugin.Version() + ")."
+		if got := strings.Contains(out, line); got != tc.want {
+			t.Errorf("cached %q: line shown = %v, want %v\n%s", tc.cached, got, tc.want, out)
+		}
+	}
+}

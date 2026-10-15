@@ -29,6 +29,8 @@ type Input struct {
 	Herdr       bool              // this session runs in a herdr tab; the hook reads the environment, the agent often cannot
 	WikiPages   int               // pages in the project wiki; with none, the wiki line is left out
 	Running     []string          // one block per plan with work going on, the lines already joined; with none, no block is printed
+	Update      string            // a newer release, like v0.1.47; empty when none is known
+	Current     string            // the running version, like v0.1.46; only read when Update is set
 }
 
 // maxRunningPlans and maxRunningLines keep the block short enough to be read
@@ -62,6 +64,10 @@ Core rules:
 const herdrExtra = `
 herdr: this session runs in a herdr tab. For a second brainstorm, offer the user one more way to run it: a new herdr tab.
 `
+
+// updateLine asks the agent to pass on a newer release. It sits in the
+// session note only, so the user hears it once per session.
+const updateLine = "\nacta update available: %s (you have %s). Tell the user once, in a single line, to run acta update.\n"
 
 // wikiLine is the one line a repo with wiki pages adds. Only the count changes
 // from one repo to the next, so the line costs the same at 1 page and at 100.
@@ -100,6 +106,9 @@ func SessionStart(in Input) string {
 	}
 	if in.WikiPages > 0 {
 		fmt.Fprintf(&b, wikiLine, in.WikiPages)
+	}
+	if in.Update != "" {
+		fmt.Fprintf(&b, updateLine, in.Update, in.Current)
 	}
 	switch {
 	case !in.VoiceExists:
