@@ -16,7 +16,7 @@ import (
 // styles are the brushes the TUI paints with. They come from one theme, so
 // changing the theme changes every color at once.
 type styles struct {
-	accent, faint, dim, selected                           lipgloss.Style
+	accent, faint, dim, selected, selectedDim              lipgloss.Style
 	label, footLabel, done, review, waiting, problem, live lipgloss.Style
 	blue                                                   lipgloss.Style // the task labels of a commit row
 	accentColor                                            lipgloss.TerminalColor
@@ -102,10 +102,16 @@ func newStyles(t theme.Theme, dark bool) styles {
 		dim: lipgloss.NewStyle().Foreground(slot(slotDim)),
 		// selected is a band across the row with bright text on it, never
 		// reversed video, so the words stay readable wherever it falls.
-		selected:  lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
-		label:     lipgloss.NewStyle().Foreground(slot(slotCyan)),
-		footLabel: lipgloss.NewStyle().Foreground(slot(slotMagenta)),
-		done:      lipgloss.NewStyle().Foreground(slot(slotGreen)),
+		selected: lipgloss.NewStyle().Bold(true).Foreground(selFG).Background(selBG),
+		// selectedDim is the band while the keys go to the filter, so the
+		// row still shows where the cursor is but no longer looks live. The
+		// band moves half way toward the background and keeps the selection
+		// text, so the words stay far enough from the band that terminals
+		// with a minimum contrast leave them alone.
+		selectedDim: lipgloss.NewStyle().Foreground(selFG).Background(dimBand(selBG, t.BG)),
+		label:       lipgloss.NewStyle().Foreground(slot(slotCyan)),
+		footLabel:   lipgloss.NewStyle().Foreground(slot(slotMagenta)),
+		done:        lipgloss.NewStyle().Foreground(slot(slotGreen)),
 		// Plans waiting for merge read yellow: not done green, not plain.
 		review:  lipgloss.NewStyle().Foreground(slot(slotReview)),
 		waiting: lipgloss.NewStyle().Foreground(slot(slotDim)),
@@ -182,6 +188,12 @@ func farthestMix(fg, bg string, floor float64) float64 {
 		best = f
 	}
 	return best
+}
+
+// dimBand is the selection band moved half way toward the background. The
+// terminal theme gives slot numbers, not colors, so it keeps the band as is.
+func dimBand(band lipgloss.Color, bg string) lipgloss.Color {
+	return lipgloss.Color(mixHex(string(band), bg, 0.5))
 }
 
 // mixHex moves the #rrggbb color a the part f of the way toward b. When
