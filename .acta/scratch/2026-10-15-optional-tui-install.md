@@ -2,11 +2,10 @@
 id: SCR-0068
 hash: yv49k55
 title: Setup asks whether to install the TUI
-status: raw
+status: brainstorming
 created: "2026-10-15 09:09:17"
 schema: "1"
 started: "2026-10-15 09:09:19"
-finished: "2026-10-15 09:16:52"
 ---
 # Setup asks whether to install the TUI
 
@@ -31,5 +30,29 @@ Measured 2026-10-15: release build has no -s -w. Plain build 24M, with -s -w 17M
 ### 2026-10-15
 
 Decision 2026-10-15: strip the release binary (-s -w) as a separate Bounded change. The no-TUI build is on hold; reopen only if 17M is still too big.
+
+### 2026-10-15
+
+2026-10-15: user reopened the TUI option after the strip landed (17M). Goal stays: smaller binary for users who skip the TUI.
+
+### 2026-10-15
+
+Q2 where the choice lives: install.sh asks before download (env ACTA_TUI=0 for non-interactive). acta setup does not ask; it only shows the installed variant.
+
+### 2026-10-15
+
+Q3 default with no tty and no ACTA_TUI: full build with TUI (same as today). Defaults taken without asking: binary knows its own variant so acta update fetches the same one; bare acta in the small build prints help plus one line on how to get the TUI.
+
+### 2026-10-15
+
+Measured again 2026-10-15 (stripped, darwin/arm64, in a scratch copy with runTUI stubbed): full 16.6M, no-TUI 9.4M (-7.2M, -43%). Earlier 2-3M guess was wrong: it counted only bubbletea/lipgloss/fsnotify. The bulk is glamour, chroma, goldmark, bluemonday (markdown rendering in the TUI). setup (huh) and doctor (lipgloss) still keep bubbletea and lipgloss in the small build.
+
+### 2026-10-15
+
+Approach chosen: build tag notui (option 1). runTUI in two files by tag; goreleaser adds a notui build with its own asset name; a const set by the tag tells acta update which asset to fetch.
+
+### 2026-10-15
+
+Section 1 approved (build and release): runTUI in tui_full.go (!notui) and tui_none.go (notui, prints help + one line on ACTA_TUI=1, exit 0); cli.Variant full|cli shown by --version and doctor; goreleaser second build acta-cli with tags [notui], archive acta-cli_{{ .Os }}_{{ .Arch }}.tar.gz, old asset name unchanged; tests: plugincheck two builds both stripped, only acta-cli has notui; CI builds -tags notui on 4 pairs; go list -deps -tags notui must not hold internal/tui or glamour.
 
 ## Open questions
