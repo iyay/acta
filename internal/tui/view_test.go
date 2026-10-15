@@ -2495,3 +2495,23 @@ func TestFrameShowsTheCurrentPulseFrame(t *testing.T) {
 		}
 	})
 }
+
+// The badge shows only when a newer release is set, and the bottom line
+// never grows past the screen with it, at any width from wide to narrow.
+func TestViewStatusLineUpdateBadge(t *testing.T) {
+	t.Parallel()
+
+	if line := plain(lastLine(sized(clocked(newModel(t), 20, 46), 200, 30).View())); strings.Contains(line, "↑") {
+		t.Errorf("badge shows with no update: %q", line)
+	}
+	for w := 200; w >= 30; w-- {
+		m := sized(clocked(newModel(t), 20, 46), w, 20).WithUpdate("v0.1.47")
+		line := lastLine(m.View())
+		if got := lipgloss.Width(line); got > w {
+			t.Fatalf("at %d columns the line is %d wide", w, got)
+		}
+		if w == 200 && !strings.Contains(plain(line), "↑ v0.1.47") {
+			t.Fatalf("badge missing at %d columns: %q", w, plain(line))
+		}
+	}
+}

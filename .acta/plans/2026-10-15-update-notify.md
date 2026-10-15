@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0142
 created: "2026-10-15 09:34:51"
 hash: u1b98a8
+started: "2026-10-15 09:36:30"
+finished: "2026-10-15 09:41:22"
 ---
 # Update notice Implementation Plan
 
@@ -37,7 +39,7 @@ hash: u1b98a8
 
 **verify:** `Newer(cached, current)` is true only when both parse as `vX.Y.Z` and cached is strictly higher; list every input shape tried (equal, lower, higher in each part, missing `v`, garbage, empty). `ReadCache` on a missing, empty or corrupt file returns no version and no panic. `WriteCache` never leaves a half-written file (temp plus rename). `Stale` is true for a missing file and for mtime older than 24 hours, false otherwise.
 
-- [ ] Write failing tests, watch them fail, implement, watch them pass, commit.
+- [x] Write failing tests, watch them fail, implement, watch them pass, commit.
 
 ### Task 2: CLI: spawn, --cache, stderr notice, update clears it
 
@@ -47,7 +49,7 @@ hash: u1b98a8
 
 **verify:** No path through `cli.Run` starts more than one check per stale cache, and none starts one for a source build, `ACTA_NO_UPDATE_CHECK=1`, `update_check: off` or the `update` command; list every path checked. The cache file is touched before the spawn. The stderr line never prints for `acta hook ...`, `--json`, non-terminal stderr, or when no newer version is cached. `update --check --cache` writes the cache on success and prints nothing and leaves the cache as it was on any failure (fake server). A successful `acta update` writes the new version to the cache. The spawn and the terminal check go through variables a test swaps.
 
-- [ ] Write failing tests, watch them fail, implement, watch them pass, commit.
+- [x] Write failing tests, watch them fail, implement, watch them pass, commit.
 
 ### Task 3: SessionStart line
 
@@ -56,7 +58,7 @@ hash: u1b98a8
 
 **verify:** The SessionStart text holds the hook line exactly once when `Update` is set and never when it is empty; the prompt hook never holds it. `internal/cli/hook.go` is wiring only: one test with a newer cached version, one with none.
 
-- [ ] Write failing tests, watch them fail, implement, watch them pass, commit.
+- [x] Write failing tests, watch them fail, implement, watch them pass, commit.
 
 ### Task 4: TUI footer badge
 
@@ -65,4 +67,11 @@ hash: u1b98a8
 
 **verify:** The footer shows `↑ v<latest>` only when `WithUpdate` got a non-empty version, and the footer never grows wider than the screen at any width the existing footer tests sweep; list the widths checked.
 
-- [ ] Write failing tests, watch them fail, implement, watch them pass, commit.
+- [x] Write failing tests, watch them fail, implement, watch them pass, commit.
+
+## Review notes
+
+- Round 1, deep, two reviewers (spec, standards): both CLEAN, no BLOCKER.
+- Hooks also start the daily check; the spec skip list names only `update`, and the per-prompt cost is one config read and one stat.
+- A failed background check leaves an empty touched `update.json`; the next try comes 24 hours later, as the spec says.
+- The badge test lives in `view_test.go` beside the other footer tests, following the approved footer placement.

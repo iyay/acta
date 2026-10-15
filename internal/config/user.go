@@ -42,6 +42,9 @@ type User struct {
 	// checked here: a theme file can be deleted or edited at any time, and
 	// the hooks read this file on every call, so they must keep working.
 	Theme string `yaml:"theme,omitempty"`
+	// UpdateCheck says whether acta looks for a newer release once a day and
+	// tells the user: on or off. Empty means on.
+	UpdateCheck string `yaml:"update_check,omitempty"`
 }
 
 // ErrBadUser marks a setting the rules do not allow.
@@ -233,6 +236,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: coding_guide must be lean or off, not %q", ErrBadUser, v.CodingGuide)
 	}
+	switch v.UpdateCheck {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("%w: update_check must be on or off, not %q", ErrBadUser, v.UpdateCheck)
+	}
 	return nil
 }
 
@@ -250,6 +258,7 @@ func fill(v User) User {
 	v.CommitHistory = strings.TrimSpace(v.CommitHistory)
 	v.Questions = strings.TrimSpace(v.Questions)
 	v.CodingGuide = strings.TrimSpace(v.CodingGuide)
+	v.UpdateCheck = strings.TrimSpace(v.UpdateCheck)
 	if v.ChatLanguage == "" {
 		v.ChatLanguage = d.ChatLanguage
 	}

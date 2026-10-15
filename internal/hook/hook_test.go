@@ -866,3 +866,20 @@ func TestPromptNamesExecutor(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+// The update line shows once when a newer release is known, never without
+// one, and never in the prompt hook, so it is not said on every message.
+func TestSessionStartUpdateLine(t *testing.T) {
+	want := "acta update available: v0.1.47 (you have v0.1.46). Tell the user once, in a single line, to run acta update."
+	in := korean()
+	if out := SessionStart(in); strings.Contains(out, "acta update available") {
+		t.Errorf("no update known, but the line is there:\n%s", out)
+	}
+	in.Update, in.Current = "v0.1.47", "v0.1.46"
+	if n := strings.Count(SessionStart(in), want); n != 1 {
+		t.Errorf("update line shows %d times, want 1", n)
+	}
+	if strings.Contains(Prompt(in), "acta update") {
+		t.Errorf("prompt hook holds the update line: %q", Prompt(in))
+	}
+}

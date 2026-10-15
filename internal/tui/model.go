@@ -189,6 +189,7 @@ type Model struct {
 	drag       drag // the text a mouse drag selected; empty when none
 	now        time.Time
 	version    string                  // build version shown on the bottom line
+	newer      string                  // a newer release shown beside the version, empty when none
 	open       func(url string) error  // opens a link in the browser
 	clip       func(text string) error // puts text on the clipboard
 

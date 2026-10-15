@@ -410,3 +410,30 @@ func TestCommitHistoryBadValueNeverStored(t *testing.T) {
 		}
 	}
 }
+
+// update_check takes on or off. Empty means on. Anything else is refused by
+// name, and fill trims spaces like it does for the other keys.
+func TestValidateUpdateCheck(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		ok    bool
+	}{
+		{"", true},
+		{"on", true},
+		{"off", true},
+		{" off", true}, // fill trims
+		{"Off", false},
+		{"no", false},
+		{"false", false},
+	} {
+		v := UserDefault()
+		v.UpdateCheck = tc.value
+		err := fill(v).Validate()
+		if (err == nil) != tc.ok {
+			t.Errorf("update_check %q: err %v, want ok=%v", tc.value, err, tc.ok)
+		}
+		if err != nil && (!errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "update_check")) {
+			t.Errorf("update_check %q: err %v must be ErrBadUser and name the key", tc.value, err)
+		}
+	}
+}

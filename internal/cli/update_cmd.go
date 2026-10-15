@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/iyay/acta/internal/setup"
 	"github.com/iyay/acta/internal/update"
@@ -39,6 +40,9 @@ func cmdUpdate(args []string, stdout, stderr io.Writer) int {
 	// Hidden: the old binary runs the new one with this flag, so the new
 	// plugin text is what gets unpacked.
 	refresh := fs.Bool("refresh-plugin", false, "")
+	// Hidden: the background check runs update --check --cache. It writes
+	// the cache and stays silent, because no one reads its output.
+	toCache := fs.Bool("cache", false, "")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, updateUsage)
 		return exitBadInput
@@ -50,7 +54,30 @@ func cmdUpdate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "acta was built from source; rebuild it with go install")
 		return exitBadInput
 	}
+	if *toCache {
+		return cacheLatest()
+	}
 	return updateBinary(*check, stdout, stderr)
+}
+
+// cacheLatest asks for the latest release and saves it for the notice. Any
+// failure is silent: the next try comes a day later.
+func cacheLatest() int {
+	base := os.Getenv("ACTA_DOWNLOAD_URL")
+	if base == "" {
+		base = defaultDownloadBase
+	}
+	client := newClient()
+	client.Timeout = 10 * time.Second
+	latest, err := update.Latest(client, base)
+	if err != nil {
+		return exitOther
+	}
+	path, err := updateCachePath()
+	if err != nil || update.WriteCache(path, latest) != nil {
+		return exitOther
+	}
+	return exitOK
 }
 
 // updateBinary is the download and swap part of cmdUpdate.
@@ -96,6 +123,10 @@ func updateBinary(check bool, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, refreshFailedMsg)
 		}
 		return exitBadInput
+	}
+	// The new binary is the latest now, so the notice must stop at once.
+	if path, err := updateCachePath(); err == nil {
+		_ = update.WriteCache(path, latest)
 	}
 	fmt.Fprintf(stdout, "acta updated from %s to %s\n", current, latest)
 	return exitOK
