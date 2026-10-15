@@ -1,5 +1,5 @@
 ---
-id: DBT-0118
+id: DBT-0119
 hash: bc7y8ol
 parent: plans/2026-10-15-tui-search-active-pane
 ---
