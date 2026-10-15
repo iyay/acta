@@ -171,11 +171,7 @@ func (m Model) onTab(p pane) int {
 // A query narrows only that box, so a search never pulls in rows from
 // another tab or box.
 func (m Model) rowsOf(p pane) []row {
-	// The search belongs to the box with the focus. The other box drops the
-	// query on this copy, so its rows and folds stay as they were.
-	if p != m.listPane() {
-		m.query = ""
-	}
+	m = m.viewOf(p)
 	var rows []row
 	switch {
 	case p == paneDone:
@@ -186,6 +182,16 @@ func (m Model) rowsOf(p pane) []row {
 		rows = m.openRows()
 	}
 	return m.matchRows(rows)
+}
+
+// viewOf gives the model as box p sees it. The search belongs to the box
+// with the focus, so the other box gets a copy with no query and draws its
+// rows and fold marks as if no search ran.
+func (m Model) viewOf(p pane) Model {
+	if p != m.listPane() {
+		m.query = ""
+	}
+	return m
 }
 
 // matchRows keeps the rows whose item has the query in its title, ref or

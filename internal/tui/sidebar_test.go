@@ -631,3 +631,59 @@ func TestSearchLeavesTheOtherBoxAlone(t *testing.T) {
 		}
 	}
 }
+
+// The box without the focus draws the same lines with or without a query,
+// fold marks and the group arrow included.
+func TestSearchDrawsTheOtherBoxPlain(t *testing.T) {
+	t.Parallel()
+
+	base := sized(newModel(t), 160, 50)
+	for top := range topTabs {
+		if len(topTabs[top].done) == 0 {
+			continue
+		}
+		for _, focus := range []pane{paneList, paneDone} {
+			other := paneDone
+			if focus == paneDone {
+				other = paneList
+			}
+			m := base
+			m.top, m.focus, m.last = top, focus, focus
+			b := m.geometry().at(other)
+			want := m.listView(other, b.w, b)
+			m.query = "a"
+			if got := m.listView(other, b.w, b); !slices.Equal(got, want) {
+				t.Errorf("tab %s focus %d: the other box draws\n%q\nwant\n%q", topTabs[top].name, focus, got, want)
+			}
+		}
+	}
+}
+
+// Moving the focus to the other list box ends the search, by key or by
+// click, so a click lands on the row the reader saw.
+func TestFocusChangeEndsTheSearch(t *testing.T) {
+	t.Parallel()
+
+	m := press(sized(newModel(t), 160, 50), tabKey(tabPlans), "/", "dotted", "enter")
+	if m.query != "dotted" {
+		t.Fatalf("query %q, want dotted", m.query)
+	}
+	if got := press(m, "tab"); got.query != "" || got.searching {
+		t.Errorf("tab to Done kept the search: query %q searching %v", got.query, got.searching)
+	}
+	if got := press(m, "enter"); got.query != "dotted" {
+		t.Errorf("moving to the detail box dropped the query: %q", got.query)
+	}
+	drawn := m.rowsOf(paneDone)
+	if len(drawn) == 0 {
+		t.Fatal("the Done box has no rows to click")
+	}
+	b := m.geometry().at(paneDone)
+	got := click(m, b.x+2, b.y+1)
+	if got.focus != paneDone || got.query != "" {
+		t.Fatalf("click on Done: focus %d query %q", got.focus, got.query)
+	}
+	if id := got.rowsOf(paneDone)[got.cursor()].id; id != drawn[0].id {
+		t.Errorf("click on the first Done row selected %s, want %s", id, drawn[0].id)
+	}
+}

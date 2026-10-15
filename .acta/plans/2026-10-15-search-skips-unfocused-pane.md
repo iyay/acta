@@ -49,6 +49,6 @@ finished: "2026-10-15 13:00:57"
 
 **verify:** Moving the focus between list boxes, by tab key or by click, always clears the query and stops typing, and a click selects the row drawn under the pointer; moving to the detail box keeps the query. The box without the focus draws the same lines with and without a query, fold marks included. List each focus path and tab checked.
 
-- [ ] Failing tests: tab from Open to Done clears the query; a click on a Done row during a search selects that drawn row; the other box's drawn lines are equal with and without a query on every two-box tab.
-- [ ] focusPane clears query and searching when the list box changes; one helper gives a box its view of the model, used by rowsOf and listView.
-- [ ] Commit.
+- [x] Failing tests: tab from Open to Done clears the query; a click on a Done row during a search selects that drawn row; the other box's drawn lines are equal with and without a query on every two-box tab.
+- [x] focusPane clears query and searching when the list box changes; one helper gives a box its view of the model, used by rowsOf and listView.
+- [x] Commit.
