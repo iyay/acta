@@ -40,6 +40,9 @@ func TestSkillSlice(t *testing.T) {
 			"`**Files:**`, `**Seam:**`", "**Seam:** [public interface", "The yes to the plan is the yes to its seams",
 			// Cases are counted by behavior, so same-path inputs do not bloat the tests.
 			"Inputs that run the same code path are one case",
+			// The board counts these boxes as task progress, so a minimal
+			// task with no box never reads as done.
+			"`- [ ] Red: <test> fails because <why>`", "`- [ ] Change: <code change>`", "`- [ ] Commit: <message>`",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",
