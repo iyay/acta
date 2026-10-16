@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 func TestAssignIDsGivesMissingOnly(t *testing.T) {
@@ -972,7 +973,80 @@ func TestAssignIDsFoldsIntoAChoreOfTheSameKind(t *testing.T) {
 	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after == before {
 		t.Fatal("two folders folded, want a commit of their own")
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore: assign short ids" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore: new 2026-09-23-c, 2026-09-22-d-design" {
 		t.Fatalf("subject %q", got)
+	}
+}
+
+// A file that is new gets its id in the commit that brings it in, and that
+// commit says a new file came, not that an id was given.
+func TestAssignIDsNamesTheCommitOfANewFile(t *testing.T) {
+	t.Parallel()
+	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
+	spec := filepath.Join(cfg.Root, "specs", "2026-09-21-b-design.md")
+	if err := os.MkdirAll(filepath.Dir(spec), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(spec, []byte("# B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(spec): new 2026-09-21-b-design" {
+		t.Fatalf("subject %q", got)
+	}
+}
+
+// A spec the user already committed on its own takes its id inside that
+// commit, whatever the subject says, as long as the commit only added it and
+// nobody else holds it.
+func TestAssignIDsFoldsIntoTheCommitThatAddedTheFile(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		setup func(t *testing.T, cfg config.Config)
+		fold  bool
+	}{
+		{"head added only the file", func(*testing.T, config.Config) {}, true},
+		{"head also changed another file", func(t *testing.T, cfg config.Config) {
+			if err := os.WriteFile(filepath.Join(cfg.RepoRoot, "README.md"), []byte("y\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}, false},
+		{"head is pushed", func(t *testing.T, cfg config.Config) {}, false},
+		{"head is tagged", func(t *testing.T, cfg config.Config) {}, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := repoWith(t, map[string]string{"README.md": "x\n"})
+			spec := filepath.Join(cfg.Root, "specs", "2026-09-21-b-design.md")
+			if err := os.MkdirAll(filepath.Dir(spec), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(spec, []byte("# B\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			c.setup(t, cfg)
+			gitRun(t, cfg.RepoRoot, "add", ".")
+			gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", "spec: b")
+			switch c.name {
+			case "head is pushed":
+				gitRun(t, cfg.RepoRoot, "update-ref", "refs/remotes/origin/main", "HEAD")
+			case "head is tagged":
+				gitRun(t, cfg.RepoRoot, "tag", "v1")
+			}
+			before := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
+			if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+				t.Fatalf("out=%+v err=%v", out, err)
+			}
+			after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD")
+			subject := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s")
+			if c.fold && (after != before || subject != "spec: b") {
+				t.Fatalf("commits %s -> %s, subject %q, want a fold into spec: b", before, after, subject)
+			}
+			if !c.fold && (after == before || subject != "chore(spec): assign short ids") {
+				t.Fatalf("commits %s -> %s, subject %q, want an id commit of its own", before, after, subject)
+			}
+		})
 	}
 }

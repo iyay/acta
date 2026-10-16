@@ -274,7 +274,12 @@ func canFold(repo, root string, paths []string, msg string) bool {
 		return false
 	}
 	f := strings.Split(strings.TrimRight(out, "\n"), "\x00")
-	if len(f) != 3 || !strings.HasPrefix(f[0], "chore(") || len(strings.Fields(f[2])) != 1 {
+	if len(f) != 3 || len(strings.Fields(f[2])) != 1 {
+		return false
+	}
+	// Any other subject is still ours to fold into when HEAD did nothing but
+	// add these files: the id then rides the commit that brought them in.
+	if !strings.HasPrefix(f[0], "chore(") && !(sameFiles(repo, paths) && onlyAdds(repo)) {
 		return false
 	}
 	if me := UserName(repo); me == "" || f[1] != me {
@@ -302,6 +307,24 @@ func canFold(repo, root string, paths []string, msg string) bool {
 		}
 	}
 	return !otherCheckoutHolds(repo)
+}
+
+// onlyAdds says whether every file HEAD touches is one it adds.
+func onlyAdds(repo string) bool {
+	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+	added, err2 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "--diff-filter=A", "-r", "HEAD")
+	return err1 == nil && err2 == nil && strings.TrimSpace(all) != "" && all == added
+}
+
+// IsTracked says whether git knows path. Any error counts as tracked, so a
+// caller never calls a file new when it cannot tell.
+func IsTracked(repo, path string) bool {
+	_, err := run(repo, "ls-files", "--error-unmatch", "--", path)
+	if err == nil {
+		return true
+	}
+	_, gitErr := run(repo, "rev-parse", "--git-dir")
+	return gitErr != nil
 }
 
 // sameFiles says whether HEAD holds exactly paths. Asking with and without
