@@ -1286,7 +1286,36 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 		if r := CommitPathsIn(repo, root, []string{b, c}, "chore(scratch): assign short ids"); !r.Folded {
 			t.Fatalf("got %+v", r)
 		}
-		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a; assign short ids" {
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a, b, c" {
+			t.Fatalf("subject %q", got)
+		}
+	})
+	t.Run("a new spec folded with its scratch parent is named in the subject", func(t *testing.T) {
+		// BUG-0045: the spec went into a chore(scratch) commit whose subject
+		// never named it, so nobody reading git log could find it.
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		writeFile(t, a, "a\nfinished\n")
+		s := filepath.Join(root, "specs", "s.md")
+		if err := os.MkdirAll(filepath.Dir(s), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, s, "s\n")
+		if r := CommitPathsIn(repo, root, []string{a, s}, "chore: assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore: new a, s" {
+			t.Fatalf("subject %q, want the spec named", got)
+		}
+	})
+	t.Run("a fold that adds no file keeps its subject", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		writeFile(t, a, "a\nmore\n")
+		if r := CommitOrFoldIn(repo, root, a, "chore(scratch): new a", false); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a" {
 			t.Fatalf("subject %q", got)
 		}
 	})

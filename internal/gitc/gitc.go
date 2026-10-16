@@ -136,8 +136,66 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 			lines[0] = s
 		}
 	}
+	if s := newFilesSubject(repo, paths, lines[0], kind); s != "" {
+		// The fold brings in a file the subject does not name. Name every
+		// file the commit adds, so none hides inside it.
+		if !said(strings.TrimSpace(lines[0])) && strings.TrimSpace(lines[0]) != msg {
+			lines = insertFoldLine(lines, lines[0])
+		}
+		lines[0] = s
+	}
 	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
 	return append(args, paths...), true
+}
+
+// newFilesSubject gives "chore(<kind>): new <names>" for every file the
+// amended commit adds, when the fold adds a file the subject does not name.
+// kind is kept only when HEAD's subject and the fold share it. It gives ""
+// when the fold adds no file, when the subject names them all, or when not
+// even one name fits.
+func newFilesSubject(repo string, paths []string, subject, kind string) string {
+	fresh, err := run(repo, append([]string{"diff", "--cached", "--name-only", "--diff-filter=A", "HEAD", "--"}, paths...)...)
+	if err != nil || strings.TrimSpace(fresh) == "" {
+		return ""
+	}
+	words := strings.FieldsFunc(subject, func(r rune) bool { return strings.ContainsRune(" ,;:", r) })
+	missing := false
+	for _, f := range strings.Fields(fresh) {
+		missing = missing || !slices.Contains(words, stem(f))
+	}
+	if !missing {
+		return ""
+	}
+	had, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "--diff-filter=A", "-r", "HEAD")
+	if err != nil {
+		return ""
+	}
+	var names []string
+	for _, f := range append(strings.Fields(had), strings.Fields(fresh)...) {
+		if n := stem(f); !slices.Contains(names, n) {
+			names = append(names, n)
+		}
+	}
+	prefix := "chore: "
+	if kind != "" && SubjectKind(subject) == kind {
+		prefix = "chore(" + kind + "): "
+	}
+	for k := len(names); k > 0; k-- {
+		out := prefix + "new " + strings.Join(names[:k], ", ")
+		if rest := len(names) - k; rest > 0 {
+			out += ", +" + strconv.Itoa(rest) + " more"
+		}
+		if len(out) <= maxSubject {
+			return out
+		}
+	}
+	return ""
+}
+
+// stem is a file's name without its folder and extension.
+func stem(path string) string {
+	b := filepath.Base(path)
+	return strings.TrimSuffix(b, filepath.Ext(b))
 }
 
 // kindLines gives the body lines that are chore subjects of kind.
