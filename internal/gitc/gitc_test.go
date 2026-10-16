@@ -1355,6 +1355,23 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 			}
 		}
 	})
+	t.Run("a fold that adds no file after a built subject keeps every name", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, a, "a\nmore\n")
+		writeFile(t, b, "b\n")
+		if r := CommitPathsIn(repo, root, []string{a, b}, "chore(scratch): assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		writeFile(t, a, "a\nmore\nagain\n")
+		if r := CommitOrFoldIn(repo, root, a, "chore(scratch): add to a", false); !r.Folded {
+			t.Fatalf("second got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(scratch): new a, b" {
+			t.Fatalf("subject %q lost b", got)
+		}
+	})
 	t.Run("a fold that adds no file keeps its subject", func(t *testing.T) {
 		repo, root := kindRepo(t)
 		a := filepath.Join(root, "scratch", "a.md")

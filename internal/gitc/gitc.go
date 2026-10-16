@@ -151,6 +151,10 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 			lines = insertFoldLine(lines, head)
 		}
 		lines[0] = s
+	} else if built {
+		// No file came in, so the built subject still names every file the
+		// commit adds. The body alone does not, so keep it.
+		lines[0] = head
 	}
 	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
 	return append(args, paths...), true

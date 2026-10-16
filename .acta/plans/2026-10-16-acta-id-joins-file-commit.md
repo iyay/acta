@@ -65,3 +65,21 @@ finished: "2026-10-16 08:20:58"
 - [x] Failing tests: BUG-0045 with its real stems, a repeat fold after a built subject, and `acta id` on a new spec next to a user's `spec: b` commit.
 - [x] Code: subject names cut old stems before new ones and read `-z` output; a built subject is not moved into the body; a non-chore HEAD needs `exactFiles`; `new <stems>` is capped; `IsTracked` treats a git error as tracked.
 - [x] Commit: `fix(gitc): review round 1 for PLN-0154`
+
+## Fix round 2
+
+### Task 04: Built subject survives a fold with no new file
+
+**Files:**
+- Modify: `internal/gitc/gitc.go`
+- Test: `internal/gitc/gitc_test.go`
+
+**verify:** A fold that adds no file after an acta-built subject keeps every name that subject held.
+
+- [x] Failing test: fold ids into `new a`, then edit `a` only; the subject must still name `b`.
+- [x] Code: when nothing new comes in, a built subject stays as HEAD's subject.
+- [x] Commit: `fix(gitc): review round 2 for PLN-0154`
+
+## Review notes
+
+Three rounds: round 1 two BLOCKED (fold hid long new names, subset file check, built subject in body), round 2 BLOCKED (built subject lost on a no-file fold), round 3 CLEAN; one polish commit tightens a test; notes left: symlinked paths give a plain commit, test table idiom.
