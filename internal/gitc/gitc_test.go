@@ -1308,6 +1308,53 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 			t.Fatalf("subject %q, want the spec named", got)
 		}
 	})
+	t.Run("a long new name is never the one cut from the subject", func(t *testing.T) {
+		repo := setupRepo(t)
+		git(t, repo, "config", "user.name", "test")
+		root := filepath.Join(repo, "plan")
+		a := filepath.Join(root, "scratch", "2026-10-15-optional-tui-install.md")
+		if err := os.MkdirAll(filepath.Dir(a), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, a, "a\n")
+		CommitOrFoldIn(repo, root, a, "chore(scratch): new 2026-10-15-optional-tui-install", false)
+		writeFile(t, a, "a\nfinished\n")
+		s := filepath.Join(root, "specs", "2026-10-15-strip-release-binary-design.md")
+		if err := os.MkdirAll(filepath.Dir(s), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, s, "s\n")
+		if r := CommitPathsIn(repo, root, []string{a, s}, "chore: assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		if got := git(t, repo, "log", "-1", "--format=%s"); !strings.Contains(got, "2026-10-15-strip-release-binary-design") {
+			t.Fatalf("subject %q does not name the new spec", got)
+		}
+	})
+	t.Run("folds again after a rebuilt subject leave no made-up lines", func(t *testing.T) {
+		repo, root := kindRepo(t)
+		a := filepath.Join(root, "scratch", "a.md")
+		b := filepath.Join(root, "scratch", "b.md")
+		writeFile(t, a, "a\nmore\n")
+		writeFile(t, b, "b\n")
+		if r := CommitPathsIn(repo, root, []string{a, b}, "chore(scratch): assign short ids"); !r.Folded {
+			t.Fatalf("got %+v", r)
+		}
+		d := filepath.Join(root, "scratch", "d.md")
+		writeFile(t, d, "d\n")
+		if r := CommitOrFoldIn(repo, root, d, "chore(scratch): new d", false); !r.Folded {
+			t.Fatalf("second got %+v", r)
+		}
+		msg := git(t, repo, "log", "-1", "--format=%B")
+		if got := strings.SplitN(msg, "\n", 2)[0]; got != "chore(scratch): new a, b, d" {
+			t.Fatalf("subject %q", got)
+		}
+		for _, bad := range []string{"new a; assign", "new a, a", "new a, b\n"} {
+			if strings.Contains(msg+"\n", bad) {
+				t.Fatalf("message holds made-up line %q:\n%s", bad, msg)
+			}
+		}
+	})
 	t.Run("a fold that adds no file keeps its subject", func(t *testing.T) {
 		repo, root := kindRepo(t)
 		a := filepath.Join(root, "scratch", "a.md")

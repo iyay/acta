@@ -153,13 +153,33 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		sort.Strings(fresh)
 		stems := make([]string, len(fresh))
 		for i, f := range fresh {
-			stems[i] = strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
+			stems[i] = gitc.Stem(f)
 		}
-		what = "new " + strings.Join(stems, ", ")
+		what = newWhat(stems)
 	}
 	msg := Subject(cfg, paths, what)
 	r := gitc.CommitPathsIn(cfg.RepoRoot, cfg.Root, paths, msg)
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
+}
+
+// newWhat names the new files, cutting names into "+N more" so the subject
+// stays one line in git log.
+func newWhat(stems []string) string {
+	for k := len(stems); k > 1; k-- {
+		out := "new " + strings.Join(stems[:k], ", ")
+		if rest := len(stems) - k; rest > 0 {
+			out += ", +" + strconv.Itoa(rest) + " more"
+		}
+		// "chore(scratch): " is the longest prefix Subject adds.
+		if len(out)+len("chore(scratch): ") <= 72 {
+			return out
+		}
+	}
+	out := "new " + stems[0]
+	if len(stems) > 1 {
+		out += ", +" + strconv.Itoa(len(stems)-1) + " more"
+	}
+	return out
 }
 
 // closeScratchParent gives the file of the scratch idea a spec grew out of.

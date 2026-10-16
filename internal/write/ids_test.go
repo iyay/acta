@@ -998,6 +998,32 @@ func TestAssignIDsNamesTheCommitOfANewFile(t *testing.T) {
 	}
 }
 
+// A commit the user made for one spec never takes in a second file, so its
+// subject and its files stay what the user wrote.
+func TestAssignIDsNeverFoldsAnotherFileIntoTheUsersCommit(t *testing.T) {
+	t.Parallel()
+	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
+	b := filepath.Join(cfg.Root, "specs", "2026-09-21-b-design.md")
+	if err := os.MkdirAll(filepath.Dir(b), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(b, []byte("# B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, cfg.RepoRoot, "add", ".")
+	gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", "spec: b")
+	userCommit := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+	if err := os.WriteFile(filepath.Join(cfg.Root, "specs", "2026-09-22-c-design.md"), []byte("# C\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	if got := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD~1"); got != userCommit {
+		t.Fatalf("the user's commit was rewritten: HEAD~1 %s, want %s", got, userCommit)
+	}
+}
+
 // A spec the user already committed on its own takes its id inside that
 // commit, whatever the subject says, as long as the commit only added it and
 // nobody else holds it.
