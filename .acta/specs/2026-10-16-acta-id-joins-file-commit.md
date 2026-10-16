@@ -1,5 +1,6 @@
 ---
 parent: scratch/2026-10-16-acta-id-joins-file-commit
+closes: [BUG-0045]
 id: SPC-0142
 created: "2026-10-16 08:12:14"
 hash: gofxz4l
@@ -36,10 +37,18 @@ revert on its own.
    `assign short ids` commit. A call that mixes new files with step 3 files
    keeps today's subject too.
 4. A scratch parent closed in the same call rides the same commit, as today.
+5. A fold never hides a file. When a fold adds a file of another kind than
+   HEAD's subject names, or a new file HEAD's subject does not name, the
+   subject is built again to name every file the commit adds, for example
+   `chore: new <scratch stem>, <spec stem>`. This closes BUG-0045: today
+   `sameFiles` only checks that HEAD's files are in the new paths, so a new
+   spec plus its scratch parent folds into a `chore(scratch)` commit whose
+   subject never names the spec.
 
 ## Testing
 
 Red-first tests in `internal/write/ids_test.go` and `internal/gitc/gitc_test.go`:
 the `new` subject for one and for two new files, the fold into a non-chore
 HEAD that added the file, and no fold when that HEAD is pushed, tagged, held
-by another branch, or did not add the file.
+by another branch, or did not add the file; and the BUG-0045 repro, where the
+folded subject must name the new spec.
