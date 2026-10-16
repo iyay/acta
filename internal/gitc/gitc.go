@@ -116,13 +116,18 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 		return nil, false
 	}
 	lines := strings.Split(strings.TrimRight(out, " \t\r\n"), "\n")
+	head := lines[0]
 	msg = strings.TrimSpace(msg)
 	kind := SubjectKind(msg)
 	sameKind := kind != "" && SubjectKind(lines[0]) == kind
+	// A subject acta built from the files it adds is not a subject of its
+	// own, so it never moves into the body when a fold builds a new one.
+	// Only a folded commit has such a subject, and a fold always has a body.
+	built := len(lines) > 1 && strings.TrimSpace(lines[0]) == addedSubject(repo, lines[0], nil)
 	said := func(s string) bool {
 		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
 	}
-	if sameKind && strings.TrimSpace(lines[0]) != msg && !said(msg) && !said(strings.TrimSpace(lines[0])) &&
+	if sameKind && !built && strings.TrimSpace(lines[0]) != msg && !said(msg) && !said(strings.TrimSpace(lines[0])) &&
 		strings.TrimSpace(lines[0]) != FoldSubject(kindLines(lines[1:], kind)) {
 		// HEAD's subject is about to change and was not built from the body,
 		// so it is a subject of its own. Keep it below.
@@ -136,8 +141,128 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 			lines[0] = s
 		}
 	}
+	if s := newFilesSubject(repo, paths, lines[0], kind); s != "" {
+		// The fold brings in a file the subject does not name. Name every
+		// file the commit adds, so none hides inside it. HEAD's own subject
+		// moves into the body; one acta built from the body is already there.
+		own := !built && strings.TrimSpace(lines[0]) == strings.TrimSpace(head) &&
+			strings.TrimSpace(head) != FoldSubject(kindLines(lines[1:], kind))
+		if own && !said(strings.TrimSpace(head)) {
+			lines = insertFoldLine(lines, head)
+		}
+		lines[0] = s
+	} else if built {
+		// No file came in, so the built subject still names every file the
+		// commit adds. The body alone does not, so keep it.
+		lines[0] = head
+	}
 	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
 	return append(args, paths...), true
+}
+
+// newFilesSubject gives "chore(<kind>): new <names>" for every file the
+// amended commit adds, when the fold adds a file and the subject does not
+// name every file the commit adds. kind is kept only when HEAD's subject and
+// the fold share it. It gives "" when the fold adds no file or the subject
+// already names them all.
+func newFilesSubject(repo string, paths []string, subject, kind string) string {
+	out, err := run(repo, append([]string{"diff", "--cached", "--name-only", "-z", "--diff-filter=A", "HEAD", "--"}, paths...)...)
+	fresh := zNames(out)
+	if err != nil || len(fresh) == 0 {
+		return ""
+	}
+	prefix := "chore: "
+	if kind != "" && SubjectKind(subject) == kind {
+		prefix = "chore(" + kind + "): "
+	}
+	return addedSubject(repo, prefix+"new", fresh)
+}
+
+// addedSubject names every file HEAD adds plus fresh, as "<prefix> a, b".
+// The prefix is taken from subject up to and including its verb "new". When
+// the names do not fit in maxSubject, HEAD's names are cut first and counted
+// as "+N more", so a fresh file is never the one hidden. It gives "" when
+// subject already names every file, or has no "new" verb.
+func addedSubject(repo, subject string, fresh []string) string {
+	subject = strings.TrimSpace(subject)
+	verb := strings.Index(subject, ": new")
+	if verb < 0 {
+		return ""
+	}
+	prefix := subject[:verb+len(": new")]
+	out, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-z", "--diff-filter=A", "-r", "HEAD")
+	if err != nil {
+		return ""
+	}
+	var had []string
+	for _, f := range zNames(out) {
+		if n := Stem(f); !slices.Contains(had, n) {
+			had = append(had, n)
+		}
+	}
+	var shown []string
+	for _, f := range fresh {
+		if n := Stem(f); !slices.Contains(had, n) && !slices.Contains(shown, n) {
+			shown = append(shown, n)
+		}
+	}
+	if fresh == nil {
+		// Asked only what subject HEAD's own files give, to tell whether
+		// HEAD's subject was built by acta.
+		return render(prefix, had, nil)
+	}
+	words := strings.FieldsFunc(subject, func(r rune) bool { return strings.ContainsRune(" ,;:", r) })
+	all := append(slices.Clone(had), shown...)
+	if !slices.ContainsFunc(all, func(n string) bool { return !slices.Contains(words, n) }) {
+		return ""
+	}
+	return render(prefix, had, shown)
+}
+
+// render writes prefix and the names, cutting from had first and then from
+// fresh, so the list fits in maxSubject. It gives "" when no name fits.
+func render(prefix string, had, fresh []string) string {
+	try := func(names []string, cut int) string {
+		if len(names) == 0 {
+			return ""
+		}
+		out := prefix + " " + strings.Join(names, ", ")
+		if cut > 0 {
+			out += ", +" + strconv.Itoa(cut) + " more"
+		}
+		if len(out) > maxSubject {
+			return ""
+		}
+		return out
+	}
+	for k := len(had); k >= 0; k-- {
+		if out := try(append(slices.Clone(had[:k]), fresh...), len(had)-k); out != "" {
+			return out
+		}
+	}
+	for k := len(fresh) - 1; k > 0; k-- {
+		if out := try(fresh[:k], len(had)+len(fresh)-k); out != "" {
+			return out
+		}
+	}
+	return ""
+}
+
+// zNames splits git output made with -z into its paths.
+func zNames(out string) []string {
+	var names []string
+	for _, n := range strings.Split(out, "\x00") {
+		if n = strings.TrimSpace(n); n != "" {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// Stem is a file's name without its folder and extension.
+func Stem(path string) string {
+	b := filepath.Base(path)
+	return strings.TrimSuffix(b, filepath.Ext(b))
 }
 
 // kindLines gives the body lines that are chore subjects of kind.
@@ -208,15 +333,21 @@ func canFold(repo, root string, paths []string, msg string) bool {
 	if tags, err := run(repo, "tag", "--points-at", "HEAD"); err != nil || strings.TrimSpace(tags) != "" {
 		return false
 	}
-	// A planning subject (it starts with chore( ), one parent and the same
-	// author as this user, so HEAD is our own planning commit and not a merge,
+	// A planning subject (it starts with chore( ), or a commit that only added
+	// exactly these files; one parent and the same author as this user, so
+	// HEAD is our own planning commit and not a merge,
 	// a feature commit or a colleague's work.
 	out, err := run(repo, "log", "-1", "--format=%s%x00%an%x00%P")
 	if err != nil {
 		return false
 	}
 	f := strings.Split(strings.TrimRight(out, "\n"), "\x00")
-	if len(f) != 3 || !strings.HasPrefix(f[0], "chore(") || len(strings.Fields(f[2])) != 1 {
+	if len(f) != 3 || len(strings.Fields(f[2])) != 1 {
+		return false
+	}
+	// Any other subject is still ours to fold into when HEAD did nothing but
+	// add these files: the id then rides the commit that brought them in.
+	if !strings.HasPrefix(f[0], "chore(") && !(exactFiles(repo, paths) && onlyAdds(repo)) {
 		return false
 	}
 	if me := UserName(repo); me == "" || f[1] != me {
@@ -244,6 +375,45 @@ func canFold(repo, root string, paths []string, msg string) bool {
 		}
 	}
 	return !otherCheckoutHolds(repo)
+}
+
+// onlyAdds says whether every file HEAD touches is one it adds.
+func onlyAdds(repo string) bool {
+	all, err1 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
+	added, err2 := run(repo, "diff-tree", "--no-commit-id", "--name-only", "--diff-filter=A", "-r", "HEAD")
+	return err1 == nil && err2 == nil && strings.TrimSpace(all) != "" && all == added
+}
+
+// IsTracked says whether git knows path. When git cannot answer, the file
+// counts as tracked, so a caller never calls a file new when it cannot tell.
+func IsTracked(repo, path string) bool {
+	out, err := run(repo, "ls-files", "-z", "--", path)
+	return err != nil || strings.TrimSpace(out) != ""
+}
+
+// exactFiles says whether HEAD touches exactly paths, no more and no fewer.
+// sameFiles only checks that HEAD's files are among paths, which lets a
+// second file ride a user's own commit.
+func exactFiles(repo string, paths []string) bool {
+	out, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-z", "-r", "HEAD")
+	top, err2 := run(repo, "rev-parse", "--show-toplevel")
+	if err != nil || err2 != nil {
+		return false
+	}
+	head := zNames(out)
+	if len(head) != len(paths) {
+		return false
+	}
+	for _, p := range paths {
+		rel, err := filepath.Rel(strings.TrimSpace(top), p)
+		if err != nil {
+			rel = p
+		}
+		if !slices.Contains(head, filepath.ToSlash(rel)) {
+			return false
+		}
+	}
+	return true
 }
 
 // sameFiles says whether HEAD holds exactly paths. Asking with and without

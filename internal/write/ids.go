@@ -38,8 +38,8 @@ var randHash = func() string {
 func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outcome, error) {
 	next, taken := scanIDs(b)
 	cands, skips := candidates(cfg, b, only)
-	var changes, paths []string
-	migrated := false
+	var changes, paths, fresh []string
+	migrated, allNew := false, true
 	for _, c := range cands {
 		orig, err := os.ReadFile(c.file)
 		if err != nil {
@@ -123,6 +123,11 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		if string(src) == string(orig) {
 			continue
 		}
+		if gitc.IsTracked(cfg.RepoRoot, c.file) {
+			allNew = false
+		} else {
+			fresh = append(fresh, c.file)
+		}
 		if err := os.WriteFile(c.file, src, 0o644); err != nil {
 			return nil, Outcome{Skips: skips}, err
 		}
@@ -139,12 +144,42 @@ func AssignIDs(cfg config.Config, b *board.Board, only []string) ([]string, Outc
 		return changes, Outcome{Reason: "auto_commit is off", Skips: skips}, nil
 	}
 	what := "assign short ids"
-	if migrated {
+	switch {
+	case migrated:
 		what = "migrate ids to 3-letter prefix"
+	case allNew && len(fresh) > 0:
+		// Every file is new, so this commit is where they come in. Say so,
+		// rather than naming it after the id.
+		sort.Strings(fresh)
+		stems := make([]string, len(fresh))
+		for i, f := range fresh {
+			stems[i] = gitc.Stem(f)
+		}
+		what = newWhat(stems)
 	}
 	msg := Subject(cfg, paths, what)
 	r := gitc.CommitPathsIn(cfg.RepoRoot, cfg.Root, paths, msg)
 	return changes, Outcome{Committed: r.Committed, Skipped: !r.Committed, Reason: r.Reason, Skips: skips}, nil
+}
+
+// newWhat names the new files, cutting names into "+N more" so the subject
+// stays one line in git log.
+func newWhat(stems []string) string {
+	for k := len(stems); k > 1; k-- {
+		out := "new " + strings.Join(stems[:k], ", ")
+		if rest := len(stems) - k; rest > 0 {
+			out += ", +" + strconv.Itoa(rest) + " more"
+		}
+		// "chore(scratch): " is the longest prefix Subject adds.
+		if len(out)+len("chore(scratch): ") <= 72 {
+			return out
+		}
+	}
+	out := "new " + stems[0]
+	if len(stems) > 1 {
+		out += ", +" + strconv.Itoa(len(stems)-1) + " more"
+	}
+	return out
 }
 
 // closeScratchParent gives the file of the scratch idea a spec grew out of.

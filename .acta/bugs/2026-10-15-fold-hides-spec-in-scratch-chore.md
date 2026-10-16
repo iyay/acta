@@ -1,6 +1,8 @@
 ---
 id: BUG-0045
 hash: hxrw5it
+fixed_in: 9485255c3bc65b93907e503c0ba70148fcccd0c8
+finished: "2026-10-16 08:40:49"
 ---
 # A new spec folds into a scratch chore commit and the subject hides it
 
