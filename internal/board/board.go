@@ -570,6 +570,12 @@ func (b *Board) derive() {
 	for _, it := range b.Items {
 		if it.Kind == KindTask {
 			it.Status, it.StatusSource = taskStatus(it.Done, it.Total, it.Started), "derived"
+			// Old minimal plans can hold a task with no box at all. Once the
+			// plan is finished that task is done too, or the plan looks open forever.
+			// A dropped plan is stamped finished as well, but its work was never done.
+			if p := b.byID[it.PlanID]; it.Total == 0 && p != nil && p.Finished != "" && p.fmStatus != "dropped" {
+				it.Status = "done"
+			}
 		}
 	}
 	// A plan with every box ticked on a branch still waits for merge, so
