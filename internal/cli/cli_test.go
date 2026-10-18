@@ -338,8 +338,8 @@ func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "voice.yaml"))
 	mustRun(t, "config", "set", "--language", "Korean", "--tone", "short")
-	if out := mustRun(t, "config", "show"); strings.Contains(out, "build_executor") {
-		t.Errorf("show printed an unset build_executor:\n%s", out)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "build_executor: inline (default)\n") {
+		t.Errorf("show did not print an unset build_executor as the inline default:\n%s", out)
 	}
 	mustRun(t, "config", "set", "--executor", "dispatch")
 	mustRun(t, "config", "set", "--subagent-models", "split")
