@@ -28,6 +28,11 @@ func TestSkillLand(t *testing.T) {
 			"chore(plan): tick <plan>", `acta commit <plan path> -m "chore(plan): tick <plan>"`, "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
+			// The full suite runs here and nowhere else in a plan, so a red
+			// run must not turn into one full run per guess.
+			"Run it once every change is in, polish included.",
+			"Red: fix the cause through the narrow failing tests, then run it once more; never debug with the full suite.",
+			"It reruns only then, or when step 6 or tidy needs a new gate.",
 			"acta wiki check <base>..<head>", "the wiki pages the branch added or changed",
 			"git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/",
 		},

@@ -37,7 +37,7 @@ func TestSkillReview(t *testing.T) {
 			"The polish commit counts as no round.",
 			"Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.",
 			"one polish commit holding all of them",
-			"The orchestrator runs the narrow tests of the code the polish touched and the formatter, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`).",
+			"The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`).",
 			"When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`.",
 			"The polish commit uses no round.",
 			"A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.",
@@ -47,7 +47,7 @@ func TestSkillReview(t *testing.T) {
 			"one summary line under `## Review notes` in the plan file",
 			"that section is committed with the plan",
 			"Then `acta:land`.",
-			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the narrow tests of the code the polish touched and the formatter, with the output shown, then the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward.",
+			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the narrow tests of the code the polish touched and the formatter check, with the output shown, then the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward.",
 			// Every other place names that section instead of restating it.
 			"A CLEAN round runs the polish flow in `## After a CLEAN round`.",
 			"run `## After a CLEAN round`, which ends in `acta:land`.",

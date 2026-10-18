@@ -22,7 +22,7 @@ scripts/eval                      # plugin behaviour evals (claude plugin eval, 
 go install ./cmd/acta             # rebuild the acta on PATH; hooks and the TUI use that binary
 ```
 
-Agents run `scripts/test --full` as the gate, not `-short`. The eval hooks call the `acta` on PATH, so put the branch binary on PATH before `scripts/eval`.
+Agents run `scripts/test --full` (not `-short`) only as the land gate (`acta:land`), never per task or per review round. It runs again after a fix for a red run, or when the merge result needs a new gate. The eval hooks call the `acta` on PATH, so put the branch binary on PATH before `scripts/eval`.
 
 ## Version
 
