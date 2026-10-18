@@ -42,4 +42,8 @@ Today: plans link to a spec through parent:, and nothing stops two plans per spe
 
 2026-10-18: outside review found 3 gaps, all fixed in spec: split plans clash on spec started/finished (land now writes them); ready reads git show <parent ref>, not the board; after: rejects non-plan ids, self-reference and cycles with exit 2.
 
+### 2026-10-18
+
+2026-10-18: second outside review, 3 more gaps fixed: ready --head checks the landing commit is an ancestor of a reused worktree; spec started may move earlier on a later land; land commits the spec dates before last-land and checks the main checkout is clean.
+
 ## Open questions
