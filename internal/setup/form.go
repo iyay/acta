@@ -16,18 +16,19 @@ import (
 // their first option. FormDefaults keeps that rule in
 // one place so Ask and tests read the same values.
 type Defaults struct {
-	Language       string
-	Style          string
-	Tone           string
-	RepoLanguage   string
-	BuildExecutor  string
-	SubagentModels string
-	PlanDepth      string
-	PlanSplit      string
-	ReviewDepth    string
-	CommitHistory  string
-	Questions      string
-	OfferDispatch  bool
+	Language            string
+	Style               string
+	Tone                string
+	RepoLanguage        string
+	BuildExecutor       string
+	SubagentModels      string
+	PlanDepth           string
+	PlanSplit           string
+	ReviewUnderstanding bool
+	ReviewDepth         string
+	CommitHistory       string
+	Questions           string
+	OfferDispatch       bool
 }
 
 // FormDefaults reads the defaults out of the current config. Dispatch is
@@ -60,18 +61,19 @@ func FormDefaults(e Env) Defaults {
 		c.Questions = "one"
 	}
 	return Defaults{
-		Language:       c.ChatLanguage,
-		Style:          c.Style,
-		Tone:           c.Tone,
-		RepoLanguage:   c.RepoLanguage,
-		BuildExecutor:  c.BuildExecutor,
-		SubagentModels: c.SubagentModels,
-		PlanDepth:      c.PlanDepth,
-		PlanSplit:      c.PlanSplit,
-		ReviewDepth:    c.ReviewDepth,
-		CommitHistory:  c.CommitHistory,
-		Questions:      c.Questions,
-		OfferDispatch:  herdr,
+		Language:            c.ChatLanguage,
+		Style:               c.Style,
+		Tone:                c.Tone,
+		RepoLanguage:        c.RepoLanguage,
+		BuildExecutor:       c.BuildExecutor,
+		SubagentModels:      c.SubagentModels,
+		PlanDepth:           c.PlanDepth,
+		PlanSplit:           c.PlanSplit,
+		ReviewDepth:         c.ReviewDepth,
+		ReviewUnderstanding: c.Understanding(),
+		CommitHistory:       c.CommitHistory,
+		Questions:           c.Questions,
+		OfferDispatch:       herdr,
 	}
 }
 
@@ -181,6 +183,17 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("standard: two reviewers, Spec and Standards", "standard"),
 					huh.NewOption("deep: two reviewers plus a fact-check of every BLOCKER", "deep"),
 				).Value(&d.ReviewDepth), text(&d.ReviewDepth)},
+		{"Review understanding",
+			"After landing: explain and ask an optional scenario. Never blocks.",
+			huh.NewSelect[bool]().Options(
+				huh.NewOption("off: use the usual landing report", false),
+				huh.NewOption("on: add an explanation and one optional question", true),
+			).Value(&d.ReviewUnderstanding), func() string {
+				if d.ReviewUnderstanding {
+					return "on"
+				}
+				return "off"
+			}},
 	}
 
 	// Only a tool that still needs the plugin gets a row, and only when a
@@ -279,9 +292,7 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 	return a, nil
 }
 
-// AnswersUser turns the form answers into the config that setup saves. The
-// form never asks about review_understanding, so the saved value is carried
-// over from current as it was.
+// AnswersUser turns the form answers into the config that setup saves.
 func AnswersUser(current config.User, d Defaults) config.User {
 	return config.User{
 		ChatLanguage:        d.Language,
@@ -295,7 +306,7 @@ func AnswersUser(current config.User, d Defaults) config.User {
 		ReviewDepth:         d.ReviewDepth,
 		CommitHistory:       d.CommitHistory,
 		Questions:           d.Questions,
-		ReviewUnderstanding: current.ReviewUnderstanding,
+		ReviewUnderstanding: &d.ReviewUnderstanding,
 	}
 }
 
