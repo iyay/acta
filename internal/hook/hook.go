@@ -227,6 +227,10 @@ func settingsBlock(v config.User) string {
 	}
 	add("Build executor", executorName, executorLines[executor])
 	add("Plan depth", v.PlanDepth, "")
+	if v.PlanSplit == "on" {
+		// Off is the default and writes nothing, so the note stays the same size.
+		add("Plan split", "on", "")
+	}
 	add("Review depth", v.ReviewDepth, "")
 	add("Commit history", v.CommitHistory, "")
 	add("Subagent models", v.SubagentModels, modelLines[v.SubagentModels])
