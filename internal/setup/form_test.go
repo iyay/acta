@@ -58,9 +58,9 @@ func TestFormGroups(t *testing.T) {
 	}
 	groups := formGroupText(t, env)
 
-	// Eleven question screens, then one screen with a yes/no per harness.
-	if len(groups) != 12 {
-		t.Fatalf("got %d groups, want 12", len(groups))
+	// Twelve question screens, then one screen with a yes/no per harness.
+	if len(groups) != 13 {
+		t.Fatalf("got %d groups, want 13", len(groups))
 	}
 
 	// Fixed order: every screen opens with the blue-diamond title line,
@@ -70,18 +70,20 @@ func TestFormGroups(t *testing.T) {
 		count string
 		desc  string
 	}{
-		{"Chat language", "(1/12)", "The language the agent chats in. Code and files use the repo language."},
-		{"Reply style", "(2/12)", ""},
-		{"Tone", "(3/12)", "Optional. Your own words, like \"casual, no jargon\"."},
-		{"Repo language", "(4/12)", "Code, comments, commits, specs and plans."},
-		{"Build executor", "(5/12)", ""},
-		{"Subagent models", "(6/12)", "Claude Code only."},
-		{"Plan detail", "(7/12)", ""},
-		{"Plan split", "(8/12)", ""},
-		{"Commit history", "(9/12)", ""},
-		{"Questions", "(10/12)", ""},
-		{"Review depth", "(11/12)", ""},
-		{"Plugin install", "(12/12)", "One row per tool found."},
+		{"Chat language", "(1/13)", "The language the agent chats in. Code and files use the repo language."},
+		{"Reply style", "(2/13)", ""},
+		{"Tone", "(3/13)", "Optional. Your own words, like \"casual, no jargon\"."},
+		{"Repo language", "(4/13)", "Code, comments, commits, specs and plans."},
+		{"Build executor", "(5/13)", ""},
+		{"Subagent models", "(6/13)", "Claude Code only."},
+		{"Plan detail", "(7/13)", ""},
+		{"Plan split", "(8/13)", ""},
+		{"Commit history", "(9/13)", ""},
+		{"Questions", "(10/13)", ""},
+		{"Review depth", "(11/13)", ""},
+		{"Review understanding", "(12/13)", "After landing: explain and ask an optional scenario. Never blocks."},
+
+		{"Plugin install", "(13/13)", "One row per tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")
@@ -102,8 +104,8 @@ func TestFormGroups(t *testing.T) {
 
 	// The harness screen lists every harness found.
 	content := formGroupContent(t, env)
-	if !strings.Contains(content[11], "claude") || !strings.Contains(content[11], "omp") {
-		t.Errorf("harness group lists every harness, got %q", content[11])
+	if !strings.Contains(content[12], "claude") || !strings.Contains(content[12], "omp") {
+		t.Errorf("harness group lists every harness, got %q", content[12])
 	}
 }
 
@@ -115,8 +117,8 @@ func TestFormGroupsNoHarness(t *testing.T) {
 
 	env := setup.Env{Current: config.User{}}
 	groups := formGroupText(t, env)
-	if len(groups) != 11 {
-		t.Fatalf("got %d groups, want 10", len(groups))
+	if len(groups) != 12 {
+		t.Fatalf("got %d groups, want 12", len(groups))
 	}
 	content := formGroupContent(t, env)
 	if strings.Contains(content[10], "claude") || strings.Contains(content[10], "omp") {
@@ -243,8 +245,8 @@ func TestFormRail(t *testing.T) {
 		}
 	}
 	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
-	if !strings.Contains(content[11], "claude") || !strings.Contains(content[11], "● Yes  ○ No") {
-		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[11])
+	if !strings.Contains(content[12], "claude") || !strings.Contains(content[12], "● Yes  ○ No") {
+		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[12])
 	}
 }
 
@@ -277,10 +279,10 @@ func TestFormInstallRows(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			content := formGroupContent(t, c.env)
 			if c.wantGroup {
-				if len(content) != 12 {
-					t.Fatalf("got %d groups, want 11", len(content))
+				if len(content) != 13 {
+					t.Fatalf("got %d groups, want 13", len(content))
 				}
-				last := content[11]
+				last := content[12]
 				for _, h := range c.has {
 					if !strings.Contains(last, h) {
 						t.Errorf("install screen misses %q: %q", h, last)
@@ -293,8 +295,8 @@ func TestFormInstallRows(t *testing.T) {
 				}
 				return
 			}
-			if len(content) != 11 {
-				t.Fatalf("got %d groups, want 10 (no install screen)", len(content))
+			if len(content) != 12 {
+				t.Fatalf("got %d groups, want 12 (no install screen)", len(content))
 			}
 		})
 	}
@@ -555,22 +557,43 @@ func TestFormPlanSplit(t *testing.T) {
 	}
 }
 
-// Setup asks nothing about review understanding and keeps the saved value,
-// true or false, when it saves the answers.
-func TestFormKeepsReviewUnderstanding(t *testing.T) {
-	for _, want := range []bool{true, false} {
-		env := setup.Env{Current: config.User{ChatLanguage: "Korean", RepoLanguage: "English", ReviewUnderstanding: &want}}
-		for _, text := range formGroupText(t, env) {
-			if strings.Contains(strings.ToLower(text), "understanding") {
-				t.Errorf("setup asks about understanding:\n%s", text)
+// Setup exposes the saved value and saves either choice independently of depth.
+func TestFormReviewUnderstanding(t *testing.T) {
+	pinHome(t)
+	hold := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.Ascii)
+	defer lipgloss.SetColorProfile(hold)
+	for _, saved := range []*bool{nil, new(bool), func() *bool { v := true; return &v }()} {
+		env := setup.Env{Current: config.User{ReviewUnderstanding: saved}}
+		want := "off"
+		if saved != nil && *saved {
+			want = "on"
+		}
+		groups := formGroupText(t, env)
+		if !strings.Contains(groups[11], "Review understanding") {
+			t.Fatalf("missing understanding step: %q", groups[11])
+		}
+		shown := formGroupContent(t, env)[11]
+		if !strings.Contains(shown, "› ● "+want) {
+			t.Errorf("saved %v: selection = %q, want %s", saved, shown, want)
+		}
+		if got := setup.AnsweredLines(env)[11]; got != "◇  Review understanding\n│  "+want+"\n│\n" {
+			t.Errorf("summary = %q", got)
+		}
+		for _, depth := range []string{"quick", "standard", "deep"} {
+			env.Current.ReviewDepth = depth
+			d := setup.FormDefaults(env)
+			got := setup.AnswersUser(env.Current, d)
+			if got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != (want == "on") {
+				t.Fatalf("saved default = %+v", got.ReviewUnderstanding)
+			}
+			for _, pick := range []bool{false, true} {
+				d.ReviewUnderstanding = pick
+				got = setup.AnswersUser(env.Current, d)
+				if got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != pick || got.ReviewDepth != depth {
+					t.Errorf("pick %v depth %s: got %+v", pick, depth, got)
+				}
 			}
 		}
-		got := setup.AnswersUser(env.Current, setup.FormDefaults(env))
-		if got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != want {
-			t.Errorf("saved answers hold %v, want %v", got.ReviewUnderstanding, want)
-		}
-	}
-	if got := setup.AnswersUser(config.User{}, setup.FormDefaults(setup.Env{})); got.ReviewUnderstanding != nil {
-		t.Errorf("unset value came back as %v, want nil", *got.ReviewUnderstanding)
 	}
 }
