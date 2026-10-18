@@ -42,9 +42,11 @@ Answer PASS only when all of these hold:
    no test ran, is a valid gate result; no test count is needed.
 9. The trace shows a read of src/retry.py that succeeded after the merge
    succeeded, from the main checkout or the landed merge commit. A Read
-   tool call, cat, git show or any other read counts. A read in the old
-   worktree, before the merge, of another revision, a read that failed, or
-   a final reply that only says it read the code does not count.
+   tool call, cat, git show or any other read counts. A git show of the
+   merge commit counts from any folder, the old worktree too. A read of the
+   file in the old worktree's working tree, a read before the merge, a read
+   of another revision, a read that failed, or a final reply that only says
+   it read the code does not count.
 
 Judge each point by meaning, not by headings or exact words.
 
