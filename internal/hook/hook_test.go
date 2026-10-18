@@ -832,6 +832,18 @@ func TestSessionStartSettingsLines(t *testing.T) {
 	if out := SessionStart(in); !strings.Contains(out, "- Subagent models: default. Name no model; the user's own setup picks it.\n") {
 		t.Error("default subagent models line missing")
 	}
+	// Plan split shows only when it is on, so users who never turn it on pay
+	// nothing for it in the session note.
+	if strings.Contains(out, "Plan split") {
+		t.Error("plan split line written while unset")
+	}
+	for _, split := range []string{"off", "on"} {
+		in.Voice.PlanSplit = split
+		has := strings.Contains(SessionStart(in), "- Plan split: on.\n")
+		if has != (split == "on") {
+			t.Errorf("plan_split %s: line written %v", split, has)
+		}
+	}
 }
 
 // A missing config or a broken one: no heading at all, so the

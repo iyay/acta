@@ -117,7 +117,7 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 	fields := []struct{ label, value string }{
 		{"ID", idText(it)},
 		{kindLabel(it.Kind), title},
-		{"STATUS", it.Status},
+		{"STATUS", planStatusText(it)},
 		{"PRIORITY", it.Priority},
 		{"AUTHOR", it.Author},
 		{"FROM", m.fromText(it)},
@@ -555,4 +555,13 @@ func (m Model) commitLines(it *board.Item, w int) []string {
 		out = append(out, truncate(fmt.Sprintf("+%d more · d to open", extra), w))
 	}
 	return out
+}
+
+// planStatusText is the status, plus the plans a waiting plan waits for, so the
+// reader sees why a ready-looking plan should not start yet.
+func planStatusText(it *board.Item) string {
+	if !it.Waiting {
+		return it.Status
+	}
+	return it.Status + ", waiting for " + strings.Join(it.After, ", ")
 }

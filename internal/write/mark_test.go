@@ -3,10 +3,12 @@ package write
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 var markFiles = map[string]string{
@@ -290,5 +292,55 @@ func TestTaskDatesGivesBackOnlyTheFilesItChanged(t *testing.T) {
 	again, err := TaskDates(cfg, task)
 	if err != nil || len(again) != 0 {
 		t.Fatalf("second call wrote %v err %v, want nothing", again, err)
+	}
+}
+
+// In the main checkout a spec with two plans still gets its dates from tick:
+// no land follows a tick there, so nobody else would write them.
+func TestTaskDatesMainCheckoutKeepsSplitSpecDates(t *testing.T) {
+	cfg := repoWith(t, markRepo(map[string]string{
+		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
+	}))
+	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
+	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")
+	if _, err := TaskDates(cfg, task); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := os.ReadFile(spec); !strings.Contains(string(raw), "started:") {
+		t.Errorf("main checkout tick dropped the split spec started:\n%s", raw)
+	}
+}
+
+// In a linked worktree a spec with two plans gets no dates from a tick, even
+// when the tick finishes a whole plan: land writes them, so two worktrees
+// never clash on the same spec lines. The plan still gets its own dates.
+func TestTaskDatesLeavesASplitSpecAlone(t *testing.T) {
+	cfg := repoWith(t, markRepo(map[string]string{
+		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
+	}))
+	// Run the tick from a linked worktree of that repo, the way a build does.
+	wt, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt = filepath.Join(wt, "wt")
+	gitRun(t, cfg.RepoRoot, "worktree", "add", "-q", wt, "-b", "wt")
+	cfg = config.Default(wt)
+	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
+	plan := filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-q.md")
+	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")
+	if task == nil {
+		t.Fatal("no task on the board")
+	}
+	got, err := TaskDates(cfg, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(got, plan) || slices.Contains(got, spec) {
+		t.Errorf("wrote %v, want the plan and never the spec", got)
+	}
+	raw, _ := os.ReadFile(spec)
+	if strings.Contains(string(raw), "started:") || strings.Contains(string(raw), "finished:") {
+		t.Errorf("split spec got dates:\n%s", raw)
 	}
 }

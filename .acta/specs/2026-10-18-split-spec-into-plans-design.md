@@ -3,6 +3,8 @@ parent: scratch/2026-10-18-split-spec-into-plans
 id: SPC-0147
 created: "2026-10-18 20:15:10"
 hash: pahb0va
+started: "2026-10-18 20:23:18"
+finished: "2026-10-18 20:35:16"
 ---
 # Split one spec into several parallel plans
 

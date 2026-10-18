@@ -23,6 +23,7 @@ type Defaults struct {
 	BuildExecutor  string
 	SubagentModels string
 	PlanDepth      string
+	PlanSplit      string
 	ReviewDepth    string
 	CommitHistory  string
 	Questions      string
@@ -46,6 +47,9 @@ func FormDefaults(e Env) Defaults {
 	if c.PlanDepth == "" {
 		c.PlanDepth = "full"
 	}
+	if c.PlanSplit == "" {
+		c.PlanSplit = "off"
+	}
 	if c.ReviewDepth == "" {
 		c.ReviewDepth = "standard"
 	}
@@ -63,6 +67,7 @@ func FormDefaults(e Env) Defaults {
 		BuildExecutor:  c.BuildExecutor,
 		SubagentModels: c.SubagentModels,
 		PlanDepth:      c.PlanDepth,
+		PlanSplit:      c.PlanSplit,
 		ReviewDepth:    c.ReviewDepth,
 		CommitHistory:  c.CommitHistory,
 		Questions:      c.Questions,
@@ -151,6 +156,12 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("full: real code in every step, waits for your yes", "full"),
 					huh.NewOption("minimal: short steps, build starts at once", "minimal"),
 				).Value(&d.PlanDepth), text(&d.PlanDepth)},
+		{"Plan split", "",
+			huh.NewSelect[string]().
+				Options(
+					huh.NewOption("off: one plan per spec", "off"),
+					huh.NewOption("on: big specs become 2 to 4 plans, one session each", "on"),
+				).Value(&d.PlanSplit), text(&d.PlanSplit)},
 		{"Commit history", "",
 			huh.NewSelect[string]().
 				Options(
@@ -280,6 +291,7 @@ func AnswersUser(current config.User, d Defaults) config.User {
 		BuildExecutor:       d.BuildExecutor,
 		SubagentModels:      d.SubagentModels,
 		PlanDepth:           d.PlanDepth,
+		PlanSplit:           d.PlanSplit,
 		ReviewDepth:         d.ReviewDepth,
 		CommitHistory:       d.CommitHistory,
 		Questions:           d.Questions,

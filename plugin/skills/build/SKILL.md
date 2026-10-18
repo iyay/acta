@@ -25,6 +25,8 @@ Pick the executor in this order. Never ask.
 2. `build_executor: <name>` from `acta config show`.
 3. Neither: run `inline`. Do not ask.
 
+Before the worktree, once the parent is known, run `acta ready <plan id> --parent <parent>`. When you reuse a worktree that already exists, add `--head <its HEAD>`. Any non-zero exit stops the build: show the output, and never rebase or merge to make it pass.
+
 The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.
 
 Two fallbacks, each told to the user in one line:

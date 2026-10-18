@@ -850,6 +850,35 @@ func TestConfigShowOverridesEmptyList(t *testing.T) {
 	}
 }
 
+// With nothing set, plan_split shows as off, marked (default); the JSON
+// carries the plain value. A set value shows with no mark, and set refuses
+// anything but on or off.
+func TestConfigPlanSplit(t *testing.T) {
+	repoWithGlobal(t, "", "")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_split: off (default)\n") {
+		t.Errorf("show lacks plan_split: off (default):\n%s", out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["plan_split"] != "off" {
+		t.Errorf("json plan_split %v, want off", got["plan_split"])
+	}
+	mustRun(t, "config", "set", "--plan-split", "on")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_split: on\n") {
+		t.Errorf("show lacks plan_split: on after set:\n%s", out)
+	}
+	var so, se strings.Builder
+	if code := Run([]string{"config", "set", "--plan-split", "yes"}, strings.NewReader(""), false, &so, &se); code == exitOK {
+		t.Error("set --plan-split yes was accepted")
+	}
+	repoWithGlobal(t, "", "plan_split: on\n")
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_split: on (repo; yours: off)\n") {
+		t.Errorf("show lacks the repo plan_split:\n%s", out)
+	}
+}
+
 // --review-understanding writes a yaml boolean to the user file, or with
 // --repo to .acta.yaml alone; show prints the effective value with the usual
 // marks, JSON carries a real boolean, and unset brings the user's value back.
