@@ -96,3 +96,20 @@ func TestSpecDatesLeavesAOnePlanSpecAlone(t *testing.T) {
 		t.Fatalf("wrote %v err %v, want nothing", wrote, err)
 	}
 }
+
+// A dropped plan of a split spec does not hold the finished date back once
+// every other plan is done.
+func TestSpecDatesDroppedPlanCountsAsClosed(t *testing.T) {
+	dropped := "---\nid: PLN-0002\nparent: specs/2026-10-01-s\nstatus: dropped\n---\n# Plan\n\n### Task 1: Do it\n- [ ] a\n"
+	cfg := repoWith(t, map[string]string{
+		".acta/specs/2026-10-01-s.md": "---\nid: SPC-0009\n---\n# S\n",
+		".acta/plans/2026-10-01-a.md": splitPlan("PLN-0001", "2026-10-01 10:00:00", "x"),
+		".acta/plans/2026-10-01-b.md": dropped,
+	})
+	if _, err := SpecDates(cfg, "PLN-0001"); err != nil {
+		t.Fatal(err)
+	}
+	if got := specFront(t, filepath.Join(cfg.RepoRoot, ".acta/specs/2026-10-01-s.md")); !strings.Contains(got, "finished:") {
+		t.Errorf("spec with a done and a dropped plan has no finished:\n%s", got)
+	}
+}

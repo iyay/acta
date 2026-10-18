@@ -5,6 +5,7 @@ id: PLN-0159
 created: "2026-10-18 20:21:42"
 hash: jw8iwox
 started: "2026-10-18 20:23:18"
+finished: "2026-10-18 20:35:16"
 ---
 # Split Spec Into Plans Plan
 
@@ -71,12 +72,34 @@ started: "2026-10-18 20:23:18"
 
 ### Task 8: Skill text
 
-- [ ] Red: plugincheck tests fail because slice has no split rules, build does not run `acta ready`, land's tidy flow has no spec-dates step, and setup's fallback does not name plan split.
-- [ ] Change: `plugin/skills/slice/SKILL.md` (split rules, `after:`, 2 to 4 plans, ready lines per plan, `/slice split`, run the ready check over written plans), `plugin/skills/build/SKILL.md` (pick parent, run `acta ready --parent`, `--head` on a reused worktree, stop on exit 1 or 2), `plugin/skills/land/tidy.md` (after moving the parent: `acta spec-dates`, then last-land, then clean-check), `plugin/skills/setup/SKILL.md`; tests in `internal/plugincheck/`. Seam: plugincheck required-text checks. verify: no skill still tells an agent to build a plan without the ready check, or to land a split plan without spec-dates before last-land; every skill stays inside its size cap.
-- [ ] Commit: `feat(skills): slice splits, build checks ready, land writes spec dates`
+- [x] Red: plugincheck tests fail because slice has no split rules, build does not run `acta ready`, land's tidy flow has no spec-dates step, and setup's fallback does not name plan split.
+- [x] Change: `plugin/skills/slice/SKILL.md` (split rules, `after:`, 2 to 4 plans, ready lines per plan, `/slice split`, run the ready check over written plans), `plugin/skills/build/SKILL.md` (pick parent, run `acta ready --parent`, `--head` on a reused worktree, stop on exit 1 or 2), `plugin/skills/land/tidy.md` (after moving the parent: `acta spec-dates`, then last-land, then clean-check), `plugin/skills/setup/SKILL.md`; tests in `internal/plugincheck/`. Seam: plugincheck required-text checks. verify: no skill still tells an agent to build a plan without the ready check, or to land a split plan without spec-dates before last-land; every skill stays inside its size cap.
+- [x] Commit: `feat(skills): slice splits, build checks ready, land writes spec dates`
 
 ### Task 9: Two worktrees end to end
 
-- [ ] Red: an end-to-end test fails until tasks 5 to 7 are wired together.
-- [ ] Change: `internal/cli/split_e2e_test.go`: one spec, two plans, two real worktrees started at different times, both landed through `acta tidy` plus `acta spec-dates`, in both land orders; plus a worktree made before its `after:` plan landed. Seam: the CLI. verify: wiring only: both lands succeed with no clash, the spec ends with the earliest `started:` and one `finished:`, the main checkout is clean after each land, and the stale worktree gets `acta ready` exit 1 until it takes in the parent.
-- [ ] Commit: `test(cli): split plans land from two worktrees`
+- [x] Red: an end-to-end test fails until tasks 5 to 7 are wired together.
+- [x] Change: `internal/cli/split_e2e_test.go`: one spec, two plans, two real worktrees started at different times, both landed through `acta tidy` plus `acta spec-dates`, in both land orders; plus a worktree made before its `after:` plan landed. Seam: the CLI. verify: wiring only: both lands succeed with no clash, the spec ends with the earliest `started:` and one `finished:`, the main checkout is clean after each land, and the stale worktree gets `acta ready` exit 1 until it takes in the parent.
+- [x] Commit: `test(cli): split plans land from two worktrees`
+
+## Fix round 1
+
+### Task 10: Review round 1 fixes
+
+- [x] Red: tests fail because a tick in the main checkout skips split spec dates, ready counts a box inside a code fence, a missing parent ref exits 1, and a dropped after plan waits forever.
+- [x] Change: tick skips spec dates only in a linked worktree; ready reads the plan through the board parser (task sections, no fences), exits 2 for an unknown parent ref or a dropped after plan, and 3 for load errors; spec-dates counts dropped plans as closed; skill text: split check before commit, split beats the minimal build hand-off, setup fallback asks plan_split only, land sentence order. Files: `internal/write/mark.go`, `internal/write/mark_test.go`, `internal/write/specdates.go`, `internal/write/specdates_test.go`, `internal/gitc/gitc.go`, `internal/cli/ready.go`, `internal/cli/ready_test.go`, `plugin/skills/slice/split.md`, `plugin/skills/slice/SKILL.md`, `plugin/skills/setup/SKILL.md`, `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_split_test.go`. verify: no tick outside a linked worktree ever loses a spec date it wrote before; ready is never stuck by text outside task sections; every input ready cannot judge exits 2 or 3, never 1.
+- [x] Commit: `fix: review round 1 for split plans`
+
+## Polish
+
+### Task 11: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] The `internal/config` import in `internal/write/mark_test.go` joins the acta import group.
+- [x] Build says any non-zero exit of `acta ready` stops the build.
+- [x] Commit: `polish: review notes for PLN-0159`
+
+## Review notes
+
+Round 1 BLOCKED (main-checkout tick lost split spec dates; ready counted boxes outside tasks), fixed in round 2, CLEAN. Polish applied two NOTEs. Notes only: waiting shows only in the detail STATUS; a plan with no task sections never counts as landed; TUI lists every after id, not just open ones.

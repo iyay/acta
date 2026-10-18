@@ -994,3 +994,18 @@ func NewestCommit(repo, ref, pre string) (string, string, error) {
 	}
 	return "", "", nil
 }
+
+// IsLinkedWorktree says whether repo is a linked worktree, not the main
+// checkout: its git dir differs from the common git dir. Any git error
+// reads as false, so a caller falls back to what the main checkout does.
+func IsLinkedWorktree(repo string) bool {
+	dir, err := run(repo, "rev-parse", "--path-format=absolute", "--git-dir")
+	if err != nil {
+		return false
+	}
+	common, err := run(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(dir) != strings.TrimSpace(common)
+}

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/iyay/acta/internal/board"
@@ -19,9 +18,6 @@ const (
 	readyWaiting = 1
 	readyBad     = 2
 )
-
-// openBox finds a task box that is not ticked yet.
-var openBox = regexp.MustCompile(`(?m)^\s*- \[ \]`)
 
 // cmdReady says whether a plan may start: every plan in its after list must
 // have landed on the parent branch. It reads the parent's committed tree,
@@ -35,14 +31,19 @@ func cmdReady(args []string, stdout, stderr io.Writer) int {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
-		return readyBad
+		return exitOther
 	}
 	if len(pos) != 1 || *parent == "" {
 		fmt.Fprintln(stderr, usageLine("ready"))
-		return readyBad
+		return exitOther
 	}
+	// Usage and load errors exit 3: exit 2 means the after list itself is bad.
 	cfg, b, code := loadBoard(*root, stderr)
 	if code != exitOK {
+		return exitOther
+	}
+	if _, err := readyGit(cfg.RepoRoot, "rev-parse", "--verify", "--quiet", *parent+"^{commit}"); err != nil {
+		fmt.Fprintf(stderr, "%s is not a branch or commit here\n", *parent)
 		return readyBad
 	}
 	plan := b.Get(pos[0])
@@ -93,6 +94,8 @@ func badAfter(b *board.Board, plan *board.Item) string {
 				return fmt.Sprintf("%s lists %s in after, but %s is not a plan", planName(it), id, id)
 			case dep == it:
 				return fmt.Sprintf("%s waits on itself", planName(it))
+			case dep.Status == "dropped":
+				return fmt.Sprintf("%s was dropped and will never land; take it out of the after list of %s", id, planName(it))
 			}
 			name := planName(dep)
 			for i, seen := range path {
@@ -119,7 +122,7 @@ func landingCommit(repo, ref, rel string) string {
 	}
 	for _, sha := range strings.Fields(out) {
 		body, err := readyGit(repo, "show", sha+":"+filepath.ToSlash(rel))
-		if err == nil && strings.Contains(body, "- [x]") && !openBox.MatchString(body) {
+		if err == nil && allTicked(board.Parse([]byte(body))) {
 			return sha
 		}
 	}
@@ -156,4 +159,21 @@ func repoRel(repo, path string) (string, error) {
 		return "", err
 	}
 	return filepath.Rel(r, p)
+}
+
+// allTicked reads a plan the way the board does: only boxes inside task
+// sections count, so an example box in a code fence or a note never holds
+// the plan back. A task with no box counts as done once the plan has a
+// finished date, as on the board.
+func allTicked(d board.Doc) bool {
+	if len(d.Tasks) == 0 {
+		return false
+	}
+	_, finished := d.Front["finished"]
+	for _, task := range d.Tasks {
+		if task.Total == 0 && !finished || task.Done < task.Total {
+			return false
+		}
+	}
+	return true
 }

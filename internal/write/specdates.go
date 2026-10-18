@@ -28,22 +28,28 @@ func SpecDates(cfg config.Config, planID string) ([]string, error) {
 	if spec == nil {
 		return nil, nil
 	}
+	// Load reads only this checkout, so these are the plans as the parent
+	// holds them; a plan still in a worktree shows here unticked.
 	var plans []*board.Item
 	for _, it := range b.Items {
-		// Only this branch counts: a plan still in a worktree has not landed.
-		if it.Kind == board.KindPlan && it.SpecID == spec.ID && it.Worktree == "" {
+		if it.Kind == board.KindPlan && it.SpecID == spec.ID {
 			plans = append(plans, it)
 		}
 	}
 	if len(plans) < 2 {
 		return nil, nil
 	}
-	earliest, allDone := "", true
+	earliest, allDone, anyDone := "", true, false
 	for _, p := range plans {
 		if p.StartedOn != "" && (earliest == "" || p.StartedOn < earliest) {
 			earliest = p.StartedOn
 		}
-		if p.Status != "done" {
+		// A dropped plan is closed too; it must not hold finished back.
+		switch p.Status {
+		case "done":
+			anyDone = true
+		case "dropped":
+		default:
 			allDone = false
 		}
 	}
@@ -60,7 +66,7 @@ func SpecDates(cfg config.Config, planID string) ([]string, error) {
 			return wrote, err
 		}
 	}
-	if allDone {
+	if allDone && anyDone {
 		if err := write(MarkFinishedOnce); err != nil {
 			return wrote, err
 		}

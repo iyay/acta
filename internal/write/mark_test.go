@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/iyay/acta/internal/board"
+	"github.com/iyay/acta/internal/config"
 )
 
 var markFiles = map[string]string{
@@ -294,13 +295,37 @@ func TestTaskDatesGivesBackOnlyTheFilesItChanged(t *testing.T) {
 	}
 }
 
-// A spec with two plans gets no dates from a tick, even when the tick
-// finishes a whole plan: land writes them, so two worktrees never clash on
-// the same spec lines. The plan still gets its own dates.
+// In the main checkout a spec with two plans still gets its dates from tick:
+// no land follows a tick there, so nobody else would write them.
+func TestTaskDatesMainCheckoutKeepsSplitSpecDates(t *testing.T) {
+	cfg := repoWith(t, markRepo(map[string]string{
+		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
+	}))
+	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
+	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")
+	if _, err := TaskDates(cfg, task); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := os.ReadFile(spec); !strings.Contains(string(raw), "started:") {
+		t.Errorf("main checkout tick dropped the split spec started:\n%s", raw)
+	}
+}
+
+// In a linked worktree a spec with two plans gets no dates from a tick, even
+// when the tick finishes a whole plan: land writes them, so two worktrees
+// never clash on the same spec lines. The plan still gets its own dates.
 func TestTaskDatesLeavesASplitSpecAlone(t *testing.T) {
 	cfg := repoWith(t, markRepo(map[string]string{
 		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
 	}))
+	// Run the tick from a linked worktree of that repo, the way a build does.
+	wt, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt = filepath.Join(wt, "wt")
+	gitRun(t, cfg.RepoRoot, "worktree", "add", "-q", wt, "-b", "wt")
+	cfg = config.Default(wt)
 	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
 	plan := filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-q.md")
 	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")

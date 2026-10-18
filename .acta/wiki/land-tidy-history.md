@@ -17,4 +17,6 @@ Why `-D` is safe: the old branch is not an ancestor any more, so `-d` refuses. T
 
 Known limit: a hash that lands in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
 
+After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a split spec never leaves the parent dirty for the next land.
+
 Tidy keeps commit messages as written. It moves no trailers: wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.

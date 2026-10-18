@@ -74,6 +74,11 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// build will stop and ask.
 			v.BuildExecutor, executorMark = "inline", " (default)"
 		}
+		split, splitMark := v.PlanSplit, ""
+		if split == "" {
+			// Same as plan_depth: show the off default so setup knows it was never asked.
+			split, splitMark = "off", " (default)"
+		}
 		reviewDepth, reviewDepthMark := v.ReviewDepth, ""
 		if reviewDepth == "" {
 			// Same here: an unset review depth is standard, and show says so.
@@ -133,7 +138,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
+				"theme": v.Theme, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
 				"review_understanding": v.Understanding(), "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
@@ -150,6 +155,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "build_executor: %s%s%s\n", v.BuildExecutor, mark("build_executor"), executorMark)
 		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
+		fmt.Fprintf(stdout, "plan_split: %s%s%s\n", split, mark("plan_split"), splitMark)
 		fmt.Fprintf(stdout, "review_depth: %s%s%s\n", reviewDepth, mark("review_depth"), reviewDepthMark)
 		fmt.Fprintf(stdout, "commit_history: %s%s%s\n", history, mark("commit_history"), historyMark)
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
@@ -176,6 +182,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
+		planSplit := fs.String("plan-split", "", "whether slice may cut a spec into several plans: on or off")
 		reviewDepth := fs.String("review-depth", "", "how much review a plan gets: quick, standard or deep")
 		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
@@ -188,7 +195,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *planSplit == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
@@ -198,7 +205,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		if *repoOnly {
-			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
+			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "plan_split": *planSplit, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
 				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
@@ -228,6 +235,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *depth != "" {
 			v.PlanDepth = *depth
+		}
+		if *planSplit != "" {
+			v.PlanSplit = *planSplit
 		}
 		if *reviewDepth != "" {
 			v.ReviewDepth = *reviewDepth
@@ -292,7 +302,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 // agent talks to everyone who clones the repo.
 func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, unset []string) int {
 	if personal {
-		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --review-depth, --commit-history, --coding-guide and --review-understanding; set the others without --repo\n")
+		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --plan-split, --review-depth, --commit-history, --coding-guide and --review-understanding; set the others without --repo\n")
 		return exitBadInput
 	}
 	set := map[string]string{}
@@ -340,6 +350,8 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, un
 			check.BuildExecutor = val
 		case k == "plan_depth":
 			check.PlanDepth = val
+		case k == "plan_split":
+			check.PlanSplit = val
 		case k == "review_depth":
 			check.ReviewDepth = val
 		case k == "commit_history":

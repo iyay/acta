@@ -151,3 +151,38 @@ func TestReadyHeadMustHoldTheLand(t *testing.T) {
 		t.Errorf("head took in the parent: exit %d, want 0\n%s", code, out)
 	}
 }
+
+// Boxes outside task sections, like an example in a code fence, do not count:
+// ready reads the plan the way the board does.
+func TestReadyIgnoresBoxesOutsideTasks(t *testing.T) {
+	fenced := "---\nid: PLN-0001\n---\n# Plan\n\n### Task 1: Do it\n\n- [x] Red: it fails\n\n```md\n- [ ] Red: example\n```\n\n## Notes\n\n- [ ] a note, not a task box\n"
+	dir := readyRepo(t, map[string]string{
+		"plans/2026-10-01-a.md": fenced,
+		"plans/2026-10-01-b.md": readyPlan("PLN-0002", "PLN-0001", " "),
+	})
+	if code, out := runReady(t, dir, "PLN-0002", "--parent", "main"); code != 0 {
+		t.Errorf("fenced example box: exit %d, want 0\n%s", code, out)
+	}
+}
+
+// Input ready cannot judge is never "waiting": a parent ref that does not
+// exist and a dropped after plan exit 2 with the cause named.
+func TestReadyRefusesWhatCanNeverLand(t *testing.T) {
+	dir := readyRepo(t, map[string]string{
+		"plans/2026-10-01-a.md": "---\nid: PLN-0001\nstatus: dropped\n---\n# Plan\n\n### Task 1: Do it\n\n- [ ] Red: it fails\n",
+		"plans/2026-10-01-b.md": readyPlan("PLN-0002", "PLN-0001", " "),
+		"plans/2026-10-01-c.md": readyPlan("PLN-0003", "", " "),
+	})
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"PLN-0003", "--parent", "mian"}, "mian"},
+		{[]string{"PLN-0002", "--parent", "main"}, "PLN-0001 was dropped"},
+	} {
+		code, out := runReady(t, dir, c.args...)
+		if code != 2 || !strings.Contains(out, c.want) {
+			t.Errorf("%v: exit %d, want 2 with %q\n%s", c.args, code, c.want, out)
+		}
+	}
+}

@@ -25,6 +25,9 @@ type User struct {
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
+	// PlanSplit says whether slice may cut one spec into several plans that
+	// different sessions build at once: on or off. Empty means off.
+	PlanSplit string `yaml:"plan_split,omitempty"`
 	// ReviewDepth says how much review a plan gets: quick, standard or deep.
 	// Empty means standard.
 	ReviewDepth string `yaml:"review_depth,omitempty"`
@@ -258,6 +261,11 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_depth must be minimal or full, not %q", ErrBadUser, v.PlanDepth)
 	}
+	switch v.PlanSplit {
+	case "", "on", "off":
+	default:
+		return fmt.Errorf("%w: plan_split must be on or off, not %q", ErrBadUser, v.PlanSplit)
+	}
 	switch v.ReviewDepth {
 	case "", "quick", "standard", "deep":
 	default:
@@ -296,6 +304,7 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
+	v.PlanSplit = strings.TrimSpace(v.PlanSplit)
 	v.ReviewDepth = strings.TrimSpace(v.ReviewDepth)
 	v.CommitHistory = strings.TrimSpace(v.CommitHistory)
 	v.Questions = strings.TrimSpace(v.Questions)

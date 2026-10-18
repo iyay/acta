@@ -26,9 +26,11 @@ Pick the depth in this order, and do not ask when one answers: the argument of `
 
 The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
 
-A minimal plan needs no yes: save it, run `acta id`, commit it on main with `acta commit <path> -m "<message>"`, tell the user its path in one line, and invoke `acta:build` in the same turn. The spec still needs its yes first.
+A minimal plan needs no yes: save it, run `acta id`, commit it on main with `acta commit <path> -m "<message>"`, tell the user its path in one line, and invoke `acta:build` in the same turn. A split (split.md) never starts a build. The spec still needs its yes first.
 
 ## Scope Check
+
+With `plan_split` on in `acta config show`, or `/slice split` for this run only (never saved), read [split.md](split.md) and cut the spec into several plans.
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 

@@ -172,8 +172,8 @@ var helpTable = []helpCmd{
 		summary: "Show or change your acta settings, or the ones saved in .acta.yaml of this repo.",
 		usage: []string{
 			"acta config show [--json]",
-			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme]",
-			"acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
+			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme]",
+			"acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
 		},
 		flags: []string{
 			"--json  print JSON (config show)",
@@ -235,7 +235,7 @@ var helpTable = []helpCmd{
 	{
 		name:    "ready",
 		group:   "Setup",
-		summary: "Say whether a plan may start: every plan in its after list has landed on the parent. Exit 1 waits, exit 2 is a bad after list.",
+		summary: "Say whether a plan may start: every plan in its after list has landed on the parent. Exit 1 waits, exit 2 means it can never be ready (bad after list or parent), exit 3 is a usage or load error.",
 		usage:   []string{"acta ready <plan> --parent <ref> [--head <rev>]"},
 		flags: []string{
 			"--parent REF  the branch the build will land on",

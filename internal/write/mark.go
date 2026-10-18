@@ -47,8 +47,9 @@ func TaskDates(cfg config.Config, it *board.Item) ([]string, error) {
 	}
 	// A spec cut into several plans is built from several worktrees at once.
 	// Each would stamp the spec with its own time and the lands would clash,
-	// so land writes those dates instead (acta spec-dates).
-	if plansOf(fresh, spec.ID) > 1 {
+	// so land writes those dates instead (acta spec-dates). In the main
+	// checkout no land follows, so tick still writes them there.
+	if plansOf(fresh, spec.ID) > 1 && gitc.IsLinkedWorktree(cfg.RepoRoot) {
 		return wrote, nil
 	}
 	if err := mark(spec.Path, MarkStarted); err != nil {

@@ -501,6 +501,34 @@ func TestUnsetRepoUserRefusesOtherKeys(t *testing.T) {
 	}
 }
 
+// plan_split takes on or off from either file. A repo value beats the user
+// value, and any other value is refused by name so it is never used.
+func TestMergeRepoPlanSplit(t *testing.T) {
+	user := func(split string) User {
+		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", PlanSplit: split}
+	}
+	for _, c := range []struct{ global, yaml, want string }{
+		{"off", "plan_split: on\n", "on"},
+		{"on", "plan_split: off\n", "off"},
+		{"", "plan_split: \" on \"\n", "on"},
+		{"on", "root: .acta\n", "on"},
+	} {
+		got, _, err := MergeRepo(user(c.global), writeRepoYAML(t, c.yaml))
+		if err != nil {
+			t.Fatalf("%q over %q: %v", c.yaml, c.global, err)
+		}
+		if got.PlanSplit != c.want {
+			t.Errorf("%q over %q: got %q, want %q", c.yaml, c.global, got.PlanSplit, c.want)
+		}
+	}
+	for _, bad := range []string{"yes", "On", "split", "on off"} {
+		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, "plan_split: "+bad+"\n"))
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "plan_split") {
+			t.Errorf("plan_split %q: err %v, want ErrBadUser naming the key", bad, err)
+		}
+	}
+}
+
 // An explicit repo review_understanding wins over the user's in both
 // directions, and a repo file without the key inherits the user's value.
 func TestMergeRepoReviewUnderstanding(t *testing.T) {
