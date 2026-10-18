@@ -27,7 +27,15 @@ check that stops a build from starting too early.
 - New user setting `plan_split`, values `on` or `off`, default `off`. It
   lives next to `plan_depth`: `internal/config/user.go` validates it, the
   repo `.acta.yaml` can set it too, `acta config set --plan-split` writes it.
-- `acta setup` asks one new question for it.
+- `acta setup` asks it as its own step, right after "Plan detail":
+  title "Plan split", options `off: one plan per spec` (first, the
+  default) and `on: big specs become 2 to 4 plans, one session each`. The
+  answered line, the text-mode form and the setup summary show it like
+  every other step. Setup writes `plan_split` with the rest of the user
+  config.
+- The no-wizard fallback in `plugin/skills/setup/SKILL.md` asks it too:
+  `acta config show` marks it `(default)` when it was never set, the same
+  way it marks an unset `plan_depth`.
 - `acta config show` prints `plan_split: off (default)` when nothing sets it,
   the same way `plan_depth` shows its default.
 - The session note writes `- Plan split: on.` only when it is on. When it is
@@ -58,21 +66,60 @@ check that stops a build from starting too early.
 
 ### 3. Build, board, land
 
-- New command `acta ready <plan>`. Exit 0 when every plan in its `after:`
-  has landed on the parent (status `done`). Exit 1 lists each plan still
-  open. Unknown ids in `after:` are an error (exit 2) with the id named.
-- `acta:build` runs `acta ready` before it makes the worktree. Exit 1 stops
-  the build and names the plans it waits for.
+- New command `acta ready <plan> --parent <ref>`. Build picks its parent
+  branch first (the branch the user names, else the default branch), then
+  calls `acta ready` with it.
+- Landed means present in the committed tree of that ref, never the local
+  board: `acta ready` reads each `after:` plan with `git show
+  <ref>:<plan path>` and counts it landed only when the file exists there
+  and every task box in it is ticked. A plan done in another worktree, or
+  landed on a different branch, is not landed. The worktree branches from
+  the same ref, so it holds every plan it waits for.
+- Exit 0: every `after:` plan has landed on the ref. Exit 1: lists each
+  plan not landed yet.
+- Exit 2, with the cause named: an id that is not known, an id that is not
+  a plan (a spec, bug, debt or scratch id), a plan listed in its own
+  `after:`, or a cycle. A cycle prints its chain, for example
+  `PLN-0160 -> PLN-0162 -> PLN-0160`. Slice runs the same check over the
+  plans it writes, so a bad `after:` never reaches main.
+- `acta:build` runs `acta ready` before it makes the worktree. Exit 1 or 2
+  stops the build and shows the output.
 - The board marks a plan whose `after:` is not all done as `waiting`.
-- Land does not change: each plan lands on its own, through tidy.
+- Each plan lands on its own, through tidy.
+
+### 4. Spec dates with several plans
+
+Today every `acta tick` writes `started:` (and `finished:` once the spec
+is done) into the parent spec, from inside the worktree. With two plans in
+two worktrees, both write `started:` with different times, so the second
+tidy land clashes. And a worktree that only sees its own plan done may
+never write `finished:`.
+
+Rule: when a spec has more than one plan, a tick in a worktree never
+writes the spec's dates. Only the plan file gets its own dates there.
+Land writes the spec dates on the parent branch, after the plan lands:
+
+- `started:` is the earliest `started:` of the spec's plans on the parent,
+  written once and never moved later.
+- `finished:` is written when the landing plan makes every plan of the
+  spec done on the parent, and only then.
+
+A spec with one plan keeps today's behaviour.
 
 ## Testing
 
 - Config: `plan_split` accepts `on` and `off`, rejects anything else, and
   shows `off (default)` when unset.
-- Setup: the new question and its default.
+- Setup: the Plan split step sits after Plan detail, starts on off, keeps a saved value, and the answered line shows the pick.
 - Session note: the line shows only when on; the byte cap test stays at its
   current value.
-- `acta ready`: ready, waiting on one or more plans, unknown id.
+- `acta ready`: ready; waiting on one or more plans; a plan done only in
+  another worktree or landed only on another branch counts as not landed;
+  unknown id, non-plan id, self-reference and a two- and three-plan cycle
+  each exit 2 with the cause (and chain for a cycle).
+- Spec dates: two plans of one spec built in two real worktrees, started
+  at different times, both land through tidy with no clash; the spec ends
+  with the earliest `started:` and one `finished:` written at the second
+  land. A one-plan spec still gets its dates from tick.
 - Board: the `waiting` mark, and no mark once every `after:` plan is done.
 - Plugincheck: the new slice and build text.
