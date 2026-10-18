@@ -5,7 +5,19 @@ description: "acta: Use on first run and when the user asks to change setup or o
 
 # Setup
 
-Setup lives in the `acta setup` wizard now. It asks every question itself: chat language, style, tone, build executor, subagent models, plugin installs, and the acta block. It runs `acta doctor` first and writes only with a TTY.
+The `acta setup` wizard asks every question itself in a terminal: chat language, style, tone, build executor, subagent models, plugin installs, and the acta block. It runs `acta doctor` first and writes only with a TTY.
+
+## Ask in the chat when AskUserQuestion exists
+
+When this harness has the `AskUserQuestion` tool, you ask the questions yourself. Do not send the user to the wizard.
+
+1. Run `acta doctor` and report what it finds. Install nothing: plugin installs stay in the wizard.
+2. Run the plain `acta config show`, not `--json`: only the plain form marks a value `(default)`. First run (the `file:` line ends in `(exists: false)`): ask every setting it lists. Later runs: ask only the settings it marks missing or `(default)`.
+3. Ask with `AskUserQuestion`, at most 4 questions per call and 4 options per question. Group settings that belong together: the chat ones (chat language, style, tone, repo language), then the planning ones (build executor, plan depth, plan split, review depth), then the rest. Put the recommended option first.
+4. Chat language, repo language and tone take free text. Offer two or three common options and let the built-in Other take the rest. Tone also offers a skip. Keep options neutral: never shape them on one user's setup.
+5. Write every answer with one `acta config set` call, then write the acta block by the rules below.
+
+## No AskUserQuestion
 
 Ask the user to run `! acta setup` in their own terminal. When the harness gives this session a TTY, run it there instead.
 
