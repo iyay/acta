@@ -38,4 +38,8 @@ Today: plans link to a spec through parent:, and nothing stops two plans per spe
 
 2026-10-18: design approved in three sections (setting plan_split, slice split with after:, acta ready check + board waiting mark).
 
+### 2026-10-18
+
+2026-10-18: outside review found 3 gaps, all fixed in spec: split plans clash on spec started/finished (land now writes them); ready reads git show <parent ref>, not the board; after: rejects non-plan ids, self-reference and cycles with exit 2.
+
 ## Open questions
