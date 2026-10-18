@@ -68,6 +68,12 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// No file sets it. Say so, or setup thinks full was chosen.
 			depth, depthMark = "full", " (default)"
 		}
+		executorMark := ""
+		if v.BuildExecutor == "" {
+			// Build runs inline when nothing is set. Show it, so no one thinks
+			// build will stop and ask.
+			v.BuildExecutor, executorMark = "inline", " (default)"
+		}
 		reviewDepth, reviewDepthMark := v.ReviewDepth, ""
 		if reviewDepth == "" {
 			// Same here: an unset review depth is standard, and show says so.
@@ -136,9 +142,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		if v.Tone != "" {
 			fmt.Fprintf(stdout, "tone: %s\n", v.Tone)
 		}
-		if v.BuildExecutor != "" {
-			fmt.Fprintf(stdout, "build_executor: %s%s\n", v.BuildExecutor, mark("build_executor"))
-		}
+		fmt.Fprintf(stdout, "build_executor: %s%s%s\n", v.BuildExecutor, mark("build_executor"), executorMark)
 		fmt.Fprintf(stdout, "plan_depth: %s%s%s\n", depth, mark("plan_depth"), depthMark)
 		fmt.Fprintf(stdout, "review_depth: %s%s%s\n", reviewDepth, mark("review_depth"), reviewDepthMark)
 		fmt.Fprintf(stdout, "commit_history: %s%s%s\n", history, mark("commit_history"), historyMark)

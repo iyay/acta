@@ -538,7 +538,7 @@ func checkAgentsView(e Env) Result {
 }
 
 // checkSetup says whether the first-run questions were ever answered. A
-// missing executor is fine because build asks each time, so only a missing
+// missing executor is fine because build then uses inline, so only a missing
 // voice file warns.
 func checkSetup(e Env) Result {
 	r := Result{Name: "setup"}
@@ -546,7 +546,7 @@ func checkSetup(e Env) Result {
 	case !e.VoiceExists:
 		r.Level, r.Msg = Warn, "no voice file yet"
 	case e.Voice.BuildExecutor == "":
-		r.Level, r.Msg = OK, "voice is set; build executor not set, build asks each time"
+		r.Level, r.Msg = OK, "voice is set; build executor not set, build uses inline"
 	default:
 		r.Level, r.Msg = OK, "voice and build executor are set"
 	}

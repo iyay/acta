@@ -26,7 +26,7 @@ func TestSkillBuild(t *testing.T) {
 			"The spec and plan from acta:shape and acta:slice stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
-			"through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one",
+			"through the executor picked by `/build <executor>`, else the one `acta config show` names, else inline",
 			"On omp, `dispatch` runs as `subagent`", "Dispatch is only for harnesses other than omp.",
 			"Copy in the house rules too",
 			"`/build <executor>`", "It is for this run only; never save it.",
@@ -186,9 +186,9 @@ func TestBuildExecutorOrder(t *testing.T) {
 	txt := readBuildFile(t, "SKILL.md")
 	arg := strings.Index(txt, "1. The argument of `/build <executor>`")
 	cfg := strings.Index(txt, "2. `build_executor: <name>` from `acta config show`")
-	ask := strings.Index(txt, "3. Neither: ask which executor to run")
-	if arg < 0 || cfg < 0 || ask < 0 || !(arg < cfg && cfg < ask) {
-		t.Errorf("build/SKILL.md must list the executor order argument, config, ask (got %d, %d, %d)", arg, cfg, ask)
+	inline := strings.Index(txt, "3. Neither: run `inline`. Do not ask.")
+	if arg < 0 || cfg < 0 || inline < 0 || !(arg < cfg && cfg < inline) {
+		t.Errorf("build/SKILL.md must list the executor order argument, config, inline (got %d, %d, %d)", arg, cfg, inline)
 	}
 	const fallback = "`dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing."
 	if !strings.Contains(txt, fallback) {

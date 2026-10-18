@@ -204,7 +204,8 @@ var modelLines = map[string]string{
 // settingsBlock lists the behaviour settings of the config in force. Rule 6
 // points here: these lines beat a user's CLAUDE.md that says otherwise, which
 // is how a user who picked inline stops getting subagents. An empty setting
-// writes no line, and with no setting at all nothing is written.
+// writes no line, except the build executor: empty means inline, so it
+// always writes one.
 func settingsBlock(v config.User) string {
 	var lines []string
 	add := func(name, value, extra string) {
@@ -217,7 +218,13 @@ func settingsBlock(v config.User) string {
 		}
 		lines = append(lines, ln)
 	}
-	add("Build executor", v.BuildExecutor, executorLines[v.BuildExecutor])
+	executor, executorName := v.BuildExecutor, v.BuildExecutor
+	if executor == "" {
+		// Build runs inline when nothing is set. Say so here, or a user CLAUDE.md
+		// that bans the main agent from writing code wins.
+		executor, executorName = "inline", "inline (default)"
+	}
+	add("Build executor", executorName, executorLines[executor])
 	add("Plan depth", v.PlanDepth, "")
 	add("Review depth", v.ReviewDepth, "")
 	add("Commit history", v.CommitHistory, "")

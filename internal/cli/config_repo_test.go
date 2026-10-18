@@ -69,6 +69,12 @@ func TestConfigShowPlanDepthDefault(t *testing.T) {
 	if out := mustRun(t, "config", "show"); !strings.Contains(out, "plan_depth: full (default)\n") {
 		t.Errorf("show lacks plan_depth: full (default):\n%s", out)
 	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "build_executor: inline (default)\n") {
+		t.Errorf("show lacks build_executor: inline (default):\n%s", out)
+	}
+	if out := mustRun(t, "config", "show", "--json"); !strings.Contains(out, `"build_executor": "inline"`) {
+		t.Errorf("json lacks the inline executor:\n%s", out)
+	}
 	if out := mustRun(t, "config", "show", "--json"); strings.Contains(out, "(default)") {
 		t.Errorf("json carries the mark:\n%s", out)
 	}

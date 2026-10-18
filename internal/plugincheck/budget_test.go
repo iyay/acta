@@ -71,8 +71,9 @@ var descriptionCaps = map[string]int{
 }
 
 // sessionStartCap is the cap of the text the session start hook prints for
-// the default user config with no herdr. Every session pays for it too.
-const sessionStartCap = 2861
+// the default user config with no herdr. Every session pays for it too. It
+// grew by 207 bytes when the inline default executor line joined it.
+const sessionStartCap = 3068
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two
