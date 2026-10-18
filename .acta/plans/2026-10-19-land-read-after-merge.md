@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0163
 created: "2026-10-19 06:16:24"
 hash: q99jk61
+started: "2026-10-19 06:17:58"
+finished: "2026-10-19 06:25:23"
 ---
 # Land read after merge plan
 
@@ -25,6 +27,16 @@ hash: q99jk61
 **Files:** Modify `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_land_test.go`, and `internal/plugincheck/budget_test.go` only if the byte cap is exceeded.
 **Seam:** `plugincheck.CheckSkill` with the land `SkillRule`; the eval case `review-understanding-report`.
 **verify:** On every land path (plain merge and tidy) the explanation comes from a read made after the parent moved, from the parent checkout or `git show <landed-sha>:<path>`; a read of the old worktree's files or any read before the merge never counts. List each path and the line that owns it. `scripts/eval --case review-understanding-report --runs 3` passes 3 of 3.
-- [ ] Red: Replace the old `Must` phrase with the new one and observe `scripts/test ./internal/plugincheck/ -run TestSkillLand` fail.
-- [ ] Change: Rewrite the bullet; pass the same command and the eval run.
-- [ ] Commit: `fix(land): read the landed code after the merge`.
+- [x] Red: Replace the old `Must` phrase with the new one and observe `scripts/test ./internal/plugincheck/ -run TestSkillLand` fail.
+- [x] Change: Rewrite the bullet; pass the same command and the eval run.
+- [x] Commit: `fix(land): read the landed code after the merge`.
+
+## State
+
+### Findings
+
+Eval review-understanding-report: 8 of 9 pass after the fix, 3 of 6 before on main. The one failed run after the fix was not kept, cause unknown.
+
+## Review notes
+
+- Round 1: deep, full tier, Spec and Standards reviewers over ca65a3b..c026c1b: CLEAN. Eval: the last two kept batches passed 3 of 3 each (8 of 9 over all three batches; 3 of 6 on main before). Red showed with the package run, not `-run TestSkillLand` (the phrases live in TestLandUnderstanding). Two (medium) NOTEs filed as debt; notes left: "before the merge" could read "before the parent moved", `<landed-sha>` vs "merge sha" naming.
