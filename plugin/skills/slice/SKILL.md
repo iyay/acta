@@ -218,6 +218,6 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 Save the plan, show it to the user, and wait for a yes (a minimal plan skips the wait, see Plan depth). Approval of the design did not approve the plan.
 
-Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. When the line is missing and the user has not said, ask which one: `subagent`, `dispatch` (an omp agent in its own herdr tab), or `inline` (you write the code yourself).
+Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. When the line is missing and the user has not said, run `inline` (you write the code yourself); do not ask. The user can still pick `subagent` or `dispatch` (an omp agent in its own herdr tab) for one run.
 
 **Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.

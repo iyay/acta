@@ -1,6 +1,6 @@
 ---
 name: build
-description: "acta: Use to run an approved plan, and when the user asks to dispatch a plan or hand it to omp in another tab or pane. Creates the worktree without asking, then runs every task with a failing test first through the executor picked by `/build <executor>`, else the one `acta config show` names, else asks which one - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through dispatch.md) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
+description: "acta: Use to run an approved plan, and when the user asks to dispatch a plan or hand it to omp in another tab or pane. Creates the worktree without asking, then runs every task with a failing test first through the executor picked by `/build <executor>`, else the one `acta config show` names, else inline - subagent (the current harness's own subagents), dispatch (an omp agent in its own herdr tab, through dispatch.md) or inline (you write the code). Commits each task; review and landing follow through acta:review and acta:land."
 ---
 
 # Build
@@ -19,11 +19,11 @@ Refuse to start unless the spec is approved (for Bounded work with no spec file,
 
 With `subagent` and `dispatch` you are the orchestrator: you write no code yourself, not even a one-line config change. With every executor the rest holds: worktree first, failing test first, one commit per task, review once at the close.
 
-Pick the executor in this order. When one of the first two gives an answer, do not ask.
+Pick the executor in this order. Never ask.
 
 1. The argument of `/build <executor>`: `subagent`, `dispatch` or `inline`. It is for this run only; never save it.
 2. `build_executor: <name>` from `acta config show`.
-3. Neither: ask which executor to run, as the table above describes.
+3. Neither: run `inline`. Do not ask.
 
 The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.
 

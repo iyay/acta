@@ -542,7 +542,7 @@ func TestDoctorSetup(t *testing.T) {
 		fix         string
 	}{
 		{"no voice file", false, "", Warn, "no voice file yet", "/acta:setup"},
-		{"voice with no executor", true, "", OK, "voice is set; build executor not set, build asks each time", ""},
+		{"voice with no executor", true, "", OK, "voice is set; build executor not set, build uses inline", ""},
 		{"voice with executor", true, "subagent", OK, "voice and build executor are set", ""},
 	}
 	for _, tt := range tests {
