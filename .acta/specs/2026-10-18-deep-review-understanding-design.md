@@ -2,6 +2,8 @@
 id: SPC-0146
 created: "2026-10-18 19:23:25"
 hash: jpblcy6
+started: "2026-10-18 19:31:53"
+finished: "2026-10-18 19:52:37"
 ---
 # Optional understanding question after landing
 

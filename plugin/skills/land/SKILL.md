@@ -72,3 +72,16 @@ State gate: before the merge, run `acta state <plan id>` and read its Findings; 
 10. Never `git push`, and never force anything.
 
 Report after landing: the merge sha first, the gate numbers you ran after the merge, what was cleaned up, the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none), one next action, and, if step 9 ran, the debt file and how many items it closed.
+
+### Understanding, after the land
+
+Add this part only when `review_understanding` is true in the acta settings of the session note or in `acta config show`. A missing value is false. It is its own switch: quick, standard, deep, a floor or the deep lens never turns it on. A successful land adds it; a blocked or failed land does not.
+
+- Keep every report part above. Then read the final landed code (fixes, polish and the merge included), not the review notes or an earlier diff.
+- Explain in a few lines: the main behavior, with one concrete example; the most important risk or boundary the code shows (if it shows none, say so and never invent one); what the tests do and do not prove.
+- The report ends with exactly one optional question, after the next action, as the last line of the report. Give a concrete scenario in which the user predicts the outcome and gives a short reason. Ask about behavior, never names or syntax.
+- The land is already done: an answer, a skip, silence or a new request never blocks, undoes or restarts it. Record no pass or skip and run no extra reviewer for it.
+
+When `review_understanding` is false or missing, write the plain report: no explanation, no question, no offer.
+
+When the user answers, check the prediction and its reason against the source and explain the real cause, quoting the line that decides it. Read a short or differently worded answer by what it means; settle doubt from the code, never by grading the words. Say what was right, name a missed concept plainly, and offer at most one more optional scenario. No pass or fail label.

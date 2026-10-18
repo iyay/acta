@@ -170,3 +170,37 @@ func TestReviewDepthFiles(t *testing.T) {
 		}
 	}
 }
+
+// TestReviewUnderstanding keeps review_understanding apart from the review
+// level. No level, argument, floor or the deep lens may turn it on, and the
+// review hands the report part to acta:land instead of asking anything itself.
+func TestReviewUnderstanding(t *testing.T) {
+	files := map[string][]string{
+		"skills/review/SKILL.md": {
+			"`review_understanding` is a separate switch",
+			"no level turns it on",
+			"`acta:land` adds what it asks for",
+		},
+		"skills/review/depth.md": {
+			"## Understanding",
+			"`review_understanding` is its own switch, false when missing",
+			"quick, standard, deep, the argument, a floor and the deep lens leave it as it is",
+			"`acta:land` ends its report with a short explanation and one optional question",
+			"When it is false, the report gets neither",
+		},
+	}
+	for rel, wants := range files {
+		txt := readSkill(t, rel)
+		for _, want := range wants {
+			if !strings.Contains(txt, want) {
+				t.Errorf("%s missing %q", rel, want)
+			}
+		}
+	}
+	// The review itself never asks: the question comes after the land.
+	for _, rel := range []string{"skills/review/SKILL.md", "skills/review/depth.md"} {
+		if txt := readSkill(t, rel); strings.Contains(txt, "predicts the outcome") {
+			t.Errorf("%s asks the understanding question itself; it belongs in the landing report", rel)
+		}
+	}
+}

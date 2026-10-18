@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting never lowers a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`.
+Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting never lowers a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 

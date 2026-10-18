@@ -5,6 +5,7 @@ id: PLN-0158
 created: "2026-10-18 19:24:42"
 hash: jwjcbtm
 started: "2026-10-18 19:31:53"
+finished: "2026-10-18 19:52:37"
 ---
 # Optional Review Understanding Plan
 
@@ -55,9 +56,9 @@ started: "2026-10-18 19:31:53"
 
 **verify:** At every review depth, an enabled successful landing keeps its required evidence and report fields, explains the main behavior and its meaningful risk or boundary and test limits using inspected final landed code, and ends with exactly one optional outcome-and-reason question; no answer or question precedes or gates the merge. Contract checks own both switch values across quick, standard and deep, including a deep lens, plus blocked/failed landings, no pass/skip status or extra reviewer, and skip, silence or a new request never blocking or restarting completed landing. The report eval owns an enabled quick review and a final landed revision that differs from the earlier reviewed snapshot, including light polish; its trace proves landing completes before the question and its explanation matches final code. The disabled eval owns deep review with explicit false and no added explanation, question or offer. The follow-up eval owns enabled standard review and a short, differently worded prediction with a missed concept: explain the actual cause against source, resolve ambiguity without grading wording, and offer at most one optional further scenario. Config is wiring only here: one enabled value and one disabled value from Task 1, without repeating merge or validation cases. List the paths checked; inspect eval traces as well as grader results.
 
-- [ ] Red: Add focused contract checks and the three bounded greenfield cases, run `scripts/test ./internal/plugincheck/ -run 'Test(ReviewUnderstanding|LandUnderstanding)'` and `scripts/eval --case 'review-understanding-*'` before changing skills, and observe the missing opt-in report contract fail.
-- [ ] Change: Read the independent switch, put the enabled explanation, final optional question and follow-up rules in the existing skills, fit only affected budgets, then make the narrow checks, all plugin checks and selected evals green while retaining all existing landing requirements.
-- [ ] Commit: `feat(review): add an opt-in understanding question after land`.
+- [x] Red: Add focused contract checks and the three bounded greenfield cases, run `scripts/test ./internal/plugincheck/ -run 'Test(ReviewUnderstanding|LandUnderstanding)'` and `scripts/eval --case 'review-understanding-*'` before changing skills, and observe the missing opt-in report contract fail.
+- [x] Change: Read the independent switch, put the enabled explanation, final optional question and follow-up rules in the existing skills, fit only affected budgets, then make the narrow checks, all plugin checks and selected evals green while retaining all existing landing requirements.
+- [x] Commit: `feat(review): add an opt-in understanding question after land`.
 
 ## State
 
@@ -65,3 +66,7 @@ started: "2026-10-18 19:31:53"
 
 Task 2: skills review/depth/land + plugincheck + 3 evals review-understanding-*.
 Session line is "- Review understanding: true|false." only when set; missing = off.
+
+## Review notes
+
+- Round 1, deep, full tier, two reviewers (Spec, Standards), no BLOCKER so no fact-check: CLEAN. NOTEs, all [note]: session line only when the key is set (missing reads as false in the skills); added wiki page eval-merge-needs-libexec beyond the spec's "no new page"; evals_test.go registry edit outside the Task 2 file list; CLI stricter than yaml on True/TRUE; setup override shows an unset user value as "false"; byte caps raised to exact size.
