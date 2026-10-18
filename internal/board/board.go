@@ -784,6 +784,10 @@ func field(front map[string]any, key string) string {
 // new ones. A bare date comes back from yaml as a time and a quoted one as a
 // string, so both are read; anything that is not a real day or time is
 // dropped.
+// DateField reads a date the way the board does: a real day, or a day and
+// time, else "". Other commands use it so they agree with the board.
+func DateField(front map[string]any, key string) string { return dateField(front, key) }
+
 func dateField(front map[string]any, key string) string {
 	switch v := front[key].(type) {
 	case string:

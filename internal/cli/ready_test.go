@@ -186,3 +186,28 @@ func TestReadyRefusesWhatCanNeverLand(t *testing.T) {
 		}
 	}
 }
+
+// A boxless task counts as done only when finished holds a real date, the
+// way the board reads it. An empty or null finished does not land the plan.
+func TestReadyBoxlessNeedsARealFinishedDate(t *testing.T) {
+	boxless := func(finished string) string {
+		return "---\nid: PLN-0001\n" + finished + "---\n# Plan\n\n### Task 1: Do it\n\n**verify:** it works\n"
+	}
+	for _, c := range []struct {
+		finished string
+		want     int
+	}{
+		{"finished: \"2026-10-01 11:00:00\"\n", 0},
+		{"finished: \"\"\n", 1},
+		{"finished: null\n", 1},
+		{"finished: soon\n", 1},
+	} {
+		dir := readyRepo(t, map[string]string{
+			"plans/2026-10-01-a.md": boxless(c.finished),
+			"plans/2026-10-01-b.md": readyPlan("PLN-0002", "PLN-0001", " "),
+		})
+		if code, out := runReady(t, dir, "PLN-0002", "--parent", "main"); code != c.want {
+			t.Errorf("%q: exit %d, want %d\n%s", c.finished, code, c.want, out)
+		}
+	}
+}
