@@ -169,7 +169,9 @@ func allTicked(d board.Doc) bool {
 	if len(d.Tasks) == 0 {
 		return false
 	}
-	_, finished := d.Front["finished"]
+	// The key alone is not enough: an empty, null or broken finished is no
+	// date, and the board does not count it either.
+	finished := board.DateField(d.Front, "finished") != ""
 	for _, task := range d.Tasks {
 		if task.Total == 0 && !finished || task.Done < task.Total {
 			return false
