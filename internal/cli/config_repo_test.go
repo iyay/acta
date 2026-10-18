@@ -849,3 +849,74 @@ func TestConfigShowOverridesEmptyList(t *testing.T) {
 		t.Errorf("from_repo %v", got["from_repo"])
 	}
 }
+
+// --review-understanding writes a yaml boolean to the user file, or with
+// --repo to .acta.yaml alone; show prints the effective value with the usual
+// marks, JSON carries a real boolean, and unset brings the user's value back.
+func TestConfigReviewUnderstanding(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "")
+	showJSON := func() map[string]any {
+		var got map[string]any
+		if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_understanding: false (default)\n") {
+		t.Errorf("unset show:\n%s", out)
+	}
+	if got := showJSON(); got["review_understanding"] != false {
+		t.Errorf("unset json review_understanding %#v, want false", got["review_understanding"])
+	}
+	mustRun(t, "config", "set", "--review-understanding", "true")
+	if v, _, err := config.LoadUser(globalPath); err != nil || !v.Understanding() {
+		t.Errorf("global file holds %v, %v; want true", v.ReviewUnderstanding, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".acta.yaml")); err == nil {
+		t.Error("set without --repo wrote .acta.yaml")
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_understanding: true\n") {
+		t.Errorf("user true show:\n%s", out)
+	}
+	before, _ := os.ReadFile(globalPath)
+	mustRun(t, "config", "set", "--repo", "--review-understanding", "false")
+	if after, _ := os.ReadFile(globalPath); string(after) != string(before) {
+		t.Errorf("--repo changed the global file:\n%s", after)
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_understanding: false (repo; yours: true)\n") {
+		t.Errorf("repo false show:\n%s", out)
+	}
+	got := showJSON()
+	if got["review_understanding"] != false {
+		t.Errorf("repo json review_understanding %#v, want false", got["review_understanding"])
+	}
+	if from, _ := got["from_repo"].([]any); len(from) != 1 || from[0] != "review_understanding" {
+		t.Errorf("json from_repo %v", got["from_repo"])
+	}
+	mustRun(t, "config", "set", "--repo", "--unset", "review_understanding")
+	if got := showJSON(); got["review_understanding"] != true {
+		t.Errorf("after unset json review_understanding %#v, want true", got["review_understanding"])
+	}
+}
+
+// A bad --review-understanding is refused with the key named on both paths,
+// and neither file is written.
+func TestConfigReviewUnderstandingRefusesBadValue(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "plan_depth: minimal\n")
+	repoBefore, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+	for _, args := range [][]string{
+		{"config", "set", "--repo", "--review-understanding", "maybe"},
+		{"config", "set", "--review-understanding", "maybe"},
+	} {
+		code, _, errs := runCodeOut(args...)
+		if code != exitBadInput || !strings.Contains(errs, "review_understanding") {
+			t.Errorf("%v: exit %d stderr %q, want bad input naming review_understanding", args, code, errs)
+		}
+	}
+	if after, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); string(after) != string(repoBefore) {
+		t.Errorf(".acta.yaml changed:\n%s", after)
+	}
+	if _, err := os.Stat(globalPath); err == nil {
+		t.Error("the global file was written")
+	}
+}

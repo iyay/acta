@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0158
 created: "2026-10-18 19:24:42"
 hash: jwjcbtm
+started: "2026-10-18 19:31:53"
 ---
 # Optional Review Understanding Plan
 
@@ -38,9 +39,9 @@ hash: jwjcbtm
 
 **verify:** Config alone owns switch semantics: missing means false, explicit booleans round-trip without losing false, an explicit repo value overrides either user value, unset restores inheritance, and choosing any review depth leaves the switch unchanged. Reject invalid values and types with `review_understanding` in the error and without writing either config; preserve unrelated YAML keys/comments. CLI wiring owns `--review-understanding true|false` for user and repo, typed JSON plus existing source/default marks in show, and help for set/unset. Session wiring owns the effective boolean in settings for every harness; setup wiring owns retaining the saved value without a new question. Cover the cases at their owning seams, with only one success and one propagated error at higher wiring layers; list the paths checked.
 
-- [ ] Red: Add focused `Test.*ReviewUnderstanding` tests at the listed seams and observe `scripts/test ./internal/config/ ./internal/cli/ ./internal/hook/ ./internal/setup/ -run 'Test.*ReviewUnderstanding'` fail because the switch and its config surfaces do not exist.
-- [ ] Change: Add the boolean with default false and repo precedence, validate it before writes, wire set/show/help and session settings, preserve it during setup, then pass the focused tests and `scripts/test ./internal/config/ ./internal/cli/ ./internal/hook/ ./internal/setup/ ./internal/plugincheck/`.
-- [ ] Commit: `feat(config): add an independent review understanding switch`.
+- [x] Red: Add focused `Test.*ReviewUnderstanding` tests at the listed seams and observe `scripts/test ./internal/config/ ./internal/cli/ ./internal/hook/ ./internal/setup/ -run 'Test.*ReviewUnderstanding'` fail because the switch and its config surfaces do not exist.
+- [x] Change: Add the boolean with default false and repo precedence, validate it before writes, wire set/show/help and session settings, preserve it during setup, then pass the focused tests and `scripts/test ./internal/config/ ./internal/cli/ ./internal/hook/ ./internal/setup/ ./internal/plugincheck/`.
+- [x] Commit: `feat(config): add an independent review understanding switch`.
 
 ### Task 2: Add the optional question to enabled landing reports
 
@@ -57,3 +58,10 @@ hash: jwjcbtm
 - [ ] Red: Add focused contract checks and the three bounded greenfield cases, run `scripts/test ./internal/plugincheck/ -run 'Test(ReviewUnderstanding|LandUnderstanding)'` and `scripts/eval --case 'review-understanding-*'` before changing skills, and observe the missing opt-in report contract fail.
 - [ ] Change: Read the independent switch, put the enabled explanation, final optional question and follow-up rules in the existing skills, fit only affected budgets, then make the narrow checks, all plugin checks and selected evals green while retaining all existing landing requirements.
 - [ ] Commit: `feat(review): add an opt-in understanding question after land`.
+
+## State
+
+### Next
+
+Task 2: skills review/depth/land + plugincheck + 3 evals review-understanding-*.
+Session line is "- Review understanding: true|false." only when set; missing = off.

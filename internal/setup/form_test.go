@@ -525,3 +525,23 @@ func TestAskOverrides(t *testing.T) {
 		}
 	})
 }
+
+// Setup asks nothing about review understanding and keeps the saved value,
+// true or false, when it saves the answers.
+func TestFormKeepsReviewUnderstanding(t *testing.T) {
+	for _, want := range []bool{true, false} {
+		env := setup.Env{Current: config.User{ChatLanguage: "Korean", RepoLanguage: "English", ReviewUnderstanding: &want}}
+		for _, text := range formGroupText(t, env) {
+			if strings.Contains(strings.ToLower(text), "understanding") {
+				t.Errorf("setup asks about understanding:\n%s", text)
+			}
+		}
+		got := setup.AnswersUser(env.Current, setup.FormDefaults(env))
+		if got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != want {
+			t.Errorf("saved answers hold %v, want %v", got.ReviewUnderstanding, want)
+		}
+	}
+	if got := setup.AnswersUser(config.User{}, setup.FormDefaults(setup.Env{})); got.ReviewUnderstanding != nil {
+		t.Errorf("unset value came back as %v, want nil", *got.ReviewUnderstanding)
+	}
+}

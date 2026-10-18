@@ -260,3 +260,23 @@ func TestHelpDebtNamesPriorityRule(t *testing.T) {
 		t.Fatalf("debt help does not name the priority rule:\n%s", out)
 	}
 }
+
+// config help names --review-understanding for both set forms, and says it
+// can be unset per repo.
+func TestHelpConfigReviewUnderstanding(t *testing.T) {
+	cmd, ok := findHelpCmd("config")
+	if !ok {
+		t.Fatal("no config entry")
+	}
+	if !strings.Contains(cmd.usage[1], "[--review-understanding true|false]") || !strings.Contains(cmd.usage[2], "[--review-understanding B]") {
+		t.Errorf("usage lacks --review-understanding:\n%s", strings.Join(cmd.usage, "\n"))
+	}
+	var flagLine, unsetLine bool
+	for _, f := range cmd.flags {
+		flagLine = flagLine || strings.HasPrefix(f, "--review-understanding B  ")
+		unsetLine = unsetLine || (strings.HasPrefix(f, "--unset KEY") && strings.Contains(f, "review_understanding"))
+	}
+	if !flagLine || !unsetLine {
+		t.Errorf("flags lack the --review-understanding line (%v) or the unset key (%v):\n%s", flagLine, unsetLine, strings.Join(cmd.flags, "\n"))
+	}
+}

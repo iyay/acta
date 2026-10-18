@@ -500,3 +500,98 @@ func TestUnsetRepoUserRefusesOtherKeys(t *testing.T) {
 		}
 	}
 }
+
+// An explicit repo review_understanding wins over the user's in both
+// directions, and a repo file without the key inherits the user's value.
+func TestMergeRepoReviewUnderstanding(t *testing.T) {
+	on, off := true, false
+	cases := []struct {
+		user     *bool
+		repo     string
+		want     bool
+		fromRepo bool
+	}{
+		{nil, "", false, false},
+		{&on, "plan_depth: full\n", true, false},
+		{&off, "review_understanding: true\n", true, true},
+		{&on, "review_understanding: false\n", false, true},
+		{nil, "review_understanding: false\n", false, true},
+	}
+	for _, c := range cases {
+		u := UserDefault()
+		u.ReviewUnderstanding = c.user
+		got, from, err := MergeRepo(u, writeRepoYAML(t, c.repo))
+		if err != nil || got.Understanding() != c.want || from["review_understanding"] != c.fromRepo {
+			t.Errorf("user %v repo %q: got %v from %v err %v; want %v from %v", c.user, c.repo, got.Understanding(), from, err, c.want, c.fromRepo)
+		}
+	}
+}
+
+// A bad repo value fails the merge with the key named, and a bad save leaves
+// .acta.yaml byte for byte as it was.
+func TestReviewUnderstandingRepoBadValue(t *testing.T) {
+	for _, bad := range []string{"maybe", `"true"`, "yes", "1"} {
+		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, "review_understanding: "+bad+"\n"))
+		if !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_understanding") {
+			t.Errorf("%q: err %v, want ErrBadUser naming review_understanding", bad, err)
+		}
+	}
+	dir := writeRepoYAML(t, "# shared\nplan_depth: minimal\n")
+	before, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
+	if _, err := SaveRepoUser(dir, map[string]string{"review_understanding": "maybe"}); !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_understanding") {
+		t.Errorf("save maybe: err %v, want ErrBadUser naming review_understanding", err)
+	}
+	if after, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); string(after) != string(before) {
+		t.Errorf(".acta.yaml changed:\n%s", after)
+	}
+}
+
+// review_understanding saves into .acta.yaml as a yaml boolean beside the
+// other keys and comments, is an override only when it differs from the
+// user's value, and unset hands the choice back to the user.
+func TestReviewUnderstandingRepoKey(t *testing.T) {
+	dir := writeRepoYAML(t, "# shared settings\nplan_depth: minimal # short plans\n")
+	path := filepath.Join(dir, ".acta.yaml")
+	for _, val := range []string{"true", "false"} {
+		if _, err := SaveRepoUser(dir, map[string]string{"review_understanding": val}); err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := os.ReadFile(path)
+		for _, want := range []string{"# shared settings\n", "plan_depth: minimal # short plans\n", "review_understanding: " + val + "\n"} {
+			if !strings.Contains(string(raw), want) {
+				t.Errorf("after %s, .acta.yaml lacks %q:\n%s", val, want, raw)
+			}
+		}
+		if got, _, err := MergeRepo(UserDefault(), dir); err != nil || got.Understanding() != (val == "true") {
+			t.Errorf("after %s: merged %v, %v", val, got.ReviewUnderstanding, err)
+		}
+	}
+	on := true
+	mine := UserDefault()
+	mine.ReviewUnderstanding = &on
+	pick := func(list []Override) []Override {
+		var out []Override
+		for _, o := range list {
+			if o.Key == "review_understanding" {
+				out = append(out, o)
+			}
+		}
+		return out
+	}
+	if got, err := Overrides(mine, dir); err != nil || len(pick(got)) != 1 || pick(got)[0] != (Override{"review_understanding", "false", "true"}) {
+		t.Errorf("repo false over user true: %+v, %v", got, err)
+	}
+	if got, err := Overrides(UserDefault(), dir); err != nil || len(pick(got)) != 0 {
+		t.Errorf("repo false over unset user: %+v, %v; want no override", got, err)
+	}
+	if _, err := UnsetRepoUser(dir, []string{"review_understanding"}); err != nil {
+		t.Fatal(err)
+	}
+	got, from, err := MergeRepo(mine, dir)
+	if err != nil || !got.Understanding() || from["review_understanding"] {
+		t.Errorf("after unset: %v from %v err %v; want the user's true", got.ReviewUnderstanding, from, err)
+	}
+	if raw, _ := os.ReadFile(path); !strings.Contains(string(raw), "plan_depth: minimal # short plans\n") {
+		t.Errorf("unset lost the other key:\n%s", raw)
+	}
+}
