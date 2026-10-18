@@ -65,9 +65,9 @@ started: "2026-10-18 20:23:18"
 
 ### Task 7: acta spec-dates for land
 
-- [ ] Red: `acta spec-dates` tests fail because the command does not exist.
-- [ ] Change: new `acta spec-dates <plan>` (`internal/write/specdates.go`, `internal/cli/specdates.go`, `cli.go`, `help.go`): on the checked-out parent, set the spec's `started:` to the earliest plan `started:` (move earlier, never later) and `finished:` when every plan of the spec is done, then commit it with the acta commit path; no-op for a one-plan spec. Seam: `acta spec-dates`. verify: in both land orders (first-started plan lands first, and last) the spec ends with the earliest `started:` and one `finished:` written only by the land that closes the last plan; after each run the checkout has no tracked change.
-- [ ] Commit: `feat(cli): acta spec-dates writes split spec dates at land`
+- [x] Red: `acta spec-dates` tests fail because the command does not exist.
+- [x] Change: new `acta spec-dates <plan>` (`internal/write/specdates.go`, `internal/cli/specdates.go`, `cli.go`, `help.go`): on the checked-out parent, set the spec's `started:` to the earliest plan `started:` (move earlier, never later) and `finished:` when every plan of the spec is done, then commit it with the acta commit path; no-op for a one-plan spec. Seam: `acta spec-dates`. verify: in both land orders (first-started plan lands first, and last) the spec ends with the earliest `started:` and one `finished:` written only by the land that closes the last plan; after each run the checkout has no tracked change.
+- [x] Commit: `feat(cli): acta spec-dates writes split spec dates at land`
 
 ### Task 8: Skill text
 

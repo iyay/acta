@@ -243,6 +243,13 @@ var helpTable = []helpCmd{
 		},
 		example: "acta ready PLN-0160 --parent main",
 	},
+	{
+		name:    "spec-dates",
+		group:   "Setup",
+		summary: "After a plan lands, write and commit the dates of its spec when the spec is cut into several plans.",
+		usage:   []string{"acta spec-dates <plan>"},
+		example: "acta spec-dates PLN-0160",
+	},
 
 	// Agent plumbing
 	{

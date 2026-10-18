@@ -143,6 +143,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdTidy(args[1:], stdout, stderr)
 	case "ready":
 		return cmdReady(args[1:], stdout, stderr)
+	case "spec-dates":
+		return cmdSpecDates(args[1:], stdout, stderr)
 	case "update":
 		return cmdUpdate(args[1:], stdout, stderr)
 	default:
