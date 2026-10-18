@@ -822,8 +822,10 @@ func TestSessionStartSettingsLines(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if strings.Contains(out, "Build executor:") {
-		t.Error("an empty build executor still wrote a line")
+	// No executor set means inline. The line must still show, so it beats a
+	// user CLAUDE.md that bans the main agent from writing code.
+	if !strings.Contains(out, "- Build executor: inline (default). The main agent writes the code itself; no implementer subagents.\n") {
+		t.Error("an empty build executor did not write the inline default line")
 	}
 	in.Voice.SubagentModels = "default"
 	if out := SessionStart(in); !strings.Contains(out, "- Subagent models: default. Name no model; the user's own setup picks it.\n") {
@@ -831,13 +833,12 @@ func TestSessionStartSettingsLines(t *testing.T) {
 	}
 }
 
-// No settings, a missing config or a broken one: no heading at all, so the
+// A missing config or a broken one: no heading at all, so the
 // agent never reads an empty list as a rule.
 func TestSessionStartSettingsAbsent(t *testing.T) {
 	for name, in := range map[string]Input{
-		"none set": korean(),
-		"missing":  {Voice: config.User{BuildExecutor: "inline"}},
-		"broken":   {Voice: config.User{BuildExecutor: "inline"}, VoiceExists: true, VoiceErr: errors.New("x")},
+		"missing": {Voice: config.User{BuildExecutor: "inline"}},
+		"broken":  {Voice: config.User{BuildExecutor: "inline"}, VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		if strings.Contains(SessionStart(in), "acta settings (") {
 			t.Errorf("%s: settings heading written", name)

@@ -41,3 +41,15 @@ finished: "2026-10-18 19:08:30"
 - [x] **Files:** `internal/cli/config_cmd.go`, `internal/hook/hook.go`, their tests in `internal/cli/` and `internal/hook/`
 - [x] **verify:** With an empty executor, both `acta config show` (text and JSON) and the session note show inline marked as the default; a set executor prints as before with no default mark. Seam: `acta config show`, the session hook text.
 - [x] Commit: `feat(config): show inline as the default executor`
+
+## Fix round 1
+
+### Task 4: Session note names the inline default
+
+- [x] **Files:** `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`, `internal/plugincheck/budget_test.go`, `plugin/skills/slice/SKILL.md`
+- [x] **verify:** With no executor set, the session note always carries `- Build executor: inline (default).` with the inline sentence, so the acta setting beats a user's CLAUDE.md; a set executor prints as before; a missing or broken config writes no settings heading. The session start cap rises only by the bytes this line adds. Slice's hand-off reads a `(default)` value as inline.
+- [x] Commit: `fix(hook): session note names the inline default executor`
+
+## Review notes
+
+Round 1 BLOCKED (session note lacked the inline default), fixed in round 2, CLEAN. Notes only: config show JSON no longer tells unset from inline (same as plan_depth); the per-message prompt hook names no executor; setup no-TTY fallback no longer asks the executor.
