@@ -45,6 +45,42 @@ type User struct {
 	// UpdateCheck says whether acta looks for a newer release once a day and
 	// tells the user: on or off. Empty means on.
 	UpdateCheck string `yaml:"update_check,omitempty"`
+	// ReviewUnderstanding says whether a landing report explains the change
+	// and ends with one optional question about it. It is a pointer so an
+	// explicit false is kept apart from a key nobody set; both mean off.
+	ReviewUnderstanding *bool `yaml:"review_understanding,omitempty"`
+}
+
+// Understanding is the review_understanding value in force. Not set means off.
+func (v User) Understanding() bool {
+	return v.ReviewUnderstanding != nil && *v.ReviewUnderstanding
+}
+
+// ParseReviewUnderstanding reads a value typed for review_understanding.
+// Only true and false are taken, the same words the yaml file holds.
+func ParseReviewUnderstanding(s string) (bool, error) {
+	switch s {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+	return false, fmt.Errorf("%w: review_understanding must be true or false, not %q", ErrBadUser, s)
+}
+
+// checkUnderstandingKey looks at review_understanding before the file is
+// read into User. yaml alone would take "yes" as true, or fail without
+// naming the key, so only a real true or false gets past here.
+func checkUnderstandingKey(keys map[string]any) error {
+	// A key with no value reads as not set, the same as yaml gives User.
+	raw, ok := keys["review_understanding"]
+	if !ok || raw == nil {
+		return nil
+	}
+	if _, ok := raw.(bool); !ok {
+		return fmt.Errorf("%w: review_understanding must be true or false, not %v", ErrBadUser, raw)
+	}
+	return nil
 }
 
 // ErrBadUser marks a setting the rules do not allow.
@@ -151,6 +187,12 @@ func LoadUser(path string) (User, bool, error) {
 	}
 	if err != nil {
 		return UserDefault(), true, err
+	}
+	var keys map[string]any
+	if yaml.Unmarshal(raw, &keys) == nil {
+		if err := checkUnderstandingKey(keys); err != nil {
+			return UserDefault(), true, fmt.Errorf("%s: %w", path, err)
+		}
 	}
 	var got User
 	if err := yaml.Unmarshal(raw, &got); err != nil {

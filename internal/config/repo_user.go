@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,7 +16,7 @@ import (
 // RepoKeys are the user settings a repo may set for itself in .acta.yaml,
 // in the order config show prints them. Everything else in User belongs to
 // the person and follows them from repo to repo.
-var RepoKeys = []string{"repo_language", "build_executor", "plan_depth", "review_depth", "commit_history", "coding_guide"}
+var RepoKeys = []string{"repo_language", "build_executor", "plan_depth", "review_depth", "commit_history", "coding_guide", "review_understanding"}
 
 // personalKeys may never sit in .acta.yaml: that file is committed, so a
 // value there would change how the agent talks to everyone who clones it.
@@ -42,7 +43,16 @@ func MergeRepo(v User, repoRoot string) (User, map[string]bool, error) {
 			return v, nil, fmt.Errorf("%s: %w: %s is a personal setting; set it with acta config set, not per repo", path, ErrBadUser, k)
 		}
 	}
+	if err := checkUnderstandingKey(keys); err != nil {
+		return v, nil, fmt.Errorf("%s: %w", path, err)
+	}
 	out, from := v, map[string]bool{}
+	// review_understanding is the one yaml boolean; the string loop below
+	// skips it.
+	if b, ok := keys["review_understanding"].(bool); ok {
+		out.ReviewUnderstanding = &b
+		from["review_understanding"] = true
+	}
 	for _, k := range RepoKeys {
 		s, ok := keys[k].(string)
 		if !ok || strings.TrimSpace(s) == "" {
@@ -78,6 +88,12 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 	for k := range set {
 		if !slices.Contains(RepoKeys, k) {
 			return path, fmt.Errorf("%w: %s cannot be set per repo; only %s can", ErrBadUser, k, strings.Join(RepoKeys, ", "))
+		}
+	}
+	// Check before the write, so a typo never lands in the shared file.
+	if s, ok := set["review_understanding"]; ok {
+		if _, err := ParseReviewUnderstanding(s); err != nil {
+			return path, err
 		}
 	}
 	raw, err := os.ReadFile(path)
@@ -144,6 +160,8 @@ func repoValue(u User, key string) string {
 		v, def = u.CommitHistory, "tidy"
 	case "coding_guide":
 		v, def = u.CodingGuide, "lean"
+	case "review_understanding":
+		v = strconv.FormatBool(u.Understanding())
 	}
 	if v == "" {
 		return def

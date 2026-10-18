@@ -123,12 +123,18 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				fromRepo = append(fromRepo, k)
 			}
 		}
+		understandingMark := ""
+		if v.ReviewUnderstanding == nil {
+			// Same here: an unset value is false, and show says so.
+			understandingMark = " (default)"
+		}
 		if *asJSON {
 			return printJSON(stdout, stderr, map[string]any{
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
 				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide, "from_repo": fromRepo, "overrides": overrideList,
+				"theme": v.Theme, "plan_depth": depth, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
+				"review_understanding": v.Understanding(), "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -148,6 +154,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "commit_history: %s%s%s\n", history, mark("commit_history"), historyMark)
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
+		fmt.Fprintf(stdout, "review_understanding: %v%s%s\n", v.Understanding(), mark("review_understanding"), understandingMark)
 		if v.SubagentModels != "" {
 			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
 		}
@@ -173,6 +180,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
+		understanding := fs.String("review-understanding", "", "true or false: after a landing, explain the change and ask one optional question about it")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
 		var unset keyList
 		fs.Var(&unset, "unset", "with --repo: remove this key from .acta.yaml so your own value applies (repeatable)")
@@ -180,7 +188,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
+		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
@@ -190,7 +198,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		if *repoOnly {
-			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide},
+			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
 				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
@@ -232,6 +240,14 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *guide != "" {
 			v.CodingGuide = *guide
+		}
+		if *understanding != "" {
+			b, err := config.ParseReviewUnderstanding(*understanding)
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return exitBadInput
+			}
+			v.ReviewUnderstanding = &b
 		}
 		// Clear first, set second, so one call can replace the value.
 		if *clearModels {
@@ -276,7 +292,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 // agent talks to everyone who clones the repo.
 func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, unset []string) int {
 	if personal {
-		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --review-depth, --commit-history and --coding-guide; set the others without --repo\n")
+		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --review-depth, --commit-history, --coding-guide and --review-understanding; set the others without --repo\n")
 		return exitBadInput
 	}
 	set := map[string]string{}
@@ -330,6 +346,11 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, un
 			check.CommitHistory = val
 		case k == "coding_guide":
 			check.CodingGuide = val
+		case k == "review_understanding":
+			if _, err := config.ParseReviewUnderstanding(val); err != nil {
+				fmt.Fprintln(stderr, err)
+				return exitBadInput
+			}
 		}
 	}
 	if err := check.Validate(); err != nil {

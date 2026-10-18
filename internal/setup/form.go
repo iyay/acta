@@ -257,19 +257,7 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 	for h, v := range st.install {
 		a.Install[h] = *v
 	}
-	d := st.answers
-	a.User = config.User{
-		ChatLanguage:   d.Language,
-		Style:          d.Style,
-		Tone:           d.Tone,
-		RepoLanguage:   d.RepoLanguage,
-		BuildExecutor:  d.BuildExecutor,
-		SubagentModels: d.SubagentModels,
-		PlanDepth:      d.PlanDepth,
-		ReviewDepth:    d.ReviewDepth,
-		CommitHistory:  d.CommitHistory,
-		Questions:      d.Questions,
-	}
+	a.User = AnswersUser(e.Current, *st.answers)
 	// The override questions depend on the answers just given, so they come
 	// as a second step after the fixed screens.
 	var err error
@@ -278,6 +266,25 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 		return Answers{}, err
 	}
 	return a, nil
+}
+
+// AnswersUser turns the form answers into the config that setup saves. The
+// form never asks about review_understanding, so the saved value is carried
+// over from current as it was.
+func AnswersUser(current config.User, d Defaults) config.User {
+	return config.User{
+		ChatLanguage:        d.Language,
+		Style:               d.Style,
+		Tone:                d.Tone,
+		RepoLanguage:        d.RepoLanguage,
+		BuildExecutor:       d.BuildExecutor,
+		SubagentModels:      d.SubagentModels,
+		PlanDepth:           d.PlanDepth,
+		ReviewDepth:         d.ReviewDepth,
+		CommitHistory:       d.CommitHistory,
+		Questions:           d.Questions,
+		ReviewUnderstanding: current.ReviewUnderstanding,
+	}
 }
 
 // runGroup shows one override screen and waits for the answer.

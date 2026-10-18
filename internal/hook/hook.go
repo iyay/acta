@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/iyay/acta/internal/config"
@@ -229,6 +230,10 @@ func settingsBlock(v config.User) string {
 	add("Review depth", v.ReviewDepth, "")
 	add("Commit history", v.CommitHistory, "")
 	add("Subagent models", v.SubagentModels, modelLines[v.SubagentModels])
+	// A value nobody set writes no line; the skills read that as false.
+	if v.ReviewUnderstanding != nil {
+		add("Review understanding", strconv.FormatBool(*v.ReviewUnderstanding), "")
+	}
 	if len(lines) == 0 {
 		return ""
 	}

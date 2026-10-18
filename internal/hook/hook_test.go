@@ -3,6 +3,7 @@ package hook
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -916,5 +917,25 @@ func TestSessionStartCodexBlock(t *testing.T) {
 	}
 	if strings.Contains(out, "keep-coding-instructions") {
 		t.Error("Codex note carries the style file's frontmatter")
+	}
+}
+
+// An explicit review understanding value lands in the settings, in Claude
+// Code and in Codex alike; with no value set no line is written, which the
+// skills read as off.
+func TestSessionStartReviewUnderstanding(t *testing.T) {
+	for _, codex := range []string{"", "/p"} {
+		t.Setenv("PLUGIN_ROOT", codex)
+		for _, want := range []bool{true, false} {
+			in := korean()
+			in.Voice.ReviewUnderstanding = &want
+			line := fmt.Sprintf("- Review understanding: %v.", want)
+			if out := SessionStart(in); !strings.Contains(out, settingsHeading+"\n") || !strings.Contains(out, line+"\n") {
+				t.Errorf("codex %q: missing %q under the settings heading", codex, line)
+			}
+		}
+		if out := SessionStart(korean()); strings.Contains(out, "Review understanding") {
+			t.Errorf("codex %q: an unset value still wrote a line", codex)
+		}
 	}
 }

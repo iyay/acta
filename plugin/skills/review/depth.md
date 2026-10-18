@@ -26,6 +26,10 @@ The setting can raise the depth, never lower it below these. No level, from the 
 
 Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 hand the reviewers the earlier findings, so they look for others.
 
+## Understanding
+
+`review_understanding` is its own switch, false when missing. quick, standard, deep, the argument, a floor and the deep lens leave it as it is. When it is true, `acta:land` ends its report with a short explanation and one optional question. When it is false, the report gets neither.
+
 ## Review notes
 
 The orchestrator writes the level used, and any floor that raised it, into the one review line of the plan's `## Review notes`.

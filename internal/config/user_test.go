@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -434,6 +435,62 @@ func TestValidateUpdateCheck(t *testing.T) {
 		}
 		if err != nil && (!errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "update_check")) {
 			t.Errorf("update_check %q: err %v must be ErrBadUser and name the key", tc.value, err)
+		}
+	}
+}
+
+// review_understanding reads as off when missing, keeps an explicit true or
+// false through a save and a load, and a review depth change leaves it alone.
+func TestReviewUnderstandingRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("chat_language: Korean\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v, _, err := LoadUser(path)
+	if err != nil || v.ReviewUnderstanding != nil || v.Understanding() {
+		t.Fatalf("missing key: %+v, %v; want nil and off", v.ReviewUnderstanding, err)
+	}
+	for _, want := range []bool{false, true} {
+		v.ReviewUnderstanding = &want
+		if err := SaveUserFile(path, v); err != nil {
+			t.Fatal(err)
+		}
+		if raw, _ := os.ReadFile(path); !strings.Contains(string(raw), fmt.Sprintf("review_understanding: %v\n", want)) {
+			t.Errorf("saved %v:\n%s", want, raw)
+		}
+		for _, depth := range []string{"quick", "standard", "deep"} {
+			got, _, err := LoadUser(path)
+			if err != nil || got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != want || got.Understanding() != want {
+				t.Fatalf("depth %q: read back %v, %v; want %v", depth, got.ReviewUnderstanding, err, want)
+			}
+			got.ReviewDepth = depth
+			if err := SaveUserFile(path, got); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+// Only a real yaml true or false is taken; anything else is refused with the
+// key named, and a bad save never reaches the file.
+func TestReviewUnderstandingBadValue(t *testing.T) {
+	for _, bad := range []string{"maybe", `"true"`, "yes", "1", "[true]"} {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.WriteFile(path, []byte("review_understanding: "+bad+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := LoadUser(path); !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_understanding") {
+			t.Errorf("%q: err %v, want ErrBadUser naming review_understanding", bad, err)
+		}
+	}
+	for in, want := range map[string]bool{"true": true, "false": false} {
+		if got, err := ParseReviewUnderstanding(in); err != nil || got != want {
+			t.Errorf("parse %q: %v, %v", in, got, err)
+		}
+	}
+	for _, bad := range []string{"", "yes", "TRUE", "1", "on"} {
+		if _, err := ParseReviewUnderstanding(bad); !errors.Is(err, ErrBadUser) || !strings.Contains(err.Error(), "review_understanding") {
+			t.Errorf("parse %q: err %v, want ErrBadUser naming review_understanding", bad, err)
 		}
 	}
 }
