@@ -64,8 +64,7 @@ finished: "2026-10-18 19:52:37"
 
 ### Next
 
-Task 2: skills review/depth/land + plugincheck + 3 evals review-understanding-*.
-Session line is "- Review understanding: true|false." only when set; missing = off.
+None. Both tasks landed as c1a8277 and 0fa83b1.
 
 ## Review notes
 
