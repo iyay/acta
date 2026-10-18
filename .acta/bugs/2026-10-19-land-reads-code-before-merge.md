@@ -2,6 +2,7 @@
 id: BUG-0047
 hash: g71x5cb
 priority: medium
+started: "2026-10-19 06:17:58"
 ---
 # Land report sometimes explains code read before the merge
 

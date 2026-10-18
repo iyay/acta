@@ -132,7 +132,7 @@ func TestLandUnderstanding(t *testing.T) {
 		"quick, standard, deep, a floor or the deep lens never turns it on",
 		// Only after a real merge, and only from the code that landed.
 		"a blocked or failed land does not",
-		"read the final landed code (fixes, polish and the merge included)",
+		"After the parent has moved (merge or tidy), read the landed files", "A read of the old worktree's files",
 		"never invent one",
 		"what the tests do and do not prove",
 		// One optional question, last, about behavior.

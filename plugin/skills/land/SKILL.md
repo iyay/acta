@@ -77,7 +77,7 @@ Report after landing: the merge sha first, the gate numbers you ran after the me
 
 Add this part only when `review_understanding` is true in the acta settings of the session note or in `acta config show`. A missing value is false. It is its own switch: quick, standard, deep, a floor or the deep lens never turns it on. A successful land adds it; a blocked or failed land does not.
 
-- Keep every report part above. Then read the final landed code (fixes, polish and the merge included), not the review notes or an earlier diff.
+- Keep every report part above. After the parent has moved (merge or tidy), read the landed files from the parent checkout, or with `git show <landed-sha>:<path>` from any folder. A read of the old worktree's files, or any read before the merge, does not count. Explain that final code (fixes, polish and the merge included), not the review notes or an earlier diff.
 - Explain in a few lines: the main behavior, with one concrete example; the most important risk or boundary the code shows (if it shows none, say so and never invent one); what the tests do and do not prove.
 - The report ends with exactly one optional question, after the next action, as the last line of the report. Give a concrete scenario in which the user predicts the outcome and gives a short reason. Ask about behavior, never names or syntax.
 - The land is already done: an answer, a skip, silence or a new request never blocks, undoes or restarts it. Record no pass or skip and run no extra reviewer for it.
