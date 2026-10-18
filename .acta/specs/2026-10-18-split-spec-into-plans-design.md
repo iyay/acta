@@ -84,6 +84,14 @@ check that stops a build from starting too early.
   plans it writes, so a bad `after:` never reaches main.
 - `acta:build` runs `acta ready` before it makes the worktree. Exit 1 or 2
   stops the build and shows the output.
+- A reused worktree may predate the land it waits for. So `acta ready`
+  also takes `--head <rev>` (build passes the worktree HEAD whenever it
+  reuses a worktree), and then checks a second thing for every `after:`
+  plan: the parent commit where that plan landed is an ancestor of the
+  head (`git merge-base --is-ancestor`). The landing commit is the first
+  commit on the ref whose copy of the plan has every box ticked. Not an
+  ancestor: exit 1, naming the plan and saying the worktree must take in
+  the parent first. Build stops; it never rebases or merges on its own.
 - The board marks a plan whose `after:` is not all done as `waiting`.
 - Each plan lands on its own, through tidy.
 
@@ -99,11 +107,18 @@ Rule: when a spec has more than one plan, a tick in a worktree never
 writes the spec's dates. Only the plan file gets its own dates there.
 Land writes the spec dates on the parent branch, after the plan lands:
 
-- `started:` is the earliest `started:` of the spec's plans on the parent,
-  written once and never moved later.
+- `started:` is the earliest `started:` of the spec's plans on the parent.
+  Each land may move it earlier, never later, so a plan that started first
+  but lands last still sets it.
 - `finished:` is written when the landing plan makes every plan of the
   spec done on the parent, and only then.
 
+Order of a land that writes spec dates, inside the tidy flow: move the
+parent to the tidy tip, write the spec dates, commit them with
+`acta commit <spec path>`, and only then update `refs/acta/last-land` and
+clean up the worktree. Right after, `git status --porcelain` in the main
+checkout must show no tracked change; a leftover stops the land report as
+not done, so the next land never meets a dirty parent.
 A spec with one plan keeps today's behaviour.
 
 ## Testing
@@ -120,6 +135,10 @@ A spec with one plan keeps today's behaviour.
 - Spec dates: two plans of one spec built in two real worktrees, started
   at different times, both land through tidy with no clash; the spec ends
   with the earliest `started:` and one `finished:` written at the second
-  land. A one-plan spec still gets its dates from tick.
+  land, in both land orders (first-started plan lands first, and lands
+  last); after each land the main checkout has no tracked change. A
+  one-plan spec still gets its dates from tick.
+- `acta ready --head`: a worktree made before its `after:` plan landed
+  exits 1 until it takes in the parent; once it does, exit 0.
 - Board: the `waiting` mark, and no mark once every `after:` plan is done.
 - Plugincheck: the new slice and build text.
