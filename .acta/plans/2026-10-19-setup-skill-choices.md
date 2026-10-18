@@ -47,8 +47,35 @@ finished: "2026-10-19 05:42:07"
 
 ### Next
 
-Both tasks committed. Close: wiki check, review.
+Land.
 
 ### Findings
 
-Task 2 blocked: claude plugin eval drops AskUserQuestion from the tool list even when allowed_tools names it (trace init tools: Task Bash Glob Grep Read Skill TaskStop ToolSearch). Skill text correctly falls back.
+Recorded in plugin/evals/FACTS.md (2026-10-19 entry).
+
+## Fix round 1
+
+### Task 3: Fix round 1
+
+**verify:** The one-setting override flow, the executor answer, the wiki offer and the acta block rules apply on every path, not only without AskUserQuestion; the chat path covers tone, subagent models and plugin installs; the fallback path tells the agent to read the config.
+- [x] BLOCKER: move the override, executor, wiki and block paragraphs under `## Every path` (both reviewers, SKILL.md:20).
+- [x] [fix] doctor reports a missing plugin: point to `! acta setup` for the install only.
+- [x] [fix] first run also asks tone and subagent models; later runs ask what is `(default)` or not printed.
+- [x] [fix] acta block rule is one rule for every path outside the wizard.
+- [x] [fix] fallback path runs steps 1 and 2 first; grader renamed `reads-config`.
+- [x] Commit: `fix(setup): rules that apply on every path`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+- [x] Fallback path runs doctor and config show read-only; it asks nothing before the wizard.
+- [x] Acta block rule limited to full setup runs, so a one-setting change never creates a CLAUDE.md.
+- [x] Chat fallback asks the same settings as step 2, not "marked missing".
+- [x] Later runs do not re-ask a skipped tone or the theme.
+- [x] Commit: `polish: review notes PLN-0162`
+
+## Review notes
+
+- Round 1: deep, full tier, Spec and Standards reviewers over 501261e..7cfe99e: BLOCKED (override flow scoped under No AskUserQuestion); fix round 1 ace3a72. Round 2 over 7cfe99e..ace3a72: CLEAN. Polish 5e52b8e reviewed CLEAN. Two (medium) NOTEs filed as debt; notes left: description still says "optional" block, "full setup run" undefined, redundant --plan-split clause.

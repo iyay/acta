@@ -1,6 +1,6 @@
 ---
 name: setup-fallback-no-choices
-description: Setup in a session with no AskUserQuestion tool reads the config first, then falls back to the terminal wizard, and changes nothing on its own.
+description: Setup in a session with no AskUserQuestion tool reads the config, then falls back to the terminal wizard, and changes nothing on its own.
 tags: [setup, claude-only]
 runs: 1
 # The eval sandbox never hands the child AskUserQuestion, even when
