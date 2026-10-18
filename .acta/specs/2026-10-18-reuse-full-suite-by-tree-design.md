@@ -2,6 +2,8 @@
 id: SPC-0145
 created: "2026-10-18 19:07:05"
 hash: osse8at
+started: "2026-10-18 19:14:05"
+finished: "2026-10-18 19:16:04"
 ---
 # Run the full suite once, at land
 
