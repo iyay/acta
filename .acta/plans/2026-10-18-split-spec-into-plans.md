@@ -35,15 +35,15 @@ started: "2026-10-18 20:23:18"
 
 ### Task 2: Setup step
 
-- [ ] Red: form tests fail because there is no "Plan split" step after "Plan detail".
-- [ ] Change: add the "Plan split" select right after "Plan detail" in `internal/setup/form.go`, options `off: one plan per spec` (first, default) and `on: big specs become 2 to 4 plans, one session each`, carried into the saved user, answered line and text form; shift the index-based tests in `internal/setup/*_test.go`. Seam: `FormDefaults`, `AnsweredLines`, the built user. verify: every setup path (form, text mode, answered line, saved config) shows and saves the pick, starts on `off` when unset, and never replaces a saved value.
-- [ ] Commit: `feat(setup): plan split step`
+- [x] Red: form tests fail because there is no "Plan split" step after "Plan detail".
+- [x] Change: add the "Plan split" select right after "Plan detail" in `internal/setup/form.go`, options `off: one plan per spec` (first, default) and `on: big specs become 2 to 4 plans, one session each`, carried into the saved user, answered line and text form; shift the index-based tests in `internal/setup/*_test.go`. Seam: `FormDefaults`, `AnsweredLines`, the built user. verify: every setup path (form, text mode, answered line, saved config) shows and saves the pick, starts on `off` when unset, and never replaces a saved value.
+- [x] Commit: `feat(setup): plan split step`
 
 ### Task 3: Session note line
 
-- [ ] Red: hook test fails because a user with `plan_split: on` gets no `- Plan split: on.` line.
-- [ ] Change: in `settingsBlock` (`internal/hook/hook.go`) add the line only for `on`; tests in `internal/hook/hook_test.go`. Seam: `SessionStart`. verify: the line appears for `on` and in no other case; `default-rules.md` and the session start cap stay byte for byte the same.
-- [ ] Commit: `feat(hook): session note names plan split`
+- [x] Red: hook test fails because a user with `plan_split: on` gets no `- Plan split: on.` line.
+- [x] Change: in `settingsBlock` (`internal/hook/hook.go`) add the line only for `on`; tests in `internal/hook/hook_test.go`. Seam: `SessionStart`. verify: the line appears for `on` and in no other case; `default-rules.md` and the session start cap stay byte for byte the same.
+- [x] Commit: `feat(hook): session note names plan split`
 
 ### Task 4: Board reads after and marks waiting
 
@@ -53,9 +53,9 @@ started: "2026-10-18 20:23:18"
 
 ### Task 5: acta ready
 
-- [ ] Red: `acta ready` tests fail because the command does not exist.
-- [ ] Change: new `internal/cli/ready.go` (dispatch in `cli.go`, entry in `help.go`): `acta ready <plan> --parent <ref> [--head <rev>]`. Read each `after:` plan with `git show <ref>:<path>`; landed means the file is there with every box ticked; with `--head`, the first commit on the ref where that plan is fully ticked must be an ancestor of the head. Exit 2 for unknown id, non-plan id, self-reference or a cycle (print the chain `A -> B -> A`). Tests in `internal/cli/ready_test.go` over a temp git repo. Seam: `acta ready`. verify: list every path that can say ready: only one where each `after:` plan is fully ticked in the ref tree and, with `--head`, its landing commit is an ancestor; a plan done only in a worktree or landed on another branch is never ready; unknown, non-plan, self and 2- and 3-plan cycles each exit 2 with the cause named.
-- [ ] Commit: `feat(cli): acta ready checks after plans on the parent`
+- [x] Red: `acta ready` tests fail because the command does not exist.
+- [x] Change: new `internal/cli/ready.go` (dispatch in `cli.go`, entry in `help.go`): `acta ready <plan> --parent <ref> [--head <rev>]`. Read each `after:` plan with `git show <ref>:<path>`; landed means the file is there with every box ticked; with `--head`, the first commit on the ref where that plan is fully ticked must be an ancestor of the head. Exit 2 for unknown id, non-plan id, self-reference or a cycle (print the chain `A -> B -> A`). Tests in `internal/cli/ready_test.go` over a temp git repo. Seam: `acta ready`. verify: list every path that can say ready: only one where each `after:` plan is fully ticked in the ref tree and, with `--head`, its landing commit is an ancestor; a plan done only in a worktree or landed on another branch is never ready; unknown, non-plan, self and 2- and 3-plan cycles each exit 2 with the cause named.
+- [x] Commit: `feat(cli): acta ready checks after plans on the parent`
 
 ### Task 6: Tick leaves split spec dates alone
 

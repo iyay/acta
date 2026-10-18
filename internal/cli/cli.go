@@ -141,6 +141,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdEvalOmp(args[1:], stdout, stderr)
 	case "tidy":
 		return cmdTidy(args[1:], stdout, stderr)
+	case "ready":
+		return cmdReady(args[1:], stdout, stderr)
 	case "update":
 		return cmdUpdate(args[1:], stdout, stderr)
 	default:

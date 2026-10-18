@@ -232,6 +232,17 @@ var helpTable = []helpCmd{
 		flags:   []string{"--onto REF  ref whose chore commits fold forward into the first new commit"},
 		example: "acta tidy main acta-help-man",
 	},
+	{
+		name:    "ready",
+		group:   "Setup",
+		summary: "Say whether a plan may start: every plan in its after list has landed on the parent. Exit 1 waits, exit 2 is a bad after list.",
+		usage:   []string{"acta ready <plan> --parent <ref> [--head <rev>]"},
+		flags: []string{
+			"--parent REF  the branch the build will land on",
+			"--head REV    a reused worktree head that must already hold each landed after plan",
+		},
+		example: "acta ready PLN-0160 --parent main",
+	},
 
 	// Agent plumbing
 	{
