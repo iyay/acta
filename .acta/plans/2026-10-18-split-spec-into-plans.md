@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0159
 created: "2026-10-18 20:21:42"
 hash: jw8iwox
+started: "2026-10-18 20:23:18"
 ---
 # Split Spec Into Plans Plan
 
@@ -28,9 +29,9 @@ hash: jw8iwox
 
 ### Task 1: plan_split setting
 
-- [ ] Red: config tests fail because `plan_split` is not a known field, `config set --plan-split` does not exist, and `config show` prints no `plan_split` line.
-- [ ] Change: add `PlanSplit` (`plan_split`, `on|off`) to the user config and repo `.acta.yaml` merge, validate it, add `--plan-split` to `config set`, and show it in text (`off (default)` when unset) and JSON. Files: `internal/config/user.go`, `internal/config/repo_user.go`, `internal/cli/config_cmd.go` and their tests. Seam: `config.User` validation, `acta config set|show`. verify: no value but `on`, `off` or empty is ever saved or read back, from either file; unset always shows as `off (default)` in text and `off` in JSON.
-- [ ] Commit: `feat(config): plan_split setting`
+- [x] Red: config tests fail because `plan_split` is not a known field, `config set --plan-split` does not exist, and `config show` prints no `plan_split` line.
+- [x] Change: add `PlanSplit` (`plan_split`, `on|off`) to the user config and repo `.acta.yaml` merge, validate it, add `--plan-split` to `config set`, and show it in text (`off (default)` when unset) and JSON. Files: `internal/config/user.go`, `internal/config/repo_user.go`, `internal/cli/config_cmd.go` and their tests. Seam: `config.User` validation, `acta config set|show`. verify: no value but `on`, `off` or empty is ever saved or read back, from either file; unset always shows as `off (default)` in text and `off` in JSON.
+- [x] Commit: `feat(config): plan_split setting`
 
 ### Task 2: Setup step
 
@@ -46,9 +47,9 @@ hash: jw8iwox
 
 ### Task 4: Board reads after and marks waiting
 
-- [ ] Red: board test fails because a plan's `after:` list is not read and a plan waiting on an open plan has no `waiting` mark.
-- [ ] Change: read `after:` into the plan item in `internal/board/board.go` (same list parse as `closes:`), and mark a plan `waiting` while any listed plan is not done; draw the mark where the board shows plan status. Seam: `board.Load`, item fields. verify: a plan is waiting exactly while one of its `after:` plans is not done; a plan with no `after:` never shows the mark.
-- [ ] Commit: `feat(board): plans wait on their after list`
+- [x] Red: board test fails because a plan's `after:` list is not read and a plan waiting on an open plan has no `waiting` mark.
+- [x] Change: read `after:` into the plan item in `internal/board/board.go` (same list parse as `closes:`), and mark a plan `waiting` while any listed plan is not done; draw the mark where the board shows plan status. Seam: `board.Load`, item fields. verify: a plan is waiting exactly while one of its `after:` plans is not done; a plan with no `after:` never shows the mark.
+- [x] Commit: `feat(board): plans wait on their after list`
 
 ### Task 5: acta ready
 
@@ -58,9 +59,9 @@ hash: jw8iwox
 
 ### Task 6: Tick leaves split spec dates alone
 
-- [ ] Red: tick test fails because a tick on one of two plans of a spec writes `started:` into the spec.
-- [ ] Change: in `TaskDates` (`internal/write/mark.go`) skip the spec writes when the spec has more than one plan; tests in `internal/write/`. Seam: `TaskDates`. verify: with two or more plans no tick ever writes the spec file; with one plan the spec gets `started:` and `finished:` exactly as today.
-- [ ] Commit: `feat(tick): split spec dates are left to land`
+- [x] Red: tick test fails because a tick on one of two plans of a spec writes `started:` into the spec.
+- [x] Change: in `TaskDates` (`internal/write/mark.go`) skip the spec writes when the spec has more than one plan; tests in `internal/write/`. Seam: `TaskDates`. verify: with two or more plans no tick ever writes the spec file; with one plan the spec gets `started:` and `finished:` exactly as today.
+- [x] Commit: `feat(tick): split spec dates are left to land`
 
 ### Task 7: acta spec-dates for land
 

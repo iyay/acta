@@ -3,6 +3,7 @@ package write
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -290,5 +291,31 @@ func TestTaskDatesGivesBackOnlyTheFilesItChanged(t *testing.T) {
 	again, err := TaskDates(cfg, task)
 	if err != nil || len(again) != 0 {
 		t.Fatalf("second call wrote %v err %v, want nothing", again, err)
+	}
+}
+
+// A spec with two plans gets no dates from a tick, even when the tick
+// finishes a whole plan: land writes them, so two worktrees never clash on
+// the same spec lines. The plan still gets its own dates.
+func TestTaskDatesLeavesASplitSpecAlone(t *testing.T) {
+	cfg := repoWith(t, markRepo(map[string]string{
+		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
+	}))
+	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
+	plan := filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-q.md")
+	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")
+	if task == nil {
+		t.Fatal("no task on the board")
+	}
+	got, err := TaskDates(cfg, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(got, plan) || slices.Contains(got, spec) {
+		t.Errorf("wrote %v, want the plan and never the spec", got)
+	}
+	raw, _ := os.ReadFile(spec)
+	if strings.Contains(string(raw), "started:") || strings.Contains(string(raw), "finished:") {
+		t.Errorf("split spec got dates:\n%s", raw)
 	}
 }

@@ -45,6 +45,12 @@ func TaskDates(cfg config.Config, it *board.Item) ([]string, error) {
 	if spec == nil {
 		return wrote, nil
 	}
+	// A spec cut into several plans is built from several worktrees at once.
+	// Each would stamp the spec with its own time and the lands would clash,
+	// so land writes those dates instead (acta spec-dates).
+	if plansOf(fresh, spec.ID) > 1 {
+		return wrote, nil
+	}
 	if err := mark(spec.Path, MarkStarted); err != nil {
 		return wrote, err
 	}
@@ -154,4 +160,15 @@ func unique(paths []string) []string {
 		}
 	}
 	return out
+}
+
+// plansOf counts the plans that carry the tasks of one spec.
+func plansOf(b *board.Board, specID string) int {
+	n := 0
+	for _, it := range b.Items {
+		if it.Kind == board.KindPlan && it.SpecID == specID {
+			n++
+		}
+	}
+	return n
 }
