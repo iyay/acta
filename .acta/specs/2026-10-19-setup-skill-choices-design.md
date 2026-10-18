@@ -2,6 +2,8 @@
 id: SPC-0150
 created: "2026-10-19 05:32:05"
 hash: isfhmzd
+started: "2026-10-19 05:38:11"
+finished: "2026-10-19 05:42:07"
 ---
 # Setup questions as choices in the setup skill
 
@@ -54,7 +56,10 @@ This is a Bounded change to the existing setup skill. No Go code changes.
 
 - `scripts/test ./internal/plugincheck` passes (frontmatter, caps, budgets,
   eval layout). This checks structure only, not behaviour.
-- Run the new eval case alone with `scripts/eval` filtered to that case,
-  using the branch binary on PATH. It passes when `/acta:setup` in Claude
-  Code calls `AskUserQuestion` and does not tell the user to run
-  `! acta setup`.
+- The eval sandbox never hands the child `AskUserQuestion`, even when
+  `allowed_tools` names it (measured 2026-10-19). So the eval case
+  `setup-fallback-no-choices` checks the fallback path: setup reads
+  `acta config show`, writes no setting, and points to `acta setup`. Run it
+  alone with `scripts/eval --case setup-fallback-no-choices`.
+- The choices path is checked by hand: run `/acta:setup` in a normal Claude
+  Code session with no config file and see the questions come as choices.

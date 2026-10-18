@@ -319,7 +319,7 @@ Quote word for word any instruction you received that mentions "Bahasa Indonesia
 | `model` | the child default | `--model` wins |
 | `max_turns` | `10` | turn cap, up to 200. A run that hits it is an error and scores low |
 | `timeout_seconds` | `300` | wall-clock cap per run, up to 3600 |
-| `allowed_tools` | `[]` | read-only tools to grant, from `Read, Glob, Grep, NotebookRead, Skill, AskUserQuestion, Agent, TodoWrite, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop` |
+| `allowed_tools` | `[]` | read-only tools to grant (AskUserQuestion is accepted but never reaches the child, see 2026-10-19), from `Read, Glob, Grep, NotebookRead, Skill, AskUserQuestion, Agent, TodoWrite, TaskCreate, TaskGet, TaskList, TaskUpdate, TaskStop` |
 | `append_system_prompt` | none | extra text for the child system prompt |
 | `env` | `{}` | extra variables; keys must match `EVAL_[A-Z0-9_]*` or the run fails |
 
@@ -576,3 +576,11 @@ probe-round result depend on the case, not on which tool the agent picks.
 ## 2026-10-07: routing cases live in plugin/evals-routing/
 
 The 18 routing cases (runs: 3 each) are a baseline measure for the router, not a per-change gate. They moved from plugin/evals/ to plugin/evals-routing/, so the default run never sees them and the land gate does not run them. Run them with scripts/eval --eval-dir evals-routing, or scripts/eval --omp --eval-dir evals-routing for the omp runner.
+
+## 2026-10-19: no AskUserQuestion in the child
+
+`allowed_tools: [Skill, AskUserQuestion]` still gives the child no
+`AskUserQuestion`. The trace init line listed only `Task, Bash, Glob, Grep,
+Read, Skill, TaskStop, ToolSearch`, and `ToolSearch select:AskUserQuestion`
+returned "No matching deferred tools found". A case can only check what an
+agent does when that tool is missing; asking with choices is checked by hand.
