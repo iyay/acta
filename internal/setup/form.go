@@ -38,7 +38,7 @@ func FormDefaults(e Env) Defaults {
 		c.Style = "adhd"
 	}
 	if c.BuildExecutor == "" {
-		c.BuildExecutor = "subagent"
+		c.BuildExecutor = "inline"
 	}
 	if c.SubagentModels == "" {
 		c.SubagentModels = "default"
@@ -105,8 +105,8 @@ func buildFormState(e Env) *formState {
 	d := FormDefaults(e)
 
 	executors := []huh.Option[string]{
-		huh.NewOption("subagent: helper agents in the same session", "subagent"),
 		huh.NewOption("inline: the main agent writes the code", "inline"),
+		huh.NewOption("subagent: helper agents in the same session", "subagent"),
 	}
 	if d.OfferDispatch {
 		executors = append(executors, huh.NewOption("dispatch: an omp agent in its own herdr tab", "dispatch"))

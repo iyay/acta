@@ -326,7 +326,7 @@ func TestFormFirstRunEmpty(t *testing.T) {
 	if d.Language != "" || d.RepoLanguage != "" || d.Tone != "" {
 		t.Fatalf("text defaults = %q/%q/%q, want all empty", d.Language, d.RepoLanguage, d.Tone)
 	}
-	if d.Style != "adhd" || d.BuildExecutor != "subagent" || d.SubagentModels != "default" ||
+	if d.Style != "adhd" || d.BuildExecutor != "inline" || d.SubagentModels != "default" ||
 		d.PlanDepth != "full" || d.ReviewDepth != "standard" || d.Questions != "one" {
 		t.Fatalf("select defaults = %+v, want the first options", d)
 	}

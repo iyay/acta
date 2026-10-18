@@ -27,7 +27,7 @@ func TestFormOptionNotes(t *testing.T) {
 	pinHome(t)
 	want := map[int][]string{
 		1: {"adhd: short, one next step at the end", "plain: normal paragraphs"},
-		4: {"subagent: helper agents in the same session", "inline: the main agent writes the code"},
+		4: {"inline: the main agent writes the code", "subagent: helper agents in the same session"},
 		5: {"default: your own config decides", "split: sonnet writes code, the rest use a stronger model"},
 		6: {"full: real code in every step, waits for your yes", "minimal: short steps, build starts at once"},
 		7: {"tidy: one commit per task, straight history", "full: every commit plus a merge commit"},
@@ -79,7 +79,7 @@ func TestFormAnsweredLine(t *testing.T) {
 	if got[1] != "◇  Reply style\n│  adhd\n│\n" {
 		t.Errorf("reply style line = %q", got[1])
 	}
-	if got[4] != "◇  Build executor\n│  subagent\n│\n" {
+	if got[4] != "◇  Build executor\n│  inline\n│\n" {
 		t.Errorf("executor line = %q", got[4])
 	}
 }
