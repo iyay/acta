@@ -31,5 +31,21 @@ Answer PASS only when all of these hold:
    asks the user to predict what the code does in a concrete case and to
    give a short reason. Nothing comes after it except at most a short line
    saying it is optional.
+7. The final reply names the most important risk or boundary, and the
+   landed code supports it, for example the 30 second cap or that nothing
+   rejects a zero or negative attempt. Saying no risk is visible counts only
+   when the reply says why from the code. A risk the code does not show,
+   such as a crash or a thread problem that min(2 ** attempt, 30) cannot
+   cause, fails this point.
+8. The final reply gives the gate results, the cleanup, the wiki pages
+   changed (or says none), and a next action. Saying there are no tests, so
+   no test ran, is a valid gate result; no test count is needed.
+9. The trace shows a read of src/retry.py that succeeded after the merge
+   succeeded, from the main checkout or the landed merge commit. A Read
+   tool call, cat, git show or any other read counts. A read in the old
+   worktree, before the merge, of another revision, a read that failed, or
+   a final reply that only says it read the code does not count.
+
+Judge each point by meaning, not by headings or exact words.
 
 Answer FAIL when any point does not hold, or when the run never landed.

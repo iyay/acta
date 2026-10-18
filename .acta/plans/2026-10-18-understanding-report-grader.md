@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0160
 created: "2026-10-18 20:34:07"
 hash: d56wio4
+started: "2026-10-18 20:34:48"
+finished: "2026-10-18 20:38:05"
 ---
 # Complete Understanding Report Grading
 
@@ -36,6 +38,10 @@ hash: d56wio4
 
 **verify:** PASS always requires all nine criteria: the existing six plus a source-supported risk/boundary or justified no-visible-risk statement, all required gate/cleanup/wiki/next-action report fields, and a successful source read after merge from the final parent checkout or exact landed SHA. Use `complete` and three negative replay cases: `missing-boundary`, `missing-report-fields`, and `missing-final-read`, with each negative breaking only its named new criterion; the complete trace must pass and each negative must fail. Preserve valid no-tests and no-wiki statements, optional-question behavior and semantic wording; accept Read, cat and git show equivalents while rejecting stale-revision, pre-merge, failed-read and merely-claimed-read evidence. The current cap example already establishes a boundary, so the missing-boundary case must retain the original six criteria while adding an unsupported risk claim that violates criterion 7, rather than treating the accurate cap itself as absent. List the replay verdicts and inspect the real eval trace for merge/read/report order; do not infer behavior from the rubric text alone.
 
-- [ ] Red: Prepare the four replay prompts outside the repo, run each against the original rubric with the judge CLI, and observe at least one negative incorrectly receive PASS while the complete control passes; stop and report if the old rubric does not reproduce the gap.
-- [ ] Change: Append criteria 7–9 with the approved evidence and wording rules, rerun the same four judge inputs with only the rubric replaced, then pass `scripts/test ./internal/plugincheck/` and `scripts/eval --case review-understanding-report --keep-temp`, inspecting the saved trace and keeping all artifacts outside the repo.
-- [ ] Commit: `test(evals): require complete understanding report evidence`.
+- [x] Red: Prepare the four replay prompts outside the repo, run each against the original rubric with the judge CLI, and observe at least one negative incorrectly receive PASS while the complete control passes; stop and report if the old rubric does not reproduce the gap.
+- [x] Change: Append criteria 7–9 with the approved evidence and wording rules, rerun the same four judge inputs with only the rubric replaced, then pass `scripts/test ./internal/plugincheck/` and `scripts/eval --case review-understanding-report --keep-temp`, inspecting the saved trace and keeping all artifacts outside the repo.
+- [x] Commit: `test(evals): require complete understanding report evidence`.
+
+## Review notes
+
+- Round 1, deep, full tier (grader text a judge reads), two reviewers: CLEAN. NOTEs, all [note]: point 7 asks a reason for "no risk visible" as the spec says ("when justified"); point 9 fails a post-merge read in the old worktree; .acta/wiki/.checked churn is acta bookkeeping; no Go test guards grader text, only the replays.
