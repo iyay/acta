@@ -1307,3 +1307,21 @@ func TestDetailStepLinesShowDoneAndGoing(t *testing.T) {
 		}
 	})
 }
+
+// A plan that waits on another plan says so on its STATUS line, naming the
+// plans it waits for. Once they are done the line is the plain status again.
+func TestDetailStatusShowsWaiting(t *testing.T) {
+	t.Parallel()
+
+	files := boardFiles()
+	files[".acta/plans/2026-09-25-w.md"] = "---\nid: PLAN-3\nafter: [PLAN-2]\n---\n# Plan W\n\n### Task 1: Wait\n- [ ] x\n"
+	lines := detailLines(t, treeCfg(t, files), "PLAN-3")
+	if got := valueOf(t, lines, "STATUS"); got != "approved, waiting for PLAN-2" {
+		t.Errorf("STATUS = %q, want approved, waiting for PLAN-2", got)
+	}
+	files[".acta/plans/2026-09-23-c.md"] = "---\nid: PLAN-2\nparent: bugs/2026-09-23-b\n---\n# Plan C\n\n### Task 1: Fix one\n- [x] x\n"
+	lines = detailLines(t, treeCfg(t, files), "PLAN-3")
+	if got := valueOf(t, lines, "STATUS"); got != "approved" {
+		t.Errorf("STATUS = %q once PLAN-2 is done, want approved", got)
+	}
+}

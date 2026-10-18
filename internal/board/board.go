@@ -45,6 +45,8 @@ type Item struct {
 	Total        int      // task: all boxes; story or bug: all tasks
 	Closes       []string // specs, plans and bugs: the items this one also finishes
 	ClosedBy     []string // items whose closes names this one, in file order
+	After        []string // plans only: the plans this one waits for, as its after list names them
+	Waiting      bool     // plans only: some plan in After is not done yet
 	Path         string   // absolute file path
 	Line         int      // 1-based line to open the file at
 	Legacy       bool
@@ -220,6 +222,7 @@ func LoadTrees(main config.Config, others []Tree) (*Board, error) {
 	b.linkCloses()
 	b.fillStarted(main, others)
 	b.derive()
+	b.markWaiting()
 	b.fillAgents(main, others)
 	b.sortItems()
 	return b, nil
@@ -416,6 +419,9 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.fmStatus = field(doc.Front, "status")
 	it.fmParent = field(doc.Front, "parent")
 	it.fmCloses = listField(doc.Front, "closes")
+	if it.Kind == KindPlan {
+		it.After = listField(doc.Front, "after")
+	}
 	setIDs(it, Prefix(it.Kind, false), doc)
 	return it
 }
