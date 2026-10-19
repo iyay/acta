@@ -3,6 +3,7 @@ parent: bugs/2026-10-19-debug-race-recipe-skipped
 id: SPC-0160
 created: "2026-10-19 11:54:58"
 hash: fv7de21
+started: "2026-10-19 12:02:38"
 ---
 # Debug recipes gate Phase 3
 
@@ -23,10 +24,25 @@ Bounded, approved by the user in chat on 2026-10-19.
   For a race that is the forced-interleaving probe.
 - Keep `plugin/skills/debug/SKILL.md` within its current byte cap by tightening
   other sentences; do not raise the cap.
-- No Go change and no grader change.
+- Phase 1 builds its loop in a temp copy, so a user command that writes files
+  never runs in the repo.
+
+## Revision 2026-10-19: copyable probe and artifact grader
+Three text-only fixes left debug-race at 0/2, 1/2, 0/2: the run made no
+barrier probe. Approved by the user in chat (C2 + C1):
+
+- Add `plugin/skills/debug/race.md`: a short, copyable probe that patches the
+  read to wait on a two-party barrier, so both workers read before either
+  writes, runs it, and prints the lost count; plus the matching regression
+  test shape. The Race recipe in SKILL.md points to it. It gets its own byte
+  cap; the SKILL.md cap stays.
+- Add a deterministic grader to debug-race: a Bash call whose input contains
+  `Barrier` must exist. The LLM judge stays. Debug cases may then mix one
+  deterministic grader with their judge; the plugincheck rule changes only
+  that far.
 
 ## Acceptance
-- Eval `debug-race` passes on 2 of 2 runs.
+- Eval `debug-race` passes on 2 of 2 runs, including the new Barrier grader.
 - Eval `debug-performance`, `debug-order-dependent` and `debug-exact-symptom`
   still pass.
 - `scripts/test ./internal/plugincheck/` passes.

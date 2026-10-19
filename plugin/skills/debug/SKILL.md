@@ -9,7 +9,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Say how a copy differs from the real setup.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
@@ -21,9 +21,10 @@ Find the cause with evidence before changing code. A cause is proven only when a
 Exit: one command you ran catches the exact symptom the user reported.
 
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop. Prefer an existing test or the user's own command; else a small replay script or harness in a temp copy. Read code as needed to build it.
-3. Check the output itself, not only the exit code. A pass on a nearby failure is not the symptom: a red test elsewhere, a different error, or a different caller.
-4. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
+2. Build the loop in a temp copy: an existing test or the user's own command, else a small replay script. A command that writes files runs only in the copy.
+3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
+4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3.
+5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
 
 ## Phase 2: Narrow and distinguish
 
@@ -36,12 +37,12 @@ Exit: one explanation fits every observation, and the others are ruled out by a 
 
 ## Phase 3: Prove the mechanism
 
-Exit: trigger, state change and symptom are linked with `file:line` and probe output.
+Exit: trigger, state change and symptom are linked with `file:line` and probe output, plus the evidence the matching recipe names, from a command you ran.
 
 1. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
 2. Use a control when you can: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.
 3. When several tries fail under one shared belief, test that belief directly.
-4. Three failed fixes: stop and tell the user. Question the design before a fourth. Failed hypotheses alone are normal and prove nothing about the design.
+4. Three failed fixes: stop and tell the user. Question the design before a fourth.
 5. Report the cause, the evidence, and what stays unverified. Propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
@@ -57,10 +58,10 @@ A rerun that turns green, a longer timeout, or a skipped assertion does not prov
 
 ## Recipes
 
-Use the one that matches. Each names the evidence that counts.
+Each names the evidence that counts.
 
+- **Race.** Force the interleaving: each worker pauses after its read until the other has read too, then writes (patch the read in a temp copy to wait on a barrier or event). A barrier at start only lines up the starts, so the bad order is not forced. Run that probe. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
 - **Flaky test.** Run it many times under the same conditions and record the failure count and what changed between runs (load, order, seed, time). For waits, see `condition-based-waiting.md`.
-- **Race.** Force the interleaving: hold two workers at a barrier or event between the read and the write (patch the read in a temp copy if needed), so the bad order happens every run. Run that probe. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example the count equals the number of updates). More threads, a shorter switch interval, sleeps, repeats or "no exception" only make the race likely, so they are weak evidence and weak tests.
 - **Order-dependent test.** Find the polluter by running pairs or bisecting the suite (`find-polluter.sh` finds tests that leave files behind). Put the smallest command that keeps the failing order in the report as a line the user can paste, for example the polluter then the victim, and name the shared state it leaves changed.
 - **Slow path.** Measure the same workload more than once, at two sizes if you can, and count the work (calls, file reads, queries) or profile it. Name the cost that grows. A speedup you did not measure before and after on the same workload is unmeasured; say so. Prefer a test that counts work over a wall-clock limit.
 - **Checks after the fix.** Add checks at trust boundaries and where an invariant must hold, not at every layer: see `defense-in-depth.md`.
