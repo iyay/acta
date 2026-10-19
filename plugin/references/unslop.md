@@ -55,8 +55,8 @@ skills may cite; a removed rule leaves a gap.
 
 ## Plain speech
 
-27. Say what a thing does, not how it feels. Name the mechanism or the number. If you cannot restate a sentence as an instruction, a fact or a number, cut it.
-28. Sentences that fit any project. If the sentence could appear unchanged in another project's docs, make it specific or cut it.
+27. Say what a thing does, not how it feels. Name the mechanism or the number. If you cannot restate a sentence as an instruction, a fact or a number, cut it. If the sentence could appear unchanged in another project's docs, make it specific or cut it.
+28. Shorten or split dense sentences. If the reader has to backtrack to parse a sentence, break it in two or drop clauses. One idea per sentence.
 29. Passive voice hides the actor. "The file is parsed by the loader" becomes "the loader parses the file". Passive is fine when the actor is unknown or does not matter.
 30. Adverbs propping up weak verbs. "Significantly improves" becomes the measured change.
 31. Fancy words. "Utilize" and "leverage" become "use", "facilitate" becomes "help", "in the event that" becomes "if".

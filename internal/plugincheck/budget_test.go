@@ -24,7 +24,7 @@ import (
 var fileCaps = map[string]int{
 	"output-styles/acta.md":                   1773,
 	"references/house-rules.md":               3787,
-	"references/unslop.md":                    3642,
+	"references/unslop.md":                    3752,
 	"skills/bug/SKILL.md":                     2327,
 	"skills/build/SKILL.md":                   16297,
 	"skills/build/dispatch.md":                6477,
