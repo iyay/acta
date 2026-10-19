@@ -612,7 +612,15 @@ func TestInstallAsksOnTerminal(t *testing.T) {
 	} {
 		r := bothRig(t)
 		out := r.ptyRun(t, tc.answers...)
-		if got := strings.Count(out, "Install the TUI board too? It adds about 7M. [Y/n]"); got != tc.asks {
+		out = strings.ReplaceAll(out, "\r\n", "\n")
+		intro := "\nThis will install acta, a development toolkit with a command-line tool\n" +
+			"and AI agent skills for tasks such as planning, building, testing, and reviewing code.\n\n" +
+			"You can also install a terminal user interface (TUI) to browse specs, plans, and bugs.\n"
+		question := "\x1b[1mInstall the TUI? Adds about 7 MB. [Y/n]\x1b[0m "
+		if !strings.HasPrefix(out, intro+question) || strings.Count(out, intro) != 1 {
+			t.Errorf("%s: want one introduction before the bold question\n%s", tc.name, out)
+		}
+		if got := strings.Count(out, question); got != tc.asks {
 			t.Errorf("%s: asked %d times, want %d\n%s", tc.name, got, tc.asks, out)
 		}
 		if !r.installed() {

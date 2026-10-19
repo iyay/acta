@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0165
 created: "2026-10-19 07:11:53"
 hash: p4pw96t
+started: "2026-10-19 07:12:12"
+finished: "2026-10-19 07:12:37"
 ---
 # Explain the installer and its optional TUI
 
@@ -27,6 +29,10 @@ hash: p4pw96t
 **Files:** Modify `scripts/install.sh` and `scripts/install_test.go`.
 **Seam:** The real installer through the existing `installRig.ptyRun` and release archive assertions.
 **verify:** Every interactive choice starts with the agreed separated introduction exactly once and each question is bold with a reset before input; Enter/yes select the full build, no selects CLI, and invalid input repeats only the question. Existing environment and noninteractive cases still pass.
-- [ ] Red: Update `TestInstallAsksOnTerminal` to check the introduction and bold question for its existing answer cases; observe `scripts/test ./scripts/ -run TestInstallAsksOnTerminal` fail on the current prompt.
-- [ ] Change: Print the introduction once before the interactive loop and the bold question inside it; pass the installer tests, shell syntax, formatter and vet checks.
-- [ ] Commit: `fix(install): explain acta and highlight the TUI choice`.
+- [x] Red: Update `TestInstallAsksOnTerminal` to check the introduction and bold question for its existing answer cases; observe `scripts/test ./scripts/ -run TestInstallAsksOnTerminal` fail on the current prompt.
+- [x] Change: Print the introduction once before the interactive loop and the bold question inside it; pass the installer tests, shell syntax, formatter and vet checks.
+- [x] Commit: `fix(install): explain acta and highlight the TUI choice`.
+
+## Review notes
+
+- Deep review, full tier (shell output behavior): Spec and Standards reviewers over 1895007..4657cc5 both CLEAN, no findings. The PTY test failed before the implementation and passed after it; installer tests, shell syntax, formatting and vet passed.
