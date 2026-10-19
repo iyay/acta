@@ -13,7 +13,7 @@ fi
 # spends turns. Only write it when it is missing, so a hand run is safe.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
 fi
 # The sandbox may not run the system git stub, so the real binary is copied.
 mkdir -p bin src tests

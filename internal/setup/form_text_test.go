@@ -27,12 +27,11 @@ func TestFormOptionNotes(t *testing.T) {
 	pinHome(t)
 	want := map[int][]string{
 		1: {"adhd: short, one next step at the end", "plain: normal paragraphs"},
-		4: {"inline: the main agent writes the code", "subagent: helper agents in the same session"},
-		5: {"default: your own config decides", "split: sonnet writes code, the rest use a stronger model"},
-		6: {"full: real code in every step", "minimal: short steps, no code blocks"},
-		7: {"off: one plan per spec", "on: big specs become 2 to 4 plans, one session each"},
-		8: {"tidy: one commit per task, straight history", "full: every commit plus a merge commit"},
-		9: {"one: one question at a time", "probe: a batch, each with the agent's pick"},
+		3: {"inline: the main agent writes the code", "subagent: helper agents in the same session"},
+		4: {"full: real code in every step", "minimal: short steps, no code blocks"},
+		5: {"off: one plan per spec", "on: big specs become 2 to 4 plans, one session each"},
+		6: {"tidy: one commit per task, straight history", "full: every commit plus a merge commit"},
+		7: {"one: one question at a time", "probe: a batch, each with the agent's pick"},
 	}
 	for _, herdr := range []string{"", "1"} {
 		t.Setenv("HERDR_ENV", herdr)
@@ -45,7 +44,7 @@ func TestFormOptionNotes(t *testing.T) {
 			}
 		}
 		dispatch := "dispatch: an omp agent in its own herdr tab"
-		if got := strings.Contains(content[4], dispatch); got != (herdr == "1") {
+		if got := strings.Contains(content[3], dispatch); got != (herdr == "1") {
 			t.Errorf("herdr=%q: dispatch note present = %v", herdr, got)
 		}
 	}
@@ -80,8 +79,8 @@ func TestFormAnsweredLine(t *testing.T) {
 	if got[1] != "◇  Reply style\n│  adhd\n│\n" {
 		t.Errorf("reply style line = %q", got[1])
 	}
-	if got[4] != "◇  Build executor\n│  inline\n│\n" {
-		t.Errorf("executor line = %q", got[4])
+	if got[3] != "◇  Build executor\n│  inline\n│\n" {
+		t.Errorf("executor line = %q", got[3])
 	}
 }
 

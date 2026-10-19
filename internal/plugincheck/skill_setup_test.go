@@ -17,6 +17,7 @@ func TestSkillSetup(t *testing.T) {
 			"<!-- acta:begin -->", "<!-- acta:end -->",
 			"HERDR_ENV", "--executor", "--subagent-models", "--plan-depth", "--questions",
 			"--language", "--style", "--tone",
+			"repo language", "subagent models",
 		},
 	})
 }

@@ -11,17 +11,16 @@ import (
 )
 
 // User holds how the agent should talk to the user: the chat language,
-// the style, an optional tone, and the language for repo files. It lives in
+// the style, an optional tone, and how work runs. Repo files are always
+// English, so no setting picks their language. It lives in
 // ~/.acta/config.yaml. An old ~/.acta/voice.yaml is moved there on the first
 // read. The ~/.pm/voice.yaml from before the rename is only read when both
 // are missing.
 type User struct {
-	ChatLanguage   string `yaml:"chat_language"`
-	Style          string `yaml:"style"`
-	Tone           string `yaml:"tone,omitempty"`
-	RepoLanguage   string `yaml:"repo_language"`
-	BuildExecutor  string `yaml:"build_executor,omitempty"`
-	SubagentModels string `yaml:"subagent_models,omitempty"`
+	ChatLanguage  string `yaml:"chat_language"`
+	Style         string `yaml:"style"`
+	Tone          string `yaml:"tone,omitempty"`
+	BuildExecutor string `yaml:"build_executor,omitempty"`
 	// PlanDepth says how much a plan spells out: minimal (short steps, no
 	// code) or full (real code in every step). Empty means full.
 	PlanDepth string `yaml:"plan_depth,omitempty"`
@@ -91,7 +90,7 @@ var ErrBadUser = errors.New("bad voice setting")
 
 // UserDefault is used when there is no voice file.
 func UserDefault() User {
-	return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
+	return User{ChatLanguage: "English", Style: "adhd"}
 }
 
 // UserPath is PM_VOICE_FILE when set, else ~/.acta/config.yaml. Writes always
@@ -234,13 +233,8 @@ func (v User) Validate() error {
 	if v.Style != "adhd" && v.Style != "plain" {
 		return fmt.Errorf("%w: style must be adhd or plain, not %q", ErrBadUser, v.Style)
 	}
-	for _, f := range []struct{ name, value string }{
-		{"chat_language", v.ChatLanguage},
-		{"repo_language", v.RepoLanguage},
-	} {
-		if f.value == "" || strings.ContainsAny(f.value, "\r\n") || len(f.value) > 40 {
-			return fmt.Errorf("%w: %s must be one short line", ErrBadUser, f.name)
-		}
+	if v.ChatLanguage == "" || strings.ContainsAny(v.ChatLanguage, "\r\n") || len(v.ChatLanguage) > 40 {
+		return fmt.Errorf("%w: chat_language must be one short line", ErrBadUser)
 	}
 	if len(v.Tone) > 600 || strings.Count(v.Tone, "\n") > 7 {
 		return fmt.Errorf("%w: tone must be at most 8 lines and 600 characters", ErrBadUser)
@@ -250,12 +244,6 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: build_executor must be subagent, dispatch or inline, not %q", ErrBadUser, v.BuildExecutor)
 	}
-	switch v.SubagentModels {
-	case "", "split", "default":
-	default:
-		return fmt.Errorf("%w: subagent_models must be split or default, not %q", ErrBadUser, v.SubagentModels)
-	}
-
 	switch v.PlanDepth {
 	case "", "minimal", "full":
 	default:
@@ -298,11 +286,9 @@ func (v User) Validate() error {
 func fill(v User) User {
 	d := UserDefault()
 	v.ChatLanguage = strings.TrimSpace(v.ChatLanguage)
-	v.RepoLanguage = strings.TrimSpace(v.RepoLanguage)
 	v.Style = strings.TrimSpace(v.Style)
 	v.Tone = strings.TrimSpace(v.Tone)
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
-	v.SubagentModels = strings.TrimSpace(v.SubagentModels)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
 	v.PlanSplit = strings.TrimSpace(v.PlanSplit)
 	v.ReviewDepth = strings.TrimSpace(v.ReviewDepth)
@@ -312,9 +298,6 @@ func fill(v User) User {
 	v.UpdateCheck = strings.TrimSpace(v.UpdateCheck)
 	if v.ChatLanguage == "" {
 		v.ChatLanguage = d.ChatLanguage
-	}
-	if v.RepoLanguage == "" {
-		v.RepoLanguage = d.RepoLanguage
 	}
 	if v.Style == "" {
 		v.Style = d.Style

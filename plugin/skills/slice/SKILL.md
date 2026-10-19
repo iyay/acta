@@ -222,4 +222,4 @@ Save the plan, show it to the user, and wait for a yes, whatever its depth. Appr
 
 Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. A `(default)` mark or a missing line means `inline` (you write the code yourself); do not ask. The user can still pick `subagent` or `dispatch` (an omp agent in its own herdr tab) for one run.
 
-**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
+**Subagent models.** Name no model for any subagent; the harness default picks it.

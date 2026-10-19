@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0176
 created: "2026-10-19 20:02:37"
 hash: fd6jcne
+started: "2026-10-19 20:11:23"
 ---
 
 # Drop repo language and subagent models: plugin side
@@ -37,3 +38,18 @@ hash: fd6jcne
 **Seam:** `internal/plugincheck` setup skill test; scaffold text
 **verify:** No setup step asks for repo language or subagent models, and no scaffold writes `repo_language` or `subagent_models`. List the setup questions and every scaffold checked.
 **Commit:** `docs(setup): drop repo language and subagent models questions`
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] README no longer documents `--repo-language`; repo files are English
+- [x] build skill and implementer prompt say English, not "the repo language"
+- [x] build skill drops "or wrong" from the report model-line check
+- [x] Commit: `polish: review notes PLN-0176`
+
+## Review notes
+
+Deep review, round 1 CLEAN on both axes; polish review CLEAN. Notes kept as notes: README line 62 wraps long; hook.go Subagent models line and setup/form.go "repo language" text stay until the Go-side plan lands; banned-phrase test does not scan scaffolds, hooks or omp.

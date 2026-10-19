@@ -125,7 +125,7 @@ func adhdPhrase(t *testing.T, body string) string {
 func TestStyleHeadingMatchesHookLine(t *testing.T) {
 	_, body := styleParts(t)
 	phrase := adhdPhrase(t, body)
-	adhd := config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
+	adhd := config.User{ChatLanguage: "English", Style: "adhd"}
 	plain := adhd
 	plain.Style = "plain"
 	// First run and a broken config both fall back to adhd, so they must

@@ -71,7 +71,7 @@ up, file it as a scratch item and ask the user to pick one of:
 Plan, build, review and land may continue in this session. Only the
 brainstorm itself is one per session.
 
-**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
+**Subagent models.** Name no model for any subagent; the harness default picks it.
 
 ## Checklist
 

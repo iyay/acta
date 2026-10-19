@@ -17,7 +17,7 @@ fi
 # missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
 fi
 mkdir -p bin src .acta/plans
 # The system git may be a stub that the sandbox cannot run, so the real binary

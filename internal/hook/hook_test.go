@@ -19,7 +19,7 @@ import (
 var update = flag.Bool("update", false, "rewrite plugin/hooks/default-rules.md")
 
 func korean() Input {
-	return Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	return Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd"}, VoiceExists: true}
 }
 
 // skillNames are the skills the index must name. A skill added later joins the
@@ -135,13 +135,11 @@ func TestSessionStartBrokenVoice(t *testing.T) {
 	}
 }
 
-// Every session start text that names a repo language also says which
-// language prompts to other agents use: always the repo language, because
-// subagents write repo text too. Chat Indonesian with repo English must ask
-// for English, never Indonesian.
-func TestSessionStartHandoffLineUsesRepoLanguage(t *testing.T) {
+// Prompts to other agents are always English, because subagents write repo
+// text too. Chat in Indonesian must still ask for English, never Indonesian.
+func TestSessionStartHandoffLineIsEnglish(t *testing.T) {
 	const wantEn = "- Write prompts and hand-offs to subagents or other agents in English.\n"
-	set := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	set := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd"}, VoiceExists: true}
 	out := SessionStart(set)
 	if !strings.Contains(out, wantEn) {
 		t.Errorf("voice set: missing the handoff line:\n%s", out)
@@ -149,20 +147,13 @@ func TestSessionStartHandoffLineUsesRepoLanguage(t *testing.T) {
 	if strings.Contains(out, "hand-offs to subagents or other agents in Indonesian") {
 		t.Errorf("voice set: the handoff line uses the chat language:\n%s", out)
 	}
-	// The line sits after the repo language line and before the style line,
+	// The line sits after the repo files line and before the style line,
 	// so it reads as part of the voice, not as a new rule.
 	repo, hand, style := strings.Index(out, "(code, comments, commits, specs, plans) in English."),
 		strings.Index(out, wantEn),
 		strings.Index(out, "\n- Style: ")
 	if !(repo >= 0 && repo < hand && hand < style) {
 		t.Errorf("voice set: the handoff line is not after the repo line: %d %d %d:\n%s", repo, hand, style, out)
-	}
-	// A repo in another language moves the line with it, never with chat.
-	koreanRepo := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "Korean"}, VoiceExists: true}
-	const wantKo = "- Write prompts and hand-offs to subagents or other agents in Korean.\n"
-	if out := SessionStart(koreanRepo); !strings.Contains(out, wantKo) ||
-		strings.Contains(out, "hand-offs to subagents or other agents in Indonesian") {
-		t.Errorf("repo Korean: the handoff line must say Korean:\n%s", out)
 	}
 	// Both fallbacks write in English until the config is fixed, so the
 	// handoff line says English there too.
@@ -261,11 +252,11 @@ func TestSessionStartOverrides(t *testing.T) {
 	// Two keys share one sentence, and a value the user never set says so.
 	two := korean()
 	two.Overrides = []config.Override{
-		{Key: "repo_language", Repo: "Korean", Yours: ""},
+		{Key: "build_executor", Repo: "inline", Yours: ""},
 		{Key: "plan_depth", Repo: "minimal", Yours: "full"},
 	}
 	out = SessionStart(two)
-	if !strings.Contains(out, "repo_language is Korean here (yours: not set), plan_depth is minimal here (yours: full)") {
+	if !strings.Contains(out, "build_executor is inline here (yours: not set), plan_depth is minimal here (yours: full)") {
 		t.Errorf("two keys not in one sentence:\n%s", out)
 	}
 	if strings.Count(out, phrase) != 1 {
@@ -367,7 +358,7 @@ func TestSessionStartStaysShort(t *testing.T) {
 	worst.WikiPages = 100
 	// The settings list counts against the cap too.
 	worst.Voice.BuildExecutor, worst.Voice.PlanDepth, worst.Voice.ReviewDepth = "inline", "minimal", "deep"
-	worst.Voice.CommitHistory, worst.Voice.SubagentModels = "tidy", "split"
+	worst.Voice.CommitHistory = "tidy"
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},
@@ -814,14 +805,12 @@ func TestSessionStartSettingsLines(t *testing.T) {
 	in.Voice.PlanDepth = "minimal"
 	in.Voice.ReviewDepth = "deep"
 	in.Voice.CommitHistory = "tidy"
-	in.Voice.SubagentModels = "split"
 	out := SessionStart(in)
 	for _, want := range []string{
 		settingsHeading,
 		"- Plan depth: minimal.\n",
 		"- Review depth: deep.\n",
 		"- Commit history: tidy.\n",
-		"- Subagent models: split. In Claude Code, code-writing subagents use sonnet, other subagents (mapping, explore, planning help, debug investigation, spikes) opus, reviewers your own model alias.\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
@@ -831,10 +820,6 @@ func TestSessionStartSettingsLines(t *testing.T) {
 	// user CLAUDE.md that bans the main agent from writing code.
 	if !strings.Contains(out, "- Build executor: inline (default). The main agent writes the code itself; no implementer subagents.\n") {
 		t.Error("an empty build executor did not write the inline default line")
-	}
-	in.Voice.SubagentModels = "default"
-	if out := SessionStart(in); !strings.Contains(out, "- Subagent models: default. Name no model; the user's own setup picks it.\n") {
-		t.Error("default subagent models line missing")
 	}
 	// Plan split shows only when it is on, so users who never turn it on pay
 	// nothing for it in the session note.
@@ -914,15 +899,11 @@ func TestSessionStartCodexBlock(t *testing.T) {
 	const styleLine = "Open with the answer or the result."
 	const subagentLine = "In Codex, subagents are Codex subagents"
 	in := korean()
-	in.Voice.SubagentModels = "split"
 	out := SessionStart(in)
 	for _, s := range []string{styleLine, subagentLine} {
 		if strings.Contains(out, s) {
 			t.Errorf("Claude Code note has Codex text %q", s)
 		}
-	}
-	if !strings.Contains(out, modelLines["split"]) {
-		t.Errorf("Claude Code note lost the split model rule")
 	}
 	in.Codex = true
 	out = SessionStart(in)

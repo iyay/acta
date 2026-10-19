@@ -5,8 +5,7 @@ Use this template only for the `subagent` executor.
 ```
 Subagent (general-purpose):
   description: "Implement Task N: [task name]"
-  model: `sonnet` in Claude Code only when `acta config show` lists
-         `subagent_models: split`, else no model; on omp always `agent="task"`.
+  model: none, the harness default picks it; on omp always `agent="task"`.
   prompt: |
     You are implementing Task N: [task name]
 
@@ -68,7 +67,7 @@ Subagent (general-purpose):
 
     Comments in plain English a ten-year-old can read, saying why; no
     marker tags. Report in the user's chat language; write everything in the
-    repo in the repo language.
+    repo in English.
 
     Do all of this task's work yourself. Never spawn a subagent, and above
     all never a reviewer: review happens once, at the close, through

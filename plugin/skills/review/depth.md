@@ -11,13 +11,13 @@ Pick it in this order, and ask no question when one answers:
 
 ## The levels
 
-- **quick:** a diff that is all light tier gets the inline light review (`## Review tiers`). Any other diff gets ONE reviewer subagent, from [code-reviewer.md](code-reviewer.md). It runs on your own model, never lower. It answers both the Spec axis and the Standards axis in one report.
+- **quick:** a diff that is all light tier gets the inline light review (`## Review tiers`). Any other diff gets ONE reviewer subagent, from [code-reviewer.md](code-reviewer.md). It answers both the Spec axis and the Standards axis in one report.
 - **standard:** the two reviewers in parallel, as `SKILL.md` says. A light-tier diff keeps the inline light review.
-- **deep:** the two reviewers, then one read-only fact-check subagent over the BLOCKERs only. A light-tier diff keeps the inline light review. The orchestrator numbers the BLOCKERs before the fact-check. It runs on the reviewer model and uses [fact-check.md](fact-check.md). With no BLOCKER it does not run. A moved one becomes a NOTE, sorted into a bucket like any other.
+- **deep:** the two reviewers, then one read-only fact-check subagent over the BLOCKERs only. A light-tier diff keeps the inline light review. The orchestrator numbers the BLOCKERs before the fact-check. It uses [fact-check.md](fact-check.md). With no BLOCKER it does not run. A moved one becomes a NOTE, sorted into a bucket like any other.
 
 ## The floors
 
-The setting can raise the depth, never lower it below these. No level, from the argument or the setting, goes below them:
+The setting can raise the depth, but not drop it below these. No level, from the argument or the setting, goes below them:
 - A diff touching a security, auth, data migration, money or delete path runs at least `standard` with the deep lens.
 - Fix rounds run at least `standard`.
 - Work the `dispatch` executor wrote runs at least `standard` in the full tier.

@@ -342,58 +342,15 @@ func TestVoiceSetExecutorKeepsOtherFields(t *testing.T) {
 		t.Errorf("show did not print an unset build_executor as the inline default:\n%s", out)
 	}
 	mustRun(t, "config", "set", "--executor", "dispatch")
-	mustRun(t, "config", "set", "--subagent-models", "split")
 	out := mustRun(t, "config", "show")
-	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch", "subagent_models: split"} {
+	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show missing %q:\n%s", want, out)
 		}
 	}
 	// The JSON is indented, so compare without spaces.
-	asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", "")
-	for _, key := range []string{`"build_executor":"dispatch"`, `"subagent_models":"split"`} {
-		if !strings.Contains(asJSON, key) {
-			t.Errorf("json missing %q:\n%s", key, asJSON)
-		}
-	}
-	// Clearing the models must leave every other field alone.
-	mustRun(t, "config", "set", "--clear-subagent-models")
-	after := mustRun(t, "config", "show")
-	if strings.Contains(after, "subagent_models") {
-		t.Errorf("clear left subagent_models:\n%s", after)
-	}
-	for _, want := range []string{"chat_language: Korean", "tone: short", "build_executor: dispatch"} {
-		if !strings.Contains(after, want) {
-			t.Errorf("clear dropped %q:\n%s", want, after)
-		}
-	}
-	// Clear then set in one call: the set wins, so the user ends up with split.
-	mustRun(t, "config", "set", "--clear-subagent-models", "--subagent-models", "split")
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: split") {
-		t.Errorf("clear-then-set did not keep split:\n%s", out)
-	}
-}
-
-// A no in setup is saved as default, so the next setup run sees it as set.
-func TestConfigSetSubagentModelsDefault(t *testing.T) {
-	t.Setenv("PM_VOICE_FILE", filepath.Join(t.TempDir(), "config.yaml"))
-	mustRun(t, "config", "set", "--subagent-models", "default")
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "subagent_models: default") {
-		t.Errorf("show lacks subagent_models: default:\n%s", out)
-	}
-	// The JSON is indented, so compare without spaces.
-	if out := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(out, `"subagent_models":"default"`) {
-		t.Errorf("json lacks subagent_models default:\n%s", out)
-	}
-	mustRun(t, "config", "set", "--clear-subagent-models")
-	if out := mustRun(t, "config", "show"); strings.Contains(out, "subagent_models") {
-		t.Errorf("clear left subagent_models:\n%s", out)
-	}
-	// The usage must name default too, or a user cannot find the value that stops the question.
-	var out, errs strings.Builder
-	Run([]string{"config", "set"}, strings.NewReader(""), false, &out, &errs)
-	if !strings.Contains(errs.String(), "--subagent-models split|default") {
-		t.Errorf("usage lacks --subagent-models split|default:\n%s", errs.String())
+	if asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"build_executor":"dispatch"`) {
+		t.Errorf("json missing build_executor:\n%s", asJSON)
 	}
 }
 

@@ -21,16 +21,15 @@ func writeRepoYAML(t *testing.T, body string) string {
 // A value in .acta.yaml wins over the global one, key by key, and the set
 // says which keys came from the repo so show can label them.
 func TestMergeRepoBeatsGlobal(t *testing.T) {
-	global := User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "dispatch", PlanDepth: "full"}
+	global := User{ChatLanguage: "Indonesian", Style: "adhd", BuildExecutor: "dispatch", PlanDepth: "full"}
 	cases := []struct {
 		yaml string
 		want User
 		from []string
 	}{
-		{"repo_language: Korean\n", User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "Korean", BuildExecutor: "dispatch", PlanDepth: "full"}, []string{"repo_language"}},
-		{"build_executor: inline\n", User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "inline", PlanDepth: "full"}, []string{"build_executor"}},
-		{"plan_depth: minimal\n", User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "dispatch", PlanDepth: "minimal"}, []string{"plan_depth"}},
-		{"root: .acta\nplan_depth: minimal\nbuild_executor: inline\n", User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "inline", PlanDepth: "minimal"}, []string{"build_executor", "plan_depth"}},
+		{"build_executor: inline\n", User{ChatLanguage: "Indonesian", Style: "adhd", BuildExecutor: "inline", PlanDepth: "full"}, []string{"build_executor"}},
+		{"plan_depth: minimal\n", User{ChatLanguage: "Indonesian", Style: "adhd", BuildExecutor: "dispatch", PlanDepth: "minimal"}, []string{"plan_depth"}},
+		{"root: .acta\nplan_depth: minimal\nbuild_executor: inline\n", User{ChatLanguage: "Indonesian", Style: "adhd", BuildExecutor: "inline", PlanDepth: "minimal"}, []string{"build_executor", "plan_depth"}},
 		{"plan_depth: \"\"\n", global, nil},
 		{"plan_depth: 3\n", global, nil},
 		{"plan_depth:\n  - minimal\n", global, nil},
@@ -74,7 +73,7 @@ func TestMergeRepoReviewDepthBeatsGlobal(t *testing.T) {
 
 // No .acta.yaml means the global config is the whole answer.
 func TestMergeRepoMissingFile(t *testing.T) {
-	global := User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English"}
+	global := User{ChatLanguage: "English", Style: "adhd"}
 	got, from, err := MergeRepo(global, t.TempDir())
 	if err != nil || got != global || len(from) != 0 {
 		t.Errorf("got %+v %v %v, want the global config and nothing from the repo", got, from, err)
@@ -84,7 +83,7 @@ func TestMergeRepoMissingFile(t *testing.T) {
 // Personal settings follow the person, not the repo, so a repo file that
 // tries to set one is refused, and the message names the key.
 func TestMergeRepoRefusesPersonalKeys(t *testing.T) {
-	for _, k := range []string{"chat_language", "style", "tone", "theme", "subagent_models"} {
+	for _, k := range []string{"chat_language", "style", "tone", "theme"} {
 		_, _, err := MergeRepo(UserDefault(), writeRepoYAML(t, k+": x\n"))
 		if err == nil || !strings.Contains(err.Error(), k) {
 			t.Errorf("%s in .acta.yaml: err %v, want one naming the key", k, err)
@@ -172,7 +171,7 @@ func TestPlanDepthBadValue(t *testing.T) {
 // the user value alone.
 func TestMergeRepoCodingGuide(t *testing.T) {
 	user := func(guide string) User {
-		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", CodingGuide: guide}
+		return User{ChatLanguage: "English", Style: "adhd", CodingGuide: guide}
 	}
 	cases := []struct {
 		name, global, yaml, want string
@@ -284,7 +283,7 @@ func TestSaveRepoUserKeepsOtherKeys(t *testing.T) {
 // leaves the user value alone.
 func TestMergeRepoCommitHistory(t *testing.T) {
 	user := func(history string) User {
-		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", CommitHistory: history}
+		return User{ChatLanguage: "English", Style: "adhd", CommitHistory: history}
 	}
 	cases := []struct {
 		name, global, yaml, want string
@@ -327,7 +326,7 @@ func TestMergeRepoCommitHistoryBadValue(t *testing.T) {
 // A repo key is an override only when its value differs from what the user
 // would get anyway. A key the user never set counts as its default.
 func TestOverrides(t *testing.T) {
-	user := User{ChatLanguage: "Indonesian", Style: "adhd", RepoLanguage: "English", BuildExecutor: "dispatch", PlanDepth: "minimal"}
+	user := User{ChatLanguage: "Indonesian", Style: "adhd", BuildExecutor: "dispatch", PlanDepth: "minimal"}
 	cases := []struct {
 		name string
 		yaml string
@@ -341,10 +340,9 @@ func TestOverrides(t *testing.T) {
 		{"user unset commit_history, repo full", "commit_history: full\n", UserDefault(), []Override{{"commit_history", "full", "tidy"}}},
 		{"user unset coding_guide, repo off", "coding_guide: off\n", UserDefault(), []Override{{"coding_guide", "off", "lean"}}},
 		{"user has no executor", "build_executor: inline\n", UserDefault(), []Override{{"build_executor", "inline", ""}}},
-		{"repo language differs", "repo_language: Korean\n", UserDefault(), []Override{{"repo_language", "Korean", "English"}}},
 		{"only differing keys, in RepoKeys order",
 			"coding_guide: off\nplan_depth: full\nrepo_language: Korean\nbuild_executor: dispatch\n", user,
-			[]Override{{"repo_language", "Korean", "English"}, {"plan_depth", "full", "minimal"}, {"coding_guide", "off", "lean"}}},
+			[]Override{{"plan_depth", "full", "minimal"}, {"coding_guide", "off", "lean"}}},
 		{"other keys in the file are ignored", "root: x\nplan_depth: minimal\n", user, nil},
 		{"empty value is not set", "plan_depth: \"\"\n", user, nil},
 	}
@@ -505,7 +503,7 @@ func TestUnsetRepoUserRefusesOtherKeys(t *testing.T) {
 // value, and any other value is refused by name so it is never used.
 func TestMergeRepoPlanSplit(t *testing.T) {
 	user := func(split string) User {
-		return User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", PlanSplit: split}
+		return User{ChatLanguage: "English", Style: "adhd", PlanSplit: split}
 	}
 	for _, c := range []struct{ global, yaml, want string }{
 		{"off", "plan_split: on\n", "on"},

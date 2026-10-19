@@ -172,8 +172,8 @@ var helpTable = []helpCmd{
 		summary: "Show or change your acta settings, or the ones saved in .acta.yaml of this repo.",
 		usage: []string{
 			"acta config show [--json]",
-			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--repo-language L] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--subagent-models split|default] [--clear-subagent-models] [--theme NAME] [--clear-theme]",
-			"acta config set --repo [--repo-language L] [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
+			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--theme NAME] [--clear-theme]",
+			"acta config set --repo [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
 		},
 		flags: []string{
 			"--json  print JSON (config show)",
@@ -181,7 +181,6 @@ var helpTable = []helpCmd{
 			"--style S  adhd or plain",
 			"--tone T  how you want to be spoken to, in your own words",
 			"--clear-tone  remove the tone",
-			"--repo-language L  language for files written to the repo",
 			"--executor E  which executor runs the plan: subagent, dispatch or inline",
 			"--plan-depth D  how much a plan spells out: minimal or full",
 			"--review-depth R  how much review a plan gets: quick, standard or deep",
@@ -189,8 +188,6 @@ var helpTable = []helpCmd{
 			"--questions Q  how the agent asks: one question at a time, or probe",
 			"--coding-guide G  the coding guide: lean or off",
 			"--review-understanding B  true or false: after a landing, explain the change",
-			"--subagent-models M  how models are picked for subagents: split, or default to leave it to your own config",
-			"--clear-subagent-models  remove the subagent_models setting",
 			"--theme NAME  the TUI color theme",
 			"--clear-theme  go back to the default theme",
 			"--repo  save to .acta.yaml in this repo instead of your own config",
