@@ -430,3 +430,13 @@ func TestImplementerPromptWritesState(t *testing.T) {
 		t.Error("implementer-prompt.md is missing the acta state set step")
 	}
 }
+
+// TestBuildWorktreeAddFromTopFolder reads SKILL.md on its own. The new
+// worktree path starts with "..", so from a subfolder it would land inside
+// the main checkout. The snippet has to move to the top folder first.
+func TestBuildWorktreeAddFromTopFolder(t *testing.T) {
+	const want = "cd \"$(git rev-parse --show-toplevel)\"\ngit worktree add \"../$REPO-$SLUG\""
+	if !strings.Contains(readBuildFile(t, "SKILL.md"), want) {
+		t.Error("build/SKILL.md must cd to the repo top folder right before git worktree add")
+	}
+}

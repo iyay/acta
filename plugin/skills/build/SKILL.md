@@ -42,9 +42,10 @@ The spec and plan from acta:shape and acta:slice stay on main; they are already 
 
 Parent: the branch the user names, else the repo's default branch. Record it; `acta:land` merges into it. Then run `acta ready <plan id> --parent <parent>`; for a worktree that already exists add `--head <its HEAD>`. Any non-zero exit stops the build: show the output, and never rebase or merge to make it pass.
 
-Already in a linked worktree (the two paths `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). `$PARENT` is the parent branch recorded above, so the branch starts from it:
+Already in a linked worktree (the two paths `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). `$REPO` is the repo folder name and `$PARENT` is the parent branch recorded above, so the branch starts from it:
 
 ```bash
+cd "$(git rev-parse --show-toplevel)"
 git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"
 cd "../$REPO-$SLUG"
 ```

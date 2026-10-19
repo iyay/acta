@@ -78,3 +78,16 @@ lean-tests baseline had no gap, so the case was not extended. Subagent and dispa
 - [x] Red: plugincheck asserts `--path-format=absolute` in SKILL.md and `acta state set` in implementer-prompt.md; watch it fail.
 - [x] Change: SKILL.md, implementer-prompt.md, build-inline-flow prompt and graders.
 - [x] Commit: `fix(build): review round 1 findings`
+
+## Fix round 2
+
+### Task 4: Fix round 2 review findings
+
+**verify:** The worktree snippet moves to the repo top folder before `git worktree add`, so a session in a subfolder still makes the worktree next to the repo; the no-install grader matches install commands only, not words in a tool description.
+- [x] Red: plugincheck asserts the snippet starts with `cd "$(git rev-parse --show-toplevel)"`; watch it fail.
+- [x] Change: SKILL.md snippet and build-inline-flow install graders.
+- [x] Commit: `fix(build): review round 2 findings`
+
+## Review notes
+
+Deep review, three rounds: round 1 two BLOCKERs (absolute-path worktree check, subagent state step), round 2 one BLOCKER (worktree add from a subfolder), round 3 CLEAN. Notes kept: $REPO source unstated, submodule worktree path lands in the superproject, byte caps not lowered, install graders match command text only, contradiction scan dropped Global Constraints wording.
