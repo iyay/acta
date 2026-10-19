@@ -2,6 +2,8 @@
 created: "2026-10-19 13:44:56"
 id: SPC-0161
 hash: doaw5p7
+started: "2026-10-19 14:05:56"
+finished: "2026-10-19 14:07:00"
 ---
 
 # Unslop for spec self-review

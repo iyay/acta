@@ -3,6 +3,7 @@ package plugincheck
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 func TestSkillShape(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "shape",
-		MaxLines: 177,
+		MaxLines: 180,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:slice",
@@ -27,6 +28,9 @@ func TestSkillShape(t *testing.T) {
 			"`acta:build` makes the worktree",
 			`acta commit <path> -m "<message>"`,
 			"acta scratch add SCRATCH-n --section log",
+			// The checklist names both commands so a run that only reads the
+			// checklist still marks the item.
+			"0. Scratch item — `acta scratch new`, then `acta set scratch/<stem> status brainstorming`",
 		},
 		MustNot: []string{"superpowers:", "docs/superpowers", "Visual Companion", "visual-companion", "writing-plans", "elements-of-style",
 			"HERDR_ENV",
@@ -182,6 +186,61 @@ func TestShapeProbeModeNamesProbeFile(t *testing.T) {
 	for _, want := range []string{"five", "Recommended:", "--section log", "**Q1."} {
 		if !strings.Contains(string(probe), want) {
 			t.Errorf("shape/probe.md missing %q", want)
+		}
+	}
+}
+
+// TestShapeUnslopSelfReview checks that both spec paths run the self-review
+// and that the self-review reads the shared Unslop reference. Rule numbers
+// stay fixed because other skills may cite them later.
+func TestShapeUnslopSelfReview(t *testing.T) {
+	root := pluginRoot(t)
+	b, err := os.ReadFile(filepath.Join(root, "skills", "shape", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	skill := string(b)
+	// The link must sit in the self-review rule itself. A link anywhere else
+	// would let the self-review skip the file.
+	review := skill[strings.Index(skill, "**Self-review, four checks.**"):]
+	review = review[:strings.Index(review, "\n\n")]
+	link := "../../references/unslop.md"
+	if !strings.Contains(review, link) {
+		t.Errorf("shape self-review does not link %s", link)
+	}
+	for _, path := range []string{"**Bounded:**", "**Architectural:**"} {
+		start := strings.Index(skill, path)
+		if start < 0 {
+			t.Fatalf("shape has no %s checklist", path)
+		}
+		rest := skill[start:]
+		end := strings.Index(rest, "\n\n")
+		if end < 0 {
+			end = len(rest)
+		}
+		if !strings.Contains(rest[:end], "Spec self-review") {
+			t.Errorf("%s checklist has no spec self-review step", path)
+		}
+	}
+
+	ref, err := os.ReadFile(filepath.Join(root, "references", "unslop.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(ref)
+	for _, id := range []int{3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33} {
+		if !strings.Contains(text, "\n"+strconv.Itoa(id)+". ") {
+			t.Errorf("unslop.md lost rule %d", id)
+		}
+	}
+	for _, keep := range []string{
+		"not an automatic error",
+		"requirements, constraints, uncertainty, evidence, risks and approval gates",
+		"code, commands, flags, identifiers, literal errors or direct quotes",
+		"Never invent a source or a number",
+	} {
+		if !strings.Contains(text, keep) {
+			t.Errorf("unslop.md does not say %q", keep)
 		}
 	}
 }

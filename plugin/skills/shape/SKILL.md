@@ -90,11 +90,12 @@ Classify, announce the path, then do these in order.
 3. Present short design in chat — approach, files touched, testing
 4. Get approval — STOP and wait for an explicit yes; presenting the design and starting in the same breath skips the gate
 5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit it with `acta commit <path> -m "<message>"`
-6. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
-7. Transition — invoke acta:slice
+6. Spec self-review — the four checks below
+7. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
+8. Transition — invoke acta:slice
 
 **Architectural:**
-0. Scratch item — as above, before any question
+0. Scratch item — `acta scratch new`, then `acta set scratch/<stem> status brainstorming`, before any question
 1. Explore project context — check files, docs, recent commits
 2. Ask clarifying questions — one at a time; purpose, constraints, success criteria. Append each answer with `acta scratch add SCRATCH-n --section log`
 3. Propose 2-3 approaches — trade-offs and your recommendation
@@ -130,8 +131,10 @@ each yes in the spec: `acta:build` writes the page, in the format of
 
 **Self-review, four checks.** Placeholders left in; sections that
 contradict each other; scope too wide for one plan; any requirement a
-reader could take two ways. Fix them inline, no second pass.
+reader could take two ways. In the same pass, read
+[unslop.md](../../references/unslop.md) and fix the prose patterns it
+lists without changing meaning. Fix them inline, no second pass.
 
-**User review gate.** In the user's chat language, give the spec path, say it is committed, and ask for a review before the plan. Then wait. On changes requested, make them and run the four checks again. Approval of the design does not approve the plan; each gets its own yes.
+**User review gate.** In the user's chat language, give the spec path, say it is committed, and ask for a review before the plan. Then wait. On changes requested, make them and run the self-review again. Approval of the design does not approve the plan; each gets its own yes.
 
 **Next.** Invoke acta:slice to write the implementation plan.
