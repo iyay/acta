@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0177
 created: "2026-10-19 20:27:17"
 hash: gyars3k
+started: "2026-10-19 20:30:17"
+finished: "2026-10-19 20:31:20"
 ---
 
 # Check minimal task checkboxes before hand-off
@@ -27,6 +29,16 @@ hash: gyars3k
 **Files:** Modify `plugin/skills/slice/SKILL.md` and `internal/plugincheck/skill_slice_test.go`.
 **Seam:** `TestSkillSlice` checks the slice instructions through `CheckSkill`.
 **verify:** Minimal self-review requires all three named checkbox steps for every task in every generated plan, corrects omissions before hand-off, and retains coverage and verify checks; the regression fails when that requirement is removed, and plugin size checks pass.
-- [ ] Red: Extend `TestSkillSlice` to require the minimal self-review checkbox check and correction before hand-off; observe `scripts/test ./internal/plugincheck/ -run '^TestSkillSlice$'` fail against the current skill.
-- [ ] Change: Extend the minimal self-review sentence with the required checkbox check for every task across all plans and correction before hand-off, then run the focused test and `scripts/test ./internal/plugincheck/`.
-- [ ] Commit: `fix(slice): check minimal task boxes before hand-off`, with this task's Task trailer, after confirming that restoring the old skill makes the new regression fail.
+- [x] Red: Extend `TestSkillSlice` to require the minimal self-review checkbox check and correction before hand-off; observe `scripts/test ./internal/plugincheck/ -run '^TestSkillSlice$'` fail against the current skill.
+- [x] Change: Extend the minimal self-review sentence with the required checkbox check for every task across all plans and correction before hand-off, then run the focused test and `scripts/test ./internal/plugincheck/`.
+- [x] Commit: `fix(slice): check minimal task boxes before hand-off`, with this task's Task trailer, after confirming that restoring the old skill makes the new regression fail.
+
+## State
+
+### Next
+
+Run the required landing gates after the closing review, then land on main.
+
+## Review notes
+
+- Deep, full tier: Spec and Standards reviewers checked c6df03f..48ea446; both CLEAN, no findings. Full tier applies because the change edits agent instructions.
