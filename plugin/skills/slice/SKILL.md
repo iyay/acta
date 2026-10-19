@@ -26,7 +26,7 @@ Pick the depth in this order, and do not ask when one answers: the argument of `
 
 The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
 
-A minimal plan needs no yes: save it, run `acta id`, commit it on main with `acta commit <path> -m "<message>"`, tell the user its path in one line, and invoke `acta:build` in the same turn. A split (split.md) never starts a build. The spec still needs its yes first.
+Depth changes only what a plan holds, never the gate. A minimal plan is saved, given its id, committed on main with `acta commit <path> -m "<message>"`, shown to the user (its path and one line a task), and waits for a yes like a full plan. A split (split.md) never starts a build.
 
 ## Scope Check
 
@@ -83,7 +83,7 @@ Never give a line range as the target; a range is an instance. Name the rule and
 
 Each case a verify line lists is named once, in the task whose layer owns the behaviour. A task for a layer above says it is wiring only: one success path and one error passed up from below. It lists no lower-layer case again. A case that crosses a trust boundary names the adversarial inputs to try in its verify line.
 
-Inputs that run the same code path are one case. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams; for a minimal plan, the spec's yes.
+Inputs that run the same code path are one case. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams.
 
 ## Test commands
 
@@ -218,7 +218,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Hand-off
 
-Save the plan, show it to the user, and wait for a yes (a minimal plan skips the wait, see Plan depth). Approval of the design did not approve the plan.
+Save the plan, show it to the user, and wait for a yes, whatever its depth. Approval of the design did not approve the plan.
 
 Then run it with `acta:build`. First run `acta config show`. When it prints `build_executor: <name>`, that executor is chosen: name it and do not ask. A `(default)` mark or a missing line means `inline` (you write the code yourself); do not ask. The user can still pick `subagent` or `dispatch` (an omp agent in its own herdr tab) for one run.
 

@@ -35,7 +35,7 @@ func TestSkillBuild(t *testing.T) {
 			"hand it to omp in another tab or pane",
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 			"A native worktree tool puts the worktree inside the repo",
-			"or has `depth: minimal` in its frontmatter",
+			"and the plan is approved, whatever its depth",
 			"Refuse to start unless the spec is approved",
 			// acta dispatch close reads the slug from the current branch, so it
 			// only works in the worktree, before land deletes the branch.
@@ -44,7 +44,7 @@ func TestSkillBuild(t *testing.T) {
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
 		},
-		MustNot: []string{`only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
+		MustNot: []string{"or has `depth: minimal`", `only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
 			// out of the skill text, and so does the name of the format its
 			// fields came from.

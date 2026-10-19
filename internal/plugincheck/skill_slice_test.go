@@ -25,7 +25,8 @@ func TestSkillSlice(t *testing.T) {
 			"A fix round, or any change to a plan whose build is running, goes in that build's worktree",
 			"## Plan depth", "`/slice minimal`", "depth: minimal", "`plan_depth`",
 			"apply to `full` plans only",
-			"invoke `acta:build` in the same turn",
+			// Depth never skips the plan gate: the user saw the plan before code.
+			"Depth changes only what a plan holds, never the gate",
 			"`/slice full`", "do not ask when one answers", "then `full`.",
 			"no Architecture, Tech Stack, File map or Interfaces", "No code blocks.",
 			"run `acta config show`", "When it prints `build_executor: <name>`, that executor is chosen",
@@ -44,7 +45,8 @@ func TestSkillSlice(t *testing.T) {
 			// task with no box never reads as done until its plan is finished.
 			"`- [ ] Red: <test> fails because <why>`", "`- [ ] Change: <code change>`", "`- [ ] Commit: <message>`",
 		},
-		MustNot: []string{"superpowers:", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
+		MustNot: []string{"superpowers:",
+			"needs no yes", "skips the wait", "in the same turn", "for a minimal plan, the spec's yes", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
 			"names the DEBT ids it closes",
 			"If working in an isolated worktree",
 			"Ask which executor only if the user has not said",
