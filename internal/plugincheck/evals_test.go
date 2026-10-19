@@ -38,6 +38,7 @@ var evalCases = []struct {
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
 	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
 	{"build-inline-flow", "skills/build/SKILL.md", "## Inline task loop"},
+	{"build-stale-baseline", "skills/build/SKILL.md", "**Start the first task.**"},
 	{"repo-override-ask", "skills/setup/SKILL.md", "is committed and shared"},
 	{"polish-light-review", "skills/review/SKILL.md", "Light review: the orchestrator reads the full diff"},
 	{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""},
@@ -46,6 +47,8 @@ var evalCases = []struct {
 	{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"},
 	{"review-understanding-report", "skills/land/SKILL.md", "It asks the user no question"},
 	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no offer"},
+	{"land-baseline-pass", "skills/land/baseline.md", "rename it over `acta-baseline.md`"},
+	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it

@@ -441,6 +441,37 @@ func TestBuildWorktreeAddFromTopFolder(t *testing.T) {
 	}
 }
 
+// TestBuildStartsFirstTaskWithoutBaseline reads SKILL.md on its own. Setup
+// used to run the fast tests first, which delayed the first task and turned a
+// missing or stale saved result into a question. CheckSkill joins the whole
+// folder, so a revert of SKILL.md alone could stay green.
+func TestBuildStartsFirstTaskWithoutBaseline(t *testing.T) {
+	skill := readBuildFile(t, "SKILL.md")
+	for _, want := range []string{
+		"**Start the first task.**",
+		"After setup, go straight to the first task",
+		"Do not run a baseline suite or fast test",
+		"missing, old, unreadable or from another test context changes nothing",
+		"The full suite waits for `acta:land`",
+		"A saved `acta-baseline.md` in the Git common directory is history only",
+		"Diagnose a failure when a task meets one",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md missing %q", want)
+		}
+	}
+	start := strings.Index(skill, "**Start the first task.**")
+	plan := strings.Index(skill, "## Plan")
+	if start < 0 || plan < 0 || start > plan {
+		t.Errorf("the first-task rule must sit in setup, before Plan (rule at %d, Plan at %d)", start, plan)
+	}
+	for _, banned := range []string{"**Clean baseline.**", "Run the fast tests:", "Failures: report them and ask whether to proceed", "Passing: report the path, the passing count"} {
+		if strings.Contains(skill, banned) {
+			t.Errorf("build/SKILL.md still runs a baseline before the first task: found %q", banned)
+		}
+	}
+}
+
 // TestBuildCodingContract reads each file on its own. CheckSkill joins the
 // whole folder, so a sentence could leave SKILL.md and stay green. Every
 // executor reads the contract in SKILL.md; the worker prompt points there
