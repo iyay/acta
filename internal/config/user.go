@@ -48,8 +48,8 @@ type User struct {
 	// UpdateCheck says whether acta looks for a newer release once a day and
 	// tells the user: on or off. Empty means on.
 	UpdateCheck string `yaml:"update_check,omitempty"`
-	// ReviewUnderstanding says whether a landing report explains the change
-	// and ends with one optional question about it. It is a pointer so an
+	// ReviewUnderstanding says whether a landing report explains the change.
+	// It is a pointer so an
 	// explicit false is kept apart from a key nobody set; both mean off.
 	ReviewUnderstanding *bool `yaml:"review_understanding,omitempty"`
 }

@@ -81,7 +81,7 @@ func TestFormGroups(t *testing.T) {
 		{"Commit history", "(9/13)", ""},
 		{"Questions", "(10/13)", ""},
 		{"Review depth", "(11/13)", ""},
-		{"Review understanding", "(12/13)", "After landing: explain and ask an optional scenario. Never blocks."},
+		{"Review understanding", "(12/13)", "After landing: explain the change. Never blocks."},
 
 		{"Plugin install", "(13/13)", "One row per tool found."},
 	}

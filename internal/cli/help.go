@@ -188,7 +188,7 @@ var helpTable = []helpCmd{
 			"--commit-history H  how a landed branch reads: tidy or full",
 			"--questions Q  how the agent asks: one question at a time, or probe",
 			"--coding-guide G  the coding guide: lean or off",
-			"--review-understanding B  true or false: after a landing, explain the change and ask one optional question about it",
+			"--review-understanding B  true or false: after a landing, explain the change",
 			"--subagent-models M  how models are picked for subagents: split, or default to leave it to your own config",
 			"--clear-subagent-models  remove the subagent_models setting",
 			"--theme NAME  the TUI color theme",

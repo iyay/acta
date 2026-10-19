@@ -1,5 +1,5 @@
 ---
-# guards: no explanation, no question, no offer
+# guards: no explanation, no offer
 # The switch is false and the review ran deep. Deep must not turn the
 # understanding part on, so the report stays the plain landing report.
 type: llm

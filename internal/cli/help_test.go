@@ -273,7 +273,9 @@ func TestHelpConfigReviewUnderstanding(t *testing.T) {
 	}
 	var flagLine, unsetLine bool
 	for _, f := range cmd.flags {
-		flagLine = flagLine || strings.HasPrefix(f, "--review-understanding B  ")
+		// The user dropped the quiz after a land, so the help must not
+		// promise a question.
+		flagLine = flagLine || (strings.HasPrefix(f, "--review-understanding B  ") && strings.Contains(f, "explain the change") && !strings.Contains(f, "question"))
 		unsetLine = unsetLine || (strings.HasPrefix(f, "--unset KEY") && strings.Contains(f, "review_understanding"))
 	}
 	if !flagLine || !unsetLine {

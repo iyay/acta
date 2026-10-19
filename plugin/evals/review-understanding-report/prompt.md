@@ -1,6 +1,6 @@
 ---
 name: review-understanding-report
-description: With review_understanding on and a quick review, the landing report explains the final landed code and ends with one optional question, asked only after the merge.
+description: With review_understanding on and a quick review, the landing report explains the final landed code after the merge and asks the user no question.
 tags: [land, review]
 runs: 1
 # The run loads the land skill, runs its checks, merges, cleans up and writes
