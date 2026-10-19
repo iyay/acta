@@ -5,7 +5,7 @@ hash: yrl9k97
 ---
 # Evidence-driven debugging
 
-Bounded. The user approved the design in chat on 2026-10-19, provided the skill reaches the quality of the four references. Written spec awaits review.
+Bounded. The user approved the design and written spec in chat on 2026-10-19, provided the skill reaches the quality of the four references.
 
 ## Goal
 
