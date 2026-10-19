@@ -29,7 +29,7 @@ func TestFormOptionNotes(t *testing.T) {
 		1: {"adhd: short, one next step at the end", "plain: normal paragraphs"},
 		4: {"inline: the main agent writes the code", "subagent: helper agents in the same session"},
 		5: {"default: your own config decides", "split: sonnet writes code, the rest use a stronger model"},
-		6: {"full: real code in every step, waits for your yes", "minimal: short steps, build starts at once"},
+		6: {"full: real code in every step", "minimal: short steps, no code blocks"},
 		7: {"off: one plan per spec", "on: big specs become 2 to 4 plans, one session each"},
 		8: {"tidy: one commit per task, straight history", "full: every commit plus a merge commit"},
 		9: {"one: one question at a time", "probe: a batch, each with the agent's pick"},

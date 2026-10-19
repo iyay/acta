@@ -156,8 +156,8 @@ func buildFormState(e Env) *formState {
 		{"Plan detail", "",
 			huh.NewSelect[string]().
 				Options(
-					huh.NewOption("full: real code in every step, waits for your yes", "full"),
-					huh.NewOption("minimal: short steps, build starts at once", "minimal"),
+					huh.NewOption("full: real code in every step", "full"),
+					huh.NewOption("minimal: short steps, no code blocks", "minimal"),
 				).Value(&d.PlanDepth), text(&d.PlanDepth)},
 		{"Plan split", "",
 			huh.NewSelect[string]().

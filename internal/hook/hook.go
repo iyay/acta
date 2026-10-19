@@ -51,7 +51,7 @@ const runningRule = "Before you stop, or when context runs low, run acta state s
 const coreRules = `
 Core rules:
 1. No action without an ask. Reading, answering and planning are the default.
-2. No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.
+2. No code before an approved design and an approved plan, whatever the plan depth.
 3. Every code change happens in a worktree and starts with a failing test.
 4. Review once, at the close, three rounds at most. Land without asking when clean.
 5. Never push. Never run a destructive command without a full-sentence warning and a yes.
