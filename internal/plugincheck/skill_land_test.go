@@ -17,6 +17,7 @@ func TestSkillLand(t *testing.T) {
 			"Never `git push`", "120000", "fixed_in", "The Gate Function",
 			"`acta id --fix-duplicates`", "renumber",
 			"acta show <plan id>", "done` is less than `total`",
+			"[baseline.md](baseline.md)", "`acta-baseline.md`", "absolute Git common directory",
 			"acta tick <DBT-nnnn.nn> --all", "debt file",
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
@@ -116,6 +117,60 @@ func TestLandTidyPath(t *testing.T) {
 	for _, gone := range []string{"acta tidy", "--ff-only", "reset --keep", "git branch -D"} {
 		if strings.Contains(skill, gone) {
 			t.Errorf("land SKILL.md still holds tidy text %q; it belongs in tidy.md", gone)
+		}
+	}
+}
+
+// TestLandBaselineEvidence reads baseline.md on its own. SKILL.md only points
+// to it, so the shared record rules have to live there. The policy sits before
+// the numbered steps, so an ordinary or tidy land cannot run the suite without
+// it, and the record can never claim a run that did not pass.
+func TestLandBaselineEvidence(t *testing.T) {
+	skill := readSkill(t, "skills/land/SKILL.md")
+	for _, want := range []string{
+		"[baseline.md](baseline.md)",
+		"`acta-baseline.md`",
+		"absolute Git common directory",
+		"shared by linked worktrees",
+		"Only a complete passing run replaces that record",
+		"A failed run, a reused gate or a write error keeps the last PASS",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("land/SKILL.md missing %q", want)
+		}
+	}
+	policy := strings.Index(skill, "[baseline.md](baseline.md)")
+	steps := strings.Index(skill, "1. Preconditions")
+	mode := strings.Index(skill, "Mode: `commit_history`")
+	if policy < 0 || steps < 0 || policy > steps || mode < 0 || policy > mode {
+		t.Errorf("the baseline policy must sit before step 1 and the tidy mode switch (policy %d, step 1 %d, mode %d)", policy, steps, mode)
+	}
+	b, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", "land", "baseline.md"))
+	if err != nil {
+		t.Fatalf("land/baseline.md: %v", err)
+	}
+	base := string(b)
+	for _, want := range []string{
+		"git rev-parse --path-format=absolute --git-common-dir",
+		"unique log",
+		"acta-baseline-<utc-time>-<pid>.log",
+		"Never pipe the suite into `tee`, `head` or a filter",
+		"rc=$?",
+		"Keep the failed log",
+		"the last PASS stays",
+		"Never rerun the suite",
+		"temp file",
+		"rename it over `acta-baseline.md`",
+		"commit:", "tree:", "command:", "when:", "runtime:", "exit:", "log:", "summary:",
+		"writes no record",
+	} {
+		if !strings.Contains(base, want) {
+			t.Errorf("land/baseline.md missing %q", want)
+		}
+	}
+	for _, banned := range []string{"| tee", "| head"} {
+		if strings.Contains(base, banned) {
+			t.Errorf("land/baseline.md masks the exit status with %q", banned)
 		}
 	}
 }

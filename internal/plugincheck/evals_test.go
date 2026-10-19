@@ -47,6 +47,8 @@ var evalCases = []struct {
 	{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"},
 	{"review-understanding-report", "skills/land/SKILL.md", "It asks the user no question"},
 	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no offer"},
+	{"land-baseline-pass", "skills/land/baseline.md", "acta-baseline-<utc-time>-<pid>.log"},
+	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it

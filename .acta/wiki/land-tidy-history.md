@@ -5,18 +5,18 @@ description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or
 paths: [plugin/skills/land/, internal/tidy/]
 ---
 
-The tidy path lives in `plugin/skills/land/tidy.md`; `SKILL.md` only points to it, so it stays under its byte cap.
+The tidy path lives in `plugin/skills/land/tidy.md`; `SKILL.md` only points to it.
 
-With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `merge --ff-only`, or with `reset --keep` when parent chore commits were folded. `full` keeps the old `merge --no-ff`.
+With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `merge --ff-only`, or `reset --keep` when parent chore commits were folded. `full` keeps `merge --no-ff`.
 
-Keep rule: a failed tidy stops the land. It never falls back to a plain merge.
+Keep rule: a failed tidy stops the land and never falls back to a plain merge.
 
-Fold rules: the fold point is `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds. Pushed commits are never touched. When no branch commit is kept, the one commit takes the message of the newest commit that changed real files, else the newest that is not a `chore`, so a closing planning commit cannot hide the real change (BUG-0043, BUG-0051).
+Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject comes from the newest commit that changed real files, so a closing planning commit cannot hide the real change (BUG-0043, BUG-0051).
 
-Why `-D` is safe: the old branch is not an ancestor any more, so `-d` refuses. Tidy proved the tip equals the merge of parent and branch, so `-D` loses nothing. Delete `refs/acta/tidy/<branch>` after.
+`-D` is safe: the old branch is no ancestor, and tidy proved the tip equals the parent plus branch merge, so it loses nothing. Delete `refs/acta/tidy/<branch>` after.
 
-Known limit: a hash that lands in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
+Known limit: a hash in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
 
-After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a split spec never leaves the parent dirty for the next land.
+After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a split spec never leaves the parent dirty.
 
-Tidy keeps the kept commit's message, and moves every `Task:` trailer of a folded commit into its last paragraph, once (BUG-0051). Git and `internal/commits` read trailers only there. A `docs` commit that changes files outside the planning root stays a commit; before the review marker only `chore`, `polish` and `wiki` fold by type. When every commit folds, the subject comes from the newest commit that changed real files. Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.
+Tidy keeps the kept commit's message and moves each folded `Task:` trailer into its last paragraph, once (BUG-0051); git and `internal/commits` read trailers only there. Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.

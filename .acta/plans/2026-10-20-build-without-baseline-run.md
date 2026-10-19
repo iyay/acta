@@ -5,6 +5,7 @@ id: PLN-0179
 created: "2026-10-20 05:31:04"
 hash: blphkrk
 started: "2026-10-20 05:33:12"
+finished: "2026-10-20 05:42:39"
 ---
 # Start builds without a baseline test run
 
@@ -41,9 +42,21 @@ started: "2026-10-20 05:33:12"
 **Files:** Modify `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_land_test.go`, `internal/plugincheck/evals_test.go`, and `.acta/wiki/land-gates-then-merge.md`; create `plugin/skills/land/baseline.md`, `plugin/evals/land-baseline-pass/`, and `plugin/evals/land-baseline-fail/` (each with case, scaffold, prompt, deterministic graders).
 **Seam:** The common full-suite landing precondition before ordinary/tidy landing, its baseline record/log artifacts, `CheckSkill`, and sandboxed landing eval command traces.
 **verify:** Every actual full-suite landing run keeps its complete output and true command exit status; only PASS atomically replaces `acta-baseline.md` with tested commit/tree, command, time, relevant runtime/dependency context, exit status, summary, and an absolute retained-log path; failed/interrupted runs and write errors preserve the previous PASS and its log, retain failure output, and never permit a false PASS or merge; linked worktrees share evidence, paths with spaces work, logs are unique per run, a summary never reruns the suite, and gate reuse preserves the original tested identity without publishing a fresh result.
-- [ ] Red: Require the landing evidence policy and its shared placement before ordinary/tidy paths, register passing/failing evals with counted test commands and a pre-existing PASS for the failure case, and observe `scripts/test ./internal/plugincheck/ -run 'Test(SkillLand|Land.*Baseline|Eval)'` fail against the current landing skill.
-- [ ] Change: Add concise shared instructions and `baseline.md` for capturing original output/status without pipeline masking, recording PASS by atomic rename with an immutable log, and preserving prior evidence on failure; finish artifact/trace graders and the runbook, preserve all existing gates/reuse rules, and pass focused checks and landing evals.
-- [ ] Commit: `feat(land): save passing suite baselines and logs`.
+- [x] Red: Require the landing evidence policy and its shared placement before ordinary/tidy paths, register passing/failing evals with counted test commands and a pre-existing PASS for the failure case, and observe `scripts/test ./internal/plugincheck/ -run 'Test(SkillLand|Land.*Baseline|Eval)'` fail against the current landing skill.
+- [x] Change: Add concise shared instructions and `baseline.md` for capturing original output/status without pipeline masking, recording PASS by atomic rename with an immutable log, and preserving prior evidence on failure; finish artifact/trace graders and the runbook, preserve all existing gates/reuse rules, and pass focused checks and landing evals.
+- [x] Commit: `feat(land): save passing suite baselines and logs`.
+
+## Fix round 1
+
+### Task 3: Fix review findings
+
+**verify:** the baseline policy covers every full-suite run, the eval graders fail for the right reason, and nothing else changes.
+
+- [ ] Scope the baseline policy to step 1, step-6 and tidy-tip runs, naming the tested checkout.
+- [ ] Grade the failure log path from the report, any merge form, the full old record and all record fields.
+- [ ] Use seven-character hashes in the stale eval and drop the unused requirements file.
+- [ ] Keep the tidy-history fold fallback and drop the double run-one wrap.
+- [ ] Commit: `fix(land): close the review findings`
 
 ## Close
 
@@ -53,7 +66,7 @@ Run the existing close checks and one deep review over the complete branch, then
 
 ### Next
 
-Task 2: add the landing baseline policy, baseline.md, and the pass/fail evals.
+Close: wiki check, fast tests, deep review, then land.
 
 ### Findings
 
