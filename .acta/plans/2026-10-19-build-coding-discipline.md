@@ -5,6 +5,8 @@ after: [PLN-0170]
 id: PLN-0171
 created: "2026-10-19 11:33:25"
 hash: s10ntrm
+started: "2026-10-19 13:37:40"
+finished: "2026-10-19 13:53:36"
 ---
 # Build executor coding discipline implementation plan
 
@@ -32,6 +34,12 @@ hash: s10ntrm
 **Files:** Modify `plugin/skills/build/SKILL.md` and `plugin/skills/build/implementer-prompt.md`; update affected checks in `internal/plugincheck/skill_build_test.go`, `budget_test.go` and `evals_test.go`; create `plugin/evals/build-coding-discipline/{case.yaml,prompt.md,scaffold.sh,graders/behavior.md}` only for behavior not covered after PLN-0170; reuse `plugin/evals/build-inline-flow/` and `plugin/evals/lean-tests/` unchanged unless their existing checks need a directly relevant extension.
 **Seam:** The build skill running an approved task in the existing eval sandbox, observed through its tool trace, implementation, tests and commit; existing plugincheck checks guard packaging and workflow contracts.
 **verify:** Every executor receives the same coding contract: relevant callers are traced before the shared implementation changes; the task diff is checked before commit for excess code, accidental contract changes, lost validation/error handling and redundant tests; implementation defects, environment failures and missing plan decisions take the correct debug/setup/escalation path without blind retries or false RED; list evidence and untested paths without treating static text checks as runtime proof.
-- [ ] Red: After the dependency lands, inspect and run existing relevant cases, then use the smallest missing behavioral scenario against the unchanged landed skill to observe a concrete failure in tracing, pre-commit checking or failure triage; retain passing coverage without duplicating cases or manufacturing a failure.
-- [ ] Change: Add the concise shared contract and align the worker self-check before commit, then pass `scripts/test ./internal/plugincheck/` and the affected eval commands above; compare baseline/candidate artifacts and traces, record uncovered paths and maintain risk-based test selection without duplicating debug's own tests.
-- [ ] Commit: `refactor(build): make executor coding checks explicit`, with the task trailer; use the existing wiki, deep review and land gates after the task checks pass.
+- [x] Red: After the dependency lands, inspect and run existing relevant cases, then use the smallest missing behavioral scenario against the unchanged landed skill to observe a concrete failure in tracing, pre-commit checking or failure triage; retain passing coverage without duplicating cases or manufacturing a failure.
+- [x] Change: Add the concise shared contract and align the worker self-check before commit, then pass `scripts/test ./internal/plugincheck/` and the affected eval commands above; compare baseline/candidate artifacts and traces, record uncovered paths and maintain risk-based test selection without duplicating debug's own tests.
+- [x] Commit: `refactor(build): make executor coding checks explicit`, with the task trailer; use the existing wiki, deep review and land gates after the task checks pass.
+
+## State
+
+### Next
+
+Task 1 committed. Next: wiki check, deep review over main..HEAD, land.

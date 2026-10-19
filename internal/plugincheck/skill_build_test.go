@@ -46,6 +46,8 @@ func TestSkillBuild(t *testing.T) {
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
+			// The shared coding contract every executor follows.
+			"Then trace the change", "Fix a shared cause once", "Before the commit, read `git diff` once", "is never a RED", "never weaken a check to pass",
 		},
 		MustNot: []string{"or has `depth: minimal`", `only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
@@ -438,5 +440,17 @@ func TestBuildWorktreeAddFromTopFolder(t *testing.T) {
 	const want = "cd \"$(git rev-parse --show-toplevel)\"\ngit worktree add \"../$REPO-$SLUG\""
 	if !strings.Contains(readBuildFile(t, "SKILL.md"), want) {
 		t.Error("build/SKILL.md must cd to the repo top folder right before git worktree add")
+	}
+}
+
+// TestImplementerPromptCodingContract reads implementer-prompt.md on its own.
+// A subagent worker reads only this file, so the trace, triage and diff
+// check from the task loop have to reach it here too.
+func TestImplementerPromptCodingContract(t *testing.T) {
+	txt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
+	for _, want := range []string{"trace the change", "Fix a shared cause once", "is never a RED", "never weaken a check to pass", "In `git diff`"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("implementer-prompt.md missing %q", want)
+		}
 	}
 }

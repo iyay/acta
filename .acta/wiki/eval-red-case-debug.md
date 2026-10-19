@@ -9,5 +9,6 @@ paths: [plugin/evals/, plugin/evals-routing/]
 2. Run it on main: a case red there is not caused by the diff.
 3. Run with the branch binary first on PATH: plugin hooks call the installed acta, not the branch code.
 4. Treat one LLM-judged red run as noise until repeated.
-5. Read the kept trace (`--keep-temp`, `out/trace.jsonl`): list the tool calls and check whether the run read the file the skill points to. A judge stores votes, not reasons. In debug-race every red run skipped `race.md`; text-only rewrites of the skill did not change that.
-6. Never loosen a grader to go green. Never fix a symlink under the home folder that the sandbox cannot read without asking; it blocks Bash cases.
+5. Check the scaffold plan does not name the fix. A Change step that says "make slug drop the spaces" sends every run to slug, so the old skill fails too and the red proves nothing.
+6. Read the kept trace (`--keep-temp`, `out/trace.jsonl`): list the tool calls and check whether the run read the file the skill points to. A judge stores votes, not reasons. In debug-race every red run skipped `race.md`; text-only rewrites of the skill did not change that.
+7. Never loosen a grader to go green. Never fix a symlink under the home folder that the sandbox cannot read without asking; it blocks Bash cases.

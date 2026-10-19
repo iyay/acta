@@ -61,6 +61,16 @@ Subagent (general-purpose):
        for a finding that cost time, `rulings` for a question for the user.
     8. Self-review your own diff, then report.
 
+    Before the first test, trace the change: read the callers of the code
+    you will change, the shared code they pass through, and their tests;
+    not the whole repo. Fix a shared cause once, where every caller passes
+    through. A broken contract for another caller, or files beyond the
+    task, is BLOCKED with the question. A failed run: name its kind first.
+    A code defect goes through `acta:debug`; a setup error (missing tool,
+    path, import) is fixed in setup and is never a RED; a plan gap is
+    NEEDS_CONTEXT. Never retry a step without new evidence, and never
+    weaken a check to pass.
+
     Comments in plain English a ten-year-old can read, saying why; no
     marker tags. Report in the user's chat language; write everything in the
     repo in the repo language.
@@ -81,6 +91,9 @@ Subagent (general-purpose):
     - Did every change start from a failing test I watched fail?
     - Do tests check behavior, not mocks? Is the output free of noise?
     - Did I build only what was asked, with clear names?
+    - In `git diff`: no code the task does not need, no public contract
+      changed by accident, every validation and error path kept?
+    - Did I fix the shared cause, so every caller I traced gets it?
 
     ## Report Format
 
