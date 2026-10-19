@@ -106,10 +106,8 @@ await new Promise(r => setTimeout(r, 200));   // Then: wait for timed behavior
 2. Based on known timing (not guessing)
 3. Comment explaining WHY
 
-## Real-World Impact
+## Waiting is not a race fix
 
-From debugging session (2025-10-03):
-- Fixed 15 flaky tests across 3 files
-- Pass rate: 60% → 100%
-- Execution time: 40% faster
-- No more race conditions
+A wait fixes a test that checks too early. It does not fix two workers that
+change shared state at the same time. For that, use the race recipe in
+`SKILL.md`: force the interleaving and assert the final invariant.

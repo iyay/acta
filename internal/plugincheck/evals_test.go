@@ -19,6 +19,12 @@ var evalCases = []struct {
 	file   string
 	phrase string
 }{
+	{"debug-exact-symptom", "skills/debug/SKILL.md", "acta:tdd"},
+	{"debug-misleading-path", "skills/debug/SKILL.md", "root-cause-tracing.md"},
+	{"debug-no-repro", "skills/debug/SKILL.md", "never push"},
+	{"debug-race", "skills/debug/condition-based-waiting.md", "condition"},
+	{"debug-order-dependent", "skills/debug/find-polluter.sh", "polluter"},
+	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
 	{"second-brainstorm-choices", "skills/shape/SKILL.md", "One Architectural brainstorm per session"},
@@ -70,6 +76,11 @@ func TestEvalCases(t *testing.T) {
 // lean-tests case reads what the tests say, so only a judge can grade it. One
 // check there only lists the files the run made, so a regex does it for free.
 func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
+	// Keep debug cases separate so workflow case edits can merge on their own.
+	debug := map[string]bool{
+		"debug-exact-symptom": true, "debug-misleading-path": true, "debug-no-repro": true,
+		"debug-race": true, "debug-order-dependent": true, "debug-performance": true,
+	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"review-understanding-report": true, "review-understanding-disabled": true}
 	for _, c := range evalCases {
@@ -84,7 +95,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			if c.folder == "lean-tests" && filepath.Base(f) == "no-extra-test-files.md" {
 				continue
 			}
-			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != want[c.folder] {
+			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != (want[c.folder] || debug[c.folder]) {
 				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}
 		}
