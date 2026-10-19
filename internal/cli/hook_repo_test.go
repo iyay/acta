@@ -7,22 +7,29 @@ import (
 	"testing"
 )
 
-// The repo language in .acta.yaml reaches the session rules, so an agent in
-// that repo writes files in the repo's language.
-func TestHookUsesRepoLanguage(t *testing.T) {
+// Repo files are always English. An old repo_language in either file must not
+// change that, and must not break the hook.
+func TestHookRepoFilesAlwaysEnglish(t *testing.T) {
 	dir := t.TempDir()
 	global := filepath.Join(t.TempDir(), "config.yaml")
 	t.Setenv("PM_VOICE_FILE", global)
-	if err := os.WriteFile(global, []byte("chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n"), 0o644); err != nil {
+	if err := os.WriteFile(global, []byte("chat_language: Indonesian\nstyle: adhd\nrepo_language: German\nsubagent_models: split\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("repo_language: Korean\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".acta.yaml"), []byte("repo_language: Korean\nsubagent_models: split\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(dir)
 	out := mustRun(t, "hook", "session-start")
-	if !strings.Contains(out, "(code, comments, commits, specs, plans) in Korean") {
-		t.Errorf("session-start ignores the repo language:\n%s", out)
+	for _, want := range []string{"(code, comments, commits, specs, plans) in English", "subagents or other agents in English"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("session-start lacks %q:\n%s", want, out)
+		}
+	}
+	for _, bad := range []string{"Korean", "German", "Subagent models", ".acta.yaml:"} {
+		if strings.Contains(out, bad) {
+			t.Errorf("session-start holds %q:\n%s", bad, out)
+		}
 	}
 	// A broken repo file is named, and the chat language the user picked
 	// stays, since a repo file must never change how the agent talks.
