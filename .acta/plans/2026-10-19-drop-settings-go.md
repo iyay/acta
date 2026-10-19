@@ -67,3 +67,31 @@ finished: "2026-10-19 20:16:26"
 Removing the User fields breaks hook, cli and setup at compile time, so task 1's commit carries every source change; tasks 2 and 3 add only their tests.
 MergeRepo refused subagent_models as a personal key; it is now dropped, so old .acta.yaml files load.
 Minimal plan had no checkboxes, so tick --all failed; boxes were added in the worktree copy.
+
+## Fix round 1
+
+### Task 4: Keep comments and drop old keys on every repo write
+
+**Files:** `internal/config/repo_user.go`, `internal/config/legacy_keys_test.go`, `internal/hook/hook_test.go`
+**Seam:** `config.SaveRepoUser`, `config.UnsetRepoUser`
+**verify:** No write to `.acta.yaml` loses a user comment or keeps an old key. Both writers drop `repo_language` and `subagent_models`; a comment above a dropped key moves to the next kept key, or closes the file when none follows. List each writer and comment place checked (top, middle, last key).
+**Commit:** `fix(config): keep comments when old repo keys are dropped`
+
+- [x] Red: failing tests for comment carry in SaveRepoUser and old-key drop in UnsetRepoUser
+- [x] Change: one shared key-removal helper used by both writers; stale hook test comments fixed
+- [x] Commit with the plan task trailer
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** Each NOTE below applied, and nothing else changes.
+
+- [x] SaveRepoUser test case where the dropped key ends the file, so the end-of-file comment branch is covered
+- [x] Comment above that branch says a leftover comment goes under the last key, not that the set always adds one
+- [x] `var carried string` in place of `carried := ""` plus a second assignment
+- [x] Commit: `polish: review notes PLN-0175`
+
+## Review notes
+
+Deep review, 2 rounds plus polish: round 1 BLOCKER (SaveRepoUser lost comments above dropped keys) fixed in Task 4; low notes left as is (test helper ignores a read error, nested old maps lose inner comments by design).

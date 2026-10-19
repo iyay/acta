@@ -119,13 +119,8 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 	}
 	// Old files can hold keys acta no longer reads. Drop them on every write,
 	// so the shared file does not keep a setting that does nothing.
-	kept := make([]*yaml.Node, 0, len(m.Content))
-	for i := 0; i+1 < len(m.Content); i += 2 {
-		if !slices.Contains(droppedKeys, m.Content[i].Value) {
-			kept = append(kept, m.Content[i], m.Content[i+1])
-		}
-	}
-	m.Content = kept
+	var carried string
+	m.Content, _, carried = removeKeys(m.Content, droppedKeys)
 	// Walk RepoKeys, not the map, so the file comes out the same every time.
 	for _, k := range RepoKeys {
 		val, ok := set[k]
@@ -140,6 +135,12 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 			continue
 		}
 		m.Content = append(m.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: k}, node)
+	}
+	// A comment left over sat above the last key in the file. Keep it at the
+	// end, under whatever key now comes last.
+	if carried != "" && len(m.Content) > 0 {
+		last := m.Content[len(m.Content)-2]
+		last.FootComment = joinComments(last.FootComment, carried)
 	}
 	out, err := yaml.Marshal(&doc)
 	if err != nil {
@@ -232,25 +233,8 @@ func UnsetRepoUser(repoRoot string, keys []string) (string, error) {
 	if m.Kind != yaml.MappingNode {
 		return path, fmt.Errorf("%s: the top level is not a list of keys", path)
 	}
-	// Keys sit at even places and values right after them, so drop in pairs.
-	// yaml ties the comment above a key to that key, so a removed key would
-	// take it along. The person wrote it for the file, so hand it on: it goes
-	// above the next key that stays. The comment on the same line as a removed
-	// value was about that value and goes with it.
-	kept, changed, carried := make([]*yaml.Node, 0, len(m.Content)), false, ""
-	for i := 0; i+1 < len(m.Content); i += 2 {
-		k := m.Content[i]
-		if slices.Contains(keys, k.Value) {
-			changed = true
-			carried = joinComments(joinComments(carried, k.HeadComment), k.FootComment)
-			continue
-		}
-		if carried != "" {
-			k.HeadComment = joinComments(carried, k.HeadComment)
-			carried = ""
-		}
-		kept = append(kept, k, m.Content[i+1])
-	}
+	// Old keys go too, so this write does not keep a setting that does nothing.
+	kept, changed, carried := removeKeys(m.Content, append(slices.Clone(keys), droppedKeys...))
 	if !changed {
 		return path, nil
 	}
@@ -275,6 +259,31 @@ func UnsetRepoUser(repoRoot string, keys []string) (string, error) {
 		return path, err
 	}
 	return path, os.Rename(tmp, path)
+}
+
+// removeKeys drops the given keys from a yaml map's content. Keys sit at even
+// places and values right after them, so it drops in pairs. yaml ties the
+// comment above a key to that key, so a removed key would take it along. The
+// person wrote it for the file, so hand it on: it goes above the next key that
+// stays. A comment with no key left below it comes back as carried, for the
+// caller to place. The comment on the same line as a removed value was about
+// that value and goes with it.
+func removeKeys(content []*yaml.Node, keys []string) (kept []*yaml.Node, changed bool, carried string) {
+	kept = make([]*yaml.Node, 0, len(content))
+	for i := 0; i+1 < len(content); i += 2 {
+		k := content[i]
+		if slices.Contains(keys, k.Value) {
+			changed = true
+			carried = joinComments(joinComments(carried, k.HeadComment), k.FootComment)
+			continue
+		}
+		if carried != "" {
+			k.HeadComment = joinComments(carried, k.HeadComment)
+			carried = ""
+		}
+		kept = append(kept, k, content[i+1])
+	}
+	return kept, changed, carried
 }
 
 // joinComments stacks two yaml comment blocks, the first above the second.

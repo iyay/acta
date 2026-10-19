@@ -135,10 +135,8 @@ func TestSessionStartBrokenVoice(t *testing.T) {
 	}
 }
 
-// Every session start text that names a repo language also says which
-// language prompts to other agents use: always the repo language, because
-// subagents write repo text too. Chat Indonesian with repo English must ask
-// for English, never Indonesian.
+// Prompts to other agents are always English, because subagents write repo
+// text too. Chat in Indonesian must still ask for English, never Indonesian.
 func TestSessionStartHandoffLineIsEnglish(t *testing.T) {
 	const wantEn = "- Write prompts and hand-offs to subagents or other agents in English.\n"
 	set := Input{Voice: config.User{ChatLanguage: "Indonesian", Style: "adhd"}, VoiceExists: true}
@@ -149,7 +147,7 @@ func TestSessionStartHandoffLineIsEnglish(t *testing.T) {
 	if strings.Contains(out, "hand-offs to subagents or other agents in Indonesian") {
 		t.Errorf("voice set: the handoff line uses the chat language:\n%s", out)
 	}
-	// The line sits after the repo language line and before the style line,
+	// The line sits after the repo files line and before the style line,
 	// so it reads as part of the voice, not as a new rule.
 	repo, hand, style := strings.Index(out, "(code, comments, commits, specs, plans) in English."),
 		strings.Index(out, wantEn),

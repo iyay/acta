@@ -79,3 +79,62 @@ func TestRepoLanguageIsNotARepoKey(t *testing.T) {
 		t.Error("UnsetRepoUser took repo_language")
 	}
 }
+
+// A comment the team wrote above an old key must survive the drop, the same
+// way UnsetRepoUser keeps it.
+func TestLegacyKeyCommentsSurviveRepoWrites(t *testing.T) {
+	cases := []struct{ name, body, want string }{
+		{"top", "# Team settings.\nrepo_language: Korean\nplan_depth: full\n", "# Team settings."},
+		{"middle", "plan_depth: full\n# why korean\nrepo_language: Korean\ncoding_guide: off\n", "# why korean"},
+		{"last", "plan_depth: full\n# old model rule\nsubagent_models: split\n", "# old model rule"},
+	}
+	writers := map[string]func(dir string) error{
+		"save": func(dir string) error {
+			_, err := SaveRepoUser(dir, map[string]string{"review_depth": "deep"})
+			return err
+		},
+		"unset": func(dir string) error {
+			_, err := UnsetRepoUser(dir, []string{"commit_history"})
+			return err
+		},
+	}
+	for _, c := range cases {
+		for wname, write := range writers {
+			dir := t.TempDir()
+			path := filepath.Join(dir, ".acta.yaml")
+			body := c.body + "commit_history: full\n"
+			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := write(dir); err != nil {
+				t.Fatalf("%s/%s: %v", c.name, wname, err)
+			}
+			raw, _ := os.ReadFile(path)
+			got := string(raw)
+			if !strings.Contains(got, c.want) {
+				t.Errorf("%s/%s: lost %q:\n%s", c.name, wname, c.want, got)
+			}
+			for _, k := range []string{"repo_language", "subagent_models"} {
+				if strings.Contains(got, k+":") {
+					t.Errorf("%s/%s: kept %s:\n%s", c.name, wname, k, got)
+				}
+			}
+		}
+	}
+}
+
+// When the dropped key ends the file, its comment must still close the file.
+func TestLegacyKeyCommentAtEndSurvivesSave(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".acta.yaml")
+	if err := os.WriteFile(path, []byte("plan_depth: full\n# old model rule\nsubagent_models: split\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SaveRepoUser(dir, map[string]string{"plan_depth": "minimal"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	if got := string(raw); !strings.Contains(got, "# old model rule") || strings.Contains(got, "subagent_models") {
+		t.Errorf("end comment lost or old key kept:\n%s", got)
+	}
+}
