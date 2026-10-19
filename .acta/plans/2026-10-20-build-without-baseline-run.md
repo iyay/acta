@@ -64,11 +64,21 @@ finished: "2026-10-20 05:42:39"
 
 **verify:** the eval matchers see the JSON-encoded command, the registry phrase has a live carrier, and nothing else changes.
 
-- [ ] Anchor the negative suite matchers on the JSON command value and keep the positive matcher plain.
-- [ ] Point the pass registry at a phrase a surviving grader carries.
-- [ ] Require an absolute failure log path and allow the run-one wrapper in the record fields.
-- [ ] Record the input_match regex semantics in FACTS.md.
-- [ ] Commit: `fix(evals): read the JSON tool input`
+- [x] Anchor the negative suite matchers on the JSON command value and keep the positive matcher plain.
+- [x] Point the pass registry at a phrase a surviving grader carries.
+- [x] Require an absolute failure log path and allow the run-one wrapper in the record fields.
+- [x] Record the input_match regex semantics in FACTS.md.
+- [x] Commit: `fix(evals): read the JSON tool input`
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Anchor the absolute failure log path so a relative path with a slash fails.
+- [x] Let the negative suite matcher cross an escaped quote or newline in the JSON command.
+- [x] Commit: `polish: review notes for PLN-0179`
 
 ## Close
 
@@ -82,4 +92,12 @@ Close: wiki check, fast tests, deep review, then land.
 
 ### Findings
 
-A build eval needs a scripts/test trap to prove setup never runs the suite.
+## Review notes
+
+- Round 1, deep, two reviewers: BLOCKED. The baseline policy covered step 1 only, while the step-6 and tidy reruns also run the full suite.
+- Fix round 1: that blocker, plus the eval matcher, hash, record and tidy-page notes.
+- Round 2, two reviewers: BLOCKED. The suite matchers could not see JSON-encoded Bash input, and the deleted pass grader carried the eval registry phrase.
+- Fix round 2: both blockers, plus the absolute log path, the run-one record form and the FACTS semantics.
+- Round 3, two reviewers: CLEAN.
+- Polish, light tier, markdown graders only: CLEAN.
+- Notes kept: the merge matcher misses `-m` before the branch, which is outside the tested flow; the red log is proven by the report path, since the omp file lister skips `.git`; the step-1 `acta run-one -- <full command>` wording is pre-existing and now caveated.

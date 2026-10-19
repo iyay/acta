@@ -5,7 +5,7 @@
 # makes setup run a suite.
 type: tool_used
 tool: Bash
-input_match: "(^|[;&|]\\s*)(\\./)?scripts/test(\\s|$)"
+input_match: '"command":"((?:[^"\\]|\\.)*[;&|](?:\s|\\[nrt]|\\\\)*)?(\./)?scripts/test(\s|"|$)'
 min: 0
 max: 0
 ---

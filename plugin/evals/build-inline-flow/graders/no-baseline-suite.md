@@ -4,7 +4,7 @@
 # result exists here, and a missing one changes nothing.
 type: tool_used
 tool: Bash
-input_match: "(^|[;&|]\\s*)(\\./)?scripts/test(\\s|$)"
+input_match: '"command":"((?:[^"\\]|\\.)*[;&|](?:\s|\\[nrt]|\\\\)*)?(\./)?scripts/test(\s|"|$)'
 min: 0
 max: 0
 ---
