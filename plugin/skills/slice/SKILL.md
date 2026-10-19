@@ -24,7 +24,7 @@ Pick the depth in this order, and do not ask when one answers: the argument of `
 - `full`: everything below, with real code in every code step, and a wait for the user's yes.
 - `minimal`: the frontmatter holds `parent:` and `depth: minimal`. The header is `**Goal:**` (one sentence), `**Spec:**`, `**Tests:**`, `## Global Constraints` (the lean line, unless coding_guide is off, plus only what this plan needs) and `## Waves`; no Architecture, Tech Stack, File map or Interfaces. Each task has a title, `**Files:**`, `**Seam:**`, a property-shaped `**verify:**` (each case named once, at the layer that owns it; a layer above is wiring only) and exactly these three boxes, one sentence each, because acta counts them as task progress: `- [ ] Red: <test> fails because <why>`, `- [ ] Change: <code change>`, `- [ ] Commit: <message>`. No code blocks. About 7 lines a task.
 
-The code-block rule and No Placeholders apply to `full` plans only. A minimal plan's self-review checks two things: every part of the spec has a task, and every verify line is a property.
+Code blocks and No Placeholders apply to `full` plans only. Minimal review: coverage, verify properties, Red, Change and Commit boxes per task in each plan; fix omissions before hand-off.
 
 Depth changes only what a plan holds, never the gate. A minimal plan is saved, given its id, committed on main with `acta commit <path> -m "<message>"`, shown to the user (its path and one line a task), and waits for a yes like a full plan. A split (split.md) never starts a build.
 

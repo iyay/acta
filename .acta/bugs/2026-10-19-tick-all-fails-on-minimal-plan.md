@@ -3,6 +3,7 @@ id: BUG-0050
 hash: qxcsswn
 status: open
 finished: "2026-10-19 20:20:00"
+started: "2026-10-19 20:30:17"
 ---
 # Slice self-review misses required checkboxes in minimal plans
 

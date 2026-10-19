@@ -44,6 +44,7 @@ func TestSkillSlice(t *testing.T) {
 			// The board counts these boxes as task progress, so a minimal
 			// task with no box never reads as done until its plan is finished.
 			"`- [ ] Red: <test> fails because <why>`", "`- [ ] Change: <code change>`", "`- [ ] Commit: <message>`",
+			"Minimal review: coverage, verify properties, Red, Change and Commit boxes per task in each plan; fix omissions before hand-off.",
 		},
 		MustNot: []string{"superpowers:",
 			"needs no yes", "skips the wait", "in the same turn", "for a minimal plan, the spec's yes", "docs/superpowers", "executing-plans", "Two execution options", "plan-document-reviewer",
