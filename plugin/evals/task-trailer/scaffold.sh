@@ -17,7 +17,7 @@ fi
 # missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
 fi
 mkdir -p bin src tests .acta/specs .acta/plans
 # The build runs git, and the system git does not work in the Bash sandbox. It is

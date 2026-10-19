@@ -59,9 +59,8 @@ acta config set --language Korean --style adhd --tone "Casual, short sentences."
 ```
 
 The setting lives in `~/.acta/config.yaml` (or `PM_VOICE_FILE`). Change it any
-time with `/acta:setup` or `acta config set`. Files written to the repo stay in the
-repo language (English unless you set `--repo-language`). If your CLAUDE.md
-names a language, it wins.
+time with `/acta:setup` or `acta config set`. Files written to the repo are in English. If your CLAUDE.md names a language,
+it wins.
 
 The reply rules behind `adhd` and `plain` live in an output style that ships
 with the plugin, also named `acta`. Its core rules keep every reply short and
@@ -113,7 +112,7 @@ topics are covered by the plugin and can be removed from your file:
 |---|---|
 | Pipeline: brainstorm, plan, approval gates | `acta:shape`, `acta:slice` |
 | Worktree for every change, created without asking | `acta:build` |
-| Subagent models and the orchestrator writing no code | `acta:build` |
+| The orchestrator writing no code | `acta:build` |
 | TDD rules and the test quality bar | `acta:tdd` |
 | Debug phases, read-only until the hypothesis | `acta:debug` |
 | Review: two axes, BLOCKER or NOTE, three rounds | `acta:review` |

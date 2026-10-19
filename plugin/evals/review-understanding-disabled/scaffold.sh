@@ -20,7 +20,7 @@ fi
 # real machine never overwrites one. Inside the eval it is always missing.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\nrepo_language: English\nreview_depth: deep\ncommit_history: full\nreview_understanding: false\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\nreview_depth: deep\ncommit_history: full\nreview_understanding: false\n' > "$HOME/.acta/config.yaml"
 fi
 ws="$PWD"
 mkdir -p bin

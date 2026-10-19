@@ -83,4 +83,4 @@ Omp recipient only, after the land. Read `~/.omp/agent/memories/--<worktree abs 
 
 ## Advisor
 
-Before security, auth, data-migration or money work, pair a reviewer model to omp's `advisor` role (`/advisor` in the pane shows it). One advisor note costs less than a review round.
+Before security, auth, data-migration or money work, pair a strong model to omp's `advisor` role (`/advisor` in the pane shows it). One advisor note costs less than a review round.

@@ -9,13 +9,13 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting never lowers a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
+Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting cannot drop a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 
-The standard and deep levels (`## Review depth`) dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md), both on your own model (never lower):
+The standard and deep levels (`## Review depth`) dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md):
 
-**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
+**Subagent models.** Name no model for any subagent; the harness default picks it.
 
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.

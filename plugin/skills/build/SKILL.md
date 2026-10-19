@@ -32,7 +32,7 @@ Two fallbacks, each told to the user in one line:
 
 ## Models
 
-**Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config. Workers get the model it names, or none; on omp, `agent="task"` and its role config picks it. Reviewers (`acta:review`) get your own model alias, never lower. The first line of every subagent report names its model; missing or wrong, discard the report and dispatch again.
+**Subagent models.** Name no model for any subagent; the harness default picks it. On omp, workers run as `agent="task"` and its role config picks the model. The first line of every subagent report names its model; missing, discard the report and dispatch again.
 
 ## Worktree
 
@@ -76,7 +76,7 @@ Every task, whoever writes it:
 5. Right after the commit, run `acta tick plans/<stem>#task-N --all` so no box stays open. Never commit the plan file inside a task.
 6. Run `acta state set plans/<stem> <part>` with the lines on stdin; the State lives in the plan file, so the id is the plan, never a task. `next` is what the next task starts from, `findings` a finding that cost time, `rulings` a question waiting on the user. Ten lines each; never the current task, last commit, worktree path or review round, which are computed on read.
 
-Comments in plain English a ten-year-old can read, saying why; no marker tags. Report in the user's chat language; write everything in the repo in the repo language.
+Comments in plain English a ten-year-old can read, saying why; no marker tags. Report in the user's chat language; write everything in the repo in English.
 
 When a wave is done, commit the plan file yourself with `acta commit <plan path> -m "chore(plan): tick wave <n>"`. Any other plan or spec commit before landing uses `acta commit <path> -m "<message>"` too; only code commits use `git commit`.
 

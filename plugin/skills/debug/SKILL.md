@@ -14,7 +14,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
 - **A confirmed bug gets a file.** Once the cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `acta:bug`.
-- **Subagent models.** Follow the `Subagent models` line in the acta session note. With no such line, name no model and follow the user's own config.
+- **Subagent models.** Name no model for any subagent; the harness default picks it.
 
 ## Phase 1: Symptom and feedback loop
 
