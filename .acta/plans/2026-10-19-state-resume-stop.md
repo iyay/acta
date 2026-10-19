@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0164
 created: "2026-10-19 06:56:46"
 hash: r2nmet0
+started: "2026-10-19 06:58:06"
+finished: "2026-10-19 06:59:33"
 ---
 # state-resume stop plan
 
@@ -25,6 +27,10 @@ hash: r2nmet0
 **Files:** Modify `plugin/evals/state-resume/prompt.md`.
 **Seam:** the eval case as `scripts/eval --case state-resume` runs it.
 **verify:** No run of the case removes or lands the worktree the graders read; every run either changes `wt/src/invoice.py` as Next names or fails on that. List what each grader rejects. `scripts/eval --case state-resume --runs 3` passes 3 of 3.
-- [ ] Red: Run the case on main and observe a failed run (1 of 3 failed on 2026-10-19, trace e-nMn6yY).
-- [ ] Change: Add the stop line; pass the eval 3 of 3 and `scripts/test ./internal/plugincheck/`.
-- [ ] Commit: `test(evals): state-resume stops after the Next step`.
+- [x] Red: Run the case on main and observe a failed run (1 of 3 failed on 2026-10-19, trace e-nMn6yY).
+- [x] Change: Add the stop line; pass the eval 3 of 3 and `scripts/test ./internal/plugincheck/`.
+- [x] Commit: `test(evals): state-resume stops after the Next step`.
+
+## Review notes
+
+- Round 1: deep, full tier (eval prompt is agent instructions), Spec and Standards reviewers over e9f4d2d..HEAD: CLEAN, notes only. Eval state-resume 3 of 3 after, 2 of 3 on main.

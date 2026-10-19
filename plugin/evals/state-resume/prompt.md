@@ -16,6 +16,8 @@ with that work.
 
 The repo writes down where the work stands. Run the acta CLI's state command to
 find the plan that is going on, then do the next step it names.
+Do only that step and commit it, then stop. Do not review or land; a later
+session does that.
 
 Do not ask me where things stand or what to do next. The repo says.
 
