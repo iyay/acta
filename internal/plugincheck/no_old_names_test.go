@@ -88,7 +88,7 @@ func TestNoOldNames(t *testing.T) {
 	}
 	// The same check runs over what the session really shows, so the shown
 	// text cannot drift back while the files stay clean.
-	set := hook.Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}, VoiceExists: true}
+	set := hook.Input{Voice: config.User{ChatLanguage: "Korean", Style: "adhd"}, VoiceExists: true}
 	shown := map[string]string{
 		"first run":      hook.SessionStart(hook.Input{Voice: config.UserDefault()}),
 		"voice set":      hook.SessionStart(set),

@@ -45,7 +45,7 @@ func runCodeOut(args ...string) (int, string, string) {
 func TestConfigShowRepoLayer(t *testing.T) {
 	repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\nbuild_executor: dispatch\n", "plan_depth: minimal\n")
 	out := mustRun(t, "config", "show")
-	for _, want := range []string{"plan_depth: minimal (repo; yours: full)\n", "build_executor: dispatch\n", "repo_language: English\n"} {
+	for _, want := range []string{"plan_depth: minimal (repo; yours: full)\n", "build_executor: dispatch\n"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("show lacks %q:\n%s", want, out)
 		}
@@ -337,13 +337,13 @@ func TestConfigSetRepoQuestionsRefused(t *testing.T) {
 func TestConfigSetRepoWritesRepoFile(t *testing.T) {
 	dir, globalPath := repoWithGlobal(t, "chat_language: Indonesian\nstyle: adhd\nrepo_language: English\n", "")
 	before, _ := os.ReadFile(globalPath)
-	mustRun(t, "config", "set", "--repo", "--plan-depth", "minimal", "--executor", "inline", "--repo-language", "Korean")
+	mustRun(t, "config", "set", "--repo", "--plan-depth", "minimal", "--executor", "inline")
 	after, _ := os.ReadFile(globalPath)
 	if string(before) != string(after) {
 		t.Errorf("global file changed:\n%s", after)
 	}
 	raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml"))
-	for _, want := range []string{"plan_depth: minimal", "build_executor: inline", "repo_language: Korean"} {
+	for _, want := range []string{"plan_depth: minimal", "build_executor: inline"} {
 		if !strings.Contains(string(raw), want) {
 			t.Errorf(".acta.yaml lacks %q:\n%s", want, raw)
 		}

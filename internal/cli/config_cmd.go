@@ -136,9 +136,9 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		if *asJSON {
 			return printJSON(stdout, stderr, map[string]any{
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
-				"style": v.Style, "tone": v.Tone, "repo_language": v.RepoLanguage,
-				"build_executor": v.BuildExecutor, "subagent_models": v.SubagentModels,
-				"theme": v.Theme, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
+				"style": v.Style, "tone": v.Tone,
+				"build_executor": v.BuildExecutor,
+				"theme":          v.Theme, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
 				"review_understanding": v.Understanding(), "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
@@ -148,8 +148,8 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		if read != path {
 			state += ", old file; config set writes " + path
 		}
-		fmt.Fprintf(stdout, "file: %s (%s)\nchat_language: %s\nstyle: %s\nrepo_language: %s%s\n",
-			read, state, v.ChatLanguage, v.Style, v.RepoLanguage, mark("repo_language"))
+		fmt.Fprintf(stdout, "file: %s (%s)\nchat_language: %s\nstyle: %s\n",
+			read, state, v.ChatLanguage, v.Style)
 		if v.Tone != "" {
 			fmt.Fprintf(stdout, "tone: %s\n", v.Tone)
 		}
@@ -161,9 +161,6 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
 		fmt.Fprintf(stdout, "review_understanding: %v%s%s\n", v.Understanding(), mark("review_understanding"), understandingMark)
-		if v.SubagentModels != "" {
-			fmt.Fprintf(stdout, "subagent_models: %s\n", v.SubagentModels)
-		}
 		if v.Theme != "" {
 			fmt.Fprintf(stdout, "theme: %s\n", v.Theme)
 		}
@@ -175,10 +172,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		style := fs.String("style", "", "adhd or plain")
 		tone := fs.String("tone", "", "how you want to be spoken to, in your own words")
 		clearTone := fs.Bool("clear-tone", false, "remove the tone")
-		repo := fs.String("repo-language", "", "language for files written to the repo")
 		executor := fs.String("executor", "", "which executor runs the plan: subagent, dispatch or inline")
-		models := fs.String("subagent-models", "", "how models are picked for subagents: split, or default to leave it to your own config")
-		clearModels := fs.Bool("clear-subagent-models", false, "remove the subagent_models setting")
 		themeName := fs.String("theme", "", "the TUI color theme")
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
@@ -195,7 +189,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *repo == "" && *executor == "" && *depth == "" && *planSplit == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *models == "" && *themeName == "" && !*clearTone && !*clearModels && !*clearTheme && len(unset) == 0 {
+		if *lang == "" && *style == "" && *tone == "" && *executor == "" && *depth == "" && *planSplit == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *themeName == "" && !*clearTone && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
@@ -205,8 +199,8 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		if *repoOnly {
-			return setRepo(stdout, stderr, map[string]string{"repo_language": *repo, "build_executor": *executor, "plan_depth": *depth, "plan_split": *planSplit, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
-				*lang != "" || *style != "" || *tone != "" || *questions != "" || *models != "" || *themeName != "" || *clearTone || *clearModels || *clearTheme, unset)
+			return setRepo(stdout, stderr, map[string]string{"build_executor": *executor, "plan_depth": *depth, "plan_split": *planSplit, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
+				*lang != "" || *style != "" || *tone != "" || *questions != "" || *themeName != "" || *clearTone || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
@@ -220,9 +214,6 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *style != "" {
 			v.Style = *style
-		}
-		if *repo != "" {
-			v.RepoLanguage = *repo
 		}
 		if *clearTone {
 			v.Tone = ""
@@ -260,13 +251,6 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			v.ReviewUnderstanding = &b
 		}
 		// Clear first, set second, so one call can replace the value.
-		if *clearModels {
-			v.SubagentModels = ""
-		}
-		if *models != "" {
-			v.SubagentModels = *models
-		}
-		// Clear first, set second, so one call can replace the value.
 		if *clearTheme {
 			v.Theme = ""
 		}
@@ -302,7 +286,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 // agent talks to everyone who clones the repo.
 func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, unset []string) int {
 	if personal {
-		fmt.Fprintf(stderr, "--repo takes only --repo-language, --executor, --plan-depth, --plan-split, --review-depth, --commit-history, --coding-guide and --review-understanding; set the others without --repo\n")
+		fmt.Fprintf(stderr, "--repo takes only --executor, --plan-depth, --plan-split, --review-depth, --commit-history, --coding-guide and --review-understanding; set the others without --repo\n")
 		return exitBadInput
 	}
 	set := map[string]string{}
@@ -344,8 +328,6 @@ func setRepo(stdout, stderr io.Writer, want map[string]string, personal bool, un
 	for _, k := range config.RepoKeys {
 		switch val := set[k]; {
 		case val == "":
-		case k == "repo_language":
-			check.RepoLanguage = val
 		case k == "build_executor":
 			check.BuildExecutor = val
 		case k == "plan_depth":

@@ -16,11 +16,15 @@ import (
 // RepoKeys are the user settings a repo may set for itself in .acta.yaml,
 // in the order config show prints them. Everything else in User belongs to
 // the person and follows them from repo to repo.
-var RepoKeys = []string{"repo_language", "build_executor", "plan_depth", "plan_split", "review_depth", "commit_history", "coding_guide", "review_understanding"}
+var RepoKeys = []string{"build_executor", "plan_depth", "plan_split", "review_depth", "commit_history", "coding_guide", "review_understanding"}
+
+// droppedKeys were settings once. Old files may still hold them: reads skip
+// them and writes remove them.
+var droppedKeys = []string{"repo_language", "subagent_models"}
 
 // personalKeys may never sit in .acta.yaml: that file is committed, so a
 // value there would change how the agent talks to everyone who clones it.
-var personalKeys = []string{"chat_language", "style", "tone", "theme", "subagent_models"}
+var personalKeys = []string{"chat_language", "style", "tone", "theme"}
 
 // MergeRepo lays the repo keys of repoRoot/.acta.yaml over v. The map holds
 // each key the repo file set, so show can say where a value came from. On
@@ -60,8 +64,6 @@ func MergeRepo(v User, repoRoot string) (User, map[string]bool, error) {
 		}
 		from[k] = true
 		switch k {
-		case "repo_language":
-			out.RepoLanguage = strings.TrimSpace(s)
 		case "build_executor":
 			out.BuildExecutor = strings.TrimSpace(s)
 		case "plan_depth":
@@ -115,6 +117,15 @@ func SaveRepoUser(repoRoot string, set map[string]string) (string, error) {
 	if m.Kind != yaml.MappingNode {
 		return path, fmt.Errorf("%s: the top level is not a list of keys", path)
 	}
+	// Old files can hold keys acta no longer reads. Drop them on every write,
+	// so the shared file does not keep a setting that does nothing.
+	kept := make([]*yaml.Node, 0, len(m.Content))
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if !slices.Contains(droppedKeys, m.Content[i].Value) {
+			kept = append(kept, m.Content[i], m.Content[i+1])
+		}
+	}
+	m.Content = kept
 	// Walk RepoKeys, not the map, so the file comes out the same every time.
 	for _, k := range RepoKeys {
 		val, ok := set[k]
@@ -150,8 +161,6 @@ type Override struct{ Key, Repo, Yours string }
 func repoValue(u User, key string) string {
 	var v, def string
 	switch key {
-	case "repo_language":
-		v = u.RepoLanguage
 	case "build_executor":
 		v = u.BuildExecutor
 	case "plan_depth":

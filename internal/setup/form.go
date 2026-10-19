@@ -20,9 +20,7 @@ type Defaults struct {
 	Language            string
 	Style               string
 	Tone                string
-	RepoLanguage        string
 	BuildExecutor       string
-	SubagentModels      string
 	PlanDepth           string
 	PlanSplit           string
 	ReviewUnderstanding bool
@@ -43,9 +41,6 @@ func FormDefaults(e Env) Defaults {
 	if c.BuildExecutor == "" {
 		c.BuildExecutor = "inline"
 	}
-	if c.SubagentModels == "" {
-		c.SubagentModels = "default"
-	}
 	if c.PlanDepth == "" {
 		c.PlanDepth = "full"
 	}
@@ -65,9 +60,7 @@ func FormDefaults(e Env) Defaults {
 		Language:            c.ChatLanguage,
 		Style:               c.Style,
 		Tone:                c.Tone,
-		RepoLanguage:        c.RepoLanguage,
 		BuildExecutor:       c.BuildExecutor,
-		SubagentModels:      c.SubagentModels,
 		PlanDepth:           c.PlanDepth,
 		PlanSplit:           c.PlanSplit,
 		ReviewDepth:         c.ReviewDepth,
@@ -130,7 +123,7 @@ func buildFormState(e Env) *formState {
 		answer func() string
 	}{
 		{"Chat language",
-			"The language the agent chats in. Code and files use the repo language.",
+			"The language the agent chats in. Code and files are always English.",
 			huh.NewInput().Placeholder("English").Validate(required).Value(&d.Language), text(&d.Language)},
 		{"Reply style", "",
 			huh.NewSelect[string]().
@@ -141,18 +134,8 @@ func buildFormState(e Env) *formState {
 		{"Tone",
 			"Optional. Your own words, like \"casual, no jargon\".",
 			huh.NewInput().Value(&d.Tone), text(&d.Tone)},
-		{"Repo language",
-			"Code, comments, commits, specs and plans.",
-			huh.NewInput().Placeholder("English").Validate(required).Value(&d.RepoLanguage), text(&d.RepoLanguage)},
 		{"Build executor", "",
 			huh.NewSelect[string]().Options(executors...).Value(&d.BuildExecutor), text(&d.BuildExecutor)},
-		{"Subagent models",
-			"Claude Code only.",
-			huh.NewSelect[string]().
-				Options(
-					huh.NewOption("default: your own config decides", "default"),
-					huh.NewOption("split: sonnet writes code, the rest use a stronger model", "split"),
-				).Value(&d.SubagentModels), text(&d.SubagentModels)},
 		{"Plan detail", "",
 			huh.NewSelect[string]().
 				Options(
@@ -305,9 +288,7 @@ func AnswersUser(current config.User, d Defaults) config.User {
 		ChatLanguage:        d.Language,
 		Style:               d.Style,
 		Tone:                d.Tone,
-		RepoLanguage:        d.RepoLanguage,
 		BuildExecutor:       d.BuildExecutor,
-		SubagentModels:      d.SubagentModels,
 		PlanDepth:           d.PlanDepth,
 		PlanSplit:           d.PlanSplit,
 		ReviewDepth:         d.ReviewDepth,

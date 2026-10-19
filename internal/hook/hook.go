@@ -131,10 +131,10 @@ func SessionStart(in Input) string {
 	default:
 		v := in.Voice
 		fmt.Fprintf(&b, "\nVoice:\n- Write every chat message to the user in %s.\n", v.ChatLanguage)
-		fmt.Fprintf(&b, "- Write everything that goes into the repo (code, comments, commits, specs, plans) in %s. Comments use short, plain words and say why.\n", v.RepoLanguage)
-		// Subagents write repo text too, so their prompts use the repo
-		// language, never the chat language.
-		fmt.Fprintf(&b, "- Write prompts and hand-offs to subagents or other agents in %s.\n", v.RepoLanguage)
+		b.WriteString("- Write everything that goes into the repo (code, comments, commits, specs, plans) in English. Comments use short, plain words and say why.\n")
+		// Subagents write repo text too, so their prompts are English as
+		// well, never the chat language.
+		b.WriteString("- Write prompts and hand-offs to subagents or other agents in English.\n")
 		fmt.Fprintf(&b, "- Style: %s.\n", v.Style)
 		if v.Questions == "probe" {
 			b.WriteString("- Questions: probe.\n")
@@ -196,12 +196,6 @@ Codex: this session runs in Codex.
 - Codex has no output styles, so follow this style in every chat reply:
 `
 
-// modelLines says what each subagent_models value means for the Agent tool.
-var modelLines = map[string]string{
-	"split":   "In Claude Code, code-writing subagents use sonnet, other subagents (mapping, explore, planning help, debug investigation, spikes) opus, reviewers your own model alias.",
-	"default": "Name no model; the user's own setup picks it.",
-}
-
 // settingsBlock lists the behaviour settings of the config in force. Rule 6
 // points here: these lines beat a user's CLAUDE.md that says otherwise, which
 // is how a user who picked inline stops getting subagents. An empty setting
@@ -233,7 +227,6 @@ func settingsBlock(v config.User) string {
 	}
 	add("Review depth", v.ReviewDepth, "")
 	add("Commit history", v.CommitHistory, "")
-	add("Subagent models", v.SubagentModels, modelLines[v.SubagentModels])
 	// A value nobody set writes no line; the skills read that as false.
 	if v.ReviewUnderstanding != nil {
 		add("Review understanding", strconv.FormatBool(*v.ReviewUnderstanding), "")

@@ -59,8 +59,8 @@ func TestFormGroups(t *testing.T) {
 	groups := formGroupText(t, env)
 
 	// Twelve question screens, then one screen with a yes/no per harness.
-	if len(groups) != 13 {
-		t.Fatalf("got %d groups, want 13", len(groups))
+	if len(groups) != 11 {
+		t.Fatalf("got %d groups, want 11", len(groups))
 	}
 
 	// Fixed order: every screen opens with the blue-diamond title line,
@@ -70,20 +70,18 @@ func TestFormGroups(t *testing.T) {
 		count string
 		desc  string
 	}{
-		{"Chat language", "(1/13)", "The language the agent chats in. Code and files use the repo language."},
-		{"Reply style", "(2/13)", ""},
-		{"Tone", "(3/13)", "Optional. Your own words, like \"casual, no jargon\"."},
-		{"Repo language", "(4/13)", "Code, comments, commits, specs and plans."},
-		{"Build executor", "(5/13)", ""},
-		{"Subagent models", "(6/13)", "Claude Code only."},
-		{"Plan detail", "(7/13)", ""},
-		{"Plan split", "(8/13)", ""},
-		{"Commit history", "(9/13)", ""},
-		{"Questions", "(10/13)", ""},
-		{"Review depth", "(11/13)", ""},
-		{"Review understanding", "(12/13)", "After landing: explain the change. Never blocks."},
+		{"Chat language", "(1/11)", "The language the agent chats in. Code and files are always English."},
+		{"Reply style", "(2/11)", ""},
+		{"Tone", "(3/11)", "Optional. Your own words, like \"casual, no jargon\"."},
+		{"Build executor", "(4/11)", ""},
+		{"Plan detail", "(5/11)", ""},
+		{"Plan split", "(6/11)", ""},
+		{"Commit history", "(7/11)", ""},
+		{"Questions", "(8/11)", ""},
+		{"Review depth", "(9/11)", ""},
+		{"Review understanding", "(10/11)", "After landing: explain the change. Never blocks."},
 
-		{"Plugin install", "(13/13)", "One row per tool found."},
+		{"Plugin install", "(11/11)", "One row per tool found."},
 	}
 	for i, w := range want {
 		lines := strings.Split(groups[i], "\n")
@@ -104,8 +102,8 @@ func TestFormGroups(t *testing.T) {
 
 	// The harness screen lists every harness found.
 	content := formGroupContent(t, env)
-	if !strings.Contains(content[12], "claude") || !strings.Contains(content[12], "omp") {
-		t.Errorf("harness group lists every harness, got %q", content[12])
+	if !strings.Contains(content[10], "claude") || !strings.Contains(content[10], "omp") {
+		t.Errorf("harness group lists every harness, got %q", content[10])
 	}
 }
 
@@ -117,12 +115,12 @@ func TestFormGroupsNoHarness(t *testing.T) {
 
 	env := setup.Env{Current: config.User{}}
 	groups := formGroupText(t, env)
-	if len(groups) != 12 {
-		t.Fatalf("got %d groups, want 12", len(groups))
+	if len(groups) != 10 {
+		t.Fatalf("got %d groups, want 10", len(groups))
 	}
 	content := formGroupContent(t, env)
-	if strings.Contains(content[10], "claude") || strings.Contains(content[10], "omp") {
-		t.Errorf("last group must not name a harness, got %q", content[10])
+	if strings.Contains(content[8], "claude") || strings.Contains(content[8], "omp") {
+		t.Errorf("last group must not name a harness, got %q", content[8])
 	}
 }
 
@@ -163,13 +161,13 @@ func TestFormExecutorOptionsFollowHerdr(t *testing.T) {
 	// Outside a herdr pane only subagent and inline are offered; inside one
 	// (HERDR_ENV=1) dispatch joins them.
 	t.Setenv("HERDR_ENV", "")
-	plain := formGroupContent(t, setup.Env{Current: config.User{}})[4]
+	plain := formGroupContent(t, setup.Env{Current: config.User{}})[3]
 	if strings.Contains(plain, "dispatch") {
 		t.Errorf("executor screen must not offer dispatch outside herdr, got %q", plain)
 	}
 
 	t.Setenv("HERDR_ENV", "1")
-	herdr := formGroupContent(t, setup.Env{Current: config.User{}})[4]
+	herdr := formGroupContent(t, setup.Env{Current: config.User{}})[3]
 	if !strings.Contains(herdr, "dispatch") {
 		t.Errorf("executor screen must offer dispatch inside herdr, got %q", herdr)
 	}
@@ -183,7 +181,7 @@ func TestFormPlanDepthTitle(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
 	t.Setenv("TMPDIR", home)
 
-	header := formGroupText(t, setup.Env{Current: config.User{}})[6]
+	header := formGroupText(t, setup.Env{Current: config.User{}})[4]
 	if !strings.Contains(header, "Plan detail") {
 		t.Errorf("plan-depth question must read %q, got %q", "Plan detail", header)
 	}
@@ -198,11 +196,11 @@ func TestFormReviewDepth(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
 	t.Setenv("TMPDIR", home)
 
-	header := formGroupText(t, setup.Env{Current: config.User{}})[10]
+	header := formGroupText(t, setup.Env{Current: config.User{}})[8]
 	if !strings.Contains(header, "Review depth") {
 		t.Errorf("question after questions must read %q, got %q", "Review depth", header)
 	}
-	content := formGroupContent(t, setup.Env{Current: config.User{}})[10]
+	content := formGroupContent(t, setup.Env{Current: config.User{}})[8]
 	for _, want := range []string{"quick", "standard", "deep", "› ● standard"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("review depth screen must show %q, got %q", want, content)
@@ -214,7 +212,7 @@ func TestFormReviewDepth(t *testing.T) {
 	if d := setup.FormDefaults(setup.Env{Current: config.User{ReviewDepth: "deep"}}); d.ReviewDepth != "deep" {
 		t.Errorf("default from config = %q, want deep", d.ReviewDepth)
 	}
-	shown := formGroupContent(t, setup.Env{Current: config.User{ReviewDepth: "deep"}})[10]
+	shown := formGroupContent(t, setup.Env{Current: config.User{ReviewDepth: "deep"}})[8]
 	if !strings.Contains(shown, "› ● deep") {
 		t.Errorf("screen must start on deep, got %q", shown)
 	}
@@ -245,8 +243,8 @@ func TestFormRail(t *testing.T) {
 		}
 	}
 	// Yes/no sits on the rail as `● Yes  ○ No` for each harness.
-	if !strings.Contains(content[12], "claude") || !strings.Contains(content[12], "● Yes  ○ No") {
-		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[12])
+	if !strings.Contains(content[10], "claude") || !strings.Contains(content[10], "● Yes  ○ No") {
+		t.Errorf("harness screen must read `● Yes  ○ No`, got %q", content[10])
 	}
 }
 
@@ -279,10 +277,10 @@ func TestFormInstallRows(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			content := formGroupContent(t, c.env)
 			if c.wantGroup {
-				if len(content) != 13 {
-					t.Fatalf("got %d groups, want 13", len(content))
+				if len(content) != 11 {
+					t.Fatalf("got %d groups, want 11", len(content))
 				}
-				last := content[12]
+				last := content[10]
 				for _, h := range c.has {
 					if !strings.Contains(last, h) {
 						t.Errorf("install screen misses %q: %q", h, last)
@@ -295,8 +293,8 @@ func TestFormInstallRows(t *testing.T) {
 				}
 				return
 			}
-			if len(content) != 12 {
-				t.Fatalf("got %d groups, want 12 (no install screen)", len(content))
+			if len(content) != 10 {
+				t.Fatalf("got %d groups, want 10 (no install screen)", len(content))
 			}
 		})
 	}
@@ -326,10 +324,10 @@ func TestFormFirstRunEmpty(t *testing.T) {
 	t.Setenv("TMPDIR", home)
 
 	d := setup.FormDefaults(setup.Env{})
-	if d.Language != "" || d.RepoLanguage != "" || d.Tone != "" {
-		t.Fatalf("text defaults = %q/%q/%q, want all empty", d.Language, d.RepoLanguage, d.Tone)
+	if d.Language != "" || d.Tone != "" {
+		t.Fatalf("text defaults = %q/%q, want all empty", d.Language, d.Tone)
 	}
-	if d.Style != "adhd" || d.BuildExecutor != "inline" || d.SubagentModels != "default" ||
+	if d.Style != "adhd" || d.BuildExecutor != "inline" ||
 		d.PlanDepth != "full" || d.ReviewDepth != "standard" || d.Questions != "one" {
 		t.Fatalf("select defaults = %+v, want the first options", d)
 	}
@@ -338,7 +336,7 @@ func TestFormFirstRunEmpty(t *testing.T) {
 	if !strings.Contains(content[0], "> E") {
 		t.Errorf("chat language must show the placeholder, got %q", content[0])
 	}
-	for i, name := range map[int]string{0: "chat language", 3: "repo language"} {
+	for i, name := range map[int]string{0: "chat language"} {
 		view := pressEnter(t, setup.FormGroups(setup.Env{})[i])
 		if !strings.Contains(view, "▲ required") {
 			t.Errorf("%s: empty answer must show required, got %q", name, view)
@@ -356,8 +354,8 @@ func TestFormFirstRunEmpty(t *testing.T) {
 // TestFormWithConfigValues checks a config file's values are the starting
 // text, not the placeholder.
 func TestFormWithConfigValues(t *testing.T) {
-	d := setup.FormDefaults(setup.Env{Current: config.User{ChatLanguage: "Korean", RepoLanguage: "French"}})
-	if d.Language != "Korean" || d.RepoLanguage != "French" {
+	d := setup.FormDefaults(setup.Env{Current: config.User{ChatLanguage: "Korean"}})
+	if d.Language != "Korean" {
 		t.Fatalf("defaults = %+v, want the config values", d)
 	}
 }
@@ -371,11 +369,11 @@ func TestFormCommitHistory(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
 	t.Setenv("TMPDIR", home)
 
-	header := formGroupText(t, setup.Env{Current: config.User{}})[8]
+	header := formGroupText(t, setup.Env{Current: config.User{}})[6]
 	if !strings.Contains(header, "Commit history") {
 		t.Errorf("question after plan split must read %q, got %q", "Commit history", header)
 	}
-	content := formGroupContent(t, setup.Env{Current: config.User{}})[8]
+	content := formGroupContent(t, setup.Env{Current: config.User{}})[6]
 	for _, want := range []string{"tidy: one commit per task, straight history", "full: every commit plus a merge commit"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("commit history screen must show %q, got %q", want, content)
@@ -389,7 +387,7 @@ func TestFormCommitHistory(t *testing.T) {
 	if d.CommitHistory != "full" {
 		t.Errorf("default from config = %q, want full", d.CommitHistory)
 	}
-	shown := formGroupContent(t, setup.Env{Current: config.User{CommitHistory: "full"}})[8]
+	shown := formGroupContent(t, setup.Env{Current: config.User{CommitHistory: "full"}})[6]
 	if !strings.Contains(shown, "› ● full") {
 		t.Errorf("screen must start on full, got %q", shown)
 	}
@@ -397,7 +395,7 @@ func TestFormCommitHistory(t *testing.T) {
 
 // overrideUser is the user the wizard just built: subagent for builds.
 func overrideUser() config.User {
-	return config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", BuildExecutor: "subagent"}
+	return config.User{ChatLanguage: "English", Style: "adhd", BuildExecutor: "subagent"}
 }
 
 // TestOverrideGroups checks one select per differing repo key, shown only
@@ -431,7 +429,7 @@ func TestOverrideGroups(t *testing.T) {
 	})
 
 	t.Run("one select per differing key and none for an equal one", func(t *testing.T) {
-		root := repoWithActaYAML(t, "build_executor: dispatch\nrepo_language: French\nplan_depth: full\n")
+		root := repoWithActaYAML(t, "build_executor: dispatch\ncoding_guide: off\nplan_depth: full\n")
 		u := overrideUser()
 		u.PlanDepth = "full"
 		groups, err := setup.OverrideGroups(u, root)
@@ -441,7 +439,7 @@ func TestOverrideGroups(t *testing.T) {
 	})
 
 	t.Run("a user value that is not set says so and offers no yours", func(t *testing.T) {
-		root := repoWithActaYAML(t, "repo_language: French\n")
+		root := repoWithActaYAML(t, "build_executor: inline\n")
 		groups, err := setup.OverrideGroups(config.User{ChatLanguage: "English", Style: "adhd"}, root)
 		if err != nil || len(groups) != 1 {
 			t.Fatalf("groups = %d err %v, want one", len(groups), err)
@@ -537,7 +535,7 @@ func TestFormPlanSplit(t *testing.T) {
 	t.Setenv("PM_VOICE_FILE", home+"/config.yaml")
 	t.Setenv("TMPDIR", home)
 
-	header := formGroupText(t, setup.Env{Current: config.User{}})[7]
+	header := formGroupText(t, setup.Env{Current: config.User{}})[5]
 	if !strings.Contains(header, "Plan split") {
 		t.Errorf("question after plan detail must read %q, got %q", "Plan split", header)
 	}
@@ -547,13 +545,13 @@ func TestFormPlanSplit(t *testing.T) {
 	if d := setup.FormDefaults(setup.Env{Current: config.User{PlanSplit: "on"}}); d.PlanSplit != "on" {
 		t.Errorf("default from config = %q, want on", d.PlanSplit)
 	}
-	shown := formGroupContent(t, setup.Env{Current: config.User{PlanSplit: "on"}})[7]
+	shown := formGroupContent(t, setup.Env{Current: config.User{PlanSplit: "on"}})[5]
 	if !strings.Contains(shown, "› ● on") {
 		t.Errorf("screen must start on on, got %q", shown)
 	}
 	got := setup.AnsweredLines(setup.Env{Current: config.User{ChatLanguage: "English", PlanSplit: "on"}})
-	if got[7] != "◇  Plan split\n│  on\n│\n" {
-		t.Errorf("plan split line = %q", got[7])
+	if got[5] != "◇  Plan split\n│  on\n│\n" {
+		t.Errorf("plan split line = %q", got[5])
 	}
 }
 
@@ -570,14 +568,14 @@ func TestFormReviewUnderstanding(t *testing.T) {
 			want = "on"
 		}
 		groups := formGroupText(t, env)
-		if !strings.Contains(groups[11], "Review understanding") {
-			t.Fatalf("missing understanding step: %q", groups[11])
+		if !strings.Contains(groups[9], "Review understanding") {
+			t.Fatalf("missing understanding step: %q", groups[9])
 		}
-		shown := formGroupContent(t, env)[11]
+		shown := formGroupContent(t, env)[9]
 		if !strings.Contains(shown, "› ● "+want) {
 			t.Errorf("saved %v: selection = %q, want %s", saved, shown, want)
 		}
-		if got := setup.AnsweredLines(env)[11]; got != "◇  Review understanding\n│  "+want+"\n│\n" {
+		if got := setup.AnsweredLines(env)[9]; got != "◇  Review understanding\n│  "+want+"\n│\n" {
 			t.Errorf("summary = %q", got)
 		}
 		for _, depth := range []string{"quick", "standard", "deep"} {

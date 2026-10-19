@@ -11,21 +11,19 @@ import (
 
 func testUser() config.User {
 	return config.User{
-		ChatLanguage:   "Korean",
-		Style:          "adhd",
-		Tone:           "Casual, short sentences.",
-		RepoLanguage:   "English",
-		BuildExecutor:  "subagent",
-		SubagentModels: "split",
-		PlanDepth:      "full",
-		CommitHistory:  "full",
-		Questions:      "probe",
+		ChatLanguage:  "Korean",
+		Style:         "adhd",
+		Tone:          "Casual, short sentences.",
+		BuildExecutor: "subagent",
+		PlanDepth:     "full",
+		CommitHistory: "full",
+		Questions:     "probe",
 	}
 }
 
 func TestPlan(t *testing.T) {
 	u := testUser()
-	other := config.User{ChatLanguage: "English", Style: "plain", RepoLanguage: "English"}
+	other := config.User{ChatLanguage: "English", Style: "plain"}
 	claudeInstall := [][]string{
 		{"claude", "plugin", "marketplace", "add", "/p"},
 		{"claude", "plugin", "install", "acta@acta-local"},
@@ -428,8 +426,8 @@ func TestPlanRepoOverrides(t *testing.T) {
 		}
 	})
 	t.Run("yours with no value of its own plans nothing", func(t *testing.T) {
-		o := config.Override{Key: "repo_language", Repo: "French"}
-		if got := repoActions(setup.Plan(ans(map[string]string{"repo_language": "yours"}, o), env)); len(got) != 0 {
+		o := config.Override{Key: "build_executor", Repo: "inline"}
+		if got := repoActions(setup.Plan(ans(map[string]string{"build_executor": "yours"}, o), env)); len(got) != 0 {
 			t.Fatalf("got %#v, want none", got)
 		}
 	})

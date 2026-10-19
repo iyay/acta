@@ -37,7 +37,7 @@ func (f *fakeRunner) Run(argv []string) error {
 }
 
 func TestRunActions(t *testing.T) {
-	u := config.User{ChatLanguage: "Korean", Style: "adhd", RepoLanguage: "English"}
+	u := config.User{ChatLanguage: "Korean", Style: "adhd"}
 	dir := t.TempDir()
 	blockPath := filepath.Join(dir, "CLAUDE.md")
 
@@ -169,7 +169,7 @@ func TestFormDefaultsFromCurrent(t *testing.T) {
 func wizardRun(t *testing.T, root string, picks map[string]string) string {
 	t.Helper()
 	tempHome(t)
-	u := config.User{ChatLanguage: "English", Style: "adhd", RepoLanguage: "English", BuildExecutor: "subagent"}
+	u := config.User{ChatLanguage: "English", Style: "adhd", BuildExecutor: "subagent"}
 	var out strings.Builder
 	list, choices, err := setup.AskOverridesPicking(u, root, &out, picks)
 	if err != nil {
