@@ -36,8 +36,15 @@ if [ -n "${ACTA_TUI+set}" ]; then
 	*) fail "ACTA_TUI must be 0 or 1" ;;
 	esac
 elif ( : </dev/tty ) 2>/dev/null; then
+	cat >/dev/tty <<'EOF'
+
+This will install acta, a development toolkit with a command-line tool
+and AI agent skills for tasks such as planning, building, testing, and reviewing code.
+
+You can also install a terminal user interface (TUI) to browse specs, plans, and bugs.
+EOF
 	while :; do
-		printf 'Install the TUI board too? It adds about 7M. [Y/n] ' >/dev/tty
+		printf '\033[1mInstall the TUI? Adds about 7 MB. [Y/n]\033[0m ' >/dev/tty
 		read -r answer </dev/tty || break
 		case "$answer" in
 		"" | y | Y) break ;;

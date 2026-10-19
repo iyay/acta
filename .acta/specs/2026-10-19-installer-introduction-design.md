@@ -2,6 +2,8 @@
 id: SPC-0153
 created: "2026-10-19 07:11:26"
 hash: e6dpc7f
+started: "2026-10-19 07:12:12"
+finished: "2026-10-19 07:12:37"
 ---
 # Explain the installer and its optional TUI
 
