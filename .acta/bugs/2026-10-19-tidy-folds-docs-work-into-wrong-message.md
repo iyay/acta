@@ -1,6 +1,8 @@
 ---
 id: BUG-0051
 hash: de6chi6
+fixed_in: ca16f38b0b4ce49af5d8075b7737192464f664ea
+finished: "2026-10-19 21:09:06"
 ---
 # Tidy squashes a docs-only branch under a stranger's commit message
 
