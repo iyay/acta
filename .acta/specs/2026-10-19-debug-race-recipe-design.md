@@ -4,6 +4,7 @@ id: SPC-0160
 created: "2026-10-19 11:54:58"
 hash: fv7de21
 started: "2026-10-19 12:02:38"
+finished: "2026-10-19 12:51:02"
 ---
 # Debug recipes gate Phase 3
 
@@ -42,7 +43,9 @@ barrier probe. Approved by the user in chat (C2 + C1):
   that far.
 
 ## Acceptance
-- Eval `debug-race` passes on 2 of 2 runs, including the new Barrier grader.
+- Eval `debug-race` passes on at least 2 of 3 runs, including the new Barrier
+  grader (lowered from 2 of 2 by the user on 2026-10-19; a failing run is one
+  that never reads `race.md`, and that gap is filed as debt).
 - Eval `debug-performance`, `debug-order-dependent` and `debug-exact-symptom`
   still pass.
 - `scripts/test ./internal/plugincheck/` passes.

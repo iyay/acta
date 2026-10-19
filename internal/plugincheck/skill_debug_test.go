@@ -7,8 +7,9 @@ import "testing"
 // four phases, the safety rules and the recipe triggers from being cut.
 func TestSkillDebug(t *testing.T) {
 	CheckSkill(t, SkillRule{
-		Name:     "debug",
-		MaxLines: 330,
+		Name: "debug",
+		// race.md holds the copyable race probe, so the folder is 15 lines longer.
+		MaxLines: 345,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",

@@ -23,7 +23,7 @@ Exit: one command you ran catches the exact symptom the user reported.
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
 2. Build the loop in a temp copy: an existing test or the user's own command, else a small replay script. A command that writes files runs only in the copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
-4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3.
+4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
 
 ## Phase 2: Narrow and distinguish
@@ -60,7 +60,7 @@ A rerun that turns green, a longer timeout, or a skipped assertion does not prov
 
 Each names the evidence that counts.
 
-- **Race.** Force the interleaving: each worker pauses after its read until the other has read too, then writes (patch the read in a temp copy to wait on a barrier or event). A barrier at start only lines up the starts, so the bad order is not forced. Run that probe. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
+- **Race.** Run the probe in `race.md`, which must force the interleaving: each worker waits after its read until the other has read. A barrier at start does not. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
 - **Flaky test.** Run it many times under the same conditions and record the failure count and what changed between runs (load, order, seed, time). For waits, see `condition-based-waiting.md`.
 - **Order-dependent test.** Find the polluter by running pairs or bisecting the suite (`find-polluter.sh` finds tests that leave files behind). Put the smallest command that keeps the failing order in the report as a line the user can paste, for example the polluter then the victim, and name the shared state it leaves changed.
 - **Slow path.** Measure the same workload more than once, at two sizes if you can, and count the work (calls, file reads, queries) or profile it. Name the cost that grows. A speedup you did not measure before and after on the same workload is unmeasured; say so. Prefer a test that counts work over a wall-clock limit.
