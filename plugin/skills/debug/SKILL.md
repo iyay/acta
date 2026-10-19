@@ -21,7 +21,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 Exit: one command you ran catches the exact symptom the user reported.
 
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop in a temp copy: an existing test or the user's own command, else a small replay script. A command that writes files runs only in the copy.
+2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.

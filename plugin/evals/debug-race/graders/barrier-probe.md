@@ -1,7 +1,8 @@
 ---
-# Rejects a run that never runs a probe holding the workers at a barrier.
-# Repeat runs and a lock control can name the cause, but only a barrier
-# between the read and the write forces the lost update on every run.
+# Rejects a run whose Bash calls never name a Barrier, the probe race.md
+# gives. A fixed check backs the judge with a result that does not vary.
+# A probe built on an event or latch instead also forces the race, but
+# fails here; that is a known gap of a plain text match.
 type: tool_used
 tool: Bash
 input_match: "Barrier"

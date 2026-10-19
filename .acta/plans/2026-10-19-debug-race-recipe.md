@@ -16,7 +16,7 @@ finished: "2026-10-19 12:51:02"
 ## Global Constraints
 
 - Follow acta:lean: understand task and code first; skip it, reuse code here, stdlib, native feature, installed dependency, one line, minimum; never cut validation, security or accessibility.
-- `plugin/skills/debug/SKILL.md` stays within its current byte cap in `internal/plugincheck/budget_test.go`; do not raise it. No Go change, no grader change.
+- `plugin/skills/debug/SKILL.md` stays within its current byte cap in `internal/plugincheck/budget_test.go`; do not raise it.
 
 ## Waves
 
@@ -48,3 +48,16 @@ finished: "2026-10-19 12:51:02"
 debug-race: 0/3 on main; text-only fixes 0/2, 1/2, 0/2; race.md plus Phase 1 pointer 2/3.
 A failing run never reads race.md and makes no barrier probe; the barrier-probe grader catches it.
 Other debug cases (performance, order-dependent, exact-symptom, no-repro, misleading-path) 1.00 after each change.
+
+## Fix round 1
+
+### Task 3: Fix round 1 review findings
+
+**verify:** The race probe in race.md starts from a fresh state file on every run, so a rerun or the lock control never reads an old count; caps match current sizes; grader and test comments state the real reason; Phase 1 copies only for commands that write files.
+- [x] Red: plugincheck asserts race.md uses a fresh temp folder and no fixed /tmp path; watch it fail.
+- [x] Change: race.md, SKILL.md step 2, caps, comments, plan constraint.
+- [x] Commit: `fix(debug): review round 1 findings`
+
+## Review notes
+
+Deep review, two rounds: round 1 one BLOCKER (race probe reused a fixed state file), round 2 CLEAN. Notes kept: trims dropped "say how a copy differs from the real setup" and "failed hypotheses alone prove nothing about the design"; barrier-probe grader matches Bash input text only and misses event or latch probes; the race.md text check passes on a comment.

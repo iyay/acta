@@ -7,7 +7,7 @@ and only then write. Run it in a temp copy, never in the repo.
 Python, for a read-then-write method. Change the names to the real ones:
 
 ```python
-import threading
+import os, tempfile, threading
 from app.store import Store          # the class with the racy method
 
 real_read = Store.read
@@ -22,12 +22,16 @@ def held_read(self):
     return value
 
 Store.read = held_read
-store = Store("/tmp/probe/state.json")
+# A fresh folder each run, so an old count never leaks in.
+store = Store(os.path.join(tempfile.mkdtemp(), "state.json"))
 workers = [threading.Thread(target=store.increment) for _ in range(2)]
 for w in workers: w.start()
 for w in workers: w.join()
 print("expected 2, got", real_read(store))   # 1 means a lost update
 ```
+
+When the read sits inline in the method, put `gate.wait()` between the read
+and the write in the copied source instead of patching.
 
 Other languages: the same shape with their own barrier or latch, such as
 `sync.WaitGroup` plus a channel in Go or `CountDownLatch` in Java.

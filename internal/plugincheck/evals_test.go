@@ -95,8 +95,8 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			if c.folder == "lean-tests" && filepath.Base(f) == "no-extra-test-files.md" {
 				continue
 			}
-			// The judge cannot tell a forced race from a lucky one, so this
-			// case also checks that a barrier probe ran.
+			// A fixed check backs the judge here: some Bash call must name the
+			// Barrier probe from race.md.
 			if c.folder == "debug-race" && filepath.Base(f) == "barrier-probe.md" {
 				continue
 			}
