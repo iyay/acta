@@ -186,7 +186,7 @@ func TestReviewUnderstanding(t *testing.T) {
 			"`review_understanding` is its own switch, false when missing",
 			"quick, standard, deep, the argument, a floor and the deep lens leave it as it is",
 			"`acta:land` ends its report with a short explanation and asks no question",
-			"When it is false, the report gets neither",
+			"When it is false, there is none",
 		},
 	}
 	for rel, wants := range files {

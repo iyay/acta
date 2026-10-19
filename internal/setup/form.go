@@ -185,10 +185,10 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("deep: two reviewers plus a fact-check of every BLOCKER", "deep"),
 				).Value(&d.ReviewDepth), text(&d.ReviewDepth)},
 		{"Review understanding",
-			"After landing: explain and ask an optional scenario. Never blocks.",
+			"After landing: explain the change. Never blocks.",
 			huh.NewSelect[bool]().Options(
 				huh.NewOption("off: use the usual landing report", false),
-				huh.NewOption("on: add an explanation and one optional question", true),
+				huh.NewOption("on: add a short explanation of the change", true),
 			).Value(&d.ReviewUnderstanding), func() string {
 				if d.ReviewUnderstanding {
 					return "on"

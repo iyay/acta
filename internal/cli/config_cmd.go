@@ -187,7 +187,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
-		understanding := fs.String("review-understanding", "", "true or false: after a landing, explain the change and ask one optional question about it")
+		understanding := fs.String("review-understanding", "", "true or false: after a landing, explain the change")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
 		var unset keyList
 		fs.Var(&unset, "unset", "with --repo: remove this key from .acta.yaml so your own value applies (repeatable)")

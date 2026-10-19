@@ -1,6 +1,6 @@
 ---
 # guards: It asks the user no question
-# Reads the whole run, so it can see the merge happen before the question and
+# Reads the whole run, so it can see the merge happen before the reply and
 # check the explanation against the code that landed. The review notes still
 # describe round 1, when the wait had no upper bound; the landed code caps it
 # at 30 seconds. The reply explains and never quizzes the user.
