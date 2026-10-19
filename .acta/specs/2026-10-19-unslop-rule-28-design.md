@@ -3,6 +3,8 @@ parent: bugs/2026-10-19-unslop-rule-28-loses-dense-sentence-guidance
 id: SPC-0162
 created: "2026-10-19 19:14:40"
 hash: dezmmzx
+started: "2026-10-19 19:17:07"
+finished: "2026-10-19 19:17:58"
 ---
 # Unslop rule 28 keeps its dense-sentence meaning
 

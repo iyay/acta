@@ -233,6 +233,19 @@ func TestShapeUnslopSelfReview(t *testing.T) {
 			t.Errorf("unslop.md lost rule %d", id)
 		}
 	}
+	// A rule can keep its number but lose its meaning. Pin a phrase to the
+	// rule's own line so a moved or rewritten rule fails here.
+	for id, phrase := range map[int]string{27: "another project", 28: "dense sentences"} {
+		prefix := "\n" + strconv.Itoa(id) + ". "
+		start := strings.Index(text, prefix)
+		if start < 0 {
+			continue
+		}
+		line, _, _ := strings.Cut(text[start+1:], "\n")
+		if !strings.Contains(line, phrase) {
+			t.Errorf("unslop.md rule %d does not say %q", id, phrase)
+		}
+	}
 	for _, keep := range []string{
 		"not an automatic error",
 		"requirements, constraints, uncertainty, evidence, risks and approval gates",
