@@ -36,6 +36,9 @@ func TestSkillBuild(t *testing.T) {
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 			"A native worktree tool puts the worktree inside the repo",
 			"and the plan is approved, whatever its depth",
+			// A user who asks to build a plan has said yes to it, so evals and
+			// plain asks do not stall on a second question.
+			"a direct ask to build that plan counts as its yes",
 			"Refuse to start unless the spec is approved",
 			// acta dispatch close reads the slug from the current branch, so it
 			// only works in the worktree, before land deletes the branch.

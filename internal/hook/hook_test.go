@@ -68,12 +68,12 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 			t.Errorf("skill %s missing from the index", want)
 		}
 	}
-	// The index is one line of names. A line per skill with its hint is the
-	// old shape: the skill list of the harness already shows the hints.
 	// A plan depth once let a plan skip the user's yes. It must not come back.
 	if strings.Contains(out, "needs no plan yes") {
 		t.Error("core rule 2 still lets a plan skip the yes")
 	}
+	// The index is one line of names. A line per skill with its hint is the
+	// old shape: the skill list of the harness already shows the hints.
 	if strings.Contains(out, "\n- acta:") {
 		t.Error("the index still has a line per skill")
 	}

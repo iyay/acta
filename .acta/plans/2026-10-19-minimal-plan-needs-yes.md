@@ -40,3 +40,18 @@ finished: "2026-10-19 07:17:16"
 - [x] Red: Change the expected rule in `hook_test.go`; observe `scripts/test ./internal/hook/` fail.
 - [x] Change: Drop the exemption sentence from `hook.go` and `default-rules.md`; pass `scripts/test ./internal/hook/ ./internal/plugincheck/`.
 - [x] Commit: `fix(hook): core rule 2 has no minimal plan exemption`.
+
+## Fix round 1
+
+### Task 3: Fix round 1
+
+**verify:** No surface the user sees says a minimal plan builds at once: list every one checked (setup wizard, slice, split, build, core rule 2).
+- [x] BLOCKER: setup wizard Plan detail said "minimal: short steps, build starts at once"; now "short steps, no code blocks", and full drops "waits for your yes" (internal/setup/form.go:158-159).
+- [x] [fix] build test requires "a direct ask to build that plan counts as its yes".
+- [x] [fix] hook_test: the new check moved above the index comment it had split.
+- [x] [fix] split.md drops "even for a minimal plan".
+- [x] Commit: `fix(setup): plan detail no longer promises an instant build`
+
+## Review notes
+
+- Round 1: deep, full tier, Spec and Standards reviewers over eb65b4a..ed61f10: BLOCKED (setup wizard said minimal builds at once); fix round 1 96a83d6. Round 2 over ed61f10..96a83d6: CLEAN. Two (medium) NOTEs filed as debt; notes left: old spec 2026-10-07 shows the old wizard labels, phrase bans miss new paraphrases.
