@@ -2,6 +2,8 @@
 ref: SPC-0161
 id: BUG-0049
 hash: m097j1d
+fixed_in: a999a1e71aa1f64b056e2df055a099c413cba835
+finished: "2026-10-19 19:22:00"
 ---
 # Unslop rule 28 no longer covers dense sentences
 
