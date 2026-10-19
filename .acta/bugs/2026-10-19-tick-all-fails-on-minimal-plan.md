@@ -1,9 +1,10 @@
 ---
 id: BUG-0050
 hash: qxcsswn
-status: open
-finished: "2026-10-19 20:20:00"
+status: fixed
+finished: "2026-10-19 20:46:02"
 started: "2026-10-19 20:30:17"
+fixed_in: 13565823c944be839d2ffca73d17a4ca8102ba9e
 ---
 # Slice self-review misses required checkboxes in minimal plans
 
