@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0179
 created: "2026-10-20 05:31:04"
 hash: blphkrk
+started: "2026-10-20 05:33:12"
 ---
 # Start builds without a baseline test run
 
@@ -31,9 +32,9 @@ hash: blphkrk
 **Files:** Modify `plugin/skills/build/SKILL.md`, `internal/plugincheck/skill_build_test.go`, `internal/plugincheck/evals_test.go`, and `plugin/evals/build-inline-flow/` (scaffold, prompt, graders); create `plugin/evals/build-stale-baseline/` (case, scaffold, prompt, graders); update `.acta/wiki/skill-text-fits-everyone.md` with the startup rule.
 **Seam:** The build skill's setup-to-task transition, `CheckSkill`, and sandboxed build eval command traces.
 **verify:** Every approved build starts its first task after setup without baseline tests or a baseline-approval pause, regardless of record availability or validity; enumerate fresh/resumed, inline/delegated, absent/stale/unreadable/context-mismatch paths, keep task regression tests and close checks, and prove absent/stale behavior in eval traces without instructing the agent to skip tests in the prompt.
-- [ ] Red: Add startup-rule regression checks and eval coverage for absent and stale saved results, with no setup test calls before the first task starts; observe `scripts/test ./internal/plugincheck/ -run 'Test(SkillBuild|Build.*Baseline|Eval)'` fail against the current build skill.
-- [ ] Change: Replace the clean-baseline run with direct task startup and optional reading of saved evidence, keep task/close checks, finish the two build evals using existing deterministic graders, update their registrations and the wiki, and pass the focused checks and build evals.
-- [ ] Commit: `perf(build): start tasks without baseline test runs`.
+- [x] Red: Add startup-rule regression checks and eval coverage for absent and stale saved results, with no setup test calls before the first task starts; observe `scripts/test ./internal/plugincheck/ -run 'Test(SkillBuild|Build.*Baseline|Eval)'` fail against the current build skill.
+- [x] Change: Replace the clean-baseline run with direct task startup and optional reading of saved evidence, keep task/close checks, finish the two build evals using existing deterministic graders, update their registrations and the wiki, and pass the focused checks and build evals.
+- [x] Commit: `perf(build): start tasks without baseline test runs`.
 
 ### Task 2: Save passing full-suite evidence and reuse its output
 
@@ -47,3 +48,13 @@ hash: blphkrk
 ## Close
 
 Run the existing close checks and one deep review over the complete branch, then the normal full suite, behavior evals, and wiki gate before landing; no extra test run belongs before Task 1. The new skill behavior applies after this change lands, so the executor must still follow the currently loaded build skill for this implementation.
+
+## State
+
+### Next
+
+Task 2: add the landing baseline policy, baseline.md, and the pass/fail evals.
+
+### Findings
+
+A build eval needs a scripts/test trap to prove setup never runs the suite.

@@ -19,7 +19,15 @@ mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
   printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
 fi
-mkdir -p bin src tests .acta/specs .acta/plans
+mkdir -p bin src tests scripts .acta/specs .acta/plans
+# This suite must never run before the first task. The task's own test is
+# python3 -m unittest, not this file, so any run here is a baseline.
+cat > scripts/test <<'TEST'
+#!/bin/sh
+echo "the full suite belongs to landing, not build setup" >&2
+exit 1
+TEST
+chmod +x scripts/test
 # The build runs git, and the system git does not work in the Bash sandbox. It is
 # a stub that writes a cache file to a folder the sandbox locks. The real binary
 # does not need that folder. A link would not do, because the sandbox cannot read

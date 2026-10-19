@@ -56,7 +56,7 @@ Copy in the house rules too: any `CLAUDE.md` or `AGENTS.md` git does not track (
 
 **Setup.** Follow the repo's own setup: its docs, scripts and lockfile's package manager. Link dependency folders from the main checkout instead of installing them. Install only what the required checks need, and nothing when they already run.
 
-**Clean baseline.** Run the fast tests: `scripts/test` when the repo has it, else the plan's `**Tests:**` fast command. The full suite waits for `acta:land`. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and a whole-repo run there spends every core on the machine. Failures: report them and ask whether to proceed. A dirty baseline makes every later failure ambiguous, so that call is the user's. Passing: report the path, the passing count and what is next.
+**Start the first task.** After setup, go straight to the first task. Do not run a baseline suite or fast test and do not wait for a saved result: one that is missing, old, unreadable or from another test context changes nothing. The full suite waits for `acta:land`. A saved `acta-baseline.md` in the Git common directory is history only: read it when it saves a step, never as a gate. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and a whole-repo run there spends every core on the machine. Diagnose a failure when a task meets one.
 
 ## Plan
 
