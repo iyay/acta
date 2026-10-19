@@ -67,7 +67,7 @@ Resuming: run `acta state <plan id>` and `git log <parent>..HEAD`. Ticked boxes 
 Every task, whoever writes it:
 
 1. very first action on every task: run `acta tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
-2. `acta:tdd`: failing test first, watch it fail for the intended reason, minimal code, watch it pass. Right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress.
+2. `acta:tdd`: failing test first, watch it fail for the intended reason, minimal code, watch it pass. One behavior per cycle. Pick tests by the behavior or failure they protect: reuse or extend an existing test first, test each behavior once at the layer that owns it, and assert results and side effects that matter, not internals. A case the plan does not name is a scope question, not a test. Right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress.
 3. Run the task's focused tests, the formatter and the type checks. Formatting goes in the task commit, never in a commit of its own.
 4. Commit, staged by path, never `git add -A` or `git add .`. The exact line `Task: PLN-<hash>#<n>` ends each code commit (hash from `acta show <plan id>`, `<n>` with no leading zero). Fix-round and polish commits get one line per task fixed; `chore(` planning commits get none.
 5. Right after the commit, run `acta tick plans/<stem>#task-N --all` so no box stays open. Never commit the plan file inside a task.

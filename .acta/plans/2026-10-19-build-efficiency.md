@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0170
 created: "2026-10-19 11:02:11"
 hash: kqymmiy
+started: "2026-10-19 11:04:23"
+finished: "2026-10-19 11:13:46"
 ---
 # Build efficiency implementation plan
 
@@ -42,15 +44,28 @@ hash: kqymmiy
 **Files:** Modify `plugin/skills/build/SKILL.md`, `plugin/skills/build/implementer-prompt.md`, and affected references in `plugin/skills/build/dispatch.md`; update existing `internal/plugincheck/{skill_build_test,build_dispatch_test,budget_test,evals_test}.go` only where required; create `plugin/evals/build-inline-flow/{case.yaml,prompt.md,scaffold.sh}` and its minimal artifact graders, based on `task-trailer` isolation.
 **Seam:** The build skill executing an approved plan in the isolated eval sandbox, plus existing plugin contract and budget checks.
 **verify:** Inline completes the approved task itself without loading a worker handoff, spawning an implementer, reinstalling an already usable environment or losing required progress/commit evidence; other executor routes and all gates remain intact; recovery trusts recorded progress and does not redo committed work; list the routes checked and distinguish static contract evidence from runtime evidence.
-- [ ] Red: Capture baseline folder size and run existing `task-trailer` and `state-resume` cases, then run the new inline-flow case against the unchanged skill and inspect an intended behavioral failure; if it already passes, retain the coverage without claiming a failure and identify the actual unmet contract before editing.
-- [ ] Change: Rewrite shared flow and explicit inline execution with conditional worker detail, repo-directed setup and existing state recovery; pass `scripts/test ./internal/plugincheck/`, then rerun the failed inline scenario and existing cases, inspecting artifacts and traces rather than adding wording assertions.
-- [ ] Commit: `refactor(build): streamline executor flow and project setup`, with task trailer and measured size/check evidence recorded in acta state.
+- [x] Red: Capture baseline folder size and run existing `task-trailer` and `state-resume` cases, then run the new inline-flow case against the unchanged skill and inspect an intended behavioral failure; if it already passes, retain the coverage without claiming a failure and identify the actual unmet contract before editing.
+- [x] Change: Rewrite shared flow and explicit inline execution with conditional worker detail, repo-directed setup and existing state recovery; pass `scripts/test ./internal/plugincheck/`, then rerun the failed inline scenario and existing cases, inspecting artifacts and traces rather than adding wording assertions.
+- [x] Commit: `refactor(build): streamline executor flow and project setup`, with task trailer and measured size/check evidence recorded in acta state.
 
 ### Task 2: Make test selection lean and prove the result
 
 **Files:** Modify `plugin/skills/build/SKILL.md` and `implementer-prompt.md`; revise affected existing checks in `internal/plugincheck/skill_build_test.go` and `budget_test.go`; extend only needed files within `plugin/evals/lean-tests/`; update `.acta/wiki/skill-text-fits-everyone.md` only if its facts change.
 **Seam:** Build-generated implementation and test artifacts in the existing lean-tests eval; focused plugin checks protect workflow contracts.
 **verify:** Each named plan behavior is tested at its owning boundary, upper-layer tests verify wiring only, and assertions prove essential results or contractual side effects without redundant internal checks; existing coverage requirements remain unchanged; compare identical baseline/candidate requests and reject reduced correctness or broken gates even when the text is shorter.
-- [ ] Red: Run `lean-tests` on the unchanged test-selection guidance, inspect its artifacts, and extend the same case only for a demonstrated gap in test reuse or meaningful assertions; observe the intended failure before changing that guidance, reusing passing coverage without inventing a failure or a duplicate grader.
-- [ ] Change: Add concise risk-based test selection and meaningful-RED guidance, remove repeated instruction text, preserve existing scope escalation, and pass `scripts/test ./internal/plugincheck/` plus the affected evals; compare final whole-folder size and traces with baseline, recording tradeoffs and untested contracts in acta state.
-- [ ] Commit: `refactor(build): keep tests focused on meaningful behavior`, with task trailer; proceed through the existing wiki, deep review and land gates only after all approved task checks pass.
+- [x] Red: Run `lean-tests` on the unchanged test-selection guidance, inspect its artifacts, and extend the same case only for a demonstrated gap in test reuse or meaningful assertions; observe the intended failure before changing that guidance, reusing passing coverage without inventing a failure or a duplicate grader.
+- [x] Change: Add concise risk-based test selection and meaningful-RED guidance, remove repeated instruction text, preserve existing scope escalation, and pass `scripts/test ./internal/plugincheck/` plus the affected evals; compare final whole-folder size and traces with baseline, recording tradeoffs and untested contracts in acta state.
+- [x] Commit: `refactor(build): keep tests focused on meaningful behavior`, with task trailer; proceed through the existing wiki, deep review and land gates only after all approved task checks pass.
+
+## State
+
+### Next
+
+Close: wiki check, fast tests, deep review over main..HEAD.
+
+### Findings
+
+Build folder size: baseline 5456 words / 33053 bytes; final 4125 words / 24733 bytes (-24% words). dispatch.md and wiki.md unchanged.
+Evals, one run each: build-inline-flow 1.00 before and after (no RED found; kept as coverage); task-trailer, state-resume, lean-tests 1.00 before and after.
+Tool calls inline-flow: baseline 8 (test and code written together), candidate 12 then rerun; candidate watched RED separately. No runtime gain claimed.
+lean-tests baseline had no gap, so the case was not extended. Subagent and dispatch routes checked statically only (plugincheck).
