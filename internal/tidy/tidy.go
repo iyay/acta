@@ -9,9 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/iyay/acta/internal/commits"
 )
 
 // Options says what to fold. PlanningRoot is relative to the repo, like ".acta".
@@ -206,18 +209,34 @@ func plan(repo string, commits []commit, root, cur string, pendDate time.Time) (
 	}
 	if len(nodes) == 0 {
 		// Nothing was worth keeping. The whole range becomes one commit.
-		// A planning chore at the end must not hide the real message, so take
-		// the newest commit that is not a chore. All chores: take the newest.
-		src := commits[len(commits)-1]
-		for i := len(commits) - 1; i >= 0; i-- {
-			if subjectType(commits[i].subject) != "chore" {
-				src = commits[i]
-				break
-			}
+		// A planning commit at the end must not hide the real message, so take
+		// the newest commit that changed real files. None: the newest that is
+		// not a chore. All chores: the newest.
+		src, err := fullFoldSource(repo, commits, root)
+		if err != nil {
+			return nil, err
 		}
 		nodes = append(nodes, &node{tree: cur, src: src, date: pendDate, olds: pendOlds})
 	}
 	return nodes, nil
+}
+
+func fullFoldSource(repo string, cs []commit, root string) (commit, error) {
+	for i := len(cs) - 1; i >= 0; i-- {
+		out, err := touchesOutside(repo, cs[i].hash, root)
+		if err != nil {
+			return commit{}, err
+		}
+		if out {
+			return cs[i], nil
+		}
+	}
+	for i := len(cs) - 1; i >= 0; i-- {
+		if subjectType(cs[i].subject) != "chore" {
+			return cs[i], nil
+		}
+	}
+	return cs[len(cs)-1], nil
 }
 
 func later(a, b time.Time) time.Time {
@@ -367,6 +386,9 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if msg, err = carryTrailers(repo, msg, n.olds); err != nil {
+		return "", err
+	}
 	date := n.date.Format(time.RFC3339)
 	env := []string{
 		"GIT_AUTHOR_NAME=" + id[0], "GIT_AUTHOR_EMAIL=" + id[1], "GIT_AUTHOR_DATE=" + date,
@@ -374,6 +396,36 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	}
 	out, err := git(repo, env, strings.TrimSuffix(msg, "\n"), "commit-tree", n.tree, "-p", parent)
 	return strings.TrimSpace(out), err
+}
+
+// carryTrailers adds the Task trailers of every folded commit to msg, so a
+// task keeps its link to the code. Git reads trailers from the last
+// paragraph only, so they go there, and only a line already in that
+// paragraph counts as present.
+func carryTrailers(repo, msg string, olds []string) (string, error) {
+	have := commits.Trailers(msg)
+	var add []string
+	for _, h := range olds {
+		body, err := git(repo, nil, "", "log", "-1", "--format=%B", h)
+		if err != nil {
+			return "", err
+		}
+		for _, k := range commits.Trailers(body) {
+			if !slices.Contains(have, k) {
+				have = append(have, k)
+				add = append(add, "Task: PLN-"+k)
+			}
+		}
+	}
+	if len(add) == 0 {
+		return msg, nil
+	}
+	msg = strings.TrimRight(msg, "\n")
+	sep := "\n\n"
+	if len(commits.Trailers(msg)) > 0 {
+		sep = "\n"
+	}
+	return msg + sep + strings.Join(add, "\n") + "\n", nil
 }
 
 // proof checks that the final tree is the three-way merge of base and branch
