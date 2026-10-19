@@ -121,8 +121,8 @@ func TestLandTidyPath(t *testing.T) {
 }
 
 // TestLandUnderstanding pins the opt-in understanding part of the landing
-// report. It must sit after the report line, so nothing asks before the
-// merge, cover both switch values, and never hold up a land that is done.
+// report. It must sit after the report line, so nothing runs before the
+// merge, cover both switch values, and never ask the user anything.
 func TestLandUnderstanding(t *testing.T) {
 	skill := readSkill(t, "skills/land/SKILL.md")
 	for _, want := range []string{
@@ -135,21 +135,10 @@ func TestLandUnderstanding(t *testing.T) {
 		"After the parent has moved (merge or tidy), read the landed files", "A read of the old worktree's files",
 		"never invent one",
 		"what the tests do and do not prove",
-		// One optional question, last, about behavior.
-		"ends with exactly one optional question",
-		"predicts the outcome and gives a short reason",
-		"never names or syntax",
-		"after the next action, as the last line of the report",
-		// Nothing waits on it.
-		"an answer, a skip, silence or a new request never blocks, undoes or restarts it",
-		"Record no pass or skip and run no extra reviewer for it",
+		// It explains only. The user is never quizzed.
+		"It asks the user no question",
 		// Off means the plain report.
-		"no explanation, no question, no offer",
-		// The follow-up.
-		"check the prediction and its reason against the source",
-		"never by grading the words",
-		"offer at most one more optional scenario",
-		"No pass or fail label",
+		"no explanation, no offer",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Errorf("land SKILL.md missing %q", want)
@@ -160,11 +149,18 @@ func TestLandUnderstanding(t *testing.T) {
 	if report < 0 || understanding < report {
 		t.Errorf("the understanding part must come after the landing report line, so it never runs before the merge (report at %d, understanding at %d)", report, understanding)
 	}
-	// The numbered landing steps are the merge path. A question there would
-	// make the merge wait on the user.
+	// The numbered landing steps are the merge path. The explanation there
+	// would run before the merge.
 	for _, line := range strings.Split(skill[:report], "\n") {
-		if strings.Contains(line, "review_understanding") || strings.Contains(line, "optional question") {
-			t.Errorf("a landing step mentions the understanding question, so it could hold up the merge: %q", line)
+		if strings.Contains(line, "review_understanding") {
+			t.Errorf("a landing step mentions the understanding part, so it could run before the merge: %q", line)
+		}
+	}
+	// The user asked for no quiz after a land. These are the old quiz parts,
+	// so none may come back.
+	for _, banned := range []string{"optional question", "predicts the outcome", "optional scenario", "When the user answers", "check the prediction"} {
+		if strings.Contains(skill, banned) {
+			t.Errorf("land SKILL.md still quizzes the user: found %q", banned)
 		}
 	}
 }

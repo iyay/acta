@@ -185,7 +185,7 @@ func TestReviewUnderstanding(t *testing.T) {
 			"## Understanding",
 			"`review_understanding` is its own switch, false when missing",
 			"quick, standard, deep, the argument, a floor and the deep lens leave it as it is",
-			"`acta:land` ends its report with a short explanation and one optional question",
+			"`acta:land` ends its report with a short explanation and asks no question",
 			"When it is false, the report gets neither",
 		},
 	}
@@ -197,10 +197,13 @@ func TestReviewUnderstanding(t *testing.T) {
 			}
 		}
 	}
-	// The review itself never asks: the question comes after the land.
+	// Nobody quizzes the user about the change, in review or after the land.
 	for _, rel := range []string{"skills/review/SKILL.md", "skills/review/depth.md"} {
-		if txt := readSkill(t, rel); strings.Contains(txt, "predicts the outcome") {
-			t.Errorf("%s asks the understanding question itself; it belongs in the landing report", rel)
+		txt := readSkill(t, rel)
+		for _, banned := range []string{"predicts the outcome", "optional question"} {
+			if strings.Contains(txt, banned) {
+				t.Errorf("%s still quizzes the user: found %q", rel, banned)
+			}
 		}
 	}
 }

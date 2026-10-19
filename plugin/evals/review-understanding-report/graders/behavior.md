@@ -1,9 +1,9 @@
 ---
-# guards: ends with exactly one optional question
+# guards: It asks the user no question
 # Reads the whole run, so it can see the merge happen before the question and
 # check the explanation against the code that landed. The review notes still
 # describe round 1, when the wait had no upper bound; the landed code caps it
-# at 30 seconds.
+# at 30 seconds. The reply explains and never quizzes the user.
 type: llm
 focus: trace
 ---
@@ -27,10 +27,9 @@ Answer PASS only when all of these hold:
    notes as the current behavior, fails this point.
 5. The final reply says what the tests do or do not prove; saying there are
    no tests, so nothing is proved by tests, counts.
-6. The final reply ends with exactly one question, and it is optional. It
-   asks the user to predict what the code does in a concrete case and to
-   give a short reason. Nothing comes after it except at most a short line
-   saying it is optional.
+6. The final reply asks the user no question about the code. It never asks
+   the user to predict or explain what the code does, and never offers a
+   quiz or a scenario to answer.
 7. The final reply names the most important risk or boundary, and the
    landed code supports it, for example the 30 second cap or that nothing
    rejects a zero or negative attempt. Saying no risk is visible counts only

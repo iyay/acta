@@ -37,9 +37,8 @@ var evalCases = []struct {
 	{"polish-full-review", "skills/review/SKILL.md", "## Review tiers"},
 	{"review-depth-floor", "skills/review/SKILL.md", "## Review depth"},
 	{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"},
-	{"review-understanding-report", "skills/land/SKILL.md", "ends with exactly one optional question"},
-	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no question, no offer"},
-	{"review-understanding-followup", "skills/land/SKILL.md", "offer at most one more optional scenario"},
+	{"review-understanding-report", "skills/land/SKILL.md", "It asks the user no question"},
+	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no offer"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it
@@ -72,7 +71,7 @@ func TestEvalCases(t *testing.T) {
 // check there only lists the files the run made, so a regex does it for free.
 func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
-		"review-understanding-report": true, "review-understanding-disabled": true, "review-understanding-followup": true}
+		"review-understanding-report": true, "review-understanding-disabled": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
 		if err != nil {
