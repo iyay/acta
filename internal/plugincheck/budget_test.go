@@ -24,6 +24,7 @@ import (
 var fileCaps = map[string]int{
 	"output-styles/acta.md":                   1773,
 	"references/house-rules.md":               3787,
+	"references/unslop.md":                    3642,
 	"skills/bug/SKILL.md":                     2327,
 	"skills/build/SKILL.md":                   16297,
 	"skills/build/dispatch.md":                6477,
@@ -46,7 +47,7 @@ var fileCaps = map[string]int{
 	"skills/review/fact-check.md":             1850,
 	"skills/scratch/SKILL.md":                 2358,
 	"skills/setup/SKILL.md":                   5536,
-	"skills/shape/SKILL.md":                   7815,
+	"skills/shape/SKILL.md":                   7841,
 	"skills/shape/probe.md":                   1717,
 	"skills/slice/SKILL.md":                   12768,
 	"skills/slice/split.md":                   1525,
