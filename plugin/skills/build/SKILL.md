@@ -42,13 +42,14 @@ The spec and plan from acta:shape and acta:slice stay on main; they are already 
 
 Parent: the branch the user names, else the repo's default branch. Record it; `acta:land` merges into it. Then run `acta ready <plan id> --parent <parent>`; for a worktree that already exists add `--head <its HEAD>`. Any non-zero exit stops the build: show the output, and never rebase or merge to make it pass.
 
-Already in a linked worktree (`git rev-parse --git-dir` differs from `--git-common-dir`, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). `$PARENT` is the parent branch recorded above, so the branch starts from it:
+Already in a linked worktree (the two paths `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). `$PARENT` is the parent branch recorded above, so the branch starts from it:
 
 ```bash
 git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"
+cd "../$REPO-$SLUG"
 ```
 
-A permission error means the sandbox blocked it: stop and say so. Never work in the main checkout instead. One worktree per approved plan.
+A permission error means the sandbox blocked it: stop and say so. Never work in the main checkout instead. One worktree per approved plan. From here on, work only in the worktree.
 
 Copy in the house rules too: any `CLAUDE.md` or `AGENTS.md` git does not track (file or symlink), and the untracked files the suite needs (env files, fixtures). A fresh worktree holds only tracked files.
 
@@ -75,17 +76,19 @@ Every task, whoever writes it:
 
 Comments in plain English a ten-year-old can read, saying why; no marker tags. Report in the user's chat language; write everything in the repo in the repo language.
 
+When a wave is done, commit the plan file yourself with `acta commit <plan path> -m "chore(plan): tick wave <n>"`. Any other plan or spec commit before landing uses `acta commit <path> -m "<message>"` too; only code commits use `git commit`.
+
 ### Inline task loop
 
 You run the steps above yourself, one task at a time, in wave order. No worker hand-off and no per-task reviewer.
 
 ### Worker hand-off
 
-`subagent` only. One task, one dispatch, built from [implementer-prompt.md](implementer-prompt.md): worktree path, branch and parent branch, plan path and task number, files, verify line, the trailer line verbatim, and the absolute path of `references/house-rules.md` (two folders up from this skill). The worker's first action: print `pwd` and `git rev-parse --show-toplevel`; both must equal the worktree path, else stop with zero writes. Never make a worker read the whole plan. Workers never spawn subagents: no helpers, never a reviewer.
+`subagent` only. One task, one dispatch, built from [implementer-prompt.md](implementer-prompt.md): worktree path, branch and parent branch, plan path and task number, files, verify line, the trailer line verbatim, the `acta state set` step, and the absolute path of `references/house-rules.md` (two folders up from this skill). The worker's first action: print `pwd` and `git rev-parse --show-toplevel`; both must equal the worktree path, else stop with zero writes. Never make a worker read the whole plan. Workers never spawn subagents: no helpers, never a reviewer.
 
 Inside a wave, dispatch every task in one message; serial only for a shared file or a real dependency. Reports are DONE, DONE_WITH_CONCERNS, BLOCKED or NEEDS_CONTEXT. DONE: check the commit and the verify line. Concerns about correctness or scope get answered before moving on. NEEDS_CONTEXT or BLOCKED: give the context, split the task, or use a stronger model; never retry the same dispatch unchanged, and never move on while the plan depends on it.
 
-Workers share the plan file, so none commits it. When a wave is done, commit it yourself with `acta commit <plan path> -m "chore(plan): tick wave <n>"`. Any other plan or spec commit before landing uses `acta commit <path> -m "<message>"` too; only code commits use `git commit`.
+Workers share the plan file, so none commits it.
 
 ## Close
 

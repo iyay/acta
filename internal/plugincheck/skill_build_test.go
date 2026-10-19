@@ -411,3 +411,22 @@ func TestImplementerPromptWritesOnlyPlanCases(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildWorktreeCheckUsesAbsolutePaths reads SKILL.md on its own. From a
+// subfolder of a normal checkout, plain git rev-parse prints a full git dir
+// and a relative common dir. They differ, so the agent would think it is in a
+// worktree and write code in the main checkout.
+func TestBuildWorktreeCheckUsesAbsolutePaths(t *testing.T) {
+	if !strings.Contains(readBuildFile(t, "SKILL.md"), "git rev-parse --path-format=absolute --git-dir --git-common-dir") {
+		t.Error("build/SKILL.md must compare the git dirs as absolute paths")
+	}
+}
+
+// TestImplementerPromptWritesState reads implementer-prompt.md on its own. A
+// subagent worker reads only this file, so without the step nobody writes the
+// plan State and a resumed session has no next line to start from.
+func TestImplementerPromptWritesState(t *testing.T) {
+	if !strings.Contains(readBuildFile(t, "implementer-prompt.md"), "acta state set plans/<stem> <part>") {
+		t.Error("implementer-prompt.md is missing the acta state set step")
+	}
+}

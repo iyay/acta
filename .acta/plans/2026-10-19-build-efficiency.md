@@ -69,3 +69,12 @@ Build folder size: baseline 5456 words / 33053 bytes; final 4125 words / 24733 b
 Evals, one run each: build-inline-flow 1.00 before and after (no RED found; kept as coverage); task-trailer, state-resume, lean-tests 1.00 before and after.
 Tool calls inline-flow: baseline 8 (test and code written together), candidate 12 then rerun; candidate watched RED separately. No runtime gain claimed.
 lean-tests baseline had no gap, so the case was not extended. Subagent and dispatch routes checked statically only (plugincheck).
+
+## Fix round 1
+
+### Task 3: Fix round 1 review findings
+
+**verify:** Worktree detection compares absolute paths, so a session in a subfolder of a normal checkout still creates a worktree; the subagent hand-off carries the `acta state set` step; inline moves into the new worktree and commits wave ticks; the inline-flow eval no longer hints the setup answer and drops its duplicate trailer grader.
+- [x] Red: plugincheck asserts `--path-format=absolute` in SKILL.md and `acta state set` in implementer-prompt.md; watch it fail.
+- [x] Change: SKILL.md, implementer-prompt.md, build-inline-flow prompt and graders.
+- [x] Commit: `fix(build): review round 1 findings`

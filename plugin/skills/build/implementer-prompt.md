@@ -56,7 +56,10 @@ Subagent (general-purpose):
        commit the plan file. Add `--agent omp` only when `AI_AGENT` is empty:
        omp sets no agent variable, so the flag names you on the board. Claude
        Code sets `AI_AGENT`, and the flag would record your work as omp.
-    7. Self-review your own diff, then report.
+    7. After the commit, run `acta state set plans/<stem> <part>` with the
+       lines on stdin: `next` for what the next task starts from, `findings`
+       for a finding that cost time, `rulings` for a question for the user.
+    8. Self-review your own diff, then report.
 
     Comments in plain English a ten-year-old can read, saying why; no
     marker tags. Report in the user's chat language; write everything in the
