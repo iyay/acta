@@ -33,7 +33,9 @@ type Result struct {
 var tamperTree func(tree string) string
 
 // foldTypes are subject types that never stand as a commit of their own.
-var foldTypes = map[string]bool{"chore": true, "docs": true, "polish": true, "wiki": true}
+// docs is not one: docs that change skill or code files are real work, and
+// docs that touch only planning files already fold by the files rule.
+var foldTypes = map[string]bool{"chore": true, "polish": true, "wiki": true}
 
 type commit struct {
 	hash, subject string

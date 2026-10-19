@@ -111,8 +111,8 @@ func TestKeepRuleAndFolds(t *testing.T) {
 	r.commit("feat: a", d(2), "ann", map[string]string{"a.go": "a\n"})
 	// Planning only after a kept commit: folds back.
 	r.commit("chore(plan): tick a", d(3), "ann", map[string]string{".acta/tick.md": "tick\n"})
-	// Code file, but type docs: folds back.
-	r.commit("docs: note a", d(4), "ann", map[string]string{"README.md": "hi more\n"})
+	// Type docs that touches only planning files: folds back.
+	r.commit("docs: note a", d(4), "ann", map[string]string{".acta/note.md": "note\n"})
 	r.commit("feat: b", d(5), "ann", map[string]string{"b.go": "b\n"})
 	branchTip := r.rev("feat")
 
@@ -135,9 +135,7 @@ func TestKeepRuleAndFolds(t *testing.T) {
 	r.git(nil, "cat-file", "-e", first+":.acta/early.md")
 	// Fold back: the tick and docs change sit in the first new commit, not the second.
 	r.git(nil, "cat-file", "-e", first+":.acta/tick.md")
-	if r.git(nil, "show", first+":README.md") != "hi more" {
-		t.Fatal("docs change not folded into first commit")
-	}
+	r.git(nil, "cat-file", "-e", first+":.acta/note.md")
 	if r.git(nil, "ls-tree", "-r", "--name-only", first) == r.git(nil, "ls-tree", "-r", "--name-only", res.Tip) {
 		t.Fatal("first commit should not hold b.go")
 	}
@@ -148,6 +146,31 @@ func TestKeepRuleAndFolds(t *testing.T) {
 	// Nothing moved.
 	if r.rev("feat") != branchTip || r.rev("main") != base {
 		t.Fatal("a branch moved")
+	}
+}
+
+// Docs work on files outside the planning root is real work, so it stays a
+// commit. After the review marker everything folds, docs or not.
+func TestDocsWorkKeptBeforeMarker(t *testing.T) {
+	r := start(t)
+	base := r.rev("main")
+	r.commit("docs(skills): one model rule", d(1), "ann", map[string]string{"plugin/x.md": "x\n"})
+	r.commit("docs(setup): drop question", d(2), "ann", map[string]string{"plugin/y.md": "y\n"})
+	r.commit("chore(plan): tick", d(3), "ann", map[string]string{".acta/p.md": "p\n"})
+	r.commit("polish: review notes", d(4), "ann", map[string]string{"plugin/x.md": "x2\n"})
+	r.commit("docs(bug): fix diagnosis", d(5), "ann", map[string]string{".acta/bugs/b.md": "b\n"})
+	branchTip := r.rev("feat")
+
+	res, err := Run(r.dir, opt("main", "feat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := r.subjects(base + "..refs/acta/tidy/feat")
+	if strings.Join(got, "|") != "docs(skills): one model rule|docs(setup): drop question" {
+		t.Fatalf("subjects %v", got)
+	}
+	if r.rev(res.Tip+"^{tree}") != r.rev(branchTip+"^{tree}") {
+		t.Fatal("final tree differs from branch tree")
 	}
 }
 
@@ -276,6 +299,7 @@ func TestNoKeptCommitMakesOneCommit(t *testing.T) {
 
 // A full fold must keep the real message. A planning chore at the end of the
 // range must not hide it.
+// Docs commits here touch only planning files, so every commit folds.
 func TestFullFoldTakesNewestNonChoreMessage(t *testing.T) {
 	cases := []struct {
 		name string
@@ -284,13 +308,13 @@ func TestFullFoldTakesNewestNonChoreMessage(t *testing.T) {
 		want  int // index of the step whose message the tip must carry
 	}{
 		{"chores after a docs commit", [][2]string{
-			{"docs(wiki): narrow paths\n\nonly the touched paths now\n\nTask: PLN-x#1", "docs/wiki.md"},
+			{"docs(wiki): narrow paths\n\nonly the touched paths now\n\nTask: PLN-x#1", ".acta/wiki/w.md"},
 			{"chore(plan): tick and review notes", ".acta/plan.md"},
 			{"chore(spec): mark started", ".acta/spec.md"},
 		}, 0},
 		{"newer non-chore wins over older one", [][2]string{
-			{"docs: a", "docs/a.md"},
-			{"docs: b", "docs/b.md"},
+			{"docs: a", ".acta/a.md"},
+			{"docs: b", ".acta/b.md"},
 			{"chore(plan): c", ".acta/c.md"},
 		}, 1},
 	}
