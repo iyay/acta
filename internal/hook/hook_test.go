@@ -70,11 +70,15 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 	}
 	// The index is one line of names. A line per skill with its hint is the
 	// old shape: the skill list of the harness already shows the hints.
+	// A plan depth once let a plan skip the user's yes. It must not come back.
+	if strings.Contains(out, "needs no plan yes") {
+		t.Error("core rule 2 still lets a plan skip the yes")
+	}
 	if strings.Contains(out, "\n- acta:") {
 		t.Error("the index still has a line per skill")
 	}
 	for _, want := range []string{
-		"No code before an approved design and an approved plan. A plan with depth: minimal in its frontmatter needs no plan yes.",
+		"No code before an approved design and an approved plan, whatever the plan depth.",
 		"Never push.",
 		"CLAUDE.md or AGENTS.md",
 		"Write every chat message to the user in Korean.",
