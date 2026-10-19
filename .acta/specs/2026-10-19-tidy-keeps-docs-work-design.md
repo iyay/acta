@@ -3,6 +3,8 @@ parent: bugs/2026-10-19-tidy-folds-docs-work-into-wrong-message
 id: SPC-0165
 created: "2026-10-19 20:48:13"
 hash: joz9li0
+started: "2026-10-19 21:01:43"
+finished: "2026-10-19 21:04:09"
 ---
 
 # Tidy keeps docs work and carries Task trailers

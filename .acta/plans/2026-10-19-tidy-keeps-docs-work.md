@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0178
 created: "2026-10-19 21:01:24"
 hash: cw04x8f
+started: "2026-10-19 21:01:43"
+finished: "2026-10-19 21:04:09"
 ---
 
 # Tidy keeps docs work and carries Task trailers
@@ -29,15 +31,19 @@ hash: cw04x8f
 **Files:** `internal/tidy/tidy.go`, `internal/tidy/tidy_test.go`
 **Seam:** `tidy.Run`
 **verify:** A `docs` commit before the marker is kept exactly when it touches a file outside the planning root; `chore` and `wiki` always fold; the marker and everything after it fold as today. List each subject type and marker position checked; `TestReviewMarkerFoldsRest` passes unchanged.
-- [ ] Red: a branch `docs(skills)`, `docs(setup)`, `polish:`, `docs(bug)` tidies to one commit today instead of the two docs commits.
-- [ ] Change: split fold types so `docs` keeps when `touchesOutside` is true and the marker has not been seen.
-- [ ] Commit: `fix(tidy): keep docs work that touches code`
+- [x] Red: a branch `docs(skills)`, `docs(setup)`, `polish:`, `docs(bug)` tidies to one commit today instead of the two docs commits.
+- [x] Change: split fold types so `docs` keeps when `touchesOutside` is true and the marker has not been seen.
+- [x] Commit: `fix(tidy): keep docs work that touches code`
 
 ### Task 2: Folded Task trailers move to the kept commit
 
 **Files:** `internal/tidy/tidy.go`, `internal/tidy/tidy_test.go`, `.acta/wiki/land-tidy-history.md`
 **Seam:** `tidy.Run`, read back through `internal/commits`
 **verify:** No `Task:` trailer of any folded commit is lost on any fold path (fold into a kept commit, ride forward before the first kept commit, all-fold fallback); each lands once in the last paragraph of the kept message, and a mid-body `Task:` mention never counts as present. The all-fold subject comes from the newest commit touching files outside the planning root. List every fold path checked.
-- [ ] Red: a folded commit's trailer is missing from the kept commit, and an all-fold branch takes a planning-only `docs(bug)` subject.
-- [ ] Change: carry folded trailers into the kept message's last paragraph with dedupe there, pick the all-fold subject by `touchesOutside`, and rewrite the trailer line of the wiki page.
-- [ ] Commit: `fix(tidy): carry Task trailers when commits fold`
+- [x] Red: a folded commit's trailer is missing from the kept commit, and an all-fold branch takes a planning-only `docs(bug)` subject.
+- [x] Change: carry folded trailers into the kept message's last paragraph with dedupe there, pick the all-fold subject by `touchesOutside`, and rewrite the trailer line of the wiki page.
+- [x] Commit: `fix(tidy): carry Task trailers when commits fold`
+
+## Review notes
+
+Deep review round 1 CLEAN on both axes, no polish. Notes: plan() param `commits` shadows the package; CRLF messages get mixed line ends after carry; one extra git call per folded commit; a kept commit's own mid-body Task line is added again in the last paragraph, as the spec says.
