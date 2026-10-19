@@ -2,6 +2,9 @@ package setup
 
 import (
 	"io"
+	"os"
+
+	"github.com/charmbracelet/huh"
 
 	"github.com/iyay/acta/internal/config"
 )
@@ -26,4 +29,25 @@ func AskOverridesPicking(u config.User, repoRoot string, out io.Writer, picks ma
 		}
 		return nil
 	})
+}
+
+// FormInput and TTYPath let tests check which input the setup forms read.
+var (
+	FormInput = formInput
+	TTYPath   = ttyPath
+)
+
+// AskRecordingInputs runs Ask without a terminal. The tty open returns
+// want, and each form only records the input it was given.
+func AskRecordingInputs(e Env, want *os.File) ([]*os.File, error) {
+	var got []*os.File
+	oldOpen, oldRun := openFormInput, runForm
+	defer func() { openFormInput, runForm = oldOpen, oldRun }()
+	openFormInput = func() *os.File { return want }
+	runForm = func(_ *huh.Group, tty *os.File) error {
+		got = append(got, tty)
+		return nil
+	}
+	_, err := Ask(e, io.Discard)
+	return got, err
 }

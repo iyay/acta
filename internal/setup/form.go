@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -269,10 +270,14 @@ func FormGroups(e Env) []*huh.Group {
 func Ask(e Env, out io.Writer) (Answers, error) {
 	a := Answers{User: e.Current, Install: map[string]bool{}}
 	st := buildFormState(e)
+	tty := openFormInput()
+	if tty != nil {
+		defer tty.Close()
+	}
 	// One form per question: huh wipes the question when it is answered, and
 	// the collapsed line takes its place, so the answers pile up on the rail.
 	for _, q := range st.questions {
-		if err := huh.NewForm(q.group).WithTheme(Theme()).Run(); err != nil {
+		if err := runForm(q.group, tty); err != nil {
 			return Answers{}, err
 		}
 		fmt.Fprint(out, Collapsed(q.title, q.answer()))
@@ -285,7 +290,9 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 	// The override questions depend on the answers just given, so they come
 	// as a second step after the fixed screens.
 	var err error
-	a.Overrides, a.Repo, err = askOverrides(a.User, e.RepoRoot, out, runGroup)
+	a.Overrides, a.Repo, err = askOverrides(a.User, e.RepoRoot, out, func(q *overrideQuestion) error {
+		return runForm(q.group, tty)
+	})
 	if err != nil {
 		return Answers{}, err
 	}
@@ -310,9 +317,41 @@ func AnswersUser(current config.User, d Defaults) config.User {
 	}
 }
 
-// runGroup shows one override screen and waits for the answer.
-func runGroup(q *overrideQuestion) error {
-	return huh.NewForm(q.group).WithTheme(Theme()).Run()
+// ttyPath is the terminal by the one name that works. Under curl | sh the
+// installer hands setup /dev/tty as stdin, but Go then calls it /dev/stdin.
+// On macOS a form reading a file with any other name cannot stop reading
+// when it ends, so it eats the first key meant for the next question.
+const ttyPath = "/dev/tty"
+
+// formInput opens the terminal by its real name for the forms to share.
+// It returns nil when stdin is not a terminal or the open fails, and the
+// forms then read stdin as before.
+func formInput(stdinIsTTY bool, open func(string) (*os.File, error)) *os.File {
+	if !stdinIsTTY {
+		return nil
+	}
+	f, err := open(ttyPath)
+	if err != nil {
+		return nil
+	}
+	return f
+}
+
+// openFormInput opens the tty for Ask when stdin is a terminal. Tests swap
+// it, since they have no terminal.
+var openFormInput = func() *os.File {
+	stdin, _ := os.Stdin.Stat()
+	return formInput(stdin != nil && stdin.Mode()&os.ModeCharDevice != 0, os.Open)
+}
+
+// runForm shows one screen and waits for the answer, reading from tty when
+// there is one. Tests swap it to see which input each screen got.
+var runForm = func(g *huh.Group, tty *os.File) error {
+	f := huh.NewForm(g).WithTheme(Theme())
+	if tty != nil {
+		f = f.WithInput(tty)
+	}
+	return f.Run()
 }
 
 // overrideQuestion is one select about one repo key: the override it asks
