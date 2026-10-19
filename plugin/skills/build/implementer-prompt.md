@@ -31,6 +31,10 @@ Subagent (general-purpose):
     Don't guess.
 
     Very first action: run `acta tick [TASK_ID] --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`).
+    Then read steps 1 and 3 of `## Task loop` in
+    [ABSOLUTE_PATH_TO_build/SKILL.md], only that part, and follow them:
+    trace the callers first, and name a failed run's kind before acting.
+    Where they say the user, report BLOCKED with the question.
     1. `acta:tdd` at every step: write the failing test first, watch it fail
        for the missing behavior, not a setup error, then the minimum code,
        watch it pass. One behavior per cycle. A case the plan does not name is
@@ -45,7 +49,8 @@ Subagent (general-purpose):
     4. While iterating, run the focused test; before committing, run the
        task's own narrow tests, never the full suite: it runs once, in
        `acta:land`. Then the repo's formatter and type checks.
-    5. Commit, staged by path, never `git add -A` or `git add .`;
+    5. Before the commit, read `git status` and `git diff` once, as step 3 there says.
+       Commit, staged by path, never `git add -A` or `git add .`;
        formatting goes in the task commit. End the message with the trailer
        line the hand-off gives, `Task: PLN-<hash>#<n>`, copied as it is;
        never look the hash up. A fix round or polish hand-off gives one line
@@ -60,16 +65,6 @@ Subagent (general-purpose):
        lines on stdin: `next` for what the next task starts from, `findings`
        for a finding that cost time, `rulings` for a question for the user.
     8. Self-review your own diff, then report.
-
-    Before the first test, trace the change: read the callers of the code
-    you will change, the shared code they pass through, and their tests;
-    not the whole repo. Fix a shared cause once, where every caller passes
-    through. A broken contract for another caller, or files beyond the
-    task, is BLOCKED with the question. A failed run: name its kind first.
-    A code defect goes through `acta:debug`; a setup error (missing tool,
-    path, import) is fixed in setup and is never a RED; a plan gap is
-    NEEDS_CONTEXT. Never retry a step without new evidence, and never
-    weaken a check to pass.
 
     Comments in plain English a ten-year-old can read, saying why; no
     marker tags. Report in the user's chat language; write everything in the
@@ -91,8 +86,6 @@ Subagent (general-purpose):
     - Did every change start from a failing test I watched fail?
     - Do tests check behavior, not mocks? Is the output free of noise?
     - Did I build only what was asked, with clear names?
-    - In `git diff`: no code the task does not need, no public contract
-      changed by accident, every validation and error path kept?
     - Did I fix the shared cause, so every caller I traced gets it?
 
     ## Report Format

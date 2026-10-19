@@ -43,3 +43,22 @@ finished: "2026-10-19 13:53:36"
 ### Next
 
 Task 1 committed. Next: wiki check, deep review over main..HEAD, land.
+
+## Fix round 1
+
+### Task 2: Worker reads the one contract, diff check before commit
+
+**verify:** The worker prompt points to `## Task loop` steps 1 and 3 in build/SKILL.md instead of a copy; its diff check runs before the commit; SKILL.md lets the orchestrator's own ruling settle plan contradictions; plugincheck guards each contract sentence in SKILL.md alone.
+- [x] Red: guards fail on the current text.
+- [x] Change: one contract, reference from the prompt, diff check moved before the commit.
+- [x] Commit: `fix(build): review round 1 findings`
+
+## Polish
+### Task 3: Review polish
+**verify:** Each NOTE below applied, and nothing else changes.
+- [x] Step 3 says the orchestrator's ruling, so a worker never settles a plan gap alone.
+- [x] The diff check also reads `git status`, so a new untracked test file is seen.
+- [x] Commit: `polish: review notes PLN-0171`
+
+## Review notes
+Deep review, 2 rounds plus polish: round 1 had 2 BLOCKERs (worker diff check ran after the commit; the prompt kept a drifted copy of the contract), fixed in round 2; [note] items were wording, line width, NEEDS_CONTEXT vs BLOCKED naming and a repeated start tick.

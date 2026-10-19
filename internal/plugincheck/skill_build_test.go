@@ -46,8 +46,6 @@ func TestSkillBuild(t *testing.T) {
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
-			// The shared coding contract every executor follows.
-			"Then trace the change", "Fix a shared cause once", "Before the commit, read `git diff` once", "is never a RED", "never weaken a check to pass",
 		},
 		MustNot: []string{"or has `depth: minimal`", `only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
@@ -443,14 +441,29 @@ func TestBuildWorktreeAddFromTopFolder(t *testing.T) {
 	}
 }
 
-// TestImplementerPromptCodingContract reads implementer-prompt.md on its own.
-// A subagent worker reads only this file, so the trace, triage and diff
-// check from the task loop have to reach it here too.
-func TestImplementerPromptCodingContract(t *testing.T) {
-	txt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
-	for _, want := range []string{"trace the change", "Fix a shared cause once", "is never a RED", "never weaken a check to pass", "In `git diff`"} {
-		if !strings.Contains(txt, want) {
-			t.Errorf("implementer-prompt.md missing %q", want)
+// TestBuildCodingContract reads each file on its own. CheckSkill joins the
+// whole folder, so a sentence could leave SKILL.md and stay green. Every
+// executor reads the contract in SKILL.md; the worker prompt points there
+// instead of keeping a copy that drifts, and its diff check must come
+// before its commit step, or the diff is already empty.
+func TestBuildCodingContract(t *testing.T) {
+	skill := strings.Join(strings.Fields(readBuildFile(t, "SKILL.md")), " ")
+	for _, want := range []string{"Then trace the change", "Fix a shared cause once", "goes through `acta:debug`", "is never a RED",
+		"neither the spec nor the orchestrator's ruling settles goes to the user", "never weaken a check to pass",
+		"Before the commit, read `git status` and `git diff` once", "drop a test that repeats another"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md missing %q", want)
 		}
+	}
+	prompt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
+	if !strings.Contains(prompt, "[ABSOLUTE_PATH_TO_build/SKILL.md]") || !strings.Contains(prompt, "steps 1 and 3 of `## Task loop`") {
+		t.Error("implementer-prompt.md does not point to the contract in build/SKILL.md")
+	}
+	if strings.Contains(prompt, "Fix a shared cause once") {
+		t.Error("implementer-prompt.md keeps its own copy of the contract")
+	}
+	diff, commit := strings.Index(prompt, "and `git diff` once"), strings.Index(prompt, "Commit, staged by path")
+	if diff < 0 || commit < 0 || diff > commit {
+		t.Errorf("implementer-prompt.md must check the diff before the commit step (diff %d, commit %d)", diff, commit)
 	}
 }
