@@ -95,6 +95,11 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			if c.folder == "lean-tests" && filepath.Base(f) == "no-extra-test-files.md" {
 				continue
 			}
+			// A fixed check backs the judge here: some Bash call must name the
+			// Barrier probe from race.md.
+			if c.folder == "debug-race" && filepath.Base(f) == "barrier-probe.md" {
+				continue
+			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != (want[c.folder] || debug[c.folder]) {
 				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}

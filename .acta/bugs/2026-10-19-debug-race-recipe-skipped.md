@@ -1,6 +1,8 @@
 ---
 id: BUG-0048
 hash: frnwaxi
+fixed_in: 89ca0c172ca14d48c2e22a7d9b67eb798a035a13
+finished: "2026-10-19 13:11:27"
 ---
 # Debug skill run on a race does not force the interleaving
 
