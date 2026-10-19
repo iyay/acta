@@ -1,8 +1,9 @@
 ---
 # guards: writes no record
-# Rejects a run that loses the failure output. The red run's log is a new file
-# in the Git common directory, beside the old record.
-type: file_exists
-path: "repo/.git/acta-baseline-*.log"
-exists: true
+# Rejects a run that never names the new failure log. The report has to carry
+# the absolute path of the red run's log, which has the time in its name, so
+# the old record's log does not count.
+type: regex
+pattern: "acta-baseline-[0-9]{8}T[0-9]{6}Z[^ ]*\\.log"
+target: last_message
 ---

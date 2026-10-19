@@ -52,11 +52,23 @@ finished: "2026-10-20 05:42:39"
 
 **verify:** the baseline policy covers every full-suite run, the eval graders fail for the right reason, and nothing else changes.
 
-- [ ] Scope the baseline policy to step 1, step-6 and tidy-tip runs, naming the tested checkout.
-- [ ] Grade the failure log path from the report, any merge form, the full old record and all record fields.
-- [ ] Use seven-character hashes in the stale eval and drop the unused requirements file.
-- [ ] Keep the tidy-history fold fallback and drop the double run-one wrap.
-- [ ] Commit: `fix(land): close the review findings`
+- [x] Scope the baseline policy to step 1, step-6 and tidy-tip runs, naming the tested checkout.
+- [x] Grade the failure log path from the report, any merge form, the full old record and all record fields.
+- [x] Use seven-character hashes in the stale eval and drop the unused requirements file.
+- [x] Keep the tidy-history fold fallback and drop the double run-one wrap.
+- [x] Commit: `fix(land): close the review findings`
+
+## Fix round 2
+
+### Task 4: Fix round 2 findings
+
+**verify:** the eval matchers see the JSON-encoded command, the registry phrase has a live carrier, and nothing else changes.
+
+- [ ] Anchor the negative suite matchers on the JSON command value and keep the positive matcher plain.
+- [ ] Point the pass registry at a phrase a surviving grader carries.
+- [ ] Require an absolute failure log path and allow the run-one wrapper in the record fields.
+- [ ] Record the input_match regex semantics in FACTS.md.
+- [ ] Commit: `fix(evals): read the JSON tool input`
 
 ## Close
 

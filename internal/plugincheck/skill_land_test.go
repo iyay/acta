@@ -152,10 +152,13 @@ func TestLandBaselineEvidence(t *testing.T) {
 	base := string(b)
 	for _, want := range []string{
 		"git rev-parse --path-format=absolute --git-common-dir",
+		"before every full suite run in a land: step 1, a step-6 rerun on the merge result, or a tidy-tip rerun",
+		"in the checkout where the suite ran",
 		"unique log",
 		"acta-baseline-<utc-time>-<pid>.log",
 		"Never pipe the suite into `tee`, `head` or a filter",
 		"rc=$?",
+		"already takes the run-one lock",
 		"Keep the failed log",
 		"the last PASS stays",
 		"Never rerun the suite",

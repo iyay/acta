@@ -45,7 +45,7 @@ cat > .acta/specs/2026-10-19-stale-design.md <<'SPEC'
 ---
 id: SPC-0001
 created: "2026-10-19 09:00:00"
-hash: stalesp1
+hash: stalesp
 ---
 # Slug helper
 
@@ -54,15 +54,14 @@ Status: Bounded, approved by the user in chat on 2026-10-19.
 A function slug(text) returns the text in lower case with spaces turned into
 dashes.
 SPEC
-printf '# The suite is scripts/test. It belongs to landing.\n' > requirements.txt
-# One task, depth minimal. The plan hash is stalepl1: the trailer must carry it.
+# One task, depth minimal. The plan hash is stalepl: the trailer must carry it.
 cat > .acta/plans/2026-10-19-stale.md <<'PLAN'
 ---
 parent: specs/2026-10-19-stale-design
 depth: minimal
 id: PLN-0001
 created: "2026-10-19 09:10:00"
-hash: stalepl1
+hash: stalepl
 ---
 # Slug Implementation Plan
 

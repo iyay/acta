@@ -11,7 +11,7 @@ With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `me
 
 Keep rule: a failed tidy stops the land and never falls back to a plain merge.
 
-Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject comes from the newest commit that changed real files, so a closing planning commit cannot hide the real change (BUG-0043, BUG-0051).
+Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject comes from the newest commit that changed real files, else the newest non-chore, else the newest commit, so a closing planning commit cannot hide the real change (BUG-0043, BUG-0051).
 
 `-D` is safe: the old branch is no ancestor, and tidy proved the tip equals the parent plus branch merge, so it loses nothing. Delete `refs/acta/tidy/<branch>` after.
 
