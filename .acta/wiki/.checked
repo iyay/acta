@@ -3,9 +3,9 @@ codex-harness 2026-10-18T13:35:40Z
 commit-subject-form 2026-10-18T13:50:48Z
 dispatch-plan-path 2026-10-18T13:50:48Z
 erase-line-full-width 2026-10-18T13:35:41Z
-eval-merge-needs-libexec 2026-10-18T22:50:34Z
-eval-red-case-debug 2026-10-18T22:50:34Z
-eval-sandbox-greenfield 2026-10-18T22:50:36Z
+eval-merge-needs-libexec 2026-10-18T23:59:35Z
+eval-red-case-debug 2026-10-18T23:59:35Z
+eval-sandbox-greenfield 2026-10-18T23:59:36Z
 exec-process-drops-mouse 2026-10-18T13:35:42Z
 fix-duplicate-ids 2026-10-18T13:50:49Z
 ghostty-minimum-contrast 2026-10-14T08:56:42Z
@@ -23,8 +23,8 @@ omp-steer-and-fix-rounds 2026-10-14T08:56:42Z
 orphan-test-binaries 2026-10-15T02:45:47Z
 parallel-implementers-one-worktree 2026-10-14T08:56:42Z
 plan-spec-line 2026-10-18T13:35:45Z
-plugin-loads-from-repo 2026-10-18T23:25:32Z
-plugin-ships-in-binary 2026-10-18T23:25:33Z
+plugin-loads-from-repo 2026-10-18T23:59:36Z
+plugin-ships-in-binary 2026-10-18T23:59:36Z
 plugincheck-caps-per-folder 2026-10-18T23:25:33Z
 rebuild-binary-after-merge 2026-10-18T13:35:47Z
 release 2026-10-15T02:45:47Z
