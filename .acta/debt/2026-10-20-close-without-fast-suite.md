@@ -2,6 +2,7 @@
 id: DBT-0136
 hash: g1vu153
 parent: plans/2026-10-20-close-without-fast-suite
+started: "2026-10-20 08:13:04"
 ---
 # Review NOTEs: Close builds without another fast suite
 
