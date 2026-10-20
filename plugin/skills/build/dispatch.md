@@ -47,9 +47,10 @@ A reply-back is a claim, not a fact. It starts this phase, and so does the user.
 git log --oneline <base>..HEAD
 git diff --stat <base>..HEAD
 git diff --name-only <base>..HEAD      # only plan files
-<the plan's fast test command> 2>&1 | tail -20
 git diff --name-only <base>..HEAD -- .acta/bugs
 ```
+
+A reply carries its own evidence: read the recipient's task tests and type-check output, and run a narrow check only for the claim still in doubt. Never run the broad fast suite for a reply.
 
 Compare the commits with the task list. On security or destructive changes, re-run the decisive mutation yourself. Name each bug file of the last command under `Bugs found by recipient:` in the landing report, or write `none`.
 

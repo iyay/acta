@@ -9,4 +9,6 @@ Every skill or text taken from another project is rewritten, not copied: short p
 
 A build skill starts its first task after setup, with no baseline suite. A saved suite record is history, not a setup gate, so a missing, old, unreadable or other-tree result never costs a run or a question. Each task still starts with its own failing test.
 
-Prove a no-suite rule with a scaffold suite that fails if it runs, never with a prompt that tells the agent to skip tests. Match the run command at the JSON `"command":"` boundary, so a grep or a plan read is not counted as a run.
+A build close runs no repository-wide fast suite either: each task already ran its focused tests. The close finishes any outstanding type check, shows that evidence with the task tests, and starts review. Landing still runs the full suite.
+
+Prove a no-suite rule with a scaffold suite that fails if it runs or leaves a marker file when it runs, never with a prompt that tells the agent to skip tests. A marker needs no command match, so a read or a quote cannot count as a run; when the proof is a tool call, match the command at the JSON `"command":"` boundary.
