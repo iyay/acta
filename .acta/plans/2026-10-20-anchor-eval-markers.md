@@ -34,6 +34,17 @@ finished: "2026-10-20 08:15:14"
 - [x] Change: Write both generated scripts with the scaffold's `$PWD` baked into the marker path, so the folder the scripts run from no longer matters.
 - [x] Commit: `fix(eval): anchor the build-close markers to the workspace root`
 
+## Follow-up: Review note approved in chat
+
+### Task 2: Keep workspace names literal in marker scripts
+
+**Files:** Modify `plugin/evals/build-close-no-suite/scaffold.sh` and `internal/plugincheck/evals_test.go`.
+**Seam:** The generated test and type-check scripts, through the existing scaffold regression.
+**verify:** Both markers remain at the workspace root when scripts run from a subfolder and the workspace name contains spaces, dollar expansions, quotes or backticks; the path is data, never shell source, and no command hidden in the path executes.
+- [x] Red: Extend the existing regression with a literal shell-character workspace name and check that neither marker escapes and no embedded command runs; observe the focused test fail on the current generated scripts.
+- [x] Change: Keep the generated script heredocs literal and derive the marker location from each script's quoted path, then pass the focused scaffold checks and shell syntax check.
+- [x] Commit: `fix(eval): keep marker paths literal in generated scripts`.
+
 ## State
 
 ### Next
@@ -43,3 +54,5 @@ review and land the marker fix
 ## Review notes
 
 Deep review of `main..HEAD`: spec and standards reviewers were CLEAN with no BLOCKERs. Notes left: the test asserts only the subfolder run, which already proves the baked root path, so a separate root assertion would re-check the same string; unquoted heredocs would interpolate any future `$` in the generated scripts; a failed redirect exits 0 because the scripts end with `echo`; one test comment repeats "git". None changes what a grader sees.
+
+Follow-up deep review of `3af895f..1fb940e`: Spec and Standards reviewers CLEAN, no new BLOCKERs or NOTEs. Seven workspace-name regressions and independent script probes confirm literal paths and no injected commands; the original shell-character cases fail before the fix. Focused checks, vet, shell syntax and diff checks passed.

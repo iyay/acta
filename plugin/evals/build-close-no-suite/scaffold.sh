@@ -35,17 +35,17 @@ chmod +x bin/acta
 # runs, so the grader can tell a run from a read or a quote of this file, and a
 # run from a subfolder still counts. Landing owns this suite; the close does
 # not run it again.
-cat > scripts/test <<TEST
+cat > scripts/test <<'TEST'
 #!/bin/sh
-echo x >> "$PWD/broad-suite-ran"
+echo x >> "$(dirname -- "$0")/../broad-suite-ran"
 echo "1 test passed"
 TEST
 chmod +x scripts/test
 # The one check the plan leaves open. It leaves a marker too, so a reply cannot
 # claim it ran without the file.
-cat > scripts/typecheck <<CHECK
+cat > scripts/typecheck <<'CHECK'
 #!/bin/sh
-echo x >> "$PWD/typecheck-ran"
+echo x >> "$(dirname -- "$0")/../typecheck-ran"
 echo "typecheck ok"
 CHECK
 chmod +x scripts/typecheck
