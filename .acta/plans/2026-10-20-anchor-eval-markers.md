@@ -5,6 +5,8 @@ depth: minimal
 id: PLN-0182
 created: "2026-10-20 08:12:31"
 hash: cjzy9ko
+started: "2026-10-20 08:13:04"
+finished: "2026-10-20 08:15:14"
 ---
 
 # Anchor eval markers to the workspace root
@@ -28,6 +30,16 @@ hash: cjzy9ko
 **Files:** Modify `plugin/evals/build-close-no-suite/scaffold.sh`; add the regression test to `internal/plugincheck/evals_test.go`.
 **Seam:** the generated `scripts/test` and `scripts/typecheck`, run with the scaffold's tools stubbed.
 **verify:** Running either generated script from the workspace root or from a subfolder writes its marker at the workspace root and nowhere else, so the `file_exists` graders cannot miss a broad-suite run; the scaffold still refuses a non-empty folder. List the paths checked: root and one subfolder for both scripts.
-- [ ] Red: Add `TestBuildCloseScaffoldMarkersIgnoreCwd`, which scaffolds in a temp folder with stub `acta`, `git` and `xcrun`, runs both scripts from a subfolder, and asserts the markers sit at the root; it fails because the current scripts write them in the caller folder.
-- [ ] Change: Write both generated scripts with the scaffold's `$PWD` baked into the marker path, so the folder the scripts run from no longer matters.
-- [ ] Commit: `fix(eval): anchor the build-close markers to the workspace root`
+- [x] Red: Add `TestBuildCloseScaffoldMarkersIgnoreCwd`, which scaffolds in a temp folder with stub `acta`, `git` and `xcrun`, runs both scripts from a subfolder, and asserts the markers sit at the root; it fails because the current scripts write them in the caller folder.
+- [x] Change: Write both generated scripts with the scaffold's `$PWD` baked into the marker path, so the folder the scripts run from no longer matters.
+- [x] Commit: `fix(eval): anchor the build-close markers to the workspace root`
+
+## State
+
+### Next
+
+review and land the marker fix
+
+## Review notes
+
+Deep review of `main..HEAD`: spec and standards reviewers were CLEAN with no BLOCKERs. Notes left: the test asserts only the subfolder run, which already proves the baked root path, so a separate root assertion would re-check the same string; unquoted heredocs would interpolate any future `$` in the generated scripts; a failed redirect exits 0 because the scripts end with `echo`; one test comment repeats "git". None changes what a grader sees.
