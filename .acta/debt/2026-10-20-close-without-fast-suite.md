@@ -7,4 +7,4 @@ started: "2026-10-20 08:13:04"
 # Review NOTEs: Close builds without another fast suite
 
 - [ ] (medium) The dispatch brief prints the plan whole **Tests:** line under GATES, fast command included (internal/cli/dispatch_brief.go), so a dispatched build can still run the broad suite before review. Decide whether the brief should name only each task focused tests.
-- [ ] (medium) The eval markers in plugin/evals/build-close-no-suite/scaffold.sh follow the caller cwd. A scripts/test run from a subfolder writes broad-suite-ran below the grader path, so the eval can pass while the close still ran the broad suite. Anchor both marker paths to the workspace root.
+- [x] (medium) The eval markers in plugin/evals/build-close-no-suite/scaffold.sh follow the caller cwd. A scripts/test run from a subfolder writes broad-suite-ran below the grader path, so the eval can pass while the close still ran the broad suite. Anchor both marker paths to the workspace root.
