@@ -232,8 +232,8 @@ func TestBuildSkillNoBareGoTest(t *testing.T) {
 
 // TestBuildCloseWritesWikiFirst reads SKILL.md on its own. CheckSkill joins
 // the whole folder, and wiki.md says "acta wiki check" too, so a revert of
-// SKILL.md alone could stay green. The wiki step has to come before the fast
-// tests and the review, or the review cannot see the wiki diff. The check runs
+// SKILL.md alone could stay green. The wiki step has to come before the type
+// check and the review, or the review cannot see the wiki diff. The check runs
 // first, in the worktree, and wiki.md is read only after it, when a page has
 // to be fixed or added.
 func TestBuildCloseWritesWikiFirst(t *testing.T) {
@@ -249,7 +249,8 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 		"Write each page the spec approved (shape notes each yes in the spec)",
 		"Add any other page only for a lesson a fresh agent would lose time without",
 		"Make one commit",
-		"run the fast tests and the type checks",
+		"finish any outstanding type check",
+		"show it with the tests each task ran",
 		"then use `acta:review` over `<parent>..HEAD`",
 	} {
 		i := strings.Index(closing, step)
@@ -266,6 +267,34 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	// So its wiki commit has to come before the reply.
 	if !strings.Contains(closing, "`acta reply-back` after the last task commit and the wiki step") {
 		t.Error("build/SKILL.md ## Close lets a dispatch recipient reply back before the wiki step")
+	}
+}
+
+// TestBuildCloseRunsNoSecondSuite reads SKILL.md on its own. Each task already
+// ran its focused tests, and landing runs the full suite. A second repository
+// wide run at close only repeats that work, so the close keeps the type check
+// and the task evidence and goes to review.
+func TestBuildCloseRunsNoSecondSuite(t *testing.T) {
+	_, closing, ok := strings.Cut(readBuildFile(t, "SKILL.md"), "\n## Close\n")
+	if !ok {
+		t.Fatal("build/SKILL.md has no ## Close section")
+	}
+	text := strings.Join(strings.Fields(closing), " ")
+	for _, want := range []string{
+		"finish any outstanding type check",
+		"show it with the tests each task ran",
+		"No second fast suite",
+		"each task already ran its own tests",
+		"a change made after one needs only the test it touches",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("build/SKILL.md ## Close is missing %q", want)
+		}
+	}
+	for _, bad := range []string{"run the fast tests", "run the fast suite", "the fast tests and the type checks"} {
+		if strings.Contains(text, bad) {
+			t.Errorf("build/SKILL.md ## Close still runs a second suite: found %q", bad)
+		}
 	}
 }
 

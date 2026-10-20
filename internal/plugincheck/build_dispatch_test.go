@@ -65,7 +65,8 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"1. A reply-back already arrived", "2. Every task of the plan is ticked",
 		"3. Tasks still open", "4. Idle again with no new commit",
 		"git log --oneline <base>..HEAD", "git diff --name-only <base>..HEAD      # only plan files",
-		"the plan's fast test command", "git diff --name-only <base>..HEAD -- .acta/bugs",
+		"Never run the broad fast suite for a reply", "run a narrow check only for the claim still in doubt",
+		"git diff --name-only <base>..HEAD -- .acta/bugs",
 		"Bugs found by recipient", "Harvested from omp", "omp memory: nothing to harvest", "learned.md",
 		"acta:review", "acta:land",
 		"The review depth comes from `acta:review`'s `## Review tiers`.",
@@ -92,7 +93,7 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"on reply-back the two reviewers review the polish range; it is not a fix round",
 		"orchestrator sorts them through",
 		"orchestrator sorts it through",
-		"read it again", "<one-shot test runner>",
+		"read it again", "<one-shot test runner>", "<the plan's fast test command>",
 		"then build's `## Close` runs `acta:land`",
 		// The new send never sends /new: a fresh omp process is the new
 		// session. The two spellings are banned instead of "/new", which

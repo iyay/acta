@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0180
 created: "2026-10-20 07:15:42"
 hash: i9x3d61
+started: "2026-10-20 07:18:18"
+finished: "2026-10-20 07:23:22"
 ---
 # Close builds without another fast suite
 
@@ -28,10 +30,24 @@ hash: i9x3d61
 **Files:** Modify `plugin/skills/build/SKILL.md`, `plugin/skills/build/dispatch.md`, `internal/plugincheck/skill_build_test.go`, `internal/plugincheck/build_dispatch_test.go`, `internal/plugincheck/evals_test.go`, and `.acta/wiki/skill-text-fits-everyone.md`; create `plugin/evals/build-close-no-suite/case.yaml`, `prompt.md`, `scaffold.sh`, and deterministic graders under `graders/`.
 **Seam:** The build skill's shared close transition and dispatch reply verification, `CheckSkill` and focused build policy checks, and the sandboxed build-close eval's commands and artifacts.
 **verify:** Inline, subagent, and dispatch close paths never require a broad fast suite before review; wiki updates still precede review, task evidence is retained, outstanding type checks run, missing evidence requires only relevant checks, and dispatch still independently verifies sensitive changes; enumerate the checked paths and preserve all existing landing gates. In the behavior eval, a completed plan reaches the review hand-off, a known required type check runs, and the broad suite's persistent invocation marker remains absent; the prompt must not tell the agent to skip tests, and reading or quoting a command must not count as executing it.
-- [ ] Red: Update the close-order regression and add shared-close/dispatch checks plus the registered behavior case with a counted broad-suite trap and type-check artifact; observe `scripts/test ./internal/plugincheck/ -run 'Test(BuildClose|BuildDispatch|Eval)'` fail because the current skills still require the extra suite.
-- [ ] Change: Remove the broad close run and dispatch fast-command rerun, preserve outstanding type checks and verification evidence, finish the eval using existing scaffold/grader patterns and no shell-command regex as proof of execution, update the wiki, and pass the focused checks and new behavior case.
-- [ ] Commit: `perf(build): skip the extra fast suite before review`.
+- [x] Red: Update the close-order regression and add shared-close/dispatch checks plus the registered behavior case with a counted broad-suite trap and type-check artifact; observe `scripts/test ./internal/plugincheck/ -run 'Test(BuildClose|BuildDispatch|Eval)'` fail because the current skills still require the extra suite.
+- [x] Change: Remove the broad close run and dispatch fast-command rerun, preserve outstanding type checks and verification evidence, finish the eval using existing scaffold/grader patterns and no shell-command regex as proof of execution, update the wiki, and pass the focused checks and new behavior case.
+- [x] Commit: `perf(build): skip the extra fast suite before review`.
 
 ## Close
 
 Review the complete branch once at the configured deep level, then run the normal full suite, behavior eval, and wiki gates before landing. Keep the existing no-baseline startup rule. The changed close policy removes the broad fast run; focused regression checks above still prove this change.
+
+## State
+
+### Next
+
+review and land the finished close rule
+
+### Findings
+
+Eval gate incomplete: 6 of 33 cases (side-idea-to-scratch, state-resume, style-short-answer, task-trailer, wiki-close, wiki-hint) scored 0 ungraded because the Claude session limit hit at 2026-10-20T00:55Z, resets 9:40am Jakarta. The changed case build-close-no-suite scored 1.00. Full suite green, review CLEAN, wiki clean. Rerun those cases after the reset, then land.
+
+## Review notes
+
+Deep review of `main..HEAD`: the spec and standards reviewers were CLEAN with no BLOCKERs. Left as notes: the eval markers are written in the caller's cwd, so a run from a subfolder can miss or escape them; this plan's Files list omits `internal/plugincheck/budget_test.go`; the dispatch brief GATES line is filed as debt.
