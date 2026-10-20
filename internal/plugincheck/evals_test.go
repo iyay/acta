@@ -340,44 +340,54 @@ func TestScaffoldsRefuseNonEmptyDir(t *testing.T) {
 // land at the workspace root, or a suite run from elsewhere escapes the
 // graders and the eval can pass while the close still took the broad suite.
 func TestBuildCloseScaffoldMarkersIgnoreCwd(t *testing.T) {
-	root := t.TempDir()
 	tools := t.TempDir()
-	// The scaffold copies git and acta from PATH and git from xcrun, so each
-	// one is a stub here. Nothing in this test needs a real repo.
-	for _, name := range []string{"acta", "git", "xcrun"} {
-		body := "#!/bin/sh\nexit 0\n"
-		if name == "xcrun" {
-			body = "#!/bin/sh\necho " + filepath.Join(tools, "git") + "\n"
-		}
-		if err := os.WriteFile(filepath.Join(tools, name), []byte(body), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	scaffold := filepath.Join(pluginRoot(t), "evals", "build-close-no-suite", "scaffold.sh")
-	cmd := exec.Command("bash", scaffold)
-	cmd.Dir = root
-	cmd.Env = []string{"PATH=" + tools + ":/usr/bin:/bin", "HOME=" + t.TempDir()}
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("scaffold: %v\n%s", err, out)
-	}
-	src := filepath.Join(root, "src")
-	for _, c := range []struct{ script, marker string }{
-		{"test", "broad-suite-ran"},
-		{"typecheck", "typecheck-ran"},
-	} {
-		run := exec.Command("sh", filepath.Join(root, "scripts", c.script))
-		run.Dir = src
-		run.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}
-		out, err := run.CombinedOutput()
-		if err != nil {
-			t.Fatalf("scripts/%s from src: %v\n%s", c.script, err, out)
-		}
-		if _, err := os.Stat(filepath.Join(root, c.marker)); err != nil {
-			t.Errorf("scripts/%s run from src left no %s at the workspace root, so a grader would miss it", c.script, c.marker)
-		}
-		if _, err := os.Stat(filepath.Join(src, c.marker)); err == nil {
-			t.Errorf("scripts/%s wrote %s in the caller folder, not at the workspace root", c.script, c.marker)
-		}
+	for _, name := range []string{"plain", "with spaces", "root $var", `root "quote`, "root 'quote", "root $(touch injected)", "root `touch injected`"} {
+		t.Run(name, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), name)
+			if err := os.Mkdir(root, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// The scaffold copies git and acta from PATH and git from xcrun, so each
+			// one is a stub here. Nothing in this test needs a real repo.
+			for _, name := range []string{"acta", "git", "xcrun"} {
+				body := "#!/bin/sh\nexit 0\n"
+				if name == "xcrun" {
+					body = "#!/bin/sh\necho " + filepath.Join(tools, "git") + "\n"
+				}
+				if err := os.WriteFile(filepath.Join(tools, name), []byte(body), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			scaffold := filepath.Join(pluginRoot(t), "evals", "build-close-no-suite", "scaffold.sh")
+			cmd := exec.Command("bash", scaffold)
+			cmd.Dir = root
+			cmd.Env = []string{"PATH=" + tools + ":/usr/bin:/bin", "HOME=" + t.TempDir()}
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("scaffold: %v\n%s", err, out)
+			}
+			src := filepath.Join(root, "src")
+			for _, c := range []struct{ script, marker string }{
+				{"test", "broad-suite-ran"},
+				{"typecheck", "typecheck-ran"},
+			} {
+				run := exec.Command("sh", filepath.Join(root, "scripts", c.script))
+				run.Dir = src
+				run.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}
+				out, err := run.CombinedOutput()
+				if err != nil {
+					t.Fatalf("scripts/%s from src: %v\n%s", c.script, err, out)
+				}
+				if _, err := os.Stat(filepath.Join(root, c.marker)); err != nil {
+					t.Errorf("scripts/%s run from src left no %s at the workspace root, so a grader would miss it", c.script, c.marker)
+				}
+				if _, err := os.Stat(filepath.Join(src, c.marker)); err == nil {
+					t.Errorf("scripts/%s wrote %s in the caller folder, not at the workspace root", c.script, c.marker)
+				}
+				if _, err := os.Stat(filepath.Join(src, "injected")); err == nil {
+					t.Errorf("scripts/%s executed shell text from the workspace path", c.script)
+				}
+			}
+		})
 	}
 }
 
