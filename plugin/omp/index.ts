@@ -14,6 +14,13 @@ const knownFile = join(pluginRoot, "hooks", "workflow-plugins.txt");
 const defaultsFile = join(pluginRoot, "hooks", "default-rules.md");
 const styleFile = join(pluginRoot, "output-styles", "acta.md");
 
+// omp reads a skill as a file and keeps its bare name, while the shared rules
+// above name Claude Code's Skill tool and its "acta:" prefix. One line with the
+// rules stops a first read from going to a name that does not exist, like
+// acta-build, and covers every skill, not only build.
+const SKILL_NOTE =
+  "acta: omp has no Skill tool; read a skill as `skill://` plus its bare name. So `acta:build` is `skill://build`, never `skill://acta-build`, and the same goes for every acta skill named in a skill, a prompt or a hand-off.";
+
 export type Run = (args: string[], stdin: string, cwd?: string) => { stdout: string; stderr: string; code: number };
 
 // realRun calls acta directly. pi.exec cannot send stdin, and acta's hooks
@@ -130,6 +137,10 @@ export function createState(
             : readDefaults().trim() +
                 "\n\nacta: the acta binary is not installed or failed, so these are the default rules (English, adhd style).",
         );
+        // omp-only, and it comes with the rules so a later message stays
+        // reminder-only. The fallback gets it too: the default rules name the
+        // same Skill tool, so they need the same correction.
+        parts.push(SKILL_NOTE);
         // The style goes once, with the rules. The reminder below never carries it.
         const style = readStyleBody(readStyle);
         if (style) parts.push(style);

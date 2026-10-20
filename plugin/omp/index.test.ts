@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import acta, { createState, payload, type Run } from "./index";
 
 type Out = { stdout?: string; stderr?: string; code: number };
@@ -22,6 +25,12 @@ function fakeRun(outputs: Record<string, Out | "throw">) {
 
 // Only one test reads the real style file. The rest use this stub, which gives no style.
 const noStyle = () => "";
+
+// The omp-only rule that rides with the session rules. It is pinned word for
+// word here because the text is the whole feature: a rewording has to be read
+// by a person, not slip through.
+const NOTE =
+  "acta: omp has no Skill tool; read a skill as `skill://` plus its bare name. So `acta:build` is `skill://build`, never `skill://acta-build`, and the same goes for every acta skill named in a skill, a prompt or a hand-off.";
 
 // A style file as Claude Code reads it: settings on top, the words below.
 const STYLE_FILE = "---\nname: acta\nkeep-coding-instructions: true\n---\n\n## Every reply\nOpen with the answer.\n";
@@ -77,10 +86,10 @@ describe("createState", () => {
       "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
     });
     const s = createState(run, () => "DEFAULTS", noStyle);
-    expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect(s.contextFor("S1")).toBe("REMINDER");
     s.reset("S1", "compact");
-    expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
   });
 
   test("session-start passes the known-plugins file", () => {
@@ -102,6 +111,7 @@ describe("createState", () => {
     const out = createState(run, () => "DEFAULTS\n", noStyle).contextFor("S1");
     expect(out).toContain("DEFAULTS");
     expect(out).toContain("acta binary is not installed or failed");
+    expect(out).toContain(NOTE);
   });
 
   test("failing or throwing acta counts as missing", () => {
@@ -110,6 +120,7 @@ describe("createState", () => {
       const text = createState(run, () => "DEFAULTS", noStyle).contextFor("S1");
       expect(text.startsWith("DEFAULTS")).toBe(true);
       expect(text).not.toContain("partial");
+      expect(text).toContain(NOTE);
     }
   });
 
@@ -119,7 +130,7 @@ describe("createState", () => {
       "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
     });
     const s = createState(run, () => "DEFAULTS", () => STYLE_FILE);
-    expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + NOTE + "\n\n" + STYLE_BODY + "\n\nREMINDER");
   });
 
   // No third argument, so the real reader runs on the committed style file. Every
@@ -137,6 +148,7 @@ describe("createState", () => {
     const out = createState(run, () => "DEFAULTS\n", () => STYLE_FILE).contextFor("S1");
     expect(out.startsWith("DEFAULTS")).toBe(true);
     expect(out).toContain("acta binary is not installed or failed");
+    expect(out).toContain(NOTE);
     expect(out.endsWith("\n\n" + STYLE_BODY)).toBe(true);
     expect(out).not.toContain("keep-coding-instructions");
   });
@@ -150,7 +162,7 @@ describe("createState", () => {
     expect(s.contextFor("S1")).toContain(STYLE_BODY);
     expect(s.contextFor("S1")).toBe("REMINDER");
     s.reset("S1", "compact");
-    expect(s.contextFor("S1")).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + NOTE + "\n\n" + STYLE_BODY + "\n\nREMINDER");
   });
 
   test("reader throws, acta ok: the rules are as they were and the session goes on", () => {
@@ -160,7 +172,7 @@ describe("createState", () => {
       "acta hook prompt": { stdout: "REMINDER\n", code: 0 },
     });
     const s = createState(run, () => "DEFAULTS", style);
-    expect(s.contextFor("S1")).toBe("RULES\n\nREMINDER");
+    expect(s.contextFor("S1")).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect(style.reads).toBeGreaterThan(0);
     expect(s.contextFor("S1")).toBe("REMINDER");
   });
@@ -173,15 +185,17 @@ describe("createState", () => {
     expect(out).toBe(before);
   });
 
+  // The last value is what follows the rules and the omp note, so each case
+  // still pins the exact context, not only a part of it.
   test.each([
-    ["no frontmatter: the whole file is used", "BODY\n", "RULES\n\nBODY"],
-    ["frontmatter that never closes: the whole file is used", "---\nname: acta\nBODY\n", "RULES\n\n---\nname: acta\nBODY"],
-    ["CRLF line ends: the frontmatter is still cut", "---\r\nname: acta\r\n---\r\nBODY\r\n", "RULES\n\nBODY"],
-    ["frontmatter and nothing below it: nothing is added", "---\nname: acta\n---\n\n", "RULES"],
-    ["empty file: nothing is added", "", "RULES"],
-  ])("style file shape, %s", (_name, file, want) => {
+    ["no frontmatter: the whole file is used", "BODY\n", "\n\nBODY"],
+    ["frontmatter that never closes: the whole file is used", "---\nname: acta\nBODY\n", "\n\n---\nname: acta\nBODY"],
+    ["CRLF line ends: the frontmatter is still cut", "---\r\nname: acta\r\n---\r\nBODY\r\n", "\n\nBODY"],
+    ["frontmatter and nothing below it: nothing is added", "---\nname: acta\n---\n\n", ""],
+    ["empty file: nothing is added", "", ""],
+  ])("style file shape, %s", (_name, file, after) => {
     const { run } = fakeRun({ "acta hook session-start": { stdout: "RULES\n", code: 0 } });
-    expect(createState(run, () => "DEFAULTS", () => file).contextFor("S1")).toBe(want);
+    expect(createState(run, () => "DEFAULTS", () => file).contextFor("S1")).toBe("RULES\n\n" + NOTE + after);
   });
 
   test("onToolCall blocks only on exit 2, with stderr as the reason", () => {
@@ -241,7 +255,7 @@ describe("createState", () => {
     expect(calls.map((c) => c.key.split(" --known")[0])).toEqual(["acta hook session-start"]);
     expect(JSON.parse(calls[0].stdin)).toEqual({ session_id: "S1", source: "compact", tool_input: { command: "" } });
     expect(calls[0].cwd).toBe("/work");
-    expect(s.contextFor("S1", "/work")).toBe("RULES");
+    expect(s.contextFor("S1", "/work")).toBe("RULES\n\n" + NOTE);
     expect(calls.filter((c) => c.key.startsWith("acta hook session-start")).length).toBe(1);
   });
 
@@ -295,7 +309,7 @@ describe("extension", () => {
     });
     const r = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
     expect(r.message.customType).toBe("acta");
-    expect(r.message.content).toBe("RULES\n\nREMINDER");
+    expect(r.message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect(r.message.display).toBe(false);
     expect("attribution" in r.message).toBe(false);
     expect(JSON.parse(calls.find((c) => c.key === "acta hook prompt")!.stdin).session_id).toBe("S9");
@@ -303,7 +317,7 @@ describe("extension", () => {
     expect(again.message.content).toBe("REMINDER");
     await handlers["session_compact"]({});
     const afterCompact = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
-    expect(afterCompact.message.content).toBe("RULES\n\nREMINDER");
+    expect(afterCompact.message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
   });
 
   test("the extension hands its style reader on, so the style rides on the first message", async () => {
@@ -312,7 +326,7 @@ describe("extension", () => {
       () => STYLE_FILE,
     );
     const r = await handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
-    expect(r.message.content).toBe("RULES\n\n" + STYLE_BODY + "\n\nREMINDER");
+    expect(r.message.content).toBe("RULES\n\n" + NOTE + "\n\n" + STYLE_BODY + "\n\nREMINDER");
   });
 
   test("tool_call blocks a bash call when pre-tool exits 2", async () => {
@@ -434,7 +448,7 @@ describe("extension", () => {
     await handlers["session_start"]({ type: "session_start" }, ctx);
     expect(starts().map((e) => [e.session_id, e.source])).toEqual([["S9", "startup"]]);
     const first = await prompt();
-    expect(first.message.content).toBe("RULES\n\nREMINDER");
+    expect(first.message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     // The compaction reaches acta before any new message, since omp can go on without one.
     await handlers["session_compact"]({ type: "session_compact" }, ctx);
     expect(starts().map((e) => [e.session_id, e.source])).toEqual([
@@ -443,7 +457,7 @@ describe("extension", () => {
     ]);
     expect(calls.filter((c) => c.key.startsWith("acta hook session-start")).every((c) => c.cwd === "/work")).toBe(true);
     const after = await prompt();
-    expect(after.message.content).toBe("RULES\n\nREMINDER");
+    expect(after.message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect(starts().length).toBe(2);
   });
 
@@ -454,10 +468,10 @@ describe("extension", () => {
     });
     const prompt = () => handlers["before_agent_start"]({ type: "before_agent_start", prompt: "hi" }, ctx);
     await handlers["session_start"]({ type: "session_start" }, ctx);
-    expect((await prompt()).message.content).toBe("RULES\n\nREMINDER");
+    expect((await prompt()).message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect((await prompt()).message.content).toBe("REMINDER");
     await handlers["session_switch"]({ type: "session_switch", reason }, ctx);
-    expect((await prompt()).message.content).toBe("RULES\n\nREMINDER");
+    expect((await prompt()).message.content).toBe("RULES\n\n" + NOTE + "\n\nREMINDER");
     expect((await prompt()).message.content).toBe("REMINDER");
   });
 
@@ -477,5 +491,22 @@ describe("extension", () => {
       expect(await handlers["tool_call"]({ type: "tool_call", toolName: tool, input }, {})).toBeUndefined();
     }
     expect(calls.length).toBe(0);
+  });
+});
+
+// The note sends the model to skill://<bare name>, so that URI works only while
+// each installed skill keeps the name from its frontmatter and none carries an
+// "acta-" prefix. A rename would otherwise leave the note pointing at nothing.
+describe("omp note", () => {
+  test("every acta skill keeps the bare name the note reads by", () => {
+    const skills = join(dirname(fileURLToPath(import.meta.url)), "..", "skills");
+    const names = readdirSync(skills, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => /^name:\s*(\S+)/m.exec(readFileSync(join(skills, entry.name, "SKILL.md"), "utf8"))?.[1] ?? "");
+    expect(names).toContain("build");
+    for (const name of names) {
+      expect(name.length).toBeGreaterThan(0);
+      expect(name.startsWith("acta-")).toBe(false);
+    }
   });
 });
