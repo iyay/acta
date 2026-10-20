@@ -85,6 +85,18 @@ func briefHasState(t *testing.T, got string) {
 	}
 }
 
+// briefHasNoBroadSuite checks no round prints the plan's own test commands.
+// The recipient runs each ticket's focused tests, never the header's fast or
+// full suite; the plan is read for its tasks, not for a repository-wide run.
+func briefHasNoBroadSuite(t *testing.T, got string) {
+	t.Helper()
+	for _, bad := range []string{"scripts/test ./internal/cli", "scripts/test --full"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("brief carries the plan's test command %q\n%s", bad, got)
+		}
+	}
+}
+
 func TestBuildBriefFirstDispatch(t *testing.T) {
 	in := briefEnv(t)
 	in.Note = "mind the cache"
@@ -103,7 +115,7 @@ func TestBuildBriefFirstDispatch(t *testing.T) {
 		"SKILL: load build",
 		"branch demo-branch", "parent main", "base " + in.Base,
 		in.Rules,
-		"scripts/test ./internal/cli",
+		"each ticket's own focused tests and verify line",
 		"never run bare `go test`", "pre-tool hook",
 		"NOTE: mind the cache",
 		"REPLY-BACK: after the last commit the build skill runs `acta reply-back`.",
@@ -119,6 +131,7 @@ func TestBuildBriefFirstDispatch(t *testing.T) {
 	if n := strings.Count(got, "REPLY-BACK:"); n != 1 {
 		t.Errorf("want one REPLY-BACK line, got %d", n)
 	}
+	briefHasNoBroadSuite(t, got)
 	briefHasState(t, got)
 }
 
@@ -148,6 +161,7 @@ func TestBuildBriefFixRounds(t *testing.T) {
 	if !strings.Contains(got, "task-4") || strings.Contains(got, "task-1") {
 		t.Errorf("single fix round wrong\n%s", got)
 	}
+	briefHasNoBroadSuite(t, got)
 	briefHasState(t, got)
 }
 
@@ -172,6 +186,7 @@ func TestBuildBriefPolish(t *testing.T) {
 	if !strings.Contains(got, "TICKETS") || !strings.Contains(got, "task-7") {
 		t.Errorf("polish must name the polish task\n%s", got)
 	}
+	briefHasNoBroadSuite(t, got)
 	briefHasState(t, got)
 }
 
