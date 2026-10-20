@@ -248,7 +248,7 @@ func buildBrief(planPath string, src []byte, in briefInput) (string, error) {
 	if pages, _ := wiki.Load(filepath.Join(in.Worktree, ".acta")); len(pages) > 0 {
 		b.WriteString("WIKI: run `acta wiki ls`, then open the pages whose `paths` cover the plan's files. Read-only, never write there.\n")
 	}
-	fmt.Fprintf(&b, "GATES (from the worktree): %s; typecheck; git diff --stat vs %s shows only plan files. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and every implementer shares one machine.\n", marks.tests, in.Base)
+	fmt.Fprintf(&b, "GATES (from the worktree): each ticket's own focused tests and verify line; typecheck; git diff --stat vs %s shows only plan files. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and every implementer shares one machine.\n", in.Base)
 	if n := strings.TrimSpace(in.Note); n != "" {
 		fmt.Fprintf(&b, "NOTE: %s\n", n)
 	}
