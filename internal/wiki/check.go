@@ -51,10 +51,11 @@ func Check(repo string, pages []Page, rng string) []Problem {
 		}
 		pages = touched(repo, pages, changed)
 	}
+	hs := &histories{repo: repo, byDir: map[string]dirHistory{}}
 	var out []Problem
 	for _, p := range pages {
 		name := pageName(repo, p)
-		for _, msg := range checkPage(repo, p) {
+		for _, msg := range checkPage(repo, p, hs) {
 			out = append(out, Problem{Page: name, Msg: msg})
 		}
 	}
@@ -92,7 +93,7 @@ func covered(p Page, changed []string) bool {
 }
 
 // checkPage gives the message for each rule a page breaks.
-func checkPage(repo string, p Page) []string {
+func checkPage(repo string, p Page, hs *histories) []string {
 	msgs := fieldMsgs(p)
 	var usable []string
 	for _, entry := range p.Paths {
@@ -107,40 +108,60 @@ func checkPage(repo string, p Page) []string {
 	if len(usable) == 0 {
 		return msgs
 	}
-	return append(msgs, staleMsgs(repo, p, usable)...)
+	return append(msgs, staleMsgs(repo, p, usable, hs)...)
 }
 
 // staleMsgs says whether a path change of the page has no check commit behind
 // it. Only git history decides, never a date. usable holds the entries that
 // point into the repo: an entry that climbs out of it would make git fail, and
 // already has its own message.
-func staleMsgs(repo string, p Page, usable []string) []string {
+func staleMsgs(repo string, p Page, usable []string, hs *histories) []string {
 	file := pageName(repo, p)
-	// An edit that is not committed yet is the author checking the page right now.
-	// The commit that saves it is a check, so there is nothing to say before that.
-	dirty, err := gitc.IsDirty(repo, file)
-	if err != nil {
-		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
-	}
-	if dirty {
-		return nil
-	}
 	// The wiki folder is the page file minus its id, so a page in a sub folder
 	// still finds the one checked file of its wiki.
-	checked := strings.TrimSuffix(file, p.ID+".md") + CheckedFile
-	checks, err := gitc.CheckCommits(repo, file, checked, p.ID)
+	h, err := hs.get(strings.TrimSuffix(file, p.ID+".md"))
 	if err != nil {
 		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
 	}
-	sha, subject, err := gitc.Unseen(repo, checks, usable)
-	switch {
-	case err != nil:
-		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
-	case sha != "":
+	// An edit that is not committed yet is the author checking the page right now.
+	// The commit that saves it is a check, so there is nothing to say before that.
+	if h.Dirty(file) {
+		return nil
+	}
+	sha, subject := h.Unseen(h.CheckCommits(file, p.ID), func(f string) bool {
+		return slices.ContainsFunc(usable, func(entry string) bool { return covers(entry, f) })
+	})
+	if sha != "" {
 		return []string{fmt.Sprintf("stale: %s %q changed its paths after the page was last checked; fix the page, or run acta wiki ok %s when nothing is wrong",
 			sha, subject, p.ID)}
 	}
 	return nil
+}
+
+// histories reads the git history of each wiki folder once and keeps it for
+// every page in that folder.
+type histories struct {
+	repo  string
+	byDir map[string]dirHistory
+}
+
+type dirHistory struct {
+	h   gitc.WikiHistory
+	err error
+}
+
+func (hs *histories) get(dir string) (gitc.WikiHistory, error) {
+	got, ok := hs.byDir[dir]
+	if !ok {
+		// A wiki at the repo root has no folder name, and git refuses an empty path.
+		folder := dir
+		if folder == "" {
+			folder = "."
+		}
+		got.h, got.err = gitc.ReadWikiHistory(hs.repo, folder, dir+CheckedFile)
+		hs.byDir[dir] = got
+	}
+	return got.h, got.err
 }
 
 // fieldMsgs checks the fields that sit in the page itself, with no look at disk or git.

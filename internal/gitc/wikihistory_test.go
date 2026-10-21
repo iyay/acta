@@ -49,11 +49,7 @@ func TestWikiHistoryMatchesPerPageQueries(t *testing.T) {
 	repo := historyRepo(t)
 	const checked = "wiki/.checked"
 	paths := [][]string{{"src/"}, {"lib/"}, {"lib/y.go"}, {"src/", "lib/"}, {"nothing/"}}
-	var all []string
-	for _, p := range paths {
-		all = append(all, p...)
-	}
-	h, err := ReadWikiHistory(repo, "wiki/", checked, all)
+	h, err := ReadWikiHistory(repo, "wiki/", checked)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +87,7 @@ func TestWikiHistoryDirty(t *testing.T) {
 	repo := historyRepo(t)
 	writeFile(t, filepath.Join(repo, "wiki/p.md"), "edited\n")
 	writeFile(t, filepath.Join(repo, "wiki/new.md"), "new\n")
-	h, err := ReadWikiHistory(repo, "wiki/", "wiki/.checked", nil)
+	h, err := ReadWikiHistory(repo, "wiki/", "wiki/.checked")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,15 +99,11 @@ func TestWikiHistoryDirty(t *testing.T) {
 }
 
 // TestWikiHistoryGitCalls counts git processes with a wrapper first on PATH,
-// so the cost of one read cannot grow with the number of paths.
+// so one read stays a fixed number of git commands.
 func TestWikiHistoryGitCalls(t *testing.T) {
 	repo := historyRepo(t)
 	count := countGitCalls(t)
-	var paths []string
-	for i := range 50 {
-		paths = append(paths, "src/f"+strings.Repeat("x", i)+".go")
-	}
-	if _, err := ReadWikiHistory(repo, "wiki/", "wiki/.checked", paths); err != nil {
+	if _, err := ReadWikiHistory(repo, "wiki/", "wiki/.checked"); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(); n > 4 {
@@ -120,7 +112,7 @@ func TestWikiHistoryGitCalls(t *testing.T) {
 }
 
 func TestWikiHistoryNoCheckout(t *testing.T) {
-	if _, err := ReadWikiHistory(t.TempDir(), "wiki/", "wiki/.checked", nil); err == nil {
+	if _, err := ReadWikiHistory(t.TempDir(), "wiki/", "wiki/.checked"); err == nil {
 		t.Error("got no error for a folder that is no checkout")
 	}
 }

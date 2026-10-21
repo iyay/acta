@@ -15,16 +15,15 @@ type WikiHistory struct {
 	dirty   map[string]bool     // files under the wiki folder with edits not committed
 }
 
-// histCommit is one commit that changed the wiki folder or a page path.
+// histCommit is one commit that HEAD can reach, with the files it changed.
 type histCommit struct {
 	sha, short, subject string
 	files               []string
 }
 
 // ReadWikiHistory reads the wiki history in four git commands, whatever the
-// number of pages. wikiDir is the wiki folder from the repo root, ending in a
-// slash. paths are the page paths, plain names where a folder ends in a slash.
-func ReadWikiHistory(repo, wikiDir, checkedFile string, paths []string) (WikiHistory, error) {
+// number of pages. wikiDir is the wiki folder from the repo root.
+func ReadWikiHistory(repo, wikiDir, checkedFile string) (WikiHistory, error) {
 	h := WikiHistory{parents: map[string][]string{}, dirty: map[string]bool{}}
 	out, err := run(repo, "rev-list", "--parents", "HEAD")
 	if err != nil {
@@ -40,11 +39,12 @@ func ReadWikiHistory(repo, wikiDir, checkedFile string, paths []string) (WikiHis
 		return h, err
 	}
 	h.checks = checkLines(out)
-	// No renames, so a file moved out of a path still lists its old name, the
-	// same way the path filter of git log sees it.
-	args := []string{"--literal-pathspecs", "log", "--full-history", "--no-merges", "--no-renames",
-		"--name-only", "-z", "--format=%x01%H%x00%h%x00%s", "HEAD", "--", wikiDir}
-	out, err = run(repo, append(args, paths...)...)
+	// Every commit with the files it changed. No path filter: git compares
+	// each file with each path it gets, so a few dozen paths made this one log
+	// twice as slow as reading it all. The caller matches the paths itself.
+	// No renames, so a file moved out of a path still lists its old name.
+	out, err = run(repo, "log", "--no-merges", "--no-renames", "--name-only", "-z",
+		"--format=%x01%H%x00%h%x00%s", "HEAD")
 	if err != nil {
 		return h, err
 	}
