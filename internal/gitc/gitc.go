@@ -587,34 +587,52 @@ func CheckCommits(repo, pageFile, checkedFile, id string) ([]string, error) {
 		return nil, err
 	}
 	shas := strings.Fields(out)
-	// No colour and no outside diff tool, so every line reads the same
-	// whatever the user set up.
-	out, err = run(repo, "--literal-pathspecs", "log", "--full-history", "--no-merges", "--no-color", "--no-ext-diff",
-		"-p", "-U0", "--format=%x00%H", "--", checkedFile)
+	out, err = run(repo, checkedLogArgs(checkedFile)...)
 	if err != nil {
 		return nil, err
 	}
+	for _, sha := range checkLines(out)[id] {
+		if !slices.Contains(shas, sha) {
+			shas = append(shas, sha)
+		}
+	}
+	return shas, nil
+}
+
+// checkedLogArgs reads every change to the checked file. No colour and no
+// outside diff tool, so every line reads the same whatever the user set up.
+func checkedLogArgs(checkedFile string) []string {
+	return []string{"--literal-pathspecs", "log", "--full-history", "--no-merges", "--no-color", "--no-ext-diff",
+		"-p", "-U0", "--format=%x00%H", "--", checkedFile}
+}
+
+// checkLines turns the log of the checked file into the commits that checked
+// each page id, newest first. A commit checks an id when it adds a line
+// "<id> <time>". A commit that only removes the line is not a check.
+func checkLines(out string) map[string][]string {
+	checks := map[string][]string{}
 	for _, c := range strings.Split(out, "\x00")[1:] {
 		sha, diff, _ := strings.Cut(c, "\n")
 		added, removed := map[string]bool{}, map[string]bool{}
 		for _, line := range strings.Split(diff, "\n") {
 			switch {
 			case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
-			case strings.HasPrefix(line, "+"+id+" "):
+			case strings.HasPrefix(line, "+"):
 				added[line[1:]] = true
-			case strings.HasPrefix(line, "-"+id+" "):
+			case strings.HasPrefix(line, "-"):
 				removed[line[1:]] = true
 			}
 		}
 		// A line taken out and put back the same is only a move, like the
 		// re-sort after a union merge. It says nothing new about the page.
 		for line := range added {
-			if !removed[line] && !slices.Contains(shas, sha) {
-				shas = append(shas, sha)
+			id, _, ok := strings.Cut(line, " ")
+			if ok && !removed[line] && !slices.Contains(checks[id], sha) {
+				checks[id] = append(checks[id], sha)
 			}
 		}
 	}
-	return shas, nil
+	return checks
 }
 
 // Unseen finds the newest commit reachable from HEAD that changed a file under

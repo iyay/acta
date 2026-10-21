@@ -9,7 +9,7 @@ A check commit of a page is a commit that changed the page file, or one whose di
 
 `acta wiki ok <id>...` rewrites `.checked` with the current time on those pages and commits it as `chore(wiki): re-check <ids>`. Every write sorts it, keeps one line per page and drops gone pages. A removed or merely moved line is no check.
 
-Why not empty commits with `Wiki-Checked` trailers: they piled up, and tidy pushed the trailers into kept messages.
+Why not empty commits with `Wiki-Checked` trailers: they piled up and leaked into kept messages.
 
 Why a time to the second: a second check on one day must still change the line, or there is no commit. Freshness never reads it.
 
@@ -17,4 +17,4 @@ Why `merge=union` in `.gitattributes`: two branches that re-check one page both 
 
 Why the file is never cleared at land: tidy would fold the add and the clear into one commit with no diff, and the check would be lost.
 
-The git queries use `--full-history --no-merges`: without the first git drops side commits with the same content; without the second a merge counts as a path change forever. A conflict fix made only inside a merge is not seen.
+Check reads git once per run (`gitc.ReadWikiHistory`), matching paths and ancestry in Go: per-page queries took minutes on 20k commits. The log uses `--no-merges --no-renames`: a merge is no path change, a move keeps its old path. A conflict fix inside a merge is not seen.

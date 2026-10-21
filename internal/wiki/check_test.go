@@ -542,3 +542,41 @@ func TestCheckRangeGitCannotRead(t *testing.T) {
 		t.Errorf("Check with no pages = %+v, want no problem", got)
 	}
 }
+
+// TestCheckGitCallsDoNotGrowWithPages counts git processes with a wrapper
+// first on PATH. On a long history each git log costs most of a second, so a
+// run that asks git once per page takes minutes on a big wiki.
+func TestCheckGitCallsDoNotGrowWithPages(t *testing.T) {
+	h := newHistory(t)
+	real, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "calls")
+	script := "#!/bin/sh\necho x >> '" + logFile + "'\nexec '" + real + "' \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	calls := func(n int) int {
+		var pages []Page
+		for i := range n {
+			p := good(h.repo)
+			if i > 0 {
+				p.ID = fmt.Sprintf("page%d", i)
+				p.Path = filepath.Join(h.repo, ".acta", "wiki", p.ID+".md")
+			}
+			pages = append(pages, p)
+		}
+		if err := os.Remove(logFile); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		Check(h.repo, pages, "")
+		b, _ := os.ReadFile(logFile)
+		return strings.Count(string(b), "\n")
+	}
+	if one, twenty := calls(1), calls(20); one != twenty {
+		t.Errorf("git ran %d times for 1 page and %d times for 20 pages, want the same", one, twenty)
+	}
+}

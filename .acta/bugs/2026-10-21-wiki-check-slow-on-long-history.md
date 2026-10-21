@@ -2,6 +2,8 @@
 id: BUG-0053
 hash: obk4y61
 priority: high
+fixed_in: 2cdc9dc0d29a6b74136033e4c0b666b4627fc34e
+finished: "2026-10-21 09:58:11"
 ---
 # acta wiki check takes minutes on a repo with long history
 

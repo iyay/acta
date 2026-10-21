@@ -3,6 +3,8 @@ parent: bugs/2026-10-21-wiki-check-slow-on-long-history
 id: SPC-0169
 created: "2026-10-21 09:40:36"
 hash: tybscpz
+started: "2026-10-21 09:43:16"
+finished: "2026-10-21 09:51:20"
 ---
 # Wiki check reads git once per run
 
