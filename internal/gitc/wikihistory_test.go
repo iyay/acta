@@ -87,11 +87,17 @@ func TestWikiHistoryDirty(t *testing.T) {
 	repo := historyRepo(t)
 	writeFile(t, filepath.Join(repo, "wiki/p.md"), "edited\n")
 	writeFile(t, filepath.Join(repo, "wiki/new.md"), "new\n")
+	// A new page in a folder git does not know yet must count on its own,
+	// not only as its folder.
+	if err := os.MkdirAll(filepath.Join(repo, "wiki/sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "wiki/sub/n.md"), "new\n")
 	h, err := ReadWikiHistory(repo, "wiki/", "wiki/.checked")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for file, want := range map[string]bool{"wiki/p.md": true, "wiki/new.md": true, "wiki/q.md": false} {
+	for file, want := range map[string]bool{"wiki/p.md": true, "wiki/new.md": true, "wiki/sub/n.md": true, "wiki/q.md": false} {
 		if got := h.Dirty(file); got != want {
 			t.Errorf("dirty %s: got %v, want %v", file, got, want)
 		}

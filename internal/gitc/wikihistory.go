@@ -61,7 +61,9 @@ func ReadWikiHistory(repo, wikiDir, checkedFile string) (WikiHistory, error) {
 		}
 		h.commits = append(h.commits, c)
 	}
-	out, err = run(repo, "--literal-pathspecs", "status", "--porcelain", "-z", "--", wikiDir)
+	// Every untracked file on its own, so a new page in a new folder is not
+	// hidden behind one line for the folder.
+	out, err = run(repo, "--literal-pathspecs", "status", "--porcelain", "-z", "--untracked-files=all", "--", wikiDir)
 	if err != nil {
 		return h, err
 	}

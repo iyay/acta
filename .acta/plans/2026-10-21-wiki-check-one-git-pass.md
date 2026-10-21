@@ -43,3 +43,18 @@ finished: "2026-10-21 09:51:20"
 - [x] Red: a test with a counting `git` wrapper on PATH runs `Check` over 1 and 20 pages and wants equal counts; it fails because each page runs its own git commands.
 - [x] Change: in `Check`, call `gitc.WikiHistory` once after the range filter, and make `staleMsgs` read the dirty set, the check commits and the newest unseen commit from it, walking parents in memory. A `WikiHistory` error gives the same `cannot read the git history: ...` message on each page that has usable paths.
 - [x] Commit: `perf(wiki): check every page from one git pass`
+
+## Fix round 1
+
+### Task 3: Count a new page in an untracked folder as not committed
+
+**Files:** Modify `internal/gitc/wikihistory.go`; test in `internal/gitc/wikihistory_test.go`.
+**Seam:** `gitc.ReadWikiHistory` then `WikiHistory.Dirty`.
+**verify:** Every file with edits not committed under the wiki folder is dirty on its own path: an edited page, a new page in a known folder, a new page in a folder git does not track yet. A clean page is not dirty.
+- [x] Red: `TestWikiHistoryDirty` adds `wiki/sub/n.md` in a new folder; it fails because status lists only `wiki/sub/`.
+- [x] Change: pass `--untracked-files=all` to the status call.
+- [x] Commit: `fix(gitc): see new pages inside untracked wiki folders`
+
+## Review notes
+
+Deep review, full tier, two reviewers. Round 1: one BLOCKER (status without --untracked-files=all hid a new page in an untracked folder), fixed in fix round 1; round 2 CLEAN. No fact-check pass: the BLOCKER was proved by a red test first. Notes left: per-page WikiHistory.CheckCommits scans every commit's files (fine at 5.5 s on 20k commits); a work-tree-only rename from git add -N is read as one entry; --untracked-files=all lists every file of a big untracked folder under the wiki. Plan deviations accepted by the spec reviewer: no pathspec on the name-only log, ancestry walk lives in gitc, ReadWikiHistory takes no paths.
