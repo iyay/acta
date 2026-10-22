@@ -77,6 +77,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdSet(args[1:], stdout, stderr)
 	case "state":
 		return cmdState(args[1:], stdin, stdout, stderr)
+	case "plan":
+		return cmdPlan(args[1:], stdin, stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
 			fmt.Fprintln(stderr, usageLine("bug"))
