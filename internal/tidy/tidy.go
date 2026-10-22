@@ -211,7 +211,8 @@ func plan(repo string, commits []commit, root, cur string, pendDate time.Time) (
 		// Nothing was worth keeping. The whole range becomes one commit.
 		// A planning commit at the end must not hide the real message, so take
 		// the newest commit that changed real files. None: the newest that is
-		// not a chore. All chores: the newest.
+		// not a fold type, then the newest that is not a chore. All chores: the
+		// newest.
 		src, err := fullFoldSource(repo, commits, root)
 		if err != nil {
 			return nil, err
@@ -228,6 +229,13 @@ func fullFoldSource(repo string, cs []commit, root string) (commit, error) {
 			return commit{}, err
 		}
 		if out {
+			return cs[i], nil
+		}
+	}
+	// A polish or wiki commit often comes last, so it must not beat an older
+	// docs commit that holds the real change.
+	for i := len(cs) - 1; i >= 0; i-- {
+		if !foldTypes[subjectType(cs[i].subject)] {
 			return cs[i], nil
 		}
 	}

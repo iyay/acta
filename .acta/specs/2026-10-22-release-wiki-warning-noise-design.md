@@ -3,6 +3,8 @@ parent: scratch/2026-10-22-release-wiki-warning-noise
 id: SPC-0173
 created: "2026-10-22 23:07:21"
 hash: fyy1agu
+started: "2026-10-22 23:41:14"
+finished: "2026-10-22 23:42:39"
 ---
 # Release commits stop staling two plugin wiki pages
 

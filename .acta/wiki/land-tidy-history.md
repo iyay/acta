@@ -5,13 +5,13 @@ description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or
 paths: [plugin/skills/land/, internal/tidy/]
 ---
 
-The tidy path lives in `plugin/skills/land/tidy.md`; `SKILL.md` only points to it.
+The tidy path lives in `plugin/skills/land/tidy.md`.
 
 With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `merge --ff-only`, or `reset --keep` when parent chore commits were folded. `full` keeps `merge --no-ff`.
 
 Keep rule: a failed tidy stops the land and never falls back to a plain merge.
 
-Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject comes from the newest commit that changed real files, else the newest non-chore, else the newest commit, so a closing planning commit cannot hide the real change (BUG-0043, BUG-0051).
+Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject is the newest commit touching real files, else the newest of no fold type, else the newest non-chore, else the newest, so a late planning commit never hides the real change (BUG-0043, BUG-0051, BUG-0055).
 
 `-D` is safe: the old branch is no ancestor, and tidy proved the tip equals the parent plus branch merge, so it loses nothing. Delete `refs/acta/tidy/<branch>` after.
 
