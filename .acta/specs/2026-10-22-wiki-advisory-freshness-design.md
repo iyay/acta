@@ -9,8 +9,7 @@ hash: trbirsx
 ## Goal
 
 Reduce mandatory wiki maintenance while keeping useful project notes and visible
-reminders to review them. The user approved the direction; this revision awaits
-review before planning.
+reminders to review them.
 
 ## Check behavior and ownership
 
