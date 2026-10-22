@@ -10,8 +10,8 @@ import (
 	"github.com/iyay/acta/internal/write"
 )
 
-// cmdSpecDates writes the dates of a spec cut into several plans, on the
-// branch a plan just landed on, and commits them right away. Land runs it
+// cmdSpecDates writes the dates of a plan's spec, on the branch the plan
+// just landed on, and commits them right away. Land runs it
 // before it moves refs/acta/last-land, so the parent is never left with an
 // uncommitted spec that would block the next land. It never folds into an
 // older commit: the commits tidy just built stay as they are.

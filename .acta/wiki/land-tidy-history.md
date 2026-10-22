@@ -17,6 +17,6 @@ Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of 
 
 Known limit: a hash in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
 
-After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a split spec never leaves the parent dirty.
+After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a spec never leaves the parent dirty.
 
 Tidy keeps the kept commit's message and moves each folded `Task:` trailer into its last paragraph, once (BUG-0051); git and `internal/commits` read trailers only there. Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.
