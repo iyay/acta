@@ -146,7 +146,7 @@ var helpTable = []helpCmd{
 	{
 		name:    "wiki",
 		group:   "Write",
-		summary: "List wiki pages, find the pages that match a file, check for stale pages, or record a re-check.",
+		summary: "List or match wiki pages, check errors and stale warnings, or optionally record a review.",
 		usage: []string{
 			"acta wiki ls [--type T]",
 			"acta wiki match <file>...",

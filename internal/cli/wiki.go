@@ -153,14 +153,19 @@ func wikiMatch(stdout io.Writer, cfg config.Config, pages []wiki.Page, files []s
 
 // wikiCheck prints what is wrong, one line each: first the pages that cannot be
 // loaded, then the problems of the pages that can. With a range, only the pages
-// it touches are checked. Any line means exit 1, which is also the code a bad
-// argument gets.
+// it touches are checked. Warnings alone succeed; errors exit 1.
 func wikiCheck(stdout io.Writer, cfg config.Config, pages []wiki.Page, loadErrs []error, rng string) int {
 	var lines []string
+	hasError := len(loadErrs) > 0
 	for _, err := range loadErrs {
 		lines = append(lines, loadLine(cfg, err))
 	}
 	for _, p := range wiki.Check(cfg.RepoRoot, pages, rng) {
+		if p.Warning {
+			p.Msg = "warning: " + p.Msg
+		} else {
+			hasError = true
+		}
 		// A problem with no page, like a range git cannot read, stands alone.
 		if p.Page == "" {
 			lines = append(lines, p.Msg)
@@ -171,7 +176,7 @@ func wikiCheck(stdout io.Writer, cfg config.Config, pages []wiki.Page, loadErrs 
 	for _, line := range lines {
 		fmt.Fprintln(stdout, oneLine(line))
 	}
-	if len(lines) > 0 {
+	if hasError {
 		return exitBadInput
 	}
 	return exitOK

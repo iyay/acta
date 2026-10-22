@@ -261,9 +261,7 @@ func TestWikiLoadErrorsNameThePageFromTheRepoRoot(t *testing.T) {
 	wikiWants(t, fileWiki, []string{"check"}, exitBadInput, ".acta/wiki: not a directory\n")
 }
 
-// The land gate: a branch that changes a covered file leaves its page stale, the
-// range limits the check to the pages the branch touched, and a new timestamp
-// makes the check pass.
+// Staleness is advisory; a range filters unrelated errors and a page edit records review.
 func TestWikiCheckRange(t *testing.T) {
 	files := wikiFiles()
 	// This page is wrong, but nothing in the branch comes near it.
@@ -275,7 +273,7 @@ func TestWikiCheckRange(t *testing.T) {
 	wikiGit(t, repo, wikiLater, "add", ".")
 	wikiGit(t, repo, wikiLater, "commit", "-q", "-m", "change the model")
 	const bad = ".acta/wiki/bad.md: description is missing"
-	const stale = ".acta/wiki/tui-wrap.md: stale: "
+	const stale = ".acta/wiki/tui-wrap.md: warning: stale: "
 
 	code, out, errOut := runWiki(t, repo, "check")
 	if lines := outLines(out); code != exitBadInput || errOut != "" || len(lines) != 2 || lines[0] != bad || !strings.HasPrefix(lines[1], stale) {
@@ -283,10 +281,17 @@ func TestWikiCheckRange(t *testing.T) {
 	}
 
 	code, out, errOut = runWiki(t, repo, "check", "main..HEAD")
-	if lines := outLines(out); code != exitBadInput || errOut != "" || len(lines) != 1 || !strings.HasPrefix(lines[0], stale) {
+	if lines := outLines(out); code != exitOK || errOut != "" || len(lines) != 1 || !strings.HasPrefix(lines[0], stale) {
 		t.Errorf("check main..HEAD: exit %d, stdout %q, stderr %q; want the stale page only", code, out, errOut)
 	}
 
+	if err := os.Remove(filepath.Join(repo, ".acta/wiki/bad.md")); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errOut = runWiki(t, repo, "check")
+	if code != exitOK || errOut != "" || !strings.Contains(out, stale) || strings.Contains(out, "run acta wiki ok") {
+		t.Errorf("stale-only check: exit %d, stdout %q, stderr %q; want an advisory review warning", code, out, errOut)
+	}
 	wikiWrite(t, repo, map[string]string{
 		".acta/wiki/tui-wrap.md": strings.Replace(files[".acta/wiki/tui-wrap.md"], "2026-01-01", "2031-01-01", 1),
 	})

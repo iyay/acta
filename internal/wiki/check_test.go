@@ -182,7 +182,7 @@ func TestCheckFieldRules(t *testing.T) {
 
 // staleMsg is the whole message of a stale page.
 func staleMsg(sha, subject, id string) string {
-	return fmt.Sprintf(`stale: %s "%s" changed its paths after the page was last checked; fix the page, or run acta wiki ok %s when nothing is wrong`, sha, subject, id)
+	return fmt.Sprintf(`stale: %s "%s" changed its paths after the page was last checked; review the page against relevant changes and update any incorrect facts`, sha, subject)
 }
 
 // ancestry is a repo for the stale rule. Its first commit adds src/a.go and
@@ -389,7 +389,7 @@ func TestCheckStale(t *testing.T) {
 		p := good(dir)
 		p.Paths = []string{"a.go"}
 		got := Check(dir, []Page{p}, "")
-		if len(got) != 1 || !strings.Contains(got[0].Msg, "cannot read the git history") {
+		if len(got) != 1 || got[0].Warning || !strings.Contains(got[0].Msg, "cannot read the git history") {
 			t.Errorf("a folder with no repo: got %+v, want one problem about the git history", got)
 		}
 	})
@@ -530,7 +530,7 @@ func TestCheckRangeGitCannotRead(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.txt")
 	for _, rng := range []string{"no-such-ref..HEAD", "--output=" + out} {
 		got := Check(h.repo, []Page{good(h.repo)}, rng)
-		if len(got) != 1 || got[0].Page != "" || !strings.Contains(got[0].Msg, rng) {
+		if len(got) != 1 || got[0].Warning || got[0].Page != "" || !strings.Contains(got[0].Msg, rng) {
 			t.Errorf("Check(%q) = %+v, want one problem with no page that names the range", rng, got)
 		}
 	}
@@ -578,5 +578,16 @@ func TestCheckGitCallsDoNotGrowWithPages(t *testing.T) {
 	}
 	if one, twenty := calls(1), calls(20); one != twenty {
 		t.Errorf("git ran %d times for 1 page and %d times for 20 pages, want the same", one, twenty)
+	}
+}
+
+func TestCheckWarningSeverity(t *testing.T) {
+	a := newAncestry(t)
+	a.commit("src/a.go", "change code", year(2022))
+	p := good(a.repo)
+	p.Description = ""
+	got := Check(a.repo, []Page{p}, "")
+	if len(got) != 2 || got[0].Warning || !got[1].Warning {
+		t.Fatalf("mixed page diagnostics = %+v; want field error then stale warning", got)
 	}
 }

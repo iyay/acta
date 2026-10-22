@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0187
 created: "2026-10-22 23:06:09"
 hash: frbmu2s
+started: "2026-10-22 23:08:42"
 ---
 # Advisory wiki freshness
 
@@ -31,9 +32,9 @@ hash: frbmu2s
 **Files:** Modify `internal/wiki/check.go`, `internal/wiki/check_test.go`, `internal/cli/wiki.go`, `internal/cli/wiki_test.go`, and `internal/cli/help.go`; reuse existing help tests in `internal/cli/help_test.go` without adding copy-only tests.
 **Seam:** `wiki.Check(repo, pages, rng)` produces `Problem` values; `cmdWiki` consumes them and supplies the CLI exit status.
 **verify:** Only actual staleness carries warning severity; field/path errors, bad ranges with pages, and history failures remain errors, including when mixed on one page; existing ancestry, dirty-page, optional confirmation, range, and fixed git-call-count properties remain unchanged. At the CLI, load errors always fail, stale-only output succeeds with and without a range, mixed diagnostics fail while printing both, and no-wiki behavior stays unchanged; list each path checked. The stale message retains commit/page context, starts its message with `warning: stale:`, uses the spec's review instruction, and never tells the user to run `wiki ok`.
-- [ ] Red: Add severity assertions and stale-only/mixed CLI expectations, including history-read failure and load errors, then run `scripts/test ./internal/wiki ./internal/cli -run 'TestCheck|TestWiki'` and observe failure because all current diagnostics are fatal and stale copy mandates confirmation.
-- [ ] Change: Add a zero-default `Warning bool` to `wiki.Problem`, set it only where staleness is detected rather than parsing message text, preserve hard errors and existing formatting order, make `wikiCheck` fail only on errors while printing every diagnostic, replace stale instructions, update help summary/comments, and pass `scripts/test ./internal/wiki ./internal/cli -run 'TestCheck|TestWiki|TestHelp'`.
-- [ ] Commit: `feat(wiki): report stale pages as advisory warnings` with this task's trailer.
+- [x] Red: Add severity assertions and stale-only/mixed CLI expectations, including history-read failure and load errors, then run `scripts/test ./internal/wiki ./internal/cli -run 'TestCheck|TestWiki'` and observe failure because all current diagnostics are fatal and stale copy mandates confirmation.
+- [x] Change: Add a zero-default `Warning bool` to `wiki.Problem`, set it only where staleness is detected rather than parsing message text, preserve hard errors and existing formatting order, make `wikiCheck` fail only on errors while printing every diagnostic, replace stale instructions, update help summary/comments, and pass `scripts/test ./internal/wiki ./internal/cli -run 'TestCheck|TestWiki|TestHelp'`.
+- [x] Commit: `feat(wiki): report stale pages as advisory warnings` with this task's trailer.
 
 ### Task 2: Align workflow instructions and prove advisory close behavior
 
@@ -47,3 +48,9 @@ hash: frbmu2s
 ## Close
 
 Run the gates with the branch-built CLI so the installed old binary cannot enforce the former fatal-stale behavior. The required `scripts/eval` runs at land; development checks do not replace it. Report remaining warnings as warnings, and keep the page-review evidence with this plan.
+
+## State
+
+### Next
+
+Implement Task 2 workflow instructions and extend the existing wiki-close eval.
