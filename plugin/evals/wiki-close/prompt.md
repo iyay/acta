@@ -1,10 +1,10 @@
 ---
 name: wiki-close
-description: Closing a built plan re-checks the wiki page that covers a file the branch changed and fixes it before review.
+description: Closing a built plan fixes incorrect wiki facts and accepts advisory warnings for unchanged facts.
 tags: [wiki, build]
 runs: 1
 # The close is a chain: load the build skill, read its wiki steps, run the
-# check, read the page and the diff, fix the page, run the check again, run
+# check, read the pages and the diff, fix wrong facts, run the check again, run
 # the progress check. The commit may come back with a git error in the sandbox
 # and cost a turn or two. Sixteen leaves room without landing on the cap.
 # The eval run grants Bash and no edit tool. A child that finds Edit off gives

@@ -94,7 +94,7 @@ Workers share the plan file, so none commits it.
 
 ## Close
 
-When every task is committed, write the wiki first. In the worktree, run `acta wiki check <parent>..HEAD`. Read [wiki.md](wiki.md) only when you will fix or add a page. Fix each touched page, or run `acta wiki ok <id>` if it is right. Write each page the spec approved (shape notes each yes in the spec). Add any other page only for a lesson a fresh agent would lose time without. Make one commit if anything changed. Review then sees the wiki diff. You do this, or under `dispatch` the omp agent.
+After task commits, write the wiki first. In the worktree, run `acta wiki check <parent>..HEAD`. Read [wiki.md](wiki.md) only when you will fix or add a page. Read affected pages and diffs; fix wrong facts. Only errors block. `acta wiki ok <id>` is optional after review. Write each page the spec approved (shape notes each yes in the spec). Add any other page only for a lesson a fresh agent would lose time without. Make one commit if anything changed. You or the `dispatch` agent do this.
 
 After the wiki step: finish any outstanding type check and show it with the tests each task ran, then use `acta:review` over `<parent>..HEAD`. No second fast suite: each task already ran its own tests, and a change made after one needs only the test it touches. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, run `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
 

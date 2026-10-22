@@ -26,6 +26,7 @@ var pageTypes = []string{"Decision", "Gotcha", "Runbook", "Reference", "Glossary
 // empty when the problem is not about one page, like a range git cannot read.
 type Problem struct {
 	Page, Msg string
+	Warning   bool // Only stale notes are advisory; all other problems block the check.
 }
 
 // Check says what is wrong with pages. repo is the checkout their paths are
@@ -55,8 +56,9 @@ func Check(repo string, pages []Page, rng string) []Problem {
 	var out []Problem
 	for _, p := range pages {
 		name := pageName(repo, p)
-		for _, msg := range checkPage(repo, p, hs) {
-			out = append(out, Problem{Page: name, Msg: msg})
+		for _, problem := range checkPage(repo, p, hs) {
+			problem.Page = name
+			out = append(out, problem)
 		}
 	}
 	return out
@@ -93,7 +95,7 @@ func covered(p Page, changed []string) bool {
 }
 
 // checkPage gives the message for each rule a page breaks.
-func checkPage(repo string, p Page, hs *histories) []string {
+func checkPage(repo string, p Page, hs *histories) []Problem {
 	msgs := fieldMsgs(p)
 	var usable []string
 	for _, entry := range p.Paths {
@@ -105,23 +107,27 @@ func checkPage(repo string, p Page, hs *histories) []string {
 			usable = append(usable, entry)
 		}
 	}
-	if len(usable) == 0 {
-		return msgs
+	var out []Problem
+	for _, msg := range msgs {
+		out = append(out, Problem{Msg: msg})
 	}
-	return append(msgs, staleMsgs(repo, p, usable, hs)...)
+	if len(usable) > 0 {
+		out = append(out, staleMsgs(repo, p, usable, hs)...)
+	}
+	return out
 }
 
 // staleMsgs says whether a path change of the page has no check commit behind
 // it. Only git history decides, never a date. usable holds the entries that
 // point into the repo: an entry that climbs out of it would make git fail, and
 // already has its own message.
-func staleMsgs(repo string, p Page, usable []string, hs *histories) []string {
+func staleMsgs(repo string, p Page, usable []string, hs *histories) []Problem {
 	file := pageName(repo, p)
 	// The wiki folder is the page file minus its id, so a page in a sub folder
 	// still finds the one checked file of its wiki.
 	h, err := hs.get(strings.TrimSuffix(file, p.ID+".md"))
 	if err != nil {
-		return []string{fmt.Sprintf("cannot read the git history: %v", err)}
+		return []Problem{{Msg: fmt.Sprintf("cannot read the git history: %v", err)}}
 	}
 	// An edit that is not committed yet is the author checking the page right now.
 	// The commit that saves it is a check, so there is nothing to say before that.
@@ -132,8 +138,8 @@ func staleMsgs(repo string, p Page, usable []string, hs *histories) []string {
 		return slices.ContainsFunc(usable, func(entry string) bool { return covers(entry, f) })
 	})
 	if sha != "" {
-		return []string{fmt.Sprintf("stale: %s %q changed its paths after the page was last checked; fix the page, or run acta wiki ok %s when nothing is wrong",
-			sha, subject, p.ID)}
+		return []Problem{{Warning: true, Msg: fmt.Sprintf("stale: %s %q changed its paths after the page was last checked; review the page against relevant changes and update any incorrect facts",
+			sha, subject)}}
 	}
 	return nil
 }

@@ -30,6 +30,7 @@ func TestSkillWikiSeed(t *testing.T) {
 		"Wait for a yes",
 		"in a worktree",
 		"acta wiki check",
+		"warnings alone do not block",
 	} {
 		if !strings.Contains(string(migrate), want) {
 			t.Errorf("migrate SKILL.md missing %q", want)

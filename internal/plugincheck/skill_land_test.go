@@ -69,7 +69,7 @@ func TestLandWikiGate(t *testing.T) {
 	// the wiki sentence itself. The check reads the pages of the checkout it runs
 	// in, so it runs in the worktree, where the pages of the branch are, and
 	// before the merge, since it is a gate.
-	const gate = "Wiki gate: from the worktree, before the merge, run `acta wiki check <base>..<head>` with the output shown; a problem stops the land the same as a red test"
+	const gate = "Wiki gate: from the worktree, before the merge, run `acta wiki check <base>..<head>` with the output shown; errors stop the land; stale warnings alone do not"
 	if !strings.Contains(step1, gate) {
 		t.Errorf("land step 1 does not stop the merge on acta wiki check from the worktree, want %q in %q", gate, step1)
 	}
