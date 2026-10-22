@@ -301,7 +301,7 @@ func TestNoKeptCommitMakesOneCommit(t *testing.T) {
 // A full fold must keep the real message. A planning chore at the end of the
 // range must not hide it.
 // Docs commits here touch only planning files, so every commit folds.
-func TestFullFoldTakesNewestNonChoreMessage(t *testing.T) {
+func TestFullFoldTakesNewestRealMessage(t *testing.T) {
 	cases := []struct {
 		name string
 		// Each step is a message and the file it touches.
@@ -318,6 +318,18 @@ func TestFullFoldTakesNewestNonChoreMessage(t *testing.T) {
 			{"docs: b", ".acta/b.md"},
 			{"chore(plan): c", ".acta/c.md"},
 		}, 1},
+		// A late polish commit is a fold type too, so it must not take the
+		// subject from the docs commit that holds the real change.
+		{"polish after a docs commit", [][2]string{
+			{"docs(wiki): narrow paths", ".acta/wiki/w.md"},
+			{"chore(plan): record evidence", ".acta/plan.md"},
+			{"polish: review notes PLN-x", ".acta/wiki/w2.md"},
+			{"chore(plan): tick polish", ".acta/plan2.md"},
+		}, 0},
+		{"polish and chores only", [][2]string{
+			{"polish: review notes PLN-x", ".acta/wiki/w.md"},
+			{"chore(plan): tick polish", ".acta/plan.md"},
+		}, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

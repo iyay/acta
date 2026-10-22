@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0193
 created: "2026-10-22 23:55:31"
 hash: envp34u
+started: "2026-10-22 23:55:45"
+finished: "2026-10-22 23:56:32"
 ---
 
 # Tidy keeps the real subject of a planning-only branch
@@ -27,6 +29,19 @@ hash: envp34u
 **Files:** Modify `internal/tidy/tidy.go`, `internal/tidy/tidy_test.go`; the close wiki step updates `.acta/wiki/land-tidy-history.md`.
 **Seam:** `tidy.Run` over a temp repo, as `TestFullFoldTakesNewestNonChoreMessage` already drives it.
 **verify:** For a full fold, the source commit is the newest that touches a file outside the planning root; else the newest whose type is not a fold type; else the newest non-chore; else the newest. No later `polish:` or `wiki` commit can take the subject from an earlier commit of another non-chore type. Every existing tidy test stays green. List each case run and the commit it picked.
-- [ ] Red: add two cases to the table of `TestFullFoldTakesNewestNonChoreMessage`: steps `docs(wiki)`, `chore(plan)`, `polish`, `chore(plan)` under `.acta/` want the `docs(wiki)` message; steps `polish`, `chore(plan)` under `.acta/` want the `polish` message. Run `scripts/test ./internal/tidy -run TestFullFold` and see the first case fail with the polish message.
-- [ ] Change: in `fullFoldSource`, add a loop before the non-chore loop that returns the newest commit whose `subjectType` is not in `foldTypes`; update the comment above the call in `plan`. Run `scripts/test ./internal/tidy`, `go vet ./internal/tidy` and `gofmt -l internal/tidy` and see them pass.
-- [ ] Commit: `fix(tidy): keep the real subject when a planning-only branch folds`
+- [x] Red: add two cases to the table of `TestFullFoldTakesNewestNonChoreMessage`: steps `docs(wiki)`, `chore(plan)`, `polish`, `chore(plan)` under `.acta/` want the `docs(wiki)` message; steps `polish`, `chore(plan)` under `.acta/` want the `polish` message. Run `scripts/test ./internal/tidy -run TestFullFold` and see the first case fail with the polish message.
+- [x] Change: in `fullFoldSource`, add a loop before the non-chore loop that returns the newest commit whose `subjectType` is not in `foldTypes`; update the comment above the call in `plan`. Run `scripts/test ./internal/tidy`, `go vet ./internal/tidy` and `gofmt -l internal/tidy` and see them pass.
+- [x] Commit: `fix(tidy): keep the real subject when a planning-only branch folds`
+
+## Polish
+
+### Task 2: Review polish
+
+**verify:** NOTE below applied, and nothing else changes.
+- [x] `land-tidy-history` names the last fallback again (else the newest commit) and stays at or under 250 words.
+- [x] `TestFullFoldTakesNewestNonChoreMessage` is renamed `TestFullFoldTakesNewestRealMessage`, since the first rule is now "not a fold type".
+- [x] Commit: `polish: review notes PLN-0193`
+
+## Review notes
+
+Deep, full tier (Go logic plus a wiki page agents read), two reviewers; round 1 CLEAN, no BLOCKER, no fact-check needed; polish (wiki step 4 back, test renamed) reviewed CLEAN by both axes. Notes left: the "polish and chores only" case guards the fallback and is not a red test; untyped subjects (WIP, fixup!, Revert) now beat a later polish in a full fold; the full-fold source also names the author; the old test name stays in specs and plans as history.
