@@ -4,6 +4,7 @@ id: SPC-0174
 created: "2026-10-22 23:35:15"
 hash: ehsbn1r
 started: "2026-10-22 23:39:21"
+finished: "2026-10-23 00:20:28"
 ---
 
 # Cheap plan updates and conflict-free planning merges
