@@ -31,4 +31,4 @@ Seeds an empty `.acta/wiki/` from an existing project. Runs when the user asks, 
 2. Read sources by convention, read-only: ADR folders, CHANGELOG, README, agent rule files, commits whose message records a decision, `WHY:` and `HACK:` comments, and the harness's own memory for this project when it has one.
 3. Keep only facts the code cannot tell: decisions and why, gotchas, runbooks, reference facts, domain terms. Drop what git or the plans already hold.
 4. Show one table: source, page type, page path, `paths`, or drop with the reason. Wait for a yes. Write nothing before that.
-5. After the yes, write the pages in a worktree in the format of `../build/wiki.md`, pass `acta wiki check`, then review and land like any plan.
+5. After the yes, write the pages in a worktree in the format of `../build/wiki.md`, resolve `acta wiki check` errors and fix incorrect facts; warnings alone do not block. Then review and land like any plan.

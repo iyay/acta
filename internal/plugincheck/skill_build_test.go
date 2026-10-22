@@ -245,7 +245,7 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	for _, step := range []string{
 		"In the worktree, run `acta wiki check <parent>..HEAD`",
 		"Read [wiki.md](wiki.md) only when you will fix or add a page",
-		"Fix each touched page, or run `acta wiki ok <id>` if it is right",
+		"Read affected pages and diffs; fix wrong facts",
 		"Write each page the spec approved (shape notes each yes in the spec)",
 		"Add any other page only for a lesson a fresh agent would lose time without",
 		"Make one commit",
@@ -356,7 +356,7 @@ func TestBuildWikiFileHoldsTheRules(t *testing.T) {
 		{"who writes them", "The agent that ran the plan"},
 		{"the check", "`acta wiki check <parent>..HEAD`"},
 		{"fix lines that are now wrong", "fix every line that is now wrong"},
-		{"record a re-check", "run `acta wiki ok <id>` when the page is still right"},
+		{"record a re-check", "`acta wiki ok <id>` is optional after reviewing an unchanged page"},
 		{"the pages the spec approved", "Write each page the spec approved"},
 		{"shape notes each yes", "Shape notes each yes in the spec"},
 		{"when to add a page", "a lesson a fresh agent would lose time without"},

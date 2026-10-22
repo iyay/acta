@@ -29,7 +29,20 @@ cp "$(xcrun --find git 2>/dev/null || command -v git)" bin/git
 # is a small script that puts ./bin first and then starts the real binary. It holds
 # the full folder name, because it cannot count on where it is run from.
 cp "$(command -v acta)" bin/acta.real
-printf '#!/bin/sh\nPATH="%s/bin:$PATH"\nexport PATH\nexec "%s/bin/acta.real" "$@"\n' "$PWD" "$PWD" > bin/acta
+cat > bin/acta <<'SH'
+#!/bin/sh
+root=$(cd "$(dirname "$0")/.." && pwd)
+PATH="$root/bin:$PATH"
+export PATH
+if [ "$1" = wiki ] && [ "$2" = check ]; then
+  output=$("$root/bin/acta.real" "$@" 2>&1)
+  status=$?
+  printf 'exit=%s\n%s\n' "$status" "$output" > "$root/wiki-check-result.txt"
+  if [ -n "$output" ]; then printf '%s\n' "$output"; fi
+  exit "$status"
+fi
+exec "$root/bin/acta.real" "$@"
+SH
 chmod +x bin/acta
 cat > src/parse.py <<'PY'
 def parse_row(line):
@@ -47,6 +60,16 @@ paths: [src/parse.py]
 ---
 `parse_row(line)` reads one row, `id,name,qty`, and returns a dict with the
 keys `id`, `name` and `qty`. `qty` is an int. The other two are text.
+PAGE
+# This fact stays true after the branch changes the same covered file.
+cat > .acta/wiki/parse-qty.md <<'PAGE'
+---
+type: Reference
+title: Quantity type
+description: parse_row converts qty to an int
+paths: [src/parse.py]
+---
+The qty value returned by parse_row is an int.
 PAGE
 # Every box is ticked, as it is when the last task of a plan is committed.
 cat > .acta/plans/2026-10-04-parse-note.md <<'PLAN'

@@ -401,3 +401,41 @@ func TestEvalGraderPatternsCompileInOmp(t *testing.T) {
 		t.Error(p)
 	}
 }
+
+// The grader must see the latest real check, including a failure after a pass.
+func TestWikiCloseCheckEvidence(t *testing.T) {
+	tools, root, home := t.TempDir(), t.TempDir(), t.TempDir()
+	for name, body := range map[string]string{
+		"git":   "#!/bin/sh\nexit 0\n",
+		"xcrun": "#!/bin/sh\ncommand -v git\n",
+		"acta":  "#!/bin/sh\nprintf '%s\\n' \"$CHECK_OUTPUT\"\nexit \"$CHECK_EXIT\"\n",
+	} {
+		if err := os.WriteFile(filepath.Join(tools, name), []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := append(os.Environ(), "PATH="+tools+":/usr/bin:/bin", "HOME="+home)
+	scaffold := exec.Command("bash", filepath.Join(pluginRoot(t), "evals/wiki-close/scaffold.sh"))
+	scaffold.Dir, scaffold.Env = root, env
+	if out, err := scaffold.CombinedOutput(); err != nil {
+		t.Fatalf("scaffold: %v\n%s", err, out)
+	}
+	for _, row := range []struct{ code, output string }{
+		{"0", "page.md: warning: stale: review this page"},
+		{"1", "page.md: description is missing"},
+	} {
+		cmd := exec.Command(filepath.Join(root, "bin/acta"), "wiki", "check", "main..HEAD")
+		cmd.Dir, cmd.Env = filepath.Join(root, "src"), append(env, "CHECK_EXIT="+row.code, "CHECK_OUTPUT="+row.output)
+		out, err := cmd.CombinedOutput()
+		if (err == nil) != (row.code == "0") || string(out) != row.output+"\n" {
+			t.Fatalf("check %s: %v, %q", row.code, err, out)
+		}
+		record, err := os.ReadFile(filepath.Join(root, "wiki-check-result.txt"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := "exit=" + row.code + "\n" + row.output + "\n"; string(record) != want {
+			t.Errorf("latest check record %q, want %q", record, want)
+		}
+	}
+}
