@@ -222,3 +222,44 @@ func TestLandUnderstanding(t *testing.T) {
 		}
 	}
 }
+
+// TestLandFinalPlanCheck reads both landing files on their own. A plan once
+// reached main with its board at 1/3, and tidy once dropped task trailers.
+// So both modes check the plan from the parent checkout after the parent
+// moves and before cleanup: done status, full progress, and a task commit the
+// parent HEAD really holds. acta commits lists commits from every branch, so
+// its list alone would pass a commit that only the old branch still has.
+func TestLandFinalPlanCheck(t *testing.T) {
+	skill := strings.Join(strings.Fields(readSkill(t, "skills/land/SKILL.md")), " ")
+	for _, want := range []string{
+		"### Final plan check",
+		"in the main checkout after the parent moves",
+		"`acta show <plan hash> --json`: `status` is `done`, and `progress.done` equals `progress.total`, above 0",
+		"`acta commits <plan hash> N --json` lists commits from every branch, so it alone proves nothing",
+		"`git merge-base --is-ancestor <sha> HEAD`",
+		"A failed check: stop, even when the tree is the same. Keep the worktree and branch, report the mismatch with the output, and claim no success.",
+		"Never force a status, tick a box without proof, or redo work to hide it.",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("land/SKILL.md missing %q", want)
+		}
+	}
+	// Full mode: the check runs after the merge result is gated in step 6
+	// and before step 7 removes the worktree.
+	step6 := strings.Index(skill, "6. Run the gates again on the merge result")
+	step7 := strings.Index(skill, "7. Clean up, only after the final plan check passes: `git worktree remove <path>`")
+	if step6 < 0 || step7 < 0 || step6 > step7 {
+		t.Errorf("land/SKILL.md step 7 must clean up only after the final plan check (step 6 at %d, step 7 at %d)", step6, step7)
+	}
+	tidy := strings.Join(strings.Fields(readSkill(t, "skills/land/tidy.md")), " ")
+	// Tidy runs from this file, so it has to send the agent to the check by
+	// name. A bare pointer at cleanup got the plan id instead of its hash.
+	if !strings.Contains(tidy, "Then the final plan check of SKILL.md: `acta show <plan hash> --json`, `acta commits`; the tidy tip proves no task.") {
+		t.Error("land/tidy.md step 6 does not send the agent to the final plan check")
+	}
+	move := strings.Index(tidy, "5. Move the parent from the main checkout")
+	clean := strings.Index(tidy, "7. Clean up, only after the final plan check in SKILL.md passes: `git worktree remove <path>`")
+	if move < 0 || clean < 0 || move > clean {
+		t.Errorf("land/tidy.md step 7 must clean up only after the final plan check (move at %d, clean at %d)", move, clean)
+	}
+}
