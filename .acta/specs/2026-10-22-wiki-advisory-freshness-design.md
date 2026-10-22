@@ -45,8 +45,8 @@ Limit path narrowing to these three known mismatches:
 | Page | Replacement paths |
 | --- | --- |
 | `dispatch-plan-path` | `internal/cli/dispatch.go` |
-| `fix-duplicate-ids` | `internal/cli/id.go` |
-| `tick-stamps-spec` | `internal/cli/tick.go`, `internal/write/mark.go`, `internal/write/specdates.go` |
+| `fix-duplicate-ids` | `internal/cli/id.go`, `internal/write/ids.go` |
+| `tick-stamps-spec` | `internal/cli/tick.go`, `internal/cli/specdates.go`, `internal/write/mark.go`, `internal/write/specdates.go` |
 
 These pages must stop matching `internal/cli/state.go` and must still match each
 listed file. Other pages retain their paths. In particular, preserve the five
