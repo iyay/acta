@@ -32,6 +32,7 @@ func TestPlanSplitText(t *testing.T) {
 		{split, "never touch the same file"},
 		{split, "after: [PLN-"},
 		{split, "acta ready"},
+		{split, "fix the list with `acta set <plan id> after <ids>`"},
 		{split, "do not start a build"},
 		{readSkillFile(t, "build", "SKILL.md"), "acta ready <plan id> --parent <parent>"},
 		{readSkillFile(t, "build", "SKILL.md"), "--head"},

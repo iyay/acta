@@ -5,6 +5,7 @@ after: [PLN-0187]
 id: PLN-0190
 created: "2026-10-22 23:38:08"
 hash: td8w75r
+started: "2026-10-22 23:39:35"
 ---
 
 # Plan writes through acta commands
@@ -32,9 +33,9 @@ hash: td8w75r
 **Files:** Create `internal/write/planadd.go`, `internal/write/planadd_test.go`, `internal/cli/plan.go`, `internal/cli/plan_test.go`; modify `internal/cli/cli.go` (dispatch case `plan`) and `internal/cli/help.go` (new entry in the Write group).
 **Seam:** `acta plan add <plan> <section> [--title T] [--verify V] < stdin`.
 **verify:** For each section, the file gains only the new lines, and every other byte stays the same. `fix-round` and `polish` tasks are numbered one past the highest `### Task N`, the round one past the highest `## Fix round`, and `acta tick` can tick every new box. New sections land before `## Review notes` and `## State` when present, otherwise at the end. `review-notes` adds lines and never replaces them. The command prints `plans/<stem>#task-N added`, or for `review-notes` the plan id. Inputs to try, each refused with no file change and no commit: unknown section, empty or blank-only stdin, `fix-round` without `--title` or `--verify`, a second `polish`, an id that is not a plan. Lines that start with `- [ ] ` or `- ` do not double the prefix. List each path checked.
-- [ ] Red: write the write-package and CLI tests for the cases above, run `scripts/test ./internal/write -run TestAddPlanSection` and `scripts/test ./internal/cli -run TestCmdPlanAdd`, and watch them fail.
-- [ ] Change: implement the writer, the command and its help entry, then rerun both commands until they pass.
-- [ ] Commit: `feat(cli): acta plan add writes fix rounds, polish and review notes`
+- [x] Red: write the write-package and CLI tests for the cases above, run `scripts/test ./internal/write -run TestAddPlanSection` and `scripts/test ./internal/cli -run TestCmdPlanAdd`, and watch them fail.
+- [x] Change: implement the writer, the command and its help entry, then rerun both commands until they pass.
+- [x] Commit: `feat(cli): acta plan add writes fix rounds, polish and review notes`
 
 ### Task 2: `acta set <plan> after`
 
@@ -59,10 +60,16 @@ hash: td8w75r
 **Files:** Modify `plugin/skills/review/SKILL.md` (fix round step, polish step with the template block removed, review notes step), `plugin/skills/build/dispatch.md` (fix round step, run from the dispatched worktree), `plugin/skills/build/SKILL.md` (plan changes during a build only through `acta tick`, `acta state set` and `acta plan add`; no hand-written sections such as `## Verification evidence`), `plugin/skills/slice/split.md` (step 4 fixes the list with `acta set <plan> after`); checks in `internal/plugincheck/skill_review_test.go` and the build skill test.
 **Seam:** `scripts/test ./internal/plugincheck`.
 **verify:** No skill tells an agent to append to, or hand-edit, a plan section that `acta plan add` or `acta set` covers. Grep `plugin/skills` for `append`, `## Fix round`, `## Polish`, `## Review notes` and `after:` and list each hit checked. The review skill and `dispatch.md` name `acta plan add`, and plugincheck fails when either drops it. Skill size caps still pass.
-- [ ] Red: add the plugincheck checks, run `scripts/test ./internal/plugincheck -run 'TestReview|TestBuild|TestDispatch'`, and watch them fail.
-- [ ] Change: rewrite the skill lines, then rerun `scripts/test ./internal/plugincheck` until it passes.
-- [ ] Commit: `docs(skills): plan writes go through acta plan add and acta set`
+- [x] Red: add the plugincheck checks, run `scripts/test ./internal/plugincheck -run 'TestReview|TestBuild|TestDispatch'`, and watch them fail.
+- [x] Change: rewrite the skill lines, then rerun `scripts/test ./internal/plugincheck` until it passes.
+- [x] Commit: `docs(skills): plan writes go through acta plan add and acta set`
 
 ## Build brief
 
 - Land order: either order. Sibling plan PLN-0191 lands on main too and shares no file with this plan.
+
+## State
+
+### Next
+
+Task 2: acta set <plan> after; validate with badAfter from internal/cli/ready.go.

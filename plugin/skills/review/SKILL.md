@@ -44,7 +44,7 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTE
 NOTEs are not one pile. Each one is sorted into a bucket: `[fix]`, `[debt]` or `[note]`. The budget does not change: three rounds at most, and a round with no BLOCKER does not start.
 
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
-2. BLOCKERs: one fix task holding all of them, appended to the same plan as a `## Fix round <n>` section, in the same worktree, landing as one commit. The `[fix]` NOTEs join that fix task.
+2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
 3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
 4. Round 3 reviews the second fix range only. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
 
@@ -70,22 +70,11 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 The polish commit counts as no round. Each polish commit gets the review its tier picks (`## Review tiers`). This section is the whole CLEAN-round flow.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
-2. With `[fix]` NOTEs: first append a `## Polish` task to the plan, in the worktree:
-   ```
-   ## Polish
-
-   ### Task N: Review polish
-
-   **verify:** every NOTE below is applied, and nothing else changes.
-
-   - [ ] <one box per [fix] NOTE>
-   - [ ] Commit: `polish: review notes for <plan id>`
-   ```
-   N is the next task number. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes and note the move there. The polish commit uses no round.
+2. With `[fix]` NOTEs: first add the `## Polish` task in the worktree with `acta plan add <plan id> polish`, one `[fix]` NOTE per stdin line. It prints the task id to tick. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes, and say so in the review notes. The polish commit uses no round.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
 5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
-6. The `[note]` NOTEs are not written one by one. Write one summary line under `## Review notes` in the plan file, and that section is committed with the plan.
+6. The `[note]` NOTEs are not written one by one. Write one summary line under `## Review notes` with `acta plan add <plan id> review-notes`, the line on stdin; it commits the plan.
 7. Then `acta:land`.
 
 A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the narrow tests of the code the polish touched and the formatter check, with the output shown, then the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward. The `--round polish` send hands over the plan's `## Polish` task.
@@ -97,7 +86,7 @@ This is the one place that says which diffs get a full review; `## Review depth`
 - **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
 - **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.
 
-Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line in the plan's `## Review notes` naming the tier and why. No reviewer runs. Full review: the reviewers its depth names (`## Review depth`). A full review means you dispatch those reviewer subagents. Reading the diff yourself never replaces the reviewers its depth names, however small the diff.
+Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line naming the tier and why with `acta plan add <plan id> review-notes`. No reviewer runs. Full review: the reviewers its depth names (`## Review depth`). A full review means you dispatch those reviewer subagents. Reading the diff yourself never replaces the reviewers its depth names, however small the diff.
 
 Work another agent wrote (the `dispatch` executor) takes at least the standard level in the full tier. A light review that finds any line outside the light tier switches to the full review.
 

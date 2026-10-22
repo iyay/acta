@@ -46,6 +46,9 @@ func TestSkillBuild(t *testing.T) {
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
+			"During a build the plan changes only through `acta tick`, `acta state set` and `acta plan add`",
+			"never hand-write a section such as `## Verification evidence`",
+			"acta state set <plan> findings",
 		},
 		MustNot: []string{"or has `depth: minimal`", `only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay

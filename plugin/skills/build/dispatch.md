@@ -64,7 +64,7 @@ NOTEs are never written to memory: once the round is CLEAN, `acta:review`'s `## 
 
 BLOCKERs or open tasks go back in this same turn. A findings list with no `send` behind it is an unfinished turn. The round cap is `acta:review`'s: round 3 still BLOCKED, ask the user.
 
-1. Append `## Fix round <n>` with its task and `verify:` line to the plan, as `acta:review` says.
+1. Add the fix round with `acta plan add <plan id> fix-round`, as `acta:review` says, run from the dispatched worktree.
 2. Run `acta dispatch send --plan <plan> --rules <abs path> --round fix-<n>`. It reuses the same tab, so the agent keeps its context. Write the note as if it remembers nothing, because omp compacts.
 3. Start the watcher, then stop. One turn per round.
 

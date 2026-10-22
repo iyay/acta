@@ -38,7 +38,7 @@ Two fallbacks, each told to the user in one line:
 
 Do not ask whether to create a worktree. Every change gets one: feature, fix, one-liner, config, docs in the repo. The main checkout is read-only for agents.
 
-The spec and plan from acta:shape and acta:slice stay on main; they are already committed when the worktree is made. While a build runs, do not edit its plan on main: the ticks live in the worktree copy and would clash at merge. A plan change goes in the worktree.
+The spec and plan from acta:shape and acta:slice stay on main; they are already committed when the worktree is made. While a build runs, do not edit its plan on main: the ticks live in the worktree copy and would clash at merge. A plan change goes in the worktree. During a build the plan changes only through `acta tick`, `acta state set` and `acta plan add`; never hand-write a section such as `## Verification evidence`. A finding that cost time goes to `acta state set <plan> findings`.
 
 Read the plan's `## Build brief` first, when it has one: a code repo or parent branch named there wins over the defaults, and its land notes go on to `acta:land`. Parent: the branch the user names, else the brief's, else the repo's default branch. Record it; `acta:land` merges into it. Then run `acta ready <plan id> --parent <parent>`; for a worktree that already exists add `--head <its HEAD>`. Any non-zero exit stops the build: show the output, and never rebase or merge to make it pass.
 

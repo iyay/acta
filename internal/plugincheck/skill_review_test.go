@@ -44,8 +44,12 @@ func TestSkillReview(t *testing.T) {
 			"The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.",
 			"acta debt new <plan id>",
 			"The `[note]` NOTEs are not written one by one.",
-			"one summary line under `## Review notes` in the plan file",
-			"that section is committed with the plan",
+			"one summary line under `## Review notes`",
+			// Plan sections go in through acta, so no agent reads the whole
+			// plan to add one.
+			"`acta plan add <plan id> fix-round --title <title> --verify <line>`",
+			"`acta plan add <plan id> polish`",
+			"`acta plan add <plan id> review-notes`",
 			"Then `acta:land`.",
 			"A polish sent to another agent goes out with `acta dispatch send --round polish`, the `[fix]` NOTE list on `--note-file -`; when `/acta:review` arrives with round polish, run the narrow tests of the code the polish touched and the formatter check, with the output shown, then the review its tier picks (`## Review tiers`) over the polish range, then step 3 onward.",
 			// Every other place names that section instead of restating it.
@@ -77,6 +81,12 @@ func TestSkillReview(t *testing.T) {
 			"send one `/goal`",
 			"the file is already in the diff, the fix adds no new logic, and the path is not security, auth, money, migration or delete; `[debt]` when leaving it costs something later that you can name; `[note]` otherwise.",
 			"the `[fix]` NOTEs join that round's one fix task, so the next round reviews them",
+			// The hand-written forms the commands replaced.
+			"appended to the same plan as a `## Fix round <n>` section",
+			"first append a `## Polish` task to the plan",
+			"<one box per [fix] NOTE>",
+			"note the move there",
+			"that section is committed with the plan",
 		},
 	})
 
