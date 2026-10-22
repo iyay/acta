@@ -38,6 +38,10 @@ func TestPlanSplitText(t *testing.T) {
 		{readSkillFile(t, "build", "SKILL.md"), "Any non-zero exit stops the build"},
 		{readSkillFile(t, "land", "tidy.md"), "acta spec-dates <plan hash>"},
 		{readSkillFile(t, "land", "SKILL.md"), "acta spec-dates <plan hash>"},
+		// A tick in a worktree never dates a spec now, so land dates every
+		// spec, not only one with several plans.
+		{readSkillFile(t, "land", "tidy.md"), "the dates of the plan's spec"},
+		{readSkillFile(t, "land", "SKILL.md"), "the dates of the plan's spec"},
 		{readSkillFile(t, "setup", "SKILL.md"), "`--plan-split` when it shows `plan_split: off (default)`"},
 		{readSkillFile(t, "slice", "SKILL.md"), "A split (split.md) never starts a build"},
 		{split, "Right after `acta id`"},

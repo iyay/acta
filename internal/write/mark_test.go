@@ -354,7 +354,7 @@ func linkedWorktree(t *testing.T, cfg config.Config) config.Config {
 // In a linked worktree a spec with one plan gets no dates from a tick either:
 // main may change that spec while the build runs, and two new lines in the
 // same spot make the merge conflict. A bug above the plan still gets its
-// dates, because land writes none for a bug.
+// dates, because land dates a bug only when several plans share it.
 func TestTaskDatesLeavesAOnePlanSpecAlone(t *testing.T) {
 	cfg := linkedWorktree(t, repoWith(t, markRepo(map[string]string{
 		".acta/bugs/2026-09-30-b.md":  "---\nid: BUG-0005\n---\n# B\n",

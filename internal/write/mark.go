@@ -49,8 +49,8 @@ func TaskDates(cfg config.Config, it *board.Item) ([]string, error) {
 	// added there lands in the same spot as main's change, and the merge
 	// conflicts. So in a worktree tick leaves the spec alone, and land writes
 	// its dates (acta spec-dates). The folder decides, since a spec of type bug
-	// is still a spec. A bug file gets no dates at land, so it keeps them from
-	// tick unless several worktrees share it. In the main checkout
+	// is still a spec. Land dates a bug file only when several plans share it,
+	// so a bug with one plan keeps its dates from tick. In the main checkout
 	// no land follows, so tick still writes them there.
 	if gitc.IsLinkedWorktree(cfg.RepoRoot) && (kindOf(cfg, spec.Path) == "spec" || plansOf(fresh, spec.ID) > 1) {
 		return wrote, nil

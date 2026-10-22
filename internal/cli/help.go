@@ -243,7 +243,7 @@ var helpTable = []helpCmd{
 	{
 		name:    "spec-dates",
 		group:   "Setup",
-		summary: "After a plan lands, write and commit the dates of its spec when the spec is cut into several plans.",
+		summary: "After a plan lands, write and commit the dates of its spec.",
 		usage:   []string{"acta spec-dates <plan>"},
 		example: "acta spec-dates PLN-0160",
 	},
