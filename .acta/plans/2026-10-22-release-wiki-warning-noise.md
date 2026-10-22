@@ -1,6 +1,7 @@
 ---
 parent: specs/2026-10-22-release-wiki-warning-noise-design
 depth: minimal
+after: [PLN-0187, PLN-0188]
 id: PLN-0189
 created: "2026-10-22 23:08:19"
 hash: liryzbk
