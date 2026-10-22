@@ -12,18 +12,28 @@ import (
 // SetField sets key to value in the frontmatter of src. Other fields keep
 // their order and the body is copied byte for byte.
 func SetField(src []byte, key, value string) ([]byte, error) {
+	return setNode(src, key, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value})
+}
+
+// SetList sets key to a one-line list like [PLN-1, PLN-2], the way a person
+// writes an after list by hand.
+func SetList(src []byte, key string, values []string) ([]byte, error) {
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Style: yaml.FlowStyle}
+	for _, v := range values {
+		seq.Content = append(seq.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: v})
+	}
+	return setNode(src, key, seq)
+}
+
+func setNode(src []byte, key string, val *yaml.Node) ([]byte, error) {
 	doc, body, nl, ok, err := frontOf(src)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		block, err := encode(&yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode}}}, key, value)
-		if err != nil {
-			return nil, err
-		}
-		return put(nl, block, body), nil
+		doc = &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode}}}
 	}
-	block, err := encode(doc, key, value)
+	block, err := encode(doc, key, val)
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +156,11 @@ func render(doc *yaml.Node) (string, error) {
 	return buf.String(), nil
 }
 
-func encode(doc *yaml.Node, key, value string) (string, error) {
+func encode(doc *yaml.Node, key string, val *yaml.Node) (string, error) {
 	m := doc.Content[0]
 	if m.Kind != yaml.MappingNode {
 		return "", errors.New("frontmatter is not a key: value list")
 	}
-	val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
 	found := false
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		if m.Content[i].Value == key {

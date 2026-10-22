@@ -52,7 +52,7 @@ var helpTable = []helpCmd{
 		name:    "set",
 		group:   "Board",
 		summary: "Change one field of a planning item and commit the change.",
-		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority <value>"},
+		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority|after <value>"},
 		example: "acta set SPC-0128 status done",
 	},
 	{
@@ -126,6 +126,17 @@ var helpTable = []helpCmd{
 			"--section S  words, context, log or questions (default: words); scratch add only",
 		},
 		example: `echo "idea for later" | acta scratch new later-idea`,
+	},
+	{
+		name:    "plan",
+		group:   "Write",
+		summary: "Add a fix round, the polish task or review notes to a plan, one item per stdin line, and commit the change.",
+		usage:   []string{"acta plan add <plan> fix-round|polish|review-notes [--title T] [--verify V] < items.md"},
+		flags: []string{
+			"--title T  task title (fix-round only, required)",
+			"--verify V  verify line (fix-round only, required)",
+		},
+		example: `echo "guard empty input" | acta plan add PLN-0190 fix-round --title "Guard empty input" --verify "empty input is refused"`,
 	},
 	{
 		name:    "commit",

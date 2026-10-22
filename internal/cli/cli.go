@@ -77,6 +77,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdSet(args[1:], stdout, stderr)
 	case "state":
 		return cmdState(args[1:], stdin, stdout, stderr)
+	case "plan":
+		return cmdPlan(args[1:], stdin, stdout, stderr)
 	case "bug":
 		if len(args) < 2 || args[1] != "new" {
 			fmt.Fprintln(stderr, usageLine("bug"))
@@ -458,6 +460,20 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	cfg, b, code := loadBoard(*root, stderr)
 	if code != exitOK {
 		return code
+	}
+	if msg := building(cfg, b.Get(pos[0])); msg != "" {
+		fmt.Fprintln(stderr, msg)
+		return exitBadInput
+	}
+	if it := b.Get(pos[0]); pos[1] == "after" && it != nil && it.Kind == board.KindPlan {
+		// Check the new list the way acta ready reads it, so a list that
+		// can never be ready is never written.
+		next := *it
+		next.After = write.AfterIDs(pos[2])
+		if msg := badAfter(b, &next); msg != "" {
+			fmt.Fprintln(stderr, msg)
+			return exitBadInput
+		}
 	}
 	o, err := write.SetValue(cfg, b, pos[0], pos[1], pos[2])
 	return report(o, err, stdout, stderr)

@@ -81,6 +81,10 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if !refRe.MatchString(value) {
 			return Outcome{}, bad("ref %q must be one word of letters, digits and . _ / -, at most 40 characters", value)
 		}
+	case "after":
+		if it.Kind != board.KindPlan {
+			return Outcome{}, bad("after is only for plans")
+		}
 	case "title":
 		if strings.TrimSpace(value) == "" {
 			return Outcome{}, bad("title cannot be empty")
@@ -89,7 +93,7 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 			return Outcome{}, bad("title must be one line, not %q", value)
 		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref or priority", field)
+		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref, priority or after", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -101,11 +105,17 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return Outcome{}, err
 	}
 	var out []byte
-	if field == "title" {
+	switch {
+	case field == "title":
 		// A title lives in the body, not in the frontmatter, so it cannot go
 		// through SetField the way the other fields do.
 		out, err = setTitle(src, value)
-	} else {
+	case field == "after" && len(AfterIDs(value)) == 0:
+		// An empty list means the plan waits on nothing, so the field goes.
+		out, err = RemoveField(src, field)
+	case field == "after":
+		out, err = SetList(src, field, AfterIDs(value))
+	default:
 		out, err = SetField(src, field, value)
 	}
 	if err != nil {
@@ -124,6 +134,12 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return Outcome{}, err
 	}
 	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, field, value)), dirty), nil
+}
+
+// AfterIDs splits an after list given on the command line. Commas and spaces
+// both part the ids, so "PLN-1,PLN-2" and "PLN-1 PLN-2" mean the same.
+func AfterIDs(value string) []string {
+	return strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
 }
 
 // setTitle changes the title of one item. The board reads a title from the

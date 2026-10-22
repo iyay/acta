@@ -521,3 +521,50 @@ func TestNewDebtFoldsRepeatAppends(t *testing.T) {
 		t.Errorf("second debt append made %d new commits, want 0", got-before)
 	}
 }
+
+// An after list split on commas or spaces is written as one flow list, and
+// an empty value takes the field away. The body never changes.
+func TestSetValueAfter(t *testing.T) {
+	plan := ".acta/plans/2026-09-25-crash-fix.md"
+	cfg := repoWith(t, baseFiles)
+	path := filepath.Join(cfg.RepoRoot, plan)
+	for _, c := range []struct{ value, want string }{
+		{"PLN-1,PLN-2", "---\nparent: bugs/2026-09-24-crash\nafter: [PLN-1, PLN-2]\n---\n"},
+		{" PLN-3  PLN-4, PLN-5 ", "---\nparent: bugs/2026-09-24-crash\nafter: [PLN-3, PLN-4, PLN-5]\n---\n"},
+		{"", "---\nparent: bugs/2026-09-24-crash\n---\n"},
+	} {
+		o, err := SetValue(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "after", c.value)
+		if err != nil || !o.Committed {
+			t.Fatalf("%q: outcome %+v err %v", c.value, o, err)
+		}
+		if got := stateBody(t, path); got != c.want+"# Fix\n\n### Task 1: Fix\n- [ ] a\n" {
+			t.Fatalf("%q: file = %q", c.value, got)
+		}
+	}
+	if got := mustLoad(t, cfg).Get("plans/2026-09-25-crash-fix").After; len(got) != 0 {
+		t.Fatalf("after left behind: %v", got)
+	}
+}
+
+// after belongs to plans only, so a bug, spec or scratch item is refused and
+// left alone.
+func TestSetValueAfterOnlyForPlans(t *testing.T) {
+	files := map[string]string{
+		".acta/specs/2026-09-24-s.md":   "---\nid: SPC-1\n---\n# S\n",
+		".acta/scratch/2026-09-24-x.md": "---\nid: SCR-1\n---\n# X\n",
+	}
+	for k, v := range baseFiles {
+		files[k] = v
+	}
+	cfg := repoWith(t, files)
+	head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+	for _, id := range []string{"bugs/2026-09-24-crash", "specs/2026-09-24-s", "scratch/2026-09-24-x"} {
+		_, err := SetValue(cfg, mustLoad(t, cfg), id, "after", "PLN-1")
+		if err == nil || !strings.Contains(err.Error(), "after is only for plans") {
+			t.Errorf("%s: err %v", id, err)
+		}
+	}
+	if gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD") != head || gitRun(t, cfg.RepoRoot, "status", "--porcelain") != "" {
+		t.Fatal("a refused after changed the repo")
+	}
+}
