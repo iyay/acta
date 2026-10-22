@@ -100,6 +100,20 @@ func TestStyleFullSentenceRule(t *testing.T) {
 	}
 }
 
+// TestStyleNoRuleCite pins the line that stops replies from quoting a rule or
+// a skill file path to justify a step. Models added such lines every round,
+// and the user got nothing from them. The line must sit in the block that
+// applies to every reply, not in the ADHD block.
+func TestStyleNoRuleCite(t *testing.T) {
+	_, body := styleParts(t)
+	const want = "- Never cite a rule, skill or file path to justify a step unless asked why."
+	every, _, _ := strings.Cut(body, styleHeadings[1])
+	_, every, _ = strings.Cut(every, styleHeadings[0])
+	if !slices.Contains(strings.Split(every, "\n"), want) {
+		t.Errorf("the %q block has no line %q", styleHeadings[0], want)
+	}
+}
+
 // adhdPhrase reads the words the session note must hold for the ADHD block to
 // apply: the text after "says" in the ADHD heading, up to its closing bracket.
 func adhdPhrase(t *testing.T, body string) string {

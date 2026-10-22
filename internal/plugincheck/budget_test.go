@@ -22,7 +22,7 @@ import (
 // fileCaps holds the cap of every .md file under skills/, references/ and
 // output-styles/. The keys are paths as walkPlugin names them.
 var fileCaps = map[string]int{
-	"output-styles/acta.md":                   1773,
+	"output-styles/acta.md":                   1849,
 	"references/house-rules.md":               3787,
 	"references/unslop.md":                    3752,
 	"skills/bug/SKILL.md":                     2327,
