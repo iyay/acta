@@ -7,14 +7,13 @@ import (
 	"github.com/iyay/acta/internal/config"
 )
 
-// SpecDates writes the dates of a spec cut into several plans, on the branch
-// a plan just landed on. Tick leaves such a spec alone (see TaskDates), so
-// land calls this once per plan. started is the earliest started of the
-// spec's plans here and may move earlier on a later land, never later; a
-// plan that started first can land last. finished is written once, by the
-// land that makes every plan of the spec done. A spec with one plan gets its
-// dates from tick, so this writes nothing for it. It gives back the files it
-// changed.
+// SpecDates writes the dates of a spec, on the branch a plan just landed on.
+// Tick in a worktree leaves a spec alone (see TaskDates), so land calls this
+// once per plan. started is the earliest started of the spec's plans here and
+// may move earlier on a later land, never later; a plan that started first
+// can land last. finished is written once, by the land that makes every plan
+// of the spec done. A bug with one plan gets its dates from tick, so this
+// writes nothing for it. It gives back the files it changed.
 func SpecDates(cfg config.Config, planID string) ([]string, error) {
 	b, err := board.Load(cfg)
 	if err != nil {
@@ -36,7 +35,7 @@ func SpecDates(cfg config.Config, planID string) ([]string, error) {
 			plans = append(plans, it)
 		}
 	}
-	if len(plans) < 2 {
+	if len(plans) < 2 && kindOf(cfg, spec.Path) != "spec" {
 		return nil, nil
 	}
 	earliest, allDone, anyDone := "", true, false

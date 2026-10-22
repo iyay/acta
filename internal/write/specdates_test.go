@@ -84,16 +84,26 @@ func TestSpecDatesBothLandOrders(t *testing.T) {
 	}
 }
 
-// A spec with one plan keeps getting its dates from tick, so SpecDates
-// leaves it alone.
-func TestSpecDatesLeavesAOnePlanSpecAlone(t *testing.T) {
+// A spec with one plan gets its dates at land too, since a tick in a
+// worktree no longer writes them. A bug above a plan still gets its dates
+// from tick, so SpecDates leaves a bug alone.
+func TestSpecDatesDatesAOnePlanSpec(t *testing.T) {
 	cfg := repoWith(t, map[string]string{
 		".acta/specs/2026-10-01-s.md": "---\nid: SPC-0009\n---\n# S\n",
 		".acta/plans/2026-10-01-a.md": splitPlan("PLN-0001", "2026-10-01 10:00:00", "x"),
+		".acta/bugs/2026-10-01-b.md":  "---\nid: BUG-0003\n---\n# B\n",
+		".acta/plans/2026-10-01-c.md": "---\nid: PLN-0004\nparent: bugs/2026-10-01-b\nstarted: \"2026-10-01 10:00:00\"\n---\n# C\n\n### Task 1: Do it\n- [x] a\n",
 	})
-	wrote, err := SpecDates(cfg, "PLN-0001")
+	if _, err := SpecDates(cfg, "PLN-0001"); err != nil {
+		t.Fatal(err)
+	}
+	got := specFront(t, filepath.Join(cfg.RepoRoot, ".acta/specs/2026-10-01-s.md"))
+	if !strings.Contains(got, "started: \"2026-10-01 10:00:00\"") || !strings.Contains(got, "finished:") {
+		t.Errorf("one-plan spec lacks its dates after land:\n%s", got)
+	}
+	wrote, err := SpecDates(cfg, "PLN-0004")
 	if err != nil || len(wrote) != 0 {
-		t.Fatalf("wrote %v err %v, want nothing", wrote, err)
+		t.Errorf("bug parent: wrote %v err %v, want nothing", wrote, err)
 	}
 }
 

@@ -318,14 +318,7 @@ func TestTaskDatesLeavesASplitSpecAlone(t *testing.T) {
 	cfg := repoWith(t, markRepo(map[string]string{
 		".acta/plans/2026-09-30-q.md": "---\nid: PLN-0004\nparent: specs/2026-09-30-s\n---\n# Q\n\n### Task 1: One\n- [x] a\n",
 	}))
-	// Run the tick from a linked worktree of that repo, the way a build does.
-	wt, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	wt = filepath.Join(wt, "wt")
-	gitRun(t, cfg.RepoRoot, "worktree", "add", "-q", wt, "-b", "wt")
-	cfg = config.Default(wt)
+	cfg = linkedWorktree(t, cfg)
 	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
 	plan := filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-q.md")
 	task := mustLoad(t, cfg).Get("plans/2026-09-30-q#task-1")
@@ -342,5 +335,52 @@ func TestTaskDatesLeavesASplitSpecAlone(t *testing.T) {
 	raw, _ := os.ReadFile(spec)
 	if strings.Contains(string(raw), "started:") || strings.Contains(string(raw), "finished:") {
 		t.Errorf("split spec got dates:\n%s", raw)
+	}
+}
+
+// linkedWorktree adds a linked worktree to the repo and gives its config, so
+// a tick runs from it the way a build does.
+func linkedWorktree(t *testing.T, cfg config.Config) config.Config {
+	t.Helper()
+	wt, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt = filepath.Join(wt, "wt")
+	gitRun(t, cfg.RepoRoot, "worktree", "add", "-q", wt, "-b", "wt")
+	return config.Default(wt)
+}
+
+// In a linked worktree a spec with one plan gets no dates from a tick either:
+// main may change that spec while the build runs, and two new lines in the
+// same spot make the merge conflict. A bug above the plan still gets its
+// dates, because land writes none for a bug.
+func TestTaskDatesLeavesAOnePlanSpecAlone(t *testing.T) {
+	cfg := linkedWorktree(t, repoWith(t, markRepo(map[string]string{
+		".acta/bugs/2026-09-30-b.md":  "---\nid: BUG-0005\n---\n# B\n",
+		".acta/plans/2026-09-30-f.md": "---\nid: PLN-0006\nparent: bugs/2026-09-30-b\n---\n# F\n\n### Task 1: One\n- [x] a\n",
+		".acta/specs/2026-09-30-t.md": "---\nid: SPC-0007\ntype: bug\n---\n# T\n",
+		".acta/plans/2026-09-30-g.md": "---\nid: PLN-0008\nparent: specs/2026-09-30-t\n---\n# G\n\n### Task 1: One\n- [x] a\n",
+	})))
+	spec := filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md")
+	bug := filepath.Join(cfg.RepoRoot, ".acta/bugs/2026-09-30-b.md")
+	b := mustLoad(t, cfg)
+	if _, err := TaskDates(cfg, b.Get("plans/2026-09-30-p#task-1")); err != nil {
+		t.Fatal(err)
+	}
+	// A spec of type bug is still a spec: it sits in the specs folder.
+	if _, err := TaskDates(cfg, b.Get("plans/2026-09-30-g#task-1")); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{spec, filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-t.md")} {
+		if raw, _ := os.ReadFile(p); strings.Contains(string(raw), "started:") {
+			t.Errorf("one-plan spec got a date from a worktree tick:\n%s", raw)
+		}
+	}
+	if _, err := TaskDates(cfg, b.Get("plans/2026-09-30-f#task-1")); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := os.ReadFile(bug); !strings.Contains(string(raw), "started:") {
+		t.Errorf("bug lost its started from a worktree tick:\n%s", raw)
 	}
 }

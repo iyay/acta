@@ -45,11 +45,14 @@ func TaskDates(cfg config.Config, it *board.Item) ([]string, error) {
 	if spec == nil {
 		return wrote, nil
 	}
-	// A spec cut into several plans is built from several worktrees at once.
-	// Each would stamp the spec with its own time and the lands would clash,
-	// so land writes those dates instead (acta spec-dates). In the main
-	// checkout no land follows, so tick still writes them there.
-	if plansOf(fresh, spec.ID) > 1 && gitc.IsLinkedWorktree(cfg.RepoRoot) {
+	// Main can change a spec while a worktree builds one of its plans. A date
+	// added there lands in the same spot as main's change, and the merge
+	// conflicts. So in a worktree tick leaves the spec alone, and land writes
+	// its dates (acta spec-dates). The folder decides, since a spec of type bug
+	// is still a spec. A bug file gets no dates at land, so it keeps them from
+	// tick unless several worktrees share it. In the main checkout
+	// no land follows, so tick still writes them there.
+	if gitc.IsLinkedWorktree(cfg.RepoRoot) && (kindOf(cfg, spec.Path) == "spec" || plansOf(fresh, spec.ID) > 1) {
 		return wrote, nil
 	}
 	if err := mark(spec.Path, MarkStarted); err != nil {
