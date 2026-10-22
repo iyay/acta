@@ -41,6 +41,8 @@ func TestPlanSplitText(t *testing.T) {
 		{readSkillFile(t, "setup", "SKILL.md"), "`--plan-split` when it shows `plan_split: off (default)`"},
 		{readSkillFile(t, "slice", "SKILL.md"), "A split (split.md) never starts a build"},
 		{split, "Right after `acta id`"},
+		{split, "## Build brief"},
+		{readSkillFile(t, "build", "SKILL.md"), "## Build brief"},
 	}
 	for _, c := range checks {
 		if !strings.Contains(c.file, c.text) {
