@@ -56,8 +56,11 @@ Subagent (general-purpose):
        per task fixed. Planning `chore(` commits carry none.
     6. Right after each step, run `acta tick [TASK_ID] --step <n>` from the
        worktree, where [TASK_ID] is plans/<stem>#task-N; right after the
-       commit, run `acta tick [TASK_ID] --all` so no box stays open; never
-       commit the plan file. Add `--agent omp` only when `AI_AGENT` is empty:
+       commit, run `acta tick [TASK_ID] --all` so no box stays open, then
+       `acta show [TASK_ID] --json`: its `status` must be `done`. Never
+       commit the plan file. A tick or state command that exits non-zero, or
+       a task not `done`, means stop and report BLOCKED with its output;
+       never edit boxes by hand. Add `--agent omp` only when `AI_AGENT` is empty:
        omp sets no agent variable, so the flag names you on the board. Claude
        Code sets `AI_AGENT`, and the flag would record your work as omp.
     7. After the commit, run `acta state set plans/<stem> <part>` with the

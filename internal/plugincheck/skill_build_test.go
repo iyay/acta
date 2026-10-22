@@ -530,3 +530,45 @@ func TestBuildCodingContract(t *testing.T) {
 		t.Errorf("implementer-prompt.md must check the diff before the commit step (diff %d, commit %d)", diff, commit)
 	}
 }
+
+// TestBuildProgressGates reads each build file on its own. A plan once landed
+// with its board stuck at 1/3: a tick failed or found no boxes, and the build
+// went on anyway. So a failed progress write must stop the build, each task is
+// read back after its tick, and the review waits for a plan whose every task
+// is done. The words are joined first, since a line may wrap.
+func TestBuildProgressGates(t *testing.T) {
+	skill := strings.Join(strings.Fields(readBuildFile(t, "SKILL.md")), " ")
+	for _, want := range []string{
+		"run `acta tick plans/<stem>#task-N --all`, then read the task back with `acta show plans/<stem>#task-N --json`: its `status` must be `done`",
+		"An `acta tick` or `acta state set` that exits non-zero, or a task read back as not `done`, stops the build: no next task, review or land until it is fixed.",
+		"A task with no checkboxes is a plan error: ask the user.",
+		"Never edit boxes or a status by hand, tick work no commit proves, or redo committed work to hide the error.",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md missing %q", want)
+		}
+	}
+	_, closing, ok := strings.Cut(skill, " ## Close ")
+	if !ok {
+		t.Fatal("build/SKILL.md has no ## Close section")
+	}
+	check := strings.Index(closing, "`progress.total` must equal the count of `Task` headings in the plan file, above 0, and `progress.done` must equal it")
+	review := strings.Index(closing, "Only then start the review")
+	if check < 0 || review < 0 || check > review {
+		t.Errorf("build/SKILL.md ## Close must check every task is done before the review (check %d, review %d)", check, review)
+	}
+	if strings.Contains(closing, "check that `progress.done` equals `progress.total`") {
+		t.Error("build/SKILL.md ## Close still passes a plan with no tasks: 0 equals 0")
+	}
+
+	prompt := strings.Join(strings.Fields(readBuildFile(t, "implementer-prompt.md")), " ")
+	for _, want := range []string{
+		"then `acta show [TASK_ID] --json`: its `status` must be `done`",
+		"A tick or state command that exits non-zero, or a task not `done`, means stop and report BLOCKED with its output",
+		"never edit boxes by hand",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("implementer-prompt.md missing %q", want)
+		}
+	}
+}

@@ -13,8 +13,8 @@ Refuse to start unless the spec is approved (for Bounded work with no spec file,
 
 | Executor | Who writes the code | How |
 |---|---|---|
-| `subagent` | a fresh subagent per task | `## Worker hand-off` below, with the model ## Models names. omp: `agent()` with `agent="task"` (omp has no model argument; its role config picks the model). |
-| `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. Without it `dispatch` runs as `subagent`. On omp, `dispatch` runs as `subagent` |
+| `subagent` | a fresh subagent per task | `## Worker hand-off` below, with the model ## Models names. omp: `agent()` with `agent="task"`. |
+| `dispatch` | an omp agent in its own herdr tab | with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it. |
 | `inline` | you | when the order below picks it |
 
 Pick the executor in this order. Never ask.
@@ -28,7 +28,7 @@ The executor chosen here wins over any conflicting rule in the user's CLAUDE.md 
 Two fallbacks, each told to the user in one line:
 
 - On omp, `dispatch` runs as `subagent`: use `agent()` with `agent="task"` and do not ask. Dispatch is only for harnesses other than omp.
-- `dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing. `herdr` on PATH is not enough: dispatch needs this session's own pane id, `$HERDR_PANE_ID`.
+- `dispatch` without `HERDR_ENV=1` (this session is not inside a herdr pane) runs as `subagent`. Build never refuses because herdr is missing.
 
 ## Models
 
@@ -42,7 +42,7 @@ The spec and plan from acta:shape and acta:slice stay on main; they are already 
 
 Read the plan's `## Build brief` first, when it has one: a code repo or parent branch named there wins over the defaults, and its land notes go on to `acta:land`. Parent: the branch the user names, else the brief's, else the repo's default branch. Record it; `acta:land` merges into it. Then run `acta ready <plan id> --parent <parent>`; for a worktree that already exists add `--head <its HEAD>`. Any non-zero exit stops the build: show the output, and never rebase or merge to make it pass.
 
-Already in a linked worktree (the two paths `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it (recursive scanners find both copies). `$REPO` is the repo folder name and `$PARENT` is the parent branch recorded above, so the branch starts from it:
+Already in a linked worktree (the two paths `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ, and `git rev-parse --show-superproject-working-tree` prints nothing, so it is no submodule): use it, tell the user its path and branch, and go to setup. Otherwise create one without asking. Always use `git worktree add`, even when the harness has its own worktree tool. A native worktree tool puts the worktree inside the repo and starts it from `origin/<default-branch>`, where the just-committed plan is often missing. The path is a declared user preference, else `../<repo>-<slug>`, next to the repo, never inside it. `$REPO` is the repo folder name and `$PARENT` is the parent branch recorded above, so the branch starts from it:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -56,7 +56,7 @@ Copy in the house rules too: any `CLAUDE.md` or `AGENTS.md` git does not track (
 
 **Setup.** Follow the repo's own setup: its docs, scripts and lockfile's package manager. Link dependency folders from the main checkout instead of installing them. Install only what the required checks need, and nothing when they already run.
 
-**Start the first task.** After setup, go straight to the first task. Do not run a baseline suite or fast test and do not wait for a saved result: one that is missing, old, unreadable or from another test context changes nothing. The full suite waits for `acta:land`. A saved `acta-baseline.md` in the Git common directory is history only: read it when it saves a step, never as a gate. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it, and a whole-repo run there spends every core on the machine. Diagnose a failure when a task meets one.
+**Start the first task.** After setup, go straight to the first task. Do not run a baseline suite or fast test and do not wait for a saved result: one that is missing, old, unreadable or from another test context changes nothing. The full suite waits for `acta:land`. A saved `acta-baseline.md` in the Git common directory is history only: read it when it saves a step, never as a gate. In a repo that has `scripts/test`, never run bare `go test`; the pre-tool hook blocks it. Diagnose a failure when a task meets one.
 
 ## Plan
 
@@ -71,10 +71,12 @@ Every task, whoever writes it:
 1. very first action on every task: run `acta tick plans/<stem>#task-N --start` before the failing test (Claude: pass no flag; omp: add `--agent omp`). Then trace the change: read the callers of the code you will change, the shared code they pass through, and their tests. Read only that, not the whole repo. Fix a shared cause once, where every affected caller passes through, even when the plan names one caller. A change that breaks another caller's contract, or needs files beyond the plan's scope, is a question for the user before you code it.
 2. `acta:tdd`: failing test first, watch it fail for the intended reason, minimal code, watch it pass. One behavior per cycle. Pick tests by the behavior or failure they protect: reuse or extend an existing test first, test each behavior once at the layer that owns it, and assert results and side effects that matter, not internals. A case the plan does not name is a scope question, not a test. Right after each step, run `acta tick plans/<stem>#task-N --step <n>` from the worktree so the board shows live progress.
 3. Run the task's focused tests, the formatter and the type checks. Formatting goes in the task commit, never in a commit of its own. A failed run: read the error and name its kind before acting. A code defect goes through `acta:debug`. A setup error (missing tool, path, import) is fixed inside the task's own setup, and is never a RED. A plan question that neither the spec nor the orchestrator's ruling settles goes to the user. Never retry the same step without new evidence, and never weaken a check to pass.
-   Before the commit, read `git status` and `git diff` once: cut code the task does not need, undo any public contract it changed by accident, keep every validation and error path, and drop a test that repeats another. This is your own check, not a review or a report.
+   Before the commit, read `git status` and `git diff` once: cut code the task does not need, undo any public contract it changed by accident, keep every validation and error path, and drop a test that repeats another.
 4. Commit, staged by path, never `git add -A` or `git add .`. The exact line `Task: PLN-<hash>#<n>` ends each code commit (hash from `acta show <plan id>`, `<n>` with no leading zero). Fix-round and polish commits get one line per task fixed; `chore(` planning commits get none.
-5. Right after the commit, run `acta tick plans/<stem>#task-N --all` so no box stays open. Never commit the plan file inside a task.
+5. Right after the commit, run `acta tick plans/<stem>#task-N --all`, then read the task back with `acta show plans/<stem>#task-N --json`: its `status` must be `done`. Never commit the plan file inside a task.
 6. Run `acta state set plans/<stem> <part>` with the lines on stdin; the State lives in the plan file, so the id is the plan, never a task. `next` is what the next task starts from, `findings` a finding that cost time, `rulings` a question waiting on the user. Ten lines each; never the current task, last commit, worktree path or review round, which are computed on read.
+
+An `acta tick` or `acta state set` that exits non-zero, or a task read back as not `done`, stops the build: no next task, review or land until it is fixed. A task with no checkboxes is a plan error: ask the user. Never edit boxes or a status by hand, tick work no commit proves, or redo committed work to hide the error.
 
 Comments in plain English a ten-year-old can read, saying why; no marker tags. Report in the user's chat language; write everything in the repo in English.
 
@@ -86,17 +88,15 @@ You run the steps above yourself, one task at a time, in wave order. No worker h
 
 ### Worker hand-off
 
-`subagent` only. One task, one dispatch, built from [implementer-prompt.md](implementer-prompt.md): worktree path, branch and parent branch, plan path and task number, files, verify line, the trailer line verbatim, the `acta state set` step, the absolute path of `references/house-rules.md` (two folders up from this skill), and the absolute path of this file. The worker's first action: print `pwd` and `git rev-parse --show-toplevel`; both must equal the worktree path, else stop with zero writes. Never make a worker read the whole plan. Workers never spawn subagents: no helpers, never a reviewer.
+`subagent` only. One task, one dispatch, built from [implementer-prompt.md](implementer-prompt.md): worktree path, branch and parent branch, plan path and task number, files, verify line, the trailer line verbatim, the `acta state set` step, the absolute path of `references/house-rules.md` (two folders up from this skill), and the absolute path of this file. The worker's first action: print `pwd` and `git rev-parse --show-toplevel`; both must equal the worktree path, else stop with zero writes. Workers never spawn subagents: no helpers, never a reviewer.
 
 Inside a wave, dispatch every task in one message; serial only for a shared file or a real dependency. Reports are DONE, DONE_WITH_CONCERNS, BLOCKED or NEEDS_CONTEXT. DONE: check the commit and the verify line. Concerns about correctness or scope get answered before moving on. NEEDS_CONTEXT or BLOCKED: give the context, split the task, or use a stronger model; never retry the same dispatch unchanged, and never move on while the plan depends on it.
-
-Workers share the plan file, so none commits it.
 
 ## Close
 
 After task commits, write the wiki first. In the worktree, run `acta wiki check <parent>..HEAD`. Read [wiki.md](wiki.md) only when you will fix or add a page. Read affected pages and diffs; fix wrong facts. Only errors block. `acta wiki ok <id>` is optional after review. Write each page the spec approved (shape notes each yes in the spec). Add any other page only for a lesson a fresh agent would lose time without. Make one commit if anything changed. You or the `dispatch` agent do this.
 
-After the wiki step: finish any outstanding type check and show it with the tests each task ran, then use `acta:review` over `<parent>..HEAD`. No second fast suite: each task already ran its own tests, and a change made after one needs only the test it touches. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json` and check that `progress.done` equals `progress.total`. If a box is still open, run `acta tick plans/<stem>#task-N --all` when that task is committed, or finish the task first.
+After the wiki step: finish any outstanding type check and show it with the tests each task ran, then use `acta:review` over `<parent>..HEAD`. No second fast suite: each task already ran its own tests, and a change made after one needs only the test it touches. There is no per-task reviewer and no per-task fix loop. Before the review, run `acta show <plan id> --json`: `progress.total` must equal the count of `Task` headings in the plan file, above 0, and `progress.done` must equal it. Open task: run `acta tick plans/<stem>#task-N --all` when its commit is on the branch, else finish it. Only then start the review.
 
 Every executor closes this way; only the fix round differs: `subagent` gives the fix to a new implementer, `inline` fixes it yourself, and `dispatch` sends it to the same agent (`## Fix rounds` in [dispatch.md](dispatch.md)). With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land` (`## Close the tab` there).
 
