@@ -92,7 +92,9 @@ func badAfter(b *board.Board, plan *board.Item) string {
 				return fmt.Sprintf("%s lists %s in after, and no item has that id", planName(it), id)
 			case dep.Kind != board.KindPlan:
 				return fmt.Sprintf("%s lists %s in after, but %s is not a plan", planName(it), id, id)
-			case dep == it:
+			// By id, not by pointer: acta set checks a copy of the plan
+			// that holds the new list.
+			case dep.ID == it.ID:
 				return fmt.Sprintf("%s waits on itself", planName(it))
 			case dep.Status == "dropped":
 				return fmt.Sprintf("%s was dropped and will never land; take it out of the after list of %s", id, planName(it))

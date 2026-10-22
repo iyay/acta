@@ -42,9 +42,9 @@ started: "2026-10-22 23:39:35"
 **Files:** Modify `internal/write/ops.go` (`SetValue`, case `after`), `internal/write/frontmatter.go` (write a flow list, remove on empty), `internal/cli/cli.go` (`cmdSet` validates with `badAfter` from `internal/cli/ready.go`), `internal/cli/help.go` (set usage lists `after`); tests in `internal/write/ops_test.go` and `internal/cli/cli_test.go`.
 **Seam:** `acta set <plan> after <ids>`.
 **verify:** A valid list, split on commas or spaces, is written as `after: [PLN-1, PLN-2]`. An empty value removes the field. Each `acta ready` exit-2 reason is refused with no file change: unknown id, not a plan, the plan itself, a dropped plan, a cycle. `after` on a spec, bug or scratch item is refused. List each path checked.
-- [ ] Red: write the tests, run `scripts/test ./internal/write -run TestSetValueAfter` and `scripts/test ./internal/cli -run TestCmdSetAfter`, and watch them fail.
-- [ ] Change: implement, then rerun both commands until they pass.
-- [ ] Commit: `feat(cli): acta set changes a plan's after list`
+- [x] Red: write the tests, run `scripts/test ./internal/write -run TestSetValueAfter` and `scripts/test ./internal/cli -run TestCmdSetAfter`, and watch them fail.
+- [x] Change: implement, then rerun both commands until they pass.
+- [x] Commit: `feat(cli): acta set changes a plan's after list`
 
 ### Task 3: Guard a plan that is being built
 
@@ -72,4 +72,4 @@ started: "2026-10-22 23:39:35"
 
 ### Next
 
-Task 2: acta set <plan> after; validate with badAfter from internal/cli/ready.go.
+Task 3: guard helper in internal/cli/guard.go, called from cmdSet, cmdStateSet and cmdPlan.

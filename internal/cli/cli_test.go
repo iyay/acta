@@ -982,3 +982,45 @@ func TestDebtDropLowClosesLowLines(t *testing.T) {
 		}
 	})
 }
+
+// acta set writes an after list only when acta ready would take it, so every
+// exit-2 reason is refused there first and the file stays as it was.
+func TestCmdSetAfter(t *testing.T) {
+	dir := readyRepo(t, map[string]string{
+		"specs/2026-10-01-s.md":  "---\nid: SPC-0009\n---\n# S\n",
+		"plans/2026-10-01-a.md":  readyPlan("PLN-0001", "", " "),
+		"plans/2026-10-01-d.md":  "---\nid: PLN-0002\nstatus: dropped\n---\n# Plan\n\n### Task 1: Do it\n\n- [ ] Red: it fails\n",
+		"plans/2026-10-01-c1.md": readyPlan("PLN-0021", "", " "),
+		"plans/2026-10-01-c2.md": readyPlan("PLN-0022", "PLN-0021", " "),
+	})
+	run := func(args ...string) (int, string) {
+		var stdout, stderr strings.Builder
+		var code int
+		inDir(t, dir, func() {
+			code = Run(append([]string{"set"}, args...), strings.NewReader(""), false, &stdout, &stderr)
+		})
+		return code, stdout.String() + stderr.String()
+	}
+	head := tidyGit(t, dir, "rev-parse", "HEAD")
+	for _, c := range []struct{ plan, value, want string }{
+		{"PLN-0001", "PLN-0999", "PLN-0999"},
+		{"PLN-0001", "SPC-0009", "SPC-0009 is not a plan"},
+		{"PLN-0001", "PLN-0001", "PLN-0001 waits on itself"},
+		{"PLN-0001", "PLN-0002", "PLN-0002 was dropped"},
+		{"PLN-0021", "PLN-0022", "PLN-0021 -> PLN-0022 -> PLN-0021"},
+	} {
+		code, out := run(c.plan, "after", c.value)
+		if code != exitBadInput || !strings.Contains(out, c.want) {
+			t.Errorf("%s after %s: exit %d, want bad input with %q\n%s", c.plan, c.value, code, c.want, out)
+		}
+	}
+	if tidyGit(t, dir, "rev-parse", "HEAD") != head || tidyGit(t, dir, "status", "--porcelain") != "" {
+		t.Fatal("a refused after list changed the repo")
+	}
+	if code, out := run("PLN-0001", "after", "PLN-0021,PLN-0022"); code != exitOK {
+		t.Fatalf("valid list: exit %d\n%s", code, out)
+	}
+	if got := read(t, filepath.Join(dir, ".acta", "plans", "2026-10-01-a.md")); !strings.Contains(got, "after: [PLN-0021, PLN-0022]\n") {
+		t.Fatalf("plan = %q", got)
+	}
+}
