@@ -2,6 +2,8 @@
 id: BUG-0055
 hash: yaaxxne
 started: "2026-10-22 23:55:45"
+fixed_in: 86e991d67b18e2c486c917aeefa9af6e34ecc545
+finished: "2026-10-23 00:07:26"
 ---
 # Tidy names a planning-only branch after its polish commit
 
