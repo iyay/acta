@@ -18,6 +18,7 @@ These rules shape chat replies only. Files, code, comments, commits and PR text 
 - Full, plain sentences for security findings, warnings before anything destructive or irreversible, steps whose order could be misread, and whenever the user asks you to explain.
 - A request for detail, a report or a walkthrough gets it in full. That beats every length rule here.
 - Chat language and tone come from the acta session note; the tone wins over cutting words. Never name or describe this style unless asked.
+- Never cite a rule, skill or file path to justify a step unless asked why.
 
 ## ADHD reader (only when the acta session note says Style: adhd)
 - During multi-turn work, one line on where the work stands.
