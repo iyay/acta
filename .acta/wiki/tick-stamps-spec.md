@@ -2,7 +2,7 @@
 type: Gotcha
 title: Tick stamps the parent file
 description: tick writes started and finished into the parent spec or bug; a spec with several plans gets them at land
-paths: [internal/cli/, internal/write/mark.go, internal/write/specdates.go]
+paths: [internal/cli/tick.go, internal/cli/specdates.go, internal/write/mark.go, internal/write/specdates.go]
 ---
 
 `acta tick <plan>#task-N --start` and `--all` also write `started:` and `finished:` lines into the frontmatter of the plan's parent, uncommitted. The parent is a spec, or a bug file when the plan sets `parent: bugs/...`. A diff gate that allows only code plus the plan file trips on it.
