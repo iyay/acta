@@ -27,6 +27,10 @@ func cmdPlan(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if code != exitOK {
 		return code
 	}
+	if msg := building(cfg, b.Get(pos[0])); msg != "" {
+		fmt.Fprintln(stderr, msg)
+		return exitBadInput
+	}
 	body, err := io.ReadAll(stdin)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

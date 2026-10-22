@@ -461,6 +461,10 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 	if code != exitOK {
 		return code
 	}
+	if msg := building(cfg, b.Get(pos[0])); msg != "" {
+		fmt.Fprintln(stderr, msg)
+		return exitBadInput
+	}
 	if it := b.Get(pos[0]); pos[1] == "after" && it != nil && it.Kind == board.KindPlan {
 		// Check the new list the way acta ready reads it, so a list that
 		// can never be ready is never written.

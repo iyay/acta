@@ -6,6 +6,7 @@ id: PLN-0190
 created: "2026-10-22 23:38:08"
 hash: td8w75r
 started: "2026-10-22 23:39:35"
+finished: "2026-10-22 23:52:33"
 ---
 
 # Plan writes through acta commands
@@ -51,9 +52,9 @@ started: "2026-10-22 23:39:35"
 **Files:** Create `internal/cli/guard.go` and `internal/cli/guard_test.go`; modify `internal/cli/cli.go` (`cmdSet`), `internal/cli/state.go` (`cmdStateSet`), `internal/cli/plan.go`.
 **Seam:** `acta set`, `acta state set` and `acta plan add` run from the main checkout.
 **verify:** No write command run outside a linked worktree changes a plan that `board.PlanStates` lists for a linked worktree. Each refusal prints `<plan> is building in <worktree>; change it there`, exits with the bad-input code and changes no file. The same command run inside that worktree still writes. A plan with no worktree, or one whose worktree is gone after land, still writes from main. List each command and path checked.
-- [ ] Red: write the tests with a repo and a linked worktree that committed on the plan, run `scripts/test ./internal/cli -run TestGuard`, and watch them fail.
-- [ ] Change: add one helper and call it from the three commands, then rerun until it passes.
-- [ ] Commit: `feat(cli): refuse plan writes on main while a worktree builds it`
+- [x] Red: write the tests with a repo and a linked worktree that committed on the plan, run `scripts/test ./internal/cli -run TestGuard`, and watch them fail.
+- [x] Change: add one helper and call it from the three commands, then rerun until it passes.
+- [x] Commit: `feat(cli): refuse plan writes on main while a worktree builds it`
 
 ### Task 4: Skills use the commands
 
@@ -68,8 +69,21 @@ started: "2026-10-22 23:39:35"
 
 - Land order: either order. Sibling plan PLN-0191 lands on main too and shares no file with this plan.
 
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] review/SKILL.md step 6 and the light-review line say to run acta plan add review-notes in the worktree, like step 2.
+- [x] Commit: `polish: review notes for PLN-0190`
+
+## Review notes
+
+- Deep review, full tier, two reviewers; round 1 CLEAN, polish (one [fix]: review-notes lines say run in the worktree) reviewed by two reviewers, CLEAN. One [debt]: session-start runningRule does not say run state set from the worktree. Notes left: - [x] lines not stripped, set after keeps duplicates, no-hash trailer fallback, guard cost grows with worktrees, depth.md line not naming acta plan add.
+
 ## State
 
 ### Next
 
-Task 3: guard helper in internal/cli/guard.go, called from cmdSet, cmdStateSet and cmdPlan.
+All tasks committed. Close: wiki check, then acta:review over main..HEAD.
