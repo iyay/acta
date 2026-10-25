@@ -62,6 +62,26 @@ func TestNoSkillNamesTheOldKnowledgeFiles(t *testing.T) {
 	}
 }
 
+func TestShapeColdRead(t *testing.T) {
+	root := filepath.Join(pluginRoot(t), "skills", "shape")
+	skill, err := os.ReadFile(filepath.Join(root, "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range [][2]string{{"**Bounded:**", "**Architectural:**"}, {"**Architectural:**", "**Terminal states"}} {
+		flow := shapeChecklist(t, string(skill), path[0], path[1])
+		self := strings.Index(flow, "Spec self-review")
+		cold := strings.Index(flow, "Cold read")
+		approval := strings.Index(flow, "User reviews")
+		if self < 0 || cold <= self || approval <= cold {
+			t.Errorf("%s must offer cold read between self-review and user approval", path[0])
+		}
+	}
+	if _, err := os.ReadFile(filepath.Join(root, "cold-read.md")); err != nil {
+		t.Fatalf("cold read reviewer instructions: %v", err)
+	}
+}
+
 // TestShapeDescriptionKeepsBrainstorm guards the word users still type.
 // "brainstorm SCR-0001" reaches this skill through its description, so a
 // rewrite that drops the word leaves the skill without its trigger.

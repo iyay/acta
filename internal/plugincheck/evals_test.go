@@ -33,6 +33,10 @@ var evalCases = []struct {
 	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},
 	{"frame-no-brainstorming-status", "skills/frame/SKILL.md", "the `brainstorming` status"},
 	{"probe-round", "skills/shape/probe.md", "five questions at most"},
+	{"cold-read-offer", "skills/shape/SKILL.md", "Want a cold read before planning?"},
+	{"cold-read-skip", "skills/shape/SKILL.md", "Skip goes to final spec approval"},
+	{"cold-read-accept", "skills/shape/cold-read.md", "without inherited conversation"},
+	{"cold-read-unavailable", "skills/shape/cold-read.md", "cold read did not complete"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 	{"wiki-hint", "hooks/hooks.json", "Bash|PowerShell|Read|Edit|Write|MultiEdit"},
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
@@ -87,7 +91,8 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 		"debug-race": true, "debug-order-dependent": true, "debug-performance": true,
 	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
-		"review-understanding-report": true, "review-understanding-disabled": true}
+		"review-understanding-report": true, "review-understanding-disabled": true,
+		"cold-read-offer": true, "cold-read-skip": true, "cold-read-accept": true, "cold-read-unavailable": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
 		if err != nil {
