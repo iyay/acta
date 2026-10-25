@@ -1,7 +1,7 @@
 ---
 name: cold-read-accept
 description: Cold read accept preserves the user decision and spec approval gates.
-tags: [shape, cold-read]
+tags: [shape, cold-read, claude-only]
 runs: 1
 max_turns: 18
 timeout_seconds: 900

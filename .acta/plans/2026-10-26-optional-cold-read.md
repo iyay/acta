@@ -57,8 +57,13 @@ finished: "2026-10-26 06:08:57"
 
 **verify:** every NOTE below is applied, and nothing else changes.
 
-- [ ] [fix] Tag the four cold-read eval prompts claude-only because omp's LLM grader cannot inspect their required trace evidence or native Agent dispatch.
-- [ ] Commit: `polish: review notes for PLN-0194`
+- [x] [fix] Tag the four cold-read eval prompts claude-only because omp's LLM grader cannot inspect their required trace evidence or native Agent dispatch.
+- [x] Commit: `polish: review notes for PLN-0194`
+
+## Review notes
+
+- Deep full-tier round 1 CLEAN on Spec and Standards axes; no BLOCKERs. Polish marked four trace-based cold-read cases claude-only and both polish reviewers returned CLEAN. Native Claude offer, skip, accept, and unavailable cases passed; native child trace confirms one reviewer read the spec and contract without parent context. Codex instructions were inspected but not executed.
+- Integration validation: initial full native suite was 38/43; four unrelated failed cases passed focused baseline and candidate rechecks, and BUG-0054 was repaired separately in PLN-0195. Final combined tree passed scripts/test --full plus 4/4 Cold read and 6/6 build evals. A single full native-suite run was not wholly green; final evidence uses the full run and targeted rechecks. Native behavior coverage is Claude only.
 
 ## State
 
