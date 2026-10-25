@@ -253,7 +253,7 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 		"Add any other page only for a lesson a fresh agent would lose time without",
 		"Make one commit",
 		"finish any outstanding type check",
-		"show it with the tests each task ran",
+		"report recorded task test results",
 		"then use `acta:review` over `<parent>..HEAD`",
 	} {
 		i := strings.Index(closing, step)
@@ -285,7 +285,7 @@ func TestBuildCloseRunsNoSecondSuite(t *testing.T) {
 	text := strings.Join(strings.Fields(closing), " ")
 	for _, want := range []string{
 		"finish any outstanding type check",
-		"show it with the tests each task ran",
+		"report recorded task test results",
 		"No second fast suite",
 		"each task already ran its own tests",
 		"a change made after one needs only the test it touches",

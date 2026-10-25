@@ -4,6 +4,6 @@
 # leaves a marker file when it runs, so reading or quoting its command does
 # not count as a run.
 type: file_exists
-path: broad-suite-ran
+path: .git/broad-suite-ran
 exists: false
 ---
