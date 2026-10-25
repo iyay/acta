@@ -3,16 +3,10 @@ name: shape
 description: "acta: Use to brainstorm before any creative or change work. Classifies the work as Spike, Bounded or Architectural, refines it with the user, and writes the approved design to .acta/specs/. No code until the user says yes."
 ---
 
-# Brainstorming Ideas Into Designs
-
-Classify the request first, then work your path: understand the
-context, refine the idea, present the design, get approval.
+# Shape
 
 <HARD-GATE>
-Do NOT write code, invoke an implementation skill or scaffold
-anything until you have told your human partner what you intend and
-they have approved it. Every path ends with that approval; only the
-ceremony around it scales with the task.
+No code, implementation skill, or scaffolding until the user approves the proposed design. Every path requires approval.
 </HARD-GATE>
 
 ## Three paths
@@ -20,22 +14,9 @@ ceremony around it scales with the task.
 Say the classification out loud before your first question, so your
 partner can override it.
 
-- **Spike** — a feasibility question ("can we...", "is it possible...",
-  "quick and dirty is fine") whose output is an answer, not code you
-  keep. Present the question and what you'll try in 2-3 sentences, get
-  a nod, then find out as cheaply as correctness allows. No spec file.
-  Report findings as a recommendation; anything you built stays
-  labeled throwaway.
-- **Bounded** — a change to a flow that already exists in this repo: a
-  new flag, a small endpoint, a one-file fix. Knowing the kind of app
-  is not enough. If there is no existing flow to change, the task is
-  not bounded. Ask the questions that matter, present ONE recommended
-  design in chat, and STOP until your partner says yes. Then write a
-  short spec and go to acta:slice.
-- **Architectural** — new projects, new subsystems, changes that
-  restructure how components fit together or alter interfaces others
-  depend on. The full process: questions, approaches, sectioned
-  design, written spec, then acta:slice.
+- **Spike** — a feasibility question ("can we...", "is it possible...", "quick and dirty is fine") whose output is an answer, not code you keep. Present the question and what you'll try in 2-3 sentences, get a nod, then find out as cheaply as correctness allows. No spec file. Report findings as a recommendation; anything you built stays labeled throwaway.
+- **Bounded** — a change to a flow that already exists in this repo: a new flag, a small endpoint, a one-file fix. Knowing the kind of app is not enough. If there is no existing flow to change, the task is not bounded. Ask the questions that matter, present ONE recommended design in chat, and STOP until your partner says yes. Then write a short spec and go to acta:slice.
+- **Architectural** — new projects, new subsystems, changes that restructure how components fit together or alter interfaces others depend on. The full process: questions, approaches, sectioned design, written spec, then acta:slice.
 
 When in doubt, take the heavier path. The ratchet is one-way: hidden
 complexity found mid-task upgrades the path. Stop and say so. Nothing
@@ -75,8 +56,6 @@ brainstorm itself is one per session.
 
 ## Checklist
 
-Classify, announce the path, then do these in order.
-
 **Spike:**
 1. Explore project context — enough to frame the probe
 2. Present question + probe plan — 2-3 sentences
@@ -91,8 +70,9 @@ Classify, announce the path, then do these in order.
 4. Get approval — STOP and wait for an explicit yes; presenting the design and starting in the same breath skips the gate
 5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit it with `acta commit <path> -m "<message>"`
 6. Spec self-review — the four checks below
-7. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
-8. Transition — invoke acta:slice
+7. Cold read — offer the optional pass below
+8. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
+9. Transition — invoke acta:slice
 
 **Architectural:**
 0. Scratch item — `acta scratch new`, then `acta set scratch/<stem> status brainstorming`, before any question
@@ -102,12 +82,17 @@ Classify, announce the path, then do these in order.
 4. Present design — in sections scaled to their complexity, approval after each section, each approved section appended to the Log
 5. Write design doc — `.acta/specs/YYYY-MM-DD-<topic>-design.md`, run `acta id` right after so the spec gets its SPC number and hash, commit it with `acta commit <path> -m "<message>"`
 6. Spec self-review — the four checks below
-7. User reviews written spec — ask, then wait for the yes
-8. Transition — invoke acta:slice
+7. Cold read — offer the optional pass below
+8. User reviews written spec — ask, then wait for the yes
+9. Transition — invoke acta:slice
 
 **Terminal states are path-bound.** After approval the only skill any
 path invokes is acta:slice. A Spike ends at the reported
 recommendation instead.
+
+## Cold read
+
+After self-review, ask once per spec in this flow, in the chat language: "Want a cold read before planning?" Wait. Skip goes to final spec approval. Only on acceptance, read [cold-read.md](cold-read.md). Never offer for Spike. Cold read approves neither spec nor plan.
 
 ## Spec rules
 
