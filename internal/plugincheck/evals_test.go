@@ -335,10 +335,7 @@ func TestScaffoldsRefuseNonEmptyDir(t *testing.T) {
 	}
 }
 
-// TestBuildCloseScaffoldMarkersIgnoreCwd runs the build-close scaffold with
-// stub tools, then runs each generated script from a subfolder. A marker must
-// land at the workspace root, or a suite run from elsewhere escapes the
-// graders and the eval can pass while the close still took the broad suite.
+// A different working folder must not hide check execution from the graders.
 func TestBuildCloseScaffoldMarkersIgnoreCwd(t *testing.T) {
 	tools := t.TempDir()
 	for _, name := range []string{"plain", "with spaces", "root $var", `root "quote`, "root 'quote", "root $(touch injected)", "root `touch injected`"} {
@@ -366,25 +363,30 @@ func TestBuildCloseScaffoldMarkersIgnoreCwd(t *testing.T) {
 				t.Fatalf("scaffold: %v\n%s", err, out)
 			}
 			src := filepath.Join(root, "src")
+			if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+				t.Fatal(err)
+			}
 			for _, c := range []struct{ script, marker string }{
-				{"test", "broad-suite-ran"},
-				{"typecheck", "typecheck-ran"},
+				{"test", ".git/broad-suite-ran"},
+				{"typecheck", ".git/typecheck-ran"},
 			} {
-				run := exec.Command("sh", filepath.Join(root, "scripts", c.script))
-				run.Dir = src
-				run.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}
-				out, err := run.CombinedOutput()
-				if err != nil {
-					t.Fatalf("scripts/%s from src: %v\n%s", c.script, err, out)
-				}
-				if _, err := os.Stat(filepath.Join(root, c.marker)); err != nil {
-					t.Errorf("scripts/%s run from src left no %s at the workspace root, so a grader would miss it", c.script, c.marker)
-				}
-				if _, err := os.Stat(filepath.Join(src, c.marker)); err == nil {
-					t.Errorf("scripts/%s wrote %s in the caller folder, not at the workspace root", c.script, c.marker)
-				}
-				if _, err := os.Stat(filepath.Join(src, "injected")); err == nil {
-					t.Errorf("scripts/%s executed shell text from the workspace path", c.script)
+				for _, cwd := range []string{root, src} {
+					run := exec.Command("sh", filepath.Join(root, "scripts", c.script))
+					run.Dir = cwd
+					run.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}
+					out, err := run.CombinedOutput()
+					if err != nil {
+						t.Fatalf("scripts/%s from %s: %v\n%s", c.script, cwd, err, out)
+					}
+					if _, err := os.Stat(filepath.Join(root, c.marker)); err != nil {
+						t.Errorf("scripts/%s from %s left no %s in the evidence directory", c.script, cwd, c.marker)
+					}
+					if _, err := os.Stat(filepath.Join(src, c.marker)); err == nil {
+						t.Errorf("scripts/%s wrote %s in the caller folder", c.script, c.marker)
+					}
+					if _, err := os.Stat(filepath.Join(cwd, "injected")); err == nil {
+						t.Errorf("scripts/%s executed shell text from the workspace path", c.script)
+					}
 				}
 			}
 		})
