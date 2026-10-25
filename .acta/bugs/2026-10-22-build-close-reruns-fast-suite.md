@@ -3,6 +3,8 @@ id: BUG-0054
 hash: l0jvbfw
 priority: low
 started: "2026-10-26 06:24:13"
+fixed_in: 9a914ecc8d23b359309107059516db7bb1a9ccf3
+finished: "2026-10-26 06:50:22"
 ---
 # Build close sometimes reruns the fast suite to show test output
 
