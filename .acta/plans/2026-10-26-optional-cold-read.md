@@ -5,6 +5,7 @@ id: PLN-0194
 created: "2026-10-26 05:56:36"
 hash: b75vpyv
 started: "2026-10-26 05:58:13"
+finished: "2026-10-26 06:08:57"
 ---
 # Optional cold read implementation plan
 
@@ -46,12 +47,21 @@ started: "2026-10-26 05:58:13"
 
 **Seam:** Existing behavior eval runner, native delegation traces, and `TestEvalCases` registry checks.
 **verify:** Offer case stops for the user's choice; skip case reaches final spec approval without dispatch or companion loading; accept case dispatches exactly one fresh-context reviewer, checks the spec references, returns useful located findings, and waits before applying unapproved edits or planning; unavailable case reports incomplete review and waits for retry or skip. No case writes implementation code or a plan. Check dispatch inputs and available child trace for isolation; tool count alone is insufficient evidence. Report any trace visibility limit.
-- [ ] Red: Add the four registry entries in `internal/plugincheck/evals_test.go` and watch `scripts/test ./internal/plugincheck -run 'TestEvalCases'` fail on missing cases, then add the mapped case files and demonstrate that the offer/accept behavior fails against the pre-change skill in an isolated baseline checkout.
-- [ ] Change: Complete the four case fixtures and graders in the mapped eval folders using existing empty-directory and temporary-home guards, allow native delegation only in the accept case, use deterministic evidence wherever possible and register any necessary judgment grader explicitly, then run `scripts/test ./internal/plugincheck -run 'TestEval|TestScaffolds'` and `scripts/eval --case cold-read-offer`, `scripts/eval --case cold-read-skip`, `scripts/eval --case cold-read-accept`, and `scripts/eval --case cold-read-unavailable` against the candidate with native trace inspection for the accept case.
-- [ ] Commit: `test(shape): verify optional cold read decisions`
+- [x] Red: Add the four registry entries in `internal/plugincheck/evals_test.go` and watch `scripts/test ./internal/plugincheck -run 'TestEvalCases'` fail on missing cases, then add the mapped case files and demonstrate that the offer/accept behavior fails against the pre-change skill in an isolated baseline checkout.
+- [x] Change: Complete the four case fixtures and graders in the mapped eval folders using existing empty-directory and temporary-home guards, allow native delegation only in the accept case, use deterministic evidence wherever possible and register any necessary judgment grader explicitly, then run `scripts/test ./internal/plugincheck -run 'TestEval|TestScaffolds'` and `scripts/eval --case cold-read-offer`, `scripts/eval --case cold-read-skip`, `scripts/eval --case cold-read-accept`, and `scripts/eval --case cold-read-unavailable` against the candidate with native trace inspection for the accept case.
+- [x] Commit: `test(shape): verify optional cold read decisions`
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [ ] [fix] Tag the four cold-read eval prompts claude-only because omp's LLM grader cannot inspect their required trace evidence or native Agent dispatch.
+- [ ] Commit: `polish: review notes for PLN-0194`
 
 ## State
 
-### Findings
+### Next
 
-Offer baseline failed and candidate passed. Skip/unavailable fixture failures came from a design conflict and an exposed Agent tool. Graders now use focus: trace to inspect dispatch inputs. Candidate reviewer input excluded the parent-only marker. Fixtures now contain committed specs and local git. Re-running all four candidate cases.
+### Findings
