@@ -371,6 +371,9 @@ func TestBuildCloseScaffoldMarkersIgnoreCwd(t *testing.T) {
 				{"typecheck", ".git/typecheck-ran"},
 			} {
 				for _, cwd := range []string{root, src} {
+					if err := os.Remove(filepath.Join(root, c.marker)); err != nil && !os.IsNotExist(err) {
+						t.Fatal(err)
+					}
 					run := exec.Command("sh", filepath.Join(root, "scripts", c.script))
 					run.Dir = cwd
 					run.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + t.TempDir()}

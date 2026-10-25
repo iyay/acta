@@ -42,8 +42,12 @@ finished: "2026-10-26 06:40:48"
 
 **verify:** every NOTE below is applied, and nothing else changes.
 
-- [ ] [fix] Remove each evidence marker before each working-directory trial so root execution cannot mask a missing subdirectory write.
-- [ ] Commit: `polish: review notes for PLN-0195`
+- [x] [fix] Remove each evidence marker before each working-directory trial so root execution cannot mask a missing subdirectory write.
+- [x] Commit: `polish: review notes for PLN-0195`
+
+## Review notes
+
+- Deep full-tier Spec and Standards reviews CLEAN; no BLOCKERs. Polish removes stale markers before every fixture cwd trial; both polish reviews CLEAN. Same revised fixture: unchanged skill failed 3/3, candidate passed 5/5. Focused checks, vet and format passed; isolated no-op-subdirectory mutant passes old test and fails revised test with HOME/TMPDIR pinned. Assertion types and thresholds are unchanged.
 
 ## State
 
