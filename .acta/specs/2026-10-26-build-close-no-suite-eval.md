@@ -25,4 +25,5 @@ Do not change unrelated build behavior, loosen a grader, or run the full reposit
 - The eval passes on the repaired branch in repeated runs.
 - Its type-check marker exists and its broad-suite marker does not.
 - The final response reaches the review handoff without starting review.
+- The kept trace shows that the agent did not invoke the review skill.
 - Any skill change stays within plugincheck size limits.
