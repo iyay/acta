@@ -2,6 +2,7 @@
 id: BUG-0044
 hash: p1zabpo
 priority: medium
+started: "2026-10-26 11:39:08"
 ---
 # Plan on a non-checked-out branch stays review after status done
 

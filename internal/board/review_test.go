@@ -52,6 +52,57 @@ func TestAllTickedPlanInMainTreeStaysDone(t *testing.T) {
 	}
 }
 
+func TestClosedPlanKeepsWrittenStatus(t *testing.T) {
+	t.Parallel()
+
+	for _, parent := range []struct {
+		id, status string
+	}{
+		{"specs/2026-09-20-a", "done"},
+		{"bugs/2026-09-20-a", "fixed"},
+	} {
+		for _, status := range []string{"done", "dropped"} {
+			for _, source := range []string{"main", "worktree", "branch"} {
+				t.Run(parent.id+"/"+status+"/"+source, func(t *testing.T) {
+					parentPath := ".acta/" + parent.id + ".md"
+					planPath := ".acta/plans/2026-09-21-a.md"
+					files := map[string]string{
+						parentPath: "# Parent\n",
+						planPath: "---\nstatus: " + status + "\nparent: " + parent.id +
+							"\n---\n# Plan\n\n### Task 1: One\n- [x] done\n",
+					}
+					main := tree(t, map[string]string{parentPath: "# Parent\n"})
+					var others []Tree
+					switch source {
+					case "main":
+						main = tree(t, files)
+					case "worktree":
+						others = []Tree{{Cfg: tree(t, files), Branch: "feat"}}
+					case "branch":
+						contents := map[string][]byte{}
+						for path, body := range files {
+							contents[path] = []byte(body)
+						}
+						others = []Tree{{Cfg: main, Branch: "feat", Files: contents}}
+					}
+					b, err := LoadTrees(main, others)
+					if err != nil {
+						t.Fatal(err)
+					}
+					plan := b.Get("plans/2026-09-21-a")
+					if plan == nil || plan.Status != status || plan.StatusSource != "frontmatter" || plan.Done != 1 || plan.Total != 1 {
+						t.Errorf("plan = %+v, want %s (frontmatter) 1/1", plan, status)
+					}
+					p := b.Get(parent.id)
+					if p == nil || p.Status != parent.status || p.Done != 1 || p.Total != 1 {
+						t.Errorf("parent = %+v, want %s 1/1", p, parent.status)
+					}
+				})
+			}
+		}
+	}
+}
+
 // A box still open on the branch means there is work left, not work waiting.
 func TestHalfTickedPlanInWorktreeStaysInProgress(t *testing.T) {
 	t.Parallel()

@@ -589,7 +589,7 @@ func (b *Board) derive() {
 	// keeps those boxes as work going on instead of work done.
 	review := map[string]bool{}
 	for _, it := range b.Items {
-		if it.Kind != KindPlan || it.Worktree == "" || len(it.Children) == 0 {
+		if it.Kind != KindPlan || it.Worktree == "" || len(it.Children) == 0 || Closed(it.fmStatus) {
 			continue
 		}
 		all := true
