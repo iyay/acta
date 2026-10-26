@@ -84,6 +84,15 @@ func TestEvalCases(t *testing.T) {
 // model call, on the cases that cannot be checked with files or commands. The
 // lean-tests case reads what the tests say, so only a judge can grade it. One
 // check there only lists the files the run made, so a regex does it for free.
+func TestBuildCloseNoSuiteReviewHandoff(t *testing.T) {
+	grader := readFile(t, "evals", "build-close-no-suite", "graders", "review-handoff.md")
+	for _, want := range []string{"type: llm", "focus: trace", "Skill call for `acta:review`"} {
+		if !strings.Contains(grader, want) {
+			t.Errorf("review handoff grader must include %q", want)
+		}
+	}
+}
+
 func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	// Keep debug cases separate so workflow case edits can merge on their own.
 	debug := map[string]bool{
@@ -110,7 +119,8 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			if c.folder == "debug-race" && filepath.Base(f) == "barrier-probe.md" {
 				continue
 			}
-			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != (want[c.folder] || debug[c.folder]) {
+			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
+			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {
 				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}
 		}

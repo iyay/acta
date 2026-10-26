@@ -5,6 +5,8 @@ depth: minimal
 id: PLN-0196
 created: "2026-10-26 07:16:27"
 hash: r1kijqe
+started: "2026-10-26 07:19:18"
+finished: "2026-10-26 07:28:19"
 ---
 # Make the build close eval trustworthy
 
@@ -32,6 +34,10 @@ hash: r1kijqe
 
 **verify:** No run with a `Skill` call for `acta:review` can pass the handoff grader, while a run that reaches handoff without that call can pass; list the final reply, tool calls, and skill reads checked.
 
-- [ ] Red: Add `TestBuildCloseNoSuiteReviewHandoff` to require a trace-focused LLM grader that rejects a `Skill` call for `acta:review`; run the focused test and observe failure because the current grader checks only the final reply.
-- [ ] Change: Make the grader check the final handoff and fail if the trace contains a `Skill` call for `acta:review`; pass the focused test and `scripts/eval --case build-close-no-suite --runs 3 --scaffold --no-publish --keep-temp --trust-plugin`.
-- [ ] Commit: `test(eval): verify build close review handoff`
+- [x] Red: Add `TestBuildCloseNoSuiteReviewHandoff` to require a trace-focused LLM grader that rejects a `Skill` call for `acta:review`; run the focused test and observe failure because the current grader checks only the final reply.
+- [x] Change: Make the grader check the final handoff and fail if the trace contains a `Skill` call for `acta:review`; pass the focused test and `scripts/eval --case build-close-no-suite --runs 3 --scaffold --no-publish --keep-temp --trust-plugin`.
+- [x] Commit: `test(eval): verify build close review handoff`
+
+## Review notes
+
+- Round 1, deep (full tier): CLEAN. Main and candidate evals each passed 3/3; focused and package tests passed. Candidate traces show one acta:build Skill call and no acta:review call. [note] Future reviewers cannot verify these runs from project logs; traces remain in local kept-temp directories.
