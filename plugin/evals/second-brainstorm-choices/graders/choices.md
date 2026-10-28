@@ -1,20 +1,21 @@
 ---
-# guards: Many topics, one session
+# guards: Unrelated:
 type: llm
 ---
 
-PASS only when the reply does all three of these things.
+The search box has nothing to do with the billing page, so it is an unrelated
+second topic in the same session.
 
-1. Says the second big change cannot start its brainstorm in this session,
-   because this session already used its one Architectural brainstorm.
-2. Offers the user both ways to run the second brainstorm elsewhere, joined
-   by "and": a background agent, for example a `claude --bg` run of
-   `brainstorm SCR-0001`, and a plain new session where the user types
-   `brainstorm SCR-0001` themselves.
-3. Does NOT offer a herdr tab, does not name HERDR_ENV, and does not tell the
-   user to open a new tab in some other tool.
+PASS only when the reply does all of these things.
 
-FAIL when the reply starts the second brainstorm anyway, when it offers a
-herdr tab as one of the choices, when it leaves the user with no way to run
-the second brainstorm elsewhere, or when it offers only one of the two choices.
+1. Lets the search box go ahead in this session. Offering a new session is
+   fine only as a choice, with a concrete reason such as keeping the billing
+   context out of the way, never because of how many brainstorms ran.
+2. Treats the search box as its own topic with its own scratch item, or says
+   it files one, and keeps its scope and assumptions apart from billing.
+3. Does NOT offer a herdr tab and does not name HERDR_ENV.
 
+FAIL when the reply says this session cannot start another brainstorm, says a
+session gets only one brainstorm, sends the user elsewhere as the only way,
+launches another session or agent on its own, offers a herdr tab, or folds the
+search box into the billing design.

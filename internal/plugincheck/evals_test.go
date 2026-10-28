@@ -27,7 +27,11 @@ var evalCases = []struct {
 	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
-	{"second-brainstorm-choices", "skills/shape/SKILL.md", "Many topics, one session"},
+	{"second-brainstorm-choices", "skills/shape/SKILL.md", "Unrelated:"},
+	{"brainstorm-related-topic", "skills/shape/SKILL.md", "Related:"},
+	{"brainstorm-resume-topic", "skills/shape/SKILL.md", "Resumed:"},
+	{"brainstorm-mixed-context", "skills/shape/SKILL.md", "Mixed:"},
+	{"brainstorm-user-handoff", "skills/shape/SKILL.md", "Only the user picks a move"},
 	{"one-file-fix-no-brainstorm", "skills/shape/SKILL.md", "Spike and Bounded"},
 	{"brainstorm-files-scratch-first", "skills/shape/SKILL.md", "status brainstorming"},
 	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},
@@ -100,6 +104,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 		"debug-race": true, "debug-order-dependent": true, "debug-performance": true,
 	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
+		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
 		"review-understanding-report": true, "review-understanding-disabled": true,
 		"cold-read-offer": true, "cold-read-skip": true, "cold-read-accept": true, "cold-read-unavailable": true}
 	for _, c := range evalCases {
@@ -456,6 +461,62 @@ func TestWikiCloseCheckEvidence(t *testing.T) {
 		}
 		if want := "exit=" + row.code + "\n" + row.output + "\n"; string(record) != want {
 			t.Errorf("latest check record %q, want %q", record, want)
+		}
+	}
+}
+
+// brainstormScenarios are the cases that prove one session can hold many
+// brainstorms. Each one starts from a seeded scratch item, because a topic to
+// relate to, resume or mix up has to exist before the run.
+var brainstormScenarios = []string{
+	"brainstorm-related-topic",
+	"brainstorm-resume-topic",
+	"brainstorm-mixed-context",
+	"brainstorm-user-handoff",
+}
+
+// TestEvalBrainstormScenarios keeps the scenario cases whole and keeps the old
+// rule out of every case. A case that still wants a forced move to another
+// session would fail a reply that does the right thing now.
+func TestEvalBrainstormScenarios(t *testing.T) {
+	guarded := map[string]bool{}
+	for _, c := range evalCases {
+		guarded[c.folder] = true
+	}
+	for _, name := range brainstormScenarios {
+		if !guarded[name] {
+			t.Errorf("%s is not in evalCases, so nothing guards its phrase", name)
+		}
+		if !strings.Contains(readFile(t, "evals", name, "graders", "continuity.md"), "type: llm") {
+			t.Errorf("%s needs an llm grader in graders/continuity.md: only a judge can read the reply", name)
+		}
+		if !strings.Contains(readFile(t, "evals", name, "scaffold.sh"), "status: brainstorming") {
+			t.Errorf("%s scaffold seeds no brainstorming item", name)
+		}
+		if !strings.Contains(readFile(t, "evals", name, "case.yaml"), "scaffold_script: scaffold.sh") {
+			t.Errorf("%s case.yaml does not run its scaffold", name)
+		}
+	}
+	for _, dir := range []string{"evals", "evals-routing"} {
+		files, err := filepath.Glob(filepath.Join(pluginRoot(t), dir, "*", "*", "*.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		more, err := filepath.Glob(filepath.Join(pluginRoot(t), dir, "*", "*.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range append(files, more...) {
+			raw, err := os.ReadFile(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rel, _ := filepath.Rel(pluginRoot(t), f)
+			for _, old := range []string{"cannot start its brainstorm", "one Architectural brainstorm", "One Architectural brainstorm", `pattern: "claude --bg"`} {
+				if strings.Contains(string(raw), old) {
+					t.Errorf("%s still expects the old one-per-session rule: %q", rel, old)
+				}
+			}
 		}
 	}
 }

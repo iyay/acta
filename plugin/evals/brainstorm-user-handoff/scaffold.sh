@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# A run starts in an empty folder, and a run that may use Bash runs sandboxed
+# with the home directory unreadable, so the acta CLI has to sit inside the
+# workspace before the agent starts. This script runs as the user, not in the
+# sandbox, so it can still find the CLI on PATH.
+set -euo pipefail
+# The eval runs this in an empty folder. Anywhere else it would git init,
+# change git config and commit files that are not ours, so stop first.
+if [ -n "$(ls -A)" ]; then
+  echo "scaffold.sh: run this in an empty folder" >&2
+  exit 1
+fi
+# A first run with no voice file makes the session rules send the agent to
+# /acta:setup before any other work, so it never reaches this case.
+# The eval home is a sealed throwaway, but a hand run in a normal shell would
+# overwrite the voice file on a real machine, so only write it when it is
+# missing. Inside the eval it is always missing, so the run still gets one.
+mkdir -p "$HOME/.acta"
+if [ ! -f "$HOME/.acta/config.yaml" ]; then
+  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
+fi
+mkdir -p bin .acta/scratch
+cp "$(command -v acta)" bin/acta
+# The search item is seeded as the open brainstorm, so the run has a real
+# id to hand over when the user asks to move.
+cat > .acta/scratch/2026-01-01-search-box.md <<'ITEM'
+---
+id: SCR-0001
+hash: evalsrch
+title: Search box for the whole app
+status: brainstorming
+created: "2026-01-01"
+---
+One search box that finds anything in the app.
+
+## Log
+
+### 2026-01-01
+
+Assumption: all app data stays in the one SQLite file it lives in today.
+Decision: search uses SQLite full text search, so no search server is needed.
+Decision: results show twenty at a time, newest first.
+ITEM
+git init -q .
+git config user.email eval@example.invalid
+git config user.name eval
+# The agent finds ./bin on PATH through the project settings.
+mkdir -p .claude
+printf '{"env":{"PATH":"%s/bin:%s"}}\n' "$PWD" "$PATH" > .claude/settings.json
+git add -A
+git commit -qm scaffold
