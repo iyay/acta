@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0199
 created: "2026-10-28 23:11:46"
 hash: qtu2gre
+started: "2026-10-28 23:16:28"
 ---
 # Offline Codex session usage implementation plan
 
@@ -30,9 +31,9 @@ hash: qtu2gre
 **Files:** Create `internal/usage/log.go`, `internal/usage/log_test.go`, and `internal/usage/main_test.go`.
 **Seam:** `usage.ReadLog(name string, r io.Reader) (usage.Log, error)` returns the first usable file identity and starting directory, owned response records with model/timestamp/usage validity, and located diagnostics; it performs no filesystem or Git discovery.
 **verify:** At the stream boundary, only supported nested fields establish identity, model, timestamp and per-response usage; later metadata cannot change ownership, inherited records and cumulative counters never become owned usage, missing/empty/non-string model context resets to unknown, RFC 3339 timestamps normalize to UTC while invalid timestamps preserve tokens as undated, required counters reject missing/negative/fractional/out-of-int64 values and cached input above input, optional reasoning/cache-write fields add no tokens, unknown event types are ignored, complete malformed lines are recoverable, an unterminated final line stays pending, and reader failures return an error without retaining conversation text; list the adversarial paths checked.
-- [ ] Red: Add `TestReadLog` fixtures and the required testguard `TestMain`, then watch `scripts/test ./internal/usage -run '^TestReadLog'` fail because the supported reader is absent.
-- [ ] Change: Implement the streaming reader and its data types in `log.go`, preserving response IDs only in internal records for later deduplication, then run `scripts/test ./internal/usage -run '^TestReadLog'` to green.
-- [ ] Commit: `feat(usage): read Codex response usage events`
+- [x] Red: Add `TestReadLog` fixtures and the required testguard `TestMain`, then watch `scripts/test ./internal/usage -run '^TestReadLog'` fail because the supported reader is absent.
+- [x] Change: Implement the streaming reader and its data types in `log.go`, preserving response IDs only in internal records for later deduplication, then run `scripts/test ./internal/usage -run '^TestReadLog'` to green.
+- [x] Commit: `feat(usage): read Codex response usage events`
 
 ### Task 2: Build repository-scoped session usage reports
 
