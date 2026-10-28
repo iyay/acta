@@ -1,6 +1,8 @@
 ---
 id: BUG-0056
 hash: dlm6sip
+fixed_in: a683984eccfc6f19b865400f640ea551696b3198
+finished: "2026-10-28 09:24:07"
 ---
 # Land selalu nanya sebelum hapus branch
 
