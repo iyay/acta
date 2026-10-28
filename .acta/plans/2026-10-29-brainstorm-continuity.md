@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0200
 created: "2026-10-29 06:33:47"
 hash: zh8r9ld
+started: "2026-10-29 06:37:25"
 ---
 # Brainstorm continuity implementation plan
 
@@ -28,9 +29,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 **Files:** Modify `internal/hook/session.go`, `internal/hook/session_test.go`, `internal/hook/gotest_test.go`, `internal/cli/hook.go`, `internal/cli/hook_session_test.go`, `internal/cli/hook_test.go`, and `plugin/hooks/pre-tool`.
 **Seam:** `cli.Run` for `hook pre-tool`, `hook post-tool`, and `hook prompt`; shared hook event parsing and test-runner guard.
 **verify:** Starting different scratch topics in one session never blocks or emits a session-limit reminder, with absent, valid old, or malformed old state; post-tool writes no brainstorm state; existing CLI tests retain coverage for wiki hints, patch input, invalid payloads, and the independent test-runner block.
-- [ ] Red: Add CLI regressions for multiple topics and old state, run `scripts/test ./internal/cli/ -run 'TestHookSession'`, and observe the existing block or reminder fail the new expectations.
-- [ ] Change: Remove brainstorm-only command matching, state tracking, blocking, and reminders while retaining event parsing and shared helpers still used elsewhere; update affected hook and CLI tests and run `scripts/test ./internal/hook/ ./internal/cli/ -run 'Test(ParseEvent|Hook|GoTest|BareGoTest)'` to green.
-- [ ] Commit: `refactor(hook): remove per-session brainstorm limit`.
+- [x] Red: Add CLI regressions for multiple topics and old state, run `scripts/test ./internal/cli/ -run 'TestHookSession'`, and observe the existing block or reminder fail the new expectations.
+- [x] Change: Remove brainstorm-only command matching, state tracking, blocking, and reminders while retaining event parsing and shared helpers still used elsewhere; update affected hook and CLI tests and run `scripts/test ./internal/hook/ ./internal/cli/ -run 'Test(ParseEvent|Hook|GoTest|BareGoTest)'` to green.
+- [x] Commit: `refactor(hook): remove per-session brainstorm limit`.
 
 ### Task 2: Replace active session-limit instructions with scenario guidance
 
@@ -49,3 +50,10 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 - [ ] Red: Add `TestEvalBrainstormScenarios` for scenario case coverage and guards, run `scripts/test ./internal/plugincheck/ -run TestEvalBrainstormScenarios`, and observe missing cases or obsolete mandatory-handoff expectations fail.
 - [ ] Change: Add the four scenario cases, rewrite obsolete limit-based graders and routing assumptions, register guarded phrases and judgement graders, run `scripts/test ./internal/plugincheck/ -run 'Test(Eval|Scaffolds)'`, then run `scripts/eval --case 'second-brainstorm-choices|brainstorm-related-topic|brainstorm-resume-topic|brainstorm-mixed-context|brainstorm-user-handoff|one-file-fix-no-brainstorm'` and the four touched routing cases with `--eval-dir evals-routing` using the runner's supported case filters.
 - [ ] Commit: `test(shape): cover brainstorm continuation and handoff scenarios`.
+
+## State
+
+### Next
+
+Task 2: rewrite rule 8 in internal/hook/hook.go, shape and frame skills, default-rules.md, Herdr line, FACTS.md and codex-harness wiki page.
+plugin/hooks/post-tool is now a no-op kept for installed hook setups; hooks.json still registers it.

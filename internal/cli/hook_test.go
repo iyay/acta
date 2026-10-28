@@ -278,8 +278,8 @@ func TestHookPreToolHintWithUnwritableRoot(t *testing.T) {
 	}
 }
 
-// TestHookPreToolBlocksComeBeforeHints keeps the two blocks that exist today as
-// they were: a blocked call exits 2 with its reason on stderr, prints no hint
+// TestHookPreToolBlocksComeBeforeHints keeps the block that exists today as
+// it was: a blocked call exits 2 with its reason on stderr, prints no hint
 // and records no page as shown, even when the call touches a covered file.
 func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 	t.Run("a bare go test", func(t *testing.T) {
@@ -300,22 +300,6 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 			t.Fatal("a blocked call was recorded as a shown page")
 		}
 	})
-	t.Run("a second brainstorm", func(t *testing.T) {
-		dir := hintRepo(t, "scratch/")
-		t.Chdir(dir)
-		hookScratch(t, dir)
-		if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-			t.Fatalf("recording the first brainstorm: exit %d", code)
-		}
-		stdin := toolEvent(t, "s1", "", "Bash", map[string]string{"command": "acta set scratch/two status brainstorming"})
-		code, out, errb := runHook(t, "pre-tool", stdin)
-		if code != exitBlock || out != "" || !strings.Contains(errb, "already brainstormed") {
-			t.Fatalf("exit %d, stdout %q, stderr %q, want exit 2, no stdout and the block reason", code, out, errb)
-		}
-		if _, err := os.Stat(filepath.Join(dir, ".acta", "state", "wiki-hints.json")); err == nil {
-			t.Fatal("a blocked call was recorded as a shown page")
-		}
-	})
 }
 
 // A Codex patch is file content, not a shell command. A patch line that only
@@ -324,7 +308,6 @@ func TestHookPreToolBlocksComeBeforeHints(t *testing.T) {
 func TestHookPreToolNeverBlocksPatchContent(t *testing.T) {
 	for name, line := range map[string]string{
 		"a go test line":     "+echo ok; go test ./...; echo done",
-		"a brainstorm line":  "+acta set scratch/two status brainstorming",
 		"a bare go test too": "+go test ./scripts/...",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -336,10 +319,6 @@ func TestHookPreToolNeverBlocksPatchContent(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(dir)
-			hookScratch(t, dir)
-			if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-				t.Fatalf("recording the first brainstorm: exit %d", code)
-			}
 			patch := "*** Begin Patch\n*** Update File: scripts/run.sh\n@@\n-x\n" + line + "\n*** End Patch"
 			stdin := toolEvent(t, "s1", "", "apply_patch", map[string]string{"command": patch})
 			code, out, errb := runHook(t, "pre-tool", stdin)
@@ -492,7 +471,7 @@ func TestHookPreToolHintFailureNeverBlocks(t *testing.T) {
 		t.Errorf("Bash: exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
 	}
 
-	// The two blocks run before the hint, so they still exit 2 with their reason.
+	// The block runs before the hint, so it still exits 2 with its reason.
 	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -502,14 +481,6 @@ func TestHookPreToolHintFailureNeverBlocks(t *testing.T) {
 	stdin = toolEvent(t, "s1", "", "Bash", map[string]string{"command": "go test ./internal/tui/..."})
 	if code, out, errb := run(t, stdin); code != exitBlock || out != "" || !strings.Contains(errb, "run tests with scripts/test") {
 		t.Errorf("a bare go test: exit %d, stdout %q, stderr %q, want exit 2 and the block reason", code, out, errb)
-	}
-	hookScratch(t, dir)
-	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-		t.Fatalf("recording the first brainstorm: exit %d", code)
-	}
-	stdin = toolEvent(t, "s1", "", "Bash", map[string]string{"command": "acta set scratch/two status brainstorming"})
-	if code, out, errb := run(t, stdin); code != exitBlock || out != "" || !strings.Contains(errb, "already brainstormed") {
-		t.Errorf("a second brainstorm: exit %d, stdout %q, stderr %q, want exit 2 and the block reason", code, out, errb)
 	}
 }
 
