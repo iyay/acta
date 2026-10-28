@@ -26,7 +26,7 @@ var wikiHints = hook.WikiHints
 
 // cmdHook prints hook text. Every hook exits 0 whatever stdin holds, because a
 // hook that fails would get in the way of the user's session. The one
-// exception is pre-tool stopping a second brainstorm, which exits 2 with the
+// exception is pre-tool stopping a bare go test, which exits 2 with the
 // reason the agent has to read.
 func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -40,45 +40,26 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		fmt.Fprintln(stdout, hook.Prompt(loadVoice()))
-		if line := sessionReminder(stdin); line != "" {
-			fmt.Fprintln(stdout, line)
-		}
 		return exitOK
 	case "pre-tool", "post-tool":
 		if len(args) != 1 {
 			fmt.Fprintln(stderr, hookUsage)
 			return exitBadInput
 		}
+		// Post-tool has nothing left to do. Installed hook files still call
+		// it, so it stays and stays quiet.
+		if args[0] == "post-tool" {
+			return exitOK
+		}
 		ev, ok := hook.ParseEvent(stdin)
 		if !ok {
 			return exitOK
 		}
-		// A repo with no planning root is still a repo with a scripts/test,
-		// so the go test check is asked even then. Only the brainstorm state
-		// and the wiki hints need the root.
-		cfg, hasRoot := hookConfig()
-		root := cfg.Root
-		if args[0] == "post-tool" {
-			if !hasRoot {
-				return exitOK
-			}
-			// Both writes are dropped on purpose: a session that cannot
-			// remember its brainstorm must not be stopped for it.
-			_ = hook.EnsureGitignore(root, "state/")
-			_ = hook.RecordBrainstorm(root, ev)
-			return exitOK
-		}
 		// A Codex patch carries file content in its command field. That text
-		// never runs, so the shell guards below must not read it.
+		// never runs, so the shell guard below must not read it.
 		shell := ev.ToolName != "apply_patch"
-		if hasRoot && shell {
-			if block, msg := hook.PreTool(root, ev); block {
-				fmt.Fprintln(stderr, msg)
-				return exitBlock
-			}
-		}
 		// The go test block reads the folder the agent works in, not the
-		// planning root, so it comes after the brainstorm one.
+		// planning root, so a repo with no planning root still gets it.
 		cwd, _ := os.Getwd()
 		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); shell && block {
 			fmt.Fprintln(stderr, msg)
@@ -87,7 +68,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// A hint is only an extra line for the agent, so it comes after the
 		// blocks and never changes the exit code. A hook that runs in no
 		// checkout has no repository to trust, so it gives none.
-		if lines := hintLines(cfg, ev); lines != "" {
+		if lines := hintLines(hookConfig(), ev); lines != "" {
 			fmt.Fprintln(stdout, hook.HintJSON(lines))
 		}
 		return exitOK
@@ -176,24 +157,15 @@ func loadVoice() hook.Input {
 	return in
 }
 
-// hookRoot finds the planning folder the session state lives in. It says no
-// outside a project, because a hook must not make planning folders in a
-// folder that has none.
-func hookRoot() (string, bool) {
-	cfg, ok := hookConfig()
-	return cfg.Root, ok
-}
-
-// hookConfig is hookRoot with the whole config, for the hook that also needs
-// the repo root. It loads the config once, because every load asks git.
-func hookConfig() (config.Config, bool) {
+// hookConfig finds the planning folder and the repo root for the wiki hints.
+// Outside a project it gives an empty config, so no hint comes.
+func hookConfig() config.Config {
 	cwd, _ := os.Getwd()
 	cfg, err := config.Load(cwd, "")
 	if err != nil {
-		return config.Config{}, false
+		return config.Config{}
 	}
-	fi, err := os.Stat(cfg.Root)
-	return cfg, err == nil && fi.IsDir()
+	return cfg
 }
 
 // readSessionStart reads the two fields of the SessionStart payload this hook
@@ -213,18 +185,4 @@ func readSessionStart(stdin io.Reader) (sessionID, source string) {
 		return "", ""
 	}
 	return ev.SessionID, ev.Source
-}
-
-// sessionReminder is the one line a session that already brainstormed gets
-// under the voice line, and nothing for any other session.
-func sessionReminder(stdin io.Reader) string {
-	ev, ok := hook.ParseEvent(stdin)
-	if !ok {
-		return ""
-	}
-	root, ok := hookRoot()
-	if !ok {
-		return ""
-	}
-	return hook.Reminder(root, ev.SessionID)
 }

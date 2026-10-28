@@ -17,9 +17,9 @@ Use the scratch item the user names. Otherwise file their own words:
 acta scratch new <slug> [--title T] < body.md
 ```
 
-Never give the item the `brainstorming` status. The hook counts that status as
-the session's one architectural brainstorm, and frame would spend it for
-nothing. The status stays whatever `new` set, which is `raw`.
+Never give the item the `brainstorming` status. That status says design has
+begun, and framing comes before design. The status stays whatever `new` set,
+which is `raw`.
 
 ## 2. The goal question
 

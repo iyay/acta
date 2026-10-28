@@ -1,6 +1,6 @@
 ---
 name: second-brainstorm-choices
-description: A second Architectural brainstorm in one session is filed and the user gets the three choices, minus the herdr tab.
+description: An unrelated second Architectural topic can stay in this session, with its own item and scope, and no herdr tab.
 tags: [brainstorm, claude-only]
 runs: 1
 max_turns: 3
@@ -16,4 +16,4 @@ change how every page fetches its data, so it is a big change.
 
 Follow the acta workflow for a change like this.
 
-Tell me what happens next and stop there. Do not start designing it.
+Tell me what happens next and stop there. Do not start designing it yet.

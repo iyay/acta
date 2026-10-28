@@ -198,17 +198,6 @@ func TestHookChecksReadPowerShellLikeBash(t *testing.T) {
 				t.Errorf("go test block = %v, %q", block, msg)
 			}
 
-			// The brainstorm record (post-tool) and the second-item block (pre-tool).
-			root := t.TempDir()
-			scratchFile(t, root, "one", "---\nid: SCRATCH-1\n---\n# One\n")
-			scratchFile(t, root, "two", "---\nid: SCRATCH-2\n---\n# Two\n")
-			if err := RecordBrainstorm(root, parse("acta set scratch/one status brainstorming")); err != nil {
-				t.Fatal(err)
-			}
-			if block, _ := PreTool(root, parse("acta set scratch/two status brainstorming")); !block {
-				t.Error("second brainstorm was not blocked")
-			}
-
 			// The wiki hint reads the words of the command.
 			wroot, repo := hintWiki(t)
 			t.Chdir(repo)

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -39,7 +38,7 @@ func hookEvent(session, command string) string {
 const brainstormOne = "acta set scratch/one status brainstorming"
 
 // hookScratch writes the two scratch items the brainstorm fixtures name, so
-// the record and block paths see real items instead of mistyped stems.
+// the hooks see real items instead of mistyped stems.
 func hookScratch(t *testing.T, dir string) {
 	t.Helper()
 	for stem, id := range map[string]string{"one": "SCRATCH-1", "two": "SCRATCH-2"} {
@@ -50,105 +49,6 @@ func hookScratch(t *testing.T, dir string) {
 		if err := os.WriteFile(path, []byte("---\nid: "+id+"\n---\n# "+stem+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-	}
-}
-
-func readState(t *testing.T, dir string) map[string]string {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(dir, ".acta", "state", "sessions.json"))
-	if err != nil {
-		t.Fatalf("read state: %v", err)
-	}
-	var state map[string]string
-	if err := json.Unmarshal(data, &state); err != nil {
-		t.Fatalf("state file is not a map of session to item: %v (%s)", err, data)
-	}
-	return state
-}
-
-// TestHookSessionPostToolRecords covers the one write the post-tool hook makes:
-// the item a session brainstormed, kept out of git the first time round.
-func TestHookSessionPostToolRecords(t *testing.T) {
-	dir := hookRepo(t)
-	t.Chdir(dir)
-	hookScratch(t, dir)
-
-	if code, out, errb := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK || out != "" || errb != "" {
-		t.Fatalf("recording a brainstorm: exit %d, stdout %q, stderr %q", code, out, errb)
-	}
-	if got := readState(t, dir)["s1"]; got != "one" {
-		t.Fatalf("state holds %q for s1, want the stem one", got)
-	}
-	ignore, err := os.ReadFile(filepath.Join(dir, ".acta", ".gitignore"))
-	if err != nil {
-		t.Fatalf("read .acta/.gitignore: %v", err)
-	}
-	if !strings.Contains(string(ignore), "state/") {
-		t.Fatalf(".acta/.gitignore is %q, want a line for state/", ignore)
-	}
-}
-
-// TestHookSessionPostToolQuietPaths covers every post-tool input that must
-// leave the session alone: the hook runs on every single Bash call.
-func TestHookSessionPostToolQuietPaths(t *testing.T) {
-	cases := []struct {
-		name  string
-		stdin string
-	}{
-		{"bad json", "{bad"},
-		{"no session", `{"tool_input":{"command":"` + brainstormOne + `"}}`},
-		{"no command", `{"session_id":"s1"}`},
-		{"empty stdin", ""},
-		{"another command", hookEvent("s1", "git status")},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			dir := hookRepo(t)
-			t.Chdir(dir)
-			if code, out, errb := runHook(t, "post-tool", c.stdin); code != exitOK || out != "" || errb != "" {
-				t.Fatalf("exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
-			}
-			if _, err := os.Stat(filepath.Join(dir, ".acta", "state", "sessions.json")); err == nil {
-				t.Fatal("a command that is not a brainstorm wrote state")
-			}
-		})
-	}
-}
-
-// TestHookSessionPostToolUnwritableRoot keeps a planning folder the hook cannot
-// write to from turning into a failed hook.
-func TestHookSessionPostToolUnwritableRoot(t *testing.T) {
-	dir := hookRepo(t)
-	t.Chdir(dir)
-	root := filepath.Join(dir, ".acta")
-	if err := os.Chmod(root, 0o555); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(root, 0o755) })
-	if code, out, errb := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK || out != "" || errb != "" {
-		t.Fatalf("exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
-	}
-}
-
-// TestHookSessionPreToolBlocksSecondItem is the one input that stops work: a
-// second, different brainstorm in a session that already has one.
-func TestHookSessionPreToolBlocksSecondItem(t *testing.T) {
-	dir := hookRepo(t)
-	t.Chdir(dir)
-	hookScratch(t, dir)
-	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-		t.Fatalf("recording the first brainstorm: exit %d", code)
-	}
-
-	code, out, errb := runHook(t, "pre-tool", hookEvent("s1", "acta set scratch/two status brainstorming"))
-	if code != exitBlock {
-		t.Fatalf("a second, different brainstorm: exit %d, want %d", code, exitBlock)
-	}
-	if out != "" {
-		t.Fatalf("the block message must go to stderr only, stdout was %q", out)
-	}
-	if !strings.Contains(errb, "already brainstormed") {
-		t.Fatalf("stderr %q, want the block message", errb)
 	}
 }
 
@@ -171,9 +71,6 @@ func TestHookSessionPreToolQuietPaths(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			dir := hookRepo(t)
 			t.Chdir(dir)
-			if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-				t.Fatalf("recording the first brainstorm: exit %d", code)
-			}
 			if code, out, errb := runHook(t, "pre-tool", c.stdin); code != exitOK || out != "" || errb != "" {
 				t.Fatalf("exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
 			}
@@ -195,52 +92,6 @@ func TestHookSessionOutsideAnyRepo(t *testing.T) {
 				t.Fatal("the hook made a planning folder outside a project")
 			}
 		})
-	}
-}
-
-// TestHookSessionPromptReminder checks the prompt hook keeps its voice line on
-// every path and names the brainstormed item only for a session that has one.
-func TestHookSessionPromptReminder(t *testing.T) {
-	dir := hookRepo(t)
-	t.Chdir(dir)
-	hookScratch(t, dir)
-	// A voice file that is not there makes the voice line the same on every
-	// machine, so the test does not read the developer's own voice.
-	t.Setenv("PM_VOICE_FILE", filepath.Join(dir, "voice.yaml"))
-	if code, _, _ := runHook(t, "post-tool", hookEvent("s1", brainstormOne)); code != exitOK {
-		t.Fatalf("recording the first brainstorm: exit %d", code)
-	}
-
-	voiceCode, voiceOut, voiceErr := runHook(t, "prompt", "")
-	if voiceCode != exitOK || voiceErr != "" || !strings.Contains(voiceOut, "acta config:") {
-		t.Fatalf("prompt with empty stdin: exit %d, stdout %q, stderr %q", voiceCode, voiceOut, voiceErr)
-	}
-
-	// A session that brainstormed gets the same voice line plus one more.
-	code, out, errb := runHook(t, "prompt", hookEvent("s1", "git status"))
-	if code != exitOK || errb != "" {
-		t.Fatalf("prompt for a session that brainstormed: exit %d, stderr %q", code, errb)
-	}
-	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
-	if len(lines) != 2 || lines[0] != strings.TrimSuffix(voiceOut, "\n") {
-		t.Fatalf("prompt output %q, want the voice line %q and one more line", out, voiceOut)
-	}
-	if !strings.Contains(lines[1], "already brainstormed") {
-		t.Fatalf("second line %q, want the reminder naming the item", lines[1])
-	}
-
-	// A session that never brainstormed, and a project with no state file, get
-	// the voice line on its own.
-	code, out, errb = runHook(t, "prompt", hookEvent("s9", "git status"))
-	if code != exitOK || errb != "" || out != voiceOut {
-		t.Fatalf("prompt for a fresh session: exit %d, stdout %q, stderr %q, want %q", code, out, errb, voiceOut)
-	}
-
-	// Outside a project the reminder has nowhere to read, so the voice line
-	// is all there is.
-	t.Chdir(t.TempDir())
-	if code, out, errb := runHook(t, "prompt", hookEvent("s1", "git status")); code != exitOK || errb != "" || out != voiceOut {
-		t.Fatalf("prompt outside a project: exit %d, stdout %q, stderr %q, want %q", code, out, errb, voiceOut)
 	}
 }
 
@@ -351,5 +202,54 @@ func TestHookSessionStartQuietOutsideAPlanningRepo(t *testing.T) {
 	out := sessionStart(t, dir)
 	if strings.Contains(out, "acta state set <plan> next") {
 		t.Errorf("a repo with no planning folder got the running plans text:\n%s", out)
+	}
+}
+
+// TestHookSessionManyTopicsInOneSession lets one session brainstorm several
+// topics. An old state file from the per-session limit, sound or broken, must
+// neither stop the next topic nor add a reminder, and post-tool writes nothing.
+func TestHookSessionManyTopicsInOneSession(t *testing.T) {
+	cases := []struct {
+		name, state string
+	}{
+		{"no old state", ""},
+		{"old state names another topic", `{"s1":"one"}`},
+		{"old state is broken", "{bad"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := hookRepo(t)
+			t.Chdir(dir)
+			hookScratch(t, dir)
+			t.Setenv("PM_VOICE_FILE", filepath.Join(dir, "voice.yaml"))
+			statePath := filepath.Join(dir, ".acta", "state", "sessions.json")
+			if c.state != "" {
+				if err := os.MkdirAll(filepath.Dir(statePath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(statePath, []byte(c.state), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, cmd := range []string{brainstormOne, "acta set scratch/two status brainstorming"} {
+				if code, out, errb := runHook(t, "pre-tool", hookEvent("s1", cmd)); code != exitOK || out != "" || errb != "" {
+					t.Fatalf("pre-tool %q: exit %d, stdout %q, stderr %q, want it to pass quietly", cmd, code, out, errb)
+				}
+				if code, out, errb := runHook(t, "post-tool", hookEvent("s1", cmd)); code != exitOK || out != "" || errb != "" {
+					t.Fatalf("post-tool %q: exit %d, stdout %q, stderr %q", cmd, code, out, errb)
+				}
+			}
+			got, err := os.ReadFile(statePath)
+			if c.state == "" && err == nil {
+				t.Fatalf("post-tool wrote brainstorm state %q", got)
+			}
+			if c.state != "" && string(got) != c.state {
+				t.Fatalf("post-tool changed the old state to %q", got)
+			}
+			_, voice, _ := runHook(t, "prompt", "")
+			if code, out, errb := runHook(t, "prompt", hookEvent("s1", "git status")); code != exitOK || errb != "" || out != voice {
+				t.Fatalf("prompt: exit %d, stdout %q, stderr %q, want only the voice line %q", code, out, errb, voice)
+			}
+		})
 	}
 }

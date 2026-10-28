@@ -17,8 +17,11 @@ func TestSkillFrame(t *testing.T) {
 			"acta:shape",
 			"one at a time", "Just do it", "optional", "never forced",
 			"continue with shape SCR-xxxx now?",
+			// The item stays raw because framing comes before design, not
+			// because a session may brainstorm only once.
+			"framing comes before design",
 		},
-		MustNot: []string{"status brainstorming", "office hours", "user-invocable: false", "superpowers:"},
+		MustNot: []string{"status brainstorming", "one architectural brainstorm", "office hours", "user-invocable: false", "superpowers:"},
 	})
 }
 
