@@ -19,8 +19,9 @@ const schemaVersion = 1
 // historyCoverage says the report covers the logs that exist now.
 const historyCoverage = "discovered_logs_only"
 
-// historyLimitation is the sentence the report and the command help carry.
-const historyLimitation = "Sessions whose only checkout was deleted or moved may be absent."
+// HistoryLimitation is the sentence the report and the command help carry,
+// so the two cannot drift apart.
+const HistoryLimitation = "Sessions whose only checkout was deleted or moved may be absent."
 
 // Report is one usage report. It is built to be printed as JSON as it is.
 type Report struct {

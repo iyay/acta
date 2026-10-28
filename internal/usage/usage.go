@@ -51,7 +51,7 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			Checkouts:       checkouts,
 			SourceDirectory: sourceDirectory,
 			HistoryCoverage: historyCoverage,
-			Limitations:     []string{historyLimitation},
+			Limitations:     []string{HistoryLimitation},
 		},
 		Sessions:    []SessionRow{},
 		Models:      []ModelRow{},
@@ -62,8 +62,14 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	partial := false
-	unclassified := 0
+	var (
+		partial      bool
+		unclassified int
+		pending      int
+		invalid      int
+		undated      int
+		conflicts    int
+	)
 	for _, rel := range broken {
 		report.Diagnostics = append(report.Diagnostics, Diagnostic{
 			Code:    codeUnreadableLog,
@@ -95,6 +101,7 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			// Without metadata this file cannot be attributed to a repo, so
 			// it is not called unrelated either.
 			report.Diagnostics = append(report.Diagnostics, log.Diagnostics...)
+			pending += log.PendingLines
 			unclassified++
 			partial = true
 			continue
@@ -142,22 +149,41 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 		copies        = map[string]*copyState{}
 		validPerLog   = map[string]int{}
 		threadsSeen   = map[string]bool{}
-		pending       int
-		invalid       int
-		undated       int
-		conflicts     int
+		matchedThread = map[string]bool{}
 		missingRootAt = map[string]bool{}
 	)
+	var included []fileLog
 	for _, fl := range logs {
-		if !fl.include {
+		if fl.include {
+			included = append(included, fl)
 			continue
 		}
+		if fl.log.Cwd != "" {
+			// A readable log whose start is inside another repository is
+			// classified, so it stays out of this repository's coverage.
+			continue
+		}
+		// A log that names no starting folder cannot be called unrelated.
+		report.Diagnostics = append(report.Diagnostics, fl.log.Diagnostics...)
+		report.Diagnostics = append(report.Diagnostics, Diagnostic{
+			Code:    codeMissingMetadata,
+			File:    new(fl.rel),
+			Message: "This log names no starting folder, so it cannot be attributed to a repository.",
+		})
+		pending += fl.log.PendingLines
+		unclassified++
+		partial = true
+	}
+	for _, fl := range included {
 		report.Diagnostics = append(report.Diagnostics, fl.log.Diagnostics...)
 		pending += fl.log.PendingLines
 		if len(fl.log.Diagnostics) > 0 || fl.log.PendingLines > 0 {
 			partial = true
 		}
 		threadsSeen[fl.log.ThreadID] = true
+		if fl.matched {
+			matchedThread[fl.log.ThreadID] = true
+		}
 		for _, rec := range fl.log.Records {
 			if !rec.Valid {
 				invalid++
@@ -165,10 +191,6 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			}
 			validPerLog[fl.log.ThreadID]++
 			keepBestCopy(copies, rec)
-			if rec.At.IsZero() {
-				undated++
-				partial = true
-			}
 			if !rootKnown[rec.RootID] && !missingRootAt[fl.rel] {
 				// The root log of this group is gone, so the group may be
 				// missing usage that this run cannot see.
@@ -198,7 +220,13 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			Message: "Copies of one response disagree, so none of them was counted.",
 		})
 	}
-	if conflicts > 0 || invalid > 0 || undated > 0 {
+	for _, rec := range responses {
+		if rec.At.IsZero() {
+			undated++
+			partial = true
+		}
+	}
+	if conflicts > 0 || invalid > 0 {
 		partial = true
 	}
 
@@ -207,7 +235,7 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 		return Report{}, err
 	}
 	withoutUsage := 0
-	for thread := range threadsSeen {
+	for thread := range matchedThread {
 		if validPerLog[thread] == 0 {
 			withoutUsage++
 		}
@@ -395,10 +423,20 @@ func aggregate(responses []Record) ([]SessionRow, []ModelRow, spanBuilder, error
 // there is no repository to report on.
 func repoRoot(dir string) (string, error) {
 	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
-	var out bytes.Buffer
-	cmd.Stdout = &out
+	var out, errOut bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errOut
 	if err := cmd.Run(); err != nil {
-		return "", ErrNotRepository
+		// Only git's own "not a repository" answer means there is no repo to
+		// report on. Every other failure is an operational problem, so its
+		// reason reaches the user instead of a wrong "not inside Git".
+		msg := strings.TrimSpace(errOut.String())
+		if strings.Contains(msg, "not a git repository") {
+			return "", ErrNotRepository
+		}
+		if msg == "" {
+			return "", fmt.Errorf("find the repository: %w", err)
+		}
+		return "", fmt.Errorf("find the repository: %s", msg)
 	}
 	root := strings.TrimSpace(out.String())
 	if root == "" {

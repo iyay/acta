@@ -286,6 +286,30 @@ func TestUsageReadNotRepository(t *testing.T) {
 	if !errors.Is(err, ErrNotRepository) {
 		t.Fatalf("err = %v, want ErrNotRepository", err)
 	}
+
+	// A repository git refuses to read is an operational failure, not a
+	// missing repository, so the real cause reaches the user.
+	repo := newRepo(t)
+	cfg, err := os.OpenFile(filepath.Join(repo, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Fprint(cfg, "this line has no equals sign\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Read(repo, t.TempDir())
+	if err == nil {
+		t.Fatal("Read: got no error from a repository git cannot read")
+	}
+	if errors.Is(err, ErrNotRepository) {
+		t.Fatalf("broken git reported as a missing repository: %v", err)
+	}
+	if !strings.Contains(err.Error(), "bad config") {
+		t.Fatalf("err = %v, want git's own reason", err)
+	}
 }
 
 // A source folder that cannot be listed is a fatal failure, while a single
@@ -333,8 +357,29 @@ func TestUsageReadUnreadableSourceAndFile(t *testing.T) {
 func TestUsageReadUnclassifiedMetadata(t *testing.T) {
 	repo := newRepo(t)
 	sessions := t.TempDir()
-	writeLog(t, sessions, "no-meta.jsonl",
-		modelLine("m1"),
+	writeRawLog(t, sessions, "no-meta.jsonl",
+		modelLine("m1")+"\n"+
+			recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1))
+
+	r := mustRead(t, repo, sessions)
+	if len(r.Sessions) != 0 || r.Coverage.CountedResponses != 0 {
+		t.Fatalf("sessions = %v, want none", sessionIDs(r))
+	}
+	if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != StatusPartial {
+		t.Fatalf("coverage = %+v status = %q", r.Coverage, r.Status)
+	}
+	if r.Coverage.PendingLines != 1 {
+		t.Fatalf("pending lines = %d, want the skipped final line counted", r.Coverage.PendingLines)
+	}
+}
+
+// A log that names a thread but no starting folder cannot be attributed, so
+// it is unclassified rather than silently unrelated.
+func TestUsageReadMissingStartingFolder(t *testing.T) {
+	repo := newRepo(t)
+	sessions := t.TempDir()
+	writeLog(t, sessions, "no-cwd.jsonl",
+		`{"type":"session_meta","payload":{"id":"root-1"}}`,
 		recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1),
 	)
 	r := mustRead(t, repo, sessions)
@@ -343,6 +388,9 @@ func TestUsageReadUnclassifiedMetadata(t *testing.T) {
 	}
 	if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != StatusPartial {
 		t.Fatalf("coverage = %+v status = %q", r.Coverage, r.Status)
+	}
+	if !hasCode(r, codeMissingMetadata) {
+		t.Fatalf("diagnostics = %v, want the missing start named", reportCodes(r))
 	}
 }
 

@@ -36,12 +36,17 @@ func cmdUsage(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	report, err := usage.Read(cwd, codexSessionsDir(cwd))
+	sessions, err := codexSessionsDir(cwd)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitOther
+	}
+	report, err := usage.Read(cwd, sessions)
 	if err != nil {
 		if errors.Is(err, usage.ErrNotRepository) {
 			// Outside a repository there is no scope, which is a bad call
 			// rather than a failure of the machine or the data.
-			fmt.Fprintln(stderr, "usage: not inside a Git repository")
+			fmt.Fprintln(stderr, "acta usage: not inside a Git repository")
 			return exitBadInput
 		}
 		fmt.Fprintln(stderr, err)
@@ -69,19 +74,19 @@ func cmdUsage(args []string, stdout, stderr io.Writer) int {
 // codexSessionsDir is where Codex writes transcripts: $CODEX_HOME/sessions,
 // or ~/.codex/sessions when the variable is unset or empty. A relative
 // CODEX_HOME is read from the working directory.
-func codexSessionsDir(cwd string) string {
+func codexSessionsDir(cwd string) (string, error) {
 	home := os.Getenv("CODEX_HOME")
 	if home == "" {
 		dir, err := os.UserHomeDir()
 		if err != nil {
-			return ""
+			return "", fmt.Errorf("find the Codex sessions folder: %w", err)
 		}
-		return filepath.Join(dir, ".codex", "sessions")
+		return filepath.Join(dir, ".codex", "sessions"), nil
 	}
 	if !filepath.IsAbs(home) {
 		home = filepath.Join(cwd, home)
 	}
-	return filepath.Join(home, "sessions")
+	return filepath.Join(home, "sessions"), nil
 }
 
 // renderUsage prints the human report: one table of root sessions and
@@ -92,8 +97,9 @@ func renderUsage(w io.Writer, r usage.Report) error {
 		_, err := fmt.Fprintf(w, "No data: no Codex session in %s started in this repository.\n", r.Scope.SourceDirectory)
 		return err
 	}
-	if _, err := fmt.Fprintf(w, "Repository: %s\nCheckouts: %s\nLogs: %s (%s)\n\n",
-		r.Scope.Repository, strings.Join(r.Scope.Checkouts, ", "), r.Scope.SourceDirectory, r.Scope.HistoryCoverage); err != nil {
+	if _, err := fmt.Fprintf(w, "Repository: %s\nCheckouts: %s\nLogs: %s (%s)\nLimit: %s\n\n",
+		r.Scope.Repository, strings.Join(r.Scope.Checkouts, ", "), r.Scope.SourceDirectory, r.Scope.HistoryCoverage,
+		strings.Join(r.Scope.Limitations, " ")); err != nil {
 		return err
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)

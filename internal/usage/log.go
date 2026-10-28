@@ -252,8 +252,8 @@ func readCandidate(ev event, model string, line int) candidate {
 
 	var p recordFields
 	if err := json.Unmarshal(ev.Payload, &p); err != nil {
-		c.usageCode = codeUnsupportedUsage
-		c.usageMsg = "This usage record has no supported payload and is not counted."
+		// The payload is not an object, so every field stays empty and the
+		// record leaves through the missing identity check below.
 		return c
 	}
 	c.thread, c.threadOK = rawString(p.ThreadID)

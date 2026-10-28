@@ -298,6 +298,7 @@ func TestReadLogMissingIdentity(t *testing.T) {
 		{"no response", usageLine(t, `"root-1"`, `"root-1"`, "", `{"input_tokens":1,"cached_input_tokens":0,"output_tokens":1}`)},
 		{"no thread", usageLine(t, "", `"root-1"`, `"r-1"`, `{"input_tokens":1,"cached_input_tokens":0,"output_tokens":1}`)},
 		{"number response", usageLine(t, `"root-1"`, `"root-1"`, `7`, `{"input_tokens":1,"cached_input_tokens":0,"output_tokens":1}`)},
+		{"payload is not an object", `{"type":"token_usage_record","payload":"not an object"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			log := mustReadLog(t, jsonl(lineMetaRoot, tc.line))
@@ -323,21 +324,16 @@ func TestReadLogOnlyNestedFields(t *testing.T) {
 	wantDiag(t, log, codeMissingIdentity, 3)
 }
 
-// The reader keeps no conversation text: an unknown event holding a secret
-// leaves nothing behind, and a failed read does not put the line in its error.
+// A failed read does not put the line it could not read into its error, so
+// no conversation text can reach a report or a log file.
 func TestReadLogKeepsNoConversationText(t *testing.T) {
 	secret := "SECRET-PROMPT-TEXT"
 	stream := jsonl(lineMetaRoot,
 		`{"type":"response_item","payload":{"type":"message","content":[{"text":"`+secret+`"}]}}`,
 		lineUsage,
 	)
-	log := mustReadLog(t, stream)
-	all := strings.Join(diagCodes(log), " ")
-	for _, rec := range log.Records {
-		all += rec.ResponseID + rec.RootID + rec.Model
-	}
-	if strings.Contains(all, secret) {
-		t.Fatalf("kept conversation text: %q", all)
+	if log := mustReadLog(t, stream); len(log.Records) != 1 {
+		t.Fatalf("records = %+v, want the usage record only", log.Records)
 	}
 
 	failing := io.MultiReader(strings.NewReader(lineMetaRoot+"\n"+secret+"\n"), errReader{})

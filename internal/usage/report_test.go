@@ -204,14 +204,20 @@ func TestUsageReportCoverageCounters(t *testing.T) {
 		modelLine("m1"),
 		recordLine("2026-10-28T10:00:06Z", "root-9", "root-9", "r9", 1, 0, 1),
 	)
+	// A child that joined through its matched root holds only an invalid
+	// record, so it must not pad the count of matched logs without usage.
+	writeLog(t, sessions, "d/child.jsonl",
+		metaLine("child-1", filepath.Join(t.TempDir(), "elsewhere")),
+		recordLine("2026-10-28T10:00:07Z", "child-1", "root-1", "r-child", 10, 11, 1),
+	)
 
 	r := mustRead(t, repo, sessions)
 	want := Coverage{
 		Partial:                   true,
 		MatchedRootSessions:       2,
-		IncludedThreadLogs:        2,
+		IncludedThreadLogs:        3,
 		CountedResponses:          1,
-		ExcludedInvalidRecords:    2,
+		ExcludedInvalidRecords:    3,
 		ConflictingResponses:      0,
 		LogsWithoutSupportedUsage: 1,
 		UnclassifiedLogs:          1,
@@ -322,6 +328,31 @@ func TestUsageReportOverflow(t *testing.T) {
 	)
 	if _, err := Read(repo, sessions); err == nil {
 		t.Fatal("Read: got no error from a wrapping total")
+	}
+}
+
+// An undated response counts once, however many identical copies of it are
+// read, and only counted responses reach the coverage number.
+func TestUsageReportUndatedCountsResponses(t *testing.T) {
+	repo := newRepo(t)
+	sessions := t.TempDir()
+	for i, name := range []string{"a/root.jsonl", "b/copy.jsonl"} {
+		thread := "root-1"
+		if i == 1 {
+			thread = "child-1"
+		}
+		writeLog(t, sessions, name,
+			metaLine(thread, repo),
+			modelLine("m1"),
+			recordLine("yesterday", thread, "root-1", "r1", 10, 0, 1),
+		)
+	}
+	r := mustRead(t, repo, sessions)
+	if r.Coverage.CountedResponses != 1 || r.Coverage.UndatedResponses != 1 {
+		t.Fatalf("coverage = %+v, want one counted undated response", r.Coverage)
+	}
+	if len(r.Sessions) != 1 || r.Sessions[0].Range.FirstResponseAt != nil {
+		t.Fatalf("sessions = %+v, want one undated row", r.Sessions)
 	}
 }
 

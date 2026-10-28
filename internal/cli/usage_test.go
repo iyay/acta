@@ -242,6 +242,40 @@ func TestUsageCommandErrors(t *testing.T) {
 		}
 	})
 
+	t.Run("broken git is operational", func(t *testing.T) {
+		home, _ := usageHome(t)
+		t.Setenv("CODEX_HOME", home)
+		cfg, err := os.OpenFile(filepath.Join(repo, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := fmt.Fprint(cfg, "this line has no equals sign\n"); err != nil {
+			t.Fatal(err)
+		}
+		if err := cfg.Close(); err != nil {
+			t.Fatal(err)
+		}
+		code, out, errw := usageRun(t, repo, "usage")
+		if code != exitOther || out != "" {
+			t.Fatalf("exit %d stdout %q, want the operational code and no report", code, out)
+		}
+		if !strings.Contains(errw, "bad config") {
+			t.Fatalf("stderr = %q, want git's own reason", errw)
+		}
+	})
+
+	t.Run("no home folder", func(t *testing.T) {
+		t.Setenv("CODEX_HOME", "")
+		t.Setenv("HOME", "")
+		code, out, errw := usageRun(t, repo, "usage")
+		if code != exitOther || out != "" {
+			t.Fatalf("exit %d stdout %q, want the operational code", code, out)
+		}
+		if errw == "" {
+			t.Fatal("stderr is empty, want the missing home named")
+		}
+	})
+
 	t.Run("output writer failure", func(t *testing.T) {
 		home, sessions := usageHome(t)
 		usageLog(t, sessions, "root.jsonl",
@@ -324,7 +358,7 @@ func TestUsageRender(t *testing.T) {
 	r := usage.Report{
 		SchemaVersion: 1,
 		Status:        usage.StatusComplete,
-		Scope:         usage.Scope{Repository: "/example/repo", Checkouts: []string{"/example/repo"}, SourceDirectory: "/example/codex/sessions"},
+		Scope:         usage.Scope{Repository: "/example/repo", Checkouts: []string{"/example/repo"}, SourceDirectory: "/example/codex/sessions", Limitations: []string{usage.HistoryLimitation}},
 		Range:         usage.Span{},
 		Sessions: []usage.SessionRow{{
 			SessionID:     "root-1",
@@ -339,7 +373,7 @@ func TestUsageRender(t *testing.T) {
 		t.Fatalf("renderUsage: %v", err)
 	}
 	text := out.String()
-	for _, want := range []string{"SESSION", "MODEL", "unknown", "m1"} {
+	for _, want := range []string{"SESSION", "MODEL", "unknown", "m1", "deleted or moved"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("output misses %q:\n%s", want, text)
 		}

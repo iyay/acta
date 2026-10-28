@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/iyay/acta/internal/usage"
 	"github.com/iyay/acta/plugin"
 )
 
@@ -88,7 +89,7 @@ var helpTable = []helpCmd{
 		summary: "Count the model usage Codex recorded for this repository, offline.",
 		usage:   []string{"acta usage [--json]"},
 		flags:   []string{"--json  print one JSON report (schema version 1)"},
-		note:    "It reads $CODEX_HOME/sessions, or ~/.codex/sessions when CODEX_HOME is unset or empty, without any network access. It covers the discovered logs only, so sessions whose only checkout was deleted or moved may be absent.",
+		note:    "It reads $CODEX_HOME/sessions, or ~/.codex/sessions when CODEX_HOME is unset or empty, without any network access. It covers the discovered logs only. " + usage.HistoryLimitation,
 		example: "acta usage --json",
 	},
 	{

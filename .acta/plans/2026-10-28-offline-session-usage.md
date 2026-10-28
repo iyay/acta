@@ -64,14 +64,27 @@ During build, record each task's observed red and green results here. Before lan
 
 **verify:** each round-1 finding has a test at its seam and the package suites stay green
 
-- [ ] Every git failure in repoRoot is reported as ErrNotRepository, so a broken repo or missing git exits 1 as 'not inside a Git repository' where the spec wants the operational code 3 with the real cause.
-- [ ] Pending lines of a metadata-less or unattributable log are diagnosed but never counted in coverage.pending_lines.
-- [ ] A failed home lookup is swallowed: env -u HOME acta usage prints an empty no-data line and exits 0.
-- [ ] undated_responses counts records before response deduplication, and counts copies that were dropped as conflicts.
-- [ ] logs_without_supported_usage counts every included thread, while the spec counts distinct matched thread identities.
-- [ ] A log whose metadata has an id but no starting folder lands in no coverage bucket and can still read complete.
-- [ ] The human report never prints the scope limitation sentence that the JSON and the help carry.
-- [ ] Commit with the trailer `Task: PLN-qtu2gre#4`
+- [x] Every git failure in repoRoot is reported as ErrNotRepository, so a broken repo or missing git exits 1 as 'not inside a Git repository' where the spec wants the operational code 3 with the real cause.
+- [x] Pending lines of a metadata-less or unattributable log are diagnosed but never counted in coverage.pending_lines.
+- [x] A failed home lookup is swallowed: env -u HOME acta usage prints an empty no-data line and exits 0.
+- [x] undated_responses counts records before response deduplication, and counts copies that were dropped as conflicts.
+- [x] logs_without_supported_usage counts every included thread, while the spec counts distinct matched thread identities.
+- [x] A log whose metadata has an id but no starting folder lands in no coverage bucket and can still read complete.
+- [x] The human report never prints the scope limitation sentence that the JSON and the help carry.
+- [x] Commit with the trailer `Task: PLN-qtu2gre#4`
+
+## Fix round 2
+
+### Task 5: Fix round 2 findings
+
+**verify:** the broken-repository exit code is locale independent, each fixed test fails when its fix is reverted, and the package suites stay green
+
+- [ ] The git failure split still trusts git's stderr text: a checkout git cannot read (missing .git/HEAD, bad ownership) is reported as 'not inside a Git repository' with exit 1, where the spec wants the operational code 3.
+- [ ] The broken-git CLI subtest appends to the shared repo's .git/config, so the later writer-failure and no-home subtests never reach their own code path.
+- [ ] The human no-data output skips the Limit line, so the one case where the scope limitation matters most never shows it.
+- [ ] TestUsageReadUnclassifiedMetadata now only exercises a pending line, so a complete record dropped for missing metadata is no longer covered.
+- [ ] Two branches duplicate the unclassified bookkeeping, the repoRoot comment describes the old behavior, and two edges have no test: an undated response dropped as a conflict, and a pending line in a log without a starting folder.
+- [ ] Commit with the trailer `Task: PLN-qtu2gre#5`
 
 ## State
 
