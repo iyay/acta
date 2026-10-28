@@ -867,6 +867,26 @@ func TestSessionStartRuleSixSplit(t *testing.T) {
 	}
 }
 
+// Rule 5 exempts only the post-tidy branch delete in land cleanup, so a
+// clean tidy land never asks. The old bare line is a verbatim prefix of
+// the new one, so the negative check matches the exact old line.
+func TestSessionStartRuleFiveTidyException(t *testing.T) {
+	newRule := "5. Never push. Never run a destructive command without a full-sentence warning and a yes. Only the git branch -D in tidy.md step 7, after its final plan check passes, is not destructive: tidy proved the tip equals the merge, so delete without asking. A stopped or red tidy land still asks."
+	oldLine := "5. Never push. Never run a destructive command without a full-sentence warning and a yes.\n"
+	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{"coreRules": coreRules, "default-rules.md": string(raw)} {
+		if !strings.Contains(text, newRule) {
+			t.Errorf("%s: new rule 5 missing", name)
+		}
+		if strings.Contains(text, oldLine) {
+			t.Errorf("%s: old rule 5 still there", name)
+		}
+	}
+}
+
 func TestPromptNamesExecutor(t *testing.T) {
 	in := korean()
 	in.Voice.BuildExecutor = "inline"

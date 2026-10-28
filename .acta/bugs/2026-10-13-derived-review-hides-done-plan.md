@@ -3,6 +3,8 @@ id: BUG-0044
 hash: p1zabpo
 priority: medium
 started: "2026-10-26 11:39:08"
+fixed_in: 0400d5f3bf656dbe350e487a70749df585ccf3eb
+finished: "2026-10-26 11:49:31"
 ---
 # Plan on a non-checked-out branch stays review after status done
 
