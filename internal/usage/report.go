@@ -8,9 +8,9 @@ import (
 // The report statuses. Partial means some data could not be counted, never
 // that the totals are zero.
 const (
-	statusComplete = "complete"
-	statusPartial  = "partial"
-	statusNoData   = "no_data"
+	StatusComplete = "complete"
+	StatusPartial  = "partial"
+	StatusNoData   = "no_data"
 )
 
 // schemaVersion is the contract of the JSON fields below.

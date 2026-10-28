@@ -229,11 +229,11 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 	}
 	switch {
 	case partial:
-		report.Status = statusPartial
+		report.Status = StatusPartial
 	case len(responses) > 0:
-		report.Status = statusComplete
+		report.Status = StatusComplete
 	default:
-		report.Status = statusNoData
+		report.Status = StatusNoData
 	}
 	sortDiagnostics(report.Diagnostics)
 	return report, nil

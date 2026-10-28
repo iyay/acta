@@ -144,7 +144,7 @@ func TestUsageReadScope(t *testing.T) {
 	if r.Scope.Repository != canonicalPath(t, repo) {
 		t.Errorf("repository = %q", r.Scope.Repository)
 	}
-	if r.Status != statusComplete {
+	if r.Status != StatusComplete {
 		t.Errorf("status = %q, want complete", r.Status)
 	}
 }
@@ -258,7 +258,7 @@ func TestUsageReadMissingSourceAndNoWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
-	if r.Status != statusNoData || r.Coverage.Partial {
+	if r.Status != StatusNoData || r.Coverage.Partial {
 		t.Fatalf("status = %q partial = %v, want no data and not partial", r.Status, r.Coverage.Partial)
 	}
 	if r.Sessions == nil || r.Models == nil || r.Diagnostics == nil {
@@ -341,7 +341,7 @@ func TestUsageReadUnclassifiedMetadata(t *testing.T) {
 	if len(r.Sessions) != 0 || r.Coverage.CountedResponses != 0 {
 		t.Fatalf("sessions = %v, want none", sessionIDs(r))
 	}
-	if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != statusPartial {
+	if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != StatusPartial {
 		t.Fatalf("coverage = %+v status = %q", r.Coverage, r.Status)
 	}
 }

@@ -113,6 +113,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdCommit(args[1:], stdout, stderr)
 	case "commits":
 		return cmdCommits(args[1:], stdout, stderr)
+	case "usage":
+		return cmdUsage(args[1:], stdout, stderr)
 	case "id":
 		return cmdID(args[1:], stdout, stderr)
 	case "migrate-root":

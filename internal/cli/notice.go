@@ -44,7 +44,8 @@ func updateCheckOn() bool {
 // startUpdateCheck starts a background check when the cache is old. It never
 // waits for the network: the child process does that and writes the cache.
 func startUpdateCheck(args []string) {
-	if len(args) > 0 && args[0] == "update" {
+	// usage promises to stay offline, so it never probes for releases.
+	if len(args) > 0 && (args[0] == "update" || args[0] == "usage") {
 		return
 	}
 	if !updateCheckOn() {
@@ -96,7 +97,7 @@ func execCheck() error {
 // release. Hooks, --json and pipes stay clean, because a script or an agent
 // reads them. The TUI shows its own badge, so it gets no line either.
 func printUpdateNotice(args []string, stderr io.Writer) {
-	if len(args) == 0 || strings.HasPrefix(args[0], "-") || args[0] == "hook" || args[0] == "update" || hasJSONFlag(args) {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") || args[0] == "hook" || args[0] == "update" || args[0] == "usage" || hasJSONFlag(args) {
 		return
 	}
 	if !stderrIsTerminal(stderr) {

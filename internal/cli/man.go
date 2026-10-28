@@ -89,6 +89,9 @@ func manCmd(b *strings.Builder, c helpCmd) {
 		flag, meaning, _ := strings.Cut(f, "  ")
 		manTag(b, flag, meaning)
 	}
+	if c.note != "" {
+		b.WriteString(".PP\n" + manEscape(c.note) + "\n")
+	}
 	if c.example != "" {
 		b.WriteString(".PP\nExample:\n.br\n" + manBold(c.example) + "\n")
 	}

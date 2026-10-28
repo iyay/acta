@@ -16,6 +16,7 @@ type helpCmd struct {
 	summary string   // one sentence
 	usage   []string // one line per way to call it
 	flags   []string // one line each: the flag, two spaces, what it does
+	note    string   // a short paragraph some commands need, such as a limit
 	example string   // one line; only commands that write files have one
 }
 
@@ -80,6 +81,15 @@ var helpTable = []helpCmd{
 			"--agent NAME  name the agent running this tick (default: the AI_AGENT variable)",
 		},
 		example: "acta tick plans/2026-10-12-acta-help-and-man-page#task-01 --step 1",
+	},
+	{
+		name:    "usage",
+		group:   "Board",
+		summary: "Count the model usage Codex recorded for this repository, offline.",
+		usage:   []string{"acta usage [--json]"},
+		flags:   []string{"--json  print one JSON report (schema version 1)"},
+		note:    "It reads $CODEX_HOME/sessions, or ~/.codex/sessions when CODEX_HOME is unset or empty, without any network access. It covers the discovered logs only, so sessions whose only checkout was deleted or moved may be absent.",
+		example: "acta usage --json",
 	},
 	{
 		name:    "commits",
@@ -385,6 +395,9 @@ func renderCmdHelp(c helpCmd) string {
 		for _, f := range c.flags {
 			b.WriteString("  " + f + "\n")
 		}
+	}
+	if c.note != "" {
+		b.WriteString("\nNote:\n  " + c.note + "\n")
 	}
 	if c.example != "" {
 		b.WriteString("\nExample:\n  " + c.example + "\n")

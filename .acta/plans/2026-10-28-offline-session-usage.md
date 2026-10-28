@@ -5,6 +5,7 @@ id: PLN-0199
 created: "2026-10-28 23:11:46"
 hash: qtu2gre
 started: "2026-10-28 23:16:28"
+finished: "2026-10-28 23:27:34"
 ---
 # Offline Codex session usage implementation plan
 
@@ -49,10 +50,32 @@ started: "2026-10-28 23:16:28"
 **Files:** Create `internal/cli/usage.go` and `internal/cli/usage_test.go`; modify `internal/cli/cli.go`, `internal/cli/help.go`, `internal/cli/help_test.go`, `internal/cli/notice.go`, and `internal/cli/notice_test.go`.
 **Seam:** `cli.Run([]string{"usage", ...}, stdin, stdinIsTTY, stdout, stderr)` through new `cmdUsage(args []string, stdout, stderr io.Writer) int`, consuming `usage.Read` and the existing `printJSON`, help table, exit codes, and notice-test hooks.
 **verify:** CLI wiring proves one supported success and one fatal error passed through from the reader without repeating lower-layer fixture cases; command-owned behavior resolves empty/unset/relative CODEX_HOME correctly, rejects positionals/unknown flags and outside-Git execution, maps no-data/complete/partial/operational results to exits 0/0/2/3 and bad input to 1, renders the specified human tables and no-data text with control characters escaped, preserves JSON as a single report with structured diagnostics and no transcript/response-ID disclosure, handles output-writer failure, publishes scope limitations through help/man, and starts no update probe or user-cache write on valid or invalid usage invocations; inspect all command entry paths while preserving ordinary commands and TUI startup behavior.
-- [ ] Red: Add `TestUsageCommand` and `TestUsageRender` command-owned checks plus `TestUsageNoUpdate` in the notice tests, then watch `scripts/test ./internal/cli -run '^TestUsage(Command|Render|NoUpdate)'` fail because usage is not routed and its offline contract is absent.
-- [ ] Change: Wire and render `usage`, add its help-table entry, exempt usage from automatic update checks/notices, and run `scripts/test ./internal/cli -run '^TestUsage|^TestHelp|^TestEveryRunCase|^TestUpdateCheck|^TestUpdateNotice|^TestTUIBoardsFirstFrameIsMainOnly'` to green.
-- [ ] Commit: `feat(cli): add offline session usage command`
+- [x] Red: Add `TestUsageCommand` and `TestUsageRender` command-owned checks plus `TestUsageNoUpdate` in the notice tests, then watch `scripts/test ./internal/cli -run '^TestUsage(Command|Render|NoUpdate)'` fail because usage is not routed and its offline contract is absent.
+- [x] Change: Wire and render `usage`, add its help-table entry, exempt usage from automatic update checks/notices, and run `scripts/test ./internal/cli -run '^TestUsage|^TestHelp|^TestEveryRunCase|^TestUpdateCheck|^TestUpdateNotice|^TestTUIBoardsFirstFrameIsMainOnly'` to green.
+- [x] Commit: `feat(cli): add offline session usage command`
 
 ## Verification evidence
 
 During build, record each task's observed red and green results here. Before landing, compare the built command with an independent offline sum over the available historical spike logs, separating the active session and other newly added logs rather than pinning mutable historical totals in tests. Compare the same set of closed historical files in both calculations so new activity cannot explain a difference. Record the compared scope, models, response counts, fresh/cached/output totals, and any coverage limitation. If those historical files are gone, say so and retain the synthetic fixture evidence. Full landing gates run after implementation review; this plan authorizes no paid agent calls.
+
+## Fix round 1
+
+### Task 4: Fix round 1 findings
+
+**verify:** each round-1 finding has a test at its seam and the package suites stay green
+
+- [ ] Every git failure in repoRoot is reported as ErrNotRepository, so a broken repo or missing git exits 1 as 'not inside a Git repository' where the spec wants the operational code 3 with the real cause.
+- [ ] Pending lines of a metadata-less or unattributable log are diagnosed but never counted in coverage.pending_lines.
+- [ ] A failed home lookup is swallowed: env -u HOME acta usage prints an empty no-data line and exits 0.
+- [ ] undated_responses counts records before response deduplication, and counts copies that were dropped as conflicts.
+- [ ] logs_without_supported_usage counts every included thread, while the spec counts distinct matched thread identities.
+- [ ] A log whose metadata has an id but no starting folder lands in no coverage bucket and can still read complete.
+- [ ] The human report never prints the scope limitation sentence that the JSON and the help carry.
+- [ ] Commit with the trailer `Task: PLN-qtu2gre#4`
+
+## State
+
+### Findings
+
+Independent sum over the closed 10/15-10/26 logs agrees row for row with acta usage --json: 22 roots, 2318 responses, fresh 6366220, cached 221152000, output 684695.
+Task reds: undefined usage.ReadLog; undefined usage.Read/Report; undefined renderUsage and helpCmd.note.

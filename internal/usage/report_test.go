@@ -235,7 +235,7 @@ func TestUsageReportJSONContract(t *testing.T) {
 			`{"timestamp":"2026-10-28T10:00:03Z","type":"token_usage_record","payload":`)
 
 	r := mustRead(t, repo, sessions)
-	if r.SchemaVersion != 1 || r.Status != statusPartial {
+	if r.SchemaVersion != 1 || r.Status != StatusPartial {
 		t.Fatalf("schema = %d status = %q", r.SchemaVersion, r.Status)
 	}
 	if r.Scope.Repository != canonicalPath(t, repo) {
@@ -289,7 +289,7 @@ func TestUsageReportJSONContract(t *testing.T) {
 func TestUsageReportNoData(t *testing.T) {
 	repo := newRepo(t)
 	r := mustRead(t, repo, t.TempDir())
-	if r.Status != statusNoData || r.Coverage.Partial {
+	if r.Status != StatusNoData || r.Coverage.Partial {
 		t.Fatalf("status = %q partial = %v", r.Status, r.Coverage.Partial)
 	}
 	if len(r.Sessions) != 0 || len(r.Models) != 0 || len(r.Diagnostics) != 0 {
