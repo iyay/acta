@@ -92,10 +92,14 @@ During build, record each task's observed red and green results here. Before lan
 
 **verify:** a child anchored here never pulls a sibling from another repository, and each of the three guards fails when its fix is reverted
 
-- [ ] Codex review BLOCKER: a matched child log authorizes its recorded root, so a sibling child of that root that started in another repository joins this repository's totals (internal/usage/usage.go).
-- [ ] The lost-HEAD guard passes even when repoRoot goes back to trusting git's text, because the forced German locale makes the old text check miss.
-- [ ] The pending-line subtest does not pin that countUnclassified passes the log's diagnostics into the report.
-- [ ] Commit with the trailer `Task: PLN-qtu2gre#6`
+- [x] Codex review BLOCKER: a matched child log authorizes its recorded root, so a sibling child of that root that started in another repository joins this repository's totals (internal/usage/usage.go).
+- [x] The lost-HEAD guard passes even when repoRoot goes back to trusting git's text, because the forced German locale makes the old text check miss.
+- [x] The pending-line subtest does not pin that countUnclassified passes the log's diagnostics into the report.
+- [x] Commit with the trailer `Task: PLN-qtu2gre#6`
+
+## Review notes
+
+- Remaining notes are small: the man test does not pin helpCmd.note, usageRun repeats inDir plus a stream capture, and the single-value new(v) pointer style is the harness rule; the bare-repository exit code is filed as debt.
 
 ## State
 

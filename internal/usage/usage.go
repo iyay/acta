@@ -114,28 +114,18 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 		logs = append(logs, fileLog{rel: rel, log: log, matched: insideCheckouts(log.Cwd, checkouts)})
 	}
 
-	// A matched log establishes the root sessions it names, so a child that
-	// started elsewhere joins its root. A root with no log of its own leaves
-	// its group partial.
-	established := map[string]bool{}
+	// A matched log authorizes its own session only, so a child that started
+	// elsewhere joins a root whose log was found here. A child that started
+	// here counts on its own, but it cannot pull in a sibling from another
+	// repository: that sibling's root log was never found.
+	rootThread := map[string]bool{}
 	rootKnown := map[string]bool{}
 	for _, fl := range logs {
 		if !fl.matched {
 			continue
 		}
+		rootThread[fl.log.ThreadID] = true
 		rootKnown[fl.log.ThreadID] = true
-		named := false
-		for _, rec := range fl.log.Records {
-			if rec.RootID == "" {
-				continue
-			}
-			established[rec.RootID] = true
-			named = true
-		}
-		if !named {
-			// A root log with no usage still names its own root session.
-			established[fl.log.ThreadID] = true
-		}
 	}
 	for i := range logs {
 		if logs[i].matched {
@@ -143,7 +133,7 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			continue
 		}
 		for _, rec := range logs[i].log.Records {
-			if rec.RootID != "" && established[rec.RootID] {
+			if rec.RootID != "" && rootThread[rec.RootID] {
 				logs[i].include = true
 				break
 			}
@@ -245,9 +235,24 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 	report.Range = span.span()
 	report.Sessions = rows
 	report.Models = models
+	matchedRoots := map[string]bool{}
+	for _, fl := range included {
+		named := false
+		for _, rec := range fl.log.Records {
+			if rec.RootID == "" {
+				continue
+			}
+			matchedRoots[rec.RootID] = true
+			named = true
+		}
+		if fl.matched && !named {
+			// A matched log with no usage still names its own session.
+			matchedRoots[fl.log.ThreadID] = true
+		}
+	}
 	report.Coverage = Coverage{
 		Partial:                   partial,
-		MatchedRootSessions:       len(established),
+		MatchedRootSessions:       len(matchedRoots),
 		IncludedThreadLogs:        len(threadsSeen),
 		CountedResponses:          len(responses),
 		ExcludedInvalidRecords:    invalid,

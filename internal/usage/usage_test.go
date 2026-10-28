@@ -209,6 +209,35 @@ func TestUsageReadChildRoots(t *testing.T) {
 	}
 }
 
+// A child that started here anchors its own group; it does not authorize a
+// sibling of the same root that started in another repository.
+func TestUsageReadChildDoesNotAuthorizeSibling(t *testing.T) {
+	repo := newRepo(t)
+	other := newRepo(t)
+	sessions := t.TempDir()
+	writeLog(t, sessions, "a/here.jsonl",
+		metaLine("child-1", repo),
+		modelLine("m1"),
+		recordLine("2026-10-28T10:00:02Z", "child-1", "root-9", "r1", 100, 0, 10),
+	)
+	writeLog(t, sessions, "b/elsewhere.jsonl",
+		metaLine("child-2", other),
+		modelLine("m1"),
+		recordLine("2026-10-28T10:00:03Z", "child-2", "root-9", "r2", 50, 0, 5),
+	)
+
+	r := mustRead(t, repo, sessions)
+	if r.Coverage.CountedResponses != 1 || r.Coverage.MatchedRootSessions != 1 {
+		t.Fatalf("coverage = %+v, want only the child that started here", r.Coverage)
+	}
+	if len(r.Sessions) != 1 || r.Sessions[0].FreshInputTokens != 100 || r.Sessions[0].ResponseCount != 1 {
+		t.Fatalf("sessions = %+v, want one row holding one response of 100 fresh tokens", r.Sessions)
+	}
+	if !r.Coverage.Partial {
+		t.Error("a group whose root log is missing must be partial")
+	}
+}
+
 // Symlinks, compressed logs and other files are never opened, and the walk
 // gives the same answer on every run.
 func TestUsageReadScan(t *testing.T) {
@@ -311,13 +340,19 @@ func TestUsageReadNotRepository(t *testing.T) {
 		t.Fatalf("err = %v, want git's own reason", err)
 	}
 
-	// A checkout that lost its HEAD reads exactly like "not a repository";
-	// the .git entry is what tells the two apart.
+	// A checkout that lost its HEAD reads exactly like "not a repository".
+	// The stub git always says the English line, so this fails as soon as
+	// the code trusts that text again instead of the .git entry.
 	lost := newRepo(t)
 	if err := os.Remove(filepath.Join(lost, ".git", "HEAD")); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("LC_ALL", "de_DE.UTF-8")
+	binDir := t.TempDir()
+	stub := "#!/bin/sh\nprintf '%s\\n' 'fatal: not a git repository (or any of the parent directories): .git' >&2\nexit 128\n"
+	if err := os.WriteFile(filepath.Join(binDir, "git"), []byte(stub), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	_, err = Read(lost, t.TempDir())
 	if err == nil {
 		t.Fatal("Read: got no error from a checkout without HEAD")
@@ -398,6 +433,9 @@ func TestUsageReadUnclassifiedMetadata(t *testing.T) {
 		r := mustRead(t, repo, sessions)
 		if r.Coverage.UnclassifiedLogs != 1 || r.Coverage.PendingLines != 1 {
 			t.Fatalf("coverage = %+v, want one unclassified log with one pending line", r.Coverage)
+		}
+		if !hasCode(r, codePendingLine) {
+			t.Fatalf("diagnostics = %v, want the skipped line named", reportCodes(r))
 		}
 	})
 }
