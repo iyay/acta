@@ -39,7 +39,7 @@ var fileCaps = map[string]int{
 	"skills/frame/startup.md":                 4337,
 	"skills/land/SKILL.md":                    8885,
 	"skills/land/baseline.md":                 2434,
-	"skills/land/tidy.md":                     2450,
+	"skills/land/tidy.md":                     2493,
 	"skills/lean/SKILL.md":                    1918,
 	"skills/migrate/SKILL.md":                 3207,
 	"skills/review/SKILL.md":                  13372,
@@ -77,8 +77,8 @@ var descriptionCaps = map[string]int{
 
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too. It
-// grew by 207 bytes when the inline default executor line joined it.
-const sessionStartCap = 3068
+// grew to 3228 when the rule 5 tidy exception added 200 bytes; the cap move was 160, the rest was slack.
+const sessionStartCap = 3228
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two
