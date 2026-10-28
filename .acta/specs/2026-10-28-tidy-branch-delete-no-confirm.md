@@ -3,6 +3,8 @@ parent: bugs/2026-10-28-tidy-branch-delete-asks-confirm
 id: SPC-0181
 created: "2026-10-28 08:24:12"
 hash: yvof5ai
+started: "2026-10-28 08:30:25"
+finished: "2026-10-28 09:23:45"
 ---
 # Exempt post-tidy branch delete from the destructive rule
 
