@@ -59,6 +59,36 @@ Support the `session_meta`, `turn_context`, and `token_usage_record` shapes
 observed by the spike. Read files as streams; retain metadata and usage records,
 not conversation text or tool output. Unknown event types do not fail a file.
 
+### Supported event shapes
+
+These synthetic records show the required nesting. Each object occupies one line
+in the transcript. Extra fields are allowed and do not change these field paths.
+
+```jsonl
+{"timestamp":"2026-10-28T10:00:00Z","type":"session_meta","payload":{"id":"root-1","cwd":"/example/repo"}}
+{"timestamp":"2026-10-28T10:00:01Z","type":"turn_context","payload":{"model":"example-model"}}
+{"timestamp":"2026-10-28T10:00:02.125Z","type":"token_usage_record","payload":{"thread_id":"root-1","session_id":"root-1","response_id":"response-1","usage":{"input_tokens":100,"cached_input_tokens":60,"output_tokens":10,"reasoning_output_tokens":4},"turn_token_usage":{"input_tokens":100,"cached_input_tokens":60,"output_tokens":10},"thread_token_usage":{"input_tokens":100,"cached_input_tokens":60,"output_tokens":10}}}
+```
+
+Read thread identity and starting directory from `session_meta.payload.id` and
+`session_meta.payload.cwd`. Read the current model from
+`turn_context.payload.model`; a missing, empty, or non-string model resets it to
+`unknown`. Read response identity, thread identity, root identity, and usage from
+`token_usage_record.payload.response_id`, `.thread_id`, `.session_id`, and `.usage`.
+The response timestamp is the event's top-level `timestamp`, not a payload field.
+
+Accept RFC 3339 timestamps with an explicit timezone, with or without fractional
+seconds, as parsed by Go's `time.RFC3339Nano`. Normalize output to UTC using that
+same format. Missing or invalid response timestamps use the partial-data behavior
+below. Metadata and context timestamps do not determine usage ranges.
+
+A child file has its own `session_meta.payload.id`, such as `child-1`; its usage
+records have `payload.thread_id: "child-1"` and `payload.session_id: "root-1"`.
+The root file and child file are separate streams. An event-level `session_id`
+outside `payload`, or a context `session_id`, is not a substitute for these paths.
+
+### Counting rules
+
 The first usable `session_meta` supplies the file's thread identity and starting
 directory. Later metadata cannot change that identity.
 Only usage records whose `thread_id` matches that identity belong to that file;
@@ -112,6 +142,132 @@ the included UTC range, session/model rows, per-model totals, and coverage. Outp
 stable field names and ordering of arrays. Token values are integers. Do not emit
 prompts, commands, file contents, credentials, or full response identifiers.
 
+### JSON version 1
+
+The following example is the complete report for the synthetic response above
+when its file also ends with one pending line. Its 4 reasoning tokens are already
+within the 10 output tokens. The pending line makes the report partial and the
+command exits with the skipped exit code.
+
+```json
+{
+  "schema_version": 1,
+  "status": "partial",
+  "scope": {
+    "repository": "/example/repo",
+    "checkouts": ["/example/repo"],
+    "source_directory": "/example/codex/sessions",
+    "history_coverage": "discovered_logs_only",
+    "limitations": ["Sessions whose only checkout was deleted or moved may be absent."]
+  },
+  "range": {
+    "first_response_at": "2026-10-28T10:00:02.125Z",
+    "last_response_at": "2026-10-28T10:00:02.125Z"
+  },
+  "sessions": [
+    {
+      "session_id": "root-1",
+      "model": "example-model",
+      "range": {
+        "first_response_at": "2026-10-28T10:00:02.125Z",
+        "last_response_at": "2026-10-28T10:00:02.125Z"
+      },
+      "fresh_input_tokens": 40,
+      "cached_input_tokens": 60,
+      "output_tokens": 10,
+      "response_count": 1
+    }
+  ],
+  "models": [
+    {
+      "model": "example-model",
+      "fresh_input_tokens": 40,
+      "cached_input_tokens": 60,
+      "output_tokens": 10,
+      "response_count": 1
+    }
+  ],
+  "coverage": {
+    "partial": true,
+    "matched_root_sessions": 1,
+    "included_thread_logs": 1,
+    "counted_responses": 1,
+    "excluded_invalid_records": 0,
+    "conflicting_responses": 0,
+    "logs_without_supported_usage": 0,
+    "unclassified_logs": 0,
+    "pending_lines": 1,
+    "undated_responses": 0
+  },
+  "diagnostics": [
+    {
+      "code": "pending_line",
+      "file": "example.jsonl",
+      "line": 4,
+      "message": "The final line is not terminated and was not read."
+    }
+  ]
+}
+```
+
+All fields in this example are required. `sessions` has one row per root-session
+and model pair; `models` has one summary per model. Both use the same token and
+response-count field names. `range` has this same shape at report and row level;
+each endpoint may be null. Sort `scope.checkouts` lexically. Other array orders
+follow the rules above; sort diagnostics by file, line, then code, with nulls last.
+
+`status` is `partial` whenever `coverage.partial` is true, including when no
+responses could be counted. Otherwise it is `complete` when at least one
+response was counted, or `no_data` when none were counted. A counted response
+whose token values are all zero still makes a complete report, not no-data.
+
+For a readable source with no matching sessions, the full no-data shape is:
+
+```json
+{
+  "schema_version": 1,
+  "status": "no_data",
+  "scope": {
+    "repository": "/example/repo",
+    "checkouts": ["/example/repo"],
+    "source_directory": "/example/codex/sessions",
+    "history_coverage": "discovered_logs_only",
+    "limitations": ["Sessions whose only checkout was deleted or moved may be absent."]
+  },
+  "range": {"first_response_at": null, "last_response_at": null},
+  "sessions": [],
+  "models": [],
+  "coverage": {
+    "partial": false,
+    "matched_root_sessions": 0,
+    "included_thread_logs": 0,
+    "counted_responses": 0,
+    "excluded_invalid_records": 0,
+    "conflicting_responses": 0,
+    "logs_without_supported_usage": 0,
+    "unclassified_logs": 0,
+    "pending_lines": 0,
+    "undated_responses": 0
+  },
+  "diagnostics": []
+}
+```
+
+The missing-source-directory result uses that same no-data shape and succeeds.
+Human output explicitly says no data; empty arrays do not represent measured
+zero repository usage. Fatal failures have no report on stdout and return the
+operational-error code with a diagnostic on stderr, even under `--json`.
+
+Each diagnostic contains `code`, `file`, `line`, and `message`. `file` is relative
+to `source_directory`, or null when no file can be named. `line` is one-based,
+or null for a file-level error. `message` is human-readable text, not a stable
+machine identifier. Codes are `pending_line`, `invalid_json`, `unreadable_log`,
+`missing_metadata`, `unsupported_usage`, `missing_identity`, `invalid_usage`,
+`conflicting_response`, and `invalid_timestamp`. They describe the recoverable
+conditions already listed in this spec. Unknown event types need no diagnostic.
+
+### Coverage counters
+
 Coverage records whether the report is partial, the number of matched root
 sessions, included thread logs, unique counted responses, excluded invalid or
 conflicting responses, matched logs without supported usage, and unclassified
@@ -119,6 +275,21 @@ logs whose unreadable or missing metadata prevents repository attribution.
 Keep unrelated, successfully classified logs out of repository coverage counts.
 An unclassified log cannot be called unrelated; count it separately and explain
 that its effect on repository coverage is unknown.
+
+`matched_root_sessions` counts distinct root identities established by matched
+metadata or included child records, even if their usage is unavailable.
+`included_thread_logs` counts distinct thread identities attributed to this
+repository, so copied files do not increase it. `counted_responses` counts unique
+valid responses after conflict exclusion. `excluded_invalid_records` counts
+invalid owned usage records before response deduplication; a record without a
+response identity is still a record. `conflicting_responses` counts distinct
+response identities with conflicting copies, not the number of copies.
+`logs_without_supported_usage` counts distinct matched thread identities whose
+files contain no supported owned usage records. `unclassified_logs` counts
+physical files without usable membership metadata. `pending_lines` counts skipped
+unterminated final lines. `undated_responses` counts included responses with
+missing or invalid timestamps. Identical copies of a counted response do not
+increase the response or token totals.
 
 No matching sessions produces empty rows and an explicit no-data result. It does
 not claim that this repository used zero tokens. Diagnostics are structured in
