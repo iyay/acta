@@ -178,10 +178,10 @@ func ReadLog(name string, r io.Reader) (Log, error) {
 func (l *Log) diag(name, code string, line int, message string) {
 	d := Diagnostic{Code: code, Message: message}
 	if name != "" {
-		d.File = &name
+		d.File = new(name)
 	}
 	if line > 0 {
-		d.Line = &line
+		d.Line = new(line)
 	}
 	l.Diagnostics = append(l.Diagnostics, d)
 }
