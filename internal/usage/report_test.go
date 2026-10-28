@@ -354,6 +354,25 @@ func TestUsageReportUndatedCountsResponses(t *testing.T) {
 	if len(r.Sessions) != 1 || r.Sessions[0].Range.FirstResponseAt != nil {
 		t.Fatalf("sessions = %+v, want one undated row", r.Sessions)
 	}
+
+	// A copy dropped as a conflict is not an included response, so its
+	// missing timestamp must not reach the coverage number.
+	conflicts := t.TempDir()
+	for i, name := range []string{"a.jsonl", "b.jsonl"} {
+		thread := "root-1"
+		input := int64(10)
+		if i == 1 {
+			thread, input = "child-1", 20
+		}
+		writeLog(t, conflicts, name,
+			metaLine(thread, repo),
+			recordLine("yesterday", thread, "root-1", "r9", input, 0, 1),
+		)
+	}
+	r = mustRead(t, repo, conflicts)
+	if r.Coverage.ConflictingResponses != 1 || r.Coverage.UndatedResponses != 0 {
+		t.Fatalf("coverage = %+v, want the conflict counted with no undated response", r.Coverage)
+	}
 }
 
 // A response the turn gave no model for stays in its own group, and every

@@ -243,9 +243,12 @@ func TestUsageCommandErrors(t *testing.T) {
 	})
 
 	t.Run("broken git is operational", func(t *testing.T) {
+		// A repo of its own: the shared one must keep working for the later
+		// subtests.
+		broken := usageRepo(t)
 		home, _ := usageHome(t)
 		t.Setenv("CODEX_HOME", home)
-		cfg, err := os.OpenFile(filepath.Join(repo, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o644)
+		cfg, err := os.OpenFile(filepath.Join(broken, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -255,7 +258,7 @@ func TestUsageCommandErrors(t *testing.T) {
 		if err := cfg.Close(); err != nil {
 			t.Fatal(err)
 		}
-		code, out, errw := usageRun(t, repo, "usage")
+		code, out, errw := usageRun(t, broken, "usage")
 		if code != exitOther || out != "" {
 			t.Fatalf("exit %d stdout %q, want the operational code and no report", code, out)
 		}
@@ -382,12 +385,16 @@ func TestUsageRender(t *testing.T) {
 		t.Fatal("renderUsage: got no error from a failed write")
 	}
 
-	noData := usage.Report{Status: usage.StatusNoData, Sessions: []usage.SessionRow{}, Models: []usage.ModelRow{}}
+	noData := usage.Report{Status: usage.StatusNoData, Sessions: []usage.SessionRow{}, Models: []usage.ModelRow{},
+		Scope: usage.Scope{SourceDirectory: "/example/codex/sessions", Limitations: []string{usage.HistoryLimitation}}}
 	out.Reset()
 	if err := renderUsage(&out, noData); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(strings.ToLower(out.String()), "no data") {
 		t.Fatalf("no data output = %q", out.String())
+	}
+	if !strings.Contains(out.String(), "deleted or moved") {
+		t.Fatalf("no data output drops the scope limitation: %q", out.String())
 	}
 }

@@ -310,6 +310,21 @@ func TestUsageReadNotRepository(t *testing.T) {
 	if !strings.Contains(err.Error(), "bad config") {
 		t.Fatalf("err = %v, want git's own reason", err)
 	}
+
+	// A checkout that lost its HEAD reads exactly like "not a repository";
+	// the .git entry is what tells the two apart.
+	lost := newRepo(t)
+	if err := os.Remove(filepath.Join(lost, ".git", "HEAD")); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("LC_ALL", "de_DE.UTF-8")
+	_, err = Read(lost, t.TempDir())
+	if err == nil {
+		t.Fatal("Read: got no error from a checkout without HEAD")
+	}
+	if errors.Is(err, ErrNotRepository) {
+		t.Fatalf("a broken checkout reported as a missing repository: %v", err)
+	}
 }
 
 // A source folder that cannot be listed is a fatal failure, while a single
@@ -356,21 +371,35 @@ func TestUsageReadUnreadableSourceAndFile(t *testing.T) {
 // out of the report and the coverage says why.
 func TestUsageReadUnclassifiedMetadata(t *testing.T) {
 	repo := newRepo(t)
-	sessions := t.TempDir()
-	writeRawLog(t, sessions, "no-meta.jsonl",
-		modelLine("m1")+"\n"+
-			recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1))
 
-	r := mustRead(t, repo, sessions)
-	if len(r.Sessions) != 0 || r.Coverage.CountedResponses != 0 {
-		t.Fatalf("sessions = %v, want none", sessionIDs(r))
-	}
-	if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != StatusPartial {
-		t.Fatalf("coverage = %+v status = %q", r.Coverage, r.Status)
-	}
-	if r.Coverage.PendingLines != 1 {
-		t.Fatalf("pending lines = %d, want the skipped final line counted", r.Coverage.PendingLines)
-	}
+	t.Run("complete record", func(t *testing.T) {
+		sessions := t.TempDir()
+		writeLog(t, sessions, "no-meta.jsonl",
+			modelLine("m1"),
+			recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1),
+		)
+		r := mustRead(t, repo, sessions)
+		if len(r.Sessions) != 0 || r.Coverage.CountedResponses != 0 {
+			t.Fatalf("sessions = %v, want none", sessionIDs(r))
+		}
+		if r.Coverage.UnclassifiedLogs != 1 || !r.Coverage.Partial || r.Status != StatusPartial {
+			t.Fatalf("coverage = %+v status = %q", r.Coverage, r.Status)
+		}
+		if r.Coverage.PendingLines != 0 {
+			t.Fatalf("pending lines = %d, want none", r.Coverage.PendingLines)
+		}
+	})
+
+	t.Run("pending line", func(t *testing.T) {
+		sessions := t.TempDir()
+		writeRawLog(t, sessions, "no-meta.jsonl",
+			modelLine("m1")+"\n"+
+				recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1))
+		r := mustRead(t, repo, sessions)
+		if r.Coverage.UnclassifiedLogs != 1 || r.Coverage.PendingLines != 1 {
+			t.Fatalf("coverage = %+v, want one unclassified log with one pending line", r.Coverage)
+		}
+	})
 }
 
 // A log that names a thread but no starting folder cannot be attributed, so
@@ -391,6 +420,15 @@ func TestUsageReadMissingStartingFolder(t *testing.T) {
 	}
 	if !hasCode(r, codeMissingMetadata) {
 		t.Fatalf("diagnostics = %v, want the missing start named", reportCodes(r))
+	}
+
+	pending := t.TempDir()
+	writeRawLog(t, pending, "no-cwd.jsonl",
+		`{"type":"session_meta","payload":{"id":"root-1"}}`+"\n"+
+			recordLine("2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1))
+	r = mustRead(t, repo, pending)
+	if r.Coverage.PendingLines != 1 {
+		t.Fatalf("pending lines = %d, want the skipped final line counted", r.Coverage.PendingLines)
 	}
 }
 

@@ -94,7 +94,10 @@ func codexSessionsDir(cwd string) (string, error) {
 // instead of an invented time.
 func renderUsage(w io.Writer, r usage.Report) error {
 	if r.Status == usage.StatusNoData {
-		_, err := fmt.Fprintf(w, "No data: no Codex session in %s started in this repository.\n", r.Scope.SourceDirectory)
+		// The limitation matters most here: an empty report may only mean
+		// that the checkout a session ran in is gone.
+		_, err := fmt.Fprintf(w, "No data: no Codex session in %s started in this repository.\nLimit: %s\n",
+			r.Scope.SourceDirectory, strings.Join(r.Scope.Limitations, " "))
 		return err
 	}
 	if _, err := fmt.Fprintf(w, "Repository: %s\nCheckouts: %s\nLogs: %s (%s)\nLimit: %s\n\n",

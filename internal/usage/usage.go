@@ -70,6 +70,14 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 		undated      int
 		conflicts    int
 	)
+	// countUnclassified files one log that cannot be attributed, so the two
+	// reasons keep the same bookkeeping.
+	countUnclassified := func(fl fileLog) {
+		report.Diagnostics = append(report.Diagnostics, fl.log.Diagnostics...)
+		pending += fl.log.PendingLines
+		unclassified++
+		partial = true
+	}
 	for _, rel := range broken {
 		report.Diagnostics = append(report.Diagnostics, Diagnostic{
 			Code:    codeUnreadableLog,
@@ -100,10 +108,7 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 		if log.ThreadID == "" {
 			// Without metadata this file cannot be attributed to a repo, so
 			// it is not called unrelated either.
-			report.Diagnostics = append(report.Diagnostics, log.Diagnostics...)
-			pending += log.PendingLines
-			unclassified++
-			partial = true
+			countUnclassified(fileLog{log: log})
 			continue
 		}
 		logs = append(logs, fileLog{rel: rel, log: log, matched: insideCheckouts(log.Cwd, checkouts)})
@@ -164,15 +169,12 @@ func Read(cwd, sourceDirectory string) (Report, error) {
 			continue
 		}
 		// A log that names no starting folder cannot be called unrelated.
-		report.Diagnostics = append(report.Diagnostics, fl.log.Diagnostics...)
+		countUnclassified(fl)
 		report.Diagnostics = append(report.Diagnostics, Diagnostic{
 			Code:    codeMissingMetadata,
 			File:    new(fl.rel),
 			Message: "This log names no starting folder, so it cannot be attributed to a repository.",
 		})
-		pending += fl.log.PendingLines
-		unclassified++
-		partial = true
 	}
 	for _, fl := range included {
 		report.Diagnostics = append(report.Diagnostics, fl.log.Diagnostics...)
@@ -419,20 +421,23 @@ func aggregate(responses []Record) ([]SessionRow, []ModelRow, spanBuilder, error
 	return sessionRows, modelRows, total, nil
 }
 
-// repoRoot finds the repository holding dir. Any git failure here means
-// there is no repository to report on.
+// repoRoot finds the repository holding dir. Outside a repository it says
+// so; a repository git cannot read is an operational failure.
 func repoRoot(dir string) (string, error) {
 	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
+	// A failure must read the same for every user, so git answers in the C
+	// locale whatever the user's language is.
+	cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=")
 	var out, errOut bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errOut
 	if err := cmd.Run(); err != nil {
-		// Only git's own "not a repository" answer means there is no repo to
-		// report on. Every other failure is an operational problem, so its
-		// reason reaches the user instead of a wrong "not inside Git".
-		msg := strings.TrimSpace(errOut.String())
-		if strings.Contains(msg, "not a git repository") {
+		// Git uses one failure for "no repository" and for a repository it
+		// cannot read, and its text is translated. A .git entry above dir is
+		// the answer that does not depend on the message.
+		if !hasGitEntry(dir) {
 			return "", ErrNotRepository
 		}
+		msg := strings.TrimSpace(errOut.String())
 		if msg == "" {
 			return "", fmt.Errorf("find the repository: %w", err)
 		}
@@ -443,6 +448,21 @@ func repoRoot(dir string) (string, error) {
 		return "", ErrNotRepository
 	}
 	return canonical(root), nil
+}
+
+// hasGitEntry says whether dir or a parent holds a .git entry, so a
+// repository exists even when git refuses to read it.
+func hasGitEntry(dir string) bool {
+	for p := canonical(dir); ; {
+		if _, err := os.Stat(filepath.Join(p, ".git")); err == nil {
+			return true
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return false
+		}
+		p = parent
+	}
 }
 
 // checkoutsOf lists the repository's main checkout and its registered,

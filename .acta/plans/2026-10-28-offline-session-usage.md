@@ -79,12 +79,23 @@ During build, record each task's observed red and green results here. Before lan
 
 **verify:** the broken-repository exit code is locale independent, each fixed test fails when its fix is reverted, and the package suites stay green
 
-- [ ] The git failure split still trusts git's stderr text: a checkout git cannot read (missing .git/HEAD, bad ownership) is reported as 'not inside a Git repository' with exit 1, where the spec wants the operational code 3.
-- [ ] The broken-git CLI subtest appends to the shared repo's .git/config, so the later writer-failure and no-home subtests never reach their own code path.
-- [ ] The human no-data output skips the Limit line, so the one case where the scope limitation matters most never shows it.
-- [ ] TestUsageReadUnclassifiedMetadata now only exercises a pending line, so a complete record dropped for missing metadata is no longer covered.
-- [ ] Two branches duplicate the unclassified bookkeeping, the repoRoot comment describes the old behavior, and two edges have no test: an undated response dropped as a conflict, and a pending line in a log without a starting folder.
-- [ ] Commit with the trailer `Task: PLN-qtu2gre#5`
+- [x] The git failure split still trusts git's stderr text: a checkout git cannot read (missing .git/HEAD, bad ownership) is reported as 'not inside a Git repository' with exit 1, where the spec wants the operational code 3.
+- [x] The broken-git CLI subtest appends to the shared repo's .git/config, so the later writer-failure and no-home subtests never reach their own code path.
+- [x] The human no-data output skips the Limit line, so the one case where the scope limitation matters most never shows it.
+- [x] TestUsageReadUnclassifiedMetadata now only exercises a pending line, so a complete record dropped for missing metadata is no longer covered.
+- [x] Two branches duplicate the unclassified bookkeeping, the repoRoot comment describes the old behavior, and two edges have no test: an undated response dropped as a conflict, and a pending line in a log without a starting folder.
+- [x] Commit with the trailer `Task: PLN-qtu2gre#5`
+
+## Fix round 3
+
+### Task 6: Fix codex review findings
+
+**verify:** a child anchored here never pulls a sibling from another repository, and each of the three guards fails when its fix is reverted
+
+- [ ] Codex review BLOCKER: a matched child log authorizes its recorded root, so a sibling child of that root that started in another repository joins this repository's totals (internal/usage/usage.go).
+- [ ] The lost-HEAD guard passes even when repoRoot goes back to trusting git's text, because the forced German locale makes the old text check miss.
+- [ ] The pending-line subtest does not pin that countUnclassified passes the log's diagnostics into the report.
+- [ ] Commit with the trailer `Task: PLN-qtu2gre#6`
 
 ## State
 
