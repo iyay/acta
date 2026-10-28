@@ -40,4 +40,8 @@ The user approved the proposed design: add `acta usage [--json]` as a stateless 
 
 The user requested one cold read of SPC-0182. The fresh-context reviewer found two missing contracts: exact supported transcript shapes and JSON version 1 field names, nesting, diagnostics and no-data representation. The user approved both clarifications. The spec now includes synthetic session_meta, turn_context and token_usage_record examples, exact field paths and timestamp rules, canonical partial and no-data JSON reports, and coverage counter definitions. No implementation scope was added. The embedded examples were checked for valid JSON, matching fields and token arithmetic. Final written-spec approval is still pending before planning.
 
+### 2026-10-28
+
+The user approved the clarified written spec SPC-0182 and requested the implementation plan. Plan depth is minimal, plan splitting is enabled, and execution is inline. The feature fits one plan: parsing, repository/session aggregation, and CLI delivery depend on one another and do not form independent shipping units.
+
 ## Open questions
