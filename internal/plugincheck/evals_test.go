@@ -27,7 +27,7 @@ var evalCases = []struct {
 	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
-	{"second-brainstorm-choices", "skills/shape/SKILL.md", "One Architectural brainstorm per session"},
+	{"second-brainstorm-choices", "skills/shape/SKILL.md", "Many topics, one session"},
 	{"one-file-fix-no-brainstorm", "skills/shape/SKILL.md", "Spike and Bounded"},
 	{"brainstorm-files-scratch-first", "skills/shape/SKILL.md", "status brainstorming"},
 	{"answers-appended", "skills/shape/SKILL.md", "acta scratch add"},

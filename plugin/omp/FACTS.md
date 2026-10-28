@@ -117,6 +117,10 @@ plugin and the voice setup questions follow.
 
 ## Brainstorm block in omp
 
+Removed on 2026-10-29: acta no longer blocks a second brainstorm in one
+session, so the check below is history. It shows how the omp extension hands
+hook input to acta, which still holds.
+
 Checked 2026-09-30 with omp/18.4.4 and acta v0.0.0-20260930121646-6e177124f9ad on
 PATH. The extension hands `acta hook pre-tool` and `post-tool` the same stdin JSON
 Claude Code does, so the second brainstorm in one omp session is blocked.

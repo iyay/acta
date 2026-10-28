@@ -42,15 +42,15 @@ off that item, so a dead session loses nothing.
 Append as you go: every answer and every approved section goes in with
 `acta scratch add SCRATCH-n --section log`.
 
-**One Architectural brainstorm per session.** When a second one comes
-up, file it as a scratch item and ask the user to pick one of:
+**Many topics, one session.** Stay here by default. Each topic keeps
+its own scratch item. Name the case first:
 
-- (a) **Background agent** — `claude --bg 'brainstorm SCR-0001'` from the repo, then open the agents view (press ←, or `claude agents`).
-- (b) **New herdr tab** — offer this only when the session text has the `herdr:` line. With no such line, do not mention herdr.
-- (c) **Manual new session** — put `brainstorm SCR-0001` on the clipboard (`pbcopy`, `wl-copy` or `xclip`, OSC 52 when none of those work) and print the prompt too, so a failed clipboard still has a way in.
+- Related: reuse only earlier decisions that still apply.
+- Unrelated: keep its scope and assumptions apart. Offer a new session only for a concrete reason, never a count.
+- Resumed: read its item and Log; confirm assumptions that may have changed.
+- Mixed: restate the active scope, assumptions and decisions; offer a new session if it helps.
 
-Plan, build, review and land may continue in this session. Only the
-brainstorm itself is one per session.
+Only the user picks a move; launch nothing unasked. On a move, log the talk to the item and give its real id. Ways this harness has: a new session typing `brainstorm SCR-0001`; Claude Code only: `claude --bg 'brainstorm SCR-0001'`; a herdr tab only when the session text has the `herdr:` line.
 
 **Subagent models.** Name no model for any subagent; the harness default picks it.
 

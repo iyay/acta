@@ -451,11 +451,12 @@ func TestSessionStartWikiLine(t *testing.T) {
 	}
 }
 
-// An agent can answer a second big brainstorm from this rule alone, so the
-// rule must name the real choices. Whether a herdr tab is one of them is the
-// hook's call, not the agent's: the hook reads the environment, the agent
-// often cannot, so a session outside herdr must say nothing about herdr.
-func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
+// An agent can run several brainstorms from this rule alone, so the rule must
+// name every case and keep the move the user's choice. Whether a herdr tab is
+// one way to move is the hook's call, not the agent's: the hook reads the
+// environment, the agent often cannot, so a session outside herdr must say
+// nothing about herdr.
+func TestSessionStartBrainstormContinuity(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
 		"first run": {Voice: config.UserDefault()},
@@ -463,18 +464,22 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	} {
 		out := SessionStart(in)
 		for _, want := range []string{
-			"acta:shape",
-			"claude --bg 'brainstorm SCRATCH-n'",
-			"File the scratch item first",
-			"one acta scratch new call",
-			"whose body is stdin: acta scratch new <slug> --title <title> < body.md",
-			"put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one",
-			"written, not committed",
-			"new session",
-			"load acta:shape for that way",
+			"stay here by default",
+			"its own scratch item, brainstorming status and approvals",
+			"Related:", "Unrelated:", "Resumed:", "Mixed:",
+			"never a count",
+			"Only the user picks a move; launch nothing unasked",
+			"give the real id, like SCR-0001",
+			"a new session typing brainstorm SCR-0001",
+			"Claude Code only: claude --bg 'brainstorm SCR-0001'",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s: session start missing %q", name, want)
+			}
+		}
+		for _, old := range []string{"One Architectural brainstorm per session", "cannot start in this session", "Do not design it here"} {
+			if strings.Contains(out, old) {
+				t.Errorf("%s: session start still limits brainstorms: %q", name, old)
 			}
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
@@ -491,7 +496,7 @@ func TestSessionStartNamesSecondBrainstormChoices(t *testing.T) {
 	in := korean()
 	in.Herdr = true
 	out := SessionStart(in)
-	if !strings.Contains(strings.ToLower(out), "herdr tab") {
+	if !strings.Contains(out, "When the user picks a move for a brainstorm, a new herdr tab is one more way.") {
 		t.Errorf("herdr session start missing the herdr tab sentence:\n%s", out)
 	}
 }

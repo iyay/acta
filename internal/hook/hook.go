@@ -57,15 +57,15 @@ Core rules:
 5. Never push. Never run a destructive command without a full-sentence warning and a yes. Only the git branch -D in tidy.md step 7, after its final plan check passes, is not destructive: tidy proved the tip equals the merge, so delete without asking. A stopped or red tidy land still asks.
 6. The acta settings below win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md. For everything else, when the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. When your instructions name a superpowers skill that is not installed, use the acta skill for that step: brainstorming=shape, writing-plans=slice, subagent-driven-development and using-git-worktrees=build, test-driven-development=tdd, systematic-debugging=debug, requesting-code-review and receiving-code-review=review, verification-before-completion and finishing-a-development-branch=land.
-8. One Architectural brainstorm per session. A second one cannot start in this session. File the scratch item first, with one acta scratch new call whose body is stdin: acta scratch new <slug> --title <title> < body.md: no Skill tool, no acta scratch add, and "written, not committed" still counts as filed. In the same reply, name the two ways to open it elsewhere: put the id the command printed in place of SCRATCH-n, an id like SCR-0001, never a shortened one. A background agent (claude --bg 'brainstorm SCRATCH-n') and a new session where the user types brainstorm SCRATCH-n. When the user picks one, load acta:shape for that way. Do not design it here.
+8. Several Architectural brainstorms may share one session; stay here by default. Each topic has its own scratch item, brainstorming status and approvals. Related: reuse only decisions that still apply. Unrelated: keep its scope and assumptions apart. Resumed: read its item and Log; recheck assumptions. Mixed: restate the active scope, assumptions, decisions. Offer a new session only for a concrete reason, never a count. Only the user picks a move; launch nothing unasked. On a move, log the talk; give the real id, like SCR-0001, and a way this harness has: a new session typing brainstorm SCR-0001; Claude Code only: claude --bg 'brainstorm SCR-0001'.
 9. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
 `
 
-// herdrExtra is the one extra choice, added only inside a herdr session. The
-// agent often cannot read the environment, so the text decides this, not the
-// agent: a session outside herdr never hears the word.
+// herdrExtra is the one extra way to move a brainstorm, added only inside a
+// herdr session. The agent often cannot read the environment, so the text
+// decides this, not the agent: a session outside herdr never hears the word.
 const herdrExtra = `
-herdr: this session runs in a herdr tab. For a second brainstorm, offer the user one more way to run it: a new herdr tab.
+herdr: this session runs in a herdr tab. When the user picks a move for a brainstorm, a new herdr tab is one more way.
 `
 
 // updateLine asks the agent to pass on a newer release. It sits in the

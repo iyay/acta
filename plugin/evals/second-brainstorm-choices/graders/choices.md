@@ -1,5 +1,5 @@
 ---
-# guards: One Architectural brainstorm per session
+# guards: Many topics, one session
 type: llm
 ---
 

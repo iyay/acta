@@ -38,9 +38,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 **Files:** Modify `plugin/skills/shape/SKILL.md`, `plugin/skills/frame/SKILL.md`, `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`, `internal/cli/hook_test.go`, `internal/plugincheck/skill_shape_test.go`, `internal/plugincheck/skill_frame_test.go`, `plugin/omp/FACTS.md`, and `.acta/wiki/codex-harness.md`; create `internal/plugincheck/brainstorm_continuity_test.go`.
 **Seam:** `hook.SessionStart`, the generated default-rules fixture, and plugincheck reads of active skill and harness instructions.
 **verify:** Active instructions permit continuing in-session, distinguish related, unrelated, resumed, and mixed discussions, preserve scratch and approval gates, and require user choice for handoff; no active surface reinstates a count-based limit or assumes a Claude-only handoff under another harness; Frame stays raw because design has not begun.
-- [ ] Red: Add scenario and instruction-consistency assertions, replace obsolete required-limit assertions, run `scripts/test ./internal/plugincheck/ ./internal/hook/ -run 'Test(BrainstormContinuity|SkillShape|SkillFrame|Frame|SessionStart)'`, and observe old instructions fail.
-- [ ] Change: Write the approved scenario guidance, synchronize generated session rules and conditional Herdr text, update Frame rationale and active harness documentation, and run the same checks plus `scripts/test ./internal/plugincheck/ -run 'Test.*(Budget|Shape|Frame|Continuity)'` to green without raising budgets unless the reviewed text cannot fit.
-- [ ] Commit: `feat(shape): guide brainstorm continuity by scenario`.
+- [x] Red: Add scenario and instruction-consistency assertions, replace obsolete required-limit assertions, run `scripts/test ./internal/plugincheck/ ./internal/hook/ -run 'Test(BrainstormContinuity|SkillShape|SkillFrame|Frame|SessionStart)'`, and observe old instructions fail.
+- [x] Change: Write the approved scenario guidance, synchronize generated session rules and conditional Herdr text, update Frame rationale and active harness documentation, and run the same checks plus `scripts/test ./internal/plugincheck/ -run 'Test.*(Budget|Shape|Frame|Continuity)'` to green without raising budgets unless the reviewed text cannot fit.
+- [x] Commit: `feat(shape): guide brainstorm continuity by scenario`.
 
 ### Task 3: Prove continuation and voluntary handoff with behavior evals
 
@@ -55,5 +55,10 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 
 ### Next
 
-Task 2: rewrite rule 8 in internal/hook/hook.go, shape and frame skills, default-rules.md, Herdr line, FACTS.md and codex-harness wiki page.
+Task 3: rewrite second-brainstorm-choices prompt and grader (guard phrase already moved to "Many topics, one session" in task 2), add four scenario cases, fix routing-second-01/02 and routing-arch-02/04.
 plugin/hooks/post-tool is now a no-op kept for installed hook setups; hooks.json still registers it.
+
+### Findings
+
+Shape section, rule 8 and frame sit at their byte caps (shape 7835/7841, session start 3228/3228); any added word needs a cut.
+Task 2 moved the second-brainstorm-choices guard phrase (task 3 files) so its commit stays green.

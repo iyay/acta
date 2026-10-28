@@ -11,8 +11,8 @@ import (
 	"github.com/iyay/acta/internal/hook"
 )
 
-// The hook reads HERDR_ENV, so the session text can name a herdr tab as the
-// extra way to run a second brainstorm. Without it, the text stays silent.
+// The hook reads HERDR_ENV, so the session text can name a herdr tab as one
+// more way to move a brainstorm. Without it, the text stays silent.
 // The phrase belongs to the herdr block only; the skill index has its own line
 // about the dispatch skill.
 const herdrLine = "this session runs in a herdr tab"
