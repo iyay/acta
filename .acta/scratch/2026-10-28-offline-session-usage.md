@@ -36,4 +36,8 @@ Scope answers approved by the user: Codex only for the first increment; token us
 
 The user approved the proposed design: add `acta usage [--json]` as a stateless Go CLI command that reads existing Codex transcripts; scope it to the current repository and identifiable worktrees; group root sessions with child agents; count each response once; report fresh input, cached input, output and response counts by root session and model; report coverage and partial data; tolerate an unfinished final line in an active transcript. Use standard-library Go with focused fixtures. No monetary estimates, runtime hooks, database, LLM calls, task-success claims or savings claims in this increment.
 
+### 2026-10-28
+
+The user requested one cold read of SPC-0182. The fresh-context reviewer found two missing contracts: exact supported transcript shapes and JSON version 1 field names, nesting, diagnostics and no-data representation. The user approved both clarifications. The spec now includes synthetic session_meta, turn_context and token_usage_record examples, exact field paths and timestamp rules, canonical partial and no-data JSON reports, and coverage counter definitions. No implementation scope was added. The embedded examples were checked for valid JSON, matching fields and token arithmetic. Final written-spec approval is still pending before planning.
+
 ## Open questions
