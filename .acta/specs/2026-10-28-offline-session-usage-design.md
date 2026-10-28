@@ -59,11 +59,14 @@ Support the `session_meta`, `turn_context`, and `token_usage_record` shapes
 observed by the spike. Read files as streams; retain metadata and usage records,
 not conversation text or tool output. Unknown event types do not fail a file.
 
-The file's session metadata supplies its thread identity and starting directory.
+The first usable `session_meta` supplies the file's thread identity and starting
+directory. Later metadata cannot change that identity.
 Only usage records whose `thread_id` matches that identity belong to that file;
 inherited records from another thread do not count again. A usage record's
 `session_id` supplies the root-session identity. Do not infer root identity from
-file names, timestamps, or matching directories.
+file names, timestamps, or matching directories. Thread, root-session and
+response identities must be nonempty strings; otherwise exclude the affected
+record and report incomplete coverage.
 
 Use each record's `usage`, not its cumulative `turn_token_usage` or
 `thread_token_usage`. Ignore the cumulative `event_msg.token_count` stream for
@@ -85,8 +88,8 @@ For each supported response, report:
 - output: `output_tokens`;
 - response count: one.
 
-These three token fields must be present, nonnegative integers, and fit the
-integer representation used by the reader. Cached input must not exceed input.
+These three token fields must be present, nonnegative integers, and fit signed
+64-bit integers. Cached input must not exceed input.
 Missing or invalid fields make that response unavailable and the report partial.
 Reject arithmetic overflow instead of wrapping a total. Reasoning tokens are
 already part of output and are never added again. Optional fields, including
@@ -98,8 +101,11 @@ Default output has one table grouped by root session and model, followed by a
 per-model summary. Show root identity, the first and last included response
 timestamps in UTC, fresh input, cached input, output, and response count. Order
 session rows by first included timestamp, then root identity and model; order
-model summaries by model name. Escape control characters from transcript strings
-before rendering them in a terminal.
+model summaries by model name. Missing or invalid timestamps do not discard valid
+usage. Mark coverage partial, omit those timestamps from the UTC range, use null
+for an unavailable range endpoint in JSON, and sort undated rows last. Human
+output labels an unavailable endpoint `unknown`. Escape control characters from
+transcript strings before rendering them in a terminal.
 
 JSON contains `schema_version: 1`, repository and checkout scope, source directory,
 the included UTC range, session/model rows, per-model totals, and coverage. Output
