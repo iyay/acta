@@ -96,6 +96,9 @@ func TestHelpDetailShowsEveryPartOfTheEntry(t *testing.T) {
 		}
 		parts := append([]string{c.summary, c.example}, c.usage...)
 		parts = append(parts, c.flags...)
+		if c.note != "" {
+			parts = append(parts, c.note)
+		}
 		for _, p := range parts {
 			if !strings.Contains(out, p) {
 				t.Errorf("%s: detail does not show %q", c.name, p)
@@ -280,5 +283,22 @@ func TestHelpConfigReviewUnderstanding(t *testing.T) {
 	}
 	if !flagLine || !unsetLine {
 		t.Errorf("flags lack the --review-understanding line (%v) or the unset key (%v):\n%s", flagLine, unsetLine, strings.Join(cmd.flags, "\n"))
+	}
+}
+
+// usage help must name what a report cannot see: a checkout that is gone
+// takes its sessions out of reach.
+func TestHelpUsageNamesScopeLimitation(t *testing.T) {
+	for _, args := range [][]string{{"help", "usage"}, {"usage", "--help"}} {
+		_, out, errb := helpRun(args...)
+		if errb != "" {
+			t.Fatalf("%v: stderr %q", args, errb)
+		}
+		if !strings.Contains(out, "deleted or moved") {
+			t.Fatalf("%v: output does not name the scope limitation:\n%s", args, out)
+		}
+	}
+	if !strings.Contains(renderMan(), "deleted or moved") {
+		t.Fatal("the man page does not name the scope limitation")
 	}
 }

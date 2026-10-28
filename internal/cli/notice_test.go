@@ -187,3 +187,53 @@ func TestHookSessionStartUpdateLine(t *testing.T) {
 		}
 	}
 }
+
+// usage is offline: it never starts the update probe and never writes the
+// cache, whether the call runs or is refused.
+func TestUsageNoUpdate(t *testing.T) {
+	repo := usageRepo(t)
+	home, sessions := usageHome(t)
+	usageLog(t, sessions, "root.jsonl",
+		usageMeta(t, "root-1", repo),
+		usageModel(t, "m"),
+		usageRecord(t, "2026-10-28T10:00:02Z", "root-1", "root-1", "r1", 10, 0, 1),
+	)
+	t.Setenv("CODEX_HOME", home)
+
+	runUsage := func(t *testing.T, args ...string) (int, string) {
+		t.Helper()
+		var out, errw strings.Builder
+		code := exitOK
+		inDir(t, repo, func() {
+			code = Run(args, strings.NewReader(""), false, &out, &errw)
+		})
+		return code, errw.String()
+	}
+
+	t.Run("no cache is written", func(t *testing.T) {
+		cache, spawns := noticeEnv(t, true, true)
+		for _, args := range [][]string{{"usage"}, {"usage", "--bogus"}} {
+			runUsage(t, args...)
+			if *spawns != 0 {
+				t.Fatalf("%v started the update probe", args)
+			}
+			if _, err := os.Stat(cache); !os.IsNotExist(err) {
+				t.Fatalf("%v wrote the update cache", args)
+			}
+		}
+	})
+
+	t.Run("no notice line", func(t *testing.T) {
+		cache, spawns := noticeEnv(t, true, true)
+		if err := update.WriteCache(cache, "v99.0.0"); err != nil {
+			t.Fatal(err)
+		}
+		_, errOut := runUsage(t, "usage")
+		if *spawns != 0 {
+			t.Fatal("usage started the update probe")
+		}
+		if strings.Contains(errOut, "available (you have") {
+			t.Fatalf("usage printed the update notice: %q", errOut)
+		}
+	})
+}
