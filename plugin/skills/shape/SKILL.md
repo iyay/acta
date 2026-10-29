@@ -32,7 +32,7 @@ force it.
 
 ## Architectural only
 
-Spike and Bounded need no scratch item and are free in number.
+Spike and Bounded need no scratch item.
 
 **Step 0: scratch item.** Find the scratch item the request names. If
 there is none, file the user's words with `acta scratch new`, then run

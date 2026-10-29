@@ -5,6 +5,7 @@ id: PLN-0200
 created: "2026-10-29 06:33:47"
 hash: zh8r9ld
 started: "2026-10-29 06:37:25"
+finished: "2026-10-29 06:56:41"
 ---
 # Brainstorm continuity implementation plan
 
@@ -47,18 +48,37 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 **Files:** Modify `internal/plugincheck/evals_test.go`, `plugin/evals/second-brainstorm-choices/prompt.md`, `plugin/evals/second-brainstorm-choices/graders/choices.md`, `plugin/evals/one-file-fix-no-brainstorm/prompt.md`, `plugin/evals-routing/routing-second-01/prompt.md`, `plugin/evals-routing/routing-second-01/graders/choices-offered.md`, `plugin/evals-routing/routing-second-02/prompt.md`, `plugin/evals-routing/routing-second-02/graders/choices-offered.md`, `plugin/evals-routing/routing-arch-02/prompt.md`, and `plugin/evals-routing/routing-arch-04/prompt.md`; create `prompt.md`, `scaffold.sh`, and `graders/continuity.md` in each of `plugin/evals/brainstorm-related-topic/`, `plugin/evals/brainstorm-resume-topic/`, `plugin/evals/brainstorm-mixed-context/`, and `plugin/evals/brainstorm-user-handoff/`.
 **Seam:** Greenfield eval prompts, scaffolded scratch records, and graders loaded by the existing eval runners.
 **verify:** Related topics reuse only applicable decisions; unrelated topics keep scope separate and can stay in-session; resumed topics read recorded decisions and check changed assumptions; mixed discussions get a scope recap and a voluntary session offer; an explicit handoff preserves the scratch identifier and uses a supported method without launching anything unasked; scratch and approval requirements remain enforced.
-- [ ] Red: Add `TestEvalBrainstormScenarios` for scenario case coverage and guards, run `scripts/test ./internal/plugincheck/ -run TestEvalBrainstormScenarios`, and observe missing cases or obsolete mandatory-handoff expectations fail.
-- [ ] Change: Add the four scenario cases, rewrite obsolete limit-based graders and routing assumptions, register guarded phrases and judgement graders, run `scripts/test ./internal/plugincheck/ -run 'Test(Eval|Scaffolds)'`, then run `scripts/eval --case 'second-brainstorm-choices|brainstorm-related-topic|brainstorm-resume-topic|brainstorm-mixed-context|brainstorm-user-handoff|one-file-fix-no-brainstorm'` and the four touched routing cases with `--eval-dir evals-routing` using the runner's supported case filters.
-- [ ] Commit: `test(shape): cover brainstorm continuation and handoff scenarios`.
+- [x] Red: Add `TestEvalBrainstormScenarios` for scenario case coverage and guards, run `scripts/test ./internal/plugincheck/ -run TestEvalBrainstormScenarios`, and observe missing cases or obsolete mandatory-handoff expectations fail.
+- [x] Change: Add the four scenario cases, rewrite obsolete limit-based graders and routing assumptions, register guarded phrases and judgement graders, run `scripts/test ./internal/plugincheck/ -run 'Test(Eval|Scaffolds)'`, then run `scripts/eval --case 'second-brainstorm-choices|brainstorm-related-topic|brainstorm-resume-topic|brainstorm-mixed-context|brainstorm-user-handoff|one-file-fix-no-brainstorm'` and the four touched routing cases with `--eval-dir evals-routing` using the runner's supported case filters.
+- [x] Commit: `test(shape): cover brainstorm continuation and handoff scenarios`.
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] shape SKILL.md: drop "and are free in number", which only made sense beside the old Architectural count.
+- [x] brainstorm_continuity_test.go: fail with a message, not a panic, when the session text has no "Core rules:" heading.
+- [x] Commit: `polish: review notes for PLN-0200`
+
+## Review notes
+
+- Round 1 deep, full tier (two reviewers, no BLOCKER so no fact-check): CLEAN. Polish (2 [fix]) full tier, two reviewers: CLEAN. [note]s: hook prompt and post-tool no longer read stdin; related-topic prompt asks for the carry-over; no case picks stay after a move offer; new graders check scratch, not approvals; rule 8 lost its filing detail to fit the cap; clipboard handoff advice dropped for the cap; polish phrases have no revert guard.
 
 ## State
 
 ### Next
 
-Task 3: rewrite second-brainstorm-choices prompt and grader (guard phrase already moved to "Many topics, one session" in task 2), add four scenario cases, fix routing-second-01/02 and routing-arch-02/04.
-plugin/hooks/post-tool is now a no-op kept for installed hook setups; hooks.json still registers it.
+Review round 1 (deep, full tier) running over 3357950..2d3c95b; then After a CLEAN round or a fix round, then acta:land.
 
 ### Findings
 
 Shape section, rule 8 and frame sit at their byte caps (shape 7835/7841, session start 3228/3228); any added word needs a cut.
 Task 2 moved the second-brainstorm-choices guard phrase (task 3 files) so its commit stays green.
+brainstorm-related-topic judge splits: 3 of 4 runs PASS on the branch binary; treat one red as judge noise.
+routing-arch-02/04 and one-file-fix-no-brainstorm prompts had no limit assumption, so they stay unchanged; one-file-fix ran green, routing-arch-02/04 were not run.
+
+### Open rulings
+
+User (WhatsApp 2026-10-29) let the agent decide: CLAUDE.md line 38 and plugin/codex/FACTS.md row G were fixed in this build, outside the plan file list.

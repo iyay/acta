@@ -10,7 +10,7 @@ Checked on 2026-10-15 with codex-cli 0.162.1, in a throwaway `CODEX_HOME` and a 
 | D. Plugin hooks fire | yes, all four | logger files for SessionStart, UserPromptSubmit, PreToolUse (Bash and apply_patch), PostToolUse |
 | E. Hook trust | needed | plugin hooks are skipped until trusted in `/hooks`; `--dangerously-bypass-hook-trust` skips the check for one run |
 | F. SessionStart stdout becomes context | yes | the model quoted "acta plugin is active" |
-| G. Second-brainstorm block | works unchanged | second `acta set scratch/... status brainstorming` gave "Command blocked by PreToolUse hook: acta: this session already brainstormed SCR-0001 ..." |
+| G. Second-brainstorm block | worked unchanged; acta removed the block on 2026-10-29 | second `acta set scratch/... status brainstorming` gave "Command blocked by PreToolUse hook: acta: this session already brainstormed SCR-0001 ..." |
 | H. Signal that the hook runs under Codex | env `PLUGIN_ROOT` | Codex sets `PLUGIN_ROOT` and `PLUGIN_DATA` beside `CLAUDE_PLUGIN_ROOT`; Claude Code sets only the `CLAUDE_` ones |
 | I. Edits | `tool_name: "apply_patch"` | `tool_input.command` holds the whole patch; header paths are absolute |
 

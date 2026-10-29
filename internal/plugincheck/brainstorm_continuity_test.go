@@ -52,7 +52,11 @@ func TestBrainstormContinuity(t *testing.T) {
 	if !strings.Contains(texts["herdr session start"], "a new herdr tab is one more way") {
 		t.Error("herdr session start does not offer a herdr tab")
 	}
-	if rules := texts["session start"]; strings.Contains(strings.ToLower(rules[strings.Index(rules, "Core rules:"):]), "herdr") {
+	// Only the rules count: the skill index above them may name herdr.
+	plain := texts["session start"]
+	if i := strings.Index(plain, "Core rules:"); i < 0 {
+		t.Error("session start has no Core rules: heading")
+	} else if strings.Contains(strings.ToLower(plain[i:]), "herdr") {
 		t.Error("session start outside herdr names herdr")
 	}
 	// Frame leaves the item raw for its own reason, not to save a count.

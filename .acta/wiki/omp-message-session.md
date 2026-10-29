@@ -6,6 +6,6 @@ paths: [plugin/omp/]
 ---
 
 - `omp "/goal ..."` does not start goal mode: the CLI hands the text to the model, and slash commands parse only in the TUI input. A fresh process is already a new session, so drop `/new` at first launch; send `/goal` through a herdr prompt.
-- omp fires `session_switch` (new, resume, fork), not `session_start`. The acta extension listens to it to reset the one-brainstorm block.
+- omp fires `session_switch` (new, resume, fork), not `session_start`. The acta extension listens to it so the new session gets the rules the same way a fresh start does.
 - A plain herdr prompt to a working omp agent steers its running goal; use it for late findings instead of a second `/goal`.
 - `--plugin-dir` loads skills but never runs `package.json` extensions; install with `omp plugin link` instead.

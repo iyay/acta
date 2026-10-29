@@ -35,7 +35,7 @@ Until the first release the version stays on 0.1.x. Plans never bump the version
 - `internal/write` changes planning files; `internal/gitc` commits them with the real git binary. Write commands auto-commit, so run them in a temp clone when only testing.
 - `internal/tui` (Bubble Tea + lipgloss) draws the board and watches the planning dirs with fsnotify. `internal/theme` holds its colors.
 - `internal/config/user.go`: the user setting (chat language, style, tone, repo language, build executor, subagent models), stored in `~/.acta/config.yaml` (or `PM_VOICE_FILE`).
-- `internal/hook`: builds the text the plugin hooks inject. `plugin/hooks/*` are thin shell scripts that call `acta hook ...` and fall back to `default-rules.md` when `acta` is missing. `pre-tool` exits 2 to block a second brainstorm in one session.
+- `internal/hook`: builds the text the plugin hooks inject. `plugin/hooks/*` are thin shell scripts that call `acta hook ...` and fall back to `default-rules.md` when `acta` is missing. `pre-tool` exits 2 to block a bare `go test` in a repo that has `scripts/test`.
 - `internal/doctor`: install checks behind `acta doctor` (`--fix` touches the repo only).
 - `internal/plugincheck`: tests that keep `plugin/` valid: skill frontmatter, size caps, required rules, eval case layout, no absolute user paths. Editing a skill can fail Go tests.
 - `plugin/omp/`: the omp extension (TypeScript). `plugin/omp/FACTS.md` and `plugin/evals/FACTS.md` record measured facts about omp and the eval sandbox.
