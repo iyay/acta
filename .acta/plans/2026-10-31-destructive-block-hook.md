@@ -5,6 +5,7 @@ id: PLN-0206
 created: "2026-10-31 20:24:08"
 hash: uageial
 started: "2026-10-31 20:25:30"
+finished: "2026-10-31 20:33:05"
 ---
 # Destructive command block hook implementation plan
 
@@ -38,22 +39,36 @@ Wave 1: Task 1. Wave 2: Task 2, Task 3.
 **Files:** Modify `internal/cli/hook.go`, `internal/cli/hook_test.go`.
 **Seam:** `cli.Run` with `hook pre-tool` and a Bash tool event on stdin.
 **verify:** Wiring only: one blocked Bash call exits 2 with the reason on stderr; one allowed Bash call exits 0; a non-Bash tool event is never checked; the go test block still works next to it.
-- [ ] Red: the CLI test fails because a `rm -rf x` Bash event in a temp repo exits 0.
-- [ ] Change: Call `hook.DestructiveBlock` next to `hook.GoTestBlock` in the pre-tool path, then run `scripts/test ./internal/cli/ -run TestHook` to green.
-- [ ] Commit: `feat(hook): pre-tool blocks destructive commands`.
+- [x] Red: the CLI test fails because a `rm -rf x` Bash event in a temp repo exits 0.
+- [x] Change: Call `hook.DestructiveBlock` next to `hook.GoTestBlock` in the pre-tool path, then run `scripts/test ./internal/cli/ -run TestHook` to green.
+- [x] Commit: `feat(hook): pre-tool blocks destructive commands`.
 
 ### Task 3: core rule 5 says the user runs it
 
 **Files:** Modify `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`.
 **Seam:** The session-start rules text from `internal/hook` and its copy in `plugin/hooks/default-rules.md`.
 **verify:** Both copies say: never run a destructive command; the hook blocks the listed forms; say in full sentences what you wanted to run and why, and let the user run it themselves. The tidy `git branch -D` exemption is unchanged, and the check that `default-rules.md` matches the generated rules still passes.
-- [ ] Red: a hook test that wants the new rule 5 sentence fails on the old text.
-- [ ] Change: Rewrite rule 5 in `coreRules`, regenerate `default-rules.md` the way `hook_test.go` does (`-update`), then run `scripts/test ./internal/hook/` to green.
-- [ ] Commit: `feat(hook): core rule 5 lets the user run destructive commands`.
+- [x] Red: a hook test that wants the new rule 5 sentence fails on the old text.
+- [x] Change: Rewrite rule 5 in `coreRules`, regenerate `default-rules.md` the way `hook_test.go` does (`-update`), then run `scripts/test ./internal/hook/` to green.
+- [x] Commit: `feat(hook): core rule 5 lets the user run destructive commands`.
 
 ## Build brief
 
 Land order: PLN-0206 and PLN-0207 land on main in either order; they share no file.
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] internal/hook/destructive_test.go: add blocked rows for the env, command, nohup and xargs prefixes, find -execdir, and git --git-dir=/--work-tree= skips, so each reader rule is pinned.
+- [x] internal/cli/hook_test.go: change the apply_patch row to "+echo ok; rm -rf build" so it fails when the shell guard is dropped.
+- [x] Commit: `polish: review notes for PLN-0206`
+
+## Review notes
+
+- Review: deep level (delete path, deep lens on the command reader), round 1 CLEAN, polish review CLEAN. Notes kept, not tracked: rule 5 says the hook blocks them, not the listed forms; quoted or escaped command words (m, "rm") pass; git --git-dir <path> as two words, git push origin +main, find -delete and git push --force-if-includes pass; git add --force and git checkout --force are blocked though they delete nothing; a subshell cd counts for the amend check; GoTestBlock reads the process cwd while DestructiveBlock reads the event cwd; the apply_patch text is still parsed before the shell guard; plugin/hooks/pre-tool header comment names only the go test block.
 
 ## State
 

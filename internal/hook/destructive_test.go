@@ -71,6 +71,12 @@ func TestDestructiveBlock(t *testing.T) {
 		{"find -exec rm -rf", plain, "find . -name x -exec rm -rf {} +", "find . -name x -exec rm -rf {} +"},
 		{"sudo rm -rf", plain, "sudo rm -rf x", "sudo rm -rf x"},
 		{"a newline split command", plain, "echo hi\nrm -rf x", "rm -rf x"},
+		{"env rm -rf", plain, "env -i rm -rf x", "env -i rm -rf x"},
+		{"command git reset --hard", plain, "command git reset --hard", "command git reset --hard"},
+		{"nohup git push -f", plain, "nohup git push -f", "nohup git push -f"},
+		{"xargs rm -rf", plain, "xargs -0 rm -rf", "xargs -0 rm -rf"},
+		{"find -execdir rm -rf", plain, "find . -execdir rm -rf {} +", "find . -execdir rm -rf {} +"},
+		{"git global flags before reset --hard", plain, "git --git-dir=.git --work-tree=. reset --hard", "git --git-dir=.git --work-tree=. reset --hard"},
 
 		{"git branch -D", plain, "git branch -D x", ""},
 		{"rm -r alone", plain, "rm -r dir", ""},
