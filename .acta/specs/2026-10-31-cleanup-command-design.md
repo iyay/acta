@@ -4,6 +4,7 @@ closes: [SCR-0064]
 id: SPC-0184
 created: "2026-10-31 07:24:03"
 hash: b7hlrpb
+started: "2026-10-31 07:36:26"
 ---
 # Cleanup of stale planning items
 
