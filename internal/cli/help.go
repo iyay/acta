@@ -106,9 +106,10 @@ var helpTable = []helpCmd{
 		name:    "cleanup",
 		group:   "Board",
 		summary: "List the planning items whose work may be over: open debt lines, raw ideas, open bugs, stuck plans and specs with no plan. Writes nothing.",
-		usage:   []string{"acta cleanup [--json]"},
+		usage:   []string{"acta cleanup [--json]", "acta cleanup --fix"},
 		flags: []string{
 			"--json  print one JSON object per line",
+			"--fix  drop written statuses the board ignores and close plans whose tasks are all ticked, in one commit",
 		},
 	},
 

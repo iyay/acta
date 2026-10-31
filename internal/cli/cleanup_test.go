@@ -56,3 +56,29 @@ func TestCleanupHelp(t *testing.T) {
 		t.Fatalf("help cleanup:\n%s", out)
 	}
 }
+
+func TestCleanupFixWritesOneCommit(t *testing.T) {
+	dir := cleanupRepo(t)
+	plan := filepath.Join(dir, ".pm", "plans", "2026-09-28-ticked.md")
+	if err := os.WriteFile(plan, []byte("---\nid: PLAN-4\nstatus: draft\n---\n# Ticked\n\n### Task 1: A\n- [x] a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, dir, "add", ".")
+	gitOut(t, dir, "commit", "-q", "-m", "plan")
+	head := gitOut(t, dir, "rev-parse", "HEAD")
+	inDir(t, dir, func() {
+		if out := mustRun(t, "cleanup"); !strings.Contains(out, "plans/2026-09-28-ticked") || !strings.Contains(out, "every task is ticked") {
+			t.Fatalf("cleanup does not show the fix:\n%s", out)
+		}
+		if gitOut(t, dir, "rev-parse", "HEAD") != head {
+			t.Fatal("plain cleanup wrote a commit")
+		}
+		mustRun(t, "cleanup", "--fix")
+		if got := gitOut(t, dir, "rev-list", "--count", head+"..HEAD"); got != "1" {
+			t.Fatalf("--fix made %s commits, want 1", got)
+		}
+		if out := mustRun(t, "cleanup", "--fix"); !strings.Contains(out, "nothing to fix") {
+			t.Fatalf("second --fix:\n%s", out)
+		}
+	})
+}

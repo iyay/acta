@@ -65,9 +65,9 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 **Files:** Create `internal/cleanup/fix.go`, `internal/cleanup/fix_test.go`; modify `internal/cli/cleanup.go`, `internal/cli/cleanup_test.go`, `internal/cli/help.go`.
 **Seam:** `cleanup.Fix(cfg config.Config, b *board.Board) (Outcome, error)` and `cli.Run` for `acta cleanup --fix`.
 **verify:** One commit removes every written status the board flags as `written status X ignored, derived Y` and marks `done` every plan with at least one task, all ticked, that shows neither `done` nor `review`; a plan with no tasks, a plan with a linked worktree, and a plan already done are left alone; with nothing to fix it makes no commit; when one change fails its check nothing is written.
-- [ ] Red: Fix tests fail because `--fix` is not a flag of `acta cleanup`.
-- [ ] Change: Collect every change, check them all, write the files and commit them with `gitc.CommitPaths` in one commit.
-- [ ] Commit: `feat(cleanup): fix statuses that need no judgment`.
+- [x] Red: Fix tests fail because `--fix` is not a flag of `acta cleanup`.
+- [x] Change: Collect every change, check them all, write the files and commit them with `gitc.CommitPaths` in one commit.
+- [x] Commit: `feat(cleanup): fix statuses that need no judgment`.
 
 ### Task 6: acta cleanup apply
 
@@ -87,3 +87,8 @@ Task 4: new package internal/cleanup; Candidates(b, repo, now). Item.Line, Item.
 ### Findings
 
 One TUI run failed once with a clipboard screen dump and passed twice after with no change; the known TUI flake, not this work.
+write.RemoveField leaves '{}' in the frontmatter when it removes the only field; real specs always carry id and hash, so --fix never hits it.
+
+### Open rulings
+
+Waiting on user: let a written dropped on a spec beat the status its plans give it (one case in internal/board/board.go deriveStatus, plus a board test). Without it the apply spec cascade writes dropped but the board still shows the spec in-progress.
