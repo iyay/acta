@@ -531,6 +531,28 @@ func TestBuildCodingContract(t *testing.T) {
 	}
 }
 
+// TestBuildRerunsKnownFlake reads SKILL.md on its own. CheckSkill joins the
+// whole folder, so a revert of SKILL.md alone could stay green. A test that
+// an open bug already marks as flaky gets one lone rerun when a task run
+// fails, so the rule lives in step 3, before the failure goes to acta:debug.
+func TestBuildRerunsKnownFlake(t *testing.T) {
+	skill := readBuildFile(t, "SKILL.md")
+	for _, want := range []string{
+		"`flaky_tests`", "acta list --type bug --json",
+		"runs once more alone first", "a pass runs `acta flake record <name> --plan <plan id>`",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md missing %q", want)
+		}
+	}
+	step3 := strings.Index(skill, "3. Run the task's focused tests")
+	rule := strings.Index(skill, "runs once more alone first")
+	debug := strings.Index(skill, "A code defect goes through `acta:debug`")
+	if step3 < 0 || rule < step3 || debug < rule {
+		t.Errorf("build/SKILL.md must give the flake rerun in step 3, before acta:debug (step 3 %d, rule %d, debug %d)", step3, rule, debug)
+	}
+}
+
 // TestBuildProgressGates reads each build file on its own. A plan once landed
 // with its board stuck at 1/3: a tick failed or found no boxes, and the build
 // went on anyway. So a failed progress write must stop the build, each task is

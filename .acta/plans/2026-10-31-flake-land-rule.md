@@ -6,6 +6,7 @@ id: PLN-0203
 created: "2026-10-31 17:59:57"
 hash: pvlb4at
 after: [PLN-0204]
+started: "2026-10-31 18:36:37"
 ---
 # Flake land rule implementation plan
 
@@ -47,9 +48,9 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 **Files:** Modify `plugin/skills/debug/SKILL.md`, `plugin/skills/build/SKILL.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/skill_build_test.go`.
 **Seam:** The debug and build skill text, read by plugincheck.
 **verify:** In build and debug, a failing test named in an open bug's `flaky_tests` runs again alone once before any debugging, and a pass runs `acta flake record`; a test in no flake bug follows today's rules. Both skills stay within their size caps.
-- [ ] Red: a plugincheck must-hold test for the flake rerun sentence fails because neither skill has it.
-- [ ] Change: Add one sentence to each skill and the must-hold check, then run `scripts/test ./internal/plugincheck/` to green.
-- [ ] Commit: `feat(flake): build and debug rerun a known flake once`.
+- [x] Red: a plugincheck must-hold test for the flake rerun sentence fails because neither skill has it.
+- [x] Change: Add one sentence to each skill and the must-hold check, then run `scripts/test ./internal/plugincheck/` to green.
+- [x] Commit: `feat(flake): build and debug rerun a known flake once`.
 
 ### Task 4: seed the known flakes
 
@@ -63,3 +64,14 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 ## Build brief
 
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
+
+## State
+
+### Findings
+
+Task 3: build/SKILL.md had 2 bytes under its byte cap (12649 of 12651) and debug/SKILL.md 65 (6166 of 6231).
+The flake rerun sentence needs about 210 bytes in each, so budget_test.go caps must rise or other skill text must be cut.
+
+### Open rulings
+
+User ruled A (2026-10-31 18:40, WhatsApp): raise the byte caps in internal/plugincheck/budget_test.go as far as each task needs, for land/SKILL.md, land/baseline.md, build/SKILL.md and debug/SKILL.md, inside each task's own commit.

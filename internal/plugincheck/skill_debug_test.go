@@ -12,7 +12,8 @@ func TestSkillDebug(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name: "debug",
 		// race.md holds the copyable race probe, which made the folder longer.
-		MaxLines: 348,
+		// The known-flake rerun rule in Phase 1 adds two more lines.
+		MaxLines: 350,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -36,6 +37,26 @@ func TestSkillDebug(t *testing.T) {
 			"security find-identity", "env | grep",
 		},
 	})
+}
+
+// TestDebugRerunsKnownFlake reads SKILL.md on its own. A test that an open
+// bug already marks as flaky gets one lone rerun before any root-cause work,
+// so a known flake is logged instead of debugged again. The rule has to sit
+// in Phase 1, before the narrowing starts.
+func TestDebugRerunsKnownFlake(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"`flaky_tests`", "acta list --type bug --json",
+		"runs once more alone first", "a pass runs `acta flake record <name> --plan <plan id>`",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	rule, phase2 := strings.Index(txt, "runs once more alone first"), strings.Index(txt, "## Phase 2")
+	if rule < 0 || phase2 < 0 || rule > phase2 {
+		t.Errorf("debug/SKILL.md must give the flake rerun before Phase 2 (rule %d, Phase 2 %d)", rule, phase2)
+	}
 }
 
 // TestRaceProbeStartsFresh reads race.md on its own. A probe that reuses one
