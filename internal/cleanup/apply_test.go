@@ -48,6 +48,10 @@ func TestApplyWritesTheBatchInOneCommit(t *testing.T) {
 	if got := r.out("status", "--porcelain"); got != "" {
 		t.Fatalf("left changes: %s", got)
 	}
+	// Six named items plus the spec that goes with PLN-0002.
+	if got := r.out("log", "-1", "--format=%s"); !strings.Contains(got, "7 items") {
+		t.Fatalf("subject = %q, want the 7 items written", got)
+	}
 	_, b := r.load()
 	checks := []struct{ id, status, reason string }{
 		{"SCR-0001", "done", "built in 4dcc44c"},
@@ -85,6 +89,8 @@ func TestApplyRefusesTheWholeBatch(t *testing.T) {
 	good := `{"id":"SCR-0001","status":"done","reason":"built in 4dcc44c"}` + "\n"
 	cases := []struct{ name, bad string }{
 		{"malformed json", `{"id":"BUG-0001",`},
+		{"two objects on one line", `{"id":"BUG-0001","status":"wontfix","reason":"x"} {"id":"PLN-0002","status":"dropped","reason":"y"}`},
+		{"stray brace after the object", `{"id":"BUG-0001","status":"wontfix","reason":"x"}}`},
 		{"unknown field", `{"id":"BUG-0001","status":"wontfix","reason":"x","owner":"rian"}`},
 		{"unknown id", `{"id":"BUG-0099","status":"wontfix","reason":"x"}`},
 		{"status not for the kind", `{"id":"BUG-0001","status":"dropped","reason":"x"}`},
@@ -129,5 +135,25 @@ func TestApplyRefusesABuildingPlan(t *testing.T) {
 	}
 	if got := r.out("status", "--porcelain"); got != "" {
 		t.Fatalf("refused batch changed files: %s", got)
+	}
+}
+
+// A spec in a legacy folder is read-only to acta, so dropping its plan leaves
+// that spec as it is.
+func TestApplyLeavesALegacySpecAlone(t *testing.T) {
+	t.Parallel()
+	spec := "docs/superpowers/specs/2026-01-07-old-design.md"
+	r := newRepo(t, 0, map[string]string{
+		spec:                              "# Old\n",
+		".acta/plans/2026-01-07-gamma.md": "---\nid: PLN-0005\nhash: eeeeeee\n---\n# Gamma\n\n**Spec:** `docs/superpowers/specs/2026-01-07-old-design.md`\n\n### Task 1: A\n- [ ] a\n",
+	})
+	if _, b := r.load(); b.Get("PLN-0005").SpecID == "" {
+		t.Fatal("the plan does not point at the legacy spec, so this test proves nothing")
+	}
+	if err := r.apply(`{"id":"PLN-0005","status":"dropped","reason":"gone"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.read(spec); got != "# Old\n" {
+		t.Fatalf("legacy spec changed:\n%s", got)
 	}
 }

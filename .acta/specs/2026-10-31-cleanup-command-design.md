@@ -29,8 +29,10 @@ It covers debt lines, scratch items, bugs, plans and specs. It never deletes a
 file. Cleaning means a status change with a short reason, and git keeps the
 history. It runs only when the user asks. Nothing starts it at land.
 
-SCR-0064 (plans that stay open after every task is ticked) is closed by the
-`--fix` rule below.
+SCR-0064 (plans that stay open after every task is ticked) is already
+handled by the board: a plan with a written `approved` or `in-progress`
+takes its status from its boxes, so every box ticked reads `done`. The
+`--fix` rule below covers the other written words.
 
 ## The acta cleanup command
 
@@ -71,7 +73,7 @@ candidate).
   these as `written status X ignored, derived Y`; five specs had one on
   2026-10-31.
 - It marks a plan `done` when it has at least one task, every task is ticked,
-  and the plan does not show `done` or `review`.
+  and the plan does not show `done`, `review` or `dropped`.
 
 `acta cleanup apply` reads the approved decisions on stdin, one JSON object
 per line, and writes them in one commit. Fields:
@@ -108,7 +110,8 @@ failing line, and exit non-zero, so a batch never half lands.
 - `acta set <debt line> status done|wontfix --reason "<text>"` closes one
   debt line, for example `acta set DBT-0145.01 status wontfix --reason stale`.
   The reason is required. `done` writes `[x]` and `wontfix` writes `[-]`. The
-  reason goes at the end of the line in parentheses. When the line already
+  reason goes at the end of the line as ` (<status>: <reason>)`, for example
+  ` (wontfix: stale)`. When the line already
   ends in a reason this command wrote, the new reason replaces it, so a second
   run never stacks two. Today `acta set` refuses debt lines, and only
   `acta debt drop-low` or a hand edit can close one. Old lines such as

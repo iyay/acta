@@ -38,7 +38,7 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 
 **Files:** Create `internal/write/debtline.go`, `internal/write/debtline_test.go`; modify `internal/write/ops.go`, `internal/cli/cli.go`, `internal/cli/help.go`, `internal/cli/cli_test.go`.
 **Seam:** `write.CloseDebtLine(cfg, b, id, status, reason string) (Outcome, error)` and `cli.Run` for `acta set <DBT-n.mm> status done|wontfix --reason "<text>"`.
-**verify:** `done` writes `[x]` and `wontfix` writes `[-]` with ` (<reason>)` at the end of the line; a second run replaces the suffix this command wrote and never stacks two; a missing reason, another status, an unknown line id, or a reason with a newline or parentheses-only text is refused with no file change; old lines such as `- [x] ... (stale)` that were not written by this command keep their text; every other field on a debt line is still refused as today.
+**verify:** `done` writes `[x]` and `wontfix` writes `[-]` with ` (<status>: <reason>)` at the end of the line; a second run replaces the suffix this command wrote and never stacks two; a missing reason, another status, an unknown line id, or a reason with a newline or parentheses-only text is refused with no file change; old lines such as `- [x] ... (stale)` that were not written by this command keep their text; every other field on a debt line is still refused as today.
 - [x] Red: Write and CLI tests for both statuses, the replace-not-stack rerun and each refused input fail because `SetValue` refuses every debt line.
 - [x] Change: Add `CloseDebtLine` that rewrites one box and its reason suffix and commits like `acta set`, route debt-line `status` to it, and parse `--reason` in `cmdSet`.
 - [x] Commit: `feat(write): close a debt line with a reason`.
@@ -85,22 +85,36 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 
 **verify:** No cleanup path reports success while it skipped or refused part of the user's input: every apply line holds exactly one JSON object, plain acta cleanup only reads and exits 0, a flag pair that cannot both be honoured is refused, and the cleanup tests run under testguard
 
-- [ ] B1: internal/cleanup has no test file calling testguard.Watch(), so plugincheck TestEveryTestPackageWatches fails; add internal/cleanup/main_test.go like internal/board/main_test.go.
-- [ ] B2: plain acta cleanup exits 1 when a --fix target file is dirty, because the read-only preview calls cleanup.Plan and maps its error to exitBadInput; the listing must stay read-only and exit 0, naming the dirty file instead of the fix.
-- [ ] B3: ParseDecisions decodes only the first JSON value of a line, so a line with two objects applies the first and silently drops the second with exit 0; trailing content on a line must be an error that names the line, and the batch writes nothing.
-- [ ] [fix] Spec and plan text say the debt suffix is " (<reason>)"; the code writes " (<status>: <reason>)". Also say SCR-0064 is already handled by the board, which derives done from the boxes for a written approved or in-progress plan.
-- [ ] [fix] acta cleanup --json --fix ignores --json and prints text; refuse the pair as bad input.
-- [ ] [fix] The spec cascade in withSpecs skips the Legacy and Worktree guard; leave a legacy or worktree-only spec alone instead of writing it.
-- [ ] [fix] A brainstorming scratch with no commit shows "quiet 0 days"; fall back to its created date like a plan does.
-- [ ] [fix] The apply commit subject counts the decisions before the cascade; count the items written.
-- [ ] [fix] No board-package test reads the reason frontmatter field into Item.Reason.
-- [ ] Commit with the trailer `Task: PLN-b24s9l3#7`
+- [x] B1: internal/cleanup has no test file calling testguard.Watch(), so plugincheck TestEveryTestPackageWatches fails; add internal/cleanup/main_test.go like internal/board/main_test.go.
+- [x] B2: plain acta cleanup exits 1 when a --fix target file is dirty, because the read-only preview calls cleanup.Plan and maps its error to exitBadInput; the listing must stay read-only and exit 0, naming the dirty file instead of the fix.
+- [x] B3: ParseDecisions decodes only the first JSON value of a line, so a line with two objects applies the first and silently drops the second with exit 0; trailing content on a line must be an error that names the line, and the batch writes nothing.
+- [x] [fix] Spec and plan text say the debt suffix is " (<reason>)"; the code writes " (<status>: <reason>)". Also say SCR-0064 is already handled by the board, which derives done from the boxes for a written approved or in-progress plan.
+- [x] [fix] acta cleanup --json --fix ignores --json and prints text; refuse the pair as bad input.
+- [x] [fix] The spec cascade in withSpecs skips the Legacy and Worktree guard; leave a legacy or worktree-only spec alone instead of writing it.
+- [x] [fix] A brainstorming scratch with no commit shows "quiet 0 days"; fall back to its created date like a plan does.
+- [x] [fix] The apply commit subject counts the decisions before the cascade; count the items written.
+- [x] [fix] No board-package test reads the reason frontmatter field into Item.Reason.
+- [x] Commit with the trailer `Task: PLN-b24s9l3#7`
+
+## Polish
+
+### Task 8: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] Spec --fix rule names only done or review as the words that stop the ticked rule; the code also skips dropped, so the spec sentence should name dropped too.
+- [x] Commit: `polish: review notes for PLN-0201`
+
+## Review notes
+
+- Round 1 deep (Spec, Standards, fact-check): 3 BLOCKERs, all fixed in task 7. Round 2 over the fix range: CLEAN on both axes. Polish: one spec line, light tier, CLEAN. Notes kept, not acted on: reason rules differ between acta set and apply; closes map repeats board status lists; --fix will strip five stale approved/draft words on this repo; debt line number can shift between load and write; render and Plan stop at the first error; dead Worktree skip in Candidates; RemoveField leaves {}; TUI popup sets scratch done with no reason; fixed_in checked by shape only; a repo with no HEAD gives a raw git error; refusals print usage with no reason; {} on an apply line gives a vague error.
 
 ## State
 
 ### Next
 
-Task 4: new package internal/cleanup; Candidates(b, repo, now). Item.Line, Item.Created/StartedOn strings; gitc has CommitPaths(In). commits.Find(repo, refs) keys hash#tasknum.
+Round 2 review of fix range c6a52d7..HEAD is running (Spec and Standards). CLEAN: polish none planned, debt NOTEs to acta debt new, review-notes line, then acta:land.
+Round 1 debt NOTEs to file: (medium) apply/fix write with bare os.WriteFile, no lock or tmp+rename, and the debt-file lock is bypassed; (medium) no rollback when a later write fails; (medium) closed debt line has no machine-readable reason.
 
 ### Findings
 

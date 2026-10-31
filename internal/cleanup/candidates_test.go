@@ -172,6 +172,28 @@ func TestCandidatesPlanClockFallsBack(t *testing.T) {
 	}
 }
 
+// A brainstorm no commit has touched yet counts from created, so one opened
+// today is not called quiet.
+func TestCandidatesBrainstormClockFallsBack(t *testing.T) {
+	t.Parallel()
+
+	r := newRepo(t, 0, map[string]string{"README.md": "x\n"})
+	idea := func(created string) string {
+		return "---\nstatus: brainstorming\ncreated: \"" + created + "\"\n---\n# Idea\n"
+	}
+	r.write(map[string]string{
+		".acta/scratch/2026-01-01-fresh.md": idea(dateAgo(0)),
+		".acta/scratch/2026-01-02-old.md":   idea(dateAgo(20 * day)),
+	})
+	got := r.candidates()
+	if c, ok := got["scratch/2026-01-01-fresh"]; ok {
+		t.Errorf("a brainstorm opened today is not quiet: %+v", c)
+	}
+	if c := got["scratch/2026-01-02-old"]; c.Why != "brainstorm with no spec, quiet 20 days" {
+		t.Errorf("old brainstorm: got %+v", c)
+	}
+}
+
 // Work that lives in another worktree is still going on, so cleanup never
 // asks about it: not an item only on that branch, not a plan it builds.
 func TestCandidatesSkipsWorktreeWork(t *testing.T) {

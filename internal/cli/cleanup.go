@@ -18,7 +18,8 @@ func cmdCleanup(args []string, stdout, stderr io.Writer) int {
 	asJSON := fs.Bool("json", false, "print one JSON object per line")
 	fix := fs.Bool("fix", false, "make the changes that need no judgment, in one commit")
 	pos, err := parseMixed(fs, args)
-	if err != nil || len(pos) > 0 {
+	// --fix prints what it wrote, not the list, so --json cannot go with it.
+	if err != nil || len(pos) > 0 || (*asJSON && *fix) {
 		fmt.Fprintln(stderr, usageLine("cleanup"))
 		return exitBadInput
 	}
@@ -52,10 +53,12 @@ func cmdCleanup(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "  %4dd  %s  %s  (%s)\n", c.AgeDays, c.ID, c.Title, c.Why)
 	}
+	// The listing only reads, so a file that blocks --fix is news here, not
+	// a failure.
 	changes, err := cleanup.Plan(cfg, b)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitBadInput
+		fmt.Fprintf(stdout, "fix (acta cleanup --fix)\n  cannot run yet: %v\n", err)
+		return exitOK
 	}
 	if len(changes) > 0 {
 		fmt.Fprintln(stdout, "fix (acta cleanup --fix)")

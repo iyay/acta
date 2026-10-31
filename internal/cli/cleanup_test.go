@@ -105,3 +105,45 @@ func TestCleanupApplyReadsStdin(t *testing.T) {
 		t.Fatalf("idea file = %q", body)
 	}
 }
+
+// Plain cleanup only reads, so a fix target with uncommitted changes must not
+// turn the listing into a failure. It says which file blocks --fix instead.
+func TestCleanupListsWhenAFixTargetIsDirty(t *testing.T) {
+	dir := cleanupRepo(t)
+	plan := filepath.Join(dir, ".pm", "plans", "2026-09-28-ticked.md")
+	body := "---\nid: PLAN-4\nstatus: draft\n---\n# Ticked\n\n### Task 1: A\n- [x] a\n"
+	if err := os.WriteFile(plan, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitOut(t, dir, "add", ".")
+	gitOut(t, dir, "commit", "-q", "-m", "plan")
+	if err := os.WriteFile(plan, []byte(body+"\nnote\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	inDir(t, dir, func() {
+		var stdout, stderr strings.Builder
+		code := Run([]string{"cleanup"}, strings.NewReader(""), false, &stdout, &stderr)
+		if code != exitOK || !strings.Contains(stdout.String(), "raw idea with no spec") {
+			t.Fatalf("exit %d stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+		if !strings.Contains(stdout.String()+stderr.String(), "2026-09-28-ticked.md has changes that are not committed") {
+			t.Fatalf("output does not name the dirty file: stdout %q stderr %q", stdout.String(), stderr.String())
+		}
+	})
+}
+
+// --json is for the listing; --fix writes and prints what it did. Asking for
+// both cannot be honoured, so it is refused rather than half ignored.
+func TestCleanupRefusesJSONWithFix(t *testing.T) {
+	dir := cleanupRepo(t)
+	head := gitOut(t, dir, "rev-parse", "HEAD")
+	inDir(t, dir, func() {
+		var stdout, stderr strings.Builder
+		if code := Run([]string{"cleanup", "--json", "--fix"}, strings.NewReader(""), false, &stdout, &stderr); code != exitBadInput {
+			t.Fatalf("exit %d stdout %q stderr %q", code, stdout.String(), stderr.String())
+		}
+	})
+	if got := gitOut(t, dir, "rev-parse", "HEAD"); got != head {
+		t.Fatal("refused call made a commit")
+	}
+}

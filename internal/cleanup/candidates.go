@@ -82,8 +82,14 @@ func rule(cfg config.Config, it *board.Item, building, hasPlan map[string]bool, 
 		return "raw idea with no spec", born, nil
 	case it.Kind == board.KindScratch && it.Status == "brainstorming":
 		last, err := lastCommit(cfg.RepoRoot, it.Path, "")
-		if err != nil || !quiet(last, now) {
+		if err != nil {
 			return "", time.Time{}, err
+		}
+		if last.IsZero() {
+			last = born
+		}
+		if !quiet(last, now) {
+			return "", time.Time{}, nil
 		}
 		return fmt.Sprintf("brainstorm with no spec, quiet %d days", days(last, now)), last, nil
 	case it.Kind == board.KindBug && it.Status == "open":

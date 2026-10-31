@@ -58,6 +58,12 @@ func ParseDecisions(r io.Reader) ([]Decision, error) {
 			errs = append(errs, fmt.Errorf("line %d: %v", n, err))
 			continue
 		}
+		// Decode stops after the first object. Anything after it would be
+		// dropped without a word, so it is an error.
+		if int(dec.InputOffset()) != len(text) {
+			errs = append(errs, fmt.Errorf("line %d: text after the JSON object", n))
+			continue
+		}
 		d.line = n
 		out = append(out, d)
 	}
@@ -94,7 +100,8 @@ func Apply(cfg config.Config, b *board.Board, ds []Decision) (write.Outcome, err
 	if err := errors.Join(errs...); err != nil {
 		return write.Outcome{}, err
 	}
-	files, err := render(cfg, b, withSpecs(b, ds))
+	all := withSpecs(b, ds)
+	files, err := render(cfg, b, all)
 	if err != nil {
 		return write.Outcome{}, err
 	}
@@ -106,7 +113,7 @@ func Apply(cfg config.Config, b *board.Board, ds []Decision) (write.Outcome, err
 		paths = append(paths, path)
 	}
 	slices.Sort(paths)
-	return commit(cfg, paths, fmt.Sprintf("cleanup apply, %d items", len(ds)), write.Outcome{Path: cfg.Root}), nil
+	return commit(cfg, paths, fmt.Sprintf("cleanup apply, %d items", len(all)), write.Outcome{Path: cfg.Root}), nil
 }
 
 // check says why one decision cannot be written, or nil.
@@ -148,6 +155,11 @@ func withSpecs(b *board.Board, ds []Decision) []Decision {
 		plan := b.Get(d.ID)
 		spec := b.Get(plan.SpecID)
 		if plan.Kind != board.KindPlan || spec == nil || spec.Kind != board.KindStory || named[spec.ID] || board.Closed(spec.Status) {
+			continue
+		}
+		// A legacy or worktree spec is not ours to write from here, the same
+		// as check refuses it when it is named.
+		if spec.Legacy || spec.Worktree != "" {
 			continue
 		}
 		if otherOpenPlan(b, spec.ID, dropped) {
