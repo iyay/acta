@@ -7,6 +7,7 @@ created: "2026-10-31 17:59:57"
 hash: pvlb4at
 after: [PLN-0204]
 started: "2026-10-31 18:36:37"
+finished: "2026-10-31 18:52:54"
 ---
 # Flake land rule implementation plan
 
@@ -39,9 +40,9 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 **Files:** Modify `plugin/skills/land/SKILL.md`; create `plugin/evals/land-eval-flake/case.yaml`, `plugin/evals/land-eval-flake/prompt.md`, `plugin/evals/land-eval-flake/scaffold.sh`, `plugin/evals/land-eval-flake/graders/eval-flake.md`; modify `internal/plugincheck/evals_test.go`.
 **Seam:** The land skill's eval gate text, and a greenfield eval case whose fake `scripts/eval` fails one case once.
 **verify:** A red eval case at the gate reruns alone with `--case <name>` up to 2 times; a pass runs `acta flake record eval:<case> --plan <plan id>` and the land goes on; red 3 of 3 stops the land as today. No path reruns the whole eval set for one red case.
-- [ ] Red: the evals layout test fails because the new case is registered but its files do not exist.
-- [ ] Change: Rewrite the eval gate sentence in land step 1, add the case files, run `scripts/test ./internal/plugincheck/` to green, then the case once with the branch binary on PATH.
-- [ ] Commit: `feat(flake): land reruns a red eval case alone`.
+- [x] Red: the evals layout test fails because the new case is registered but its files do not exist.
+- [x] Change: Rewrite the eval gate sentence in land step 1, add the case files, run `scripts/test ./internal/plugincheck/` to green, then the case once with the branch binary on PATH.
+- [x] Commit: `feat(flake): land reruns a red eval case alone`.
 
 ### Task 3: build and debug rerun a known flake once
 
@@ -57,20 +58,34 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 **Files:** Create bug files under `.acta/bugs/` through `acta flake record` and `acta bug new`; modify `.acta/scratch/2026-10-31-flake-tracker.md`.
 **Seam:** `acta list` and `acta show` on the new bugs.
 **verify:** Each known flake has one open bug with its `flaky_tests` name: `internal/tui.TestClickOnTheBarTakesTheHighlightOff`, `internal/tui.TestWheelNotchesBelongToTheScreenTheyWereGatheredOn`, `eval:task-trailer`, `eval:brainstorm-mixed-context`, `eval:brainstorm-resume-topic`, `eval:debug-race`. The real red `answers-appended` (red on main) has its own non-flake bug that also names DBT-0139.01 for `build-close-no-suite`. No other bug changes.
-- [ ] Red: `acta list --json` shows no bug whose `flaky_tests` names these tests.
-- [ ] Change: Run `acta flake record` for each name and `acta bug new` for the real red, from the worktree, then check `acta list --json`.
-- [ ] Commit: the `acta` commands commit each bug file; no extra commit.
+- [x] Red: `acta list --json` shows no bug whose `flaky_tests` names these tests.
+- [x] Change: Run `acta flake record` for each name and `acta bug new` for the real red, from the worktree, then check `acta list --json`.
+- [x] Commit: the `acta` commands commit each bug file; no extra commit.
 
 ## Build brief
 
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
 
+## Fix round 1
+
+### Task 5: Flake records land in a committed checkout, and a tracked flake can still be fixed
+
+**verify:** Every FLAKY record a land makes ends up committed on the parent: step 1 records in the plan worktree before the merge, a step-6 rerun records in the main checkout after the merge, a tidy-tip rerun records in the plan worktree and then runs acta tidy again, and a record that exits non-zero stops the land; the build and debug rerun never stops work on a test that the current bug or plan task is fixing.
+
+- [ ] plugin/skills/land/baseline.md step 4: a tidy-tip rerun runs in a detached temp worktree, where acta flake record cannot commit (exit 2, untracked bug file, report names a BUG main never gets). Name the checkout per run: plan worktree before the merge for step 1; main checkout after the merge for a step-6 rerun; plan worktree then acta tidy again for a tidy-tip rerun. A record that exits non-zero stops the land.
+- [ ] plugin/skills/debug/SKILL.md and plugin/skills/build/SKILL.md: the known-flake rerun says a pass "needs no debugging", so asking to fix a tracked flake (for example BUG-0058) records one more flake and stops. Limit the rule to failures met while doing other work; a test the current bug or task is fixing is not covered.
+- [ ] plugin/skills/debug/SKILL.md: pass --plan only when there is a plan.
+- [ ] plugin/skills/land/baseline.md: capture the tested commit and tree right after the run, before step 4 commits a bug file, so the record names what was tested.
+- [ ] plugin/evals/land-records-flake/graders/records-flake.md: do not eat the newline after the record line, so a merge line right after it still matches; accept git merge --no-ff -m "<msg>" <branch> like land-full-progress does.
+- [ ] plugin/evals/land-eval-flake/graders/eval-flake.md: refuse 3 or more lone reruns of the case before the pass, and a lone rerun of a different case.
+- [ ] internal/plugincheck: guard the land SKILL.md step-1 FLAKY sentence, the report clause "each flake with its bug", "never rerun the whole set" and "Red all 3 times stops the land", and the new checkout rule.
+- [ ] Commit with the trailer `Task: PLN-pvlb4at#5`
+
 ## State
 
 ### Next
 
-Task 2 edits land SKILL.md step 1: the eval gate sentence starts at 'Eval gate: when the repo has scripts/eval' and ends at 'a red eval stops the land. Else skip it.', right after the new FLAKY sentence.
-Land caps in internal/plugincheck/budget_test.go now sit at the exact sizes (SKILL.md 8980, baseline.md 2747); Task 2 raises SKILL.md again for its own text.
+Task 4 seeds the flake bugs next: the two TUI tests and the task-trailer, brainstorm and debug-race evals, plus the SCR-0079 reds bug.
 
 ### Findings
 
