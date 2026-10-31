@@ -83,4 +83,12 @@ Design section 3 (land rule and evals) approved with a thumbs up:
 - Plan 2 evals: a red case at the gate reruns alone up to 2 times; a pass runs `acta flake record eval:<case>`.
 - Exit 1 stays as today: fix the cause. A repo with no FLAKY: lines sees no change.
 
+### 2026-10-31
+
+Spec written and committed: .acta/specs/2026-10-31-flake-tracker-design.md. Waiting for the user's review.
+
+### 2026-10-31
+
+User replied "gas spec" (2026-10-31 17:57): spec SPC-0185 approved, no cold read. Next: acta:slice.
+
 ## Open questions
