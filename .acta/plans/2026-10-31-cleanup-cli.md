@@ -38,18 +38,18 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 **Files:** Create `internal/write/debtline.go`, `internal/write/debtline_test.go`; modify `internal/write/ops.go`, `internal/cli/cli.go`, `internal/cli/help.go`, `internal/cli/cli_test.go`.
 **Seam:** `write.CloseDebtLine(cfg, b, id, status, reason string) (Outcome, error)` and `cli.Run` for `acta set <DBT-n.mm> status done|wontfix --reason "<text>"`.
 **verify:** `done` writes `[x]` and `wontfix` writes `[-]` with ` (<reason>)` at the end of the line; a second run replaces the suffix this command wrote and never stacks two; a missing reason, another status, an unknown line id, or a reason with a newline or parentheses-only text is refused with no file change; old lines such as `- [x] ... (stale)` that were not written by this command keep their text; every other field on a debt line is still refused as today.
-- [ ] Red: Write and CLI tests for both statuses, the replace-not-stack rerun and each refused input fail because `SetValue` refuses every debt line.
-- [ ] Change: Add `CloseDebtLine` that rewrites one box and its reason suffix and commits like `acta set`, route debt-line `status` to it, and parse `--reason` in `cmdSet`.
-- [ ] Commit: `feat(write): close a debt line with a reason`.
+- [x] Red: Write and CLI tests for both statuses, the replace-not-stack rerun and each refused input fail because `SetValue` refuses every debt line.
+- [x] Change: Add `CloseDebtLine` that rewrites one box and its reason suffix and commits like `acta set`, route debt-line `status` to it, and parse `--reason` in `cmdSet`.
+- [x] Commit: `feat(write): close a debt line with a reason`.
 
 ### Task 3: TUI Done tab and reason in the detail pane
 
 **Files:** Modify `internal/tui/sidebar.go`, `internal/tui/detail.go`, `internal/tui/sidebar_test.go`, `internal/tui/detail_test.go`.
 **Seam:** `topTabs` done tabs and the detail pane rows built in `detail.go`.
 **verify:** The Scratchpad shows Specced, Done and Dropped tabs, and each scratch item lands in exactly one of them by status; the detail pane shows a REASON row only when the item has a reason, for every kind that can carry one.
-- [ ] Red: Sidebar and detail tests fail because the Scratchpad has no Done tab and the detail pane has no REASON row.
-- [ ] Change: Add `{"Done", "done"}` to the Scratchpad done tabs and a REASON row next to FIXED in the detail pane.
-- [ ] Commit: `feat(tui): Done tab and reason row`.
+- [x] Red: Sidebar and detail tests fail because the Scratchpad has no Done tab and the detail pane has no REASON row.
+- [x] Change: Add `{"Done", "done"}` to the Scratchpad done tabs and a REASON row next to FIXED in the detail pane.
+- [x] Commit: `feat(tui): Done tab and reason row`.
 
 ### Task 4: acta cleanup lists candidates
 
@@ -82,4 +82,8 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 
 ### Next
 
-Task 2: CloseDebtLine in internal/write/debtline.go; debt item ids look like debt/<stem>#item-N and DBT-n.mm
+Task 4: new package internal/cleanup; Candidates(b, repo, now). Item.Line, Item.Created/StartedOn strings; gitc has CommitPaths(In). commits.Find(repo, refs) keys hash#tasknum.
+
+### Findings
+
+One TUI run failed once with a clipboard screen dump and passed twice after with no change; the known TUI flake, not this work.

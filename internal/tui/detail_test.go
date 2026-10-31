@@ -1325,3 +1325,25 @@ func TestDetailStatusShowsWaiting(t *testing.T) {
 		t.Errorf("STATUS = %q once PLAN-2 is done, want approved", got)
 	}
 }
+
+// Every kind that cleanup can close shows why, and an item with no reason
+// keeps the row out.
+func TestDetailShowsTheReason(t *testing.T) {
+	t.Parallel()
+
+	files := map[string]string{
+		".acta/scratch/2026-09-19-idea.md": "---\nid: SCR-1\nstatus: done\nreason: built in abc1234\n---\n# Idea\n",
+		".acta/specs/2026-09-20-a.md":      "---\nid: SPEC-1\nreason: built in abc1234\n---\n# Spec A\n",
+		".acta/plans/2026-09-21-a.md":      "---\nid: PLAN-1\nstatus: dropped\nreason: built in abc1234\n---\n# Plan A\n\n### Task 1: First\n- [ ] a\n",
+		".acta/bugs/2026-09-23-b.md":       "---\nid: BUG-1\nstatus: wontfix\nreason: built in abc1234\n---\n# Bug B\n",
+	}
+	cfg := treeCfg(t, files)
+	for _, id := range []string{"scratch/2026-09-19-idea", "SPEC-1", "PLAN-1", "BUG-1"} {
+		if got := valueOf(t, detailLines(t, cfg, id), "REASON"); got != "built in abc1234" {
+			t.Errorf("%s REASON = %q", id, got)
+		}
+	}
+	if got := labelsOf(detailOf(t, "BUG-1")); slices.Contains(got, "REASON") {
+		t.Errorf("a bug with no reason should leave the row out, got %v", got)
+	}
+}

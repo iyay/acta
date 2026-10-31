@@ -33,7 +33,7 @@ func TestTopTabsTable(t *testing.T) {
 		done string
 		tree bool
 	}{
-		{"Scratchpad", board.KindScratch, "Specced Dropped", false},
+		{"Scratchpad", board.KindScratch, "Specced Done Dropped", false},
 		{"Bugs", board.KindBug, "Fixed Wontfix", false},
 		{"Debt", board.KindDebtItem, "Done Wontfix", false},
 		{"Specs", board.KindStory, "Done Dropped", false},

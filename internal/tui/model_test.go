@@ -296,7 +296,7 @@ func TestDebtFileDoesNotChangeTheOtherTabs(t *testing.T) {
 }
 
 // TestDonePaneHoldsTheFinishedItemsOfTheOpenTab walks every tab of the bar
-// and both of its Done sub-tabs, so the Done pane of one tab can never show
+// and each of its Done sub-tabs, so the Done pane of one tab can never show
 // the finished items of another.
 func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 	t.Parallel()
@@ -309,7 +309,8 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 		{tabSpecs, 0, "specs/2026-09-16-finished"},
 		{tabSpecs, 1, "specs/2026-09-19-dropped"},
 		{tabScratchpad, 0, "scratch/2026-09-28-idea-used"},
-		{tabScratchpad, 1, "scratch/2026-09-28-idea-dropped"},
+		{tabScratchpad, 1, ""},
+		{tabScratchpad, 2, "scratch/2026-09-28-idea-dropped"},
 		{tabPlans, 0, "plans/2026-09-16-finished plans/2026-09-25-crash-fix plans/2026-09-26-dash-tasks plans/2026-09-27-orphan plans/2026-09-28-dotted-tasks"},
 		{tabBugs, 0, "bugs/2026-09-24-crash"},
 		{tabBugs, 1, ""},
@@ -320,7 +321,7 @@ func TestDonePaneHoldsTheFinishedItemsOfTheOpenTab(t *testing.T) {
 		{tabDebt, 1, ""},
 	} {
 		m := press(newModel(t), tabKey(tc.tab), "tab")
-		if tc.done > 0 {
+		for range tc.done {
 			m = press(m, "]")
 		}
 		if got := strings.Join(doneRowIDs(m), " "); got != tc.rows {
