@@ -41,13 +41,15 @@ if [ -n "$all" ] || [ -z "$pkg" ]; then
 	whole=1
 fi
 if [ -n "$full" ]; then
+	# A full run goes through flakerun. It runs each failed test again on its
+	# own, so one flaky test does not stop a land, and it names that test.
 	if [ -z "$whole" ]; then
-		exec go run ./cmd/acta run-one -- go test "$@" $pkgs
+		exec go run ./cmd/acta run-one -- go run ./cmd/flakerun "$@" $pkgs
 	fi
 	# The notui build leaves the TUI out, so internal/cli compiles another
 	# way there. A whole run tests that build too, so a land catches a break.
-	go run ./cmd/acta run-one -- go test "$@" $pkgs
-	exec go run ./cmd/acta run-one -- go test -tags notui "$@" ./internal/cli/
+	go run ./cmd/acta run-one -- go run ./cmd/flakerun "$@" $pkgs
+	exec go run ./cmd/acta run-one -- go run ./cmd/flakerun -tags notui "$@" ./internal/cli/
 fi
 if [ -n "$whole" ]; then
 	exec go run ./cmd/acta run-one -- go test -short "$@" $pkgs
