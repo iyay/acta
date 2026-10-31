@@ -5,6 +5,7 @@ id: PLN-0201
 created: "2026-10-31 07:34:53"
 hash: b24s9l3
 started: "2026-10-31 07:36:26"
+finished: "2026-10-31 07:54:39"
 ---
 # Cleanup CLI and data implementation plan
 
@@ -74,9 +75,26 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 **Files:** Create `internal/cleanup/apply.go`, `internal/cleanup/apply_test.go`; modify `internal/cli/cleanup.go`, `internal/cli/cleanup_test.go`, `internal/cli/help.go`.
 **Seam:** `cleanup.Apply(cfg config.Config, b *board.Board, decisions []Decision) (Outcome, error)` with `Decision{ID, Status, Reason, FixedIn}` read from JSON lines, and `cli.Run` for `acta cleanup apply` with stdin.
 **verify:** A batch of decisions across debt lines, scratch, bugs, plans and specs lands as one commit with each status and reason written; `fixed` needs `fixed_in` and any other status refuses it; dropping a plan also drops its spec in the same commit with reason `plan PLN-<n> dropped: <plan reason>` unless another plan of that spec is not `done` or `dropped`. Each of these refuses the whole batch with no file change and names the failing line: malformed JSON, unknown id, a status not allowed for the kind, a missing or multi-line reason, a bad sha, a plan with a linked worktree.
-- [ ] Red: Apply tests fail because `apply` is not a subcommand of `acta cleanup`.
-- [ ] Change: Parse JSON lines into decisions, check every decision, write each item through the existing frontmatter and debt-line helpers without committing, add the spec cascade, then commit every touched path with `gitc.CommitPaths`.
-- [ ] Commit: `feat(cleanup): apply approved decisions in one commit`.
+- [x] Red: Apply tests fail because `apply` is not a subcommand of `acta cleanup`.
+- [x] Change: Parse JSON lines into decisions, check every decision, write each item through the existing frontmatter and debt-line helpers without committing, add the spec cascade, then commit every touched path with `gitc.CommitPaths`.
+- [x] Commit: `feat(cleanup): apply approved decisions in one commit`.
+
+## Fix round 1
+
+### Task 7: Round 1 review fixes
+
+**verify:** No cleanup path reports success while it skipped or refused part of the user's input: every apply line holds exactly one JSON object, plain acta cleanup only reads and exits 0, a flag pair that cannot both be honoured is refused, and the cleanup tests run under testguard
+
+- [ ] B1: internal/cleanup has no test file calling testguard.Watch(), so plugincheck TestEveryTestPackageWatches fails; add internal/cleanup/main_test.go like internal/board/main_test.go.
+- [ ] B2: plain acta cleanup exits 1 when a --fix target file is dirty, because the read-only preview calls cleanup.Plan and maps its error to exitBadInput; the listing must stay read-only and exit 0, naming the dirty file instead of the fix.
+- [ ] B3: ParseDecisions decodes only the first JSON value of a line, so a line with two objects applies the first and silently drops the second with exit 0; trailing content on a line must be an error that names the line, and the batch writes nothing.
+- [ ] [fix] Spec and plan text say the debt suffix is " (<reason>)"; the code writes " (<status>: <reason>)". Also say SCR-0064 is already handled by the board, which derives done from the boxes for a written approved or in-progress plan.
+- [ ] [fix] acta cleanup --json --fix ignores --json and prints text; refuse the pair as bad input.
+- [ ] [fix] The spec cascade in withSpecs skips the Legacy and Worktree guard; leave a legacy or worktree-only spec alone instead of writing it.
+- [ ] [fix] A brainstorming scratch with no commit shows "quiet 0 days"; fall back to its created date like a plan does.
+- [ ] [fix] The apply commit subject counts the decisions before the cascade; count the items written.
+- [ ] [fix] No board-package test reads the reason frontmatter field into Item.Reason.
+- [ ] Commit with the trailer `Task: PLN-b24s9l3#7`
 
 ## State
 
@@ -91,4 +109,4 @@ write.RemoveField leaves '{}' in the frontmatter when it removes the only field;
 
 ### Open rulings
 
-Waiting on user: let a written dropped on a spec beat the status its plans give it (one case in internal/board/board.go deriveStatus, plus a board test). Without it the apply spec cascade writes dropped but the board still shows the spec in-progress.
+User said yes (2026-10-31 07:52): a written dropped on a spec beats its plans; done in task 6.

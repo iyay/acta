@@ -142,14 +142,19 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, field, value)), dirty), nil
 }
 
-// checkReason refuses a reason the board could not show as one line, and a
-// reason on a kind that is never closed by hand.
+// checkReason refuses a reason on a kind that is never closed by hand, and
+// one the board could not show.
 func checkReason(k board.Kind, value string) error {
 	switch k {
 	case board.KindScratch, board.KindBug, board.KindStory, board.KindPlan:
 	default:
 		return bad("reason is only for scratch items, bugs, specs and plans")
 	}
+	return ValidReason(value)
+}
+
+// ValidReason refuses a reason the board could not show as one line.
+func ValidReason(value string) error {
 	if strings.TrimSpace(value) == "" {
 		return bad("reason cannot be empty")
 	}

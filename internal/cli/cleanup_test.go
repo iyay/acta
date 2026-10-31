@@ -82,3 +82,26 @@ func TestCleanupFixWritesOneCommit(t *testing.T) {
 		}
 	})
 }
+
+func TestCleanupApplyReadsStdin(t *testing.T) {
+	dir := cleanupRepo(t)
+	head := gitOut(t, dir, "rev-parse", "HEAD")
+	inDir(t, dir, func() {
+		var stdout, stderr strings.Builder
+		bad := `{"id":"scratch/2026-09-27-idea","status":"fixed","reason":"x"}` + "\n"
+		if code := Run([]string{"cleanup", "apply"}, strings.NewReader(bad), false, &stdout, &stderr); code != exitBadInput || !strings.Contains(stderr.String(), "line 1") {
+			t.Fatalf("bad batch: exit %d stderr %q", code, stderr.String())
+		}
+		good := `{"id":"scratch/2026-09-27-idea","status":"dropped","reason":"not valid"}` + "\n"
+		if code := Run([]string{"cleanup", "apply"}, strings.NewReader(good), false, &stdout, &stderr); code != exitOK {
+			t.Fatalf("good batch: exit %d stderr %q", code, stderr.String())
+		}
+	})
+	if got := gitOut(t, dir, "rev-list", "--count", head+"..HEAD"); got != "1" {
+		t.Fatalf("apply made %s commits, want 1", got)
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, ".pm", "scratch", "2026-09-27-idea.md"))
+	if !strings.Contains(string(body), "status: dropped\n") || !strings.Contains(string(body), "reason: not valid\n") {
+		t.Fatalf("idea file = %q", body)
+	}
+}

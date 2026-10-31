@@ -114,6 +114,9 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 	case "commits":
 		return cmdCommits(args[1:], stdout, stderr)
 	case "cleanup":
+		if len(args) > 1 && args[1] == "apply" {
+			return cmdCleanupApply(args[2:], stdin, stdout, stderr)
+		}
 		return cmdCleanup(args[1:], stdout, stderr)
 	case "usage":
 		return cmdUsage(args[1:], stdout, stderr)

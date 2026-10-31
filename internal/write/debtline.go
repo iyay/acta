@@ -1,6 +1,7 @@
 package write
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -49,8 +50,8 @@ func closedDebtLine(b *board.Board, id, status, reason string) (int, string, err
 	if strings.Trim(reason, "() \t") == "" {
 		return 0, "", bad("closing a debt line needs a reason: --reason \"<text>\"")
 	}
-	if strings.ContainsAny(reason, "\r\n") {
-		return 0, "", bad("reason must be one line, not %q", reason)
+	if err := ValidReason(reason); err != nil {
+		return 0, "", err
 	}
 	return it.Line, it.Path, nil
 }
@@ -67,9 +68,24 @@ func rewriteDebtLine(path string, line int, status, reason string) error {
 	if err != nil {
 		return err
 	}
+	out, err := CloseDebtLineIn(src, line, status, reason)
+	if err != nil {
+		return bad("%s: %v", path, err)
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// CloseDebtLineIn closes the debt line at a 1-based line of a debt file's
+// text and gives the new text. It writes nothing, so a caller can close
+// several lines of one file and save it once.
+func CloseDebtLineIn(src []byte, line int, status, reason string) ([]byte, error) {
 	lines := strings.Split(string(src), "\n")
 	if line < 1 || line > len(lines) || !tickAnyBoxRe.MatchString(lines[line-1]) {
-		return bad("line %d of %s is not a debt line any more; reload and try again", line, path)
+		return nil, fmt.Errorf("line %d is not a debt line any more; reload and try again", line)
 	}
 	box := "x"
 	if status == "wontfix" {
@@ -83,9 +99,5 @@ func rewriteDebtLine(path string, line int, status, reason string) error {
 	if cr {
 		lines[line-1] += "\r"
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return []byte(strings.Join(lines, "\n")), nil
 }

@@ -87,3 +87,29 @@ func printChanges(w io.Writer, changes []cleanup.Change) {
 		fmt.Fprintf(w, "  %s  %s\n", c.ID, c.What)
 	}
 }
+
+// cmdCleanupApply writes the decisions the user approved, one JSON object per
+// line on stdin, as one commit. A batch with any bad line writes nothing.
+func cmdCleanupApply(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	fs, root := flags("cleanup apply", stderr)
+	pos, err := parseMixed(fs, args)
+	if err != nil || len(pos) > 0 {
+		fmt.Fprintln(stderr, usageLine("cleanup"))
+		return exitBadInput
+	}
+	ds, err := cleanup.ParseDecisions(stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitBadInput
+	}
+	cfg, b, code := loadBoard(*root, stderr)
+	if code != exitOK {
+		return code
+	}
+	o, err := cleanup.Apply(cfg, b, ds)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return exitBadInput
+	}
+	return report(o, nil, stdout, stderr)
+}
