@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0206
 created: "2026-10-31 20:24:08"
 hash: uageial
+started: "2026-10-31 20:25:30"
 ---
 # Destructive command block hook implementation plan
 
@@ -28,9 +29,9 @@ Wave 1: Task 1. Wave 2: Task 2, Task 3.
 **Files:** Create `internal/hook/destructive.go`, `internal/hook/destructive_test.go`; modify `internal/hook/gotest.go` only where its piece and word readers must learn the newline separator and quoting the spec names.
 **Seam:** `hook.DestructiveBlock(dir, command string) (bool, string)`.
 **verify:** No blocked form in the spec passes and no allowed form is blocked. Blocked rows: every `rm` recursive plus force spelling; `git` with `--force` or `--force-with-lease`; `git worktree remove`, `git push`, `git clean` with `-f` alone or joined (`-fdx`); `git reset --hard`; `git commit --amend` on a merge `HEAD`, found through `-C <path>`, through an earlier `cd <path>` in the same command, and through `dir`; `git -C <path> worktree remove -f x`; `find . -exec rm -rf {} +`; `sudo rm -rf x`; a newline-split command. Allowed rows: `git branch -D x`, `rm -r dir`, `rm -f file`, amend on a plain `HEAD`, `git commit -m "no --force"`, `echo "rm -rf x"`, `rm -rf x` with no repo above `dir`, and an unreadable command. GoTestBlock's own tests stay green. The amend rows use a temp repo with a real merge commit.
-- [ ] Red: the table test fails because `DestructiveBlock` does not exist.
-- [ ] Change: Write `DestructiveBlock` over the shared readers, then run `scripts/test ./internal/hook/` to green.
-- [ ] Commit: `feat(hook): block destructive commands`.
+- [x] Red: the table test fails because `DestructiveBlock` does not exist.
+- [x] Change: Write `DestructiveBlock` over the shared readers, then run `scripts/test ./internal/hook/` to green.
+- [x] Commit: `feat(hook): block destructive commands`.
 
 ### Task 2: pre-tool runs the block
 
@@ -53,3 +54,10 @@ Wave 1: Task 1. Wave 2: Task 2, Task 3.
 ## Build brief
 
 Land order: PLN-0206 and PLN-0207 land on main in either order; they share no file.
+
+## State
+
+### Next
+
+Task 2: call hook.DestructiveBlock(dir, command string) (bool, string) next to hook.GoTestBlock in the pre-tool path; on true exit 2 with the second return on stderr. It already returns false outside a git repo.
+Task 3: reason text shape is "acta never runs destructive commands, so it blocked: <command words joined by spaces>. Tell the user in full sentences what you wanted to run and why. They can run it themselves outside the agent if they mean it." Rule 5 should match that wording.
