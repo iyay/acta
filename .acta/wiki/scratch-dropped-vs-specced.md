@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Finished scratch items are specced or done, never dropped
-description: Specced comes from a spec link, done means built without a spec and names the commit, dropped means not done or not valid
+description: Specced comes from a spec link, done means built with no spec and names the commit, dropped means not done or not valid
 paths: [internal/board/scratch.go, internal/cleanup/]
 ---
 

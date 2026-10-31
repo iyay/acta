@@ -9,10 +9,11 @@ func TestSkillCleanup(t *testing.T) {
 		Name:     "cleanup",
 		MaxLines: 60,
 		Must: []string{
-			"acta cleanup --fix", "acta cleanup --json", "read-only subagent", "in parallel",
+			"acta cleanup --fix", "acta cleanup --json", "more than 10 candidates", "all, some kinds, or the N oldest",
+			"Start nothing before the answer", "read-only subagent", "in parallel",
 			"keep, done, dropped, wontfix or fixed", "file:line", "commit sha", "spec id", "one-line reason",
 			"never write", "Weak evidence becomes keep", "one message per kind", "current channel",
-			"10 numbered items", "ok", "numbers to skip", "under the plan", "acta cleanup apply",
+			"10 numbered items", "numbers to skip", "under the plan", "acta cleanup apply",
 			"one batch", "Keep writes nothing",
 		},
 		MustNot: []string{"superpowers:", "rm -rf", "git push"},

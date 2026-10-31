@@ -6,6 +6,7 @@ id: PLN-0202
 created: "2026-10-31 07:35:19"
 hash: o05nznk
 started: "2026-10-31 12:03:53"
+finished: "2026-10-31 12:08:17"
 ---
 # Cleanup skill implementation plan
 
@@ -38,12 +39,54 @@ Wave 1: Task 1. Wave 2: Task 2.
 **Files:** Create `plugin/evals/cleanup-proposes-first/case.yaml`, `plugin/evals/cleanup-proposes-first/prompt.md`, `plugin/evals/cleanup-proposes-first/scaffold.sh`, `plugin/evals/cleanup-proposes-first/graders/proposes-first.md`; modify `internal/plugincheck/evals_test.go`.
 **Seam:** A greenfield eval case run by `scripts/eval`, and the case-layout checks in plugincheck.
 **verify:** Given a scaffold with one built raw scratch item, one stale debt line and one open bug, and a prompt to clean up, the agent sends proposals with evidence and a question, and no planning file changes and no commit happens before a yes; the case passes plugincheck's layout rules.
-- [ ] Red: The evals layout test fails because the new case is registered in `evals_test.go` but its files do not exist.
-- [ ] Change: Add the case files, run `scripts/test ./internal/plugincheck/ -run 'Test(Eval|Scaffolds)'` to green, then `scripts/eval --case cleanup-proposes-first` with the branch binary on PATH.
-- [ ] Commit: `test(cleanup): agent proposes before writing`.
+- [x] Red: The evals layout test fails because the new case is registered in `evals_test.go` but its files do not exist.
+- [x] Change: Add the case files, run `scripts/test ./internal/plugincheck/ -run 'Test(Eval|Scaffolds)'` to green, then `scripts/eval --case cleanup-proposes-first` with the branch binary on PATH.
+- [x] Commit: `test(cleanup): agent proposes before writing`.
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] skill_cleanup_test.go: drop the two-letter Must token "ok", which matches ordinary words; "numbers to skip" carries the check.
+- [x] evals_test.go: keep the cleanup case's fixed graders type-checked by folding the exception into mustJudge, not a continue.
+- [x] cleanup-proposes-first/prompt.md: the max_turns comment says one or two subagents; the skill starts one per kind, three here.
+- [x] cleanup SKILL.md: the specced-scratch advice can never fire, since cleanup lists only raw and brainstorming scratch; say to reuse each id from --json in the apply lines instead.
+- [x] Commit: `polish: review notes for PLN-0202`
+
+## Fix round 1
+
+### Task 4: Warn about the cost before subagents start
+
+**verify:** With more than 10 candidates, no subagent starts and nothing is written before the user has seen the count per kind, the subagent and message count, and picked all, some kinds, or the N oldest; with 10 or fewer the flow goes straight to proposals
+
+- [x] User ask 2026-10-31 12:18: cleanup can cost many tokens (128 candidates on this repo), so warn before running. Spec step 2 and the skill: with more than 10 candidates, say the count per kind, the subagents it will start and the approval messages it needs, then ask all, some kinds, or the N oldest; start nothing before the answer.
+- [x] Test: skill Must tokens for the new step, and a new eval case cleanup-warns-cost with more than 10 candidates where no Agent call and no write happens before the answer.
+- [x] Commit with the trailer `Task: PLN-o05nznk#4`
+
+## Fix round 2
+
+### Task 5: Round 2 review notes
+
+**verify:** The warning threshold reads as a total, the spec names both eval cases, and the warns-cost judge asks for the count per kind; nothing else changes
+
+- [x] Skill and spec step 2: say "more than 10 candidates in total", and fix the mixed "you would start ... it needs" wording.
+- [x] Spec Testing list still says one eval case; name both cleanup cases.
+- [x] cleanup-warns-cost judge: require the count per kind, not "by kind or in total"; drop input_match "." from no-subagent; raise max_turns from 10 to 14.
+- [x] Commit with the trailer `Task: PLN-o05nznk#5`
+
+## Review notes
+
+- Round 1 deep (Spec, Standards): CLEAN, no BLOCKER. Polish: four notes in one commit, full tier, both axes CLEAN, eval cleanup-proposes-first 1.00 before and after. Notes kept, not acted on: skill step order is not tested, only presence; no-apply grader misses other write commands; four graders beyond the plan's file list; allowed_tools omits Bash like no sibling; skill does not name the dirty-file refusal; debt-line examples use short ids; budget caps sit at exact size; dropping the ok token leaves the ok half of the answer unguarded; lean-tests and debug-race exceptions still skip their fixed graders; the proposes-first judge is pinned by filename only.
+- Cost warning (user ask 12:18): task 4, round 2 both axes CLEAN; task 5 round 2 notes, round 3 both axes CLEAN; both cleanup evals 1.00 after each change. Notes kept: spec line 145 not rewrapped; spec Testing does not name the case folders; no-subagent grader has no guards line; max_turns comment does not say why 14; spec commit a7382a8 of task 5 has no trailer; judge map built inside the loop; task 4 and 5 were added as fix-round tasks because the plan already had its one polish.
 
 ## State
 
 ### Next
 
-Task 2: new eval case plugin/evals/cleanup-proposes-first; register it in internal/plugincheck/evals_test.go first (red), copy the layout of an existing greenfield case.
+Review CLEAN and polish done; next is acta:land.
+
+### Findings
+
+Full suite at land went red once on TestWheelNotchesBelongToTheScreenTheyWereGatheredOn (internal/tui scroll_test.go:918); the branch touches no TUI file and the test passed 5 of 5 alone. A TUI flake like the known click one.

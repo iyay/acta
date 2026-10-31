@@ -141,8 +141,12 @@ user sees both writes before saying yes.
 
 1. Run `acta cleanup`. Show the `--fix` changes and wait for a yes. Then run
    `acta cleanup --fix`.
-2. Run `acta cleanup --json`. Start one read-only subagent per kind that has
-   candidates, all in parallel.
+2. Run `acta cleanup --json`. Each candidate costs an evidence check, so with
+   more than 10 candidates in total the skill first tells the user the count per kind,
+   the subagents it would start and the approval messages it needs, and asks:
+   all, some kinds, or the N oldest. Nothing starts before the answer. Then it
+   starts one read-only subagent per kind that has candidates in scope, all in
+   parallel.
 3. Each subagent returns, for each item, one proposal: keep, done, dropped,
    wontfix or fixed. Each proposal carries evidence (a `file:line`, a commit
    sha or a spec id) and a one-line reason. Subagents never write.
@@ -178,8 +182,10 @@ At build, rewrite `.acta/wiki/scratch-dropped-vs-specced.md`. It must say that
 - The new skill lives in `plugin/skills/cleanup/`. It is added to the skill
   list in `internal/hook/hook.go` and `plugin/hooks/default-rules.md`, and it
   passes `internal/plugincheck`.
-- One eval case. The agent sends proposals with evidence and writes nothing
-  before the user approves.
+- Two eval cases. With a few candidates the agent sends proposals with
+  evidence and writes nothing before the user approves. With more than 10 it
+  says the count per kind and asks how much to check before any subagent
+  starts.
 
 ## Plan split
 

@@ -58,6 +58,8 @@ var evalCases = []struct {
 	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no offer"},
 	{"land-baseline-pass", "skills/land/baseline.md", "rename it over `acta-baseline.md`"},
 	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
+	{"cleanup-proposes-first", "skills/cleanup/SKILL.md", "names the numbers to skip"},
+	{"cleanup-warns-cost", "skills/cleanup/SKILL.md", "Start nothing before the answer"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it
@@ -106,7 +108,8 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
 		"review-understanding-report": true, "review-understanding-disabled": true,
-		"cold-read-offer": true, "cold-read-skip": true, "cold-read-accept": true, "cold-read-unavailable": true}
+		"cold-read-offer": true, "cold-read-skip": true, "cold-read-accept": true, "cold-read-unavailable": true,
+		"cleanup-proposes-first": true, "cleanup-warns-cost": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
 		if err != nil {
@@ -125,6 +128,12 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 				continue
 			}
 			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
+			// In the cleanup cases fixed checks back one judge: no write command
+			// or subagent ran too early, and every planning file still holds its
+			// first text.
+			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md"}[c.folder]; ok {
+				mustJudge = filepath.Base(f) == judge
+			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {
 				t.Errorf("case %s grader %s: an llm grader belongs only to the judgement cases", c.folder, filepath.Base(f))
 			}

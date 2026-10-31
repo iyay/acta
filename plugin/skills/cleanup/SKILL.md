@@ -12,11 +12,12 @@ Cleanup closes planning items whose work is over. It never deletes a file: each 
 ## Steps
 
 1. Run `acta cleanup`. When it lists fixes, show them and wait for a yes. Then run `acta cleanup --fix`. A file it names as not committed blocks the fix: tell the user and go on.
-2. Run `acta cleanup --json`. Start one read-only subagent per kind that has candidates, all in parallel. Give each its list and the rules below.
-3. Each subagent returns one proposal per item: keep, done, dropped, wontfix or fixed. Each proposal carries evidence (a `file:line`, a commit sha or a spec id) and a one-line reason. Subagents never write: no file edit, no `acta` write command, no commit.
-4. Check every piece of evidence yourself. The sha must exist in this repo, and the `file:line` must hold what the proposal claims. Weak evidence becomes keep.
-5. Send one message per kind in the current channel, at most 10 numbered items per message. Each item shows the proposal, the evidence and the reason. A plan drop also drops its spec when no other open plan of that spec is left: show that spec drop as a line under the plan. The user answers ok, or names the numbers to skip.
-6. Pipe the approved items of that message to `acta cleanup apply` as one batch, one JSON object per line, so each batch is one commit. A refused batch writes nothing: read the error, fix or drop that line, and show the user the change.
+2. Run `acta cleanup --json`. Each candidate costs an evidence check, so a long list costs many tokens. With more than 10 candidates in total, first tell the user the count per kind, the subagents you would start and the approval messages you would send, then ask: all, some kinds, or the N oldest. Start nothing before the answer.
+3. Start one read-only subagent per kind that has candidates in scope, all in parallel. Give each its list and the rules below.
+4. Each subagent returns one proposal per item: keep, done, dropped, wontfix or fixed. Each proposal carries evidence (a `file:line`, a commit sha or a spec id) and a one-line reason. Subagents never write: no file edit, no `acta` write command, no commit.
+5. Check every piece of evidence yourself. The sha must exist in this repo, and the `file:line` must hold what the proposal claims. Weak evidence becomes keep.
+6. Send one message per kind in the current channel, at most 10 numbered items per message. Each item shows the proposal, the evidence and the reason. A plan drop also drops its spec when no other open plan of that spec is left: show that spec drop as a line under the plan. The user answers ok, or names the numbers to skip.
+7. Pipe the approved items of that message to `acta cleanup apply` as one batch, one JSON object per line, so each batch is one commit. A refused batch writes nothing: read the error, fix or drop that line, and show the user the change.
 
 Keep writes nothing. A skipped item stays as it is.
 
@@ -30,7 +31,7 @@ Keep writes nothing. A skipped item stays as it is.
 | Plan | through `--fix` only | `dropped` |
 | Spec | not a cleanup case | `dropped` |
 
-A scratch item a spec already covers shows specced on its own: propose keep. `dropped` means the work was not done or is not valid; never drop finished work.
+`dropped` means the work was not done or is not valid; never drop finished work.
 
 ## Apply lines
 
@@ -40,4 +41,4 @@ A scratch item a spec already covers shows specced on its own: propose keep. `dr
 {"id":"PLN-0031","status":"dropped","reason":"no work for 40 days, replaced by PLN-0044"}
 ```
 
-`fixed_in` goes only with `fixed`. Every line needs a reason. An item a linked worktree is building cannot be closed from here.
+Use each item's `id` from `--json`. `fixed_in` goes only with `fixed`. Every line needs a reason. An item a linked worktree is building cannot be closed from here.
