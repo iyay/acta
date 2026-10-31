@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0205
 created: "2026-10-31 17:59:57"
 hash: fr788tx
+started: "2026-10-31 18:02:30"
 ---
 # Flake rerun in scripts/test implementation plan
 
@@ -27,9 +28,9 @@ Wave 1: Task 1. Wave 2: Task 2.
 **Files:** Create `internal/flakerun/flakerun.go`, `internal/flakerun/flakerun_test.go`, `internal/flakerun/main_test.go`.
 **Seam:** `flakerun.Run(args []string, run func(args []string) (io.Reader, error), out io.Writer) int`, where `run` returns a `go test -json` event stream and the result is the exit code.
 **verify:** The exit code is 0 only when every failed test passed on a rerun, and every such test gets one FLAKY line; on every other path it is 1 and no FLAKY line claims a pass. Cases: one test fails then passes (FLAKY, exit 0); a test fails 3 of 3 (exit 1, named); a failed subtest reruns its top-level test; a build failure, a panic or timeout with no test name, and more than 5 failed tests rerun nothing and exit 1; reruns keep the first run's flags (`-tags`, `-short`) and add `-run '^(TestX)$' -count=1` for that package only; test output prints as plain `go test` text, not JSON.
-- [ ] Red: table tests over recorded event streams fail because `flakerun.Run` does not exist.
-- [ ] Change: Parse the events with `encoding/json`, collect failed top-level tests per package, rerun through `run`, print output and FLAKY lines, then run `scripts/test ./internal/flakerun/` to green.
-- [ ] Commit: `feat(flake): rerun failed go tests and report flakes`.
+- [x] Red: table tests over recorded event streams fail because `flakerun.Run` does not exist.
+- [x] Change: Parse the events with `encoding/json`, collect failed top-level tests per package, rerun through `run`, print output and FLAKY lines, then run `scripts/test ./internal/flakerun/` to green.
+- [x] Commit: `feat(flake): rerun failed go tests and report flakes`.
 
 ### Task 2: scripts/test --full uses the helper
 
@@ -43,3 +44,15 @@ Wave 1: Task 1. Wave 2: Task 2.
 ## Build brief
 
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
+
+## State
+
+### Next
+
+internal/flakerun is in. Seam: flakerun.Run(args []string, run func(args []string) (io.Reader, error), out io.Writer) int.
+args are the go test args after "go test" without -json, as scripts/test passes them (flags plus ./ package paths, for example -tags notui ./internal/cli/).
+run must exec: go test -json <args...>, from the repo root (Run reads go.mod from the working folder up to cut the module path).
+run returns the whole -json stdout (stderr merged is fine; non-JSON lines print as they are) and an error that is non-nil when go could not start or exited non-zero.
+Simplest run: cmd := exec.Command("go", append([]string{"test", "-json"}, args...)...); b, err := cmd.CombinedOutput(); return bytes.NewReader(b), err.
+Reruns pass the full import path as the package and keep every arg that does not start with ./ (the same package rule scripts/test uses).
+main does os.Exit(flakerun.Run(os.Args[1:], run, os.Stdout)).
