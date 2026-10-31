@@ -56,4 +56,12 @@ Section 3 approved (user thumbs up): skill acta:cleanup runs acta cleanup, shows
 
 Section 4 approved (user thumbs up): Go tests for candidates (14-day rule, worktree skip), --fix, apply one commit per batch, acta set reason, scratch done beating a spec link, debt line [x]/[-] with suffix; TUI Done tab and reason in the detail pane; new skill plugin/skills/cleanup listed in the hook skill list and default-rules.md, passing plugincheck; one eval where the agent proposes with evidence and waits for a yes before writing. Wiki page scratch-dropped-vs-specced updated at build. Spec closes SCR-0064. Likely two plans: CLI and data first, skill and eval second.
 
+### 2026-10-31
+
+Cold read found 5 gaps; user approved all 5 fixes: apply reads JSON lines (id, status, reason, fixed_in); debt lines close with acta set <line> status done|wontfix --reason, reason replaces an older one; apply drops the spec with its plan in the same commit when no other open plan remains and the approval message shows it; stuck-plan clock counts any commit touching the plan file or carrying its Task trailer, chore included, fallback started then created; --fix and apply check every change before the first write, plans with a linked worktree are not candidates, --fix needs at least one task.
+
+### 2026-10-31
+
+Final spec SPC-0184 approved by the user (thumbs up on the approval question, 2026-10-31 07:33). Next: acta:slice.
+
 ## Open questions
