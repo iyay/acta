@@ -18,7 +18,7 @@ echo "exit status: $rc"
 
 Never pipe the suite into `tee`, `head` or a filter: the pipeline hides the status.
 3. A non-zero status stops the land, as step 1 says. Keep the failed log and report its absolute path. Leave `acta-baseline.md` and the log it names untouched: the last PASS stays.
-4. A zero status: read the log for the summary. Never rerun the suite to recover a count.
+4. A zero status: read the log for the summary and for `FLAKY: <name> (failed <k> of <n>)` lines. Never rerun the suite to recover a count. For each FLAKY line, run `acta flake record <name> --plan <plan id>` before the merge, in the checkout where the suite ran; the land report names each flake and the bug it prints. A test that passed on a rerun counts as green only through this record.
 5. Write the record to a temp file in the same folder, then rename it over `acta-baseline.md`. A reader sees the old record or the new one, never half a record. A rename that fails leaves the old record in place: report it and do not merge.
 
 The record is one line per field:
@@ -29,6 +29,6 @@ The record is one line per field:
 - `runtime:` the versions the suite used, such as `go version` or `node --version`, and a lockfile hash when the repo has one
 - `exit:` `0`
 - `log:` the absolute path of the kept log
-- `summary:` the counts the log shows, such as `ok 689, fail 0`
+- `summary:` the counts the log shows, such as `ok 689, fail 0`, `flaky 1`
 
 A missing, unreadable or other-tree record changes nothing: run the suite as step 1 says. A step-6 or tidy-tip rerun that passes replaces the record the same way, with the identity of the checkout it tested. A gate reused under step 6 or the tidy path writes no record and copies nothing: the record still names the commit and tree of the run that passed.

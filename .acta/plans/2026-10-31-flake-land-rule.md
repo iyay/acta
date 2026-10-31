@@ -30,9 +30,9 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 **Files:** Modify `plugin/skills/land/SKILL.md`, `plugin/skills/land/baseline.md`; create `plugin/evals/land-records-flake/case.yaml`, `plugin/evals/land-records-flake/prompt.md`, `plugin/evals/land-records-flake/scaffold.sh`, `plugin/evals/land-records-flake/graders/records-flake.md`; modify `internal/plugincheck/evals_test.go`.
 **Seam:** The land skill text, and a greenfield eval case run by `scripts/eval`.
 **verify:** After a full suite that exits 0, each FLAKY line in its log gets one `acta flake record <name> --plan <plan id>` call in the checkout where the suite ran, before the merge, and the land report names each flake and its bug; no rule lets a FLAKY line pass without that call. The case's scaffold suite prints one FLAKY line, and the grader checks the record call comes before `git merge`.
-- [ ] Red: the evals layout test fails because the new case is registered but its files do not exist.
-- [ ] Change: Add the rule to land step 1 and `baseline.md`, add the case files, run `scripts/test ./internal/plugincheck/` to green, then the case once with the branch binary on PATH.
-- [ ] Commit: `feat(flake): land records each FLAKY line`.
+- [x] Red: the evals layout test fails because the new case is registered but its files do not exist.
+- [x] Change: Add the rule to land step 1 and `baseline.md`, add the case files, run `scripts/test ./internal/plugincheck/` to green, then the case once with the branch binary on PATH.
+- [x] Commit: `feat(flake): land records each FLAKY line`.
 
 ### Task 2: red eval case reruns alone at the land gate
 
@@ -66,6 +66,11 @@ Wave 1: Task 1, Task 3. Wave 2: Task 2. Wave 3: Task 4.
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
 
 ## State
+
+### Next
+
+Task 2 edits land SKILL.md step 1: the eval gate sentence starts at 'Eval gate: when the repo has scripts/eval' and ends at 'a red eval stops the land. Else skip it.', right after the new FLAKY sentence.
+Land caps in internal/plugincheck/budget_test.go now sit at the exact sizes (SKILL.md 8980, baseline.md 2747); Task 2 raises SKILL.md again for its own text.
 
 ### Findings
 

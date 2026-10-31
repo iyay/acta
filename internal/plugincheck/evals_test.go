@@ -58,6 +58,7 @@ var evalCases = []struct {
 	{"review-understanding-disabled", "skills/land/SKILL.md", "no explanation, no offer"},
 	{"land-baseline-pass", "skills/land/baseline.md", "rename it over `acta-baseline.md`"},
 	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
+	{"land-records-flake", "skills/land/baseline.md", "acta flake record <name> --plan <plan id>"},
 	{"cleanup-proposes-first", "skills/cleanup/SKILL.md", "names the numbers to skip"},
 	{"cleanup-warns-cost", "skills/cleanup/SKILL.md", "Start nothing before the answer"},
 }
