@@ -229,6 +229,7 @@ type outItem struct {
 	Status       string       `json:"status"`
 	StatusSource string       `json:"status_source"`
 	Ref          string       `json:"ref"`
+	Reason       string       `json:"reason,omitempty"`
 	Parent       string       `json:"parent"`
 	Closes       []string     `json:"closes"`
 	ClosedBy     []string     `json:"closed_by"`
@@ -254,7 +255,7 @@ func toJSON(cfg config.Config, it *board.Item) outItem {
 		}
 	}
 	j := outItem{ID: it.ID, ShortID: it.ShortID, Hash: it.Hash, Type: string(it.Kind), Title: it.Title, Status: it.Status,
-		StatusSource: it.StatusSource, Ref: it.Ref, Parent: it.Parent,
+		StatusSource: it.StatusSource, Ref: it.Ref, Reason: it.Reason, Parent: it.Parent,
 		Children: append([]string{}, it.Children...), Progress: jsonProgress{it.Done, it.Total},
 		Closes: append([]string{}, it.Closes...), ClosedBy: append([]string{}, it.ClosedBy...),
 		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Worktree: it.Worktree, OnDisk: it.OnDisk,
@@ -334,6 +335,9 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		head, j.Title, j.Type, j.Status, j.StatusSource, j.Progress.Done, j.Progress.Total, j.Path)
 	if j.Ref != "" {
 		fmt.Fprintf(stdout, "ref: %s\n", j.Ref)
+	}
+	if j.Reason != "" {
+		fmt.Fprintf(stdout, "reason: %s\n", j.Reason)
 	}
 	if j.Parent != "" {
 		fmt.Fprintf(stdout, "parent: %s\n", j.Parent)

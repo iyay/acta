@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0201
 created: "2026-10-31 07:34:53"
 hash: b24s9l3
+started: "2026-10-31 07:36:26"
 ---
 # Cleanup CLI and data implementation plan
 
@@ -28,9 +29,9 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 **Files:** Modify `internal/board/board.go`, `internal/board/scratch.go`, `internal/write/ops.go`, `internal/cli/cli.go`, `internal/cli/help.go`; tests in `internal/board/`, `internal/write/`, `internal/cli/`.
 **Seam:** `board.Load` items (`Item.Reason`, scratch `Status`), `write.SetValue(cfg, b, id, "reason"|"status", value)`, `cli.Run` for `set` and `show`.
 **verify:** A scratch item, bug, spec or plan round-trips `reason` through `acta set` and `acta show`; a written scratch `done` shows `done` with or without a spec link, exactly like `dropped`; `reason` with an empty value, a newline, or on a task or debt item is refused; `specced` stays unwritable.
-- [ ] Red: Board, write and CLI tests for reason round-trip, scratch `done` beating a link, and the refused inputs fail because no `reason` field or `done` scratch status exists.
-- [ ] Change: Parse `reason` into `Item.Reason`, add `done` to the scratch statuses and to `scratchStatus` next to `dropped`, accept `reason` in `SetValue` and print it in `acta show`.
-- [ ] Commit: `feat(board): reason field and scratch done status`.
+- [x] Red: Board, write and CLI tests for reason round-trip, scratch `done` beating a link, and the refused inputs fail because no `reason` field or `done` scratch status exists.
+- [x] Change: Parse `reason` into `Item.Reason`, add `done` to the scratch statuses and to `scratchStatus` next to `dropped`, accept `reason` in `SetValue` and print it in `acta show`.
+- [x] Commit: `feat(board): reason field and scratch done status`.
 
 ### Task 2: close a debt line with acta set
 
@@ -78,3 +79,7 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 - [ ] Commit: `feat(cleanup): apply approved decisions in one commit`.
 
 ## State
+
+### Next
+
+Task 2: CloseDebtLine in internal/write/debtline.go; debt item ids look like debt/<stem>#item-N and DBT-n.mm

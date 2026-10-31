@@ -100,6 +100,19 @@ func TestDebtNewWritesFileAndCommits(t *testing.T) {
 	}
 }
 
+func TestSetReasonShowsInShow(t *testing.T) {
+	dir := debtRepo(t)
+	inDir(t, dir, func() {
+		mustRun(t, "set", "PLAN-3", "reason", "idea moved to SCR-0080")
+		if out := mustRun(t, "show", "PLAN-3"); !strings.Contains(out, "\nreason: idea moved to SCR-0080\n") {
+			t.Fatalf("show lacks the reason:\n%s", out)
+		}
+		if out := mustRun(t, "show", "PLAN-3", "--json"); !strings.Contains(out, `"reason": "idea moved to SCR-0080"`) {
+			t.Fatalf("show --json lacks the reason:\n%s", out)
+		}
+	})
+}
+
 func TestDebtNewEmptyStdinExitsBadInput(t *testing.T) {
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder

@@ -56,6 +56,8 @@ func TestScratchStatusEveryCombination(t *testing.T) {
 		{"brainstorming", "specced", "derived", true},
 		{"dropped", "dropped", "frontmatter", false},
 		{"dropped", "dropped", "frontmatter", true},
+		{"done", "done", "frontmatter", false},
+		{"done", "done", "frontmatter", true},
 	}
 	for _, c := range cases {
 		name := c.written
@@ -160,7 +162,7 @@ func TestSpecParentNotFoundIsOneProblem(t *testing.T) {
 func TestScratchBadWrittenStatusIsOneProblem(t *testing.T) {
 	t.Parallel()
 
-	for _, bad := range []string{"bogus", "specced", "done"} {
+	for _, bad := range []string{"bogus", "specced", "fixed"} {
 		b := boardWith(t, map[string]string{
 			"scratch/2026-09-28-idea.md": "---\nstatus: " + bad + "\n---\n# Idea\n",
 		})
@@ -177,7 +179,7 @@ func TestScratchBadWrittenStatusIsOneProblem(t *testing.T) {
 func TestScratchStatusesAndPrefix(t *testing.T) {
 	t.Parallel()
 
-	if got := Allowed(KindScratch); !slices.Equal(got, []string{"raw", "brainstorming", "dropped"}) {
+	if got := Allowed(KindScratch); !slices.Equal(got, []string{"raw", "brainstorming", "done", "dropped"}) {
 		t.Errorf("Allowed = %v", got)
 	}
 	if slices.Contains(Allowed(KindScratch), "specced") {

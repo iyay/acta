@@ -24,12 +24,12 @@ func (b *Board) linkScratch(dir string) {
 }
 
 // scratchStatus picks the one status a scratch item shows. A written dropped
-// is a choice the user already made, so it wins over a spec link, and a link
-// turns a raw idea into specced.
+// or done is a choice the user already made, so it wins over a spec link, and
+// a link turns a raw idea into specced.
 func scratchStatus(written string, linked bool) (status, source string) {
 	switch {
-	case written == "dropped":
-		return "dropped", "frontmatter"
+	case written == "dropped" || written == "done":
+		return written, "frontmatter"
 	case linked:
 		return "specced", "derived"
 	case written != "":

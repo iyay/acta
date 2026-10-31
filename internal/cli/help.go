@@ -54,7 +54,7 @@ var helpTable = []helpCmd{
 		name:    "set",
 		group:   "Board",
 		summary: "Change one field of a planning item and commit the change.",
-		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority|after <value>"},
+		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority|after|reason <value>"},
 		example: "acta set SPC-0128 status done",
 	},
 	{

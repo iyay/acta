@@ -390,13 +390,13 @@ func TestSetValueRefusesSpecced(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != string(kept) {
 		t.Errorf("the refused write changed the file: %q", got)
 	}
-	for _, v := range []string{"raw", "brainstorming", "dropped"} {
+	for _, v := range []string{"raw", "brainstorming", "done", "dropped"} {
 		if _, err := SetValue(cfg, mustLoad(t, cfg), "SCRATCH-1", "status", v); err != nil {
 			t.Fatalf("status %q: %v", v, err)
 		}
 	}
 	// A value no scratch status uses is still refused.
-	refuse(t, cfg, `"fixing" is not a scratch status (raw, brainstorming, dropped)`, func() error {
+	refuse(t, cfg, `"fixing" is not a scratch status (raw, brainstorming, done, dropped)`, func() error {
 		_, err := SetValue(cfg, mustLoad(t, cfg), "SCRATCH-1", "status", "fixing")
 		return err
 	})

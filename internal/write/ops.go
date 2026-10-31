@@ -92,8 +92,12 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if strings.ContainsAny(value, "\r\n") {
 			return Outcome{}, bad("title must be one line, not %q", value)
 		}
+	case "reason":
+		if err := checkReason(it.Kind, value); err != nil {
+			return Outcome{}, err
+		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref, priority or after", field)
+		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref, priority, after or reason", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -134,6 +138,23 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return Outcome{}, err
 	}
 	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, field, value)), dirty), nil
+}
+
+// checkReason refuses a reason the board could not show as one line, and a
+// reason on a kind that is never closed by hand.
+func checkReason(k board.Kind, value string) error {
+	switch k {
+	case board.KindScratch, board.KindBug, board.KindStory, board.KindPlan:
+	default:
+		return bad("reason is only for scratch items, bugs, specs and plans")
+	}
+	if strings.TrimSpace(value) == "" {
+		return bad("reason cannot be empty")
+	}
+	if strings.ContainsAny(value, "\r\n") {
+		return bad("reason must be one line, not %q", value)
+	}
+	return nil
 }
 
 // AfterIDs splits an after list given on the command line. Commas and spaces
