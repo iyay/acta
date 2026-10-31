@@ -19,11 +19,14 @@ see which flake costs the most.
 
 ## Scope
 
-Two plans under this spec.
+Three plans under this spec, cut by file area so two of them can build at
+once:
 
-- Plan 1: Go tests. The flake record, the land rule and the automatic rerun in
-  this repo's `scripts/test --full`.
-- Plan 2: evals. The same rule for red eval cases at the land gate.
+- Flake record: the `flaky_tests` field and `acta flake record`.
+- Flake rerun: the automatic rerun in this repo's `scripts/test --full`.
+- Land rule: the land, build and debug rules, the same rule for red eval
+  cases at the land gate, and the seed bugs. It waits for the flake record
+  plan.
 
 The record and the land rule work in every repo that uses acta. The automatic
 rerun is per repo: this repo's `scripts/test` is the first one. A repo with
@@ -95,17 +98,17 @@ cause.
 - A full suite that exits 1 stays as today: fix the cause through the narrow
   failing tests.
 - A repo whose test command never prints FLAKY lines sees no change.
-- Plan 2: a red eval case at the land gate runs again alone
+- Evals: a red eval case at the land gate runs again alone
   (`--case <name>`) up to 2 times. A pass runs
   `acta flake record eval:<case> --plan <plan id>`. Red all 3 times is a
   real red, handled as today.
 
 ## Seed and cleanup
 
-The build files flake bugs for the known flakes, each with its `flaky_tests`
-names: `TestClickOnTheBarTakesTheHighlightOff`,
-`TestWheelNotchesBelongToTheScreenTheyWereGatheredOn` (plan 1), and the
-task-trailer, brainstorm and debug-race evals (plan 2). It also files the bug
+The land rule plan files flake bugs for the known flakes, each with its
+`flaky_tests` names: `TestClickOnTheBarTakesTheHighlightOff`,
+`TestWheelNotchesBelongToTheScreenTheyWereGatheredOn`, and the task-trailer,
+brainstorm and debug-race evals. It also files the bug
 for the real SCR-0079 reds. The flake rule now kept in agent memory moves
 into the land skill, and the memory line goes.
 
