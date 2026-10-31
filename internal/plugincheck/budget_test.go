@@ -30,6 +30,7 @@ var fileCaps = map[string]int{
 	"skills/build/dispatch.md":                6633,
 	"skills/build/implementer-prompt.md":      7557,
 	"skills/build/wiki.md":                    2750,
+	"skills/cleanup/SKILL.md":                 2928,
 	"skills/debug/SKILL.md":                   6231,
 	"skills/debug/condition-based-waiting.md": 3582,
 	"skills/debug/defense-in-depth.md":        1505,
@@ -62,6 +63,7 @@ var fileCaps = map[string]int{
 var descriptionCaps = map[string]int{
 	"skills/bug/SKILL.md":     311,
 	"skills/build/SKILL.md":   541,
+	"skills/cleanup/SKILL.md": 252,
 	"skills/debug/SKILL.md":   277,
 	"skills/frame/SKILL.md":   345,
 	"skills/land/SKILL.md":    304,
@@ -78,7 +80,8 @@ var descriptionCaps = map[string]int{
 // sessionStartCap is the cap of the text the session start hook prints for
 // the default user config with no herdr. Every session pays for it too. It
 // grew to 3228 when the rule 5 tidy exception added 200 bytes; the cap move was 160, the rest was slack.
-const sessionStartCap = 3228
+// It grew to 3235 when cleanup joined the skill index.
+const sessionStartCap = 3235
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

@@ -5,6 +5,7 @@ after: [PLN-0201]
 id: PLN-0202
 created: "2026-10-31 07:35:19"
 hash: o05nznk
+started: "2026-10-31 12:03:53"
 ---
 # Cleanup skill implementation plan
 
@@ -28,9 +29,9 @@ Wave 1: Task 1. Wave 2: Task 2.
 **Files:** Create `plugin/skills/cleanup/SKILL.md`, `internal/plugincheck/skill_cleanup_test.go`; modify `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`, `.acta/wiki/scratch-dropped-vs-specced.md`.
 **Seam:** The skill text read by plugincheck, and `hook.Skills` as printed by the session-start text and `default-rules.md`.
 **verify:** The skill holds every step of the spec's skill section in order: show and confirm `--fix` first; one read-only subagent per kind with candidates, in parallel; a proposal of keep, done, dropped, wontfix or fixed with evidence and a one-line reason; the main agent checks each sha and `file:line`, and weak evidence becomes keep; one message per kind in the current channel, at most 10 numbered items, answered with ok or numbers to skip; a plan drop shows its spec drop as a line under it; approved items go to `acta cleanup apply` as one batch. `cleanup` appears in `hook.Skills`, in the session text and in `default-rules.md`, and the fallback rules still match the generated text. The wiki page says `done` means built without a spec with a reason naming the commit, and `dropped` still means not done or not valid.
-- [ ] Red: `TestSkillCleanup` and the hook skill-list test fail because the skill file does not exist and `cleanup` is not in `hook.Skills`.
-- [ ] Change: Write the skill, add `cleanup` to `hook.Skills` and `default-rules.md`, rewrite the wiki page, then run `scripts/test ./internal/plugincheck/ ./internal/hook/` to green.
-- [ ] Commit: `feat(cleanup): acta:cleanup skill`.
+- [x] Red: `TestSkillCleanup` and the hook skill-list test fail because the skill file does not exist and `cleanup` is not in `hook.Skills`.
+- [x] Change: Write the skill, add `cleanup` to `hook.Skills` and `default-rules.md`, rewrite the wiki page, then run `scripts/test ./internal/plugincheck/ ./internal/hook/` to green.
+- [x] Commit: `feat(cleanup): acta:cleanup skill`.
 
 ### Task 2: eval for proposals before writes
 
@@ -42,3 +43,7 @@ Wave 1: Task 1. Wave 2: Task 2.
 - [ ] Commit: `test(cleanup): agent proposes before writing`.
 
 ## State
+
+### Next
+
+Task 2: new eval case plugin/evals/cleanup-proposes-first; register it in internal/plugincheck/evals_test.go first (red), copy the layout of an existing greenfield case.

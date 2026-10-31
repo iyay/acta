@@ -24,7 +24,7 @@ func korean() Input {
 
 // skillNames are the skills the index must name. A skill added later joins the
 // index too, so this list only has to be a part of it.
-var skillNames = []string{"shape", "slice", "build", "tdd", "debug", "review", "land", "bug", "scratch", "setup", "migrate"}
+var skillNames = []string{"shape", "slice", "build", "tdd", "debug", "review", "land", "bug", "scratch", "setup", "migrate", "cleanup"}
 
 // leanHeading is the first line of the lean summary.
 const leanHeading = "Lean coding guide (full text: acta:lean):"
