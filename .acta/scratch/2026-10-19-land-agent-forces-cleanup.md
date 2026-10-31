@@ -50,4 +50,12 @@ Spec SPC-0186 written. Cold read found five gaps; the user approved every sugges
 
 User replied "lanjut" (2026-10-31 20:23): spec SPC-0186 approved. Next: acta:slice.
 
+### 2026-10-31
+
+Sliced SPC-0186 into two minimal plans that share no file: PLN-0206 hook (DestructiveBlock, pre-tool wiring, core rule 5) and PLN-0207 skill text (build, land, tidy, omp-report wiki, state-resume grader). Waiting for the user's yes on the plans.
+
+### 2026-10-31
+
+User replied "yes pake subagent" (2026-10-31 20:24): plans approved; build both with the subagent executor.
+
 ## Open questions
