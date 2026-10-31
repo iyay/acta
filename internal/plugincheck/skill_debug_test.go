@@ -42,16 +42,25 @@ func TestSkillDebug(t *testing.T) {
 // TestDebugRerunsKnownFlake reads SKILL.md on its own. A test that an open
 // bug already marks as flaky gets one lone rerun before any root-cause work,
 // so a known flake is logged instead of debugged again. The rule has to sit
-// in Phase 1, before the narrowing starts.
+// in Phase 1, before the narrowing starts. It covers only a test met while
+// doing other work: a test the current bug is about still gets debugged, or
+// a tracked flake could never be fixed. Debug can run with no plan, so the
+// plan id is only passed when there is one.
 func TestDebugRerunsKnownFlake(t *testing.T) {
 	txt := readSkill(t, "skills/debug/SKILL.md")
 	for _, want := range []string{
-		"`flaky_tests`", "acta list --type bug --json",
-		"runs once more alone first", "a pass runs `acta flake record <name> --plan <plan id>`",
+		"While you work on something else, a failing test that an open bug lists under `flaky_tests`",
+		"acta list --type bug --json",
+		"runs once more alone first",
+		"a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging",
+		"A test the current bug or task is fixing is not covered",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("debug/SKILL.md missing %q", want)
 		}
+	}
+	if strings.Contains(txt, "a pass runs `acta flake record <name> --plan <plan id>`") {
+		t.Error("debug/SKILL.md still asks for a plan id that a debug with no plan does not have")
 	}
 	rule, phase2 := strings.Index(txt, "runs once more alone first"), strings.Index(txt, "## Phase 2")
 	if rule < 0 || phase2 < 0 || rule > phase2 {

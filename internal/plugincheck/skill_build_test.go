@@ -535,11 +535,15 @@ func TestBuildCodingContract(t *testing.T) {
 // whole folder, so a revert of SKILL.md alone could stay green. A test that
 // an open bug already marks as flaky gets one lone rerun when a task run
 // fails, so the rule lives in step 3, before the failure goes to acta:debug.
+// It covers only a test met while doing other work: a test the current task
+// is fixing still gets debugged, or a tracked flake could never be fixed.
 func TestBuildRerunsKnownFlake(t *testing.T) {
 	skill := readBuildFile(t, "SKILL.md")
 	for _, want := range []string{
-		"`flaky_tests`", "acta list --type bug --json",
+		"While you work on something else, a failing test that an open bug lists under `flaky_tests`",
+		"acta list --type bug --json",
 		"runs once more alone first", "a pass runs `acta flake record <name> --plan <plan id>`",
+		"A test the current task is fixing is not covered",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Errorf("build/SKILL.md missing %q", want)

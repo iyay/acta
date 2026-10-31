@@ -178,6 +178,70 @@ func TestLandBaselineEvidence(t *testing.T) {
 	}
 }
 
+// TestLandRecordsFlakes reads the land files on their own. A test that only
+// passed on a rerun is green only once a bug records it, and that bug has to
+// reach the parent. A tidy-tip rerun runs in a detached temp worktree, where
+// a record cannot commit, and a step-6 rerun runs after the merge, so each
+// run names its own checkout. The tested commit is read before a record
+// commits, so the baseline names what was tested.
+func TestLandRecordsFlakes(t *testing.T) {
+	var step1, report string
+	skill := readSkill(t, "skills/land/SKILL.md")
+	for _, line := range strings.Split(skill, "\n") {
+		switch {
+		case strings.HasPrefix(line, "1. Preconditions"):
+			step1 = line
+		case strings.HasPrefix(line, "Report after landing:"):
+			report = line
+		}
+	}
+	for _, want := range []string{
+		"Exit 0 with `FLAKY:` lines: before the merge, record each one as [baseline.md](baseline.md) step 4 says.",
+		// A whole eval set costs quota, and a case red every time is a real red.
+		"never rerun the whole set for one case",
+		"Red all 3 times stops the land.",
+		// An eval flake record has to commit where the bug can reach the parent.
+		"in the checkout [baseline.md](baseline.md) step 4 names",
+	} {
+		if !strings.Contains(step1, want) {
+			t.Errorf("land step 1 missing %q", want)
+		}
+	}
+	if !strings.Contains(report, "each flake with its bug") {
+		t.Error("the landing report does not name each flake with its bug")
+	}
+	base := readSkill(t, "skills/land/baseline.md")
+	for _, want := range []string{
+		"after step 1, the plan worktree before the merge",
+		"after a step-6 rerun, the main checkout after the merge",
+		"after a tidy-tip rerun, the plan worktree, then run `acta tidy` again",
+		"A detached temp worktree cannot commit",
+		"An `eval:<case>` record follows the same rule.",
+		"A record that exits non-zero stops the land.",
+		"`commit:` the tested commit step 2 printed",
+		"`tree:` the tested tree step 2 printed",
+	} {
+		if !strings.Contains(base, want) {
+			t.Errorf("land/baseline.md missing %q", want)
+		}
+	}
+	// The commit and tree are printed right after the run, before step 4 can
+	// commit a bug file and move HEAD.
+	rc := strings.Index(base, "rc=$?")
+	tested := strings.Index(base, `echo "tested commit: $(git rev-parse HEAD) tree: $(git rev-parse 'HEAD^{tree}')"`)
+	step4 := strings.Index(base, "4. A zero status")
+	if rc < 0 || tested < rc || step4 < tested {
+		t.Errorf("land/baseline.md must print the tested commit and tree right after the run (rc %d, tested %d, step 4 %d)", rc, tested, step4)
+	}
+	// After the record and a new acta tidy, the tip differs from the tested
+	// one only by the bug file, so the gates that passed still hold.
+	tidy := readSkill(t, "skills/land/tidy.md")
+	const reuse = "when `git diff --name-only <tested commit> refs/acta/tidy/<branch>` then lists only planning-root paths, the gates are reused"
+	if !strings.Contains(tidy, reuse) {
+		t.Errorf("land/tidy.md step 3 does not reuse the gates after a flake record, want %q", reuse)
+	}
+}
+
 // TestLandUnderstanding pins the opt-in understanding part of the landing
 // report. It must sit after the report line, so nothing runs before the
 // merge, cover both switch values, and never ask the user anything.

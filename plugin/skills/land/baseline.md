@@ -5,25 +5,26 @@ Read this before every full suite run in a land: step 1, a step-6 rerun on the m
 The run keeps its complete output and its true exit status. Save the result in the absolute Git common directory, not the worktree folder: `git rev-parse --path-format=absolute --git-common-dir`. Linked worktrees share it. Quote the path, since a checkout may sit under a folder with spaces.
 
 1. Make a unique log next to the record, with the time and process id in its name: `acta-baseline-<utc-time>-<pid>.log`. An old run never overwrites a new log.
-2. Run the full command exactly as step 1 names it; `scripts/test --full` already takes the run-one lock. Keep both streams in the log, then read the status at once:
+2. Run the full command exactly as step 1 names it; `scripts/test --full` already takes the run-one lock. Keep both streams in the log, then read the status and the tested commit at once, before step 4 moves HEAD:
 
 ```bash
 common="$(git rev-parse --path-format=absolute --git-common-dir)"
 log="$common/acta-baseline-$(date -u +%Y%m%dT%H%M%SZ)-$$.log"
 <full command> >"$log" 2>&1
 rc=$?
+echo "tested commit: $(git rev-parse HEAD) tree: $(git rev-parse 'HEAD^{tree}')"
 cat "$log"
 echo "exit status: $rc"
 ```
 
 Never pipe the suite into `tee`, `head` or a filter: the pipeline hides the status.
 3. A non-zero status stops the land, as step 1 says. Keep the failed log and report its absolute path. Leave `acta-baseline.md` and the log it names untouched: the last PASS stays.
-4. A zero status: read the log for the summary and for `FLAKY: <name> (failed <k> of <n>)` lines. Never rerun the suite to recover a count. For each FLAKY line, run `acta flake record <name> --plan <plan id>` before the merge, in the checkout where the suite ran; the land report names each flake and the bug it prints. A test that passed on a rerun counts as green only through this record.
+4. A zero status: read the log for the summary and for `FLAKY: <name> (failed <k> of <n>)` lines. Never rerun the suite to recover a count. For each FLAKY line, run `acta flake record <name> --plan <plan id>` where its commit reaches the parent: after step 1, the plan worktree before the merge; after a step-6 rerun, the main checkout after the merge; after a tidy-tip rerun, the plan worktree, then run `acta tidy` again. A detached temp worktree cannot commit. An `eval:<case>` record follows the same rule. A record that exits non-zero stops the land. The land report names each flake and the bug it prints. A test that passed on a rerun counts as green only through this record.
 5. Write the record to a temp file in the same folder, then rename it over `acta-baseline.md`. A reader sees the old record or the new one, never half a record. A rename that fails leaves the old record in place: report it and do not merge.
 
 The record is one line per field:
-- `commit:` the tested `git rev-parse HEAD` in the checkout where the suite ran
-- `tree:` the tested `git rev-parse HEAD^{tree}` in that checkout
+- `commit:` the tested commit step 2 printed in the checkout where the suite ran
+- `tree:` the tested tree step 2 printed
 - `command:` the exact command
 - `when:` UTC time from `date -u +%Y-%m-%dT%H:%M:%SZ`
 - `runtime:` the versions the suite used, such as `go version` or `node --version`, and a lockfile hash when the repo has one

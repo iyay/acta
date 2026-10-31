@@ -20,7 +20,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 Exit: one command you ran catches the exact symptom the user reported.
 
-A failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name> --plan <plan id>` and needs no debugging.
+While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
 2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.

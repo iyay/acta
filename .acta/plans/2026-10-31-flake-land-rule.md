@@ -72,20 +72,34 @@ Land order: PLN-0204 and PLN-0205 land on main in either order; they share no fi
 
 **verify:** Every FLAKY record a land makes ends up committed on the parent: step 1 records in the plan worktree before the merge, a step-6 rerun records in the main checkout after the merge, a tidy-tip rerun records in the plan worktree and then runs acta tidy again, and a record that exits non-zero stops the land; the build and debug rerun never stops work on a test that the current bug or plan task is fixing.
 
-- [ ] plugin/skills/land/baseline.md step 4: a tidy-tip rerun runs in a detached temp worktree, where acta flake record cannot commit (exit 2, untracked bug file, report names a BUG main never gets). Name the checkout per run: plan worktree before the merge for step 1; main checkout after the merge for a step-6 rerun; plan worktree then acta tidy again for a tidy-tip rerun. A record that exits non-zero stops the land.
-- [ ] plugin/skills/debug/SKILL.md and plugin/skills/build/SKILL.md: the known-flake rerun says a pass "needs no debugging", so asking to fix a tracked flake (for example BUG-0058) records one more flake and stops. Limit the rule to failures met while doing other work; a test the current bug or task is fixing is not covered.
-- [ ] plugin/skills/debug/SKILL.md: pass --plan only when there is a plan.
-- [ ] plugin/skills/land/baseline.md: capture the tested commit and tree right after the run, before step 4 commits a bug file, so the record names what was tested.
-- [ ] plugin/evals/land-records-flake/graders/records-flake.md: do not eat the newline after the record line, so a merge line right after it still matches; accept git merge --no-ff -m "<msg>" <branch> like land-full-progress does.
-- [ ] plugin/evals/land-eval-flake/graders/eval-flake.md: refuse 3 or more lone reruns of the case before the pass, and a lone rerun of a different case.
-- [ ] internal/plugincheck: guard the land SKILL.md step-1 FLAKY sentence, the report clause "each flake with its bug", "never rerun the whole set" and "Red all 3 times stops the land", and the new checkout rule.
-- [ ] Commit with the trailer `Task: PLN-pvlb4at#5`
+- [x] plugin/skills/land/baseline.md step 4: a tidy-tip rerun runs in a detached temp worktree, where acta flake record cannot commit (exit 2, untracked bug file, report names a BUG main never gets). Name the checkout per run: plan worktree before the merge for step 1; main checkout after the merge for a step-6 rerun; plan worktree then acta tidy again for a tidy-tip rerun. A record that exits non-zero stops the land.
+- [x] plugin/skills/debug/SKILL.md and plugin/skills/build/SKILL.md: the known-flake rerun says a pass "needs no debugging", so asking to fix a tracked flake (for example BUG-0058) records one more flake and stops. Limit the rule to failures met while doing other work; a test the current bug or task is fixing is not covered.
+- [x] plugin/skills/debug/SKILL.md: pass --plan only when there is a plan.
+- [x] plugin/skills/land/baseline.md: capture the tested commit and tree right after the run, before step 4 commits a bug file, so the record names what was tested.
+- [x] plugin/evals/land-records-flake/graders/records-flake.md: do not eat the newline after the record line, so a merge line right after it still matches; accept git merge --no-ff -m "<msg>" <branch> like land-full-progress does.
+- [x] plugin/evals/land-eval-flake/graders/eval-flake.md: refuse 3 or more lone reruns of the case before the pass, and a lone rerun of a different case.
+- [x] internal/plugincheck: guard the land SKILL.md step-1 FLAKY sentence, the report clause "each flake with its bug", "never rerun the whole set" and "Red all 3 times stops the land", and the new checkout rule.
+- [x] Commit with the trailer `Task: PLN-pvlb4at#5`
+
+## Polish
+
+### Task 6: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] internal/plugincheck/skill_land_test.go: guard the land SKILL.md step-1 eval sentence "in the checkout [baseline.md](baseline.md) step 4 names" with a want in TestLandRecordsFlakes, so a revert of SKILL.md alone goes red.
+- [x] plugin/evals/land-baseline-pass/graders/baseline-identity.md: update the comment to say the commit is the tested commit step 2 printed, not git rev-parse HEAD.
+- [x] Commit: `polish: review notes for PLN-0203`
+
+## Review notes
+
+- Review: deep level, no floor raised; round 1 BLOCKED (tidy-tip record lost in a detached worktree; the flake rule stopped work on a tracked flake; fact-check kept both), fix round 1, round 2 CLEAN, polish review CLEAN. Notes kept, not tracked: build then debug can rerun a known flake alone twice; the seed bugs folded into one commit and carry a no-plan Flakes line dated today; no red-first eval run on record; the eval sentence says before the merge though a step-6 eval rerun records after it; the tidy reuse clause names FLAKY lines, not eval records; auto_commit off lets a record exit 0 uncommitted; the eval-flake grader accepts a record in main before the merge.
 
 ## State
 
 ### Next
 
-Task 4 seeds the flake bugs next: the two TUI tests and the task-trailer, brainstorm and debug-race evals, plus the SCR-0079 reds bug.
+Fix round 1 (Task 5) is committed; review round 2 over the fix commit is next. land-eval-flake went green, then red once after a wording change that was later reverted, so its final text has no eval run yet.
 
 ### Findings
 

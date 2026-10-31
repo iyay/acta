@@ -99,4 +99,8 @@ Sliced SPC-0185 into three minimal plans by file area (spec Scope edited to matc
 
 User replied "build subagent" (2026-10-31 18:01): plans approved; build with the subagent executor for this run. PLN-0204 and PLN-0205 start now; PLN-0203 waits for PLN-0204 to land.
 
+### 2026-10-31
+
+Seed done in PLN-0203 task 4 (2026-10-31): flake bugs BUG-0057 (wheel test, filed at the PLN-0205 land), BUG-0058 click test, BUG-0059 task-trailer, BUG-0060 brainstorm-mixed-context, BUG-0061 brainstorm-resume-topic, BUG-0062 debug-race; real red answers-appended filed as a non-flake bug.
+
 ## Open questions
