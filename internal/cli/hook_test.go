@@ -105,6 +105,62 @@ func runGoTestHook(t *testing.T, dir, command string) (int, string, string) {
 	return runHook(t, "pre-tool", hookEvent("s1", command))
 }
 
+// TestHookPreToolBlocksDestructive runs the real command line with a Bash
+// event. The rules live in the hook package; this only checks that pre-tool
+// calls them, exits 2 with the reason on stderr, and lets the rest through.
+func TestHookPreToolBlocksDestructive(t *testing.T) {
+	t.Chdir(hookRepo(t))
+	code, out, errb := runHook(t, "pre-tool", toolEvent(t, "s1", "", "Bash", map[string]string{"command": "rm -rf x"}))
+	if code != exitBlock || out != "" {
+		t.Fatalf("rm -rf x: exit %d, stdout %q, want exit %d and nothing on stdout", code, out, exitBlock)
+	}
+	if want := "acta never runs destructive commands, so it blocked: rm -rf x."; !strings.Contains(errb, want) {
+		t.Fatalf("stderr %q, want it to hold %q", errb, want)
+	}
+
+	if code, out, errb := runHook(t, "pre-tool", toolEvent(t, "s1", "", "Bash", map[string]string{"command": "rm -r x"})); code != exitOK || out != "" || errb != "" {
+		t.Fatalf("rm -r x: exit %d, stdout %q, stderr %q, want exit 0 and nothing printed", code, out, errb)
+	}
+
+	// The Bash tool can work in another folder than the hook process. The
+	// event says which one, so an amend on a merge there is still caught,
+	// while the hook's own folder holds a repo with no commits at all.
+	ev, err := json.Marshal(map[string]any{
+		"session_id": "s1", "tool_name": "Bash", "cwd": mergeRepoCLI(t),
+		"tool_input": map[string]string{"command": "git commit --amend --no-edit"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _, errb := runHook(t, "pre-tool", string(ev)); code != exitBlock {
+		t.Fatalf("amend on a merge in the event cwd: exit %d, stderr %q, want %d", code, errb, exitBlock)
+	}
+}
+
+// mergeRepoCLI is a git repo whose HEAD is a merge commit, the one HEAD an
+// amend must never rewrite.
+func mergeRepoCLI(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		// Name, email and no signing are set here, so the test does not
+		// depend on the git setup of the machine it runs on.
+		full := append([]string{"-C", dir, "-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false"}, args...)
+		if out, err := exec.Command("git", full...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	git("init", "-q", "-b", "main")
+	git("commit", "-q", "--allow-empty", "-m", "first")
+	git("checkout", "-q", "-b", "side")
+	git("commit", "-q", "--allow-empty", "-m", "side")
+	git("checkout", "-q", "main")
+	git("commit", "-q", "--allow-empty", "-m", "main")
+	git("merge", "-q", "--no-ff", "-m", "merge side", "side")
+	return dir
+}
+
 // tuiHint is what Claude Code reads on stdout when a tool call touches a file
 // that the page tui-wrap covers: one JSON object on one line.
 const tuiHint = `{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":` +
@@ -309,6 +365,7 @@ func TestHookPreToolNeverBlocksPatchContent(t *testing.T) {
 	for name, line := range map[string]string{
 		"a go test line":     "+echo ok; go test ./...; echo done",
 		"a bare go test too": "+go test ./scripts/...",
+		"an rm -rf line":     "+echo ok; rm -rf build",
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := hintRepo(t, "scripts/")

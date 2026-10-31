@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -26,8 +27,8 @@ var wikiHints = hook.WikiHints
 
 // cmdHook prints hook text. Every hook exits 0 whatever stdin holds, because a
 // hook that fails would get in the way of the user's session. The one
-// exception is pre-tool stopping a bare go test, which exits 2 with the
-// reason the agent has to read.
+// exception is pre-tool stopping a bare go test or a destructive command,
+// which exits 2 with the reason the agent has to read.
 func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, hookUsage)
@@ -51,7 +52,11 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if args[0] == "post-tool" {
 			return exitOK
 		}
-		ev, ok := hook.ParseEvent(stdin)
+		data, err := io.ReadAll(stdin)
+		if err != nil {
+			return exitOK
+		}
+		ev, ok := hook.ParseEvent(bytes.NewReader(data))
 		if !ok {
 			return exitOK
 		}
@@ -62,6 +67,21 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// planning root, so a repo with no planning root still gets it.
 		cwd, _ := os.Getwd()
 		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); shell && block {
+			fmt.Fprintln(stderr, msg)
+			return exitBlock
+		}
+		// The Bash tool keeps a cd from one call to the next, so it can work
+		// in another folder than this process. The event names that folder.
+		// The parse above already passed, so a bad field here just leaves
+		// it empty.
+		var where struct {
+			Cwd string `json:"cwd"`
+		}
+		_ = json.Unmarshal(data, &where)
+		if where.Cwd == "" {
+			where.Cwd = cwd
+		}
+		if block, msg := hook.DestructiveBlock(where.Cwd, ev.ToolInput.Command); shell && block {
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}

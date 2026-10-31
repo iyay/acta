@@ -2,7 +2,6 @@
 parent: scratch/2026-09-29-scratch-skill-adds-context
 id: SPC-0022
 hash: j95c98o
-status: approved
 ---
 # One Body Schema for Every Kind
 

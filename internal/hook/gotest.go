@@ -24,6 +24,14 @@ const goTestSpace = " \t\n"
 // of a new command. The quotes stay in the words that come out, so a value
 // like 'TestA|TestB' survives whole into the message the agent reads.
 func goTestCut(s, at string) []string {
+	out, _ := goTestSplit(s, at)
+	return out
+}
+
+// goTestSplit is goTestCut that also says whether every quote closed. A quote
+// left open means the hook cannot tell where the text ends, so a caller that
+// must never guess can let the whole command through.
+func goTestSplit(s, at string) ([]string, bool) {
 	var out []string
 	var word strings.Builder
 	var quote byte
@@ -65,7 +73,7 @@ func goTestCut(s, at string) []string {
 	if word.Len() > 0 {
 		out = append(out, word.String())
 	}
-	return out
+	return out, quote == 0
 }
 
 // goTestPrefix holds the words that can stand in front of a command without

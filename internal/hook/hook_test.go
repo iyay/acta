@@ -872,12 +872,12 @@ func TestSessionStartRuleSixSplit(t *testing.T) {
 	}
 }
 
-// Rule 5 exempts only the post-tidy branch delete in land cleanup, so a
-// clean tidy land never asks. The old bare line is a verbatim prefix of
-// the new one, so the negative check matches the exact old line.
+// Rule 5 says the hook blocks destructive commands and the user runs them.
+// It still exempts only the post-tidy branch delete in land cleanup, so a
+// clean tidy land never asks. The old warn-and-ask sentence must be gone.
 func TestSessionStartRuleFiveTidyException(t *testing.T) {
-	newRule := "5. Never push. Never run a destructive command without a full-sentence warning and a yes. Only the git branch -D in tidy.md step 7, after its final plan check passes, is not destructive: tidy proved the tip equals the merge, so delete without asking. A stopped or red tidy land still asks."
-	oldLine := "5. Never push. Never run a destructive command without a full-sentence warning and a yes.\n"
+	newRule := "5. Never push. Never run a destructive command: the pre-tool hook blocks them. Say in full sentences what you wanted to run and why, and let the user run it themselves. Only the git branch -D in tidy.md step 7, after its final plan check passes, is not destructive: tidy proved the tip equals the merge, so delete without asking. A stopped or red tidy land still asks."
+	oldLine := "Never run a destructive command without a full-sentence warning and a yes."
 	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
 	if err != nil {
 		t.Fatal(err)
