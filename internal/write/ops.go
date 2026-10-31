@@ -52,6 +52,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return setPriority(cfg, it, id, value)
 	case it.Kind == board.KindTask:
 		return Outcome{}, bad("tasks take their status from their checkboxes")
+	case it.Kind == board.KindDebtItem && field == "status":
+		return Outcome{}, bad("closing a debt line needs a reason: acta set %s status done|wontfix --reason \"<text>\"", id)
 	case it.Kind == board.KindDebtItem:
 		return Outcome{}, bad("a debt item's title is its own line in the debt file; edit that line instead")
 	case it.Legacy:

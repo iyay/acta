@@ -458,6 +458,7 @@ func shortRefs(b *board.Board, ids []string) []string {
 
 func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
+	reason := fs.String("reason", "", "why a debt line closes; needed with status on a debt line")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
 		fmt.Fprintln(stderr, usageLine("set"))
@@ -480,6 +481,14 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, msg)
 			return exitBadInput
 		}
+	}
+	if it := b.Get(pos[0]); it != nil && it.Kind == board.KindDebtItem && pos[1] == "status" && *reason != "" {
+		o, err := write.CloseDebtLine(cfg, b, pos[0], pos[2], *reason)
+		return report(o, err, stdout, stderr)
+	}
+	if *reason != "" {
+		fmt.Fprintln(stderr, "--reason only closes a debt line; for other items use acta set <id> reason <text>")
+		return exitBadInput
 	}
 	o, err := write.SetValue(cfg, b, pos[0], pos[1], pos[2])
 	return report(o, err, stdout, stderr)

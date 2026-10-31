@@ -113,6 +113,31 @@ func TestSetReasonShowsInShow(t *testing.T) {
 	})
 }
 
+func TestSetClosesDebtLineWithReason(t *testing.T) {
+	dir := debtRepo(t)
+	inDir(t, dir, func() {
+		var stdout, stderr strings.Builder
+		if code := Run([]string{"debt", "new", "PLAN-3"}, strings.NewReader("(medium) x\n"), false, &stdout, &stderr); code != exitOK {
+			t.Fatalf("debt new: exit %d %q", code, stderr.String())
+		}
+		if code := Run([]string{"set", "DBT-1.01", "status", "done"}, strings.NewReader(""), false, &stdout, &stderr); code != exitBadInput {
+			t.Fatalf("status without --reason: exit %d, want bad input", code)
+		}
+		if code := Run([]string{"set", "PLAN-3", "status", "done", "--reason", "x"}, strings.NewReader(""), false, &stdout, &stderr); code != exitBadInput {
+			t.Fatalf("--reason on a plan: exit %d, want bad input", code)
+		}
+		mustRun(t, "set", "DBT-1.01", "status", "wontfix", "--reason", "stale")
+	})
+	entries, err := os.ReadDir(filepath.Join(dir, ".pm", "debt"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("debt dir entries=%v err=%v", entries, err)
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, ".pm", "debt", entries[0].Name()))
+	if !strings.Contains(string(body), "- [-] (medium) x (wontfix: stale)\n") {
+		t.Fatalf("debt line not closed: %q", body)
+	}
+}
+
 func TestDebtNewEmptyStdinExitsBadInput(t *testing.T) {
 	dir := debtRepo(t)
 	var stdout, stderr strings.Builder
