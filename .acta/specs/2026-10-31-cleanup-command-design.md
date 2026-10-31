@@ -46,8 +46,11 @@ A candidate is any of these:
   still going.
 - An open bug.
 - A stuck plan. That is a plan that shows `in-progress`, has at least one open
-  task, and has no commit naming it for 14 days. `acta commits` already finds
-  those commits. A plan with no such commit counts from its `started` date.
+  task, has no linked worktree, and has had no commit for 14 days. A commit
+  counts when it touches the plan file or carries a `Task: PLN-<hash>#<n>`
+  trailer for the plan; chore commits such as ticks count too. A plan with no
+  such commit counts from its `started` date, or from `created` when `started`
+  is missing.
 - A spec with status `draft` or `approved` that has no plan and was created
   more than 14 days ago.
 
@@ -55,20 +58,43 @@ Past these thresholds, age only sorts the list. No item is closed because of
 its age alone.
 
 An item that lives only in another worktree is skipped, because that work is
-still running.
+still running. A plan that has a linked worktree is skipped for the same
+reason, even when its file is also on the main checkout.
+
+`--json` prints one JSON object per candidate with the fields `id`, `kind`,
+`title`, `path`, `status`, `age_days` and `why` (the rule that made it a
+candidate).
 
 `acta cleanup --fix` makes the changes that need no judgment, in one commit:
 
 - It removes a written status that the board already ignores. The board flags
   these as `written status X ignored, derived Y`; five specs had one on
   2026-10-31.
-- It marks a plan `done` when every task is ticked but the plan does not show
-  `done` or `review`.
+- It marks a plan `done` when it has at least one task, every task is ticked,
+  and the plan does not show `done` or `review`.
 
-`acta cleanup apply` reads the approved decisions on stdin, one per line, and
-writes them in one commit. Each decision names the item id, the new status and
-the reason. Bugs may also carry the `fixed_in` sha. It refuses the whole batch
-when any line is invalid, so a batch never half lands.
+`acta cleanup apply` reads the approved decisions on stdin, one JSON object
+per line, and writes them in one commit. Fields:
+
+- `id`: the item id, for example `SCR-0081`, `BUG-0037` or `DBT-0145.01`.
+- `status`: the new status, allowed for that kind (see the table below).
+- `reason`: one line of text, required.
+- `fixed_in`: a commit sha, required when `status` is `fixed` and refused
+  otherwise.
+
+Example lines:
+
+```
+{"id":"DBT-0145.01","status":"done","reason":"done in 4dcc44c"}
+{"id":"SCR-0081","status":"dropped","reason":"replaced by SPC-0183"}
+{"id":"BUG-0037","status":"fixed","fixed_in":"cb1f58b","reason":"runner stops at the final reply"}
+{"id":"PLN-0176","status":"dropped","reason":"no work for 30 days, idea moved to SCR-0080"}
+```
+
+Both `--fix` and `apply` check every change before the first write: the id
+exists, the status is allowed for the kind, the reason is present, and no plan
+has a linked worktree. When any check fails, they write nothing, print each
+failing line, and exit non-zero, so a batch never half lands.
 
 ## Data and write commands
 
@@ -79,13 +105,17 @@ when any line is invalid, so a batch never half lands.
   without a spec, and its reason must name the commit. Like `dropped`, a
   written `done` beats a spec link. The TUI Scratchpad gets a Done tab next to
   Specced and Dropped.
-- `acta set` on a debt line (for example `DBT-0145.01`) accepts `status done`
-  and `status wontfix`. It rewrites the box to `[x]` or `[-]` and adds the
-  reason as a suffix in parentheses, the same shape as the existing `(stale)`
-  lines. Today `acta set` refuses debt lines, and only `acta debt drop-low` or
-  a hand edit can close one.
+- `acta set <debt line> status done|wontfix --reason "<text>"` closes one
+  debt line, for example `acta set DBT-0145.01 status wontfix --reason stale`.
+  The reason is required. `done` writes `[x]` and `wontfix` writes `[-]`. The
+  reason goes at the end of the line in parentheses. When the line already
+  ends in a reason this command wrote, the new reason replaces it, so a second
+  run never stacks two. Today `acta set` refuses debt lines, and only
+  `acta debt drop-low` or a hand edit can close one. Old lines such as
+  `- [x] ... (stale)` stay as they are.
 
-Each write commits like `acta set` does today.
+Each `acta set` call commits on its own, like today. `apply` writes a whole
+batch in one commit.
 
 Closing statuses by kind:
 
@@ -97,8 +127,11 @@ Closing statuses by kind:
 | Plan | `done` through `--fix` only | `dropped` with reason |
 | Spec | not a cleanup case | `dropped` with reason |
 
-When a stuck plan is dropped, its spec is dropped too unless the spec has
-another plan that is still alive.
+When `apply` drops a plan, it also drops the plan's spec in the same commit,
+unless the spec has another plan whose status is not `done` or `dropped`. The
+spec gets the reason `plan PLN-<n> dropped: <plan reason>`. The approval
+message in the skill shows this spec change as a line under the plan, so the
+user sees both writes before saying yes.
 
 ## The acta:cleanup skill
 
@@ -128,12 +161,15 @@ At build, rewrite `.acta/wiki/scratch-dropped-vs-specced.md`. It must say that
 
 ## Testing
 
-- Go tests for the candidate rules: each kind, the 14-day rule, and the skip
-  for items that live only in another worktree.
-- Go tests for `--fix` and for `apply`: one commit per batch, and a whole
-  batch refused when one line is invalid.
-- Go tests for `acta set reason`, for scratch `done` beating a spec link, and
-  for a debt line moving to `[x]` or `[-]` with its suffix.
+- Go tests for the candidate rules: each kind, the 14-day rule with chore
+  commits counted, the `created` fallback, and the skip for items in another
+  worktree and for plans with a linked worktree.
+- Go tests for `--fix` and for `apply`: one commit per batch, a whole batch
+  refused when one line fails a check, a plan with no tasks left alone, and the
+  spec dropped with its plan only when no other open plan remains.
+- Go tests for `acta set reason`, for scratch `done` beating a spec link, for
+  a debt line moving to `[x]` or `[-]` with its suffix, and for a second run
+  replacing the suffix.
 - TUI tests for the Done tab and for the reason in the detail pane.
 - The new skill lives in `plugin/skills/cleanup/`. It is added to the skill
   list in `internal/hook/hook.go` and `plugin/hooks/default-rules.md`, and it
