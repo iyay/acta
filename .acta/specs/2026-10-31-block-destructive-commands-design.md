@@ -3,6 +3,7 @@ parent: scratch/2026-10-19-land-agent-forces-cleanup
 id: SPC-0186
 created: "2026-10-31 20:19:51"
 hash: sem7ds7
+started: "2026-10-31 20:25:30"
 ---
 # Block destructive commands and keep test output
 
