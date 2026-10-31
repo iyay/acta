@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0204
 created: "2026-10-31 17:59:57"
 hash: de70hm8
+started: "2026-10-31 18:02:11"
 ---
 # Flake record implementation plan
 
@@ -27,9 +28,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3.
 **Files:** Modify `internal/board/board.go`, `internal/board/board_test.go`.
 **Seam:** `board.Load` and the `Item.FlakyTests []string` field it fills.
 **verify:** A bug's `flaky_tests` list loads in file order in both YAML forms (`[a, b]` and a block list), through the same `listField` reader as `closes:`; a bug without the field, and every other kind, has an empty list.
-- [ ] Red: a table test over a flow list, a block list and a missing field fails because `Item` has no `FlakyTests`.
-- [ ] Change: Add `FlakyTests` to `Item` and fill it with `listField(doc.Front, "flaky_tests")` for bugs, then run `scripts/test ./internal/board/` to green.
-- [ ] Commit: `feat(flake): bugs read flaky_tests`.
+- [x] Red: a table test over a flow list, a block list and a missing field fails because `Item` has no `FlakyTests`.
+- [x] Change: Add `FlakyTests` to `Item` and fill it with `listField(doc.Front, "flaky_tests")` for bugs, then run `scripts/test ./internal/board/` to green.
+- [x] Commit: `feat(flake): bugs read flaky_tests`.
 
 ### Task 2: RecordFlake writes the record
 
@@ -52,3 +53,15 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3.
 ## Build brief
 
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
+
+## State
+
+### Next
+
+Item.FlakyTests is filled for bugs only, from flaky_tests via listField (flow and block lists, file order).
+Other kinds and bugs without the key have a nil list.
+Test: internal/board.TestBugReadsFlakyTests in board_test.go.
+
+### Findings
+
+acta state set refuses to commit while the plan file holds uncommitted task ticks (exit 2, 'file had other uncommitted changes'); the text is still written. Workers tick, then state set fails every task until the orchestrator commits the plan. Seen on PLN-0204 task 1.
