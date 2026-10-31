@@ -14,13 +14,19 @@ import (
 // notSlug matches every run of characters a slug cannot hold.
 var notSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
+// maxFlakeSlug is how long the test name part of a flake bug's slug can be.
+const maxFlakeSlug = 60
+
 // RecordFlake writes one flake of the test called name onto the open bug
 // that tracks it, and commits that bug file. With no open bug for the name a
 // new flake bug is filed. A bug that was fixed is never changed: the new bug
 // names it, so the fix history stays true. It gives the bug's outcome and how
 // many lines its "## Flakes" section holds now. planID may be empty.
 func RecordFlake(cfg config.Config, name, planID string) (Outcome, int, error) {
-	if strings.TrimSpace(name) == "" {
+	// A stray space from a copy and paste must not make the same test look
+	// like a new one, or it would get a second open bug.
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return Outcome{}, 0, bad("flaky test name cannot be empty")
 	}
 	if strings.ContainsAny(name, "\r\n") {
@@ -39,7 +45,13 @@ func RecordFlake(cfg config.Config, name, planID string) (Outcome, int, error) {
 		if it.Kind != board.KindPlan {
 			return Outcome{}, 0, bad("%s is not a plan", planID)
 		}
+		// The short id stays the same when the plan file is renamed, so it
+		// is the better name to keep. The typed text is only for a plan
+		// with no id.
 		plan = planID
+		if it.ShortID != "" {
+			plan = it.ShortID
+		}
 	}
 	line := "- " + Now().Format(stampLayout) + " " + plan
 	open, fixed := flakeBugs(b, name)
@@ -139,7 +151,15 @@ func newFlakeBug(cfg config.Config, name, line string, fixed *board.Item) (Outco
 		symptom += fmt.Sprintf("\n\n%s was fixed in %s, and the test flaked again.", bugName(fixed), fixed.FixedIn)
 	}
 	body := "## Symptom\n\n" + symptom + "\n\n## Root cause\n\nNot known yet.\n\n## Flakes\n\n" + line + "\n"
-	slug := strings.Trim("flaky-"+notSlug.ReplaceAllString(strings.ToLower(name), "-"), "-")
+	// Trim the name part on its own, so a name that starts with a mark like
+	// "[" does not leave two dashes after "flaky". Cut it short too, or a
+	// long subtest name makes a file name the disk refuses.
+	part := strings.Trim(notSlug.ReplaceAllString(strings.ToLower(name), "-"), "-")
+	if len(part) > maxFlakeSlug {
+		part = strings.TrimRight(part[:maxFlakeSlug], "-")
+	}
+	// A name made only of marks leaves no part; "flaky" alone is still a slug.
+	slug := strings.TrimSuffix("flaky-"+part, "-")
 	quiet := cfg
 	quiet.AutoCommit = false
 	o, err := NewBug(quiet, slug, "Flaky test "+name, "", "medium", []byte(body))

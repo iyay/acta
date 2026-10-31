@@ -5,6 +5,7 @@ id: PLN-0204
 created: "2026-10-31 17:59:57"
 hash: de70hm8
 started: "2026-10-31 18:02:11"
+finished: "2026-10-31 18:13:51"
 ---
 # Flake record implementation plan
 
@@ -46,24 +47,37 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3.
 **Files:** Create `internal/cli/flake.go`, `internal/cli/flake_test.go`; modify `internal/cli/cli.go`, `internal/cli/help.go`.
 **Seam:** `cli.Run` with `flake record <name> [--plan <plan id>]`.
 **verify:** Wiring only: one success path prints `BUG-nnnn <title> (<count> flakes)` and exits 0; one refusal from `RecordFlake` reaches stderr with the bad-input exit; a missing name or unknown subcommand prints the usage line; `acta help flake` shows the entry in the Write group.
-- [ ] Red: the CLI test fails because `flake` is an unknown command.
-- [ ] Change: Add the `flake` case to `cli.go`, `cmdFlakeRecord` in `flake.go` and the help entry, then run `scripts/test ./internal/cli/ -run 'TestFlake|TestHelp'` to green.
-- [ ] Commit: `feat(flake): acta flake record command`.
+- [x] Red: the CLI test fails because `flake` is an unknown command.
+- [x] Change: Add the `flake` case to `cli.go`, `cmdFlakeRecord` in `flake.go` and the help entry, then run `scripts/test ./internal/cli/ -run 'TestFlake|TestHelp'` to green.
+- [x] Commit: `feat(flake): acta flake record command`.
 
 ## Build brief
 
 Land order: PLN-0204 and PLN-0205 land on main in either order; they share no file. PLN-0203 lands after PLN-0204.
 
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] internal/write/flake.go: trim spaces from the name before every check and use, so 'trail.TestY ' and 'trail.TestY' are one name and a second record never files a second open bug.
+- [x] internal/write/flake.go: build the slug as "flaky-" plus the cleaned name with its own dashes trimmed, so a name like "[x]" or "../x" gives flaky-x, not a refused flaky--x.
+- [x] internal/write/flake.go: cap the slug part at 60 characters (dashes trimmed after the cut), so a long subtest name never fails with "file name too long".
+- [x] internal/write/flake.go: write the plan's short id (PLN-nnnn) on the ## Flakes line when the plan has one, not the text as typed.
+- [x] internal/cli/flake_test.go: add a case that records onto an existing bug whose title is not "Flaky test <name>" and checks the printed title is the bug's own.
+- [x] Commit: `polish: review notes for PLN-0204`
+
+## Review notes
+
+- Review: deep level, no floor raised; round 1 CLEAN, polish review CLEAN. Notes kept, not tracked: a CRLF bug file gets an LF line; YAML non-string names (null, 0x10) do not round-trip; a ### under ## Flakes stays in the list; Legacy bugs are not refused; the CLI loads the board twice for the title; a trailing newline in a name is trimmed; the TrimRight after the slug cut is redundant; the quiet NewBug is not pinned by a test.
+
 ## State
 
 ### Next
 
-Task 2 landed in 32a3936: internal/write/flake.go.
-Signature: write.RecordFlake(cfg config.Config, name, planID string) (write.Outcome, int, error).
-Outcome: Path of the bug file, ShortID (BUG-nnnn) of that bug, Committed/Skipped/Reason from finish. The int is the ## Flakes line count after the add.
-Refusals wrap write.ErrBadInput (check errors.Is): empty or blank name, a name with a newline, unknown --plan id, a --plan id that is not a plan. Nothing is written.
-Task 3 reads the title for its print from the board or from "Flaky test <name>"; RecordFlake does not return it.
-planID is written on the Flakes line as given; an empty planID writes "no plan".
+All three tasks done; Task 3 landed in e8efe77 (internal/cli/flake.go, acta flake record).
+Next: commit the plan ticks, then acta:review over the branch.
 
 ### Findings
 

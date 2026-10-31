@@ -158,6 +158,57 @@ func TestRecordFlake(t *testing.T) {
 		}
 	})
 
+	t.Run("spaces around the name do not make a second bug", func(t *testing.T) {
+		fixNow(t)
+		cfg := flakeRepo(t, nil)
+		first, _, err := RecordFlake(cfg, "trail.TestY", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		again, n, err := RecordFlake(cfg, " trail.TestY ", "")
+		if err != nil || n != 2 || again.Path != first.Path {
+			t.Fatalf("outcome %+v count %d err %v, want %s", again, n, err, first.Path)
+		}
+		if bugs := openFlakeBugs(t, cfg, "trail.TestY"); len(bugs) != 1 {
+			t.Errorf("open bugs %d want 1", len(bugs))
+		}
+	})
+
+	t.Run("name with odd ends still gives a plain slug", func(t *testing.T) {
+		fixNow(t)
+		for _, name := range []string{"[x]", "../x"} {
+			cfg := flakeRepo(t, nil)
+			o, _, err := RecordFlake(cfg, name, "")
+			if err != nil || !strings.HasSuffix(o.Path, "-flaky-x.md") {
+				t.Errorf("%q: path %s err %v, want a flaky-x file", name, o.Path, err)
+			}
+		}
+	})
+
+	t.Run("long name gives a slug cut to 60", func(t *testing.T) {
+		fixNow(t)
+		cfg := flakeRepo(t, nil)
+		// The dash from the slash lands right at the cut, so it must go too.
+		name := "pkg.Test" + strings.Repeat("a", 51) + "/" + strings.Repeat("b", 300)
+		o, _, err := RecordFlake(cfg, name, "")
+		want := "-flaky-pkg-test" + strings.Repeat("a", 51) + ".md"
+		if err != nil || !strings.HasSuffix(o.Path, want) {
+			t.Fatalf("path %s err %v, want suffix %s", o.Path, err, want)
+		}
+	})
+
+	t.Run("plan with an id is written by its id", func(t *testing.T) {
+		fixNow(t)
+		cfg := flakeRepo(t, map[string]string{".acta/plans/2026-09-27-ided.md": "---\nid: PLN-0042\n---\n# Ided\n\n### Task 1: X\n- [ ] a\n"})
+		o, _, err := RecordFlake(cfg, flakyName, "plans/2026-09-27-ided")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if body := readFile(t, o.Path); !strings.Contains(body, "## Flakes\n\n"+line+"PLN-0042\n") {
+			t.Errorf("flake line does not name PLN-0042:\n%s", body)
+		}
+	})
+
 	t.Run("bad input writes nothing", func(t *testing.T) {
 		fixNow(t)
 		cfg := flakeRepo(t, nil)

@@ -103,6 +103,12 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 			return cmdScratchNew(args[2:], stdin, stdout, stderr)
 		}
 		return cmdScratchAdd(args[2:], stdin, stdout, stderr)
+	case "flake":
+		if len(args) < 2 || args[1] != "record" {
+			fmt.Fprintln(stderr, usageLine("flake"))
+			return exitBadInput
+		}
+		return cmdFlakeRecord(args[2:], stdout, stderr)
 	case "config":
 		return cmdConfig(args[1:], stdout, stderr)
 	case "hook":
