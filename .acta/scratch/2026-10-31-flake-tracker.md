@@ -91,4 +91,12 @@ Spec written and committed: .acta/specs/2026-10-31-flake-tracker-design.md. Wait
 
 User replied "gas spec" (2026-10-31 17:57): spec SPC-0185 approved, no cold read. Next: acta:slice.
 
+### 2026-10-31
+
+Sliced SPC-0185 into three minimal plans by file area (spec Scope edited to match): PLN-0204 flake record, PLN-0205 flake rerun in scripts/test, PLN-0203 land rule (after PLN-0204). Waiting for the user's yes on the plans.
+
+### 2026-10-31
+
+User replied "build subagent" (2026-10-31 18:01): plans approved; build with the subagent executor for this run. PLN-0204 and PLN-0205 start now; PLN-0203 waits for PLN-0204 to land.
+
 ## Open questions
