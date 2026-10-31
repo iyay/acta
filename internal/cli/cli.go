@@ -113,6 +113,11 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdCommit(args[1:], stdout, stderr)
 	case "commits":
 		return cmdCommits(args[1:], stdout, stderr)
+	case "cleanup":
+		if len(args) > 1 && args[1] == "apply" {
+			return cmdCleanupApply(args[2:], stdin, stdout, stderr)
+		}
+		return cmdCleanup(args[1:], stdout, stderr)
 	case "usage":
 		return cmdUsage(args[1:], stdout, stderr)
 	case "id":
@@ -229,6 +234,7 @@ type outItem struct {
 	Status       string       `json:"status"`
 	StatusSource string       `json:"status_source"`
 	Ref          string       `json:"ref"`
+	Reason       string       `json:"reason,omitempty"`
 	Parent       string       `json:"parent"`
 	Closes       []string     `json:"closes"`
 	ClosedBy     []string     `json:"closed_by"`
@@ -254,7 +260,7 @@ func toJSON(cfg config.Config, it *board.Item) outItem {
 		}
 	}
 	j := outItem{ID: it.ID, ShortID: it.ShortID, Hash: it.Hash, Type: string(it.Kind), Title: it.Title, Status: it.Status,
-		StatusSource: it.StatusSource, Ref: it.Ref, Parent: it.Parent,
+		StatusSource: it.StatusSource, Ref: it.Ref, Reason: it.Reason, Parent: it.Parent,
 		Children: append([]string{}, it.Children...), Progress: jsonProgress{it.Done, it.Total},
 		Closes: append([]string{}, it.Closes...), ClosedBy: append([]string{}, it.ClosedBy...),
 		Path: filepath.ToSlash(rel), Legacy: it.Legacy, Worktree: it.Worktree, OnDisk: it.OnDisk,
@@ -334,6 +340,9 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		head, j.Title, j.Type, j.Status, j.StatusSource, j.Progress.Done, j.Progress.Total, j.Path)
 	if j.Ref != "" {
 		fmt.Fprintf(stdout, "ref: %s\n", j.Ref)
+	}
+	if j.Reason != "" {
+		fmt.Fprintf(stdout, "reason: %s\n", j.Reason)
 	}
 	if j.Parent != "" {
 		fmt.Fprintf(stdout, "parent: %s\n", j.Parent)
@@ -454,6 +463,7 @@ func shortRefs(b *board.Board, ids []string) []string {
 
 func cmdSet(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("set", stderr)
+	reason := fs.String("reason", "", "why a debt line closes; needed with status on a debt line")
 	pos, err := parseMixed(fs, args)
 	if err != nil || len(pos) != 3 {
 		fmt.Fprintln(stderr, usageLine("set"))
@@ -476,6 +486,14 @@ func cmdSet(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, msg)
 			return exitBadInput
 		}
+	}
+	if it := b.Get(pos[0]); it != nil && it.Kind == board.KindDebtItem && pos[1] == "status" && *reason != "" {
+		o, err := write.CloseDebtLine(cfg, b, pos[0], pos[2], *reason)
+		return report(o, err, stdout, stderr)
+	}
+	if *reason != "" {
+		fmt.Fprintln(stderr, "--reason only closes a debt line; for other items use acta set <id> reason <text>")
+		return exitBadInput
 	}
 	o, err := write.SetValue(cfg, b, pos[0], pos[1], pos[2])
 	return report(o, err, stdout, stderr)

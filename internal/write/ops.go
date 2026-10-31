@@ -52,6 +52,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return setPriority(cfg, it, id, value)
 	case it.Kind == board.KindTask:
 		return Outcome{}, bad("tasks take their status from their checkboxes")
+	case it.Kind == board.KindDebtItem && field == "status":
+		return Outcome{}, bad("closing a debt line needs a reason: acta set %s status done|wontfix --reason \"<text>\"", id)
 	case it.Kind == board.KindDebtItem:
 		return Outcome{}, bad("a debt item's title is its own line in the debt file; edit that line instead")
 	case it.Legacy:
@@ -92,8 +94,12 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if strings.ContainsAny(value, "\r\n") {
 			return Outcome{}, bad("title must be one line, not %q", value)
 		}
+	case "reason":
+		if err := checkReason(it.Kind, value); err != nil {
+			return Outcome{}, err
+		}
 	default:
-		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref, priority or after", field)
+		return Outcome{}, bad("unknown field %q; use status, type, title, fixed_in, ref, priority, after or reason", field)
 	}
 
 	dirty, err := dirtyBefore(cfg, it.Path)
@@ -134,6 +140,28 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		return Outcome{}, err
 	}
 	return finish(cfg, it.Path, Subject(cfg, []string{it.Path}, subjectWhat(id, field, value)), dirty), nil
+}
+
+// checkReason refuses a reason on a kind that is never closed by hand, and
+// one the board could not show.
+func checkReason(k board.Kind, value string) error {
+	switch k {
+	case board.KindScratch, board.KindBug, board.KindStory, board.KindPlan:
+	default:
+		return bad("reason is only for scratch items, bugs, specs and plans")
+	}
+	return ValidReason(value)
+}
+
+// ValidReason refuses a reason the board could not show as one line.
+func ValidReason(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return bad("reason cannot be empty")
+	}
+	if strings.ContainsAny(value, "\r\n") {
+		return bad("reason must be one line, not %q", value)
+	}
+	return nil
 }
 
 // AfterIDs splits an after list given on the command line. Commas and spaces

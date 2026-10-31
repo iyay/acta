@@ -54,7 +54,7 @@ var helpTable = []helpCmd{
 		name:    "set",
 		group:   "Board",
 		summary: "Change one field of a planning item and commit the change.",
-		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority|after <value>"},
+		usage:   []string{"acta set <id> status|type|title|fixed_in|ref|priority|after|reason <value>", "acta set <debt line> status done|wontfix --reason <text>"},
 		example: "acta set SPC-0128 status done",
 	},
 	{
@@ -101,6 +101,17 @@ var helpTable = []helpCmd{
 			"--all  include chore commits",
 			"--json  print JSON",
 		},
+	},
+	{
+		name:    "cleanup",
+		group:   "Board",
+		summary: "List the planning items whose work may be over: open debt lines, raw ideas, open bugs, stuck plans and specs with no plan. Writes nothing.",
+		usage:   []string{"acta cleanup [--json]", "acta cleanup --fix", "acta cleanup apply < decisions.jsonl"},
+		flags: []string{
+			"--json  print one JSON object per line",
+			"--fix  drop written statuses the board ignores and close plans whose tasks are all ticked, in one commit",
+		},
+		example: `echo '{"id":"SCR-0081","status":"dropped","reason":"replaced by SPC-0183"}' | acta cleanup apply`,
 	},
 
 	// Write

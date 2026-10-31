@@ -36,6 +36,7 @@ type Item struct {
 	StatusSource string // "derived" or "frontmatter"
 	Ref          string
 	FixedIn      string
+	Reason       string   // why the item was closed, one line; "" when none
 	Priority     string   // bugs and debt items: high, medium, low, or "" when unset
 	Parent       string   // tasks only
 	SpecID       string   // plans only: the spec or bug whose tasks the plan carries
@@ -96,7 +97,7 @@ var (
 	bugStatuses     = []string{"open", "fixing", "fixed", "wontfix"}
 	taskStatuses    = []string{"todo", "in-progress", "done"}
 	debtStatuses    = []string{"open", "done", "wontfix"}
-	scratchStatuses = []string{"raw", "brainstorming", "dropped"}
+	scratchStatuses = []string{"raw", "brainstorming", "done", "dropped"}
 	datedName       = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})-(.+)$`)
 )
 
@@ -404,6 +405,7 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	}
 	it.Ref = field(doc.Front, "ref")
 	it.FixedIn = field(doc.Front, "fixed_in")
+	it.Reason = field(doc.Front, "reason")
 	// Only a bug carries a priority in its frontmatter. A word that is not a
 	// level is shown as a problem, and the bug counts as unset.
 	if p := field(doc.Front, "priority"); p != "" && it.Kind == KindBug {
@@ -662,11 +664,13 @@ func (b *Board) derive() {
 			} else {
 				it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
 			}
-		case it.Kind == KindStory && it.plans > 0:
+		case it.Kind == KindStory && it.plans > 0 && it.fmStatus != "dropped":
 			// A spec with a plan of its own decides that status from the plan's
 			// boxes. A status written next to the spec can only be a leftover
 			// from before the plan existed, so it loses and the board says so
 			// rather than letting a stale word hide a finished spec (SPEC-6).
+			// A written dropped is the one exception: the user gave up on the
+			// spec, and no box can say that.
 			it.Status, it.StatusSource = parentStatus(it.Kind, it.plans, done, started, it.Total), "derived"
 			if it.fmStatus != "" && it.fmStatus != it.Status {
 				it.Problems = append(it.Problems, "written status "+it.fmStatus+" ignored, derived "+it.Status)

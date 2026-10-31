@@ -901,3 +901,18 @@ func TestPlanWrittenStatusFollowsBoxes(t *testing.T) {
 		})
 	}
 }
+
+// Dropping a spec is a choice the user wrote down, so it wins over the boxes
+// of its plans, the same way a written dropped wins on a scratch item.
+func TestSpecWrittenDroppedBeatsItsPlans(t *testing.T) {
+	t.Parallel()
+
+	files := map[string]string{
+		"specs/2026-09-29-s-design.md": "---\nstatus: dropped\n---\n# S\n",
+		"plans/2026-09-29-p.md":        "# P\n\n**Spec:** `.acta/specs/2026-09-29-s-design.md`\n\n### Task 1: A\n\n- [x] a\n\n### Task 2: B\n\n- [ ] b\n",
+	}
+	s := boardWith(t, files).Get("specs/2026-09-29-s-design")
+	if s.Status != "dropped" || s.StatusSource != "frontmatter" || len(s.Problems) != 0 {
+		t.Errorf("spec = %s (%s) problems %v, want dropped (frontmatter) and no problem", s.Status, s.StatusSource, s.Problems)
+	}
+}

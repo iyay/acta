@@ -28,7 +28,7 @@ type topTab struct {
 // topTabs is the bar, left to right. Index i is key i+1. It is an array, so
 // len(topTabs) is a constant the Model can size its saved tabs with.
 var topTabs = [...]topTab{
-	{name: "Scratchpad", kind: board.KindScratch, done: []doneTab{{"Specced", "specced"}, {"Dropped", "dropped"}}},
+	{name: "Scratchpad", kind: board.KindScratch, done: []doneTab{{"Specced", "specced"}, {"Done", "done"}, {"Dropped", "dropped"}}},
 	{name: "Bugs", kind: board.KindBug, done: []doneTab{{"Fixed", "fixed"}, {"Wontfix", "wontfix"}}},
 	{name: "Debt", kind: board.KindDebtItem, done: []doneTab{{"Done", "done"}, {"Wontfix", "wontfix"}}},
 	{name: "Specs", kind: board.KindStory, done: []doneTab{{"Done", "done"}, {"Dropped", "dropped"}}},

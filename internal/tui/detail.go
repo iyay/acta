@@ -131,6 +131,7 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		{"FILE", m.fileText(it)},
 		{tasksLabel(it.Kind), progressText(it)},
 		{"FIXED", it.FixedIn},
+		{"REASON", it.Reason},
 	}
 	width := 0
 	for _, f := range fields {
