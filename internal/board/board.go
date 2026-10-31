@@ -46,6 +46,7 @@ type Item struct {
 	Total        int      // task: all boxes; story or bug: all tasks
 	Closes       []string // specs, plans and bugs: the items this one also finishes
 	ClosedBy     []string // items whose closes names this one, in file order
+	FlakyTests   []string // bugs only: the flaky tests this bug tracks, in file order
 	After        []string // plans only: the plans this one waits for, as its after list names them
 	Waiting      bool     // plans only: some plan in After is not done yet
 	Path         string   // absolute file path
@@ -423,6 +424,9 @@ func fileItem(k Kind, id, path, date, slug string, legacy bool, doc Doc) *Item {
 	it.fmCloses = listField(doc.Front, "closes")
 	if it.Kind == KindPlan {
 		it.After = listField(doc.Front, "after")
+	}
+	if it.Kind == KindBug {
+		it.FlakyTests = listField(doc.Front, "flaky_tests")
 	}
 	setIDs(it, Prefix(it.Kind, false), doc)
 	return it

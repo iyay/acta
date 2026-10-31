@@ -150,6 +150,14 @@ var helpTable = []helpCmd{
 		example: `echo "idea for later" | acta scratch new later-idea`,
 	},
 	{
+		name:    "flake",
+		group:   "Write",
+		summary: "Record one flake of a test on the open bug that tracks it, or file a new flake bug, and commit the bug file.",
+		usage:   []string{"acta flake record <name> [--plan <plan id>]"},
+		flags:   []string{"--plan ID  plan the flake showed up in (default: no plan)"},
+		example: "acta flake record internal/tui.TestClickSelects --plan PLN-0204",
+	},
+	{
 		name:    "plan",
 		group:   "Write",
 		summary: "Add a fix round, the polish task or review notes to a plan, one item per stdin line, and commit the change.",

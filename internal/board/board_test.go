@@ -916,3 +916,33 @@ func TestSpecWrittenDroppedBeatsItsPlans(t *testing.T) {
 		t.Errorf("spec = %s (%s) problems %v, want dropped (frontmatter) and no problem", s.Status, s.StatusSource, s.Problems)
 	}
 }
+
+// A flake is a bug that names its flaky tests. The list keeps file order in
+// both ways YAML writes a list. A bug with no list, and any item that is not a
+// bug, has no flaky tests, even when its frontmatter writes the key.
+func TestBugReadsFlakyTests(t *testing.T) {
+	b := boardWith(t, map[string]string{
+		"bugs/2026-10-31-flow.md":      "---\nflaky_tests: [internal/tui.TestB, internal/tui.TestA]\n---\n# Flow\n",
+		"bugs/2026-10-31-block.md":     "---\nflaky_tests:\n  - internal/tui.TestB\n  - internal/tui.TestA\n---\n# Block\n",
+		"bugs/2026-10-31-none.md":      "# None\n",
+		"specs/2026-10-31-s-design.md": "---\nflaky_tests: [internal/tui.TestA]\n---\n# Spec\n",
+	})
+	cases := []struct {
+		id   string
+		want []string
+	}{
+		{"bugs/2026-10-31-flow", []string{"internal/tui.TestB", "internal/tui.TestA"}},
+		{"bugs/2026-10-31-block", []string{"internal/tui.TestB", "internal/tui.TestA"}},
+		{"bugs/2026-10-31-none", nil},
+		{"specs/2026-10-31-s-design", nil},
+	}
+	for _, c := range cases {
+		it := b.Get(c.id)
+		if it == nil {
+			t.Fatalf("%s not on the board", c.id)
+		}
+		if !slices.Equal(it.FlakyTests, c.want) {
+			t.Errorf("%s flaky tests = %v, want %v", c.id, it.FlakyTests, c.want)
+		}
+	}
+}
