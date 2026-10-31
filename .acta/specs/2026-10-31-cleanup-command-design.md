@@ -26,7 +26,7 @@ This is Architectural work. It adds a CLI command `acta cleanup`, a skill
 and a way to close one debt line from the CLI.
 
 It covers debt lines, scratch items, bugs, plans and specs. It never deletes a
-file: cleaning means a status change with a short reason, and git keeps the
+file. Cleaning means a status change with a short reason, and git keeps the
 history. It runs only when the user asks. Nothing starts it at land.
 
 SCR-0064 (plans that stay open after every task is ticked) is closed by the
