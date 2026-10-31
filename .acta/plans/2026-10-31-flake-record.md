@@ -37,9 +37,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3.
 **Files:** Create `internal/write/flake.go`, `internal/write/flake_test.go`.
 **Seam:** `write.RecordFlake(cfg config.Config, name, planID string) (Outcome, int, error)`, returning the bug's outcome and its `## Flakes` line count.
 **verify:** Every call ends with exactly one bug holding the name and one new `## Flakes` line, never two bugs open for one name. Cases: an open bug listing the name gets the line; no bug files a new flake bug per the Global Constraints; a bug with `fixed_in` gets a new bug whose body names the old id, and the old file stays unchanged; a repeat record of the same file folds into its last commit; an empty name or a name with a newline is refused with nothing written; an unknown `--plan` id is refused.
-- [ ] Red: the table test fails because `RecordFlake` does not exist.
-- [ ] Change: Find the bug through `board.Load` and `FlakyTests`, append the `## Flakes` line (`- <time> <plan id or "no plan">`) or build the body for `NewBug`, set `flaky_tests` with `SetField`, then run `scripts/test ./internal/write/ -run TestRecordFlake` to green.
-- [ ] Commit: `feat(flake): record a flake on its bug`.
+- [x] Red: the table test fails because `RecordFlake` does not exist.
+- [x] Change: Find the bug through `board.Load` and `FlakyTests`, append the `## Flakes` line (`- <time> <plan id or "no plan">`) or build the body for `NewBug`, set `flaky_tests` with `SetField`, then run `scripts/test ./internal/write/ -run TestRecordFlake` to green.
+- [x] Commit: `feat(flake): record a flake on its bug`.
 
 ### Task 3: acta flake record command
 
@@ -58,9 +58,12 @@ Land order: PLN-0204 and PLN-0205 land on main in either order; they share no fi
 
 ### Next
 
-Item.FlakyTests is filled for bugs only, from flaky_tests via listField (flow and block lists, file order).
-Other kinds and bugs without the key have a nil list.
-Test: internal/board.TestBugReadsFlakyTests in board_test.go.
+Task 2 landed in 32a3936: internal/write/flake.go.
+Signature: write.RecordFlake(cfg config.Config, name, planID string) (write.Outcome, int, error).
+Outcome: Path of the bug file, ShortID (BUG-nnnn) of that bug, Committed/Skipped/Reason from finish. The int is the ## Flakes line count after the add.
+Refusals wrap write.ErrBadInput (check errors.Is): empty or blank name, a name with a newline, unknown --plan id, a --plan id that is not a plan. Nothing is written.
+Task 3 reads the title for its print from the board or from "Flaky test <name>"; RecordFlake does not return it.
+planID is written on the Flakes line as given; an empty planID writes "no plan".
 
 ### Findings
 
