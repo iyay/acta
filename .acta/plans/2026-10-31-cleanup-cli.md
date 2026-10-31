@@ -56,9 +56,9 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 **Files:** Create `internal/cleanup/candidates.go`, `internal/cleanup/candidates_test.go`, `internal/cli/cleanup.go`, `internal/cli/cleanup_test.go`; modify `internal/cli/cli.go`, `internal/cli/help.go`.
 **Seam:** `cleanup.Candidates(b *board.Board, repo string, now time.Time) ([]Candidate, error)` with `Candidate{ID, Kind, Title, Path, Status, AgeDays, Why}`, and `cli.Run` for `acta cleanup [--json]`.
 **verify:** Every rule in the spec's candidate list is a case: open debt line; raw scratch with no spec link; brainstorming scratch with no link that is quiet for 14 days and not one that is quiet for 13; open bug; in-progress plan with an open task and no commit for 14 days, where a chore tick commit or a Task trailer resets the clock and a missing `started` falls back to `created`; draft or approved spec with no plan created over 14 days ago. Items only in another worktree and plans with a linked worktree never appear. Output is grouped by kind, oldest first; `--json` prints one object per line with the fields `id`, `kind`, `title`, `path`, `status`, `age_days`, `why`. The command writes nothing.
-- [ ] Red: Candidate tests over a temp repo with dated commits fail because the `cleanup` package does not exist.
-- [ ] Change: Build `Candidates` from the board, `git log` dates for the scratch and plan files, `commits.Find` for Task trailers and the worktree list, then add the `cleanup` command with text and `--json` output.
-- [ ] Commit: `feat(cleanup): list stale planning candidates`.
+- [x] Red: Candidate tests over a temp repo with dated commits fail because the `cleanup` package does not exist.
+- [x] Change: Build `Candidates` from the board, `git log` dates for the scratch and plan files, `commits.Find` for Task trailers and the worktree list, then add the `cleanup` command with text and `--json` output.
+- [x] Commit: `feat(cleanup): list stale planning candidates`.
 
 ### Task 5: acta cleanup --fix
 

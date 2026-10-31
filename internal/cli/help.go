@@ -102,6 +102,15 @@ var helpTable = []helpCmd{
 			"--json  print JSON",
 		},
 	},
+	{
+		name:    "cleanup",
+		group:   "Board",
+		summary: "List the planning items whose work may be over: open debt lines, raw ideas, open bugs, stuck plans and specs with no plan. Writes nothing.",
+		usage:   []string{"acta cleanup [--json]"},
+		flags: []string{
+			"--json  print one JSON object per line",
+		},
+	},
 
 	// Write
 	{
