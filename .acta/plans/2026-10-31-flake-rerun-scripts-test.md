@@ -52,14 +52,18 @@ Land order: PLN-0204 and PLN-0205 land on main in either order; they share no fi
 
 **verify:** A package whose test binary died (a test with a run event but no pass, fail or skip event, or panic output in the package) reruns nothing and the run exits 1, even when another test in that package failed by name; a rerun counts as a pass only when go exits 0 for it.
 
-- [ ] internal/flakerun/flakerun.go failedWithNoTest: one failed test hides a later timeout or crash in the same package, so the earlier test reruns, passes, prints FLAKY and the run exits 0 though the rest of the package never ran (TestA fails once, TestB hangs past -timeout: FLAKY TestA, exit 0). Treat a package with a started test that has no end event, or panic output, as crashed: rerun nothing there, exit 1.
-- [ ] A named panic kills the binary, so later tests in that package never run; rerunning only the panicked test must not turn the run green. Same crash rule.
-- [ ] internal/flakerun/flakerun_test.go: add the regression case, a failed TestA plus a timeout in the same package, expecting exit 1 and no FLAKY line; and a named panic case.
-- [ ] internal/flakerun/flakerun_test.go: add a rerun row where the test shows pass but run returns an error (TestMain exits non-zero), expecting no FLAKY line and exit 1, so the err == nil check in rerun is pinned.
-- [ ] Commit with the trailer `Task: PLN-fr788tx#3`
+- [x] internal/flakerun/flakerun.go failedWithNoTest: one failed test hides a later timeout or crash in the same package, so the earlier test reruns, passes, prints FLAKY and the run exits 0 though the rest of the package never ran (TestA fails once, TestB hangs past -timeout: FLAKY TestA, exit 0). Treat a package with a started test that has no end event, or panic output, as crashed: rerun nothing there, exit 1.
+- [x] A named panic kills the binary, so later tests in that package never run; rerunning only the panicked test must not turn the run green. Same crash rule.
+- [x] internal/flakerun/flakerun_test.go: add the regression case, a failed TestA plus a timeout in the same package, expecting exit 1 and no FLAKY line; and a named panic case.
+- [x] internal/flakerun/flakerun_test.go: add a rerun row where the test shows pass but run returns an error (TestMain exits non-zero), expecting no FLAKY line and exit 1, so the err == nil check in rerun is pinned.
+- [x] Commit with the trailer `Task: PLN-fr788tx#3`
+
+## Review notes
+
+- Review: deep level, no floor raised; round 1 BLOCKED (a crash hidden by an earlier named fail, fact-check kept it), fix round 1, round 2 CLEAN, no polish. Notes kept, not tracked: CombinedOutput buffers output until go test ends; go run adds an exit status line on red; flagsOf drops a ./ flag value; the module-root package keeps its full path; no test pins the script exit code; any panic is red, never a flake; the crash message can name a later package than the first that died; a goroutine os.Exit between two tests is a tiny unseen window.
 
 ## State
 
 ### Next
 
-All tasks done: flakerun package (task 1) and scripts/test --full wiring (task 2). Close and review next.
+fix round 1 done (a5b30e9: crashed binary reruns nothing); round 2 review next

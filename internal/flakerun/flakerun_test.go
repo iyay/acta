@@ -58,6 +58,54 @@ const timeout = `{"Action":"run","Package":"github.com/iyay/acta/internal/tui","
 {"Action":"fail","Package":"github.com/iyay/acta/internal/tui"}
 `
 
+// failAThenTimeoutB is a first run where TestA fails and then TestB hangs
+// past -timeout. go test sends no end event for TestB, only the package
+// fail, so the failed TestA must not hide that the binary died.
+const failAThenTimeoutB = `{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestA","Output":"--- FAIL: TestA (0.00s)\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestB","Output":"=== RUN   TestB\n"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Output":"panic: test timed out after 2s\n"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Output":"FAIL\tgithub.com/iyay/acta/internal/tui\t2.0s\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui"}
+`
+
+// failAThenExitB is a first run where TestA fails and then TestB calls
+// os.Exit(1). There is no panic line, only a test that started and never
+// ended.
+const failAThenExitB = `{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestA","Output":"--- FAIL: TestA (0.00s)\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestB","Output":"=== RUN   TestB\n"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Output":"FAIL\tgithub.com/iyay/acta/internal/tui\t0.1s\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui"}
+`
+
+// failAThenPanicB is a first run where TestA fails and then TestB panics.
+// TestB does get a fail event, but the panic kills the binary, so the tests
+// after it never run.
+const failAThenPanicB = `{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestA","Output":"--- FAIL: TestA (0.00s)\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui","Test":"TestA"}
+{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Test":"TestB","Output":"--- FAIL: TestB (0.00s)\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Output":"panic: boom [recovered, repanicked]\n"}
+{"Action":"output","Package":"github.com/iyay/acta/internal/tui","Output":"FAIL\tgithub.com/iyay/acta/internal/tui\t0.1s\n"}
+{"Action":"fail","Package":"github.com/iyay/acta/internal/tui"}
+`
+
+// passB is a rerun where TestB passes.
+const passB = `{"Action":"run","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"pass","Package":"github.com/iyay/acta/internal/tui","Test":"TestB"}
+{"Action":"pass","Package":"github.com/iyay/acta/internal/tui"}
+`
+
+// crashLine is what a run prints when a test binary died in internal/tui.
+const crashLine = "flakerun: internal/tui crashed before all its tests ended (panic, timeout or os.Exit), so nothing reruns"
+
 // failMany is a first run where six tests fail, one more than a run may
 // rerun.
 var failMany = func() string {
@@ -134,6 +182,34 @@ func TestRun(t *testing.T) {
 			calls:    []call{{timeout, errExit}},
 			wantCode: 1,
 			wantArgs: [][]string{first},
+		},
+		{
+			name:     "a failed test does not hide a timeout in the same package",
+			calls:    []call{{failAThenTimeoutB, errExit}, {passA, nil}},
+			wantCode: 1,
+			wantArgs: [][]string{first},
+			wantText: crashLine,
+		},
+		{
+			name:     "a failed test does not hide an os.Exit in the same package",
+			calls:    []call{{failAThenExitB, errExit}, {passA, nil}},
+			wantCode: 1,
+			wantArgs: [][]string{first},
+			wantText: crashLine,
+		},
+		{
+			name:     "a named panic reruns nothing",
+			calls:    []call{{failAThenPanicB, errExit}, {passA, nil}, {passB, nil}},
+			wantCode: 1,
+			wantArgs: [][]string{first},
+			wantText: crashLine,
+		},
+		{
+			name:     "a rerun that shows pass but exits non-zero is not a pass",
+			calls:    []call{{failA, errExit}, {passA, errExit}, {passA, errExit}},
+			wantCode: 1,
+			wantArgs: [][]string{first, rerunA, rerunA},
+			wantText: "FAIL: internal/tui.TestA (failed 3 of 3)",
 		},
 		{
 			name:     "more than 5 failed tests rerun nothing",

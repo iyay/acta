@@ -51,6 +51,11 @@ func Run(args []string, run func(args []string) (io.Reader, error), out io.Write
 			strings.TrimPrefix(pkg, module+"/"))
 		return 1
 	}
+	if pkg := crashed(events); pkg != "" {
+		fmt.Fprintf(out, "flakerun: %s crashed before all its tests ended (panic, timeout or os.Exit), so nothing reruns\n",
+			strings.TrimPrefix(pkg, module+"/"))
+		return 1
+	}
 	if len(failed) == 0 {
 		if err != nil {
 			// go test failed before any test or package could, such as on
@@ -155,6 +160,40 @@ func failedWithNoTest(events []event, failed []failure) string {
 	for _, e := range events {
 		if e.Action == "fail" && e.Test == "" && !hasTest[e.Package] {
 			return e.Package
+		}
+	}
+	return ""
+}
+
+// crashed returns the first package whose test binary died, or "" when
+// none did. A binary that dies stops every test after the one that killed
+// it, so a test that failed before it passing on a rerun proves nothing.
+// go test sends no end event for a test that was still running when the
+// binary died, and a panic prints a line that starts with "panic: ", even
+// when the panicked test got a fail event of its own.
+func crashed(events []event) string {
+	type key struct{ pkg, test string }
+	open := map[key]bool{}
+	var started []key
+	for _, e := range events {
+		if strings.HasPrefix(e.Output, "panic: ") {
+			return e.Package
+		}
+		k := key{e.Package, e.Test}
+		switch {
+		case e.Test == "":
+			// A package event, not a test, so it never starts or ends one.
+		case e.Action == "run":
+			open[k] = true
+			started = append(started, k)
+		case e.Action == "pass" || e.Action == "fail" || e.Action == "skip":
+			delete(open, k)
+		}
+	}
+	// Walk in start order, so the package named is the first one that died.
+	for _, k := range started {
+		if open[k] {
+			return k.pkg
 		}
 	}
 	return ""
