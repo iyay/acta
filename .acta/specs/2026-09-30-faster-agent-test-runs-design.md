@@ -3,7 +3,6 @@ parent: scratch/2026-09-30-faster-agent-test-runs
 created: "2026-09-30"
 id: SPC-0033
 hash: zssi5lc
-status: approved
 started: "2026-09-30"
 finished: "2026-09-30"
 ---

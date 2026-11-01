@@ -1,5 +1,4 @@
 ---
-status: draft
 id: SPC-0163
 created: "2026-10-19 19:49:39"
 hash: vhf4qdx

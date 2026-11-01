@@ -1,6 +1,5 @@
 ---
 parent: scratch/2026-09-29-fast-id-lookup
-status: approved
 id: SPC-0023
 hash: oo47ajk
 ---
