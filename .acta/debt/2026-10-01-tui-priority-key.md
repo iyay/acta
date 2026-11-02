@@ -9,4 +9,4 @@ parent: plans/2026-10-01-tui-priority-key
 - [-] (low) Priority: p sits before Edit, Copy id, New bug and Sort, so on a narrow screen those hints drop out sooner on bug and debt rows.
 - [-] (low) The new p help line is now the longest help line, so it sets the help popup width.
 - [x] The test file adds TestPriorityKeyRefusesTheRowsWithNoItemOfTheirOwn, which the plan did not list; it covers group, worktree and legacy rows. (stale)
-- [ ] (medium) acta tick left the started and finished stamps on the spec uncommitted, so the orchestrator had to commit them before land.
+- [-] (medium) acta tick left the started and finished stamps on the spec uncommitted, so the orchestrator had to commit them before land. (wontfix: stale: the tick stamp is the documented design now and land commits it)

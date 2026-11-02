@@ -12,4 +12,4 @@ parent: plans/2026-09-30-batch-author-lookup
 - [-] (low) With many paths git log simplifies history differently: one file added on both sides of a merge can get the side-branch author instead of the first-parent one (rare, needs two authors).
 - [x] With log.follow=true in user config, the old one-path log followed renames and gave the first author; the new call gives the mover, which is what the plan says. (stale)
 - [-] (low) acta show SCR-0013 measured 0.42 s on an idle run and 0.70-1.32 s under load average 28-40; the plan target "well under 0.5 s" holds only on the idle run; 11 author git calls remain, one per folder across 4 worktrees.
-- [ ] (medium) acta tick --start/--all left an uncommitted started/finished stamp in the parent spec again; reverted before landing (known, see tick stamps).
+- [-] (medium) acta tick --start/--all left an uncommitted started/finished stamp in the parent spec again; reverted before landing (known, see tick stamps). (wontfix: stale: the tick stamp is the documented design now and land commits it)
