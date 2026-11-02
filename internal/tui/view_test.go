@@ -867,8 +867,9 @@ func TestTheSelectedRowWearsASubtleBand(t *testing.T) {
 	withColors(func() {
 		// The rows are the board's own order, so the in-progress spec is the
 		// third one. One j puts the cursor on the row above it, and the
-		// in-progress row is then drawn unselected with its own brush.
-		m := sized(press(newModel(t), tabKey(tabSpecs), "j"), 120, 40)
+		// in-progress row is then drawn unselected with its own brush. The
+		// colors checked below are tokyo-night's, so the model names it.
+		m := sized(press(newModel(t).WithTheme("tokyo-night", true), tabKey(tabSpecs), "j"), 120, 40)
 		b := paneBox(m, paneList)
 		v := m.View()
 
@@ -1364,12 +1365,13 @@ func TestPopupDimsTheBackground(t *testing.T) {
 
 // checkPopupDim opens every popup at both sizes and checks that every cell
 // behind the box is the dim brush over its own plain text, and that esc gives
-// back the exact screen from before.
+// back the exact screen from before. The dim color is tokyo-night's slot 8,
+// so the model pins that theme.
 func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 	t.Helper()
 	for _, open := range []string{"?", "t", "s", "n"} {
 		for _, size := range [][2]int{{80, 30}, {160, 50}} {
-			m := press(sized(newModel(t), size[0], size[1]), tabKey(tabBugs))
+			m := press(sized(newModel(t).WithTheme("tokyo-night", true), size[0], size[1]), tabKey(tabBugs))
 			before := m.View()
 			pop := press(m, open)
 			rows := strings.Split(pop.popupBox(), "\n")
@@ -1413,13 +1415,14 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 
 // TestFullLinesKeepTheirLastCell draws every tab at several sizes, with and
 // without a popup. A line as wide as the window must not end in erase-line,
-// or the terminal blanks the right wall.
+// or the terminal blanks the right wall. Only a theme with a background
+// writes erase-line, so the model pins one.
 func TestFullLinesKeepTheirLastCell(t *testing.T) {
 	withTrueColor(func() {
 		for _, size := range [][2]int{{80, 30}, {120, 40}, {204, 58}} {
 			for tab := range topTabs {
 				for _, open := range []string{"", "?"} {
-					m := press(sized(newModel(t), size[0], size[1]), tabKey(tab))
+					m := press(sized(newModel(t).WithTheme("tokyo-night", true), size[0], size[1]), tabKey(tab))
 					if open != "" {
 						m = press(m, open)
 					}

@@ -16,7 +16,7 @@ started: "2026-09-30 22:51:02"
 - [-] (low) Old Step -1 rule "inherited in-tree worktree: git worktree move" has no home.
 - [-] (low) Old "escalate before the cap only for a human decision" is not in acta:review word for word.
 - [ ] (medium) Old landing stop "a parent the user has called protected" is not in acta:land.
-- [ ] (medium) build/SKILL.md Step 2 runs npm install while line 47 and house-rules say link dependency folders, no npm install (older clash, dispatch now goes through it).
+- [-] (medium) build/SKILL.md Step 2 runs npm install while line 47 and house-rules say link dependency folders, no npm install (older clash, dispatch now goes through it). (wontfix: stale: the build skill links dependency folders instead of installing)
 - [x] herdr-delivery.md says "four steps (same as dispatch.md)" but dispatch.md lists five (older mismatch). (stale)
 - [x] herdr-delivery.md says check the harness lists acta:build; in omp the skill shows as bare build. (stale)
 - [x] build/dispatch.md still says tickets are mirrored in the tracker, but the rule to mirror the fix task was dropped.

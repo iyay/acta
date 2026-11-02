@@ -438,6 +438,31 @@ ansi: ["#000000","#111111","#222222","#333333","#444444","#555555","#666666","#7
        "#888888","#999999","#aaaaaa","#bbbbbb","#cccccc","#dddddd","#eeeeee","#ffffff"]
 `
 
+// An unset theme is the default, and show names it, so a reader never has to
+// know what the default is.
+func TestVoiceShowNamesTheDefaultTheme(t *testing.T) {
+	voiceHome(t)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: terminal") {
+		t.Errorf("show is missing the default theme:\n%s", out)
+	}
+	if asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":"terminal"`) {
+		t.Errorf("json is missing the default theme:\n%s", asJSON)
+	}
+}
+
+// show reads the saved name, never the theme file, so a file that no longer
+// loads cannot break it.
+func TestVoiceShowNamesAThemeThatDoesNotLoad(t *testing.T) {
+	home, path := voiceHome(t)
+	writeUserTheme(t, home, "broken", "bg: [")
+	if err := os.WriteFile(path, []byte("theme: broken\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: broken") {
+		t.Errorf("show is missing the saved theme:\n%s", out)
+	}
+}
+
 func TestVoiceSetThemeShowsIt(t *testing.T) {
 	voiceHome(t)
 	mustRun(t, "config", "set", "--theme", "dracula")
@@ -555,11 +580,11 @@ func TestVoiceClearTheme(t *testing.T) {
 	voiceHome(t)
 	mustRun(t, "config", "set", "--theme", "dracula")
 	mustRun(t, "config", "set", "--clear-theme")
-	if out := mustRun(t, "config", "show"); strings.Contains(out, "theme:") {
-		t.Errorf("clear left the theme:\n%s", out)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "theme: terminal") {
+		t.Errorf("clear did not go back to the default theme:\n%s", out)
 	}
-	if asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":""`) {
-		t.Errorf("json theme is not empty:\n%s", asJSON)
+	if asJSON := strings.ReplaceAll(mustRun(t, "config", "show", "--json"), " ", ""); !strings.Contains(asJSON, `"theme":"terminal"`) {
+		t.Errorf("json theme is not the default:\n%s", asJSON)
 	}
 	// Clear then set in one call: the set wins, like the other clear pairs.
 	mustRun(t, "config", "set", "--clear-theme", "--theme", "dracula")

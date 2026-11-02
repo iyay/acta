@@ -26,10 +26,22 @@ ansi: ["#000000","#111111","#222222","#333333","#444444","#555555","#666666","#7
        "#888888","#999999","#aaaaaa","#bbbbbb","#cccccc","#dddddd","#eeeeee","#ffffff"]
 `
 
-func TestLoadEmptyNameGivesTokyoNight(t *testing.T) {
+func TestLoadEmptyNameGivesTerminal(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	got, err := Load("")
-	if err != nil || got.Name != "tokyo-night" || got.BG != "#1a1b26" {
+	if err != nil || got.Name != "terminal" || got.BG != "" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}
+
+// The default resolves by name, so a user file of that name wins, the same
+// precedence that lets a user copy and change a built-in.
+func TestUserFileNamedTerminalWins(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeUserTheme(t, home, "terminal", goodBody)
+	got, err := Load("")
+	if err != nil || got.Name != "terminal" || got.BG != "#101010" {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }

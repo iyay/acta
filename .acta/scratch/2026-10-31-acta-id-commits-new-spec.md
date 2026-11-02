@@ -2,9 +2,11 @@
 id: SCR-0088
 hash: bmc0ny9
 title: acta id commits a new spec, then acta commit fails with an empty error
-status: raw
+status: dropped
 created: "2026-10-31 20:20:07"
 schema: "1"
+reason: 'both remedies are decided: SPC-0142 keeps the birth commit and BUG-0041 closed wontfix'
+finished: "2026-11-02 12:35:19"
 ---
 # acta id commits a new spec, then acta commit fails with an empty error
 

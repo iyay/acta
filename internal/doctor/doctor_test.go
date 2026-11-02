@@ -90,7 +90,7 @@ func TestCheckTheme(t *testing.T) {
 		level Level
 		msg   string
 	}{
-		{"empty", Env{}, OK, "tokyo-night"},
+		{"empty", Env{}, OK, "terminal"},
 		{"chosen", Env{Voice: config.User{Theme: "dracula"}}, OK, "dracula"},
 		{"broken", Env{Voice: config.User{Theme: "nope"}, ThemeErr: errors.New(`theme "nope": unknown theme`)}, Warn, `theme "nope"`},
 		{"bad name", Env{Voice: config.User{Theme: "NOPE!"}, ThemeErr: errors.New(`theme "NOPE!": name may only use a-z, 0-9 and -`)}, Warn, "NOPE!"},

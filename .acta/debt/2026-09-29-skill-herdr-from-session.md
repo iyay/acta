@@ -15,4 +15,4 @@ parent: plans/2026-09-29-skill-herdr-from-session
 - [x] The recipient amended the plan's rule 8 target text (fe9d4ca) instead of using it verbatim; additive only, but the brief said use it exactly. (stale)
 - [-] (low) Fix round 1 grew rule 8 to 12 negations to satisfy the grader outside herdr; the 60-line cap counts newlines, so byte growth goes unseen.
 - [-] (low) Scratch skill says add context right after new with acta scratch add; rule 8 bans that on the second-brainstorm path only.
-- [ ] (medium) Brainstorm Step 0 already files the item before acta set; blockText and rule 8 saying "file it" again can make a duplicate scratch item.
+- [-] (medium) Brainstorm Step 0 already files the item before acta set; blockText and rule 8 saying "file it" again can make a duplicate scratch item. (wontfix: stale: the hook blockText was removed by PLN-0200)

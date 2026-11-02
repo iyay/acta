@@ -100,6 +100,13 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// default, so show says so.
 			questions, questionsMark = "one", " (default)"
 		}
+		// An unset theme is the default one. Name it, so the reader never has
+		// to know which theme that is. No marker: setup asks about every
+		// setting marked (default), and the theme is not one of its questions.
+		themeName := v.Theme
+		if themeName == "" {
+			themeName = theme.Default
+		}
 		// Name the values the repo set, so the user knows which file to edit.
 		// When the repo changes what the user chose, say what they chose.
 		mark := func(k string) string {
@@ -138,7 +145,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
 				"style": v.Style, "tone": v.Tone,
 				"build_executor": v.BuildExecutor,
-				"theme":          v.Theme, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
+				"theme":          themeName, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
 				"review_understanding": v.Understanding(), "from_repo": fromRepo, "overrides": overrideList,
 			})
 		}
@@ -161,9 +168,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
 		fmt.Fprintf(stdout, "review_understanding: %v%s%s\n", v.Understanding(), mark("review_understanding"), understandingMark)
-		if v.Theme != "" {
-			fmt.Fprintf(stdout, "theme: %s\n", v.Theme)
-		}
+		fmt.Fprintf(stdout, "theme: %s\n", themeName)
 		return exitOK
 	case "set":
 		fs := flag.NewFlagSet("config set", flag.ContinueOnError)
