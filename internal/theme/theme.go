@@ -15,8 +15,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Default is the theme used when the user has not picked one.
-const Default = "tokyo-night"
+// Default is the theme used when the user has not picked one. The terminal
+// theme has no colors of its own, so the board matches whatever the terminal
+// already looks like.
+const Default = "terminal"
 
 // ErrUnknown marks a name that is neither a user file nor a built-in.
 var ErrUnknown = errors.New("unknown theme")

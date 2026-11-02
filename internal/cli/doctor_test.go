@@ -222,7 +222,7 @@ func TestDoctorCLIPrintsTheme(t *testing.T) {
 	cases := []struct {
 		name, theme, file, want string
 	}{
-		{"no theme set", "", "", "ok theme: theme tokyo-night loads"},
+		{"no theme set", "", "", "ok theme: theme terminal loads"},
 		{"built in", "dracula", "", "ok theme: theme dracula loads"},
 		{"user file", "mine", "bg: '#111111'\nfg: '#eeeeee'\n" + ansi, "ok theme: theme mine loads"},
 		{"unknown name", "nope", "", `warn theme: theme "nope": unknown theme`},

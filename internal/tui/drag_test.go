@@ -209,38 +209,40 @@ func TestNoDragWhileSomethingIsOpen(t *testing.T) {
 }
 
 func TestAWheelThatClearsTheBandDrawsAgain(t *testing.T) {
-	t.Parallel()
-
-	// A notch on another pane scrolls that pane and leaves the focus alone,
-	// and the notches that gather for the focused pane keep the
-	// frame. Both still have to draw, because the band on it is gone.
-	for name, turn := range map[string]func(Model, rect, rect) Model{
-		"a wheel over another pane": func(m Model, a, other rect) Model {
-			return wheelOnly(m, other.x0, other.y0, false)
-		},
-		// The first notch of a frame arms the wheel and scrolls on the spot.
-		// The loop arms it, so this one only gathers.
-		"a gathered notch": func(m Model, a, _ rect) Model {
-			return wheelOnly(m, a.x0, a.y0, false)
-		},
-	} {
-		m := paneModel(t, paneDetail)
-		a, _ := scrollBox(m, paneDetail).textArea()
-		other, _ := scrollBox(m, paneList).textArea()
-		m = armed(m, a)
-		m, _ = dragged(m, a.x0, a.y0, a.x0+4, a.y0)
-		withBand := m.View()
-		m = turn(m, a, other)
-		if m.drag.shown() {
-			t.Errorf("%s: the band stayed on", name)
+	// The band is drawn in color, so the profile has to be on for the
+	// screen to change at all.
+	withColors(func() {
+		// A notch on another pane scrolls that pane and leaves the focus alone,
+		// and the notches that gather for the focused pane keep the
+		// frame. Both still have to draw, because the band on it is gone.
+		for name, turn := range map[string]func(Model, rect, rect) Model{
+			"a wheel over another pane": func(m Model, a, other rect) Model {
+				return wheelOnly(m, other.x0, other.y0, false)
+			},
+			// The first notch of a frame arms the wheel and scrolls on the spot.
+			// The loop arms it, so this one only gathers.
+			"a gathered notch": func(m Model, a, _ rect) Model {
+				return wheelOnly(m, a.x0, a.y0, false)
+			},
+		} {
+			m := paneModel(t, paneDetail)
+			a, _ := scrollBox(m, paneDetail).textArea()
+			other, _ := scrollBox(m, paneList).textArea()
+			m = armed(m, a)
+			m, _ = dragged(m, a.x0, a.y0, a.x0+4, a.y0)
+			withBand := m.View()
+			m = turn(m, a, other)
+			if m.drag.shown() {
+				t.Errorf("%s: the band stayed on", name)
+			}
+			if m.same {
+				t.Errorf("%s: the screen kept a band that is gone", name)
+			}
+			if m.View() == withBand {
+				t.Errorf("%s: the band is still on the screen", name)
+			}
 		}
-		if m.same {
-			t.Errorf("%s: the screen kept a band that is gone", name)
-		}
-		if m.View() == withBand {
-			t.Errorf("%s: the band is still on the screen", name)
-		}
-	}
+	})
 }
 
 // armed turns one notch so the wheel is waiting for the notches that follow.

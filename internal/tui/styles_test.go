@@ -161,7 +161,7 @@ func TestWithThemeFallsBack(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	cfg, b := fixture(t)
 	m := New(cfg, b, true).WithTheme("nope", true)
-	if m.styles.bg != "#1a1b26" {
+	if m.styles.bg != "" {
 		t.Fatalf("bg = %q", m.styles.bg)
 	}
 	if !strings.Contains(m.status, `theme "nope"`) {
@@ -182,12 +182,12 @@ func TestWithThemeLoadsAKnownTheme(t *testing.T) {
 	}
 }
 
-func TestNewDefaultsToTokyoNight(t *testing.T) {
+func TestNewDefaultsToTerminal(t *testing.T) {
 	t.Parallel()
 
 	cfg, b := fixture(t)
-	if New(cfg, b, true).styles.bg != "#1a1b26" {
-		t.Fatal("New did not default to tokyo-night")
+	if New(cfg, b, true).styles.bg != "" {
+		t.Fatal("New did not default to the terminal theme")
 	}
 }
 
