@@ -1415,13 +1415,14 @@ func checkPopupDim(t *testing.T, dim lipgloss.Style) {
 
 // TestFullLinesKeepTheirLastCell draws every tab at several sizes, with and
 // without a popup. A line as wide as the window must not end in erase-line,
-// or the terminal blanks the right wall.
+// or the terminal blanks the right wall. Only a theme with a background
+// writes erase-line, so the model pins one.
 func TestFullLinesKeepTheirLastCell(t *testing.T) {
 	withTrueColor(func() {
 		for _, size := range [][2]int{{80, 30}, {120, 40}, {204, 58}} {
 			for tab := range topTabs {
 				for _, open := range []string{"", "?"} {
-					m := press(sized(newModel(t), size[0], size[1]), tabKey(tab))
+					m := press(sized(newModel(t).WithTheme("tokyo-night", true), size[0], size[1]), tabKey(tab))
 					if open != "" {
 						m = press(m, open)
 					}
