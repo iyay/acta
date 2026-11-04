@@ -57,7 +57,7 @@ var fileCaps = map[string]int{
 	"skills/slice/full.md":                    5178,
 	"skills/slice/minimal.md":                 984,
 	"skills/slice/split.md":                   2123,
-	"skills/tdd/SKILL.md":                     8105,
+	"skills/tdd/SKILL.md":                     6475,
 	"skills/tdd/writing-good-tests.md":        8292,
 }
 

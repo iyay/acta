@@ -47,9 +47,22 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All edit `budget_test.go`; Tasks
 **Files:** Modify `plugin/skills/tdd/SKILL.md`, `internal/plugincheck/skill_tdd_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the tdd skill text as plugincheck reads it, plus `scripts/eval --case 'lean-tests'`.
 **verify:** Every rule tdd holds today still holds, in fewer words. Cases: the Iron Law and the red, green, refactor rules keep their meaning; the Good/Bad examples may shrink but each still shows one good and one bad case; the line that the full suite runs only in `acta:land` is back; any reworded pinned sentence has its assertion retargeted to the same rule; byte cap about 6500; `lean-tests` gives the same result on branch and main.
-- [ ] Red: the tdd cap drops to 6500 and fails at 8105.
-- [ ] Change: tighten wording and examples, restore the full-suite line, retarget assertions, run `scripts/test ./internal/plugincheck/ -run 'TDD|Budget'` to green.
-- [ ] Commit: `feat(tdd): tighten wording to the size target`.
+- [x] Red: the tdd cap drops to 6500 and fails at 8105.
+- [x] Change: tighten wording and examples, restore the full-suite line, retarget assertions, run `scripts/test ./internal/plugincheck/ -run 'TDD|Budget'` to green.
+- [x] Commit: `feat(tdd): tighten wording to the size target`.
+
+## Fix round 1
+
+### Task 4: Restore shared File Structure and tidy tdd pins
+
+**verify:** Each slice depth gets every rule it had before the split; every tdd rule is pinned by its current wording; slice body at or under 7000 and tdd at or under 6500 bytes
+
+- [ ] slice File Structure rules moved to full.md, so a minimal-depth agent lost them; put a short File Structure back in the shared body, keep the body at or under 7000 bytes
+- [ ] [fix] tdd 'Each means: delete the code, start over' covers items whose answer is not delete; scope it to the items that mean delete
+- [ ] [fix] pin 'The full suite runs only in `acta:land`' in skill_tdd_test.go
+- [ ] [fix] lean-tests graders guards: lines quote a removed tdd sentence; point them at the current one
+- [ ] [fix] add slice-minimal-one-file row to evalCases in evals_test.go
+- [ ] Commit with the trailer `Task: PLN-stx3us7#4`
 
 ## State
 
