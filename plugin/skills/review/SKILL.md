@@ -15,7 +15,7 @@ Pick the level in this order, and ask no question when one answers: the argument
 
 The standard and deep levels (`## Review depth`) dispatch two read-only reviewer subagents at the same time, both from [code-reviewer.md](code-reviewer.md):
 
-**Subagent models.** Name no model for any subagent; the harness default picks it.
+**Subagent models.** The Spec-axis reviewer runs on your own model. The Standards-axis reviewer runs on a cheaper, faster model tier than yours, for example sonnet in Claude Code. If the harness has no cheaper tier, use its default.
 
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.

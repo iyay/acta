@@ -61,8 +61,10 @@ func TestSkillReview(t *testing.T) {
 			"No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.",
 			"and over a polish commit",
 			"A CLEAN round: no new round, no new fix task. Run `## After a CLEAN round`.",
+			// The Standards reviewer is the cheaper job, so it gets a cheaper tier.
+			"The Spec-axis reviewer runs on your own model. The Standards-axis reviewer runs on a cheaper, faster model tier than yours, for example sonnet in Claude Code. If the harness has no cheaper tier, use its default.",
 		},
-		MustNot: []string{"Small means one file", "A NOTE may start with `(high) `, `(medium) ` or `(low) `", "one line each, and that section", "Every polish commit gets the two reviewers", "A polish commit is never a small change", "explicit instruction-file violation", "Acknowledge strengths", "Production readiness", "superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
+		MustNot: []string{"Name no model", "Small means one file", "A NOTE may start with `(high) `, `(medium) ` or `(low) `", "one line each, and that section", "Every polish commit gets the two reviewers", "A polish commit is never a small change", "explicit instruction-file violation", "Acknowledge strengths", "Production readiness", "superpowers:", "Critical", "Important (Should Fix)", "Minor", "GitHub Thread Replies", "A change you judge small", "kept in memory", "one line in memory", "never a task",
 			"land now with",
 			`Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE.`,
 			"CLEAN: land.",
@@ -116,6 +118,14 @@ func TestSkillReview(t *testing.T) {
 	// The fix-task rule is stated once, in budget step 2.
 	if n := strings.Count(readSkill(t, "skills/review/SKILL.md"), "NOTEs join that fix task"); n != 1 {
 		t.Errorf("review/SKILL.md says \"NOTEs join that fix task\" %d times; budget step 2 owns it", n)
+	}
+}
+
+// Slice keeps its own models line; only review gave the Standards reviewer a tier.
+func TestSliceKeepsNoModelLine(t *testing.T) {
+	const line = "**Subagent models.** Name no model for any subagent; the harness default picks it."
+	if !strings.Contains(readSkill(t, "skills/slice/SKILL.md"), line) {
+		t.Errorf("slice/SKILL.md lost its line %q", line)
 	}
 }
 

@@ -10,8 +10,8 @@ import (
 
 const modelsPara = "**Subagent models.** Name no model for any subagent; the harness default picks it."
 
-func TestModelsParagraphInFiveSkills(t *testing.T) {
-	for _, s := range []string{"slice", "shape", "debug", "build", "review"} {
+func TestModelsParagraphInFourSkills(t *testing.T) {
+	for _, s := range []string{"slice", "shape", "debug", "build"} {
 		raw, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", s, "SKILL.md"))
 		if err != nil {
 			t.Fatal(err)
@@ -43,6 +43,11 @@ func TestNoSkillPicksAModel(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, b := range banned {
+			// Review names a cheaper tier for its Standards reviewer, so it
+			// may say "own model" and give "sonnet" as the example.
+			if filepath.Base(filepath.Dir(f)) == "review" && filepath.Base(f) == "SKILL.md" && (b == "own model" || b == "sonnet") {
+				continue
+			}
 			if strings.Contains(string(raw), b) {
 				t.Errorf("%s: still says %q", f, b)
 			}
