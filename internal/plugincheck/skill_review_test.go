@@ -197,6 +197,7 @@ func TestReviewDepthFiles(t *testing.T) {
 			"A light-tier diff keeps the inline light review",
 			"The orchestrator numbers the BLOCKERs before the fact-check",
 			"becomes a NOTE, sorted into a bucket like any other",
+			"It counts for this run only and is never saved.",
 		},
 		"skills/review/fact-check.md": {
 			"(A) the code it names is not in the diff under review",

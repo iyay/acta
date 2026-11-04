@@ -57,11 +57,16 @@ Wave 1: Task 1. Wave 2: Task 2. Both touch `plugin/skills/review/SKILL.md`.
 
 **verify:** every NOTE below is applied, and nothing else changes.
 
-- [ ] pin "It counts for this run only and is never saved." from review/depth.md in TestReviewDepthFiles
-- [ ] Commit: `polish: review notes for PLN-0210`
+- [x] pin "It counts for this run only and is never saved." from review/depth.md in TestReviewDepthFiles
+- [x] Commit: `polish: review notes for PLN-0210`
+
+## Review notes
+
+- Deep depth, full tier; Spec axis opus, Standards axis sonnet. Round 1 BLOCKED (dispatch full-tier rule lost in the trim, confirmed by fact-check), fixed in round 2, CLEAN. Polish pinned the run-only rule (reviewed CLEAN). One [debt]: Codex no-model text vs the cheaper tier. Other notes [note]: pointer placement, exact caps, duplicate wording between SKILL.md and depth.md.
 
 ## State
 
 ### Next
 
-Fix round 1 done; next is review round 2 over the fix range.
+Paused 2026-11-04 by user. Review CLEAN, polish done, debt filed, full suite green at a3262d8 (4669 pass, baseline recorded).
+Full eval set was started; log at the session scratchpad eval-review.log, may be cut short. Next: rerun scripts/eval (or only the red cases), then land per tidy.md.
