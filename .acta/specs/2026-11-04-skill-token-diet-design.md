@@ -3,7 +3,7 @@ parent: scratch/2026-11-04-skill-token-diet
 id: SPC-0188
 created: "2026-11-04 19:41:55"
 hash: vtyw8gx
-started: "2026-11-04 19:48:42"
+started: "2026-11-04 19:48:35"
 ---
 # Skill token diet
 
