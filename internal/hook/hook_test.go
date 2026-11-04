@@ -451,36 +451,30 @@ func TestSessionStartWikiLine(t *testing.T) {
 	}
 }
 
-// An agent can run several brainstorms from this rule alone, so the rule must
-// name every case and keep the move the user's choice. Whether a herdr tab is
-// one way to move is the hook's call, not the agent's: the hook reads the
-// environment, the agent often cannot, so a session outside herdr must say
-// nothing about herdr.
-func TestSessionStartBrainstormContinuity(t *testing.T) {
+// The brainstorm rule lives in the shape skill only. The session note must not
+// carry it, and the core rules must still count 1 to 8 with no hole. The herdr
+// line stays: shape reads it to know a herdr tab is a way to move. A session
+// outside herdr must say nothing about herdr in the rules.
+func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
 		"first run": {Voice: config.UserDefault()},
 		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
-		for _, want := range []string{
-			"stay here by default",
-			"its own scratch item, brainstorming status and approvals",
-			"Related:", "Unrelated:", "Resumed:", "Mixed:",
-			"never a count",
-			"Only the user picks a move; launch nothing unasked",
-			"give the real id, like SCR-0001",
-			"a new session typing brainstorm SCR-0001",
-			"Claude Code only: claude --bg 'brainstorm SCR-0001'",
-		} {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s: session start missing %q", name, want)
+		for _, gone := range []string{"Several Architectural brainstorms", "claude --bg", "Related:", "never a count"} {
+			if strings.Contains(out, gone) {
+				t.Errorf("%s: session start still carries the brainstorm rule: %q", name, gone)
 			}
 		}
-		for _, old := range []string{"One Architectural brainstorm per session", "cannot start in this session", "Do not design it here"} {
-			if strings.Contains(out, old) {
-				t.Errorf("%s: session start still limits brainstorms: %q", name, old)
+		rules := out[strings.Index(out, "Core rules:"):]
+		for n := 1; n <= 8; n++ {
+			if !strings.Contains(rules, fmt.Sprintf("\n%d. ", n)) {
+				t.Errorf("%s: core rule %d is missing", name, n)
 			}
+		}
+		if strings.Contains(rules, "\n9. ") {
+			t.Errorf("%s: core rules still reach 9", name)
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
 			t.Errorf("%s: the skill index does not name scratch", name)
@@ -488,7 +482,6 @@ func TestSessionStartBrainstormContinuity(t *testing.T) {
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
 		// and the voice lines count: the header above them is an index, not an
 		// offer of a tab.
-		rules := out[strings.Index(out, "Core rules:"):]
 		if strings.Contains(strings.ToLower(rules), "herdr") {
 			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)
 		}
