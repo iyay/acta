@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-11-04 19:34:33"
 schema: "1"
 started: "2026-11-04 19:37:27"
+finished: "2026-11-04 19:41:55"
 ---
 # Cut acta skill token cost, cheaper model for Standards reviewer
 
