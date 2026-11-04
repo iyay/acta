@@ -56,6 +56,54 @@ func TestSkillSlice(t *testing.T) {
 	})
 }
 
+// TestSliceDepthFiles checks that each plan depth has its own file. The body
+// keeps what every depth uses. An agent reads only the file of its depth, so a
+// rule of one depth must not sit in the body or in the other file.
+func TestSliceDepthFiles(t *testing.T) {
+	body := readFile(t, "skills", "slice", "SKILL.md")
+	full := readFile(t, "skills", "slice", "full.md")
+	minimal := readFile(t, "skills", "slice", "minimal.md")
+	fullOnly := []string{
+		"## Plan Document Header", "## Bite-Sized Task Granularity", "## Task Structure",
+		"## No Placeholders", "## File Structure", "## Self-Review",
+		"`full`: everything below, with real code in every code step, and a wait for the user's yes.",
+		"**Every `full` plan starts with this header**", "- [ ] **Step 1: Write the failing test**",
+		"Similar to Task N",
+	}
+	minimalOnly := []string{
+		"`minimal`: the frontmatter holds `parent:` and `depth: minimal`.",
+		"`- [ ] Red: <test> fails because <why>`", "No code blocks. About 7 lines a task.",
+		"Code blocks and No Placeholders apply to `full` plans only.",
+		"Minimal review: coverage, verify properties, Red, Change and Commit boxes per task in each plan; fix omissions before hand-off.",
+	}
+	for _, want := range fullOnly {
+		if !strings.Contains(full, want) {
+			t.Errorf("full.md is missing %q", want)
+		}
+		if strings.Contains(body, want) || strings.Contains(minimal, want) {
+			t.Errorf("%q must live in full.md only", want)
+		}
+	}
+	for _, want := range minimalOnly {
+		if !strings.Contains(minimal, want) {
+			t.Errorf("minimal.md is missing %q", want)
+		}
+		if strings.Contains(body, want) || strings.Contains(full, want) {
+			t.Errorf("%q must live in minimal.md only", want)
+		}
+	}
+	for _, want := range []string{
+		"[full.md](full.md)", "[minimal.md](minimal.md)", "never the other",
+		// Shared text stays in the body.
+		"## Scope Check", "## Verify lines are properties", "## Test commands", "## Waves", "## Hand-off",
+		"## Keep it small", "## Task Right-Sizing", "Depth changes only what a plan holds, never the gate",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("SKILL.md is missing %q", want)
+		}
+	}
+}
+
 // gitCommitSpan matches a `git commit ...` command written in backticks, so a
 // sentence that says "never `git commit`" is not a command.
 var gitCommitSpan = regexp.MustCompile("`git commit [^`]*`")

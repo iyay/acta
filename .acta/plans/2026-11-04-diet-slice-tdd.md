@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0212
 created: "2026-11-04 19:45:47"
 hash: stx3us7
+started: "2026-11-04 19:49:19"
 ---
 # Diet: slice and tdd implementation plan
 
@@ -27,9 +28,9 @@ Wave 1: Task 1. Wave 2: Task 2. Both edit `budget_test.go`.
 **Files:** Create `plugin/skills/slice/full.md`, `plugin/skills/slice/minimal.md`, `plugin/evals/slice-minimal-one-file/` (case.yaml, prompt.md, scaffold.sh, graders); modify `plugin/skills/slice/SKILL.md`, `internal/plugincheck/skill_slice_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the slice skill folder as plugincheck reads it, plus `scripts/eval --case 'slice-*'`.
 **verify:** Each depth gets every rule it has today and no text of the other. Cases: full-only text (Plan Document Header, Bite-Sized, full Task Structure, No Placeholders) is in `full.md`; the minimal rules are in `minimal.md`; shared text (scope, split pointer, waves, verify, test commands, hand-off) stays in the body; the body says to read only the file its depth names; byte caps hold; the new eval passes on the branch and its transcript has no Read of `full.md`.
-- [ ] Red: a plugincheck test expects `full.md`, `minimal.md` and a body under 7000 bytes, and fails because neither file exists.
-- [ ] Change: move the depth text, add the pointer and the eval case, set caps, run `scripts/test ./internal/plugincheck/` then the eval.
-- [ ] Commit: `feat(slice): load only the plan depth's text`.
+- [x] Red: a plugincheck test expects `full.md`, `minimal.md` and a body under 7000 bytes, and fails because neither file exists.
+- [x] Change: move the depth text, add the pointer and the eval case, set caps, run `scripts/test ./internal/plugincheck/` then the eval.
+- [x] Commit: `feat(slice): load only the plan depth's text`.
 
 ### Task 2: trim tdd
 
@@ -39,3 +40,12 @@ Wave 1: Task 1. Wave 2: Task 2. Both edit `budget_test.go`.
 - [ ] Red: a plugincheck test caps tdd at 6500 bytes and fails at 10702.
 - [ ] Change: fold the two sections, drop the two others, run `scripts/test ./internal/plugincheck/ -run 'Tdd|Budget'` then the eval on branch and main.
 - [ ] Commit: `feat(tdd): trim repeated sections`.
+
+## State
+
+### Next
+
+Task 1 landed on branch diet-slice-tdd: slice body 12703 -> 6915 bytes, full.md 5178, minimal.md 984.
+budget_test.go slice lines now hold exact sizes; Task 2 edits only the tdd lines there (skills/tdd/SKILL.md cap to ~6500).
+Eval slice-minimal-one-file added; not run yet, orchestrator runs scripts/eval --case slice-minimal-one-file at close.
+evalCases in evals_test.go has no row for the new case (plan did not name that file).
