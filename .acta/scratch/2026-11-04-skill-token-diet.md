@@ -63,4 +63,8 @@ Section 1 approved 2026-11-04: five plans, each lands alone: 1 review (Standards
 
 Section 2 approved 2026-11-04: pointer table per mode in the body (pattern of build's executor table), exactly one mode file read, frontmatter descriptions untouched. Targets: build inline <=7k, slice minimal <=7k, review without findings <=10k, tdd ~6.5k, hook ~400 tokens less per session. Pass = new plugincheck caps green, evals match main baseline, other mode files unread in eval transcripts.
 
+### 2026-11-04
+
+Cold read 2026-11-04: five findings, user took all. Spec now names per-file byte caps as the target proof, slice mode order with /slice argument first, every receiving.md trigger, the exact Standards tier sentence with harness-default fallback, and the hook cap (3 plans, in-progress first, +N more line, rule 8 move text goes to shape).
+
 ## Open questions
