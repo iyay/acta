@@ -451,36 +451,45 @@ func TestSessionStartWikiLine(t *testing.T) {
 	}
 }
 
-// An agent can run several brainstorms from this rule alone, so the rule must
-// name every case and keep the move the user's choice. Whether a herdr tab is
-// one way to move is the hook's call, not the agent's: the hook reads the
-// environment, the agent often cannot, so a session outside herdr must say
-// nothing about herdr.
-func TestSessionStartBrainstormContinuity(t *testing.T) {
+// The long brainstorm rule and its case types live in the shape skill only. The
+// session note keeps just one short rule about how to move a brainstorm, and the
+// core rules must count 1 to 9 with no hole. The herdr line stays: shape reads
+// it to know a herdr tab is a way to move. A session outside herdr must say
+// nothing about herdr in the rules.
+func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
 		"first run": {Voice: config.UserDefault()},
 		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
-		for _, want := range []string{
-			"stay here by default",
-			"its own scratch item, brainstorming status and approvals",
-			"Related:", "Unrelated:", "Resumed:", "Mixed:",
-			"never a count",
-			"Only the user picks a move; launch nothing unasked",
-			"give the real id, like SCR-0001",
-			"a new session typing brainstorm SCR-0001",
-			"Claude Code only: claude --bg 'brainstorm SCR-0001'",
-		} {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s: session start missing %q", name, want)
+		for _, gone := range []string{"Several Architectural brainstorms", "Related:", "Unrelated:", "Resumed:", "Mixed:", "stay here by default", "never a count"} {
+			if strings.Contains(out, gone) {
+				t.Errorf("%s: session start still carries the brainstorm rule: %q", name, gone)
 			}
 		}
-		for _, old := range []string{"One Architectural brainstorm per session", "cannot start in this session", "Do not design it here"} {
-			if strings.Contains(out, old) {
-				t.Errorf("%s: session start still limits brainstorms: %q", name, old)
+		rules := out[strings.Index(out, "Core rules:"):]
+		// The move rule is short: real id, a new session, and claude --bg for
+		// Claude Code only. The case types stay in shape.
+		for _, want := range []string{
+			"8. When the user asks to move a brainstorm:",
+			"give its real id, like SCR-0001",
+			"a new session typing brainstorm SCR-0001",
+			"Claude Code only: claude --bg 'brainstorm SCR-0001'",
+			"Launch nothing yourself.",
+			"\n9. Commit spec, plan and other planning files",
+		} {
+			if !strings.Contains(rules, want) {
+				t.Errorf("%s: the move rule is missing %q", name, want)
 			}
+		}
+		for n := 1; n <= 9; n++ {
+			if !strings.Contains(rules, fmt.Sprintf("\n%d. ", n)) {
+				t.Errorf("%s: core rule %d is missing", name, n)
+			}
+		}
+		if strings.Contains(rules, "\n10. ") {
+			t.Errorf("%s: core rules reach 10", name)
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
 			t.Errorf("%s: the skill index does not name scratch", name)
@@ -488,7 +497,6 @@ func TestSessionStartBrainstormContinuity(t *testing.T) {
 		// Case-insensitive, so this also rules out HERDR_ENV. Only the rules
 		// and the voice lines count: the header above them is an index, not an
 		// offer of a tab.
-		rules := out[strings.Index(out, "Core rules:"):]
 		if strings.Contains(strings.ToLower(rules), "herdr") {
 			t.Errorf("%s: session start outside herdr names herdr:\n%s", name, rules)
 		}

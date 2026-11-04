@@ -3,6 +3,7 @@ package board
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -506,5 +507,80 @@ func TestRunningKeepsAPlanTheBranchWroteAndReverted(t *testing.T) {
 		if got := runIds(Running(c)); len(got) != 1 || got[0] != "plans/2026-10-05-shared" {
 			t.Errorf("running = %v, want the plan the branch wrote", got)
 		}
+	}
+}
+
+// commitFilesAt is commitFiles with a fixed commit date, so a test can say
+// which worktree wrote last without waiting a second between commits.
+func commitFilesAt(t *testing.T, dir, when, msg string, files map[string]string) {
+	t.Helper()
+	for rel, body := range files {
+		writeFile(t, filepath.Join(dir, ".acta", rel), body)
+	}
+	gitRun(t, dir, "add", "-A")
+	cmd := exec.Command("git", "-C", dir, "commit", "-q", "-m", msg)
+	cmd.Env = gitEnv(when)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v %s", err, out)
+	}
+}
+
+// Two worktree branches can both touch one plan file. The plan is one plan, so
+// it comes back once, from the worktree whose branch wrote the file last,
+// whichever order git lists the worktrees in. A plan only one branch touched
+// still comes back.
+func TestRunningListsAPlanOnceFromTheNewestBranch(t *testing.T) {
+	t.Parallel()
+
+	const (
+		older = "2026-10-05T08:00:00Z"
+		newer = "2026-10-05T09:00:00Z"
+	)
+	for _, tc := range []struct {
+		name, aWhen, bWhen, want string
+	}{
+		{"second worktree newer", older, newer, "branch-b"},
+		{"first worktree newer", newer, older, "branch-a"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := filepath.Join(t.TempDir(), "repo")
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitRun(t, dir, "init", "-q", "-b", "main")
+			writeFile(t, filepath.Join(dir, "README.md"), "a repo\n")
+			gitRun(t, dir, "add", "-A")
+			gitRun(t, dir, "commit", "-q", "-m", "init")
+			shared := map[string]string{"plans/2026-10-05-live.md": startedPlan}
+			wtA := filepath.Join(t.TempDir(), "a")
+			wtB := filepath.Join(t.TempDir(), "b")
+			gitRun(t, dir, "worktree", "add", "-q", "-b", "branch-a", wtA)
+			gitRun(t, dir, "worktree", "add", "-q", "-b", "branch-b", wtB)
+			commitFilesAt(t, wtA, tc.aWhen, "a work", shared)
+			commitFilesAt(t, wtB, tc.bWhen, "b work", shared)
+			// Only branch-b touched this one, so it must stay in the list.
+			commitFilesAt(t, wtB, tc.bWhen, "b more", map[string]string{
+				"plans/2026-10-06-solo.md": strings.Replace(startedPlan, "PLN-0082", "PLN-0085", 1),
+			})
+			cfg, err := config.Load(dir, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			runs := Running(cfg)
+			byPlan := map[string][]string{}
+			for _, r := range runs {
+				byPlan[r.Plan.ID] = append(byPlan[r.Plan.ID], r.Branch)
+			}
+			if got := byPlan["plans/2026-10-05-live"]; len(got) != 1 || got[0] != tc.want {
+				t.Errorf("shared plan branches = %v, want only %s", got, tc.want)
+			}
+			if got := byPlan["plans/2026-10-06-solo"]; len(got) != 1 || got[0] != "branch-b" {
+				t.Errorf("solo plan branches = %v, want only branch-b", got)
+			}
+			if len(runs) != 2 {
+				t.Errorf("running = %v, want 2 plans", runIds(runs))
+			}
+		})
 	}
 }

@@ -1013,6 +1013,21 @@ func NewestCommit(repo, ref, pre string) (string, string, error) {
 	return "", "", nil
 }
 
+// NewestCommitTime gives the time, in unix seconds, of the newest commit on ref
+// that changed path. It is 0 when no commit did. Branches that both wrote one
+// file use it to say which one wrote last.
+func NewestCommitTime(repo, ref, path string) (int64, error) {
+	out, err := run(repo, "--literal-pathspecs", "log", "-1", "--format=%ct", ref, "--", path)
+	if err != nil {
+		return 0, err
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(out, 10, 64)
+}
+
 // IsLinkedWorktree says whether repo is a linked worktree, not the main
 // checkout: its git dir differs from the common git dir. Any git error
 // reads as false, so a caller falls back to what the main checkout does.
