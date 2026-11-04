@@ -225,90 +225,19 @@ A bug fix gets a regression test that reproduces the exact bug and fails before 
 - Test tooling (fixtures, probes, cleanup helpers) exists to test the deliverable. It gets the minimum that works and no review rounds of its own.
 - "Obvious", "one-liner" and "just config" are not exemptions.
 
-## Common Rationalizations
+## Rationalizations - STOP and Start Over
 
-| Excuse | Reality |
-|--------|---------|
-| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
-| "I'll test after" | Tests written after pass immediately — which proves nothing. They may test the wrong thing, test the implementation instead of the behavior, or miss the edge case you forgot. You never watched it fail, so you never proved it can catch the bug. Test-first forces that failure. |
-| "Tests after achieve same goals (spirit not ritual)" | Tests-after answer "what does this do?"; tests-first answer "what should this do?" Tests written after are biased by the code you already wrote — you verify the cases you remembered, not the ones you'd have discovered. Coverage without proof the tests work. |
-| "Already manually tested" | Manual testing is ad-hoc: no record of what you covered, no way to re-run it when the code changes, easy to forget cases under pressure. "Worked when I tried it" ≠ comprehensive. Automated tests run the same way every time. |
-| "Deleting X hours is wasteful" | Sunk cost fallacy — that time is already spent either way. The real choice: rewrite with TDD (high confidence) vs. keep it and bolt tests on after (low confidence, likely bugs). Keeping code you can't trust is the waste. |
-| "Keep as reference, write tests first" | You'll adapt it. That's testing after. Delete means delete. |
-| "Need to explore first" | Fine. Throw away exploration, start with TDD. |
-| "Test hard = design unclear" | Listen to test. Hard to test = hard to use. |
-| "TDD will slow me down" | TDD IS the pragmatic path: catches bugs before commit, prevents regressions, lets you refactor without fear. "Pragmatic" shortcuts mean debugging in production — slower, not faster. |
-| "Manual test faster" | Manual doesn't prove edge cases. You'll re-test every change. |
-| "Existing code has no tests" | Test the behavior you change. Tests for the rest are a note for a later plan. |
+Each of these means: delete the code, start over with a test first.
 
-## Red Flags - STOP and Start Over
-
-- Code before test
-- Test after implementation
-- Test passes immediately
-- Can't explain why test failed
-- Tests added "later"
-- Rationalizing "just this once"
-- "I already manually tested it"
-- "Tests after achieve the same purpose"
-- "It's about spirit not ritual"
-- "Keep as reference" or "adapt existing code"
-- "Already spent X hours, deleting is wasteful"
-- "TDD is dogmatic, I'm being pragmatic"
-- "This is different because..."
-
-**All of these mean: Delete code. Start over with TDD.**
-
-## Example: Bug Fix
-
-**Bug:** Empty email accepted
-
-**RED**
-```typescript
-test('rejects empty email', async () => {
-  const result = await submitForm({ email: '' });
-  expect(result.error).toBe('Email required');
-});
-```
-
-**Verify RED**
-```bash
-$ npm test
-FAIL: expected 'Email required', got undefined
-```
-
-**GREEN**
-```typescript
-function submitForm(data: FormData) {
-  if (!data.email?.trim()) {
-    return { error: 'Email required' };
-  }
-  // ...
-}
-```
-
-**Verify GREEN**
-```bash
-$ npm test
-PASS
-```
-
-**REFACTOR**
-Extract validation for multiple fields if needed.
-
-## Verification Checklist
-
-Before marking work complete:
-
-- [ ] Every case the plan names has a test, and no other
-- [ ] Watched each test fail before implementing
-- [ ] Each test failed for expected reason (feature missing, not typo)
-- [ ] Wrote minimal code to pass each test
-- [ ] The task's tests and the tests of the code it touched pass (the full suite runs in `acta:land`)
-- [ ] Output pristine (no errors, warnings)
-- [ ] Tests use real code (mocks only if unavoidable)
-
-Can't check all boxes? You skipped TDD. Start over.
+- Code before the test, or "tests after reach the same goal". Tests written after pass at once and prove nothing. You never watched them fail.
+- Skipping the red run, a test that passes at once, or a failure you cannot explain.
+- "Too simple", "just this once", "I already tested it by hand", "I will add tests later". Manual checks cannot be re-run.
+- "Keep it as reference" or "adapt it". That is testing after. Delete means delete.
+- "Deleting X hours of work is wasteful". Sunk cost. Code you cannot trust is the waste.
+- "Need to explore first". Fine. Throw the exploration away, then start with the test.
+- "Hard to test" means the design is unclear. Simplify the interface.
+- "Existing code has no tests". Test the behavior you change. The rest is a note for a later plan.
+- "TDD slows me down" or "this is different". Skipping it means debugging later, which is slower.
 
 ## When Stuck
 

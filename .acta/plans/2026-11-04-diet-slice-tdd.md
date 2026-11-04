@@ -5,6 +5,7 @@ id: PLN-0212
 created: "2026-11-04 19:45:47"
 hash: stx3us7
 started: "2026-11-04 19:49:19"
+finished: "2026-11-04 19:55:45"
 ---
 # Diet: slice and tdd implementation plan
 
@@ -21,7 +22,7 @@ Slice mode order stays: the `/slice` argument, then `plan_depth`, then `full`.
 
 ## Waves
 
-Wave 1: Task 1. Wave 2: Task 2. Both edit `budget_test.go`.
+Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All edit `budget_test.go`; Tasks 2 and 3 share the tdd skill.
 
 ### Task 1: one file per plan depth
 
@@ -37,9 +38,18 @@ Wave 1: Task 1. Wave 2: Task 2. Both edit `budget_test.go`.
 **Files:** Modify `plugin/skills/tdd/SKILL.md`, `internal/plugincheck/skill_tdd_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the tdd skill text as plugincheck reads it, plus `scripts/eval --case 'lean-tests'`.
 **verify:** The Iron Law and red, green, refactor steps keep every rule; only the listed sections shrink. Cases: Common Rationalizations and Red Flags become one block of about 10 lines that still names skipping the red run and writing code before the test; Example: Bug Fix and Verification Checklist are gone; byte cap about 6500; `lean-tests` gives the same result on branch and main.
-- [ ] Red: a plugincheck test caps tdd at 6500 bytes and fails at 10702.
-- [ ] Change: fold the two sections, drop the two others, run `scripts/test ./internal/plugincheck/ -run 'Tdd|Budget'` then the eval on branch and main.
-- [ ] Commit: `feat(tdd): trim repeated sections`.
+- [x] Red: a plugincheck test caps tdd at 6500 bytes and fails at 10702.
+- [x] Change: fold the two sections, drop the two others, run `scripts/test ./internal/plugincheck/ -run 'Tdd|Budget'` then the eval on branch and main.
+- [x] Commit: `feat(tdd): trim repeated sections`.
+
+### Task 3: tighten tdd wording to the target
+
+**Files:** Modify `plugin/skills/tdd/SKILL.md`, `internal/plugincheck/skill_tdd_test.go`, `internal/plugincheck/budget_test.go`.
+**Seam:** the tdd skill text as plugincheck reads it, plus `scripts/eval --case 'lean-tests'`.
+**verify:** Every rule tdd holds today still holds, in fewer words. Cases: the Iron Law and the red, green, refactor rules keep their meaning; the Good/Bad examples may shrink but each still shows one good and one bad case; the line that the full suite runs only in `acta:land` is back; any reworded pinned sentence has its assertion retargeted to the same rule; byte cap about 6500; `lean-tests` gives the same result on branch and main.
+- [ ] Red: the tdd cap drops to 6500 and fails at 8105.
+- [ ] Change: tighten wording and examples, restore the full-suite line, retarget assertions, run `scripts/test ./internal/plugincheck/ -run 'TDD|Budget'` to green.
+- [ ] Commit: `feat(tdd): tighten wording to the size target`.
 
 ## State
 
