@@ -57,6 +57,9 @@ func planStates(cfg config.Config, keep func(*Item) bool) []RunState {
 		return nil
 	}
 	var out []RunState
+	// at maps a plan id to its place in out, so a plan that two branches
+	// both wrote is listed once.
+	at := map[string]int{}
 	for i, w := range wts {
 		// Git lists the main checkout first, so index 0 is the one folder
 		// that is not a worktree of itself. Skipping the folder the command
@@ -86,10 +89,29 @@ func planStates(cfg config.Config, keep func(*Item) bool) []RunState {
 			if keep != nil && !keep(it) {
 				continue
 			}
-			out = append(out, runState(cfg.RepoRoot, b, it, w))
+			rs := runState(cfg.RepoRoot, b, it, w)
+			if j, dup := at[it.ID]; dup {
+				// Keep the worktree whose branch wrote the plan file last. On
+				// a tie, or when git cannot say, the first one found stays.
+				name := planName(c, it.Path)
+				if wroteLater(cfg.RepoRoot, name, rs.Branch, out[j].Branch) {
+					out[j] = rs
+				}
+				continue
+			}
+			at[it.ID] = len(out)
+			out = append(out, rs)
 		}
 	}
 	return out
+}
+
+// wroteLater says whether branch made a newer commit on the file than other
+// did. Anything git cannot answer says no, so the entry already listed stays.
+func wroteLater(repo, file, branch, other string) bool {
+	a, errA := gitc.NewestCommitTime(repo, branch, file)
+	b, errB := gitc.NewestCommitTime(repo, other, file)
+	return errA == nil && errB == nil && a > b
 }
 
 // branchFiles gives the files the commits of branch made after it left main.
