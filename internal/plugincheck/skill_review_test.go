@@ -21,6 +21,7 @@ func TestSkillReview(t *testing.T) {
 			"review_depth", "depth.md", "fact-check.md", "/acta:review quick|standard|deep",
 			"Fix rounds run at least `standard`",
 			"In doubt: full.",
+			"Work the `dispatch` executor wrote is always full tier, at least standard.",
 			"acta debt new",
 			"drop the bucket tag",
 			"the priority tag comes after the bucket tag",

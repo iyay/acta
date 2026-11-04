@@ -48,12 +48,20 @@ Wave 1: Task 1. Wave 2: Task 2. Both touch `plugin/skills/review/SKILL.md`.
 
 **verify:** No path lets dispatch work skip the full tier: Review tiers names it, a Must pins it, and the body stays at or under 10000 bytes
 
-- [ ] review/SKILL.md Review tiers lost the rule that work the dispatch executor wrote is always full tier; put it back in that section and pin it in skill_review_test.go
-- [ ] Commit with the trailer `Task: PLN-w4gjmeg#3`
+- [x] review/SKILL.md Review tiers lost the rule that work the dispatch executor wrote is always full tier; put it back in that section and pin it in skill_review_test.go
+- [x] Commit with the trailer `Task: PLN-w4gjmeg#3`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [ ] pin "It counts for this run only and is never saved." from review/depth.md in TestReviewDepthFiles
+- [ ] Commit: `polish: review notes for PLN-0210`
 
 ## State
 
 ### Next
 
-Task 1 landed. review/SKILL.md is 13522 bytes; its budget_test.go cap is 13522 (raised from 13372). Task 2 must drop that cap to 10000 or less.
-models_test.go now exempts review/SKILL.md from the "own model" and "sonnet" bans, and lists four skills for the models paragraph.
+Fix round 1 done; next is review round 2 over the fix range.

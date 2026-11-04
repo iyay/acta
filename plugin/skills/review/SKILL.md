@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md); the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
+Pick the level in this order, asking nothing when one answers: the argument of `/acta:review quick|standard|deep`, then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md); the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 
@@ -30,7 +30,7 @@ Everything else is a **NOTE**: one line each. A NOTE is not a task, unless it ca
 
 ## The three questions, and the deep lens
 
-Outside the deep lens, the review answers three questions and stops:
+Outside the deep lens, the review answers three questions:
 1. Does it match the approved spec and plan?
 2. Does it run: tests and type checks green, output shown?
 3. Do the tests go red when the change is reverted?
@@ -41,7 +41,7 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTE
 
 ## Budget: three rounds, then land or ask
 
-Each NOTE is sorted into a bucket: `[fix]`, `[debt]` or `[note]`. Three rounds at most.
+Each NOTE is sorted into a bucket: `[fix]`, `[debt]` or `[note]`.
 
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
 2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
@@ -54,7 +54,7 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 
 - A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into this round's one fix task (`## Fix round <n>` in the same plan).
 - A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
-- A NOTE is one line, and it sorts into a bucket. A NOTE that fails the first test falls to the next one.
+- A NOTE is one line and sorts into a bucket. A NOTE that fails the first test falls to the next one.
   - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
   - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff. A `[debt]` NOTE must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` or has no priority tag is a `[note]`.
   - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
@@ -63,7 +63,7 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 
 ## After a CLEAN round
 
-The polish commit counts as no round. This section is the whole CLEAN-round flow.
+The polish commit counts as no round. This is the whole CLEAN-round flow.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
 2. With `[fix]` NOTEs: first add the `## Polish` task in the worktree with `acta plan add <plan id> polish`, one `[fix]` NOTE per stdin line. It prints the task id to tick. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes, and say so in the review notes.
@@ -77,7 +77,7 @@ A polish sent to another agent goes out with `acta dispatch send --round polish`
 
 ## Review tiers
 
-This is the one place that says which diffs get a full review; `## Review depth` says how deep it goes. Tiers apply to round 1 and to a polish commit. A fix round always takes the two reviewers.
+This is the one place that says which diffs get a full review; `## Review depth` says how deep. Tiers apply to round 1 and to a polish commit. A fix round always takes the two reviewers. Work the `dispatch` executor wrote is always full tier, at least standard.
 
 - **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
 - **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.

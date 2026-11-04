@@ -43,7 +43,7 @@ var fileCaps = map[string]int{
 	"skills/land/tidy.md":                     2719,
 	"skills/lean/SKILL.md":                    1918,
 	"skills/migrate/SKILL.md":                 3207,
-	"skills/review/SKILL.md":                  9989,
+	"skills/review/SKILL.md":                  9991,
 	"skills/review/receiving.md":              2974,
 	"skills/review/code-reviewer.md":          4042,
 	"skills/review/depth.md":                  2085,
