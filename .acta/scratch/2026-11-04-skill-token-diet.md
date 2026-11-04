@@ -67,4 +67,20 @@ Section 2 approved 2026-11-04: pointer table per mode in the body (pattern of bu
 
 Cold read 2026-11-04: five findings, user took all. Spec now names per-file byte caps as the target proof, slice mode order with /slice argument first, every receiving.md trigger, the exact Standards tier sentence with harness-default fallback, and the hook cap (3 plans, in-progress first, +N more line, rule 8 move text goes to shape).
 
+### 2026-11-04
+
+Build 2026-11-04: pure moves missed the byte targets (build ~11k, review ~10.9k, tdd 8.1k; slice hit 6.9k). User chose option 2: trim wording of shared text to reach the spec targets, keeping every rule; tests retargeted where wording changes; evals prove it at close.
+
+### 2026-11-04
+
+2026-11-04: build body cannot reach 7000 without dropping rules (stops at about 10267 after moves and tightening). User picked (a): cap at the real size. Spec target for build is now about 10.3k.
+
+### 2026-11-04
+
+2026-11-04: eval brainstorm-user-handoff (no tools, so shape cannot load) went red 3 times on the hook branch and passed on main. User picked option 1: keep a short move-only rule in the session note; Related/Unrelated/Resumed/Mixed stay in shape only.
+
+### 2026-11-05
+
+2026-11-05: user ruled the land eval gate for the diet plans runs a subset, not the full set: PLN-0211 reuses its earlier full run plus 6 brainstorm reruns; PLN-0210 review-* polish-*; PLN-0209 build-* task-trailer wiki-close; PLN-0212 slice-minimal-one-file lean-tests.
+
 ## Open questions
