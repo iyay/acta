@@ -39,7 +39,6 @@ func TestSkillReview(t *testing.T) {
 			"one polish commit holding all of them",
 			"The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`).",
 			"When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`.",
-			"The polish commit uses no round.",
 			"A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.",
 			"The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.",
 			"acta debt new <plan id>",
@@ -60,7 +59,6 @@ func TestSkillReview(t *testing.T) {
 			"A round with no BLOCKER does not start; it runs `## After a CLEAN round`.",
 			"No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.",
 			"and over a polish commit",
-			"A CLEAN round: no new round, no new fix task. Run `## After a CLEAN round`.",
 			// The Standards reviewer is the cheaper job, so it gets a cheaper tier.
 			"The Spec-axis reviewer runs on your own model. The Standards-axis reviewer runs on a cheaper, faster model tier than yours, for example sonnet in Claude Code. If the harness has no cheaper tier, use its default.",
 		},
@@ -118,6 +116,37 @@ func TestSkillReview(t *testing.T) {
 	// The fix-task rule is stated once, in budget step 2.
 	if n := strings.Count(readSkill(t, "skills/review/SKILL.md"), "NOTEs join that fix task"); n != 1 {
 		t.Errorf("review/SKILL.md says \"NOTEs join that fix task\" %d times; budget step 2 owns it", n)
+	}
+}
+
+// Receiving findings load only when there is feedback, so the rules live in
+// their own file and the body keeps one pointer that names every trigger.
+func TestReviewReceivingFile(t *testing.T) {
+	body := readSkill(t, "skills/review/SKILL.md")
+	if strings.Contains(body, "### The Response Pattern") {
+		t.Errorf("review/SKILL.md still holds the receiving rules; they live in receiving.md")
+	}
+	for _, want := range []string{
+		"[receiving.md](receiving.md)",
+		"any reviewer returns a finding",
+		"the user or an outside reviewer gives review feedback",
+		"a light inline review finds something",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review/SKILL.md pointer missing %q", want)
+		}
+	}
+	txt := readSkill(t, "skills/review/receiving.md")
+	for _, want := range []string{
+		"## Receiving findings",
+		"Verify each finding against the code before acting.",
+		"### The Response Pattern", "### Forbidden Responses", "### Handling Unclear Feedback",
+		"### When To Push Back", "### Acknowledging Correct Feedback", "### Common Mistakes",
+		"| Can't verify, proceed anyway | State limitation, ask for direction |",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("receiving.md missing %q", want)
+		}
 	}
 }
 

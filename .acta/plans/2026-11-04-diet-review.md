@@ -5,6 +5,7 @@ id: PLN-0210
 created: "2026-11-04 19:45:47"
 hash: w4gjmeg
 started: "2026-11-04 19:48:35"
+finished: "2026-11-04 20:40:32"
 ---
 # Diet: review skill implementation plan
 
@@ -37,9 +38,18 @@ Wave 1: Task 1. Wave 2: Task 2. Both touch `plugin/skills/review/SKILL.md`.
 **Files:** Create `plugin/skills/review/receiving.md`; modify `plugin/skills/review/SKILL.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the review skill folder as plugincheck reads it, plus `scripts/eval --case 'review-*' --case 'polish-*'`.
 **verify:** No receiving rule is lost and none loads without feedback. Cases: every subsection of today's `## Receiving findings` is in `receiving.md` word for word; the body names all three triggers (any reviewer finding, review feedback from the user or an outside reviewer, a light inline review that finds something) in one pointer; the `SKILL.md` byte cap is 10000 or less and `receiving.md` has its own cap; the review and polish evals give the same verdicts on the branch as on main, and a CLEAN-run transcript has no Read of `receiving.md`.
-- [ ] Red: a plugincheck test expects `receiving.md` and the three triggers and fails because the file does not exist.
-- [ ] Change: move the section, add the pointer, set caps, run `scripts/test ./internal/plugincheck/` then the evals on branch and main.
-- [ ] Commit: `feat(review): load receiving findings only when there is feedback`.
+- [x] Red: a plugincheck test expects `receiving.md` and the three triggers and fails because the file does not exist.
+- [x] Change: move the section, add the pointer, set caps, run `scripts/test ./internal/plugincheck/` then the evals on branch and main.
+- [x] Commit: `feat(review): load receiving findings only when there is feedback`.
+
+## Fix round 1
+
+### Task 3: Restore the dispatch full-tier rule
+
+**verify:** No path lets dispatch work skip the full tier: Review tiers names it, a Must pins it, and the body stays at or under 10000 bytes
+
+- [ ] review/SKILL.md Review tiers lost the rule that work the dispatch executor wrote is always full tier; put it back in that section and pin it in skill_review_test.go
+- [ ] Commit with the trailer `Task: PLN-w4gjmeg#3`
 
 ## State
 

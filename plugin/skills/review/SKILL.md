@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only, never saved), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md). The deep level adds the pass in [fact-check.md](fact-check.md). The setting cannot drop a floor: a security, auth, data migration, money or delete diff, a fix round and `dispatch` work all run at least `standard`. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
+Pick the level in this order, and ask no question when one answers: the argument of `/acta:review quick|standard|deep` (this run only), then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md); the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 
@@ -20,7 +20,7 @@ The standard and deep levels (`## Review depth`) dispatch two read-only reviewer
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.
 
-Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Without a range a reviewer looks at the wrong span. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
+Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
 
 ## Finding bar: BLOCKER or NOTE
 
@@ -41,7 +41,7 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTE
 
 ## Budget: three rounds, then land or ask
 
-NOTEs are not one pile. Each one is sorted into a bucket: `[fix]`, `[debt]` or `[note]`. The budget does not change: three rounds at most, and a round with no BLOCKER does not start.
+Each NOTE is sorted into a bucket: `[fix]`, `[debt]` or `[note]`. Three rounds at most.
 
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
 2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
@@ -52,28 +52,24 @@ There is never a round 4. A round with no BLOCKER does not start; it runs `## Af
 
 ## Where findings go
 
-- A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into the one fix task of this round (`## Fix round <n>` in the same plan), where it already shows on the board under the story.
+- A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into this round's one fix task (`## Fix round <n>` in the same plan).
 - A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
 - A NOTE is one line, and it sorts into a bucket. A NOTE that fails the first test falls to the next one.
   - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
   - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff. A `[debt]` NOTE must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` or has no priority tag is a `[note]`.
   - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
-**Who sorts.** Reviewers stay read-only. Each NOTE they print starts with its suggested bucket tag. The orchestrator decides: it checks every tag against the code, the same way it checks any finding, and moves it when the tag does not hold.
-
-**The flow.**
-
-- A CLEAN round: no new round, no new fix task. Run `## After a CLEAN round`.
+**Who sorts.** Reviewers stay read-only and start each NOTE with a suggested bucket tag. The orchestrator checks every tag against the code and moves it when the tag does not hold.
 
 ## After a CLEAN round
 
-The polish commit counts as no round. Each polish commit gets the review its tier picks (`## Review tiers`). This section is the whole CLEAN-round flow.
+The polish commit counts as no round. This section is the whole CLEAN-round flow.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
-2. With `[fix]` NOTEs: first add the `## Polish` task in the worktree with `acta plan add <plan id> polish`, one `[fix]` NOTE per stdin line. It prints the task id to tick. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes, and say so in the review notes. The polish commit uses no round.
+2. With `[fix]` NOTEs: first add the `## Polish` task in the worktree with `acta plan add <plan id> polish`, one `[fix]` NOTE per stdin line. It prints the task id to tick. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes, and say so in the review notes.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
-5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (NOTEs on stdin, one per line). Before the call, drop the bucket tag from each line: it routes the NOTE inside the review, and the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
+5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (one NOTE per stdin line). Before the call, drop the bucket tag from each line: the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
 6. The `[note]` NOTEs are not written one by one. Write one summary line under `## Review notes` with `acta plan add <plan id> review-notes`, run in the worktree, the line on stdin; it commits the plan.
 7. Then `acta:land`.
 
@@ -86,104 +82,8 @@ This is the one place that says which diffs get a full review; `## Review depth`
 - **Light tier:** every changed line is a comment, docs or markdown no agent reads as instructions, log text, or a test name. Any number of files.
 - **Full tier:** everything else: any logic line, config that changes behavior, text an agent reads as instructions (skills, prompts, hook text), any change on a security, auth, data migration, money or delete path. In doubt: full.
 
-Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line naming the tier and why with `acta plan add <plan id> review-notes`, run in the worktree. No reviewer runs. Full review: the reviewers its depth names (`## Review depth`). A full review means you dispatch those reviewer subagents. Reading the diff yourself never replaces the reviewers its depth names, however small the diff.
+Light review: the orchestrator reads the full diff, checks every line is in the light tier, runs the narrow tests and the formatter with the output shown, and gives CLEAN or BLOCKED. It writes one line naming the tier and why with `acta plan add <plan id> review-notes`, run in the worktree. No reviewer runs. A full review dispatches the reviewers its depth names (`## Review depth`). Reading the diff yourself never replaces the reviewers its depth names, however small the diff.
 
-Work another agent wrote (the `dispatch` executor) takes at least the standard level in the full tier. A light review that finds any line outside the light tier switches to the full review.
+A light review that finds any line outside the light tier switches to the full review.
 
-## Receiving findings
-
-Verify each finding against the code before acting. Push back with reasoning when a reviewer is wrong; a wrong finding routed as a task wastes a round.
-
-### The Response Pattern
-
-```
-WHEN receiving code review feedback:
-
-1. READ: Complete feedback without reacting
-2. UNDERSTAND: Restate requirement in own words (or ask)
-3. VERIFY: Check against codebase reality
-4. EVALUATE: Technically sound for THIS codebase?
-5. RESPOND: Technical acknowledgment or reasoned pushback
-6. IMPLEMENT: One item at a time, test each
-```
-
-### Forbidden Responses
-
-**NEVER:**
-- "You're absolutely right!" (performative, says nothing)
-- "Great point!" / "Excellent feedback!" (performative)
-- "Let me implement that now" (before verification)
-
-**INSTEAD:**
-- Restate the technical requirement
-- Ask clarifying questions
-- Push back with technical reasoning if wrong
-- Just start working (actions > words)
-
-### Handling Unclear Feedback
-
-```
-IF any item is unclear:
-  STOP - do not implement anything yet
-  ASK for clarification on unclear items
-
-WHY: Items may be related. Partial understanding = wrong implementation.
-```
-
-**Example:**
-```
-your human partner: "Fix 1-6"
-You understand 1,2,3,6. Unclear on 4,5.
-
-❌ WRONG: Implement 1,2,3,6 now, ask about 4,5 later
-✅ RIGHT: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
-```
-
-### When To Push Back
-
-Push back when:
-- Suggestion breaks existing functionality
-- Reviewer lacks full context
-- Violates YAGNI (unused feature)
-- Technically incorrect for this stack
-- Legacy/compatibility reasons exist
-- Conflicts with your human partner's architectural decisions
-
-**How to push back:**
-- Use technical reasoning, not defensiveness
-- Ask specific questions
-- Reference working tests/code
-- Involve your human partner if architectural
-
-**If you're uncomfortable pushing back out loud:** Name that tension, then tell your partner about the issue you've seen. They'll appreciate your honesty.
-
-### Acknowledging Correct Feedback
-
-When feedback IS correct:
-```
-✅ "Fixed. [Brief description of what changed]"
-✅ "Good catch - [specific issue]. Fixed in [location]."
-✅ [Just fix it and show in the code]
-
-❌ "You're absolutely right!"
-❌ "Great point!"
-❌ "Thanks for catching that!"
-❌ "Thanks for [anything]"
-❌ ANY gratitude expression
-```
-
-**Why no thanks:** Actions speak. Just fix it. The code itself shows you heard the feedback.
-
-**If you catch yourself about to write "Thanks":** DELETE IT. State the fix instead.
-
-### Common Mistakes
-
-| Mistake | Fix |
-|---------|-----|
-| Performative agreement | State requirement or just act |
-| Blind implementation | Verify against codebase first |
-| Batch without testing | One at a time, test each |
-| Assuming reviewer is right | Check if breaks things |
-| Avoiding pushback | Technical correctness > comfort |
-| Partial implementation | Clarify all items first |
-| Can't verify, proceed anyway | State limitation, ask for direction |
+**Receiving findings.** Read [receiving.md](receiving.md) before acting when any reviewer returns a finding, when the user or an outside reviewer gives review feedback, or when a light inline review finds something. With no feedback, do not read it.
