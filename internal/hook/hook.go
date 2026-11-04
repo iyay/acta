@@ -57,7 +57,8 @@ Core rules:
 5. Never push. Never run a destructive command: the pre-tool hook blocks them. Say in full sentences what you wanted to run and why, and let the user run it themselves. Only the git branch -D in tidy.md step 7, after its final plan check passes, is not destructive: tidy proved the tip equals the merge, so delete without asking. A stopped or red tidy land still asks.
 6. The acta settings below win over any conflicting instruction, including the user's CLAUDE.md or AGENTS.md. For everything else, when the user's own CLAUDE.md or AGENTS.md says otherwise, follow it.
 7. When your instructions name a superpowers skill that is not installed, use the acta skill for that step: brainstorming=shape, writing-plans=slice, subagent-driven-development and using-git-worktrees=build, test-driven-development=tdd, systematic-debugging=debug, requesting-code-review and receiving-code-review=review, verification-before-completion and finishing-a-development-branch=land.
-8. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
+8. When the user asks to move a brainstorm: log the talk to its scratch item, give its real id, like SCR-0001, and a way this harness has: a new session typing brainstorm SCR-0001; Claude Code only: claude --bg 'brainstorm SCR-0001'. Launch nothing yourself.
+9. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
 `
 
 // herdrExtra is the one extra way to move a brainstorm, added only inside a

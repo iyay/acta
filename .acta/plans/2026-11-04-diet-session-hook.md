@@ -47,9 +47,27 @@ Wave 1: Task 1, Task 2. They share no file.
 
 **verify:** An agent that cannot load shape still moves a brainstorm right: log the talk to the item, give its real id and a way this harness has (new session typing brainstorm <id>; Claude Code only claude --bg), launch nothing; the case types stay out of the note; no herdr word outside herdr
 
-- [ ] eval brainstorm-user-handoff fails 3 of 3: with no tools the agent cannot load shape, and the session note no longer says how to move a brainstorm; add back a short move-only core rule
-- [ ] Commit with the trailer `Task: PLN-a503tk7#3`
+- [x] eval brainstorm-user-handoff fails 3 of 3: with no tools the agent cannot load shape, and the session note no longer says how to move a brainstorm; add back a short move-only core rule
+- [x] Commit with the trailer `Task: PLN-a503tk7#3`
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] hook_test.go doc comment of TestSessionStartLeavesBrainstormRuleToShape says rules count 1 to 8 and the note carries no brainstorm rule; make it say 1 to 9 and that only the short move rule stays
+- [x] Commit: `polish: review notes for PLN-0211`
 
 ## Review notes
 
 - Round 1 CLEAN at deep depth (full tier; Spec axis opus, Standards axis sonnet). No BLOCKER, so no fact-check. 9 notes, all [note]: dedup also covers PlanStates, which helps every caller; NewestCommitTime is tested only through board; rule 8 saves about 150 tokens, not 400; brainstorm evals now rely on shape being loaded and should run at land.
+- Round 1 deep, full tier: CLEAN. Land eval gate then failed brainstorm-user-handoff 3 of 3 (agent with no tools lost the move rule); fix round 1 put back a short move-only rule 8; round 2 CLEAN (opus Spec, sonnet Standards). Polish fixed a stale test comment, light tier, reviewed inline CLEAN. Notes [note]: rule 8 names no log command; sessionStartCap now loose; dispatch executor text names herdr outside herdr (old).
+
+## State
+
+### Next
+
+Paused 2026-11-04 by user. Review CLEAN, polish done, full suite green at 008f1b8 (4670 pass).
+Land blocked by evals: brainstorm-user-handoff PASS FAIL FAIL and brainstorm-mixed-context FAIL x3 with the short rule 8.
+Next: rerun both with scripts/eval --case <name> --keep-temp using a branch-built acta on PATH, read why the judge fails, run mixed-context on main as control, then offer the user: full rule 8 back, or reworded short rule.

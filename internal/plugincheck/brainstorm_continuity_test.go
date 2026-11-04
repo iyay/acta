@@ -8,11 +8,11 @@ import (
 	"github.com/iyay/acta/internal/hook"
 )
 
-// TestBrainstormContinuity checks that the brainstorm rule lives in the shape
-// skill only. The skill must say: stay by default, name the case, let only the
-// user pick a move, and list every way to move. No text may bring back a
-// count, because the count was the old rule. The session note must not carry
-// the rule again.
+// TestBrainstormContinuity checks that the case rules live in the shape skill
+// only. The skill must say: stay by default, name the case, let only the user
+// pick a move, and list every way to move. No text may bring back a count,
+// because the count was the old rule. The session note keeps one short rule
+// about moving a brainstorm: real id, a way this harness has, launch nothing.
 func TestBrainstormContinuity(t *testing.T) {
 	session := func(herdr, codex bool) string {
 		return hook.SessionStart(hook.Input{Voice: config.UserDefault(), VoiceExists: true, Herdr: herdr, Codex: codex})
@@ -41,8 +41,18 @@ func TestBrainstormContinuity(t *testing.T) {
 				t.Errorf("%s still limits brainstorms: %q", name, old)
 			}
 		}
-		if name != "shape skill" && strings.Contains(text, "Several Architectural brainstorms") {
-			t.Errorf("%s still carries the brainstorm rule; it lives in shape only", name)
+		if name != "shape skill" {
+			for _, long := range []string{"Several Architectural brainstorms", "Related:", "Unrelated:", "Resumed:", "Mixed:", "stay here by default", "never a count"} {
+				if strings.Contains(text, long) {
+					t.Errorf("%s carries the long brainstorm rule (%q); it lives in shape only", name, long)
+				}
+			}
+			// The short move rule stays in every session text.
+			for _, want := range []string{"real id, like SCR-0001", "a new session typing brainstorm SCR-0001", "Claude Code only: claude --bg 'brainstorm SCR-0001'", "Launch nothing yourself."} {
+				if !strings.Contains(text, want) {
+					t.Errorf("%s is missing the move rule part %q", name, want)
+				}
+			}
 		}
 		// claude --bg runs only in Claude Code. Each place that names it must
 		// say so, so an agent in Codex or omp never offers it.

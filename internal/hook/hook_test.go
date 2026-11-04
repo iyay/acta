@@ -451,10 +451,11 @@ func TestSessionStartWikiLine(t *testing.T) {
 	}
 }
 
-// The brainstorm rule lives in the shape skill only. The session note must not
-// carry it, and the core rules must still count 1 to 8 with no hole. The herdr
-// line stays: shape reads it to know a herdr tab is a way to move. A session
-// outside herdr must say nothing about herdr in the rules.
+// The long brainstorm rule and its case types live in the shape skill only. The
+// session note keeps just one short rule about how to move a brainstorm, and the
+// core rules must count 1 to 9 with no hole. The herdr line stays: shape reads
+// it to know a herdr tab is a way to move. A session outside herdr must say
+// nothing about herdr in the rules.
 func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 	for name, in := range map[string]Input{
 		"normal":    korean(),
@@ -462,19 +463,33 @@ func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 		"broken":    {Voice: config.UserDefault(), VoiceExists: true, VoiceErr: errors.New("x")},
 	} {
 		out := SessionStart(in)
-		for _, gone := range []string{"Several Architectural brainstorms", "claude --bg", "Related:", "never a count"} {
+		for _, gone := range []string{"Several Architectural brainstorms", "Related:", "Unrelated:", "Resumed:", "Mixed:", "stay here by default", "never a count"} {
 			if strings.Contains(out, gone) {
 				t.Errorf("%s: session start still carries the brainstorm rule: %q", name, gone)
 			}
 		}
 		rules := out[strings.Index(out, "Core rules:"):]
-		for n := 1; n <= 8; n++ {
+		// The move rule is short: real id, a new session, and claude --bg for
+		// Claude Code only. The case types stay in shape.
+		for _, want := range []string{
+			"8. When the user asks to move a brainstorm:",
+			"give its real id, like SCR-0001",
+			"a new session typing brainstorm SCR-0001",
+			"Claude Code only: claude --bg 'brainstorm SCR-0001'",
+			"Launch nothing yourself.",
+			"\n9. Commit spec, plan and other planning files",
+		} {
+			if !strings.Contains(rules, want) {
+				t.Errorf("%s: the move rule is missing %q", name, want)
+			}
+		}
+		for n := 1; n <= 9; n++ {
 			if !strings.Contains(rules, fmt.Sprintf("\n%d. ", n)) {
 				t.Errorf("%s: core rule %d is missing", name, n)
 			}
 		}
-		if strings.Contains(rules, "\n9. ") {
-			t.Errorf("%s: core rules still reach 9", name)
+		if strings.Contains(rules, "\n10. ") {
+			t.Errorf("%s: core rules reach 10", name)
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
 			t.Errorf("%s: the skill index does not name scratch", name)
