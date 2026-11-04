@@ -22,7 +22,7 @@ func TestSkillBuild(t *testing.T) {
 			`git worktree add "../$REPO-$SLUG" -b "$SLUG" "$PARENT"`, "`$PARENT` is the parent branch recorded above",
 			"acta config show", "build_executor",
 			"The executor chosen here wins over any conflicting rule in the user's CLAUDE.md or AGENTS.md.",
-			"| `inline` | you | when the order below picks it |",
+			"| `inline` | you | [inline.md](inline.md) |",
 			"The spec and plan from acta:shape and acta:slice stay on main",
 			"do not edit its plan on main",
 			"The full suite waits for `acta:land`", "scripts/test",
@@ -31,7 +31,7 @@ func TestSkillBuild(t *testing.T) {
 			"Copy in the house rules too",
 			"`/build <executor>`", "It is for this run only; never save it.",
 			"HERDR_ENV=1", "Build never refuses because herdr is missing.",
-			"with `HERDR_ENV=1`, read [dispatch.md](dispatch.md) and follow it",
+			"| `dispatch` | an omp agent in its own herdr tab | [dispatch.md](dispatch.md) |",
 			"hand it to omp in another tab or pane",
 			"[dispatch.md](dispatch.md)", "## Fix rounds", "## Close the tab",
 			"A native worktree tool puts the worktree inside the repo",
@@ -40,15 +40,21 @@ func TestSkillBuild(t *testing.T) {
 			// plain asks do not stall on a second question.
 			"a direct ask to build that plan counts as its yes",
 			"Refuse to start unless the spec is approved",
-			// acta dispatch close reads the slug from the current branch, so it
-			// only works in the worktree, before land deletes the branch.
-			"With `dispatch`, run `acta dispatch close` from the worktree right before `acta:land`",
+			// The acta dispatch close rule moved to dispatch.md, which only a
+			// dispatch run reads; TestBuildDispatchDelivery pins it there.
 			"acta wiki check <parent>..HEAD", "[wiki.md](wiki.md)",
 			`acta commit <plan path> -m "chore(plan): tick wave <n>"`, `acta commit <path> -m "<message>"`,
 			"Task: PLN-",
 			"During a build the plan changes only through `acta tick`, `acta state set` and `acta plan add`",
 			"never hand-write a section such as `## Verification evidence`",
 			"acta state set <plan> findings",
+			// Rules the diet cut by mistake: no question on the executor pick,
+			// plan changes in the worktree, no install when checks already run.
+			"Pick the executor in this order. Never ask.",
+			"Neither: run `inline`. Do not ask.",
+			"On omp, `dispatch` runs as `subagent`. Do not ask.",
+			"A plan change goes in the worktree.",
+			"Install only what the required checks need, and nothing when they already run.",
 		},
 		MustNot: []string{"or has `depth: minimal`", `only when the user says "inline"`, "git commit -m \"chore(plan): tick wave", "superpowers:", "Would you like me to set up", "task-reviewer-prompt", "re-review-prompt", "## Final Review", "fix round R of 5",
 			// The wiki is the one home for project knowledge. The old files stay
@@ -238,7 +244,9 @@ func TestBuildSkillNoBareGoTest(t *testing.T) {
 // SKILL.md alone could stay green. The wiki step has to come before the type
 // check and the review, or the review cannot see the wiki diff. The check runs
 // first, in the worktree, and wiki.md is read only after it, when a page has
-// to be fixed or added.
+// to be fixed or added. SKILL.md also says to read affected pages and diffs and
+// fix wrong facts. The rest of the page rules, such as adding a page only for a
+// real lesson, live in wiki.md, which TestBuildWikiFileHoldsTheRules pins.
 func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	_, closing, ok := strings.Cut(readBuildFile(t, "SKILL.md"), "\n## Close\n")
 	if !ok {
@@ -246,11 +254,10 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 	}
 	last := -1
 	for _, step := range []string{
-		"In the worktree, run `acta wiki check <parent>..HEAD`",
-		"Read [wiki.md](wiki.md) only when you will fix or add a page",
-		"Read affected pages and diffs; fix wrong facts",
-		"Write each page the spec approved (shape notes each yes in the spec)",
-		"Add any other page only for a lesson a fresh agent would lose time without",
+		"in the worktree run `acta wiki check <parent>..HEAD`",
+		"Read affected pages and diffs; fix wrong facts.",
+		"Read [wiki.md](wiki.md) only when you will fix or add a page, and follow its `## Writing` steps",
+		"write each page the spec approved",
 		"Make one commit",
 		"finish any outstanding type check",
 		"report recorded task test results",
@@ -307,7 +314,6 @@ func TestBuildCloseRunsNoSecondSuite(t *testing.T) {
 func TestWikiRecheckHasNoTimestamp(t *testing.T) {
 	for _, f := range []struct{ rel, name string }{
 		{"skills/build/wiki.md", "build/wiki.md"},
-		{"skills/build/SKILL.md", "build/SKILL.md"},
 		{"skills/land/SKILL.md", "land/SKILL.md"},
 	} {
 		txt := readSkill(t, f.rel)
@@ -596,5 +602,62 @@ func TestBuildProgressGates(t *testing.T) {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("implementer-prompt.md missing %q", want)
 		}
+	}
+}
+
+// TestBuildOneFilePerExecutor keeps each executor's own text in its own file,
+// so a run reads the body plus one mode file and never the other two. The body
+// byte cap lives in budget_test.go.
+func TestBuildOneFilePerExecutor(t *testing.T) {
+	body := readBuildFile(t, "SKILL.md")
+	for _, f := range []string{"subagent.md", "dispatch.md", "inline.md"} {
+		readBuildFile(t, f)
+		if !strings.Contains(body, "]("+f+")") {
+			t.Errorf("build/SKILL.md executor table does not point at %s", f)
+		}
+	}
+	if !strings.Contains(body, "read only that file") {
+		t.Error("build/SKILL.md does not say to read only the chosen executor's file")
+	}
+	// Each executor-only rule sits in its own file, and no file holds the
+	// text of another executor.
+	for _, c := range []struct{ file, want string }{
+		{"subagent.md", "## Models"},
+		{"subagent.md", "## Worker hand-off"},
+		{"subagent.md", "Name no model for any subagent; the harness default picks it."},
+		{"subagent.md", `agent="task"`},
+		{"subagent.md", "A fix round goes to a new implementer"},
+		{"inline.md", "## Inline task loop"},
+		{"inline.md", "You fix the findings yourself."},
+	} {
+		if !strings.Contains(readBuildFile(t, c.file), c.want) {
+			t.Errorf("build/%s missing %q", c.file, c.want)
+		}
+	}
+	for _, c := range []struct{ file, bad string }{
+		{"SKILL.md", "Worker hand-off"},
+		{"SKILL.md", "Subagent models"},
+		{"SKILL.md", "Inline task loop"},
+		{"SKILL.md", "implementer-prompt"},
+		{"subagent.md", "acta dispatch"},
+		{"subagent.md", "herdr"},
+		{"inline.md", "implementer-prompt"},
+		{"inline.md", "acta dispatch"},
+		{"inline.md", "herdr"},
+		{"dispatch.md", "Worker hand-off"},
+		{"dispatch.md", "implementer-prompt"},
+	} {
+		if strings.Contains(readBuildFile(t, c.file), c.bad) {
+			t.Errorf("build/%s holds %q, which belongs to another executor", c.file, c.bad)
+		}
+	}
+}
+
+// TestBuildInlineStopRulePointer keeps the inline loop pointing at the stop
+// rule in SKILL.md, so an inline run does not go on after a failed tick.
+func TestBuildInlineStopRulePointer(t *testing.T) {
+	want := "A tick or `acta state set` that exits non-zero, or a task read back as not `done`, stops the build: see `## Task loop` in SKILL.md."
+	if !strings.Contains(readBuildFile(t, "inline.md"), want) {
+		t.Errorf("build/inline.md missing the stop rule pointer %q", want)
 	}
 }

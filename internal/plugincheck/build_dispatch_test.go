@@ -76,7 +76,8 @@ func TestBuildDispatchDelivery(t *testing.T) {
 		"The polish goes out the same way",
 		"`## After a CLEAN round` owns what happens on reply-back",
 		"Clean and complete: run `## After a CLEAN round`; its `acta:land` is build's `## Close`",
-		"## Close the tab", "acta dispatch close", "## Advisor", "`advisor` role",
+		"## Close the tab", "acta dispatch close", "once the review is CLEAN, right before `acta:land` removes the worktree and branch",
+		"The wiki step of build's `## Close` is done by you or the `dispatch` agent.", "## Advisor", "`advisor` role",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("build/dispatch.md missing %q", want)

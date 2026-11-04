@@ -56,6 +56,8 @@ Compare the commits with the task list. On security or destructive changes, re-r
 
 ## Review
 
+The wiki step of build's `## Close` is done by you or the `dispatch` agent.
+
 `acta:review` runs on every round, over the range and plan path build's `## Close` sets. The review depth comes from `acta:review`'s `## Review tiers`. To have a different pane review, the message needs the literal skill name, a review keyword, and the range.
 
 NOTEs are never written to memory: once the round is CLEAN, `acta:review`'s `## After a CLEAN round` sorts them into `[fix]`, `[debt]` or `[note]`.
