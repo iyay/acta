@@ -61,6 +61,7 @@ var evalCases = []struct {
 	{"land-records-flake", "skills/land/baseline.md", "acta flake record <name> --plan <plan id>"},
 	{"land-eval-flake", "skills/land/SKILL.md", "acta flake record eval:<case> --plan <plan id>"},
 	{"cleanup-proposes-first", "skills/cleanup/SKILL.md", "names the numbers to skip"},
+	{"slice-minimal-one-file", "skills/slice/SKILL.md", "never the other one"},
 	{"cleanup-warns-cost", "skills/cleanup/SKILL.md", "Start nothing before the answer"},
 }
 
