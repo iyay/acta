@@ -1,5 +1,5 @@
 ---
-# guards: Every case the plan names has a test, and no other
+# guards: Write the plan's cases and no others
 # Rejects an age test file that adds cases the plan does not name, such as an
 # empty string, spaces, unicode digits, a huge number or a separate float test. Also rejects
 # a file that skips one of the three named cases.

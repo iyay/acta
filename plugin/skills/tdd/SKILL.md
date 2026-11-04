@@ -124,17 +124,20 @@ A bug fix gets a regression test that reproduces the exact bug and fails before 
 
 ## Rationalizations - STOP and Start Over
 
-Each means: delete the code, start over with a test first.
+Each of these means: delete the code, start over with a test first.
 
 - Code before the test, or "tests after reach the same goal". Tests written after prove nothing.
 - Skipping the red run, a test that passes at once, or a failure you cannot explain.
 - "Too simple", "just this once", "I already tested it by hand", "I will add tests later". Manual checks cannot be re-run.
 - "Keep it as reference" or "adapt it". That is testing after.
 - "Deleting X hours of work is wasteful". Sunk cost; code you cannot trust is the waste.
+- "TDD slows me down" or "this is different". Skipping it means slower debugging later.
+
+Other answers:
+
 - "Need to explore first". Fine. Throw the exploration away, then write the test.
 - "Hard to test" means the design is unclear. Simplify the interface.
 - "Existing code has no tests". Test the behavior you change; the rest is a note for a later plan.
-- "TDD slows me down" or "this is different". Skipping it means debugging later, which is slower.
 
 ## When Stuck
 

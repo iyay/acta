@@ -9,11 +9,11 @@ description: "acta: Use after a design is approved, before any code. Turns the s
 
 Write the plan for a skilled implementer who knows nothing about this codebase, its tools or its domain, and who sees only their own task. Each task names the files to touch, the code, the tests and how to run them. Bite-sized tasks. DRY. YAGNI. TDD. One commit per task.
 
-**Context:** Write and commit a new plan on main, next to its spec. `acta:build` makes the worktree, only after the plan is approved.
+**Context:** `acta:build` makes the worktree, only after the plan is approved.
 
 **Save plans to:** `.acta/plans/YYYY-MM-DD-<feature-name>.md` (`.acta/` is the default root; `.acta.yaml`, `ACTA_ROOT` or `acta --root` can move it).
 - (User preferences for plan location override this default)
-- Right after saving, run `acta id` right after so the plan gets its PLN number and hash before anyone refers to it.
+- Save, then run `acta id` right after so the plan gets its PLN number and hash before anyone cites it.
 - Commit the plan on main with `acta commit <path> -m "<message>"`, never `git commit`; commit every later edit to a plan or spec the same way. The worktree branch starts from that commit, so it carries the plan.
 - A fix round, or any change to a plan whose build is running, goes in that build's worktree, not on main.
 
@@ -28,22 +28,28 @@ Read only the file for the depth you picked, and never the other one:
 | `full` | [full.md](full.md) | the depth is `full` |
 | `minimal` | [minimal.md](minimal.md) | the depth is `minimal` |
 
-Depth changes only what a plan holds, never the gate. A minimal plan is saved, given its id, committed on main with `acta commit <path> -m "<message>"`, shown to the user (its path and one line a task), and waits for a yes like a full plan. A split (split.md) never starts a build.
+Depth changes only what a plan holds, never the gate. A minimal plan is saved, committed and shown (its path and one line a task) like a full one, and waits for a yes. A split (split.md) never starts a build.
 
 ## Scope Check
 
 With `plan_split` on in `acta config show`, or `/slice split` for this run only (never saved), read [split.md](split.md) and cut the spec into several plans.
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+If the spec covers several independent subsystems, suggest one plan per subsystem. Each plan produces working, testable software on its own.
+
+## File Structure
+
+Before tasks, map the files to create or change and what each one is for. The structure drives the task decomposition.
+
+- Each file has one clear responsibility and a clear interface. Prefer small, focused files.
+- Files that change together live together. Split by responsibility, not by layer.
+- In an existing codebase, follow its patterns and do not restructure unasked. A file you modify that has grown unwieldy may get a split in the plan.
 
 ## Debt items
 
 A plan that works a debt item sets `parent: debt/<stem>` in its header and
 lists every DBT id it closes in `closes:`, for example
-`closes: [DBT-0017.01, DBT-0017.02]`. One piece of work can close more than what
-it came from, so a plan that also finishes a scratch item or another spec
-lists those in the same `closes:` list. One place, so nothing is missed:
-`acta:land` ticks the debt items from that list after the merge.
+`closes: [DBT-0017.01, DBT-0017.02]`. A plan that also finishes a scratch item
+or another spec lists those in the same `closes:` list, so nothing is missed. `acta:land` ticks the debt items from that list after the merge.
 
 ## Task Right-Sizing
 
@@ -78,13 +84,13 @@ Inputs that run the same code path are one case. Every task names its `**Seam:**
 
 ## Test commands
 
-Every run step in a task names the narrowest command that proves it: the package or file the task touched, for example `go test ./internal/tui/ -run TestX`, `pytest tests/test_x.py::test_y` or `npm test -- x.test.ts`. Never `./...` in a task, and never the whole suite. The full suite runs once, in `acta:land`. Why: agents in other worktrees share the same machine, and each full run slows every other one down.
+Every run step in a task names the narrowest command that proves it: the package or file the task touched, for example `go test ./internal/tui/ -run TestX` or `pytest tests/test_x.py::test_y`. Never `./...` in a task, and never the whole suite. The full suite runs once, in `acta:land`. Why: agents in other worktrees share the same machine, and each full run slows every other one down.
 
 The header names both commands on a `**Tests:**` line: the fast one (a short mode, or the touched packages) and the full one. When the repo has `scripts/test`, they are `scripts/test` and `scripts/test --full`.
 
 ## Waves
 
-Group tasks into waves by file ownership. Two tasks in one wave never touch the same file. A task that needs another task's output goes in a later wave. Declare the waves in the plan, after the file map, so the executor can run each wave's tasks in parallel.
+Group tasks into waves by file ownership. Two tasks in one wave never touch the same file. A task that needs another task's output goes in a later wave. Declare the waves in the plan so the executor can run each wave's tasks in parallel.
 
 ## Keep it small
 

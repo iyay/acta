@@ -1,5 +1,5 @@
 ---
-# guards: Every case the plan names has a test, and no other
+# guards: Write the plan's cases and no others
 # Rejects a run that makes a third test file. The plan names tests/test_age.py
 # and tests/test_cli.py, and the two graders for those files cannot see any
 # other file. Each line of the list is one path. The pattern finds a path

@@ -57,18 +57,31 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All edit `budget_test.go`; Tasks
 
 **verify:** Each slice depth gets every rule it had before the split; every tdd rule is pinned by its current wording; slice body at or under 7000 and tdd at or under 6500 bytes
 
-- [ ] slice File Structure rules moved to full.md, so a minimal-depth agent lost them; put a short File Structure back in the shared body, keep the body at or under 7000 bytes
-- [ ] [fix] tdd 'Each means: delete the code, start over' covers items whose answer is not delete; scope it to the items that mean delete
-- [ ] [fix] pin 'The full suite runs only in `acta:land`' in skill_tdd_test.go
-- [ ] [fix] lean-tests graders guards: lines quote a removed tdd sentence; point them at the current one
-- [ ] [fix] add slice-minimal-one-file row to evalCases in evals_test.go
-- [ ] Commit with the trailer `Task: PLN-stx3us7#4`
+- [x] slice File Structure rules moved to full.md, so a minimal-depth agent lost them; put a short File Structure back in the shared body, keep the body at or under 7000 bytes
+- [x] [fix] tdd 'Each means: delete the code, start over' covers items whose answer is not delete; scope it to the items that mean delete
+- [x] [fix] pin 'The full suite runs only in `acta:land`' in skill_tdd_test.go
+- [x] [fix] lean-tests graders guards: lines quote a removed tdd sentence; point them at the current one
+- [x] [fix] add slice-minimal-one-file row to evalCases in evals_test.go
+- [x] Commit with the trailer `Task: PLN-stx3us7#4`
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] slice File Structure lost the rule 'Design units with clear boundaries and well-defined interfaces'; add a short clause back to the body within 7000 bytes
+- [x] skill_tdd_test.go pins the delete header and Other answers by presence only; check their order so non-delete items stay under Other answers
+- [x] tdd explore item reads 'Explore in a throwaway, then test first.'; restore 'Throw the exploration away, then write the test.' and pin it
+- [x] Commit: `polish: review notes for PLN-0212`
+
+## Review notes
+
+- Deep depth, full tier; Spec axis opus, Standards axis sonnet. Round 1 BLOCKED (File Structure lost for minimal, confirmed by fact-check), fixed, round 2 CLEAN. Polish restored the interface clause and the exploration line and pinned the tdd order; polish review CLEAN. Notes [note]: order test anchors on the sunk-cost item, not the last delete item; 'clear boundaries' is implied, not stated; minimal run loads body plus minimal.md (about 8k).
 
 ## State
 
 ### Next
 
-Task 1 landed on branch diet-slice-tdd: slice body 12703 -> 6915 bytes, full.md 5178, minimal.md 984.
-budget_test.go slice lines now hold exact sizes; Task 2 edits only the tdd lines there (skills/tdd/SKILL.md cap to ~6500).
-Eval slice-minimal-one-file added; not run yet, orchestrator runs scripts/eval --case slice-minimal-one-file at close.
-evalCases in evals_test.go has no row for the new case (plan did not name that file).
+Paused 2026-11-04 by user. Review CLEAN, polish done, full suite green at f31fc8e (4672 pass).
+Next: run scripts/eval (include slice-minimal-one-file and lean-tests), rerun red cases alone up to 2 times, then land per tidy.md.

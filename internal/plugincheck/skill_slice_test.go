@@ -65,7 +65,7 @@ func TestSliceDepthFiles(t *testing.T) {
 	minimal := readFile(t, "skills", "slice", "minimal.md")
 	fullOnly := []string{
 		"## Plan Document Header", "## Bite-Sized Task Granularity", "## Task Structure",
-		"## No Placeholders", "## File Structure", "## Self-Review",
+		"## No Placeholders", "## Self-Review",
 		"`full`: everything below, with real code in every code step, and a wait for the user's yes.",
 		"**Every `full` plan starts with this header**", "- [ ] **Step 1: Write the failing test**",
 		"Similar to Task N",
@@ -97,9 +97,32 @@ func TestSliceDepthFiles(t *testing.T) {
 		// Shared text stays in the body.
 		"## Scope Check", "## Verify lines are properties", "## Test commands", "## Waves", "## Hand-off",
 		"## Keep it small", "## Task Right-Sizing", "Depth changes only what a plan holds, never the gate",
+		"## File Structure",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("SKILL.md is missing %q", want)
+		}
+	}
+}
+
+// TestSliceFileStructureIsShared keeps the file rules in the body. Every depth
+// plans files, and an agent reads only the body and its own depth file, so
+// these rules cannot live in full.md.
+func TestSliceFileStructureIsShared(t *testing.T) {
+	body := readFile(t, "skills", "slice", "SKILL.md")
+	full := readFile(t, "skills", "slice", "full.md")
+	minimal := readFile(t, "skills", "slice", "minimal.md")
+	for _, want := range []string{
+		"## File Structure", "one clear responsibility and a clear interface", "Prefer small, focused files",
+		"Files that change together live together", "Split by responsibility, not by layer",
+		"follow its patterns and do not restructure unasked", "has grown unwieldy",
+		"drives the task decomposition",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("SKILL.md is missing the file rule %q", want)
+		}
+		if strings.Contains(full, want) || strings.Contains(minimal, want) {
+			t.Errorf("%q is shared text: keep it in SKILL.md only", want)
 		}
 	}
 }
