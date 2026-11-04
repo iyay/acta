@@ -12,7 +12,13 @@ const modelsPara = "**Subagent models.** Name no model for any subagent; the har
 
 func TestModelsParagraphInFourSkills(t *testing.T) {
 	for _, s := range []string{"slice", "shape", "debug", "build"} {
-		raw, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", s, "SKILL.md"))
+		// Build keeps the paragraph in subagent.md, the only executor that
+		// starts subagents.
+		file := "SKILL.md"
+		if s == "build" {
+			file = "subagent.md"
+		}
+		raw, err := os.ReadFile(filepath.Join(pluginRoot(t), "skills", s, file))
 		if err != nil {
 			t.Fatal(err)
 		}

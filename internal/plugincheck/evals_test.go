@@ -45,7 +45,7 @@ var evalCases = []struct {
 	{"wiki-hint", "hooks/hooks.json", "Bash|PowerShell|Read|Edit|Write|MultiEdit"},
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
 	{"state-resume", "skills/build/SKILL.md", "acta state set plans/<stem> <part>"},
-	{"build-inline-flow", "skills/build/SKILL.md", "## Inline task loop"},
+	{"build-inline-flow", "skills/build/inline.md", "## Inline task loop"},
 	{"build-close-no-suite", "skills/build/SKILL.md", "No second fast suite"},
 	{"build-stale-baseline", "skills/build/SKILL.md", "**Start the first task.**"},
 	{"repo-override-ask", "skills/setup/SKILL.md", "is committed and shared"},
