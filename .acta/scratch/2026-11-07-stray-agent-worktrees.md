@@ -6,6 +6,7 @@ status: brainstorming
 created: "2026-11-07 16:40:37"
 schema: "1"
 started: "2026-11-07 16:42:23"
+finished: "2026-11-07 16:47:20"
 ---
 # Agent-made worktrees are left behind as junk
 
