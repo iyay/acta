@@ -2,9 +2,11 @@
 id: SCR-0093
 hash: rh7lajf
 title: debug-behavior-after-temp-copy
-status: raw
+status: done
 created: "2026-11-07 20:00:11"
 schema: "1"
+finished: "2026-11-07 21:32:56"
+reason: 'Measured on 2026-11-07: 10 against 10 showed the old skill text did better (behavior 6/10 against 4/10), so SPC-0195 / PLN-0221 reverted the probe-copy line (fe50d9a).'
 ---
 # debug-behavior-after-temp-copy
 
