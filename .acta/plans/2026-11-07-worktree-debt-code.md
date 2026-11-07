@@ -6,6 +6,7 @@ id: PLN-0218
 created: "2026-11-07 19:53:22"
 hash: ne34gjc
 started: "2026-11-07 19:57:16"
+finished: "2026-11-07 20:00:54"
 ---
 # Worktree debt: Go code
 
@@ -50,9 +51,9 @@ started: "2026-11-07 19:57:16"
 **Files:** `internal/cli/setup_cmd.go`, `internal/cli/doctor.go`, `internal/cli/setup_cmd_test.go`
 **Seam:** `doctorEnv` as `acta setup` and `acta doctor` call it.
 **verify:** `acta setup` never runs `git status` in a linked worktree, and `acta doctor` still runs the worktree check. Wiring only: one setup run in a repo with a stray shows no worktrees line, and one doctor run still does.
-- [ ] Red: a setup test in a repo with an idle stray fails because the summary holds a worktrees line.
-- [ ] Change: let setup build its doctor Env without the stray lists, and let doctor keep filling them.
-- [ ] Commit: perf(setup): skip the stray worktree check
+- [x] Red: a setup test in a repo with an idle stray fails because the summary holds a worktrees line.
+- [x] Change: let setup build its doctor Env without the stray lists, and let doctor keep filling them.
+- [x] Commit: perf(setup): skip the stray worktree check
 
 ### Task 4: acta state finds the plan being built
 
@@ -62,3 +63,25 @@ started: "2026-11-07 19:57:16"
 - [x] Red: a state test in a fresh worktree with an uncommitted tick fails with "no running plan".
 - [x] Change: when the named plan is not in `board.PlanStates`, look it up in the current linked worktree's board if git status shows its file changed there.
 - [x] Commit: fix(state): read the plan being built before its first commit
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] guard lastReflogCommit against an empty admin path, so it never reads logs/HEAD from the process folder.
+- [x] [fix] re-wrap the strayWorktrees comment in internal/cli/doctor.go into short sentences.
+- [x] [fix] give setup its own doctor Env helper and test it, so the setup wiring cannot drift back to running the stray check.
+- [x] [fix] make the state test dirty the plan file in the main checkout itself, so the main-checkout guard is pinned.
+- [x] Commit: `polish: review notes for PLN-0218`
+
+## Review notes
+
+- Review: deep (delete path, deep lens), round 1 CLEAN on both axes; polish (4 fixes) CLEAN on both axes. Notes left: PlanStateHere uses plain git status in the current worktree, no test pins the empty-admin guard in lastReflogCommit, Clean reports branch_kept for a ref already gone, the doctor and setup tests are red on revert by compile error.
+
+## State
+
+### Findings
+
+Task 3 used a SkipStrays field in doctor.Env and its test sits in internal/cli/worktrees_test.go; task 4 added board.PlanStateHere in internal/board/state.go. Both files sit outside the plan file lists.

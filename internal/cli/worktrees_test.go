@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/iyay/acta/internal/doctor"
 )
 
 // strayRepo makes a repo with one linked worktree beside it, idle for two
@@ -94,4 +96,26 @@ func TestDoctorNamesStrayWorktrees(t *testing.T) {
 	if !strings.Contains(stdout.String(), "warn worktrees: 1 stray worktree --clean can remove: ") || !strings.Contains(stdout.String(), filepath.Base(stray)) {
 		t.Fatalf("doctor output:\n%s", stdout.String())
 	}
+}
+
+// acta setup must not run git status in every worktree, so its doctor Env
+// skips the stray check. acta doctor still runs it.
+func TestSetupSkipsTheStrayCheck(t *testing.T) {
+	doctorHome(t)
+	repo, _ := strayRepo(t)
+	inDir(t, repo, func() {
+		withStrays := doctorEnv("", true)
+		if len(withStrays.CleanStrays) != 1 || withStrays.SkipStrays {
+			t.Fatalf("doctor env %+v", withStrays.CleanStrays)
+		}
+		forSetup := setupDoctorEnv()
+		if len(forSetup.CleanStrays) != 0 || !forSetup.SkipStrays {
+			t.Fatalf("setup env read strays: %+v", forSetup.CleanStrays)
+		}
+		for _, r := range doctor.Run(forSetup) {
+			if r.Name == "worktrees" {
+				t.Fatalf("setup summary holds %+v", r)
+			}
+		}
+	})
 }

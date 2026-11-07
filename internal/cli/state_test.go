@@ -355,7 +355,11 @@ func TestCmdStateFindsAnUncommittedPlanInThisWorktree(t *testing.T) {
 		t.Fatalf("in the worktree: exit %d stdout %q stderr %q", code, out, stderr)
 	}
 
-	// From the main checkout the change in the other worktree does not count.
+	// From the main checkout neither the change in the other worktree nor a
+	// change in the main checkout itself counts.
+	if err := os.WriteFile(stateFile(dir), []byte(startedStatePlan), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	code, _, stderr = runState(t, dir, "", "plans/2026-10-05-live-work-state")
 	if code != exitBadInput || !strings.Contains(stderr, "no running plan") {
 		t.Fatalf("from main: exit %d stderr %q", code, stderr)

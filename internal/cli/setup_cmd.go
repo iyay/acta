@@ -64,7 +64,7 @@ func cmdSetup(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io
 	dir, extractErr := pluginDirFor(*pluginDir, homeDir())
 	env := setupEnv(dir)
 	fmt.Fprint(stdout, setup.RailOpen())
-	fmt.Fprint(stdout, setup.DoctorSummary(doctor.Run(doctorEnv(""))))
+	fmt.Fprint(stdout, setup.DoctorSummary(doctor.Run(setupDoctorEnv())))
 	if extractErr != nil {
 		// Without the folder the install step shows the by-hand lines;
 		// the rest of setup still runs.

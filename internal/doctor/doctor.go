@@ -51,6 +51,7 @@ type Env struct {
 	SchemaProblems []string // board files with schema: 1 that lost a section
 	CleanStrays    []string // clean or missing strays acta worktrees --clean removes
 	DirtyStrays    []string // strays with files only the user can keep or delete
+	SkipStrays     bool     // acta setup skips the stray check: it runs git status in every worktree
 	CodexDir       string   // Codex's home folder; "" when codex is not on PATH
 }
 
@@ -75,7 +76,7 @@ func Run(e Env) []Result {
 		checkWiki(e),
 	)
 	// Outside a git repo there are no worktrees to judge, so no line.
-	if e.RepoRoot != "" {
+	if e.RepoRoot != "" && !e.SkipStrays {
 		rs = append(rs, checkWorktrees(e))
 	}
 	return append(rs,

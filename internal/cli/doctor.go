@@ -39,7 +39,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, doctorUsage)
 		return exitBadInput
 	}
-	e := doctorEnv(*known)
+	e := doctorEnv(*known, true)
 	if *fix {
 		// A file that was dirty before --fix touched it holds lines that are
 		// the user's own, and those are not ours to commit. A status git
@@ -78,12 +78,16 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
+// setupDoctorEnv is the Env acta setup checks with. It skips the stray
+// check, which runs git status in every idle worktree.
+func setupDoctorEnv() doctor.Env { return doctorEnv("", false) }
+
 // doctorEnv reads everything the checks need. A repo that cannot be read
 // leaves RepoRoot empty, which makes the repo check skip instead of guess.
 // A config that does not parse is carried as ConfigErr, so the repo check
 // can report it instead of hiding it behind a skip.
-func doctorEnv(known string) doctor.Env {
-	e := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), KnownFile: known, AutoCommit: true}
+func doctorEnv(known string, strays bool) doctor.Env {
+	e := doctor.Env{Home: homeDir(), ClaudeDir: hook.ClaudeDir(), KnownFile: known, AutoCommit: true, SkipStrays: !strays}
 	e.CodexDir = codexDir(e.Home)
 	if e.KnownFile == "" {
 		e.KnownFile = linkedKnownFile(e.Home)
@@ -96,7 +100,11 @@ func doctorEnv(known string) doctor.Env {
 		case cfg.IsGit:
 			e.RepoRoot, e.ActaRoot, e.AutoCommit = cfg.RepoRoot, cfg.Root, cfg.AutoCommit
 			e.SchemaProblems = schemaProblems(cfg)
-			e.CleanStrays, e.DirtyStrays = strayWorktrees(cfg)
+			// The stray check runs git status in every idle worktree, so only
+			// acta doctor pays for it; acta setup skips it.
+			if strays {
+				e.CleanStrays, e.DirtyStrays = strayWorktrees(cfg)
+			}
 		}
 	}
 	if p, err := os.Executable(); err == nil {
@@ -231,8 +239,9 @@ func buildVersion() string {
 	return version
 }
 
-// strayWorktrees gives the paths of the strays in cfg's repo, clean or missing ones apart from dirty ones. A board
-// or git that cannot be read gives none: doctor reports what it can see.
+// strayWorktrees gives the paths of the strays in cfg's repo. Clean and
+// missing ones come apart from dirty ones. A board or git that cannot be
+// read gives none: doctor reports what it can see.
 func strayWorktrees(cfg config.Config) (clean, dirty []string) {
 	b, err := board.Load(cfg)
 	if err != nil {

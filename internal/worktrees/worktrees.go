@@ -249,6 +249,11 @@ func missingWork(main string, b porcelain, admin string) string {
 // lastReflogCommit gives the commit the newest line of the admin reflog moved
 // to. Each line starts with the old id and the new id.
 func lastReflogCommit(admin string) (string, error) {
+	// With no admin folder the path would point into the folder the command
+	// runs in, so stop here instead of reading some other reflog.
+	if admin == "" {
+		return "", fmt.Errorf("no admin folder")
+	}
 	raw, err := os.ReadFile(filepath.Join(admin, "logs", "HEAD"))
 	if err != nil {
 		return "", err

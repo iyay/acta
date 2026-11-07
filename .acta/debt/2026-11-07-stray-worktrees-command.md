@@ -2,6 +2,7 @@
 id: DBT-0156
 hash: v790bmg
 parent: plans/2026-11-07-stray-worktrees-command
+started: "2026-11-07 19:57:16"
 ---
 # Review NOTEs: Stray worktrees: the acta worktrees command
 
