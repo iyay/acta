@@ -2,6 +2,7 @@
 id: DBT-0157
 hash: hrazdfy
 parent: plans/2026-11-07-stray-worktrees-rules
+started: "2026-11-07 20:01:29"
 ---
 # Review NOTEs: Stray worktrees: rules, land and tidy
 

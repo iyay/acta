@@ -111,6 +111,9 @@ PLAN
 # git by its full path, since the sandbox may block the plain git name.
 printf '#!/bin/sh\ng="%s/bin/git.real"\n' "$ws" > scripts/test
 cat >> scripts/test <<'TEST'
+# Work from the repo folder the script sits in, so a run from anywhere
+# judges and writes in that checkout.
+cd "$(dirname "$0")/.." || exit 1
 if ! "$g" symbolic-ref -q HEAD >/dev/null 2>&1; then
   printf 'gate report\n' > test-report.txt
 fi

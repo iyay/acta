@@ -4,9 +4,10 @@ description: A fresh session picks the half done plan up again from the Next lin
 tags: [state, build]
 runs: 1
 # The chain is short: run acta state, run it again with the plan id it prints,
-# read the file Next names, change it with a Bash command, commit. Nine leaves
-# room for a couple of turns of reading without landing on the cap.
-max_turns: 9
+# read the file Next names, change it with a Bash command, run the tests,
+# commit. Twelve leaves room for a couple of turns of reading without landing
+# on the cap.
+max_turns: 12
 timeout_seconds: 300
 allowed_tools: []
 ---
