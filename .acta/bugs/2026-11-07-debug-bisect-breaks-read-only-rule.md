@@ -1,5 +1,5 @@
 ---
-id: BUG-0069
+id: BUG-0074
 hash: qipr4wo
 ---
 # Debug skill asks for git bisect but also forbids changing the repo
