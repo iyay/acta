@@ -49,6 +49,7 @@ Subagent (general-purpose):
        task's own narrow tests, never the full suite: it runs once, in
        `acta:land`. Then the repo's formatter and type checks.
     5. Before the commit, read `git status` and `git diff` once, as step 3 there says.
+       List untracked files a test or tool made in your report, and never delete them.
        Commit, staged by path, never `git add -A` or `git add .`;
        formatting goes in the task commit. End the message with the trailer
        line the hand-off gives, `Task: PLN-<hash>#<n>`, copied as it is;
@@ -99,6 +100,7 @@ Subagent (general-purpose):
       line (command + passing output)
     - Files changed
     - Cases the plan did not name, one line each, or none
+    - Untracked files a test or tool made, or none
     - Self-review findings
     - Concerns, if any
 

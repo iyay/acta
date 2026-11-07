@@ -619,10 +619,17 @@ func TestBuildKeepsTestOutput(t *testing.T) {
 	for _, want := range []string{
 		"Untracked files a test or tool made (cache folders and the like) are not uncommitted work: never delete them.",
 		"The orchestrator, not an implementer subagent, shows them to the user and offers one `.gitignore` line for them in the task commit, added only after the user's yes.",
+		"When the task commit already exists, as under the subagent executor, the line goes in a follow-up commit with the same `Task:` trailer.",
 	} {
 		if !strings.Contains(step, want) {
 			t.Errorf("build step 3 missing %q", want)
 		}
+	}
+	// A subagent commits before the orchestrator reads its report, so the
+	// report is the only way the orchestrator learns about the files.
+	const report = "List untracked files a test or tool made in your report, and never delete them."
+	if !strings.Contains(readBuildFile(t, "implementer-prompt.md"), report) {
+		t.Errorf("implementer-prompt.md missing %q", report)
 	}
 }
 
