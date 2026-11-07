@@ -51,9 +51,9 @@ finished: "2026-11-07 18:10:01"
 
 **verify:** Every way a probe write can reach the repo after a failed copy step is stopped by the script or the chain: mktemp fails, mkdir fails, cp fails, cd fails; list each and what stops it. No path makes the script print a path that is inside the repo or print anything when it fails. SKILL.md differs from main only by the one sentence.
 
-- [ ] Add plugin/skills/debug/probe-copy.sh per spec Design 1, with a Go test in internal/plugincheck that runs it on a fake repo (path outside the repo, uncommitted and untracked files copied, mkdir fallback when mktemp is stubbed to fail, non-zero exit and empty stdout when both fail).
-- [ ] Put SKILL.md back to its text from before this plan plus one sentence: make the copy with D=$(bash <this skill folder>/probe-copy.sh) \&\& cd "$D", a chain that stops at the first failed step; with no copy, run only probes that write nothing, and say so. Set the byte cap to the new size; Must list adds probe-copy.sh.
-- [ ] Commit with the trailer `Task: PLN-vsqnmvr#3`
+- [x] Add plugin/skills/debug/probe-copy.sh per spec Design 1, with a Go test in internal/plugincheck that runs it on a fake repo (path outside the repo, uncommitted and untracked files copied, mkdir fallback when mktemp is stubbed to fail, non-zero exit and empty stdout when both fail).
+- [x] Put SKILL.md back to its text from before this plan plus one sentence: make the copy with D=$(bash <this skill folder>/probe-copy.sh) \&\& cd "$D", a chain that stops at the first failed step; with no copy, run only probes that write nothing, and say so. Set the byte cap to the new size; Must list adds probe-copy.sh.
+- [x] Commit with the trailer `Task: PLN-vsqnmvr#3`
 
 ## State
 
@@ -63,11 +63,10 @@ Task 2: add the rule to the ground rule, then run the case 3 times on the new sk
 
 ### Findings
 
-Fourth new-skill run with the fixed grader (3): no-repo-write 3/3, behavior 0/3.
-All three ran function probes (lookup on a normalized string), none ran the report with the cause removed in a temp copy.
-Totals over runs 3-4 of the new skill: repo writes 0/6, behavior 2/6. Old skill: repo writes 3/3, behavior 5/6.
-mktemp -d worked in the main session sandbox today; it failed only inside the eval sandbox.
+Helper-script run (3): no-repo-write 3/3, behavior 1/3. No run called probe-copy.sh. Runs 1 and 3 ran no control at all, only function probes in the repo; run 2 made its own copy and passed.
+Behavior across all new-skill rounds: 3/15. Old skill: 5/6.
+Every new version carried "No copy? Run only probes that write nothing." Likely cause: that line reads as leave to skip the control. Untested.
 
 ### Open rulings
 
-Waiting on the user: four tries, behavior drops each time. Stop and park, or a new design (helper script).
+Agreed gate failed (behavior 1/3 under 2/3). Waiting on the user: park as agreed, or one last run without the escape line.
