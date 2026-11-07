@@ -1,5 +1,5 @@
 ---
-id: DBT-0151
+id: DBT-0158
 hash: znagyz9
 parent: plans/2026-10-31-destructive-skill-text
 ---
