@@ -9,9 +9,9 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make the copy in one chain that stops at the first failed step (`&&` or `set -e`), and check `pwd` is outside the repo before any write. No copy after one more `mktemp -d` in `${TMPDIR:-/tmp}`? Run only probes that write nothing, and say so.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make the copy in one chain that stops at the first failed step, like `D=$(mktemp -d) && cd "$D"`, then check `pwd` is outside the repo before any write. No mktemp? `mkdir -p "${TMPDIR:-/tmp}/probe"`. Neither works? Run only probes that write nothing, and say so.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
-- **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach a system, give them the exact commands to run.
+- **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach it, give them the exact commands.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
 - **A confirmed bug gets a file.** A proven cause (`file:line` plus a repro), or a bug found while reading and reported, is recorded with `acta:bug`.
 - **Subagent models.** Name no model for any subagent; the harness default picks it.
@@ -43,7 +43,7 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 
 1. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
 2. Use a control when you can: the same probe with the suspected cause removed makes the symptom go away.
-3. When several tries fail under one shared belief, test that belief directly.
+3. Several tries fail under one shared belief? Test that belief directly.
 4. Three failed fixes: stop and tell the user. Question the design before a fourth.
 5. Report the cause, the evidence, and what stays unverified. Propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 

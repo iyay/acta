@@ -53,11 +53,11 @@ Task 2: add the rule to the ground rule, then run the case 3 times on the new sk
 
 ### Findings
 
-New skill, 3 runs: no-repo-write 2/3, behavior 0/3 (old skill 0/3 and 3/3).
-Run 1: cd "$(mktemp -d)" && cp ... kept going, because cd "" succeeds when mktemp fails; cp then tried to write into the repo.
-Runs 2-3: mktemp failed, the agent followed the fallback (write nothing) and ran no control on the report path, so behavior failed.
-In this sandbox mktemp fails but mkdir -p "$TMPDIR/name" works (seen in baseline and run 3).
+Second new-skill run (3): no-repo-write 2/3, behavior 0/3.
+Run 1 wrote src/billing.py in the repo on purpose with python open(p,"w"), before any temp copy; then used the mkdir fallback right.
+Runs 2-3 wrote nothing but ran the control as a function probe (lookup on a normalized string), never the report in a temp copy, so behavior failed.
+Old skill: behavior 5/6 over two gates; new skill 0/6. Suspect the cuts made to fit the byte cap: "(in the temp copy)" left the Phase 3 control step, and Phase 1 step 2 lost "A command that writes files runs only in a temp copy."
 
 ### Open rulings
 
-Waiting on the user: change the fallback to mkdir -p under ${TMPDIR:-/tmp} and name D=$(mktemp -d) && cd "$D" as the chain, then rerun 3.
+Waiting on the user: restore the two cut phrases and raise the SKILL.md byte cap, or stop.
