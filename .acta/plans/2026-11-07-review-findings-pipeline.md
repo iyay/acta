@@ -38,9 +38,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All three touch `internal/plugin
 **Files:** Modify `plugin/skills/review/SKILL.md`, `internal/plugincheck/skill_review_test.go`.
 **Seam:** the review skill text as `skill_review_test.go` reads it.
 **verify:** Every finding reaches one home once, on every path. Cases: dedupe of BLOCKERs, NOTEs and Pre-existing items runs before the fact-check and before the fix task; Pre-existing items go through receiving, then `acta:bug` in the worktree, both before the fix task in a BLOCKED round and as the new first step of `## After a CLEAN round`; after each round every finding and its verdict go to `acta state set <plan id> next`, and rounds 2 and 3 read them with `acta state <plan id>`; every existing `Must` string still holds; `SKILL.md` is 9991 bytes or less.
-- [ ] Red: a plugincheck test expects the dedupe line, the bug step in both paths and the `acta state` lines, and fails because `SKILL.md` has none of them.
-- [ ] Change: add the lines and tighten other `SKILL.md` text to stay under the cap, run `scripts/test ./internal/plugincheck/ -run 'Review|Budget'` to green.
-- [ ] Commit: `feat(review): dedupe findings, route pre-existing bugs, keep verdicts`.
+- [x] Red: a plugincheck test expects the dedupe line, the bug step in both paths and the `acta state` lines, and fails because `SKILL.md` has none of them.
+- [x] Change: add the lines and tighten other `SKILL.md` text to stay under the cap, run `scripts/test ./internal/plugincheck/ -run 'Review|Budget'` to green.
+- [x] Commit: `feat(review): dedupe findings, route pre-existing bugs, keep verdicts`.
 
 ### Task 3: Review line counts findings
 

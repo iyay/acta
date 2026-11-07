@@ -177,6 +177,36 @@ func TestCodeReviewerTemplateBucketTags(t *testing.T) {
 	}
 }
 
+// TestReviewOrchestratorFindingsPipeline pins the orchestrator side: the two
+// reviewers' lists merge before anything acts on them, a bug the diff did not
+// bring in goes to acta:bug on both the BLOCKED and the CLEAN path, and the
+// verdicts live in the plan state so a later session still has them.
+func TestReviewOrchestratorFindingsPipeline(t *testing.T) {
+	body := readSkill(t, "skills/review/SKILL.md")
+	for _, want := range []string{
+		"Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect",
+		"before the fact-check and before the fix task",
+		"`### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree",
+		"`acta state set <plan id> next`",
+		"`acta state <plan id>`",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review/SKILL.md missing %q", want)
+		}
+	}
+	// The CLEAN path has its own bug step, ahead of the NOTE sorting, so a
+	// round with only Pre-existing items still files them.
+	_, clean, _ := strings.Cut(body, "\n## After a CLEAN round\n")
+	bug, sort := strings.Index(clean, "acta:bug"), strings.Index(clean, "1. Sort every NOTE")
+	if bug < 0 || sort < 0 || bug > sort {
+		t.Errorf("## After a CLEAN round must send Pre-existing items to acta:bug before step 1; got indexes %d, %d", bug, sort)
+	}
+	// The BLOCKED path files them before the fix task too.
+	if !strings.Contains(body, "BLOCKERs: first file the Pre-existing items, then one fix task") {
+		t.Errorf("review/SKILL.md budget step 2 must file Pre-existing items before the fix task")
+	}
+}
+
 // TestCodeReviewerFindingsPipeline pins what the reviewer brief adds so each
 // finding finds one home: the repo's wiki rules, read from the base so a diff
 // cannot weaken its own review, a slot for bugs the diff did not bring in, a

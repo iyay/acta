@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-Pick the level in this order, asking nothing when one answers: the argument of `/acta:review quick|standard|deep`, then `review_depth` from `acta config show`, then `standard`. The levels, the floors and the review-notes line are in [depth.md](depth.md); the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, the review asks nothing about it, and `acta:land` adds what it asks for.
+[depth.md](depth.md) picks the level (the argument of `/acta:review quick|standard|deep`, then `review_depth`, then `standard`) and holds the levels, the floors and the review-notes line; the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 
@@ -35,41 +35,41 @@ Outside the deep lens, the review answers three questions:
 2. Does it run: tests and type checks green, output shown?
 3. Do the tests go red when the change is reverted?
 
-The deep lens (trace every user value to its sink, check every caller, adversarial inputs, error swallowing, cross-tenant access) applies only to trust boundaries, auth, money, migrations and deletes.
+The deep lens, as code-reviewer.md lists it, applies only to trust boundaries, auth, money, migrations and deletes.
 
-Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), NOTEs as a flat list, and a last line of one word: CLEAN or BLOCKED.
+Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), Pre-existing items, NOTEs, and a last line of one word: CLEAN or BLOCKED. Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect, keeping the best proof, before the fact-check and before the fix task.
 
 ## Budget: three rounds, then land or ask
 
-Each NOTE is sorted into a bucket: `[fix]`, `[debt]` or `[note]`.
-
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
-2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
+2. BLOCKERs: first file the Pre-existing items, then one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
 3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
 4. Round 3 reviews the second fix range only. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
+
+Each round saves its findings and verdicts with `acta state set <plan id> next`; rounds 2 and 3 read `acta state <plan id>`.
 
 There is never a round 4. A round with no BLOCKER does not start; it runs `## After a CLEAN round`. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
 
 ## Where findings go
 
 - A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into this round's one fix task (`## Fix round <n>` in the same plan).
-- A defect a reviewer finds in code already on the parent branch, that the diff did not bring in, is a bug. Record it with `acta:bug`, and fix it through its own plan with `parent: bugs/<file>`. It never widens this plan.
+- A defect in code already on the parent branch, that the diff did not bring in, is a bug: `### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree. Its own plan fixes it, with `parent: bugs/<file>`. It never widens this plan.
 - A NOTE is one line and sorts into a bucket. A NOTE that fails the first test falls to the next one.
-  - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
+  - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit.
   - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff. A `[debt]` NOTE must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` or has no priority tag is a `[note]`.
   - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
-**Who sorts.** Reviewers stay read-only and start each NOTE with a suggested bucket tag. The orchestrator checks every tag against the code and moves it when the tag does not hold.
+**Who sorts.** Reviewers suggest each NOTE's bucket tag; the orchestrator checks every tag against the code and moves it when it does not hold.
 
 ## After a CLEAN round
 
-The polish commit counts as no round. This is the whole CLEAN-round flow.
+The polish commit counts as no round. This is the whole CLEAN-round flow. First, the Pre-existing items go to `acta:bug`.
 
 1. Sort every NOTE into `[fix]`, `[debt]` or `[note]` with the bucket rules in `## Where findings go`.
 2. With `[fix]` NOTEs: first add the `## Polish` task in the worktree with `acta plan add <plan id> polish`, one `[fix]` NOTE per stdin line. It prints the task id to tick. Then one polish commit holding all of them. The orchestrator runs the narrow tests of the code the polish touched and the formatter check, with the output shown, never the full suite; the full suite waits for `acta:land`. Then the polish range gets the review its tier picks (`## Review tiers`). When the polish or the tests fail, revert that commit, and that moves those items to `[debt]`. On a revert also tick the `## Polish` task boxes, and say so in the review notes.
 3. A BLOCKER in the polish review reverts the polish commit and moves those items to `[debt]`. It starts no fix round.
 4. The polish-review NOTEs sort into `[debt]` or `[note]` only, so no second polish follows.
-5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (one NOTE per stdin line). Before the call, drop the bucket tag from each line: the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. The debt file merges with the branch. With no `[debt]` NOTE, no debt file is written.
+5. The `[debt]` NOTEs go to `acta debt new <plan id>` on the branch (one NOTE per stdin line). Before the call, drop the bucket tag from each line: the debt file stores no bucket. Keep the priority: the priority tag comes after the bucket tag, so it starts the line once the tag is gone. With no `[debt]` NOTE, no debt file is written.
 6. The `[note]` NOTEs are not written one by one. Write one summary line under `## Review notes` with `acta plan add <plan id> review-notes`, run in the worktree, the line on stdin; it commits the plan.
 7. Then `acta:land`.
 
