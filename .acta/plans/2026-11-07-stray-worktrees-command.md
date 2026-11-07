@@ -71,15 +71,28 @@ finished: "2026-11-07 17:50:24"
 
 **verify:** No worktree that holds a commit no branch, tag or remote holds, and no worktree whose activity time cannot be read, is ever a stray; list every path checked: detached with its own commit, detached at a branch tip, admin gitdir written as a relative path, admin folder not found, locked with its folder gone, a branch named like a flag, a rev-list error, and the doctor and --root wiring.
 
-- [ ] BLOCKER: a detached worktree with a commit no ref holds reads clean and --clean removes it, leaving the commit dangling (worktrees.go judge skips the commit check when branch is empty).
-- [ ] BLOCKER: when the admin folder lookup misses (worktree.useRelativePaths writes a relative gitdir), lastActivity returns the zero time and an active worktree reads idle, so --clean removes it with its gitignored files.
-- [ ] [fix] pass -- before the branch name in git branch -d, so a branch named like a flag cannot become a flag.
-- [ ] [fix] check the lock before the missing folder, so a locked worktree whose folder is gone stays protected.
-- [ ] [fix] drop omitempty from reason and status, so every --json line carries every field the spec names.
-- [ ] [fix] run acta worktrees on the RepoRoot of the loaded config, not os.Getwd, so --root judges the same repo it loaded plans from.
-- [ ] [fix] put the git error in the reason when rev-list fails, instead of saying the branch has unmerged commits.
-- [ ] [fix] say "1 stray worktree" in the doctor warning, not "1 stray worktrees".
-- [ ] Commit with the trailer `Task: PLN-z7jtm2h#5`
+- [x] BLOCKER: a detached worktree with a commit no ref holds reads clean and --clean removes it, leaving the commit dangling (worktrees.go judge skips the commit check when branch is empty).
+- [x] BLOCKER: when the admin folder lookup misses (worktree.useRelativePaths writes a relative gitdir), lastActivity returns the zero time and an active worktree reads idle, so --clean removes it with its gitignored files.
+- [x] [fix] pass -- before the branch name in git branch -d, so a branch named like a flag cannot become a flag.
+- [x] [fix] check the lock before the missing folder, so a locked worktree whose folder is gone stays protected.
+- [x] [fix] drop omitempty from reason and status, so every --json line carries every field the spec names.
+- [x] [fix] run acta worktrees on the RepoRoot of the loaded config, not os.Getwd, so --root judges the same repo it loaded plans from.
+- [x] [fix] put the git error in the reason when rev-list fails, instead of saying the branch has unmerged commits.
+- [x] [fix] say "1 stray worktree" in the doctor warning, not "1 stray worktrees".
+- [x] Commit with the trailer `Task: PLN-z7jtm2h#5`
+
+## Fix round 2
+
+### Task 6: Keep a missing detached worktree that holds the only copy of a commit
+
+**verify:** No missing worktree is removed while it is detached at a commit no branch, tag or remote holds, or while git cannot tell; list every path checked: missing detached with its own commit, missing detached at a branch tip, missing on a branch, and a rev-list error on a missing detached worktree.
+
+- [ ] BLOCKER: a detached worktree whose folder is gone and whose commit no ref holds reads missing, and --clean drops its entry so the commit becomes unreachable (judge returns missing before the unmerged check).
+- [ ] [fix] print "status": [] rather than null when a worktree has no status lines.
+- [ ] [fix] fold git's multi-line error text into one line in reason, so each text entry stays on one line.
+- [ ] [fix] say in the worktrees help that removing a clean worktree also deletes its gitignored files.
+- [ ] [fix] spec: a missing detached worktree is still checked for commits no ref holds.
+- [ ] Commit with the trailer `Task: PLN-z7jtm2h#6`
 
 ## State
 

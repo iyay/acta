@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/iyay/acta/internal/board"
@@ -22,20 +21,17 @@ func cmdWorktrees(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, usageLine("worktrees"))
 		return exitBadInput
 	}
-	_, b, code := loadBoard(*root, stderr)
+	cfg, b, code := loadBoard(*root, stderr)
 	if code != exitOK {
 		return code
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitOther
 	}
 	run := worktrees.List
 	if *clean {
 		run = worktrees.Clean
 	}
-	list, err := run(cwd, planList(b), time.Now())
+	// Like every acta command, the repo comes from the folder it runs in;
+	// --root only moves the planning folder.
+	list, err := run(cfg.RepoRoot, planList(b), time.Now())
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther

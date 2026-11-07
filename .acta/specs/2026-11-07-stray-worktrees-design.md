@@ -45,7 +45,7 @@ The 24-hour check reads those file times before acta runs any git command in tha
 
 A stray is clean when `git --no-optional-locks status --porcelain` in it prints nothing. Gitignored files do not count. Otherwise it is dirty.
 
-A worktree whose folder is gone (git marks it `prunable`) is a missing stray. It is checked before the rules above, since there is nothing in it to lose. `--clean` removes its entry with plain `git worktree remove <path>` and then tries `git branch -d` like any other stray. A missing folder never makes the command fail.
+A worktree whose folder is gone (git marks it `prunable`) is a missing stray. It is checked before the rules above, since its folder holds nothing left to lose. A lock still comes first. A detached one is still checked for commits that no branch, tag or remote holds: such a commit lives only in that worktree's entry, so the worktree stays protected. `--clean` removes its entry with plain `git worktree remove <path>` and then tries `git branch -d` like any other stray. A missing folder never makes the command fail.
 
 Worktrees a harness makes inside the repo, like `.claude/worktrees/<name>`, follow the same rules.
 

@@ -91,7 +91,7 @@ func TestDoctorNamesStrayWorktrees(t *testing.T) {
 	inDir(t, repo, func() {
 		Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr)
 	})
-	if !strings.Contains(stdout.String(), "warn worktrees: 1 stray worktrees: ") || !strings.Contains(stdout.String(), filepath.Base(stray)) {
+	if !strings.Contains(stdout.String(), "warn worktrees: 1 stray worktree: ") || !strings.Contains(stdout.String(), filepath.Base(stray)) {
 		t.Fatalf("doctor output:\n%s", stdout.String())
 	}
 }

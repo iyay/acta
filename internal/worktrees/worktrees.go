@@ -38,9 +38,9 @@ type Entry struct {
 	Path       string   `json:"path"`
 	Branch     string   `json:"branch"`
 	State      string   `json:"state"`
-	Reason     string   `json:"reason,omitempty"`
+	Reason     string   `json:"reason"`
 	BranchKept bool     `json:"branch_kept"`
-	Status     []string `json:"status,omitempty"`
+	Status     []string `json:"status"`
 }
 
 // runGit runs git in dir. Tests swap it to see every call.
@@ -55,8 +55,8 @@ var runGit = func(dir string, args ...string) (string, error) {
 
 // porcelain is one block of git worktree list --porcelain.
 type porcelain struct {
-	path, branch    string
-	locked, missing bool
+	path, branch, head string
+	locked, missing    bool
 }
 
 // List gives every linked worktree of the repo that holds dir, except the
@@ -95,7 +95,8 @@ func remove(main string, e Entry) Entry {
 	if e.Branch == "" {
 		return e
 	}
-	if _, err := runGit(main, "branch", "-d", e.Branch); err != nil {
+	// The -- keeps a branch named like a flag from being read as one.
+	if _, err := runGit(main, "branch", "-d", "--", e.Branch); err != nil {
 		e.BranchKept, e.Reason = true, err.Error()
 	}
 	return e
@@ -134,27 +135,33 @@ func list(dir string, plans []Plan, now time.Time) (string, []Entry, error) {
 // judge applies the rules to one worktree, in the spec's order.
 func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) Entry {
 	e := Entry{Path: b.path, Branch: b.branch}
+	// A lock comes first: people lock a worktree that lives on a drive that
+	// is not mounted, so its folder can look gone while it is not.
+	if b.locked {
+		e.State, e.Reason = StateProtected, "locked"
+		return e
+	}
 	if _, err := os.Stat(b.path); b.missing || err != nil {
 		e.State = StateMissing
 		return e
 	}
+	// With no admin folder there is no time to read, and an unknown age must
+	// not pass for an idle one: an agent may be working in it right now.
+	if admin == "" {
+		e.State, e.Reason = StateProtected, "cannot read activity times"
+		return e
+	}
 	// Read the file times before any git command runs in the worktree: a
 	// plain git status rewrites the index and would reset the clock.
-	last := lastActivity(admin)
-	switch {
-	case b.locked:
-		e.State, e.Reason = StateProtected, "locked"
-		return e
-	case now.Sub(last) < Idle:
+	if now.Sub(lastActivity(admin)) < Idle {
 		e.State, e.Reason = StateProtected, "active in the last 24 hours"
 		return e
 	}
+	if reason := unmerged(main, b); reason != "" {
+		e.State, e.Reason = StateProtected, reason
+		return e
+	}
 	if b.branch != "" {
-		if n, err := runGit(main, "rev-list", "--count", "HEAD..refs/heads/"+b.branch); err != nil || n != "0" {
-			// When git cannot tell, keep it: a lost branch costs more than junk.
-			e.State, e.Reason = StateProtected, "branch has unmerged commits"
-			return e
-		}
 		for _, p := range plans {
 			if p.Slug == b.branch && p.Status != "done" && p.Status != "dropped" {
 				e.State, e.Reason = StateProtected, "branch of open plan "+p.Slug
@@ -181,6 +188,28 @@ func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) 
 	return e
 }
 
+// unmerged says why a worktree holds commits that removing it could lose, or
+// "" when it holds none. A branch is checked against the main checkout's
+// HEAD. A detached worktree is checked against every branch, tag and remote,
+// since its commits have no branch of their own to stay on. When git cannot
+// tell, the answer is to keep it: lost work costs more than junk.
+func unmerged(main string, b porcelain) string {
+	args := []string{"rev-list", "--count", "HEAD..refs/heads/" + b.branch}
+	what := "branch has unmerged commits"
+	if b.branch == "" {
+		args = []string{"rev-list", "--count", b.head, "--not", "--branches", "--tags", "--remotes"}
+		what = "commits no branch, tag or remote holds"
+	}
+	n, err := runGit(main, args...)
+	switch {
+	case err != nil:
+		return "cannot read its commits: " + err.Error()
+	case n != "0":
+		return what
+	}
+	return ""
+}
+
 // parse reads git worktree list --porcelain. The main checkout comes first.
 func parse(out string) []porcelain {
 	var res []porcelain
@@ -191,6 +220,8 @@ func parse(out string) []porcelain {
 			switch {
 			case strings.HasPrefix(ln, "worktree "):
 				p.path = strings.TrimPrefix(ln, "worktree ")
+			case strings.HasPrefix(ln, "HEAD "):
+				p.head = strings.TrimPrefix(ln, "HEAD ")
 			case strings.HasPrefix(ln, "branch "):
 				p.branch = strings.TrimPrefix(strings.TrimPrefix(ln, "branch "), "refs/heads/")
 			case ln == "locked" || strings.HasPrefix(ln, "locked "):
@@ -228,7 +259,13 @@ func adminDirs(dir string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		res[resolve(filepath.Dir(strings.TrimSpace(string(raw))))] = admin
+		// With worktree.useRelativePaths the file holds a path relative to
+		// the admin folder, so join it before comparing.
+		gitFile := strings.TrimSpace(string(raw))
+		if !filepath.IsAbs(gitFile) {
+			gitFile = filepath.Join(admin, gitFile)
+		}
+		res[resolve(filepath.Dir(gitFile))] = admin
 	}
 	return res, nil
 }

@@ -20,6 +20,12 @@ func TestWorktreesCheck(t *testing.T) {
 		t.Fatal("strays failed a run that was not failing before")
 	}
 
+	one := env(t)
+	one.StrayWorktrees = []string{"/x/repo-headchk"}
+	if got := byName(Run(one), "worktrees").Msg; !strings.HasPrefix(got, "1 stray worktree: ") {
+		t.Fatalf("msg %q", got)
+	}
+
 	outside := env(t)
 	outside.RepoRoot = ""
 	for _, r := range Run(outside) {

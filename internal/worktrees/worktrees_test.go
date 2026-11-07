@@ -1,6 +1,7 @@
 package worktrees
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -244,7 +245,7 @@ func TestClean(t *testing.T) {
 		calls = append(calls, args)
 		// git branch -d refuses a branch it thinks is not merged. Fake that
 		// for one branch, so the refused path runs.
-		if len(args) == 3 && args[0] == "branch" && args[2] == "refused" {
+		if len(args) == 4 && args[0] == "branch" && args[3] == "refused" {
 			return "", errors.New("error: the branch 'refused' is not fully merged")
 		}
 		// Fake a remove that git refuses, as on a folder it cannot delete.
@@ -301,13 +302,88 @@ func TestClean(t *testing.T) {
 				t.Errorf("git called with %s: %v", a, args)
 			}
 		}
-		if len(args) > 0 && args[0] == "branch" && (len(args) != 3 || args[1] != "-d") {
+		if len(args) > 0 && args[0] == "branch" && (len(args) != 4 || args[1] != "-d" || args[2] != "--") {
 			t.Errorf("unexpected branch call %v", args)
 		}
 	}
 	for _, args := range calls {
-		if len(args) > 2 && args[0] == "branch" && args[2] == "" {
+		if len(args) > 3 && args[0] == "branch" && args[3] == "" {
 			t.Errorf("branch call for a detached worktree: %v", args)
 		}
+	}
+}
+
+// TestListUnknownWorkIsProtected covers the worktrees whose work or age the
+// rules cannot be sure of. Each must stay protected.
+func TestListUnknownWorkIsProtected(t *testing.T) {
+	t.Parallel()
+	base, repo := newRepo(t)
+
+	// A detached worktree with a commit that no branch holds.
+	own := filepath.Join(base, "own")
+	git(t, repo, "worktree", "add", "-q", "--detach", own)
+	write(t, filepath.Join(own, "d.txt"), "d\n")
+	git(t, own, "add", ".")
+	git(t, own, "commit", "-q", "-m", "only here")
+
+	// A fresh worktree whose admin gitdir file holds a relative path.
+	rel := filepath.Join(base, "rel")
+	git(t, repo, "-c", "worktree.useRelativePaths=true", "worktree", "add", "-q", "-b", "rel", rel)
+
+	// A locked worktree whose folder is gone, as on an unmounted drive.
+	away := filepath.Join(base, "away")
+	git(t, repo, "worktree", "add", "-q", "-b", "away", away)
+	git(t, repo, "worktree", "lock", away)
+	if err := os.RemoveAll(away); err != nil {
+		t.Fatal(err)
+	}
+
+	// A branch ref deleted under its worktree, so rev-list cannot read it.
+	gone := filepath.Join(base, "gone-ref")
+	git(t, repo, "worktree", "add", "-q", "-b", "gone-ref", gone)
+	age(t, gone)
+	git(t, repo, "update-ref", "-d", "refs/heads/gone-ref")
+
+	for _, p := range []string{own} {
+		age(t, p)
+	}
+	got, err := List(repo, nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ path, reason string }{
+		{own, "commits no branch"},
+		{rel, "24 hours"},
+		{away, "locked"},
+		{gone, "cannot"},
+	}
+	for _, c := range cases {
+		e := byPath(t, got, c.path)
+		if e.State != StateProtected || !strings.Contains(e.Reason, c.reason) {
+			t.Errorf("%s: got state %q reason %q, want protected with %q", filepath.Base(c.path), e.State, e.Reason, c.reason)
+		}
+	}
+}
+
+func TestEntryJSONHasEveryField(t *testing.T) {
+	t.Parallel()
+	raw, err := json.Marshal(Entry{Path: "/x", State: StateClean})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"path", "branch", "state", "reason", "branch_kept", "status"} {
+		if !strings.Contains(string(raw), `"`+f+`":`) {
+			t.Errorf("%s missing from %s", f, raw)
+		}
+	}
+}
+
+// A worktree whose admin folder cannot be found has no activity time. The
+// rules must keep it, since it may be in use right now.
+func TestJudgeKeepsUnknownAge(t *testing.T) {
+	t.Parallel()
+	e := judge(t.TempDir(), porcelain{path: t.TempDir(), branch: "x"}, "", nil, time.Now())
+	if e.State != StateProtected || !strings.Contains(e.Reason, "cannot read activity") {
+		t.Fatalf("got %+v", e)
 	}
 }
