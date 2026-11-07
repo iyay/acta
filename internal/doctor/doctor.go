@@ -49,7 +49,8 @@ type Env struct {
 	Voice          config.User
 	ThemeErr       error    // the theme.Load error for Voice.Theme
 	SchemaProblems []string // board files with schema: 1 that lost a section
-	StrayWorktrees []string // paths of linked worktrees the stray rules flag
+	CleanStrays    []string // clean or missing strays acta worktrees --clean removes
+	DirtyStrays    []string // strays with files only the user can keep or delete
 	CodexDir       string   // Codex's home folder; "" when codex is not on PATH
 }
 

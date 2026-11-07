@@ -96,7 +96,7 @@ func doctorEnv(known string) doctor.Env {
 		case cfg.IsGit:
 			e.RepoRoot, e.ActaRoot, e.AutoCommit = cfg.RepoRoot, cfg.Root, cfg.AutoCommit
 			e.SchemaProblems = schemaProblems(cfg)
-			e.StrayWorktrees = strayWorktrees(cfg)
+			e.CleanStrays, e.DirtyStrays = strayWorktrees(cfg)
 		}
 	}
 	if p, err := os.Executable(); err == nil {
@@ -231,22 +231,24 @@ func buildVersion() string {
 	return version
 }
 
-// strayWorktrees gives the paths the stray rules flag in cfg's repo. A board
+// strayWorktrees gives the paths of the strays in cfg's repo, clean or missing ones apart from dirty ones. A board
 // or git that cannot be read gives none: doctor reports what it can see.
-func strayWorktrees(cfg config.Config) []string {
+func strayWorktrees(cfg config.Config) (clean, dirty []string) {
 	b, err := board.Load(cfg)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	list, err := worktrees.List(cfg.RepoRoot, planList(b), time.Now())
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	var out []string
 	for _, e := range list {
-		if e.State == worktrees.StateClean || e.State == worktrees.StateDirty || e.State == worktrees.StateMissing {
-			out = append(out, e.Path)
+		switch e.State {
+		case worktrees.StateClean, worktrees.StateMissing:
+			clean = append(clean, e.Path)
+		case worktrees.StateDirty:
+			dirty = append(dirty, e.Path)
 		}
 	}
-	return out
+	return clean, dirty
 }
