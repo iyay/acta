@@ -25,6 +25,7 @@ var evalCases = []struct {
 	{"debug-race", "skills/debug/condition-based-waiting.md", "condition"},
 	{"debug-order-dependent", "skills/debug/find-polluter.sh", "polluter"},
 	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
+	{"debug-independent-check", "skills/debug/SKILL.md", "Prove the mechanism"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
 	{"second-brainstorm-choices", "skills/shape/SKILL.md", "Unrelated:"},
@@ -107,6 +108,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	debug := map[string]bool{
 		"debug-exact-symptom": true, "debug-misleading-path": true, "debug-no-repro": true,
 		"debug-race": true, "debug-order-dependent": true, "debug-performance": true,
+		"debug-independent-check": true,
 	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,

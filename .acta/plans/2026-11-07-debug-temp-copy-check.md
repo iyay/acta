@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0217
 created: "2026-11-07 18:03:42"
 hash: vsqnmvr
+started: "2026-11-07 18:05:01"
 ---
 # Debug temp copy check
 
@@ -30,9 +31,9 @@ hash: vsqnmvr
 **Files:** create `plugin/evals/debug-independent-check/` (`case.yaml`, `prompt.md`, `scaffold.sh`, `graders/behavior.md` from commit `1213642`, new `graders/no-repo-write.md`); modify `internal/plugincheck/evals_test.go`.
 **Seam:** `scripts/test ./internal/plugincheck/ -run 'TestEval|TestHookScripts'` and the eval runner on the case folder.
 **verify:** No run that creates, edits or deletes a file inside the repo can pass `no-repo-write.md`, whatever its cause verdict, and a run that writes only outside the repo always can; list the write paths the grader names (edit, create, delete, restore after edit) and the one exception (`__pycache__`). The scaffold is not executable, and `independent-check.md` is not brought back.
-- [ ] Red: `TestEval*` fails because `debug-independent-check` is registered in `evalCases` (phrase `Prove the mechanism` in `skills/debug/SKILL.md`) and in the `debug` judge map, but its folder does not exist.
-- [ ] Change: restore the four case files from `1213642` with `git show`, and add `graders/no-repo-write.md` as a `type: llm`, `focus: trace` judge on repo writes only.
-- [ ] Commit: `test(debug): add temp copy trap eval`.
+- [x] Red: `TestEval*` fails because `debug-independent-check` is registered in `evalCases` (phrase `Prove the mechanism` in `skills/debug/SKILL.md`) and in the `debug` judge map, but its folder does not exist.
+- [x] Change: restore the four case files from `1213642` with `git show`, and add `graders/no-repo-write.md` as a `type: llm`, `focus: trace` judge on repo writes only.
+- [x] Commit: `test(debug): add temp copy trap eval`.
 
 ### Task 2: Temp copy rule in the debug skill
 
@@ -42,3 +43,13 @@ hash: vsqnmvr
 - [ ] Red: `TestSkillDebug` fails because its `Must` list now asks for `stops at the first failed step`.
 - [ ] Change: add the rule and the retry fallback to the ground rule, tighten other `SKILL.md` text to pay for it, and move the case's `evalCases` phrase and the `no-repo-write.md` guards line to `stops at the first failed step`.
 - [ ] Commit: `fix(debug): stop a probe from writing into the repo when its temp copy fails`.
+
+## State
+
+### Next
+
+Task 2: add the rule to the ground rule, then run the case 3 times on the new skill.
+
+### Findings
+
+Baseline on the old skill (3 runs): no-repo-write 0/3, behavior 3/3. All three runs chained T=$(mktemp -d); cp ...; cd $T; sed -i ... with ; so a failed mktemp left the shell in the repo and sed edited a repo file. behavior.md missed it, so no-repo-write is the right gate.
