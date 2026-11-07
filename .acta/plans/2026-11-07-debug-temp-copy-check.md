@@ -53,11 +53,10 @@ Task 2: add the rule to the ground rule, then run the case 3 times on the new sk
 
 ### Findings
 
-Second new-skill run (3): no-repo-write 2/3, behavior 0/3.
-Run 1 wrote src/billing.py in the repo on purpose with python open(p,"w"), before any temp copy; then used the mkdir fallback right.
-Runs 2-3 wrote nothing but ran the control as a function probe (lookup on a normalized string), never the report in a temp copy, so behavior failed.
-Old skill: behavior 5/6 over two gates; new skill 0/6. Suspect the cuts made to fit the byte cap: "(in the temp copy)" left the Phase 3 control step, and Phase 1 step 2 lost "A command that writes files runs only in a temp copy."
+Third new-skill run (3): judge no-repo-write 1/3, behavior 2/3.
+Runs 1-2 used D=$(mktemp -d) && cp && cd "$D" && sed; mktemp failed so the chain stopped and sed never ran. The kept repos show src/tax.py and src/billing.py unchanged, no .bak, mtimes at scaffold time. So the two FAILs are judge false positives on a write command that never ran: real repo writes 0/3.
+Run 3 failed behavior: its control was a function probe in a temp copy, not the report.
 
 ### Open rulings
 
-Waiting on the user: restore the two cut phrases and raise the SKILL.md byte cap, or stop.
+Waiting on the user: fix no-repo-write.md so an unrun write does not count, rerun 3, and how to judge behavior 2/3 against the old 3/3.

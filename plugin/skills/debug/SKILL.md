@@ -23,7 +23,7 @@ Exit: one command you ran catches the exact symptom the user reported.
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
 1. Write down expected and actual behaviour and where (versions, config, data, environment).
-2. Build the loop: an existing test or the user's own command, else a small replay script.
+2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
@@ -42,7 +42,7 @@ Exit: one explanation fits every observation, and the others are ruled out by a 
 Exit: trigger, state change and symptom are linked with `file:line` and probe output, plus the evidence the matching recipe names, from a command you ran.
 
 1. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-2. Use a control when you can: the same probe with the suspected cause removed makes the symptom go away.
+2. Use a control when you can: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.
 3. Several tries fail under one shared belief? Test that belief directly.
 4. Three failed fixes: stop and tell the user. Question the design before a fourth.
 5. Report the cause, the evidence, and what stays unverified. Propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
