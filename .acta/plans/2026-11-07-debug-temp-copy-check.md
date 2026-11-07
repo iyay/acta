@@ -5,6 +5,7 @@ id: PLN-0217
 created: "2026-11-07 18:03:42"
 hash: vsqnmvr
 started: "2026-11-07 18:05:01"
+finished: "2026-11-07 18:10:01"
 ---
 # Debug temp copy check
 
@@ -40,9 +41,9 @@ started: "2026-11-07 18:05:01"
 **Files:** modify `plugin/skills/debug/SKILL.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/evals_test.go`, `plugin/evals/debug-independent-check/graders/no-repo-write.md`.
 **Seam:** `scripts/test ./internal/plugincheck/ -run 'TestSkillDebug|TestBudget|TestEval'`.
 **verify:** The ground rule covers every way a probe write can reach the repo after a failed step: the copy command fails, the `cd` fails, and the shell is still in the repo; list each and the words that stop it. When no copy can be made after one retry under `${TMPDIR:-/tmp}`, the rule allows only probes that write nothing. `SKILL.md` grows in neither bytes (6546) nor lines, and every old `Must` word still holds.
-- [ ] Red: `TestSkillDebug` fails because its `Must` list now asks for `stops at the first failed step`.
-- [ ] Change: add the rule and the retry fallback to the ground rule, tighten other `SKILL.md` text to pay for it, and move the case's `evalCases` phrase and the `no-repo-write.md` guards line to `stops at the first failed step`.
-- [ ] Commit: `fix(debug): stop a probe from writing into the repo when its temp copy fails`.
+- [x] Red: `TestSkillDebug` fails because its `Must` list now asks for `stops at the first failed step`.
+- [x] Change: add the rule and the retry fallback to the ground rule, tighten other `SKILL.md` text to pay for it, and move the case's `evalCases` phrase and the `no-repo-write.md` guards line to `stops at the first failed step`.
+- [x] Commit: `fix(debug): stop a probe from writing into the repo when its temp copy fails`.
 
 ## State
 
@@ -52,4 +53,11 @@ Task 2: add the rule to the ground rule, then run the case 3 times on the new sk
 
 ### Findings
 
-Baseline on the old skill (3 runs): no-repo-write 0/3, behavior 3/3. All three runs chained T=$(mktemp -d); cp ...; cd $T; sed -i ... with ; so a failed mktemp left the shell in the repo and sed edited a repo file. behavior.md missed it, so no-repo-write is the right gate.
+New skill, 3 runs: no-repo-write 2/3, behavior 0/3 (old skill 0/3 and 3/3).
+Run 1: cd "$(mktemp -d)" && cp ... kept going, because cd "" succeeds when mktemp fails; cp then tried to write into the repo.
+Runs 2-3: mktemp failed, the agent followed the fallback (write nothing) and ran no control on the report path, so behavior failed.
+In this sandbox mktemp fails but mkdir -p "$TMPDIR/name" works (seen in baseline and run 3).
+
+### Open rulings
+
+Waiting on the user: change the fallback to mkdir -p under ${TMPDIR:-/tmp} and name D=$(mktemp -d) && cd "$D" as the chain, then rerun 3.

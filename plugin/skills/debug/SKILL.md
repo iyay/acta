@@ -5,15 +5,15 @@ description: "acta: Use for any bug, error, failing test, stack trace, wrong out
 
 # Debugging
 
-Find the cause with evidence before changing code. A cause is proven only when a command you ran shows it. Spend effort in line with doubt: a clear bug needs one good probe, an unclear one needs ranked guesses and probes that tell them apart.
+Find the cause with evidence before changing code. A cause is proven only when a command you ran shows it. Spend effort in line with doubt: a clear bug needs one good probe, an unclear one needs ranked guesses.
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make the copy in one chain that stops at the first failed step (`&&` or `set -e`), and check `pwd` is outside the repo before any write. No copy after one more `mktemp -d` in `${TMPDIR:-/tmp}`? Run only probes that write nothing, and say so.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
-- **A confirmed bug gets a file.** Once the cause is proven (`file:line` plus a repro), or a bug is found while reading and reported to the user, record it with `acta:bug`.
+- **A confirmed bug gets a file.** A proven cause (`file:line` plus a repro), or a bug found while reading and reported, is recorded with `acta:bug`.
 - **Subagent models.** Name no model for any subagent; the harness default picks it.
 
 ## Phase 1: Symptom and feedback loop
@@ -22,8 +22,8 @@ Exit: one command you ran catches the exact symptom the user reported.
 
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
-1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
+1. Write down expected and actual behaviour and where (versions, config, data, environment).
+2. Build the loop: an existing test or the user's own command, else a small replay script.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
@@ -32,24 +32,24 @@ While you work on something else, a failing test that an open bug lists under `f
 
 Exit: one explanation fits every observation, and the others are ruled out by a probe.
 
-1. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
+1. Cut inputs and steps while the failure still shows. Stop once the cause is clear.
 2. Compare a working path with the failing one: a similar caller, an older commit (`git bisect`), other data. List every difference.
 3. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
-4. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
+4. Deep in a call stack? Trace the bad value back to where it starts: see `root-cause-tracing.md`.
 
 ## Phase 3: Prove the mechanism
 
 Exit: trigger, state change and symptom are linked with `file:line` and probe output, plus the evidence the matching recipe names, from a command you ran.
 
 1. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-2. Use a control when you can: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.
+2. Use a control when you can: the same probe with the suspected cause removed makes the symptom go away.
 3. When several tries fail under one shared belief, test that belief directly.
 4. Three failed fixes: stop and tell the user. Question the design before a fourth.
 5. Report the cause, the evidence, and what stays unverified. Propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
 
-A fix is code, so it goes through `acta:shape`, a plan, and its own worktree through `acta:build`.
+A fix is code: `acta:shape`, a plan, then `acta:build` in its own worktree.
 
 1. The repro becomes the regression test (`acta:tdd`). Test the real bug pattern at the layer that owns it. Watch it fail, then pass.
 2. Re-run the user's original command or scenario, plus nearby checks.
@@ -59,8 +59,6 @@ A fix is code, so it goes through `acta:shape`, a plan, and its own worktree thr
 A rerun that turns green, a longer timeout, or a skipped assertion does not prove a fix.
 
 ## Recipes
-
-Each names the evidence that counts.
 
 - **Race.** Run the probe in `race.md`, which must force the interleaving: each worker waits after its read until the other has read. A barrier at start does not. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
 - **Flaky test.** Run it many times under the same conditions and record the failure count and what changed between runs (load, order, seed, time). For waits, see `condition-based-waiting.md`.

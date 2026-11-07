@@ -19,7 +19,7 @@ func TestSkillDebug(t *testing.T) {
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
 			"exact symptom", "not proven", "observed", "unverified",
 			// Safety and the acta gates.
-			"outside the repo", "Redact secrets", "never push", "live systems",
+			"outside the repo", "stops at the first failed step", "Redact secrets", "never push", "live systems",
 			"acta:bug", "acta:shape", "acta:tdd", "acta:land", "Three failed fixes",
 			// Recipes, each with the evidence that matches it.
 			"force the interleaving", "smallest command that keeps the failing order",

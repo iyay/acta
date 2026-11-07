@@ -25,7 +25,7 @@ var evalCases = []struct {
 	{"debug-race", "skills/debug/condition-based-waiting.md", "condition"},
 	{"debug-order-dependent", "skills/debug/find-polluter.sh", "polluter"},
 	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
-	{"debug-independent-check", "skills/debug/SKILL.md", "Prove the mechanism"},
+	{"debug-independent-check", "skills/debug/SKILL.md", "stops at the first failed step"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
 	{"second-brainstorm-choices", "skills/shape/SKILL.md", "Unrelated:"},
