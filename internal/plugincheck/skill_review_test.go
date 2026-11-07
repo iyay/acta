@@ -177,6 +177,30 @@ func TestCodeReviewerTemplateBucketTags(t *testing.T) {
 	}
 }
 
+// TestCodeReviewerFindingsPipeline pins what the reviewer brief adds so each
+// finding finds one home: the repo's wiki rules, read from the base so a diff
+// cannot weaken its own review, a slot for bugs the diff did not bring in, a
+// cap on NOTEs, and earlier findings that carry what happened to them.
+func TestCodeReviewerFindingsPipeline(t *testing.T) {
+	txt := readSkill(t, "skills/review/code-reviewer.md")
+	for _, want := range []string{
+		"acta wiki match <file>",
+		"changes or deletes is read at `BASE_SHA`",
+		"its `paths:` at `BASE_SHA` cover a changed file",
+		"A page the diff adds is not a rule yet.",
+		"### Pre-existing",
+		"never a BLOCKER",
+		"At most 10 NOTEs",
+		"N more NOTEs not listed",
+		"`fixed`", "`rejected: <reason>`", "`moved to NOTE`", "`NOTE open`", "`sent to bug`",
+		"Do not raise a rejected or moved finding again unless the diff gives new evidence.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("code-reviewer.md missing %q", want)
+		}
+	}
+}
+
 // TestReviewDepthFiles pins the three files that carry the review levels. The
 // floors and the fact-check limits are the safety part, so each phrase that
 // keeps a review from running too light or a BLOCKER from being dropped is

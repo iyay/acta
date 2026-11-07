@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0213
 created: "2026-11-07 17:05:38"
 hash: oakb9p5
+started: "2026-11-07 17:09:11"
 ---
 # Review findings pipeline implementation plan
 
@@ -28,9 +29,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All three touch `internal/plugin
 **Files:** Modify `plugin/skills/review/code-reviewer.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the reviewer template text as `skill_review_test.go` reads it.
 **verify:** The reviewer brief holds spec items 1 to 4 and nothing weakens them. Cases: each changed file runs `acta wiki match`; a wiki page the diff changes or deletes is read at `BASE_SHA` and applies by its BASE `paths:`; a page the diff adds is not a rule; a `### Pre-existing` section exists and says it is never a BLOCKER; at most 10 NOTEs ranked by later cost with an `N more NOTEs not listed` line; `[EARLIER_FINDINGS]` names all five verdicts (`fixed`, `rejected: <reason>`, `moved to NOTE`, `NOTE open`, `sent to bug`) and a rejected or moved one is not raised again without new evidence; the template's bucket-tag rules still pass; the cap rises only by the bytes added.
-- [ ] Red: a plugincheck test expects the wiki match step, the BASE read, the Pre-existing section, the NOTE cap and the five verdicts, and fails because `code-reviewer.md` has none of them.
-- [ ] Change: add the text to `code-reviewer.md`, raise its cap in `budget_test.go`, run `scripts/test ./internal/plugincheck/ -run 'Review|CodeReviewer|Budget'` to green.
-- [ ] Commit: `feat(review): reviewers read wiki rules and report pre-existing bugs`.
+- [x] Red: a plugincheck test expects the wiki match step, the BASE read, the Pre-existing section, the NOTE cap and the five verdicts, and fails because `code-reviewer.md` has none of them.
+- [x] Change: add the text to `code-reviewer.md`, raise its cap in `budget_test.go`, run `scripts/test ./internal/plugincheck/ -run 'Review|CodeReviewer|Budget'` to green.
+- [x] Commit: `feat(review): reviewers read wiki rules and report pre-existing bugs`.
 
 ### Task 2: Orchestrator dedupes, routes pre-existing bugs and keeps verdicts
 
@@ -49,3 +50,9 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All three touch `internal/plugin
 - [ ] Red: a plugincheck test expects the counts format and each counting rule, and fails because `depth.md` has none of them.
 - [ ] Change: add the counts rules under `## Review notes` in `depth.md`, raise its cap only if needed, run `scripts/test ./internal/plugincheck/ -run 'Review|Budget'` to green.
 - [ ] Commit: `feat(review): review line counts findings`.
+
+## State
+
+### Next
+
+Task 2: SKILL.md is at its 9991-byte cap; new lines must be paid for by tightening its own text, keeping every Must string in TestSkillReview.

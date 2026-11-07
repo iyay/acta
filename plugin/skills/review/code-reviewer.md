@@ -51,7 +51,11 @@ Subagent (general-purpose):
 
     [EARLIER_FINDINGS]
 
-    Do not repeat these; look for others.
+    Each one carries a verdict: `fixed`, `rejected: <reason>`, `moved to NOTE`, `NOTE open` or `sent to bug`. Do not repeat these; look for others. Do not raise a rejected or moved finding again unless the diff gives new evidence.
+
+    ## Repo Rules
+
+    For each changed file, run `acta wiki match <file>` and read each page it names as review rules for that file. So the diff cannot weaken its own review, a wiki page the diff changes or deletes is read at `BASE_SHA` with `git show`, and that copy applies when its `paths:` at `BASE_SHA` cover a changed file. A page the diff adds is not a rule yet.
 
     ## What to Check
 
@@ -68,8 +72,11 @@ Subagent (general-purpose):
     ### BLOCKERs
     Ranked, five at most. Each: `file:line`, the concrete input, the wrong output against the expected one, and how you proved it.
 
+    ### Pre-existing
+    A defect in code the diff did not bring in: `file:line` and how to see it. It is never a BLOCKER.
+
     ### NOTEs
-    A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then an optional `(high) `, `(medium) ` or `(low) ` priority tag, then the note. See the review skill for the bucket rules: you suggest, the orchestrator decides.
+    At most 10 NOTEs, the one that costs most if left first, then `N more NOTEs not listed` when you cut some. A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then an optional `(high) `, `(medium) ` or `(low) ` priority tag, then the note. See the review skill for the bucket rules: you suggest, the orchestrator decides.
 
     ### Answers
     The three questions from the review skill, one short paragraph each.
