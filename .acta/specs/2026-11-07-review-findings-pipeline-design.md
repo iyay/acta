@@ -2,6 +2,8 @@
 id: SPC-0190
 created: "2026-11-07 16:57:24"
 hash: bzyfazw
+started: "2026-11-07 17:09:11"
+finished: "2026-11-07 18:07:25"
 ---
 # Review findings pipeline
 
