@@ -105,3 +105,10 @@ git worktree add -q wt -b invoice-total
 printf '\n### Findings\n\nThe row is comma separated, so a price cannot hold a comma.\n' >> wt/.acta/plans/2026-10-05-invoice-total.md
 git -C wt add .acta/plans/2026-10-05-invoice-total.md
 git -C wt commit -qm "state: record what task 1 turned up"
+# A test run leaves untracked output, and the agent must keep it. Python only
+# makes this folder when the agent runs the tests, so the scaffold leaves it
+# every time, as a finished test run would. No source file is named
+# test_invoice.py, so Python never writes over this file, and the grader can
+# look for the words inside it.
+mkdir -p wt/src/__pycache__
+printf 'left by the last test run\n' > wt/src/__pycache__/test_invoice.cpython-312-pytest-8.3.3.pyc
