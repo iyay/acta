@@ -9,7 +9,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make the copy with `D=$(bash probe-copy.sh) && cd "$D"` (the script is in this skill's folder), a chain that stops at the first failed step. No copy? Run only probes that write nothing, and say so.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make the copy with `D=$(bash probe-copy.sh) && cd "$D"` (the script is in this skill's folder), a chain that stops at the first failed step.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).

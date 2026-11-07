@@ -55,18 +55,35 @@ finished: "2026-11-07 18:10:01"
 - [x] Put SKILL.md back to its text from before this plan plus one sentence: make the copy with D=$(bash <this skill folder>/probe-copy.sh) \&\& cd "$D", a chain that stops at the first failed step; with no copy, run only probes that write nothing, and say so. Set the byte cap to the new size; Must list adds probe-copy.sh.
 - [x] Commit with the trailer `Task: PLN-vsqnmvr#3`
 
+## Fix round 2
+
+### Task 4: Copy without .git
+
+**verify:** No git command run in the copy can change the real repo: list each form .git takes (folder, pointer file in a linked worktree, missing) and show the copy holds none of them, while every other top-level entry, dotfiles included, is copied.
+
+- [ ] probe-copy.sh copies .git; in a linked worktree .git is a file that points at the real gitdir, so git checkout or bisect in the copy moves the real worktree HEAD and index. Copy everything except .git.
+- [ ] Commit with the trailer `Task: PLN-vsqnmvr#4`
+
+## Review notes
+
+- Round 1 (deep): Spec BLOCKED, Standards CLEAN. Fact-check not run: the one BLOCKER is about real repo state, a kind it may not move.
+- [debt] (medium) probe-copy.sh mkdir -p fallback accepts a folder that already exists at a guessable /tmp name; plain mkdir would refuse it. NOTE open
+- [debt] (medium) probe-copy.sh does not check it runs from the repo root; from a subfolder it copies only that subfolder. NOTE open
+- [note] No eval run called probe-copy.sh; agents used the mktemp chain the skill line shows. NOTE open
+- [note] Task 3 box text still names the dropped no-copy line; plan text is changed only through acta commands. NOTE open
+
 ## State
 
 ### Next
 
-Task 2: add the rule to the ground rule, then run the case 3 times on the new skill.
+Close: wiki check, then acta:review over main..HEAD.
 
 ### Findings
 
-Helper-script run (3): no-repo-write 3/3, behavior 1/3. No run called probe-copy.sh. Runs 1 and 3 ran no control at all, only function probes in the repo; run 2 made its own copy and passed.
-Behavior across all new-skill rounds: 3/15. Old skill: 5/6.
-Every new version carried "No copy? Run only probes that write nothing." Likely cause: that line reads as leave to skip the control. Untested.
+Final run without the no-copy line (3): no-repo-write 3/3, behavior 3/3. Kept repos checked by hand: src files unchanged in all three.
+No run called probe-copy.sh; all used the D=$(mktemp -d ...) && cd "$D" pattern the skill line shows, with their own mkdir fallback.
+The "No copy? Run only probes that write nothing" line was what cost the controls: 3/15 with it, 3/3 without.
 
 ### Open rulings
 
-Agreed gate failed (behavior 1/3 under 2/3). Waiting on the user: park as agreed, or one last run without the escape line.
+none
