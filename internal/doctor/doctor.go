@@ -49,6 +49,7 @@ type Env struct {
 	Voice          config.User
 	ThemeErr       error    // the theme.Load error for Voice.Theme
 	SchemaProblems []string // board files with schema: 1 that lost a section
+	StrayWorktrees []string // paths of linked worktrees the stray rules flag
 	CodexDir       string   // Codex's home folder; "" when codex is not on PATH
 }
 
@@ -64,13 +65,19 @@ func Run(e Env) []Result {
 	if e.CodexDir != "" {
 		rs = append(rs, checkCodex(e))
 	}
-	return append(rs,
+	rs = append(rs,
 		checkStaleLinks(e),
 		checkConflicts(e),
 		checkRepo(e),
 		checkSchema(e),
 		checkFiles(e),
 		checkWiki(e),
+	)
+	// Outside a git repo there are no worktrees to judge, so no line.
+	if e.RepoRoot != "" {
+		rs = append(rs, checkWorktrees(e))
+	}
+	return append(rs,
 		checkAgentsView(e),
 		checkSetup(e),
 		checkTheme(e),
