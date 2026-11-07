@@ -33,6 +33,6 @@ A probe write never lands in the repo because a step before it failed.
 - Red first in `internal/plugincheck/skill_debug_test.go`: the `Must` list asks for `stops at the first failed step` and `probe-copy.sh`.
 - A Go test runs `probe-copy.sh` against a fake repo in a temp folder: the printed path is outside the repo; an uncommitted edit and an untracked file are in the copy; with `mktemp` stubbed to fail on `PATH`, the `mkdir` fallback is used; with both stubbed to fail, the exit is non-zero and stdout is empty.
 - `internal/plugincheck/evals_test.go` registers the case with the phrase in `skills/debug/SKILL.md`, and the case is in the `debug` map of `TestEvalLLMGradersAreOnlyTheJudgementCalls`. `TestEval*` passes.
-- `probe-copy.sh` stays non-executable in the repo; the skill runs it with `bash`, so `final_test.go` does not change.
+- `probe-copy.sh` is executable in the repo, like `find-polluter.sh`: `acta setup` unpacks `.sh` files as 0755, and `internal/setup` checks disk and unpacked modes match. `final_test.go` allows it.
 - Three eval runs on the new skill: `no-repo-write.md` three of three, and `behavior.md` at least two of three. If `behavior.md` drops below that, the whole rule is backed out and the bug is parked. Each run's verdicts go in the plan's `findings`.
 - `scripts/test` green. At land, the six existing debug evals and this case stay green.

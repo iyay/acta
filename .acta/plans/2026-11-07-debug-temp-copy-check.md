@@ -61,8 +61,17 @@ finished: "2026-11-07 18:10:01"
 
 **verify:** No git command run in the copy can change the real repo: list each form .git takes (folder, pointer file in a linked worktree, missing) and show the copy holds none of them, while every other top-level entry, dotfiles included, is copied.
 
-- [ ] probe-copy.sh copies .git; in a linked worktree .git is a file that points at the real gitdir, so git checkout or bisect in the copy moves the real worktree HEAD and index. Copy everything except .git.
-- [ ] Commit with the trailer `Task: PLN-vsqnmvr#4`
+- [x] probe-copy.sh copies .git; in a linked worktree .git is a file that points at the real gitdir, so git checkout or bisect in the copy moves the real worktree HEAD and index. Copy everything except .git.
+- [x] Commit with the trailer `Task: PLN-vsqnmvr#4`
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] TestProbeCopy covers no repo without .git; add a case with no .git at all.
+- [x] Commit: `polish: review notes for PLN-0217`
 
 ## Review notes
 
@@ -71,6 +80,7 @@ finished: "2026-11-07 18:10:01"
 - [debt] (medium) probe-copy.sh does not check it runs from the repo root; from a subfolder it copies only that subfolder. NOTE open
 - [note] No eval run called probe-copy.sh; agents used the mktemp chain the skill line shows. NOTE open
 - [note] Task 3 box text still names the dropped no-copy line; plan text is changed only through acta commands. NOTE open
+- Review: deep, 2 rounds plus polish. Round 1 BLOCKED (copy kept .git, fixed in round 2), round 2 CLEAN, polish CLEAN. Fact-check not run: the one BLOCKER was about real repo state, a kind it may not move. BLOCKER 1, NOTE 22, pre-existing 1 (bug debug-bisect-breaks-read-only-rule). Open notes: no eval run called probe-copy.sh; nested submodule .git files still copied; empty switch case reads better with a comment.
 
 ## State
 

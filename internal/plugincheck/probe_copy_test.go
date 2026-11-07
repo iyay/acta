@@ -18,9 +18,13 @@ func TestProbeCopy(t *testing.T) {
 		name      string
 		broken    []string // commands stubbed to fail
 		tmpInRepo bool     // TMPDIR points inside the repo
+		gitFile   bool     // .git is a pointer file, as in a linked worktree
+		noGit     bool     // a plain folder with no .git at all
 		wantOK    bool
 	}{
 		{name: "copy works", wantOK: true},
+		{name: "linked worktree", gitFile: true, wantOK: true},
+		{name: "no .git", noGit: true, wantOK: true},
 		{name: "mktemp fails, mkdir fallback", broken: []string{"mktemp"}, wantOK: true},
 		{name: "mktemp and mkdir fail", broken: []string{"mktemp", "mkdir"}},
 		{name: "cp fails", broken: []string{"cp"}},
@@ -31,7 +35,14 @@ func TestProbeCopy(t *testing.T) {
 			repo := t.TempDir()
 			writeFile(t, filepath.Join(repo, "tracked.txt"), "edited, not committed")
 			writeFile(t, filepath.Join(repo, "untracked.txt"), "new")
-			writeFile(t, filepath.Join(repo, ".git", "HEAD"), "ref: refs/heads/main")
+			writeFile(t, filepath.Join(repo, ".env.example"), "KEY=")
+			switch {
+			case c.noGit:
+			case c.gitFile:
+				writeFile(t, filepath.Join(repo, ".git"), "gitdir: /somewhere/.git/worktrees/x")
+			default:
+				writeFile(t, filepath.Join(repo, ".git", "HEAD"), "ref: refs/heads/main")
+			}
 			tmp := t.TempDir()
 			if c.tmpInRepo {
 				tmp = filepath.Join(repo, "tmp")
@@ -69,10 +80,15 @@ func TestProbeCopy(t *testing.T) {
 			if got == "" || strings.HasPrefix(got+"/", realRepo+"/") {
 				t.Fatalf("copy path %q must be outside the repo %q", got, realRepo)
 			}
-			for _, f := range []string{"tracked.txt", "untracked.txt", filepath.Join(".git", "HEAD")} {
+			for _, f := range []string{"tracked.txt", "untracked.txt", ".env.example"} {
 				if _, err := os.Stat(filepath.Join(got, f)); err != nil {
 					t.Errorf("copy is missing %s: %v", f, err)
 				}
+			}
+			// A copied .git would let git in the copy change the real repo:
+			// a worktree's .git file points at the real repo's git folder.
+			if _, err := os.Lstat(filepath.Join(got, ".git")); err == nil {
+				t.Errorf("copy must not hold .git")
 			}
 		})
 	}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Makes a temp copy of the repo for debug probes and prints its path.
-# Run it from the repo root. The copy keeps uncommitted and untracked files
-# and .git, so the bug and git both behave as they do in the repo.
+# Run it from the repo root. The copy keeps uncommitted and untracked files,
+# so the bug shows as it does in the repo. It leaves out .git (see below).
 # On any failure it prints nothing and exits non-zero. Then
 # `D=$(bash probe-copy.sh) && cd "$D"` stops before a probe writes anything.
 set -euo pipefail
@@ -21,5 +21,12 @@ dest=$(mktemp -d "$base/acta-probe.XXXXXX" 2>/dev/null) || {
   mkdir -p "$dest" 2>/dev/null || exit 1
 }
 
-cp -R "$src/." "$dest/" 2>/dev/null || exit 1
+# Copy every entry, dotfiles too, except .git. In a linked worktree .git is
+# a small file that points at the real repo, so git in a copy that kept it
+# would move the real branch and index.
+shopt -s dotglob nullglob
+for entry in "$src"/*; do
+  [ "${entry##*/}" = .git ] && continue
+  cp -R "$entry" "$dest/" 2>/dev/null || exit 1
+done
 printf '%s\n' "$dest"
