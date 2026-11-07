@@ -32,4 +32,4 @@ Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 ha
 
 ## Review notes
 
-The orchestrator writes the level used, and any floor that raised it, into the one review line of the plan's `## Review notes`.
+The orchestrator writes the level used, and any floor that raised it, into the one review line of the plan's `## Review notes`. The line also gives `BLOCKER n, NOTE n, pre-existing n`: totals over rounds 1 to 3, after the merge. A light inline review counts as round 1; the polish review does not count. A BLOCKER the fact-check moved counts as a NOTE. `NOTE n` includes NOTEs cut by the cap; cut NOTEs are dropped on purpose and only their number stays.

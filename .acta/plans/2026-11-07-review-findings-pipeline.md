@@ -5,6 +5,7 @@ id: PLN-0213
 created: "2026-11-07 17:05:38"
 hash: oakb9p5
 started: "2026-11-07 17:09:11"
+finished: "2026-11-07 17:12:36"
 ---
 # Review findings pipeline implementation plan
 
@@ -47,12 +48,26 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All three touch `internal/plugin
 **Files:** Modify `plugin/skills/review/depth.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`.
 **Seam:** the depth file text as `skill_review_test.go` reads it.
 **verify:** The counts can be read the same way by any later reader. Cases: the review line gives `BLOCKER n, NOTE n, pre-existing n` over rounds 1 to 3 after dedupe; a light inline review counts as round 1; the polish review is not counted; a BLOCKER the fact-check moved counts as a NOTE; `NOTE n` includes NOTEs cut by the cap, and cut NOTEs are dropped on purpose; the `depth.md` cap rises only if the text does not fit.
-- [ ] Red: a plugincheck test expects the counts format and each counting rule, and fails because `depth.md` has none of them.
-- [ ] Change: add the counts rules under `## Review notes` in `depth.md`, raise its cap only if needed, run `scripts/test ./internal/plugincheck/ -run 'Review|Budget'` to green.
-- [ ] Commit: `feat(review): review line counts findings`.
+- [x] Red: a plugincheck test expects the counts format and each counting rule, and fails because `depth.md` has none of them.
+- [x] Change: add the counts rules under `## Review notes` in `depth.md`, raise its cap only if needed, run `scripts/test ./internal/plugincheck/ -run 'Review|Budget'` to green.
+- [x] Commit: `feat(review): review line counts findings`.
+
+## Fix round 1
+
+### Task 4: Keep review verdicts in the plan
+
+**verify:** Verdicts from a BLOCKED round reach rounds 2 and 3 on every path: a fix-round worker's own state write, a new session, a dispatch hand-off, and more findings than a State part holds (10 lines); every BLOCKED round files its Pre-existing items first; no rule dropped by the SKILL.md tightening is lost
+
+- [ ] BLOCKER: SKILL.md saves verdicts with acta state set <plan id> next, which the fix-round worker overwrites and which refuses more than 10 lines; write them with acta plan add <plan id> review-notes instead, the rule living in depth.md ## Rounds, and update spec item 7 to match
+- [ ] [fix] SKILL.md: restore the [fix] examples (a comment, a name, a wording change, a missing test, a one-line guard)
+- [ ] [fix] depth.md ## Understanding: restore that the review asks nothing about review_understanding
+- [ ] [fix] SKILL.md: every BLOCKED round, not only round 1, files its Pre-existing items first, and step 2's "them" reads as the BLOCKERs
+- [ ] [fix] code-reviewer.md: the BASE_SHA copy of a changed wiki page wins over its HEAD copy; the [EARLIER_FINDINGS] placeholder names the verdicts
+- [ ] [fix] skill_review_test.go: pin the NOTE order (the one that costs most if left first)
+- [ ] Commit with the trailer `Task: PLN-oakb9p5#4`
 
 ## State
 
 ### Next
 
-Task 2: SKILL.md is at its 9991-byte cap; new lines must be paid for by tightening its own text, keeping every Must string in TestSkillReview.
+All 3 tasks done. Next: acta:review round 1 over merge-base(main)..HEAD at deep depth.

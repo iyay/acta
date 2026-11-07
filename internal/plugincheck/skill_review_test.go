@@ -252,6 +252,13 @@ func TestReviewDepthFiles(t *testing.T) {
 			"The orchestrator numbers the BLOCKERs before the fact-check",
 			"becomes a NOTE, sorted into a bucket like any other",
 			"It counts for this run only and is never saved.",
+			// The counts feed later stats, so every reader must count the
+			// same way.
+			"`BLOCKER n, NOTE n, pre-existing n`",
+			"totals over rounds 1 to 3, after the merge",
+			"A light inline review counts as round 1; the polish review does not count.",
+			"A BLOCKER the fact-check moved counts as a NOTE.",
+			"`NOTE n` includes NOTEs cut by the cap; cut NOTEs are dropped on purpose and only their number stays.",
 		},
 		"skills/review/fact-check.md": {
 			"(A) the code it names is not in the diff under review",
