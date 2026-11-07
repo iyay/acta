@@ -483,13 +483,13 @@ func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 				t.Errorf("%s: the move rule is missing %q", name, want)
 			}
 		}
-		for n := 1; n <= 9; n++ {
+		for n := 1; n <= 10; n++ {
 			if !strings.Contains(rules, fmt.Sprintf("\n%d. ", n)) {
 				t.Errorf("%s: core rule %d is missing", name, n)
 			}
 		}
-		if strings.Contains(rules, "\n10. ") {
-			t.Errorf("%s: core rules reach 10", name)
+		if strings.Contains(rules, "\n11. ") {
+			t.Errorf("%s: core rules reach 11", name)
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
 			t.Errorf("%s: the skill index does not name scratch", name)
@@ -966,6 +966,26 @@ func TestSessionStartReviewUnderstanding(t *testing.T) {
 		}
 		if out := SessionStart(korean()); strings.Contains(out, "Review understanding") {
 			t.Errorf("codex %q: an unset value still wrote a line", codex)
+		}
+	}
+}
+
+// Rule 10 makes an agent clean up the worktrees it makes, without force, so
+// none is left behind as junk. Both copies of the rules must carry it.
+func TestSessionStartRuleTenWorktrees(t *testing.T) {
+	rule := "10. A worktree you make outside acta:build is yours to remove before you report: run git worktree remove without --force. When it refuses, show git status --short of that worktree (10 lines at most) and ask the user: commit, discard, or they run the force themselves."
+	raw, err := os.ReadFile(filepath.Join("..", "..", "plugin", "hooks", "default-rules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{"coreRules": coreRules, "default-rules.md": string(raw)} {
+		if !strings.Contains(text, rule) {
+			t.Errorf("%s: rule 10 missing", name)
+		}
+		for _, bad := range []string{"worktree remove --force", "worktree remove -f", "branch -D <"} {
+			if strings.Contains(text, bad) {
+				t.Errorf("%s: tells the agent to force: %q", name, bad)
+			}
 		}
 	}
 }
