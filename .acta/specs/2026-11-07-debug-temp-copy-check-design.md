@@ -22,15 +22,17 @@ A probe write never lands in the repo because a step before it failed.
 
 ## Design
 
-1. The "Read only until the cause is proven" ground rule of `SKILL.md` gets the rule, with the exact phrase `stops at the first failed step`: build the temp copy in one command chain that stops at the first failed step, with the example `D=$(mktemp -d) && cd "$D"` (a failed assignment stops `&&`, while `cd "$(mktemp -d)"` does not, since `cd ""` succeeds), and check that `pwd` is outside the repo before any write.
-2. When `mktemp` fails, make the folder with `mkdir -p "${TMPDIR:-/tmp}/probe"` instead (in the eval sandbox `mktemp` fails while `mkdir` there works). Only when that fails too, run only probes that write nothing, and report the missing copy as a gap. A first build that retried `mktemp` made agents skip their controls (PLN-0217 findings).
-3. `SKILL.md` keeps its line count. Its byte cap rises from 6546 to 6618 (user ruling 2026-11-07): a first build that paid for the rule by cutting "(in the temp copy)" from the Phase 3 control and the Phase 1 temp-copy line dropped `behavior.md` from 5/6 to 0/6, so those two stay.
+1. New script `plugin/skills/debug/probe-copy.sh` (bash, like `find-polluter.sh`). Run from the repo root, it makes a folder with `mktemp -d`, or with `mkdir -p "${TMPDIR:-/tmp}/acta-probe-$$"` when `mktemp` fails. It copies the working tree as it is into that folder, uncommitted and untracked files and `.git` included, and prints only the folder path. When no folder can be made or the copy fails, it exits non-zero and prints nothing on stdout.
+2. The "Read only until the cause is proven" ground rule of `SKILL.md` gets one short sentence with the exact phrase `stops at the first failed step`: make the copy with `D=$(bash probe-copy.sh) && cd "$D"`, a chain that stops at the first failed step. When there is no copy, run only probes that write nothing, and say so.
+3. `SKILL.md` goes back to its text from before this plan, plus that sentence. A first build that put the whole rule in the skill, and cut other text to pay for it, dropped `behavior.md` from 5/6 to 2/6 (PLN-0217 findings). The byte cap rises by the bytes of the new sentence; the line count stays at 76.
 4. The trap case from branch `debug-independent-check` (commit `1213642`) comes back as `plugin/evals/debug-independent-check/`, with its scaffold, prompt and `graders/behavior.md` as they were, and without `graders/independent-check.md`. A new judge grader `graders/no-repo-write.md` checks only that no file inside the repo was created, edited or deleted (Python `__pycache__` folders excepted), and carries `# guards: stops at the first failed step`. That phrase is the case's `evalCases` phrase.
 5. PLN-0214 is dropped and its branch never lands, so nothing merges with it. After this plan lands, the user deletes that branch.
 
 ## Testing
 
-- Red first in `internal/plugincheck/skill_debug_test.go`: the `Must` list asks for `stops at the first failed step`.
-- `internal/plugincheck/evals_test.go` gets two edits: an `evalCases` row for the case with that phrase in `skills/debug/SKILL.md`, and the case name in the `debug` map of `TestEvalLLMGradersAreOnlyTheJudgementCalls`. `TestEval*` passes.
-- Before the change: run the case three times on the current skill. After: three runs on the new skill. For each run, record in the plan's `findings` the `no-repo-write.md` and `behavior.md` verdicts, read from the eval report. `no-repo-write.md` must pass three of three on the new skill, and `behavior.md` must pass no fewer runs than on the old skill. A baseline with no slip still counts, since the gate of PLN-0214 already showed one.
+- Red first in `internal/plugincheck/skill_debug_test.go`: the `Must` list asks for `stops at the first failed step` and `probe-copy.sh`.
+- A Go test runs `probe-copy.sh` against a fake repo in a temp folder: the printed path is outside the repo; an uncommitted edit and an untracked file are in the copy; with `mktemp` stubbed to fail on `PATH`, the `mkdir` fallback is used; with both stubbed to fail, the exit is non-zero and stdout is empty.
+- `internal/plugincheck/evals_test.go` registers the case with the phrase in `skills/debug/SKILL.md`, and the case is in the `debug` map of `TestEvalLLMGradersAreOnlyTheJudgementCalls`. `TestEval*` passes.
+- `probe-copy.sh` stays non-executable in the repo; the skill runs it with `bash`, so `final_test.go` does not change.
+- Three eval runs on the new skill: `no-repo-write.md` three of three, and `behavior.md` at least two of three. If `behavior.md` drops below that, the whole rule is backed out and the bug is parked. Each run's verdicts go in the plan's `findings`.
 - `scripts/test` green. At land, the six existing debug evals and this case stay green.

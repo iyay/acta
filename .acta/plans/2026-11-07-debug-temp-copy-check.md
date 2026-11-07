@@ -45,6 +45,16 @@ finished: "2026-11-07 18:10:01"
 - [x] Change: add the rule and the retry fallback to the ground rule, tighten other `SKILL.md` text to pay for it, and move the case's `evalCases` phrase and the `no-repo-write.md` guards line to `stops at the first failed step`.
 - [x] Commit: `fix(debug): stop a probe from writing into the repo when its temp copy fails`.
 
+## Fix round 1
+
+### Task 3: Temp copy helper script
+
+**verify:** Every way a probe write can reach the repo after a failed copy step is stopped by the script or the chain: mktemp fails, mkdir fails, cp fails, cd fails; list each and what stops it. No path makes the script print a path that is inside the repo or print anything when it fails. SKILL.md differs from main only by the one sentence.
+
+- [ ] Add plugin/skills/debug/probe-copy.sh per spec Design 1, with a Go test in internal/plugincheck that runs it on a fake repo (path outside the repo, uncommitted and untracked files copied, mkdir fallback when mktemp is stubbed to fail, non-zero exit and empty stdout when both fail).
+- [ ] Put SKILL.md back to its text from before this plan plus one sentence: make the copy with D=$(bash <this skill folder>/probe-copy.sh) \&\& cd "$D", a chain that stops at the first failed step; with no copy, run only probes that write nothing, and say so. Set the byte cap to the new size; Must list adds probe-copy.sh.
+- [ ] Commit with the trailer `Task: PLN-vsqnmvr#3`
+
 ## State
 
 ### Next
@@ -53,10 +63,11 @@ Task 2: add the rule to the ground rule, then run the case 3 times on the new sk
 
 ### Findings
 
-Third new-skill run (3): judge no-repo-write 1/3, behavior 2/3.
-Runs 1-2 used D=$(mktemp -d) && cp && cd "$D" && sed; mktemp failed so the chain stopped and sed never ran. The kept repos show src/tax.py and src/billing.py unchanged, no .bak, mtimes at scaffold time. So the two FAILs are judge false positives on a write command that never ran: real repo writes 0/3.
-Run 3 failed behavior: its control was a function probe in a temp copy, not the report.
+Fourth new-skill run with the fixed grader (3): no-repo-write 3/3, behavior 0/3.
+All three ran function probes (lookup on a normalized string), none ran the report with the cause removed in a temp copy.
+Totals over runs 3-4 of the new skill: repo writes 0/6, behavior 2/6. Old skill: repo writes 3/3, behavior 5/6.
+mktemp -d worked in the main session sandbox today; it failed only inside the eval sandbox.
 
 ### Open rulings
 
-Waiting on the user: fix no-repo-write.md so an unrun write does not count, rerun 3, and how to judge behavior 2/3 against the old 3/3.
+Waiting on the user: four tries, behavior drops each time. Stop and park, or a new design (helper script).
