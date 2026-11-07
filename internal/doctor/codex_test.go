@@ -74,7 +74,7 @@ func TestDoctorCodexStates(t *testing.T) {
 
 // The codex line comes right after harness, and only when Codex is there.
 func TestDoctorCodexLineOrder(t *testing.T) {
-	want := []string{"binary", "build", "harness", "codex", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "agents-view", "setup", "theme"}
+	want := []string{"binary", "build", "harness", "codex", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "worktrees", "agents-view", "setup", "theme"}
 	if got := names(Run(codexEnv(t, codexOn))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
 	}

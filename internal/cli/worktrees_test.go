@@ -83,3 +83,15 @@ func TestWorktreesBadFlagPrintsUsage(t *testing.T) {
 		t.Fatal("help does not list worktrees")
 	}
 }
+
+func TestDoctorNamesStrayWorktrees(t *testing.T) {
+	doctorHome(t)
+	repo, stray := strayRepo(t)
+	var stdout, stderr strings.Builder
+	inDir(t, repo, func() {
+		Run([]string{"doctor"}, strings.NewReader(""), false, &stdout, &stderr)
+	})
+	if !strings.Contains(stdout.String(), "warn worktrees: 1 stray worktrees: ") || !strings.Contains(stdout.String(), filepath.Base(stray)) {
+		t.Fatalf("doctor output:\n%s", stdout.String())
+	}
+}

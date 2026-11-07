@@ -132,7 +132,7 @@ func TestBrokenThemeDoesNotFailTheRun(t *testing.T) {
 }
 
 func TestDoctorChecksRunInFixedOrder(t *testing.T) {
-	want := []string{"binary", "build", "harness", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "agents-view", "setup", "theme"}
+	want := []string{"binary", "build", "harness", "stale-links", "conflicts", "repo", "schema", "files", "wiki", "worktrees", "agents-view", "setup", "theme"}
 	if got := names(Run(env(t))); !reflect.DeepEqual(got, want) {
 		t.Fatalf("order %v want %v", got, want)
 	}

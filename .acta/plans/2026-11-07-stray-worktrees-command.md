@@ -5,6 +5,7 @@ id: PLN-0215
 created: "2026-11-07 17:36:17"
 hash: z7jtm2h
 started: "2026-11-07 17:43:59"
+finished: "2026-11-07 17:50:24"
 ---
 # Stray worktrees: the acta worktrees command
 
@@ -51,21 +52,42 @@ started: "2026-11-07 17:43:59"
 **Files:** `internal/cli/worktrees.go`, `internal/cli/worktrees_test.go`, `internal/cli/cli.go`, `internal/cli/help.go`
 **Seam:** `cli.Run([]string{"worktrees", ...}, stdout, stderr)`
 **verify:** Wiring only. The command loads the board, passes each plan's slug and status to `internal/worktrees`, and prints the text list, or one JSON object per line with `--json`. One success path (`--clean` in a repo with one clean stray removes it and exits 0) and one error passed up (run outside a git repo exits non-zero with the error on stderr). Bad flags print the usage line, and `acta help` lists the command.
-- [ ] Red: a CLI test fails because `worktrees` is an unknown command.
-- [ ] Change: add `cmdWorktrees`, its case in `cli.go` and its help entry.
-- [ ] Commit: feat(cli): add acta worktrees
+- [x] Red: a CLI test fails because `worktrees` is an unknown command.
+- [x] Change: add `cmdWorktrees`, its case in `cli.go` and its help entry.
+- [x] Commit: feat(cli): add acta worktrees
 
 ### Task 4: Doctor warns on stray worktrees
 
 **Files:** `internal/doctor/worktrees.go`, `internal/doctor/worktrees_test.go`, `internal/doctor/doctor.go`, `internal/cli/doctor.go`
 **Seam:** `doctor.Run(doctor.Env)` with a new `Env.StrayWorktrees []string`, filled by `internal/cli/doctor.go` from `worktrees.List`.
 **verify:** Wiring only. The `worktrees` check is OK with no strays, and warns with the count and the fix `acta worktrees --clean` when there is at least one. It never fails the doctor run, and outside a git repo it prints no worktrees line.
-- [ ] Red: a doctor test with one stray in `Env` fails because no `worktrees` result exists.
-- [ ] Change: add `checkWorktrees` to `Run`, and fill the new field in the CLI.
-- [ ] Commit: feat(doctor): warn on stray worktrees
+- [x] Red: a doctor test with one stray in `Env` fails because no `worktrees` result exists.
+- [x] Change: add `checkWorktrees` to `Run`, and fill the new field in the CLI.
+- [x] Commit: feat(doctor): warn on stray worktrees
+
+## Fix round 1
+
+### Task 5: Never remove a worktree whose work or age is unknown
+
+**verify:** No worktree that holds a commit no branch, tag or remote holds, and no worktree whose activity time cannot be read, is ever a stray; list every path checked: detached with its own commit, detached at a branch tip, admin gitdir written as a relative path, admin folder not found, locked with its folder gone, a branch named like a flag, a rev-list error, and the doctor and --root wiring.
+
+- [ ] BLOCKER: a detached worktree with a commit no ref holds reads clean and --clean removes it, leaving the commit dangling (worktrees.go judge skips the commit check when branch is empty).
+- [ ] BLOCKER: when the admin folder lookup misses (worktree.useRelativePaths writes a relative gitdir), lastActivity returns the zero time and an active worktree reads idle, so --clean removes it with its gitignored files.
+- [ ] [fix] pass -- before the branch name in git branch -d, so a branch named like a flag cannot become a flag.
+- [ ] [fix] check the lock before the missing folder, so a locked worktree whose folder is gone stays protected.
+- [ ] [fix] drop omitempty from reason and status, so every --json line carries every field the spec names.
+- [ ] [fix] run acta worktrees on the RepoRoot of the loaded config, not os.Getwd, so --root judges the same repo it loaded plans from.
+- [ ] [fix] put the git error in the reason when rev-list fails, instead of saying the branch has unmerged commits.
+- [ ] [fix] say "1 stray worktree" in the doctor warning, not "1 stray worktrees".
+- [ ] Commit with the trailer `Task: PLN-z7jtm2h#5`
 
 ## State
 
 ### Next
 
-Task 2: add Clean on top of List in internal/worktrees; runGit var lets tests record calls.
+Build done: tasks 1-4 committed. Next: acta:review over main..HEAD, then land.
+
+### Findings
+
+Doctor order tests live in two files: internal/doctor/doctor_test.go and codex_test.go; both list every check name.
+acta state <plan> read-back said "no running plan" from the worktree even after state set wrote the section.
