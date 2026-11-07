@@ -327,3 +327,47 @@ func TestLandFinalPlanCheck(t *testing.T) {
 		t.Errorf("land/tidy.md step 7 must clean up only after the final plan check (move at %d, clean at %d)", move, clean)
 	}
 }
+
+// TestLandKeepsTestOutput pins what land does with files a test left behind.
+// In an eval run an agent deleted a cache folder to get a clean tree, and
+// git worktree remove refuses untracked files, which pushed it toward
+// --force. So each step that meets those files must stop and let the user
+// choose, and land must never rewrite a commit.
+func TestLandKeepsTestOutput(t *testing.T) {
+	steps := map[string]string{}
+	for _, file := range []string{"SKILL.md", "tidy.md"} {
+		for _, line := range strings.Split(readSkill(t, "skills/land/"+file), "\n") {
+			for _, prefix := range []string{"1. Preconditions", "7. Clean up", "10. "} {
+				if strings.HasPrefix(line, prefix) {
+					steps[file+" "+prefix] = line
+				}
+			}
+		}
+	}
+	const refused = "`git worktree remove` refusing: stop, show `git status --porcelain --ignored` of that worktree, and give the user two choices: the user removes the files, or stop the land and keep the worktree and branch. Add no commit here: the parent already moved, so it would never get it. Never `--force`, never delete the files first."
+	for _, c := range []struct{ step, want string }{
+		// Files a test made are not work, but they are not the agent's to delete.
+		{"SKILL.md 1. Preconditions", "Untracked files a test or tool made (cache folders and the like) are not uncommitted work and are never deleted."},
+		// The user picks; the agent never picks for them.
+		{"SKILL.md 1. Preconditions", "Still there at land: show them and give the user three choices: add a `.gitignore` line (one commit on the branch; the gates then run again for that file, as step 6 does for a non-planning path), the user removes them, or stop the land. Never pick for the user."},
+		{"SKILL.md 7. Clean up", refused},
+		{"tidy.md 7. Clean up", refused},
+		// Tidy deletes the old branch without asking; that rule stays.
+		{"tidy.md 7. Clean up", "per core rule 5 this delete needs no confirmation."},
+		// An amend at land once rewrote a merge commit.
+		{"SKILL.md 10. ", "never amend a commit"},
+	} {
+		if !strings.Contains(steps[c.step], c.want) {
+			t.Errorf("land %s missing %q", c.step, c.want)
+		}
+	}
+	// At step 7 the parent already moved. A .gitignore commit made then never
+	// reaches it, and in tidy the branch -D right after drops it without a word.
+	for _, step := range []string{"SKILL.md 7. Clean up", "tidy.md 7. Clean up"} {
+		for _, banned := range []string{".gitignore", "three choices"} {
+			if strings.Contains(steps[step], banned) {
+				t.Errorf("land %s still offers %q after the merge", step, banned)
+			}
+		}
+	}
+}

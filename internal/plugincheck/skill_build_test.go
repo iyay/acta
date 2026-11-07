@@ -605,6 +605,27 @@ func TestBuildProgressGates(t *testing.T) {
 	}
 }
 
+// TestBuildKeepsTestOutput pins what build does with files a test left
+// behind. In an eval run an agent deleted a cache folder before the commit to
+// get a clean tree. The rule sits where git status is read before the commit,
+// and only the orchestrator asks the user, since a subagent cannot.
+func TestBuildKeepsTestOutput(t *testing.T) {
+	var step string
+	for _, line := range strings.Split(readSkill(t, "skills/build/SKILL.md"), "\n") {
+		if strings.Contains(line, "Before the commit, read `git status` and `git diff` once") {
+			step = line
+		}
+	}
+	for _, want := range []string{
+		"Untracked files a test or tool made (cache folders and the like) are not uncommitted work: never delete them.",
+		"The orchestrator, not an implementer subagent, shows them to the user and offers one `.gitignore` line for them in the task commit, added only after the user's yes.",
+	} {
+		if !strings.Contains(step, want) {
+			t.Errorf("build step 3 missing %q", want)
+		}
+	}
+}
+
 // TestBuildOneFilePerExecutor keeps each executor's own text in its own file,
 // so a run reads the body plus one mode file and never the other two. The body
 // byte cap lives in budget_test.go.

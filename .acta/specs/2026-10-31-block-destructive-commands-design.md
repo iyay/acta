@@ -93,8 +93,12 @@ branch -D` exemption stays as it is.
   gates run again only for that file, as land step 6 does for a non-planning
   path); remove them themselves; or stop the land. Never pick for the user.
 - Land step 7 and tidy step 7: when `git worktree remove` refuses, stop, show
-  `git status --porcelain --ignored` of that worktree, and ask with the same
-  three choices. Never `--force`, never delete the files first.
+  `git status --porcelain --ignored` of that worktree, and give the user two
+  choices: the user removes the files, or stop the land and keep the worktree
+  and branch. No `.gitignore` choice here: the parent already moved, so a new
+  commit on the branch would never reach it, and in tidy the `git branch -D`
+  right after would drop it. That choice is offered only at land step 1,
+  before the merge. Never `--force`, never delete the files first.
 - Land: never amend a commit at land time.
 - Wiki `omp-report-file`: moving acta's own omp report out of the worktree is
   not a delete and stays allowed; the page says the empty folder goes with
