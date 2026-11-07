@@ -1,6 +1,7 @@
 package worktrees
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -210,5 +211,103 @@ func TestListOutsideGit(t *testing.T) {
 	t.Parallel()
 	if _, err := List(t.TempDir(), nil, time.Now()); err == nil {
 		t.Fatal("want an error outside a git repo")
+	}
+}
+
+func TestClean(t *testing.T) {
+	// Not parallel: it swaps runGit to see every git call.
+	base, repo := newRepo(t)
+	wt := func(name string, args ...string) string {
+		p := filepath.Join(base, name)
+		git(t, repo, append([]string{"worktree", "add", "-q", p}, args...)...)
+		return p
+	}
+	gone := wt("gone", "-b", "gone")
+	refused := wt("refused", "-b", "refused")
+	detached := wt("detached", "--detach")
+	dirty := wt("dirty", "-b", "dirty")
+	write(t, filepath.Join(dirty, "junk.txt"), "x\n")
+	missing := wt("missing", "-b", "missing")
+	stuck := wt("stuck", "-b", "stuck")
+	protected := wt("protected", "-b", "protected")
+	for _, p := range []string{gone, refused, detached, dirty, missing, stuck} {
+		age(t, p)
+	}
+	if err := os.RemoveAll(missing); err != nil {
+		t.Fatal(err)
+	}
+
+	var calls [][]string
+	real := runGit
+	t.Cleanup(func() { runGit = real })
+	runGit = func(dir string, args ...string) (string, error) {
+		calls = append(calls, args)
+		// git branch -d refuses a branch it thinks is not merged. Fake that
+		// for one branch, so the refused path runs.
+		if len(args) == 3 && args[0] == "branch" && args[2] == "refused" {
+			return "", errors.New("error: the branch 'refused' is not fully merged")
+		}
+		// Fake a remove that git refuses, as on a folder it cannot delete.
+		if len(args) == 3 && args[0] == "worktree" && args[1] == "remove" && same(args[2], stuck) {
+			return "", errors.New("fatal: cannot remove stuck")
+		}
+		return real(dir, args...)
+	}
+
+	// A listing right before the clean must not stop it.
+	if _, err := List(repo, nil, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Clean(repo, nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		path, state, reason string
+		kept                bool
+	}{
+		{gone, "removed", "", false},
+		{refused, "removed", "not fully merged", true},
+		{detached, "removed", "", false},
+		{missing, "removed", "", false},
+		{stuck, "kept", "cannot remove stuck", false},
+		{dirty, "dirty", "", false},
+		{protected, "protected", "24 hours", false},
+	}
+	for _, c := range cases {
+		e := byPath(t, got, c.path)
+		if e.State != c.state || e.BranchKept != c.kept || !strings.Contains(e.Reason, c.reason) {
+			t.Errorf("%s: got %+v, want state %q kept %v reason %q", filepath.Base(c.path), e, c.state, c.kept, c.reason)
+		}
+	}
+	for _, p := range []string{gone, refused, detached, missing} {
+		if strings.Contains(git(t, repo, "worktree", "list"), p+" ") {
+			t.Errorf("%s still listed", filepath.Base(p))
+		}
+	}
+	for _, p := range []string{dirty, protected, stuck} {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("%s was touched: %v", filepath.Base(p), err)
+		}
+	}
+	branches := git(t, repo, "branch", "--list")
+	if strings.Contains(branches, "gone") || !strings.Contains(branches, "refused") {
+		t.Errorf("branches after clean:\n%s", branches)
+	}
+	for _, args := range calls {
+		for _, a := range args {
+			if a == "--force" || a == "-f" || a == "-D" || a == "-ff" {
+				t.Errorf("git called with %s: %v", a, args)
+			}
+		}
+		if len(args) > 0 && args[0] == "branch" && (len(args) != 3 || args[1] != "-d") {
+			t.Errorf("unexpected branch call %v", args)
+		}
+	}
+	for _, args := range calls {
+		if len(args) > 2 && args[0] == "branch" && args[2] == "" {
+			t.Errorf("branch call for a detached worktree: %v", args)
+		}
 	}
 }

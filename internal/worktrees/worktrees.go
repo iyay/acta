@@ -20,12 +20,12 @@ const maxStatus = 10
 
 // The states an Entry can have. The spec names them for --json.
 const (
-	Protected = "protected"
-	Clean     = "clean"
-	Dirty     = "dirty"
-	Missing   = "missing"
-	Removed   = "removed"
-	Kept      = "kept"
+	StateProtected = "protected"
+	StateClean     = "clean"
+	StateDirty     = "dirty"
+	StateMissing   = "missing"
+	StateRemoved   = "removed"
+	StateKept      = "kept"
 )
 
 // Plan is what the rules need to know about one plan.
@@ -62,38 +62,80 @@ type porcelain struct {
 // List gives every linked worktree of the repo that holds dir, except the
 // main checkout and the worktree dir sits in. It only reads.
 func List(dir string, plans []Plan, now time.Time) ([]Entry, error) {
-	top, err := runGit(dir, "rev-parse", "--show-toplevel")
+	_, res, err := list(dir, plans, now)
+	return res, err
+}
+
+// Clean removes each clean or missing stray with a plain git worktree
+// remove, then deletes its branch with git branch -d. It never forces
+// either one, so git itself refuses anything that would lose work. A
+// refusal is reported in the entry, never as an error.
+func Clean(dir string, plans []Plan, now time.Time) ([]Entry, error) {
+	main, res, err := list(dir, plans, now)
 	if err != nil {
 		return nil, err
+	}
+	out := make([]Entry, 0, len(res))
+	for _, e := range res {
+		if e.State == StateClean || e.State == StateMissing {
+			e = remove(main, e)
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// remove takes one stray away and gives back its new entry.
+func remove(main string, e Entry) Entry {
+	if _, err := runGit(main, "worktree", "remove", e.Path); err != nil {
+		e.State, e.Reason = StateKept, err.Error()
+		return e
+	}
+	e.State = StateRemoved
+	if e.Branch == "" {
+		return e
+	}
+	if _, err := runGit(main, "branch", "-d", e.Branch); err != nil {
+		e.BranchKept, e.Reason = true, err.Error()
+	}
+	return e
+}
+
+// list does the work of List and also gives the main checkout's path, which
+// every remove runs from.
+func list(dir string, plans []Plan, now time.Time) (string, []Entry, error) {
+	top, err := runGit(dir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", nil, err
 	}
 	out, err := runGit(dir, "worktree", "list", "--porcelain")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	blocks := parse(out)
 	if len(blocks) == 0 {
-		return nil, fmt.Errorf("git listed no worktrees in %s", dir)
+		return "", nil, fmt.Errorf("git listed no worktrees in %s", dir)
 	}
 	main := blocks[0].path
 	admins, err := adminDirs(dir)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	var res []Entry
 	for _, b := range blocks[1:] {
 		if same(b.path, top) {
 			continue
 		}
-		res = append(res, judge(main, b, admins[clean(b.path)], plans, now))
+		res = append(res, judge(main, b, admins[resolve(b.path)], plans, now))
 	}
-	return res, nil
+	return main, res, nil
 }
 
 // judge applies the rules to one worktree, in the spec's order.
 func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) Entry {
 	e := Entry{Path: b.path, Branch: b.branch}
 	if _, err := os.Stat(b.path); b.missing || err != nil {
-		e.State = Missing
+		e.State = StateMissing
 		return e
 	}
 	// Read the file times before any git command runs in the worktree: a
@@ -101,35 +143,35 @@ func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) 
 	last := lastActivity(admin)
 	switch {
 	case b.locked:
-		e.State, e.Reason = Protected, "locked"
+		e.State, e.Reason = StateProtected, "locked"
 		return e
 	case now.Sub(last) < Idle:
-		e.State, e.Reason = Protected, "active in the last 24 hours"
+		e.State, e.Reason = StateProtected, "active in the last 24 hours"
 		return e
 	}
 	if b.branch != "" {
 		if n, err := runGit(main, "rev-list", "--count", "HEAD..refs/heads/"+b.branch); err != nil || n != "0" {
 			// When git cannot tell, keep it: a lost branch costs more than junk.
-			e.State, e.Reason = Protected, "branch has unmerged commits"
+			e.State, e.Reason = StateProtected, "branch has unmerged commits"
 			return e
 		}
 		for _, p := range plans {
 			if p.Slug == b.branch && p.Status != "done" && p.Status != "dropped" {
-				e.State, e.Reason = Protected, "branch of open plan "+p.Slug
+				e.State, e.Reason = StateProtected, "branch of open plan "+p.Slug
 				return e
 			}
 		}
 	}
 	out, err := runGit(b.path, "--no-optional-locks", "status", "--porcelain")
 	if err != nil {
-		e.State, e.Reason = Protected, "cannot read git status: "+err.Error()
+		e.State, e.Reason = StateProtected, "cannot read git status: "+err.Error()
 		return e
 	}
 	if out == "" {
-		e.State = Clean
+		e.State = StateClean
 		return e
 	}
-	e.State = Dirty
+	e.State = StateDirty
 	lines := strings.Split(out, "\n")
 	if len(lines) > maxStatus {
 		rest := len(lines) - maxStatus
@@ -186,7 +228,7 @@ func adminDirs(dir string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		res[clean(filepath.Dir(strings.TrimSpace(string(raw))))] = admin
+		res[resolve(filepath.Dir(strings.TrimSpace(string(raw))))] = admin
 	}
 	return res, nil
 }
@@ -206,13 +248,13 @@ func lastActivity(admin string) time.Time {
 	return last
 }
 
-// clean resolves links in a path, so /tmp and /private/tmp on macOS match.
+// resolve follows links in a path, so /tmp and /private/tmp on macOS match.
 // A path that no longer exists keeps its plain form.
-func clean(p string) string {
+func resolve(p string) string {
 	if r, err := filepath.EvalSymlinks(p); err == nil {
 		return r
 	}
 	return filepath.Clean(p)
 }
 
-func same(a, b string) bool { return clean(a) == clean(b) }
+func same(a, b string) bool { return resolve(a) == resolve(b) }

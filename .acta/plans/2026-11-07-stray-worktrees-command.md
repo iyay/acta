@@ -42,9 +42,9 @@ started: "2026-11-07 17:43:59"
 **Files:** `internal/worktrees/worktrees.go`, `internal/worktrees/worktrees_test.go`
 **Seam:** `worktrees.Clean(repo string, plans []Plan, now time.Time) ([]Entry, error)`
 **verify:** `Clean` removes only `clean` and `missing` strays, each with plain `git worktree remove <path>` and then `git branch -d`, and no path through it ever runs a forced remove or a forced branch delete. List each path: removed with branch deleted, removed with `-d` refused (`branch_kept` true and the refusal in `reason`), detached removed with no branch call, a remove git refuses (`kept` with git's error text and no error returned), and dirty or protected left as they were. A `List` right before `Clean` does not stop it from removing an idle clean stray.
-- [ ] Red: tests for each path above fail because `Clean` does not exist.
-- [ ] Change: add `Clean` on top of `List`, recording each git call so a test can assert no `--force`, `-f` or `-D` appears.
-- [ ] Commit: feat(worktrees): remove clean stray worktrees without force
+- [x] Red: tests for each path above fail because `Clean` does not exist.
+- [x] Change: add `Clean` on top of `List`, recording each git call so a test can assert no `--force`, `-f` or `-D` appears.
+- [x] Commit: feat(worktrees): remove clean stray worktrees without force
 
 ### Task 3: acta worktrees command
 
