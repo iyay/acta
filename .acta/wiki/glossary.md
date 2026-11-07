@@ -12,6 +12,7 @@ land: merge a clean branch to main and clean up its worktree.
 polish: the final review-notes commit on a branch, never a fix round of its own.
 run-one: the machine-wide lock that lets one full test suite run at a time.
 stamp: the started or finished line `acta tick` writes into the parent spec.
+stray worktree: a linked worktree no open plan owns, not locked and idle for 24 hours; `acta worktrees --clean` removes it when clean.
 voice: the user setting in `~/.acta/config.yaml` (chat language, style, executor); setup writes it.
 wiki: git-kept project notes in `.acta/wiki/`, one concept per file, no ids and no status.
 worktree: one git checkout per branch where all code changes happen.

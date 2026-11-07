@@ -1,0 +1,8 @@
+---
+id: DBT-0157
+hash: hrazdfy
+parent: plans/2026-11-07-stray-worktrees-rules
+---
+# Review NOTEs: Stray worktrees: rules, land and tidy
+
+- [ ] (medium) tidy step 3 removes the temp gate worktree with a plain remove, so a gate run that leaves untracked files (node_modules, .venv, __pycache__) makes it refuse and stalls the tidy land on a user question.
