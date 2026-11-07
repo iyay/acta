@@ -339,3 +339,33 @@ func TestCmdStateSetEmptyStdinNeedsClear(t *testing.T) {
 		t.Fatal("a refused call made a commit")
 	}
 }
+
+// A build ticks its plan before its first plan commit, so the plan file is
+// only changed, not committed, in the worktree. acta state run there must
+// still find it. Run from main, or with the file unchanged, it stays hidden.
+func TestCmdStateFindsAnUncommittedPlanInThisWorktree(t *testing.T) {
+	dir := stateRepo(t, stateFreshPlan)
+	wt := filepath.Join(t.TempDir(), "live")
+	gitOut(t, dir, "worktree", "add", "-q", "-b", "live", wt)
+	if err := os.WriteFile(stateFile(wt), []byte(startedStatePlan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, stderr := runState(t, wt, "", "plans/2026-10-05-live-work-state")
+	if code != exitOK || !strings.Contains(out, "### Next\n\nrun the state test") {
+		t.Fatalf("in the worktree: exit %d stdout %q stderr %q", code, out, stderr)
+	}
+
+	// From the main checkout the change in the other worktree does not count.
+	code, _, stderr = runState(t, dir, "", "plans/2026-10-05-live-work-state")
+	if code != exitBadInput || !strings.Contains(stderr, "no running plan") {
+		t.Fatalf("from main: exit %d stderr %q", code, stderr)
+	}
+
+	// A plan file git only copied into a worktree, unchanged, does not count.
+	quiet := filepath.Join(t.TempDir(), "quiet")
+	gitOut(t, dir, "worktree", "add", "-q", "-b", "quiet", quiet)
+	code, _, stderr = runState(t, quiet, "", "plans/2026-10-05-live-work-state")
+	if code != exitBadInput || !strings.Contains(stderr, "no running plan") {
+		t.Fatalf("unchanged copy: exit %d stderr %q", code, stderr)
+	}
+}

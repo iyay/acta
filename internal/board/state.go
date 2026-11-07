@@ -106,6 +106,40 @@ func planStates(cfg config.Config, keep func(*Item) bool) []RunState {
 	return out
 }
 
+// PlanStateHere gives the first plan named picks from the linked worktree
+// cfg was loaded in, when that worktree has changed the plan file and no
+// commit of its branch touched it yet. A build ticks its plan before its
+// first plan commit, and acta state must still read the plan back there.
+// The main checkout never counts, and neither does a plan file git only
+// copied into the worktree, so other worktrees' plans stay hidden.
+func PlanStateHere(cfg config.Config, named func(*Item) bool) (RunState, bool) {
+	if !cfg.IsGit || !gitc.IsLinkedWorktree(cfg.RepoRoot) {
+		return RunState{}, false
+	}
+	wts, err := gitc.Worktrees(cfg.RepoRoot)
+	if err != nil {
+		return RunState{}, false
+	}
+	b, err := Load(cfg)
+	if err != nil {
+		return RunState{}, false
+	}
+	for _, w := range wts {
+		if !sameDir(w.Path, cfg.RepoRoot) {
+			continue
+		}
+		for _, it := range b.Items {
+			if it.Kind != KindPlan || !named(it) {
+				continue
+			}
+			if dirty, err := gitc.IsDirty(cfg.RepoRoot, it.Path); err == nil && dirty {
+				return runState(cfg.RepoRoot, b, it, w), true
+			}
+		}
+	}
+	return RunState{}, false
+}
+
 // wroteLater says whether branch made a newer commit on the file than other
 // did. Anything git cannot answer says no, so the entry already listed stays.
 func wroteLater(repo, file, branch, other string) bool {

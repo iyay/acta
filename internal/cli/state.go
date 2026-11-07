@@ -37,6 +37,10 @@ func cmdState(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return exitOK
 		}
 	}
+	if r, ok := board.PlanStateHere(cfg, func(it *board.Item) bool { return namesPlan(it, args[0]) }); ok {
+		fmt.Fprint(stdout, r.Full())
+		return exitOK
+	}
 	fmt.Fprintf(stderr, "no running plan %s; run: acta state\n", args[0])
 	return exitBadInput
 }
