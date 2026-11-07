@@ -177,6 +177,76 @@ func TestCodeReviewerTemplateBucketTags(t *testing.T) {
 	}
 }
 
+// TestReviewOrchestratorFindingsPipeline pins the orchestrator side: the two
+// reviewers' lists merge before anything acts on them, a bug the diff did not
+// bring in goes to acta:bug on both the BLOCKED and the CLEAN path, and the
+// verdicts live in the plan state so a later session still has them.
+func TestReviewOrchestratorFindingsPipeline(t *testing.T) {
+	body := readSkill(t, "skills/review/SKILL.md")
+	for _, want := range []string{
+		"Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect",
+		"before the fact-check and before the fix task",
+		"`### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree, first thing in every BLOCKED round",
+		"depth.md `## Rounds` keeps the verdicts.",
+		"A comment, a name, a wording change, a missing test, a one-line guard.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review/SKILL.md missing %q", want)
+		}
+	}
+	// The CLEAN path has its own bug step, ahead of the NOTE sorting, so a
+	// round with only Pre-existing items still files them.
+	_, clean, _ := strings.Cut(body, "\n## After a CLEAN round\n")
+	bug, sort := strings.Index(clean, "acta:bug"), strings.Index(clean, "1. Sort every NOTE")
+	if bug < 0 || sort < 0 || bug > sort {
+		t.Errorf("## After a CLEAN round must send Pre-existing items to acta:bug before step 1; got indexes %d, %d", bug, sort)
+	}
+	// The verdicts live in the plan, not in the State: a fix-round worker
+	// rewrites its own State part, and a part holds only 10 lines.
+	for _, rel := range []string{"skills/review/SKILL.md", "skills/review/depth.md"} {
+		if strings.Contains(readSkill(t, rel), "acta state set") {
+			t.Errorf("%s keeps review verdicts in the State, where a worker overwrites them", rel)
+		}
+	}
+	depth := readSkill(t, "skills/review/depth.md")
+	for _, want := range []string{
+		"write every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`",
+		"Rounds 2 and 3 read those lines back from the plan's `## Review notes` and pass them as `[EARLIER_FINDINGS]`, with the lines of every `## Fix round` marked `fixed`.",
+		"into the summary line of the plan's `## Review notes`",
+		"The review asks nothing about it.",
+	} {
+		if !strings.Contains(depth, want) {
+			t.Errorf("review/depth.md missing %q", want)
+		}
+	}
+}
+
+// TestCodeReviewerFindingsPipeline pins what the reviewer brief adds so each
+// finding finds one home: the repo's wiki rules, read from the base so a diff
+// cannot weaken its own review, a slot for bugs the diff did not bring in, a
+// cap on NOTEs, and earlier findings that carry what happened to them.
+func TestCodeReviewerFindingsPipeline(t *testing.T) {
+	txt := readSkill(t, "skills/review/code-reviewer.md")
+	for _, want := range []string{
+		"acta wiki match <file>",
+		"changes or deletes is read at `BASE_SHA`",
+		"its `paths:` at `BASE_SHA` cover a changed file",
+		"A page the diff adds is not a rule yet.",
+		"### Pre-existing",
+		"never a BLOCKER",
+		"At most 10 NOTEs, the one that costs most if left first",
+		"The `BASE_SHA` copy wins over the HEAD copy.",
+		"`[EARLIER_FINDINGS]` — the findings of the earlier rounds, each with its verdict",
+		"N more NOTEs not listed",
+		"`fixed`", "`rejected: <reason>`", "`moved to NOTE`", "`NOTE open`", "`sent to bug`",
+		"Do not raise a rejected or moved finding again unless the diff gives new evidence.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("code-reviewer.md missing %q", want)
+		}
+	}
+}
+
 // TestReviewDepthFiles pins the three files that carry the review levels. The
 // floors and the fact-check limits are the safety part, so each phrase that
 // keeps a review from running too light or a BLOCKER from being dropped is
@@ -198,6 +268,13 @@ func TestReviewDepthFiles(t *testing.T) {
 			"The orchestrator numbers the BLOCKERs before the fact-check",
 			"becomes a NOTE, sorted into a bucket like any other",
 			"It counts for this run only and is never saved.",
+			// The counts feed later stats, so every reader must count the
+			// same way.
+			"`BLOCKER n, NOTE n, pre-existing n`",
+			"totals over rounds 1 to 3, after the merge",
+			"A light inline review counts as round 1; the polish review does not count.",
+			"A BLOCKER the fact-check moved counts as a NOTE.",
+			"`NOTE n` includes NOTEs cut by the cap; cut NOTEs are dropped on purpose and only their number stays.",
 		},
 		"skills/review/fact-check.md": {
 			"(A) the code it names is not in the diff under review",
