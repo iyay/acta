@@ -120,7 +120,7 @@ var helpTable = []helpCmd{
 		usage:   []string{"acta worktrees [--json]", "acta worktrees --clean [--json]"},
 		flags: []string{
 			"--json  print one JSON object per line",
-			"--clean  remove each clean stray with git worktree remove, then git branch -d its branch",
+			"--clean  remove each clean stray with git worktree remove, then git branch -d its branch; its gitignored files go with it",
 		},
 		example: "acta worktrees --clean",
 	},

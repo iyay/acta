@@ -344,9 +344,7 @@ func TestListUnknownWorkIsProtected(t *testing.T) {
 	age(t, gone)
 	git(t, repo, "update-ref", "-d", "refs/heads/gone-ref")
 
-	for _, p := range []string{own} {
-		age(t, p)
-	}
+	age(t, own)
 	got, err := List(repo, nil, time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -384,6 +382,82 @@ func TestJudgeKeepsUnknownAge(t *testing.T) {
 	t.Parallel()
 	e := judge(t.TempDir(), porcelain{path: t.TempDir(), branch: "x"}, "", nil, time.Now())
 	if e.State != StateProtected || !strings.Contains(e.Reason, "cannot read activity") {
+		t.Fatalf("got %+v", e)
+	}
+}
+
+// A worktree whose folder is gone can still be the only holder of a commit
+// when it is detached. Removing its entry would drop that commit.
+func TestListMissingDetachedKeepsCommit(t *testing.T) {
+	t.Parallel()
+	base, repo := newRepo(t)
+	own := filepath.Join(base, "own")
+	git(t, repo, "worktree", "add", "-q", "--detach", own)
+	write(t, filepath.Join(own, "d.txt"), "d\n")
+	git(t, own, "add", ".")
+	git(t, own, "commit", "-q", "-m", "only here")
+	tip := filepath.Join(base, "tip")
+	git(t, repo, "worktree", "add", "-q", "--detach", tip)
+	onBranch := filepath.Join(base, "on-branch")
+	git(t, repo, "worktree", "add", "-q", "-b", "on-branch", onBranch)
+	for _, p := range []string{own, tip, onBranch} {
+		if err := os.RemoveAll(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := List(repo, nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e := byPath(t, got, own); e.State != StateProtected || !strings.Contains(e.Reason, "commits no branch") {
+		t.Errorf("own: got %+v", e)
+	}
+	// A branch keeps its own commits, since git branch -d refuses an
+	// unmerged one, so a missing branch worktree is still a missing stray.
+	for _, p := range []string{tip, onBranch} {
+		if e := byPath(t, got, p); e.State != StateMissing {
+			t.Errorf("%s: got %+v", filepath.Base(p), e)
+		}
+	}
+	raw, err := json.Marshal(byPath(t, got, tip))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"status":[]`) {
+		t.Errorf("json %s", raw)
+	}
+}
+
+func TestOneLineReason(t *testing.T) {
+	// Not parallel: it swaps runGit to fake git's many-line error text.
+	real := runGit
+	t.Cleanup(func() { runGit = real })
+	runGit = func(string, ...string) (string, error) {
+		return "", errors.New("error: not fully merged\nhint: run git branch -D\nhint: to delete it anyway")
+	}
+	e := remove(t.TempDir(), Entry{Path: "/x", Branch: "b"})
+	if e.State != StateKept || strings.Contains(e.Reason, "\n") || !strings.Contains(e.Reason, "not fully merged") {
+		t.Fatalf("got %+v", e)
+	}
+}
+
+// When git cannot read a missing detached worktree's commit, the rules
+// cannot tell whether it is the only copy, so the worktree stays.
+func TestListMissingDetachedUnreadable(t *testing.T) {
+	t.Parallel()
+	base, repo := newRepo(t)
+	bad := filepath.Join(base, "bad")
+	git(t, repo, "worktree", "add", "-q", "--detach", bad)
+	admin := git(t, bad, "rev-parse", "--absolute-git-dir")
+	write(t, filepath.Join(admin, "HEAD"), strings.Repeat("0", 40)+"\n")
+	if err := os.RemoveAll(bad); err != nil {
+		t.Fatal(err)
+	}
+	got, err := List(repo, nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e := byPath(t, got, bad); e.State != StateProtected || !strings.Contains(e.Reason, "cannot read its commits") {
 		t.Fatalf("got %+v", e)
 	}
 }

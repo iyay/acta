@@ -88,7 +88,7 @@ func Clean(dir string, plans []Plan, now time.Time) ([]Entry, error) {
 // remove takes one stray away and gives back its new entry.
 func remove(main string, e Entry) Entry {
 	if _, err := runGit(main, "worktree", "remove", e.Path); err != nil {
-		e.State, e.Reason = StateKept, err.Error()
+		e.State, e.Reason = StateKept, oneLine(err)
 		return e
 	}
 	e.State = StateRemoved
@@ -97,9 +97,15 @@ func remove(main string, e Entry) Entry {
 	}
 	// The -- keeps a branch named like a flag from being read as one.
 	if _, err := runGit(main, "branch", "-d", "--", e.Branch); err != nil {
-		e.BranchKept, e.Reason = true, err.Error()
+		e.BranchKept, e.Reason = true, oneLine(err)
 	}
 	return e
+}
+
+// oneLine gives an error's text with its line breaks joined. Git adds hint
+// lines to its errors, and a reason must stay on one line in the text list.
+func oneLine(err error) string {
+	return strings.ReplaceAll(err.Error(), "\n", "; ")
 }
 
 // list does the work of List and also gives the main checkout's path, which
@@ -134,7 +140,8 @@ func list(dir string, plans []Plan, now time.Time) (string, []Entry, error) {
 
 // judge applies the rules to one worktree, in the spec's order.
 func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) Entry {
-	e := Entry{Path: b.path, Branch: b.branch}
+	// Status starts empty, not nil, so --json prints [] and never null.
+	e := Entry{Path: b.path, Branch: b.branch, Status: []string{}}
 	// A lock comes first: people lock a worktree that lives on a drive that
 	// is not mounted, so its folder can look gone while it is not.
 	if b.locked {
@@ -143,6 +150,15 @@ func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) 
 	}
 	if _, err := os.Stat(b.path); b.missing || err != nil {
 		e.State = StateMissing
+		// A detached worktree can be the only holder of its commit even
+		// with its folder gone. A branch keeps its commits on its own,
+		// since git branch -d refuses an unmerged branch. That holds only
+		// while the branch ref exists: one deleted by hand holds nothing.
+		if b.branch == "" {
+			if reason := unmerged(main, b); reason != "" {
+				e.State, e.Reason = StateProtected, reason
+			}
+		}
 		return e
 	}
 	// With no admin folder there is no time to read, and an unknown age must
@@ -171,7 +187,7 @@ func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) 
 	}
 	out, err := runGit(b.path, "--no-optional-locks", "status", "--porcelain")
 	if err != nil {
-		e.State, e.Reason = StateProtected, "cannot read git status: "+err.Error()
+		e.State, e.Reason = StateProtected, "cannot read git status: "+oneLine(err)
 		return e
 	}
 	if out == "" {
@@ -203,7 +219,7 @@ func unmerged(main string, b porcelain) string {
 	n, err := runGit(main, args...)
 	switch {
 	case err != nil:
-		return "cannot read its commits: " + err.Error()
+		return "cannot read its commits: " + oneLine(err)
 	case n != "0":
 		return what
 	}

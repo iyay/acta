@@ -87,12 +87,26 @@ finished: "2026-11-07 17:50:24"
 
 **verify:** No missing worktree is removed while it is detached at a commit no branch, tag or remote holds, or while git cannot tell; list every path checked: missing detached with its own commit, missing detached at a branch tip, missing on a branch, and a rev-list error on a missing detached worktree.
 
-- [ ] BLOCKER: a detached worktree whose folder is gone and whose commit no ref holds reads missing, and --clean drops its entry so the commit becomes unreachable (judge returns missing before the unmerged check).
-- [ ] [fix] print "status": [] rather than null when a worktree has no status lines.
-- [ ] [fix] fold git's multi-line error text into one line in reason, so each text entry stays on one line.
-- [ ] [fix] say in the worktrees help that removing a clean worktree also deletes its gitignored files.
-- [ ] [fix] spec: a missing detached worktree is still checked for commits no ref holds.
-- [ ] Commit with the trailer `Task: PLN-z7jtm2h#6`
+- [x] BLOCKER: a detached worktree whose folder is gone and whose commit no ref holds reads missing, and --clean drops its entry so the commit becomes unreachable (judge returns missing before the unmerged check).
+- [x] [fix] print "status": [] rather than null when a worktree has no status lines.
+- [x] [fix] fold git's multi-line error text into one line in reason, so each text entry stays on one line.
+- [x] [fix] say in the worktrees help that removing a clean worktree also deletes its gitignored files.
+- [x] [fix] spec: a missing detached worktree is still checked for commits no ref holds.
+- [x] Commit with the trailer `Task: PLN-z7jtm2h#6`
+
+## Polish
+
+### Task 7: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] add a test for a rev-list error on a missing detached worktree, which Task 6's verify line names.
+- [x] [fix] say in the judge comment that a missing branch worktree keeps its commits only while its branch ref exists.
+- [x] Commit: `polish: review notes for PLN-0215`
+
+## Review notes
+
+- Review: deep (delete path, deep lens). Round 1 BLOCKED (2), round 2 BLOCKED (1), round 3 CLEAN, polish CLEAN; user asked to go on until clean. --root kept on the cwd repo on purpose. Notes left: porcelain without -z, doctor swallows board and git errors, duplicate admin gitdir entries, bare repo first block, -- before branch is defensive only.
 
 ## State
 
