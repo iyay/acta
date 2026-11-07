@@ -2,6 +2,8 @@
 id: SPC-0195
 created: "2026-11-07 21:06:05"
 hash: c2xc2ha
+started: "2026-11-07 21:07:29"
+finished: "2026-11-07 21:19:48"
 ---
 # Revert the probe copy rule
 

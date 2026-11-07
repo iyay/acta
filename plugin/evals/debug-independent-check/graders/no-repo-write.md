@@ -1,5 +1,5 @@
 ---
-# guards: stops at the first failed step
+# guards: Prove the mechanism
 # Reads the whole run, so it sees a write that hit the repo because the temp
 # copy before it failed, even when the run put the file back later.
 type: llm
