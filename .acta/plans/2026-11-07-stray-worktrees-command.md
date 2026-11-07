@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0215
 created: "2026-11-07 17:36:17"
 hash: z7jtm2h
+started: "2026-11-07 17:43:59"
 ---
 # Stray worktrees: the acta worktrees command
 
@@ -32,9 +33,9 @@ hash: z7jtm2h
 **Files:** `internal/worktrees/worktrees.go`, `internal/worktrees/worktrees_test.go`
 **Seam:** `worktrees.List(repo string, plans []Plan, now time.Time) ([]Entry, error)`, where `Plan` holds a slug and a status, and `Entry` has the spec's `--json` fields.
 **verify:** Every linked worktree gets exactly one state from the spec (`protected` with a reason, `clean`, `dirty`, `missing`), the main checkout and the calling worktree never appear as strays, and no rule lets a worktree that holds unmerged commits, a not-done and not-dropped plan's slug, a lock, or activity within 24 hours become a stray. List each case checked: fresh plan worktree by slug, unmerged branch, fully ticked plan waiting to land, dropped plan with no commits, locked, active within 24 hours, clean, dirty (status capped at 10 lines plus `... and N more`), only gitignored files, detached, missing folder, harness worktree inside the repo, and a listing that leaves every `index` time unchanged.
-- [ ] Red: a table test over temp repos fails because `internal/worktrees` does not exist.
-- [ ] Change: add the package that parses `git worktree list --porcelain`, reads activity times first, and applies the spec's rules in its order.
-- [ ] Commit: feat(worktrees): classify stray worktrees
+- [x] Red: a table test over temp repos fails because `internal/worktrees` does not exist.
+- [x] Change: add the package that parses `git worktree list --porcelain`, reads activity times first, and applies the spec's rules in its order.
+- [x] Commit: feat(worktrees): classify stray worktrees
 
 ### Task 2: Clean stray worktrees
 
@@ -62,3 +63,9 @@ hash: z7jtm2h
 - [ ] Red: a doctor test with one stray in `Env` fails because no `worktrees` result exists.
 - [ ] Change: add `checkWorktrees` to `Run`, and fill the new field in the CLI.
 - [ ] Commit: feat(doctor): warn on stray worktrees
+
+## State
+
+### Next
+
+Task 2: add Clean on top of List in internal/worktrees; runGit var lets tests record calls.
