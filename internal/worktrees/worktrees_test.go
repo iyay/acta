@@ -461,3 +461,75 @@ func TestListMissingDetachedUnreadable(t *testing.T) {
 		t.Fatalf("got %+v", e)
 	}
 }
+
+// A missing worktree whose branch ref was deleted by hand still has its
+// commit in the admin reflog. It may not pass for a safe stray.
+func TestListDeletedRef(t *testing.T) {
+	t.Parallel()
+	base, repo := newRepo(t)
+	wt := func(name string) string {
+		p := filepath.Join(base, name)
+		git(t, repo, "worktree", "add", "-q", "-b", name, p)
+		return p
+	}
+
+	// A missing worktree whose branch held a commit only it had, with the
+	// branch ref deleted by hand.
+	lost := wt("lost-ref")
+	write(t, filepath.Join(lost, "l.txt"), "l\n")
+	git(t, lost, "add", ".")
+	git(t, lost, "commit", "-q", "-m", "only here")
+	age(t, lost)
+	git(t, repo, "update-ref", "-d", "refs/heads/lost-ref")
+
+	// The same, but its commit is on main, so nothing is lost.
+	kept := wt("kept-ref")
+	age(t, kept)
+	git(t, repo, "update-ref", "-d", "refs/heads/kept-ref")
+
+	// The same, but its reflog cannot be read.
+	blind := wt("blind-ref")
+	age(t, blind)
+	blindAdmin := git(t, blind, "rev-parse", "--absolute-git-dir")
+	git(t, repo, "update-ref", "-d", "refs/heads/blind-ref")
+	if err := os.Remove(filepath.Join(blindAdmin, "logs", "HEAD")); err != nil {
+		t.Fatal(err)
+	}
+
+	// A missing worktree whose branch ref is still there keeps today's rule.
+	onBranch := wt("on-branch")
+	age(t, onBranch)
+
+	for _, p := range []string{lost, kept, blind, onBranch} {
+		if err := os.RemoveAll(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := List(repo, nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ path, state, reason string }{
+		{lost, StateProtected, "commits no branch"},
+		{kept, StateMissing, ""},
+		{blind, StateProtected, "cannot read its commits"},
+		{onBranch, StateMissing, ""},
+	}
+	for _, c := range cases {
+		e := byPath(t, got, c.path)
+		if e.State != c.state || !strings.Contains(e.Reason, c.reason) {
+			t.Errorf("%s: got state %q reason %q, want %q with %q", filepath.Base(c.path), e.State, e.Reason, c.state, c.reason)
+		}
+	}
+}
+
+// An admin folder with none of its time files gives no age. Git breaks such
+// a worktree, so this is checked on judge alone. An unknown age must not pass
+// for an idle one.
+func TestJudgeKeepsEmptyAdmin(t *testing.T) {
+	t.Parallel()
+	e := judge(t.TempDir(), porcelain{path: t.TempDir(), branch: "x"}, t.TempDir(), nil, time.Now())
+	if e.State != StateProtected || !strings.Contains(e.Reason, "cannot read activity") {
+		t.Fatalf("got %+v", e)
+	}
+}

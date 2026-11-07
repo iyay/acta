@@ -5,6 +5,8 @@ depth: minimal
 id: PLN-0218
 created: "2026-11-07 19:53:22"
 hash: ne34gjc
+started: "2026-11-07 19:57:16"
+finished: "2026-11-07 20:00:54"
 ---
 # Worktree debt: Go code
 
@@ -31,33 +33,55 @@ hash: ne34gjc
 **Files:** `internal/worktrees/worktrees.go`, `internal/worktrees/worktrees_test.go`
 **Seam:** `worktrees.List(repo, plans, now)` and `worktrees.Clean(repo, plans, now)`
 **verify:** No worktree whose age or commits cannot be read is ever a stray. List each case: admin folder present with no HEAD, index or logs/HEAD (protected, "cannot read activity times"); missing worktree whose branch ref was deleted and whose last logs/HEAD commit no branch, tag or remote holds (protected); the same with that commit held by main (missing, removed by Clean); the same with logs/HEAD unreadable (protected, "cannot read its commits"); missing worktree whose branch ref exists (missing, as today).
-- [ ] Red: table cases for each path fail because the empty admin folder reads idle and the deleted-ref worktree reads missing.
-- [ ] Change: treat a zero activity time as unknown, and for a missing worktree whose ref `git show-ref --verify` cannot find, check the commit from the last line of `<admin>/logs/HEAD` like a detached one.
-- [ ] Commit: fix(worktrees): keep worktrees whose age or commit is unknown
+- [x] Red: table cases for each path fail because the empty admin folder reads idle and the deleted-ref worktree reads missing.
+- [x] Change: treat a zero activity time as unknown, and for a missing worktree whose ref `git show-ref --verify` cannot find, check the commit from the last line of `<admin>/logs/HEAD` like a detached one.
+- [x] Commit: fix(worktrees): keep worktrees whose age or commit is unknown
 
 ### Task 2: Doctor tells clean from dirty strays
 
 **Files:** `internal/doctor/worktrees.go`, `internal/doctor/worktrees_test.go`, `internal/doctor/doctor.go`, `internal/cli/doctor.go`, `internal/cli/worktrees_test.go`
 **Seam:** `doctor.Run(doctor.Env)` with the strays split by state in `Env`, filled by `internal/cli/doctor.go`.
 **verify:** The doctor line never offers a fix that cannot fix what it counts. List each case: only clean or missing strays (count, fix names `acta worktrees --clean`); only dirty strays (count, no command in the fix, says they need the user); both (both counts, fix says `--clean` takes the clean ones and the dirty ones need the user); none (OK). The CLI wiring passes one success path through `strayWorktrees`.
-- [ ] Red: doctor tests with dirty-only and mixed strays fail because the message counts them as one and always names `--clean`.
-- [ ] Change: split the Env field into clean-or-missing and dirty lists and word the message and fix from them.
-- [ ] Commit: fix(doctor): say which stray worktrees --clean can remove
+- [x] Red: doctor tests with dirty-only and mixed strays fail because the message counts them as one and always names `--clean`.
+- [x] Change: split the Env field into clean-or-missing and dirty lists and word the message and fix from them.
+- [x] Commit: fix(doctor): say which stray worktrees --clean can remove
 
 ### Task 3: Setup skips the worktree check
 
 **Files:** `internal/cli/setup_cmd.go`, `internal/cli/doctor.go`, `internal/cli/setup_cmd_test.go`
 **Seam:** `doctorEnv` as `acta setup` and `acta doctor` call it.
 **verify:** `acta setup` never runs `git status` in a linked worktree, and `acta doctor` still runs the worktree check. Wiring only: one setup run in a repo with a stray shows no worktrees line, and one doctor run still does.
-- [ ] Red: a setup test in a repo with an idle stray fails because the summary holds a worktrees line.
-- [ ] Change: let setup build its doctor Env without the stray lists, and let doctor keep filling them.
-- [ ] Commit: perf(setup): skip the stray worktree check
+- [x] Red: a setup test in a repo with an idle stray fails because the summary holds a worktrees line.
+- [x] Change: let setup build its doctor Env without the stray lists, and let doctor keep filling them.
+- [x] Commit: perf(setup): skip the stray worktree check
 
 ### Task 4: acta state finds the plan being built
 
 **Files:** `internal/cli/state.go`, `internal/cli/state_test.go`
 **Seam:** `cli.Run([]string{"state", <plan>})` and `cli.Run([]string{"state", "set", <plan>, <part>})`
 **verify:** A plan named on the command line is found in the linked worktree the command runs in when `git status` there shows its file modified or untracked, before any branch commit touched it. List each case: plan file modified and uncommitted in the current linked worktree (found); the same plan file unchanged in another linked worktree (not found, as today); run from the main checkout with the file changed there (not found, as today); a plan the branch committed (found, as today).
-- [ ] Red: a state test in a fresh worktree with an uncommitted tick fails with "no running plan".
-- [ ] Change: when the named plan is not in `board.PlanStates`, look it up in the current linked worktree's board if git status shows its file changed there.
-- [ ] Commit: fix(state): read the plan being built before its first commit
+- [x] Red: a state test in a fresh worktree with an uncommitted tick fails with "no running plan".
+- [x] Change: when the named plan is not in `board.PlanStates`, look it up in the current linked worktree's board if git status shows its file changed there.
+- [x] Commit: fix(state): read the plan being built before its first commit
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] guard lastReflogCommit against an empty admin path, so it never reads logs/HEAD from the process folder.
+- [x] [fix] re-wrap the strayWorktrees comment in internal/cli/doctor.go into short sentences.
+- [x] [fix] give setup its own doctor Env helper and test it, so the setup wiring cannot drift back to running the stray check.
+- [x] [fix] make the state test dirty the plan file in the main checkout itself, so the main-checkout guard is pinned.
+- [x] Commit: `polish: review notes for PLN-0218`
+
+## Review notes
+
+- Review: deep (delete path, deep lens), round 1 CLEAN on both axes; polish (4 fixes) CLEAN on both axes. Notes left: PlanStateHere uses plain git status in the current worktree, no test pins the empty-admin guard in lastReflogCommit, Clean reports branch_kept for a ref already gone, the doctor and setup tests are red on revert by compile error.
+
+## State
+
+### Findings
+
+Task 3 used a SkipStrays field in doctor.Env and its test sits in internal/cli/worktrees_test.go; task 4 added board.PlanStateHere in internal/board/state.go. Both files sit outside the plan file lists.

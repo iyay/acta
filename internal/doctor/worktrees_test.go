@@ -5,25 +5,44 @@ import (
 	"testing"
 )
 
+// The worktrees line never offers a fix that cannot fix what it counts:
+// acta worktrees --clean removes clean and missing strays, never dirty ones.
 func TestWorktreesCheck(t *testing.T) {
 	ok := env(t)
 	wantLevel(t, byName(Run(ok), "worktrees"), OK, "")
 
-	warn := env(t)
-	warn.StrayWorktrees = []string{"/x/repo-headchk", "/x/repo-premerge"}
-	r := byName(Run(warn), "worktrees")
+	clean := env(t)
+	clean.CleanStrays = []string{"/x/repo-headchk", "/x/repo-premerge"}
+	r := byName(Run(clean), "worktrees")
 	wantLevel(t, r, Warn, "acta worktrees --clean")
-	if !strings.HasPrefix(r.Msg, "2 stray") {
-		t.Fatalf("msg %q does not give the count", r.Msg)
+	if !strings.HasPrefix(r.Msg, "2 stray worktrees --clean can remove: ") || !strings.Contains(r.Msg, "repo-headchk") {
+		t.Fatalf("clean msg %q", r.Msg)
 	}
-	if Failed(Run(warn)) != Failed(Run(ok)) {
+	if Failed(Run(clean)) != Failed(Run(ok)) {
 		t.Fatal("strays failed a run that was not failing before")
 	}
 
 	one := env(t)
-	one.StrayWorktrees = []string{"/x/repo-headchk"}
-	if got := byName(Run(one), "worktrees").Msg; !strings.HasPrefix(got, "1 stray worktree: ") {
-		t.Fatalf("msg %q", got)
+	one.CleanStrays = []string{"/x/repo-headchk"}
+	if got := byName(Run(one), "worktrees").Msg; !strings.HasPrefix(got, "1 stray worktree --clean can remove: ") {
+		t.Fatalf("one msg %q", got)
+	}
+
+	dirty := env(t)
+	dirty.DirtyStrays = []string{"/x/repo-dirty"}
+	r = byName(Run(dirty), "worktrees")
+	wantLevel(t, r, Warn, "")
+	if !strings.HasPrefix(r.Msg, "1 dirty stray worktree: ") || strings.Contains(r.Fix, "acta ") || r.Fix == "" {
+		t.Fatalf("dirty result %+v", r)
+	}
+
+	both := env(t)
+	both.CleanStrays = []string{"/x/repo-headchk"}
+	both.DirtyStrays = []string{"/x/repo-dirty", "/x/repo-dirty2"}
+	r = byName(Run(both), "worktrees")
+	wantLevel(t, r, Warn, "acta worktrees --clean")
+	if !strings.Contains(r.Msg, "1 stray worktree --clean can remove") || !strings.Contains(r.Msg, "2 dirty stray worktrees") || !strings.Contains(r.Fix, "dirty") {
+		t.Fatalf("both result %+v", r)
 	}
 
 	outside := env(t)
@@ -32,8 +51,5 @@ func TestWorktreesCheck(t *testing.T) {
 		if r.Name == "worktrees" {
 			t.Fatalf("outside git got %+v", r)
 		}
-	}
-	if !strings.Contains(r.Msg, "repo-headchk") {
-		t.Fatalf("msg %q does not name the strays", r.Msg)
 	}
 }
