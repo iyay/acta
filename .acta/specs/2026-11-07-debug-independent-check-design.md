@@ -2,6 +2,9 @@
 id: SPC-0191
 created: "2026-11-07 17:05:16"
 hash: enkpnc0
+status: dropped
+finished: "2026-11-07 17:56:08"
+reason: 'Eval gate on the current skill: 3 of 3 runs found the real cause with a control on the report path; the independent check adds nothing here. See PLN-0214 findings on branch debug-independent-check.'
 ---
 # Debug independent check
 
