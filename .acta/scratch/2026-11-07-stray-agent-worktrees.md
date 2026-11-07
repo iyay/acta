@@ -64,6 +64,10 @@ Shared understanding confirmed ("swtuju"). Approach A chosen: a new `acta worktr
 
 Design approved ('oke'), all three sections: 1 acta worktrees behaviour, 2 wiring (land step 7, doctor check, core rule 10), 3 tests (Go temp repos, no --force, land eval).
 
+### 2026-11-07
+
+Cold read: 5 findings (done plan unprotected, git status resets idle clock, tidy temp worktree, missing folders, json shape). User approved all 5 fixes and the glossary term with a thumbs up; spec updated.
+
 ## Open questions
 
 - Should acta track every worktree an agent makes (not only the build one) and clean it up at land or session end?
