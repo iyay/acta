@@ -55,7 +55,7 @@ Subagent (general-purpose):
 
     ## Repo Rules
 
-    For each changed file, run `acta wiki match <file>` and read each page it names as review rules for that file. So the diff cannot weaken its own review, a wiki page the diff changes or deletes is read at `BASE_SHA` with `git show`, and that copy applies when its `paths:` at `BASE_SHA` cover a changed file. A page the diff adds is not a rule yet.
+    For each changed file, run `acta wiki match <file>` and read each page it names as review rules for that file. So the diff cannot weaken its own review, a wiki page the diff changes or deletes is read at `BASE_SHA` with `git show`, and that copy applies when its `paths:` at `BASE_SHA` cover a changed file. The `BASE_SHA` copy wins over the HEAD copy. A page the diff adds is not a rule yet.
 
     ## What to Check
 
@@ -102,4 +102,4 @@ Subagent (general-purpose):
 - `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
-- `[EARLIER_FINDINGS]` — the findings of the earlier rounds; empty in round 1
+- `[EARLIER_FINDINGS]` — the findings of the earlier rounds, each with its verdict; empty in round 1

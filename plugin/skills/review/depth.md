@@ -24,12 +24,12 @@ The setting can raise the depth, but not drop it below these. No level, from the
 
 ## Rounds
 
-Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 hand the reviewers the earlier findings, so they look for others.
+Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 hand the reviewers the earlier findings, so they look for others. After a BLOCKED round, write every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`, run in the worktree. Rounds 2 and 3 read those lines back from the plan's `## Review notes` and pass them as `[EARLIER_FINDINGS]`, with the lines of every `## Fix round` marked `fixed`. The plan keeps them across sessions and hand-offs, and the CLEAN round sorts its open NOTEs from them.
 
 ## Understanding
 
-`review_understanding` is its own switch, false when missing. quick, standard, deep, the argument, a floor and the deep lens leave it as it is. When it is true, `acta:land` ends its report with a short explanation and asks no question. When it is false, there is none.
+`review_understanding` is its own switch, false when missing. The review asks nothing about it. quick, standard, deep, the argument, a floor and the deep lens leave it as it is. When it is true, `acta:land` ends its report with a short explanation and asks no question. When it is false, there is none.
 
 ## Review notes
 
-The orchestrator writes the level used, and any floor that raised it, into the one review line of the plan's `## Review notes`. The line also gives `BLOCKER n, NOTE n, pre-existing n`: totals over rounds 1 to 3, after the merge. A light inline review counts as round 1; the polish review does not count. A BLOCKER the fact-check moved counts as a NOTE. `NOTE n` includes NOTEs cut by the cap; cut NOTEs are dropped on purpose and only their number stays.
+The orchestrator writes the level used, and any floor that raised it, into the summary line of the plan's `## Review notes`. The line also gives `BLOCKER n, NOTE n, pre-existing n`: totals over rounds 1 to 3, after the merge. A light inline review counts as round 1; the polish review does not count. A BLOCKER the fact-check moved counts as a NOTE. `NOTE n` includes NOTEs cut by the cap; cut NOTEs are dropped on purpose and only their number stays.

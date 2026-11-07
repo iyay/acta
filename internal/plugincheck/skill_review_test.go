@@ -186,9 +186,9 @@ func TestReviewOrchestratorFindingsPipeline(t *testing.T) {
 	for _, want := range []string{
 		"Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect",
 		"before the fact-check and before the fix task",
-		"`### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree",
-		"`acta state set <plan id> next`",
-		"`acta state <plan id>`",
+		"`### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree, first thing in every BLOCKED round",
+		"depth.md `## Rounds` keeps the verdicts.",
+		"A comment, a name, a wording change, a missing test, a one-line guard.",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("review/SKILL.md missing %q", want)
@@ -201,9 +201,23 @@ func TestReviewOrchestratorFindingsPipeline(t *testing.T) {
 	if bug < 0 || sort < 0 || bug > sort {
 		t.Errorf("## After a CLEAN round must send Pre-existing items to acta:bug before step 1; got indexes %d, %d", bug, sort)
 	}
-	// The BLOCKED path files them before the fix task too.
-	if !strings.Contains(body, "BLOCKERs: first file the Pre-existing items, then one fix task") {
-		t.Errorf("review/SKILL.md budget step 2 must file Pre-existing items before the fix task")
+	// The verdicts live in the plan, not in the State: a fix-round worker
+	// rewrites its own State part, and a part holds only 10 lines.
+	for _, rel := range []string{"skills/review/SKILL.md", "skills/review/depth.md"} {
+		if strings.Contains(readSkill(t, rel), "acta state set") {
+			t.Errorf("%s keeps review verdicts in the State, where a worker overwrites them", rel)
+		}
+	}
+	depth := readSkill(t, "skills/review/depth.md")
+	for _, want := range []string{
+		"write every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`",
+		"Rounds 2 and 3 read those lines back from the plan's `## Review notes` and pass them as `[EARLIER_FINDINGS]`, with the lines of every `## Fix round` marked `fixed`.",
+		"into the summary line of the plan's `## Review notes`",
+		"The review asks nothing about it.",
+	} {
+		if !strings.Contains(depth, want) {
+			t.Errorf("review/depth.md missing %q", want)
+		}
 	}
 }
 
@@ -220,7 +234,9 @@ func TestCodeReviewerFindingsPipeline(t *testing.T) {
 		"A page the diff adds is not a rule yet.",
 		"### Pre-existing",
 		"never a BLOCKER",
-		"At most 10 NOTEs",
+		"At most 10 NOTEs, the one that costs most if left first",
+		"The `BASE_SHA` copy wins over the HEAD copy.",
+		"`[EARLIER_FINDINGS]` — the findings of the earlier rounds, each with its verdict",
 		"N more NOTEs not listed",
 		"`fixed`", "`rejected: <reason>`", "`moved to NOTE`", "`NOTE open`", "`sent to bug`",
 		"Do not raise a rejected or moved finding again unless the diff gives new evidence.",

@@ -37,7 +37,7 @@ In `plugin/skills/review/code-reviewer.md`:
 In `plugin/skills/review/SKILL.md`:
 5. **Dedupe.** Before the fact-check and before the fix task, the orchestrator merges BLOCKERs, NOTEs and Pre-existing items from the two reviewers that name the same defect, and keeps the one with the stronger proof.
 6. **Pre-existing routing.** Items in `### Pre-existing` go through `receiving.md`, then to `acta:bug`, run in the worktree, so the bug file commits on the branch and lands with it. This runs in both paths: before the fix task in a BLOCKED round, and as a new first step of `## After a CLEAN round`. They never widen the plan.
-7. **Verdicts kept.** After each round the orchestrator writes every finding with its verdict to `acta state set <plan id> next`. Rounds 2 and 3 read it with `acta state <plan id>` and pass it as `[EARLIER_FINDINGS]`, so a round in a later session or through `acta dispatch` still has it.
+7. **Verdicts kept.** After a BLOCKED round the orchestrator writes every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`. Rounds 2 and 3 pass those lines, plus the fix-task lines as `fixed`, as `[EARLIER_FINDINGS]`. The rule lives in `depth.md` `## Rounds`, and `SKILL.md` points to it. The plan keeps the lines, so a round in a later session or through `acta dispatch` still has them. The State is not used: a fix-round worker rewrites its own `next` part, and a State part holds only 10 lines. (Changed after review round 1 found both problems.)
 
 The added text in `SKILL.md` is paid for by tightening its existing text, so the file stays at or under its 9991-byte cap.
 

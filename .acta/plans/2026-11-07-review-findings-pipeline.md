@@ -58,13 +58,27 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. All three touch `internal/plugin
 
 **verify:** Verdicts from a BLOCKED round reach rounds 2 and 3 on every path: a fix-round worker's own state write, a new session, a dispatch hand-off, and more findings than a State part holds (10 lines); every BLOCKED round files its Pre-existing items first; no rule dropped by the SKILL.md tightening is lost
 
-- [ ] BLOCKER: SKILL.md saves verdicts with acta state set <plan id> next, which the fix-round worker overwrites and which refuses more than 10 lines; write them with acta plan add <plan id> review-notes instead, the rule living in depth.md ## Rounds, and update spec item 7 to match
-- [ ] [fix] SKILL.md: restore the [fix] examples (a comment, a name, a wording change, a missing test, a one-line guard)
-- [ ] [fix] depth.md ## Understanding: restore that the review asks nothing about review_understanding
-- [ ] [fix] SKILL.md: every BLOCKED round, not only round 1, files its Pre-existing items first, and step 2's "them" reads as the BLOCKERs
-- [ ] [fix] code-reviewer.md: the BASE_SHA copy of a changed wiki page wins over its HEAD copy; the [EARLIER_FINDINGS] placeholder names the verdicts
-- [ ] [fix] skill_review_test.go: pin the NOTE order (the one that costs most if left first)
-- [ ] Commit with the trailer `Task: PLN-oakb9p5#4`
+- [x] BLOCKER: SKILL.md saves verdicts with acta state set <plan id> next, which the fix-round worker overwrites and which refuses more than 10 lines; write them with acta plan add <plan id> review-notes instead, the rule living in depth.md ## Rounds, and update spec item 7 to match
+- [x] [fix] SKILL.md: restore the [fix] examples (a comment, a name, a wording change, a missing test, a one-line guard)
+- [x] [fix] depth.md ## Understanding: restore that the review asks nothing about review_understanding
+- [x] [fix] SKILL.md: every BLOCKED round, not only round 1, files its Pre-existing items first, and step 2's "them" reads as the BLOCKERs
+- [x] [fix] code-reviewer.md: the BASE_SHA copy of a changed wiki page wins over its HEAD copy; the [EARLIER_FINDINGS] placeholder names the verdicts
+- [x] [fix] skill_review_test.go: pin the NOTE order (the one that costs most if left first)
+- [x] Commit with the trailer `Task: PLN-oakb9p5#4`
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] depth.md ## Rounds: say rounds 2 and 3 read the verdict lines back from the plan's ## Review notes, take the fix-task lines from every ## Fix round, and drop the double "as"
+- [x] depth.md ## Review notes: call the level and counts line the summary line, so it is not mixed up with the verdict lines
+- [x] Commit: `polish: review notes for PLN-0213`
+
+## Review notes
+
+- Depth deep (two reviewers, fact-check on round 1's BLOCKER, kept), full tier: skill text. Round 1 BLOCKED, fix round 1, round 2 CLEAN, polish CLEAN. BLOCKER 1, NOTE 19, pre-existing 0. Notes kept as [note]: 'Never after each task' dropped but said elsewhere; deep lens list lives only in code-reviewer.md; no eval yet runs a BLOCKED round into round 2; step 6 and depth.md both say summary line without saying it is one line; byte caps sit at exact sizes.
 
 ## State
 

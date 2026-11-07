@@ -5,7 +5,7 @@ description: "acta: Use once, when every task of a plan is committed, on each fi
 
 # Review
 
-Review happens once, when every task of the plan is committed, then once per fix round. Never after each task. A CLEAN round runs the polish flow in `## After a CLEAN round`.
+Review happens once, when every task of the plan is committed, then once per fix round. A CLEAN round runs the polish flow in `## After a CLEAN round`.
 
 ## Review depth
 
@@ -42,20 +42,20 @@ Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), Pre-
 ## Budget: three rounds, then land or ask
 
 1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
-2. BLOCKERs: first file the Pre-existing items, then one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
+2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
 3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
 4. Round 3 reviews the second fix range only. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
 
-Each round saves its findings and verdicts with `acta state set <plan id> next`; rounds 2 and 3 read `acta state <plan id>`.
+depth.md `## Rounds` keeps the verdicts.
 
 There is never a round 4. A round with no BLOCKER does not start; it runs `## After a CLEAN round`. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
 
 ## Where findings go
 
 - A BLOCKER in the diff under review is unfinished work of that story, not a bug. It goes into this round's one fix task (`## Fix round <n>` in the same plan).
-- A defect in code already on the parent branch, that the diff did not bring in, is a bug: `### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree. Its own plan fixes it, with `parent: bugs/<file>`. It never widens this plan.
+- A defect in code already on the parent branch, that the diff did not bring in, is a bug: `### Pre-existing` items go through receiving.md, then `acta:bug` in the worktree, first thing in every BLOCKED round. Its own plan fixes it, with `parent: bugs/<file>`. It never widens this plan.
 - A NOTE is one line and sorts into a bucket. A NOTE that fails the first test falls to the next one.
-  - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit.
+  - **`[fix]`:** the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit. A comment, a name, a wording change, a missing test, a one-line guard.
   - **`[debt]`:** leaving it costs something later that you can name ("when X changes, Y breaks", "a user hits it when Z", "the tests get slow"), and the fix needs new logic or a file outside the diff. A `[debt]` NOTE must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` or has no priority tag is a `[note]`.
   - **`[note]`:** taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
