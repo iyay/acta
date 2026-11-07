@@ -154,22 +154,22 @@ func judge(main string, b porcelain, admin string, plans []Plan, now time.Time) 
 		// with its folder gone. A branch keeps its commits on its own,
 		// since git branch -d refuses an unmerged branch. That holds only
 		// while the branch ref exists: one deleted by hand holds nothing.
-		if b.branch == "" {
-			if reason := unmerged(main, b); reason != "" {
-				e.State, e.Reason = StateProtected, reason
-			}
+		if reason := missingWork(main, b, admin); reason != "" {
+			e.State, e.Reason = StateProtected, reason
 		}
 		return e
 	}
-	// With no admin folder there is no time to read, and an unknown age must
-	// not pass for an idle one: an agent may be working in it right now.
-	if admin == "" {
+	// Read the file times before any git command runs in the worktree: a
+	// plain git status rewrites the index and would reset the clock. With no
+	// admin folder, or none of its time files, there is no time to read, and
+	// an unknown age must not pass for an idle one: an agent may be working
+	// in it right now.
+	last := lastActivity(admin)
+	if last.IsZero() {
 		e.State, e.Reason = StateProtected, "cannot read activity times"
 		return e
 	}
-	// Read the file times before any git command runs in the worktree: a
-	// plain git status rewrites the index and would reset the clock.
-	if now.Sub(lastActivity(admin)) < Idle {
+	if now.Sub(last) < Idle {
 		e.State, e.Reason = StateProtected, "active in the last 24 hours"
 		return e
 	}
@@ -224,6 +224,41 @@ func unmerged(main string, b porcelain) string {
 		return what
 	}
 	return ""
+}
+
+// missingWork says why a worktree whose folder is gone still holds commits
+// that removing its entry could lose, or "" when it holds none. A detached
+// one can be the only holder of its commit. A branch keeps its commits on its
+// own, since git branch -d refuses an unmerged branch, but only while the
+// branch ref exists. When someone deleted the ref by hand, git shows a zero
+// HEAD, so the commit comes from the last line of the admin reflog instead.
+func missingWork(main string, b porcelain, admin string) string {
+	if b.branch == "" {
+		return unmerged(main, b)
+	}
+	if _, err := runGit(main, "show-ref", "--verify", "--quiet", "refs/heads/"+b.branch); err == nil {
+		return ""
+	}
+	head, err := lastReflogCommit(admin)
+	if err != nil {
+		return "cannot read its commits: " + oneLine(err)
+	}
+	return unmerged(main, porcelain{head: head})
+}
+
+// lastReflogCommit gives the commit the newest line of the admin reflog moved
+// to. Each line starts with the old id and the new id.
+func lastReflogCommit(admin string) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(admin, "logs", "HEAD"))
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	fields := strings.Fields(lines[len(lines)-1])
+	if len(fields) < 2 {
+		return "", fmt.Errorf("no commit in %s", filepath.Join(admin, "logs", "HEAD"))
+	}
+	return fields[1], nil
 }
 
 // parse reads git worktree list --porcelain. The main checkout comes first.
