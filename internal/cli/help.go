@@ -113,6 +113,17 @@ var helpTable = []helpCmd{
 		},
 		example: `echo '{"id":"SCR-0081","status":"dropped","reason":"replaced by SPC-0183"}' | acta cleanup apply`,
 	},
+	{
+		name:    "worktrees",
+		group:   "Board",
+		summary: "List the linked worktrees and which ones are strays: no open plan owns them, not locked, idle for 24 hours. --clean removes the clean ones, never by force.",
+		usage:   []string{"acta worktrees [--json]", "acta worktrees --clean [--json]"},
+		flags: []string{
+			"--json  print one JSON object per line",
+			"--clean  remove each clean stray with git worktree remove, then git branch -d its branch",
+		},
+		example: "acta worktrees --clean",
+	},
 
 	// Write
 	{

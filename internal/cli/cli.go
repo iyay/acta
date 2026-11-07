@@ -124,6 +124,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 			return cmdCleanupApply(args[2:], stdin, stdout, stderr)
 		}
 		return cmdCleanup(args[1:], stdout, stderr)
+	case "worktrees":
+		return cmdWorktrees(args[1:], stdout, stderr)
 	case "usage":
 		return cmdUsage(args[1:], stdout, stderr)
 	case "id":
