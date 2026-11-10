@@ -2,6 +2,7 @@ package setup_test
 
 import (
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -593,5 +594,68 @@ func TestFormReviewUnderstanding(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// Setup asks only some settings. Every other key in the user file must come
+// through untouched, or the next setup run wipes it: a declined offer would
+// come back, and the subagent pick count would start over. The test walks
+// every field, so a key added to config.User later is covered too.
+func TestAnswersUserKeepsUnaskedKeys(t *testing.T) {
+	asked := map[string]bool{
+		"ChatLanguage": true, "Style": true, "Tone": true, "BuildExecutor": true,
+		"PlanDepth": true, "PlanSplit": true, "ReviewDepth": true,
+		"CommitHistory": true, "Questions": true, "ReviewUnderstanding": true,
+	}
+	// Give every field of the old config a value, so a dropped one shows.
+	var current config.User
+	cv := reflect.ValueOf(&current).Elem()
+	for i := 0; i < cv.NumField(); i++ {
+		f := cv.Field(i)
+		switch f.Kind() {
+		case reflect.String:
+			f.SetString("old")
+		case reflect.Int:
+			f.SetInt(7)
+		case reflect.Pointer:
+			v := true
+			f.Set(reflect.ValueOf(&v))
+		default:
+			t.Fatalf("field %s has kind %s; teach this test to fill it", cv.Type().Field(i).Name, f.Kind())
+		}
+	}
+	answers := setup.Defaults{
+		Language: "Korean", Style: "plain", Tone: "", BuildExecutor: "subagent",
+		PlanDepth: "minimal", PlanSplit: "on", ReviewDepth: "deep",
+		CommitHistory: "full", Questions: "probe", ReviewUnderstanding: false,
+	}
+	got := setup.AnswersUser(current, answers)
+	gv := reflect.ValueOf(got)
+	for i := 0; i < gv.NumField(); i++ {
+		name := gv.Type().Field(i).Name
+		if !asked[name] && !reflect.DeepEqual(gv.Field(i).Interface(), cv.Field(i).Interface()) {
+			t.Errorf("%s was not asked but changed: %v, want %v", name, gv.Field(i).Interface(), cv.Field(i).Interface())
+		}
+	}
+	want := config.User{
+		ChatLanguage: "Korean", Style: "plain", Tone: "", BuildExecutor: "subagent",
+		PlanDepth: "minimal", PlanSplit: "on", ReviewDepth: "deep",
+		CommitHistory: "full", Questions: "probe",
+	}
+	wv := reflect.ValueOf(want)
+	for name := range asked {
+		if name == "ReviewUnderstanding" {
+			continue
+		}
+		if g, w := gv.FieldByName(name).String(), wv.FieldByName(name).String(); g != w {
+			t.Errorf("%s = %q, want the answer %q", name, g, w)
+		}
+	}
+	// An empty tone answer clears the saved tone, so a user can drop it.
+	if got.Tone != "" {
+		t.Errorf("tone = %q, want it cleared", got.Tone)
+	}
+	if got.ReviewUnderstanding == nil || *got.ReviewUnderstanding {
+		t.Errorf("review understanding = %v, want the answer false", got.ReviewUnderstanding)
 	}
 }
