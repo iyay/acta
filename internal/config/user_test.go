@@ -488,3 +488,92 @@ func TestReviewUnderstandingBadValue(t *testing.T) {
 		}
 	}
 }
+
+// The parallel plan keys must come back on the next read, or slice forgets
+// the count and asks the default offer at the wrong time.
+func TestParallelPlanKeysRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	u := UserDefault()
+	u.ParallelPlans = " subagent"
+	u.SubagentPicks = 3
+	u.SubagentOffer = "declined "
+	if err := SaveUserFile(path, u); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadUser(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ParallelPlans != "subagent" || got.SubagentPicks != 3 || got.SubagentOffer != "declined" {
+		t.Errorf("got %q %d %q, want subagent 3 declined", got.ParallelPlans, got.SubagentPicks, got.SubagentOffer)
+	}
+	raw, _ := os.ReadFile(path)
+	for _, key := range []string{"parallel_plans: subagent", "subagent_picks: 3", "subagent_offer: declined"} {
+		if !strings.Contains(string(raw), key) {
+			t.Errorf("file has no %q:\n%s", key, raw)
+		}
+	}
+}
+
+// A file from before these keys existed reads with all three unset, and
+// saving it back adds none of them.
+func TestParallelPlanKeysUnsetInOldFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("chat_language: English\nstyle: adhd\nbuild_executor: inline\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadUser(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ParallelPlans != "" || got.SubagentPicks != 0 || got.SubagentOffer != "" {
+		t.Errorf("got %q %d %q, want all unset", got.ParallelPlans, got.SubagentPicks, got.SubagentOffer)
+	}
+	if err := SaveUserFile(path, got); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	for _, key := range []string{"parallel_plans", "subagent_picks", "subagent_offer"} {
+		if strings.Contains(string(raw), key) {
+			t.Errorf("file gained %q:\n%s", key, raw)
+		}
+	}
+}
+
+// A wrong parallel plan value never loads from the user file and never lands
+// in it, and the error names the key so the user knows what to fix.
+func TestParallelPlanKeysBadValues(t *testing.T) {
+	for _, tc := range []struct {
+		key  string
+		line string
+		set  func(*User)
+	}{
+		{"parallel_plans", "parallel_plans: inline", func(u *User) { u.ParallelPlans = "inline" }},
+		{"parallel_plans", "parallel_plans: Subagent", func(u *User) { u.ParallelPlans = "Subagent" }},
+		{"parallel_plans", "parallel_plans: dispatch", func(u *User) { u.ParallelPlans = "dispatch" }},
+		{"subagent_offer", "subagent_offer: yes", func(u *User) { u.SubagentOffer = "yes" }},
+		{"subagent_offer", "subagent_offer: Declined", func(u *User) { u.SubagentOffer = "Declined" }},
+		{"subagent_picks", "subagent_picks: -1", func(u *User) { u.SubagentPicks = -1 }},
+	} {
+		in := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.WriteFile(in, []byte("chat_language: English\nstyle: adhd\n"+tc.line+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		v, exists, err := LoadUser(in)
+		if !exists || !errors.Is(err, ErrBadUser) || v != UserDefault() {
+			t.Errorf("load %q: got %+v %v %v, want defaults, exists, ErrBadUser", tc.line, v, exists, err)
+		}
+		if err != nil && !strings.Contains(err.Error(), tc.key) {
+			t.Errorf("load %q: err %v does not name %s", tc.line, err, tc.key)
+		}
+		out := filepath.Join(t.TempDir(), "config.yaml")
+		u := UserDefault()
+		tc.set(&u)
+		if err := SaveUserFile(out, u); !errors.Is(err, ErrBadUser) {
+			t.Errorf("save %q: err %v, want ErrBadUser", tc.line, err)
+		}
+		if _, err := os.Stat(out); !os.IsNotExist(err) {
+			t.Errorf("save %q: a bad value was written", tc.line)
+		}
+	}
+}
