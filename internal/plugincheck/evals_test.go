@@ -64,6 +64,10 @@ var evalCases = []struct {
 	{"cleanup-proposes-first", "skills/cleanup/SKILL.md", "names the numbers to skip"},
 	{"slice-minimal-one-file", "skills/slice/SKILL.md", "never the other one"},
 	{"cleanup-warns-cost", "skills/cleanup/SKILL.md", "Start nothing before the answer"},
+	{"slice-split-parallel-ask", "skills/slice/split.md", "Never offer `dispatch` here"},
+	{"slice-split-parallel-offer", "skills/slice/split.md", "`subagent_picks` is 3 or more and `subagent_offer` is not `declined`"},
+	{"slice-split-parallel-declined", "skills/slice/split.md", "acta config set --subagent-offer declined"},
+	{"slice-split-parallel-set", "skills/slice/split.md", "`parallel_plans: subagent` or `build_executor: subagent`"},
 }
 
 // TestEvalCases checks every case folder: it exists, it names the phrase it

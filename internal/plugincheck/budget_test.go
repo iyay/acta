@@ -30,7 +30,7 @@ var fileCaps = map[string]int{
 	"skills/build/dispatch.md":                6710,
 	"skills/build/inline.md":                  490,
 	"skills/build/implementer-prompt.md":      7557,
-	"skills/build/many.md":                    2371,
+	"skills/build/many.md":                    2398,
 	"skills/build/subagent.md":                1595,
 	"skills/build/wiki.md":                    2750,
 	"skills/cleanup/SKILL.md":                 3201,
@@ -59,7 +59,7 @@ var fileCaps = map[string]int{
 	"skills/slice/SKILL.md":                   7061,
 	"skills/slice/full.md":                    4254,
 	"skills/slice/minimal.md":                 984,
-	"skills/slice/split.md":                   3106,
+	"skills/slice/split.md":                   3143,
 	"skills/tdd/SKILL.md":                     6491,
 	"skills/tdd/writing-good-tests.md":        8292,
 }

@@ -17,9 +17,9 @@ build PLN-0161            (ready now)
 build PLN-0162            (wait for PLN-0160 to land)
 ```
 
-7. After the user's yes to every plan, with 2 or more plans ready now: when `acta config show` says `parallel_plans: subagent` or `build_executor: subagent`, do not ask, and build the ready plans here with `many.md` of `acta:build`. Otherwise ask once: "subagent (all ready plans built here, in parallel, one subagent each) or inline?" Never offer `dispatch` here.
-   - Inline: the lines from step 6 stand. Nothing is counted.
-   - Subagent: run `acta config pick subagent`, then build the ready plans here with `many.md` of `acta:build`.
-   - When `subagent_picks` is 3 or more and `subagent_offer` is not `declined`, ask this in place of that question: "You picked subagent 3 times for independent plans. Build parallel plans with subagents by default? Single-plan builds stay as they are." Yes: `acta config set --parallel-plans subagent`, then build as subagent. No: `acta config set --subagent-offer declined`, then ask the plain question.
+7. After the user's yes to every plan, with 2 or more plans ready now, read `acta config show` and take the first case that fits. Never offer `dispatch` here.
+   - `parallel_plans: subagent` or `build_executor: subagent`: do not ask; build the ready plans here with `many.md` of `acta:build`.
+   - `subagent_picks` is 3 or more and `subagent_offer` is not `declined`: ask only this: "You picked subagent 3 times for independent plans. Build parallel plans with subagents by default? Single-plan builds stay as they are." Yes: `acta config set --parallel-plans subagent`, then build the ready plans here with `many.md` of `acta:build`. No: `acta config set --subagent-offer declined`, then the plain ask below.
+   - Else the plain ask: "subagent (all ready plans built here, in parallel, one subagent each) or inline?" Inline: the lines from step 6 stand. Nothing is counted. Subagent: run `acta config pick subagent`, then build the ready plans here with `many.md` of `acta:build`.
 
 Each plan lands on its own. Land writes the spec's dates once the plans are on the parent branch; a tick in a worktree does not.
