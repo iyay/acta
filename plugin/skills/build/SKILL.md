@@ -32,6 +32,8 @@ Two fallbacks, each told to the user in one line:
 
 Whichever executor you end up with, read only that file and follow it. Never open the other two.
 
+Two or more ready plans that slice hands over for a parallel build, or a plan whose `acta state` says `parallel run`: read [many.md](many.md) in place of an executor file.
+
 ## Worktree
 
 Do not ask whether to create a worktree. Every change gets one, even a one-liner or docs; the main checkout is read-only for agents.

@@ -689,3 +689,45 @@ func TestBuildInlineStopRulePointer(t *testing.T) {
 		t.Errorf("build/inline.md missing the stop rule pointer %q", want)
 	}
 }
+
+// TestBuildManyText keeps the parallel plan rules in many.md, the one file
+// a parallel build reads, and keeps the pointer to it in build SKILL.md.
+func TestBuildManyText(t *testing.T) {
+	many := readSkillFile(t, "build", "many.md")
+	if first := strings.SplitN(many, "\n", 2)[0]; !strings.HasPrefix(first, "Read this") {
+		t.Errorf("build/many.md must start with one line saying when to read it, got %q", first)
+	}
+	for _, want := range []string{
+		"`## Build brief` wins",
+		"one subagent per plan",
+		"all in one message",
+		`agent="task"`,
+		"implementer-prompt.md",
+		"every task of the plan, in wave order",
+		"git rev-parse --show-toplevel",
+		"house-rules.md",
+		"acta state set",
+		"names its model",
+		"never starts a subagent of its own",
+		"never `git reset`, rebase, amend or squash",
+		"`progress.total`",
+		"acta:review",
+		"a new subagent for that plan",
+		"Three rounds at most",
+		"one at a time through `acta:land`",
+		"`after:`",
+		"stuck",
+		"`parallel run`",
+		"`/build` on any plan of the run",
+	} {
+		if !strings.Contains(many, want) {
+			t.Errorf("build/many.md missing %q", want)
+		}
+	}
+	skill := readSkillFile(t, "build", "SKILL.md")
+	for _, want := range []string{"[many.md](many.md)", "parallel run"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("build/SKILL.md missing %q", want)
+		}
+	}
+}
