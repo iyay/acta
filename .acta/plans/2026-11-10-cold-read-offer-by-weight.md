@@ -5,6 +5,7 @@ id: PLN-0226
 created: "2026-11-10 19:32:35"
 hash: hsgbnmd
 started: "2026-11-10 19:34:23"
+finished: "2026-11-10 19:36:29"
 ---
 # Offer the cold read only when the spec is heavy
 
@@ -39,12 +40,25 @@ started: "2026-11-10 19:34:23"
 **Files:** `plugin/evals/cold-read-no-signal/` (new: `case.yaml`, `prompt.md`, `scaffold.sh`, `graders/behavior.md`), `internal/plugincheck/evals_test.go`, `plugin/evals/cold-read-offer/graders/behavior.md`
 **Seam:** the `evalCases` table and the LLM-grader allowlist in `evals_test.go`, and the eval case itself
 **verify:** The no-signal case passes only when the agent, resuming shape after self-review on a one-area Bounded spec with no sensitive or interface change, asks for spec review without any cold read offer or hint and never loads `cold-read.md`. The `cold-read-offer` grader says its export spec carries a sensitive signal, so the offer must still fire there. `evals_test.go` anchors the new case on a phrase that exists in shape `SKILL.md`.
-- [ ] Red: `evals_test.go` fails because its new `cold-read-no-signal` row points at a case folder that does not exist yet.
-- [ ] Change: add the case folder, modelled on `cold-read-offer`, with a spec that changes one help string in one Go file, and add the signal line to the `cold-read-offer` grader.
-- [ ] Commit: test(evals): cover the cold read skip on a spec with no signal
+- [x] Red: `evals_test.go` fails because its new `cold-read-no-signal` row points at a case folder that does not exist yet.
+- [x] Change: add the case folder, modelled on `cold-read-offer`, with a spec that changes one help string in one Go file, and add the signal line to the `cold-read-offer` grader.
+- [x] Commit: test(evals): cover the cold read skip on a spec with no signal
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] plugin/skills/shape/SKILL.md Bounded step 7 wording ("only on a signal below") has no test; add one check in TestShapeColdRead.
+- [x] Commit: `polish: review notes for PLN-0226`
+
+## Review notes
+
+- Review level deep (from review_depth), no floor raised it. Round 1 CLEAN: BLOCKER 0, NOTE 9, pre-existing 0 (a git templates warning in the scaffold was judged harmless, not a defect). One [fix] went to Polish task 3; its review was CLEAN. Open [note]s: cap 8270 has no slack; "more than one area" is loose; the no-signal eval -h string could read as a command; bare substring checks; long Cold read paragraph; Architectural step 7 has no matching wording check.
 
 ## State
 
 ### Next
 
-Task 2: add plugin/evals/cold-read-no-signal modelled on cold-read-offer; anchor its evalCases row on "say nothing about the cold read" in skills/shape/SKILL.md.
+All tasks committed; next is the close: wiki check, then acta:review over main..HEAD.

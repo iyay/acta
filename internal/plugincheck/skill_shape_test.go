@@ -79,6 +79,12 @@ func TestShapeColdRead(t *testing.T) {
 			t.Errorf("%s must offer cold read between self-review and user approval", path[0])
 		}
 	}
+	// The Bounded list is what an agent reads first, so it must say the
+	// offer waits for a signal too.
+	bounded := shapeChecklist(t, string(skill), "**Bounded:**", "**Architectural:**")
+	if !strings.Contains(bounded, "only on a signal below") {
+		t.Error("Bounded step 7 must say the cold read is offered only on a signal")
+	}
 	if _, err := os.ReadFile(filepath.Join(root, "cold-read.md")); err != nil {
 		t.Fatalf("cold read reviewer instructions: %v", err)
 	}
