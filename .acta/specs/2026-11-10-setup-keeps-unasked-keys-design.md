@@ -14,14 +14,19 @@ Bounded. The user approved this design on WhatsApp on 2026-11-10.
 
 ## Goal
 
-After `acta setup`, every key the form does not ask about keeps the value it had, and every key the form asks takes the user's answer.
+After `acta setup`, every key the form does not ask about keeps the value it had when the wizard started, and every key the form asks takes the user's answer.
+
+Out of scope, ruled by the user after the cold read:
+- A config file that `LoadUser` rejects. Setup starts from defaults then, as today, and saves defaults plus the answers.
+- A change made to the file while the wizard is open, such as a subagent pick from another session. Setup keeps the snapshot it read at the start.
 
 ## Design
 
-1. `AnswersUser` starts from `current` and sets only the fields the form asks: chat language, style, tone, build executor, plan depth, plan split, review depth, commit history, questions and review understanding. A key added to `config.User` later is kept without a change here.
+1. `AnswersUser` starts from `current` and always sets the ten fields the form asks, even to an empty answer, so a user can still clear the tone: chat language, style, tone, build executor, plan depth, plan split, review depth, commit history, questions and review understanding. Every other field keeps the value from `current`, so a key added to `config.User` later is kept without a change here.
 2. Files: `internal/setup/form.go` and `internal/setup/form_test.go`.
 
 ## Testing
 
-- `internal/setup/form_test.go`: a `current` with all six unasked keys set comes back from `AnswersUser` with the same six values, and each asked field holds the form answer, not the old value.
+- `internal/setup/form_test.go`: the test walks every field of `config.User` by reflection. With a `current` where every field is set, each field outside the ten asked ones comes back unchanged, and each asked field equals the form answer.
+- One case clears the tone: `current.Tone` is `x`, the answer is empty, and the result is empty.
 - At land: the full suite.
