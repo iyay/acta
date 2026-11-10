@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: cold-read-no-signal
+context:
+  scaffold_script: scaffold.sh

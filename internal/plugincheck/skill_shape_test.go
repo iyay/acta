@@ -79,8 +79,35 @@ func TestShapeColdRead(t *testing.T) {
 			t.Errorf("%s must offer cold read between self-review and user approval", path[0])
 		}
 	}
+	// The Bounded list is what an agent reads first, so it must say the
+	// offer waits for a signal too.
+	bounded := shapeChecklist(t, string(skill), "**Bounded:**", "**Architectural:**")
+	if !strings.Contains(bounded, "only on a signal below") {
+		t.Error("Bounded step 7 must say the cold read is offered only on a signal")
+	}
 	if _, err := os.ReadFile(filepath.Join(root, "cold-read.md")); err != nil {
 		t.Fatalf("cold read reviewer instructions: %v", err)
+	}
+	// A small Bounded spec should not get the offer. The rules for who gets
+	// it live in this section, since cold-read.md is read only after a yes.
+	section := shapeChecklist(t, string(skill), "## Cold read", "## Spec rules")
+	for _, rule := range []string{
+		"Never offer for Spike",
+		"Always offer for Architectural",
+		"trust boundary, auth, money or a data migration",
+		"interface, file format or command",
+		"more than one area",
+		"no signal",
+		"say nothing about the cold read",
+		"once, at step 7",
+		"user asks for a cold read",
+		// Old evals still look for these two lines.
+		"Want a cold read before planning?",
+		"Skip goes to final spec approval",
+	} {
+		if !strings.Contains(section, rule) {
+			t.Errorf("shape ## Cold read must say %q", rule)
+		}
 	}
 }
 

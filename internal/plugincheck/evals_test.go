@@ -40,6 +40,7 @@ var evalCases = []struct {
 	{"probe-round", "skills/shape/probe.md", "five questions at most"},
 	{"cold-read-offer", "skills/shape/SKILL.md", "Want a cold read before planning?"},
 	{"cold-read-skip", "skills/shape/SKILL.md", "Skip goes to final spec approval"},
+	{"cold-read-no-signal", "skills/shape/SKILL.md", "say nothing about the cold read"},
 	{"cold-read-accept", "skills/shape/cold-read.md", "without inherited conversation"},
 	{"cold-read-unavailable", "skills/shape/cold-read.md", "cold read did not complete"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
@@ -117,7 +118,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
 		"review-understanding-report": true, "review-understanding-disabled": true,
-		"cold-read-offer": true, "cold-read-skip": true, "cold-read-accept": true, "cold-read-unavailable": true,
+		"cold-read-offer": true, "cold-read-skip": true, "cold-read-no-signal": true, "cold-read-accept": true, "cold-read-unavailable": true,
 		"cleanup-proposes-first": true, "cleanup-warns-cost": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
