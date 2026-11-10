@@ -2,6 +2,8 @@
 id: BUG-0083
 hash: gr1njw3
 started: "2026-11-10 19:31:23"
+fixed_in: 05ae788aa7a1c8d4e362491f7deba31f48d2b6a8
+finished: "2026-11-10 19:37:45"
 ---
 # Running acta setup again wipes settings it does not ask about
 
