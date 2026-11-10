@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0226
 created: "2026-11-10 19:32:35"
 hash: hsgbnmd
+started: "2026-11-10 19:34:23"
 ---
 # Offer the cold read only when the spec is heavy
 
@@ -29,9 +30,9 @@ hash: hsgbnmd
 **Files:** `plugin/skills/shape/SKILL.md`, `internal/plugincheck/skill_shape_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** `TestShapeColdRead` over the text of `plugin/skills/shape/SKILL.md`
 **verify:** No reader of the `## Cold read` section can offer a cold read on a Bounded spec with no signal, or skip it on an Architectural spec. List each rule checked in the section: Spike never; Architectural always; Bounded only on one of the three signals (trust boundary, auth, money or data migration; a changed interface, file format or command others depend on; files in more than one area); the silent skip with no hint line; signals judged once at step 7; a cold read the user asks for runs whatever the path. Step 7 still sits between self-review and user review in both checklists, and the file stays under its byte cap.
-- [ ] Red: `TestShapeColdRead` fails because the `## Cold read` section does not name the Bounded signals, the silent skip or the once-at-step-7 rule.
-- [ ] Change: rewrite the `## Cold read` section and Bounded step 7 in shape `SKILL.md`, and raise the `skills/shape/SKILL.md` cap in `budget_test.go` by about 400 bytes.
-- [ ] Commit: feat(shape): offer the cold read only for heavy specs
+- [x] Red: `TestShapeColdRead` fails because the `## Cold read` section does not name the Bounded signals, the silent skip or the once-at-step-7 rule.
+- [x] Change: rewrite the `## Cold read` section and Bounded step 7 in shape `SKILL.md`, and raise the `skills/shape/SKILL.md` cap in `budget_test.go` by about 400 bytes.
+- [x] Commit: feat(shape): offer the cold read only for heavy specs
 
 ### Task 2: Eval for a Bounded spec with no signal
 
@@ -41,3 +42,9 @@ hash: hsgbnmd
 - [ ] Red: `evals_test.go` fails because its new `cold-read-no-signal` row points at a case folder that does not exist yet.
 - [ ] Change: add the case folder, modelled on `cold-read-offer`, with a spec that changes one help string in one Go file, and add the signal line to the `cold-read-offer` grader.
 - [ ] Commit: test(evals): cover the cold read skip on a spec with no signal
+
+## State
+
+### Next
+
+Task 2: add plugin/evals/cold-read-no-signal modelled on cold-read-offer; anchor its evalCases row on "say nothing about the cold read" in skills/shape/SKILL.md.
