@@ -9,12 +9,17 @@ Cut only when the work splits cleanly. A spec that fits one plan stays one plan.
 3. Every plan sets the same `parent:` (the spec), follows the rest of this skill, and gets its own `acta id`.
 4. Right after `acta id`, before anything else, check the after lists: run `acta ready <plan id> --parent <parent>` for each plan. Exit 2 names a bad after list (unknown id, not a plan, the plan itself, a dropped plan, or a cycle with its chain): fix the list with `acta set <plan id> after <ids>` (it commits and folds into the plan's own commit), and run the check again until no plan exits 2.
 5. Give each plan a `## Build brief` that names only what differs from the default: the code repo, when it is not the repo that holds the plan; the parent branch, when it is not the default branch, and whether it is checked out anywhere; the land method, when it is not the usual land; and the land order, when a sibling plan lands on the same branch. Leave the section out when all four are default. Rules the skills already hold stay out of it. Commit the brief with `acta commit`, like any plan edit, before the next step.
-6. Print one line per plan, in this form, and do not start a build yourself. The plan carries the rest, so the line stays short. The user hands each line to a session of their choice.
+6. Print one line per plan, in this form, and do not start a build yourself, except the parallel build of step 7. The plan carries the rest, so the line stays short. The user hands each line to a session of their choice.
 
 ```
 build PLN-0160            (ready now)
 build PLN-0161            (ready now)
 build PLN-0162            (wait for PLN-0160 to land)
 ```
+
+7. After the user's yes to every plan, with 2 or more plans ready now: when `acta config show` says `parallel_plans: subagent` or `build_executor: subagent`, do not ask, and build the ready plans here with `many.md` of `acta:build`. Otherwise ask once: "subagent (all ready plans built here, in parallel, one subagent each) or inline?" Never offer `dispatch` here.
+   - Inline: the lines from step 6 stand. Nothing is counted.
+   - Subagent: run `acta config pick subagent`, then build the ready plans here with `many.md` of `acta:build`.
+   - When `subagent_picks` is 3 or more and `subagent_offer` is not `declined`, ask this in place of that question: "You picked subagent 3 times for independent plans. Build parallel plans with subagents by default? Single-plan builds stay as they are." Yes: `acta config set --parallel-plans subagent`, then build as subagent. No: `acta config set --subagent-offer declined`, then ask the plain question.
 
 Each plan lands on its own. Land writes the spec's dates once the plans are on the parent branch; a tick in a worktree does not.

@@ -5,6 +5,7 @@ id: PLN-0224
 created: "2026-11-10 18:16:19"
 hash: o8oqi8d
 after: [PLN-0223]
+started: "2026-11-10 18:34:16"
 ---
 # Parallel plans: slice ask and build many.md
 
@@ -31,9 +32,9 @@ after: [PLN-0223]
 **Files:** `plugin/skills/slice/split.md`, `plugin/skills/slice/SKILL.md`, `internal/plugincheck/skill_split_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** `scripts/test ./internal/plugincheck -run 'TestSkillSplit|TestBudget'`
 **verify:** The ask fires only after the yes to every plan and the Build briefs, only with 2 or more ready plans, and the only build slice may start is the parallel one after that ask or a `subagent` setting. List each rule checked in the text: no ask with one ready plan; no ask and straight to parallel with `parallel_plans: subagent` or `build_executor: subagent`; `dispatch` not offered; inline prints the build lines and is not counted; subagent runs `acta config pick subagent`; the offer at 3 picks unless `subagent_offer: declined`, with the yes and no commands; both "never starts a build" lines name the exception.
-- [ ] Red: the split test fails because `split.md` does not name `acta config pick subagent`.
-- [ ] Change: add the ask, the count and the offer after step 5 of `split.md`, name the exception in step 6 and in slice `SKILL.md`, and raise the two size caps only as far as the new text needs.
-- [ ] Commit: feat(slice): ask subagent or inline for ready parallel plans
+- [x] Red: the split test fails because `split.md` does not name `acta config pick subagent`.
+- [x] Change: add the ask, the count and the offer after step 5 of `split.md`, name the exception in step 6 and in slice `SKILL.md`, and raise the two size caps only as far as the new text needs.
+- [x] Commit: feat(slice): ask subagent or inline for ready parallel plans
 
 ### Task 2: Build runs several plans with many.md
 
@@ -52,3 +53,9 @@ after: [PLN-0223]
 - [ ] Red: the four cases fail on the slice text from before Task 1.
 - [ ] Change: add the four case folders in the shape of `slice-minimal-one-file`, and tie each to its guarded phrase in `evalCases`.
 - [ ] Commit: test(evals): pin the parallel plans ask, offer, decline and setting
+
+## State
+
+### Next
+
+Wave 2: Task 2 writes build/many.md and its line in build SKILL.md; Task 3 adds four slice-split-parallel eval cases. Both raise or add caps; Task 3 touches evals_test.go only.

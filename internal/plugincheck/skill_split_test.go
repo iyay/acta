@@ -47,6 +47,23 @@ func TestPlanSplitText(t *testing.T) {
 		{readSkillFile(t, "slice", "SKILL.md"), "A split (split.md) never starts a build"},
 		{split, "Right after `acta id`"},
 		{split, "## Build brief"},
+		// The parallel ask: only after the yes, only with 2 or more ready
+		// plans, never offering dispatch, counted only on subagent.
+		{split, "After the user's yes to every plan"},
+		{split, "2 or more plans ready now"},
+		{split, "`parallel_plans: subagent` or `build_executor: subagent`"},
+		{split, "Never offer `dispatch` here"},
+		{split, "Nothing is counted"},
+		{split, "acta config pick subagent"},
+		{split, "`subagent_picks` is 3 or more and `subagent_offer` is not `declined`"},
+		{split, "acta config set --parallel-plans subagent"},
+		{split, "acta config set --subagent-offer declined"},
+		{split, "Single-plan builds stay as they are"},
+		{split, "many.md"},
+		// Both never-build lines name the one exception, so slice does not
+		// start a build anywhere else.
+		{split, "except the parallel build of step 7"},
+		{readSkillFile(t, "slice", "SKILL.md"), "except the parallel build split.md allows after the user's yes"},
 		{readSkillFile(t, "build", "SKILL.md"), "## Build brief"},
 	}
 	for _, c := range checks {

@@ -28,7 +28,7 @@ Read only the file for the depth you picked, and never the other one:
 | `full` | [full.md](full.md) | the depth is `full` |
 | `minimal` | [minimal.md](minimal.md) | the depth is `minimal` |
 
-Depth changes only what a plan holds, never the gate. A minimal plan is saved, committed and shown (its path and one line a task) like a full one, and waits for a yes. A split (split.md) never starts a build.
+Depth changes only what a plan holds, never the gate. A minimal plan is saved, committed and shown (its path and one line a task) like a full one, and waits for a yes. A split (split.md) never starts a build, except the parallel build split.md allows after the user's yes.
 
 ## Scope Check
 
