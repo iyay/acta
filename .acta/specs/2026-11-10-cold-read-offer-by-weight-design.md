@@ -2,6 +2,8 @@
 id: SPC-0198
 created: "2026-11-10 18:16:09"
 hash: zms9iv8
+started: "2026-11-10 19:34:23"
+finished: "2026-11-10 19:59:48"
 ---
 # Offer the cold read only when the spec is heavy
 
