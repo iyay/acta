@@ -226,6 +226,7 @@ var helpTable = []helpCmd{
 			"acta config show [--json]",
 			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--parallel-plans subagent] [--subagent-offer declined] [--theme NAME] [--clear-theme]",
 			"acta config set --repo [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
+			"acta config pick subagent",
 		},
 		flags: []string{
 			"--json  print JSON (config show)",

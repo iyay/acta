@@ -299,6 +299,25 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, path)
 		return exitOK
+	case "pick":
+		// Slice counts each time the user picks subagent for parallel plans,
+		// so it knows when to offer it as the default. Only subagent counts.
+		if len(args) != 2 || args[1] != "subagent" {
+			fmt.Fprintln(stderr, configUsage)
+			return exitBadInput
+		}
+		v, read, _, err := config.ResolveUserFile()
+		if err != nil {
+			fmt.Fprintf(stderr, "%v\nfix or delete %s first\n", err, read)
+			return exitBadInput
+		}
+		v.SubagentPicks++
+		if err := config.SaveUser(v); err != nil {
+			fmt.Fprintln(stderr, err)
+			return exitOther
+		}
+		fmt.Fprintln(stdout, v.SubagentPicks)
+		return exitOK
 	default:
 		fmt.Fprintln(stderr, configUsage)
 		return exitBadInput

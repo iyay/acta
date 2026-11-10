@@ -5,6 +5,7 @@ id: PLN-0223
 created: "2026-11-10 18:16:09"
 hash: t0ce23m
 started: "2026-11-10 18:19:57"
+finished: "2026-11-10 18:25:05"
 ---
 # Parallel plans: user config and CLI
 
@@ -49,15 +50,28 @@ started: "2026-11-10 18:19:57"
 **Files:** `internal/cli/config_cmd.go`, `internal/cli/config_parallel_test.go`
 **Seam:** `cli.Run` with `config pick`
 **verify:** Only `acta config pick subagent` changes the count, by exactly 1, in the user file. List each path checked: first call prints 1 and saves 1; second call prints 2; other user keys stay as they were; no argument, `inline`, or two arguments exit with the bad-input code and leave the count as it was; inside a repo with `.acta.yaml`, that file does not change.
-- [ ] Red: `config pick subagent` fails because `pick` is not a config subcommand.
-- [ ] Change: add `pick` to `cmdConfig`: load the user file, add 1 to `SubagentPicks`, save, print the count; name it in the config usage line.
-- [ ] Commit: feat(cli): add acta config pick subagent
+- [x] Red: `config pick subagent` fails because `pick` is not a config subcommand.
+- [x] Change: add `pick` to `cmdConfig`: load the user file, add 1 to `SubagentPicks`, save, print the count; name it in the config usage line.
+- [x] Commit: feat(cli): add acta config pick subagent
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] TestConfigSetParallelPlanKeysRefuseRepo also covers --repo with a repo key plus a parallel plan flag, so the personal guard itself is tested.
+- [x] Commit: `polish: review notes for PLN-0223`
+
+## Review notes
+
+- Review: deep, round 1 CLEAN on both axes; polish (refuse-repo test pins the personal guard) full tier, CLEAN on both axes. BLOCKER 0, NOTE 7, pre-existing 1 (bug setup-wizard-wipes-unasked-keys). Ruling: unset keys show as ask/0/open with no (default) mark, so setup never asks them on later runs; the Task 2 verify line still names the mark. Notes left: no command sets parallel_plans back to unset; open is a display word, so readers check != declined; help.go changed for the usage line.
 
 ## State
 
 ### Next
 
-Task 3: add acta config pick subagent in config_cmd.go and help.go; tests go in config_parallel_test.go.
+All three tasks done. Close: wiki check, then acta:review over main..HEAD.
 
 ### Findings
 
