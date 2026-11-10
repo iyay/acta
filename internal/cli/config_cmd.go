@@ -140,6 +140,15 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			// Same here: an unset value is false, and show says so.
 			understandingMark = " (default)"
 		}
+		// Unset parallel plan keys read as ask and open. No (default) mark:
+		// setup asks about every setting with that mark, and slice asks these.
+		parallelPlans, subagentOffer := v.ParallelPlans, v.SubagentOffer
+		if parallelPlans == "" {
+			parallelPlans = "ask"
+		}
+		if subagentOffer == "" {
+			subagentOffer = "open"
+		}
 		if *asJSON {
 			return printJSON(stdout, stderr, map[string]any{
 				"path": read, "writes": path, "exists": exists, "chat_language": v.ChatLanguage,
@@ -147,6 +156,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 				"build_executor": v.BuildExecutor,
 				"theme":          themeName, "plan_depth": depth, "plan_split": split, "review_depth": reviewDepth, "commit_history": history, "questions": questions, "coding_guide": guide,
 				"review_understanding": v.Understanding(), "from_repo": fromRepo, "overrides": overrideList,
+				"parallel_plans": parallelPlans, "subagent_picks": v.SubagentPicks, "subagent_offer": subagentOffer,
 			})
 		}
 		// The values can come from an old file. Name it, and say where the
@@ -168,6 +178,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "questions: %s%s\n", questions, questionsMark)
 		fmt.Fprintf(stdout, "coding_guide: %s%s%s\n", guide, mark("coding_guide"), guideMark)
 		fmt.Fprintf(stdout, "review_understanding: %v%s%s\n", v.Understanding(), mark("review_understanding"), understandingMark)
+		fmt.Fprintf(stdout, "parallel_plans: %s\nsubagent_picks: %d\nsubagent_offer: %s\n", parallelPlans, v.SubagentPicks, subagentOffer)
 		fmt.Fprintf(stdout, "theme: %s\n", themeName)
 		return exitOK
 	case "set":
@@ -187,6 +198,8 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")
 		understanding := fs.String("review-understanding", "", "true or false: after a landing, explain the change")
+		parallelPlans := fs.String("parallel-plans", "", "how plans ready at once get built: subagent")
+		subagentOffer := fs.String("subagent-offer", "", "declined: never offer subagent as the default for parallel plans again")
 		repoOnly := fs.Bool("repo", false, "save to .acta.yaml in this repo instead of your own config")
 		var unset keyList
 		fs.Var(&unset, "unset", "with --repo: remove this key from .acta.yaml so your own value applies (repeatable)")
@@ -194,7 +207,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
-		if *lang == "" && *style == "" && *tone == "" && *executor == "" && *depth == "" && *planSplit == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *themeName == "" && !*clearTone && !*clearTheme && len(unset) == 0 {
+		if *lang == "" && *style == "" && *tone == "" && *executor == "" && *depth == "" && *planSplit == "" && *reviewDepth == "" && *history == "" && *questions == "" && *guide == "" && *understanding == "" && *themeName == "" && *parallelPlans == "" && *subagentOffer == "" && !*clearTone && !*clearTheme && len(unset) == 0 {
 			fmt.Fprintln(stderr, configUsage)
 			return exitBadInput
 		}
@@ -205,7 +218,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *repoOnly {
 			return setRepo(stdout, stderr, map[string]string{"build_executor": *executor, "plan_depth": *depth, "plan_split": *planSplit, "review_depth": *reviewDepth, "commit_history": *history, "coding_guide": *guide, "review_understanding": *understanding},
-				*lang != "" || *style != "" || *tone != "" || *questions != "" || *themeName != "" || *clearTone || *clearTheme, unset)
+				*lang != "" || *style != "" || *tone != "" || *questions != "" || *themeName != "" || *parallelPlans != "" || *subagentOffer != "" || *clearTone || *clearTheme, unset)
 		}
 		v, read, _, err := config.ResolveUserFile()
 		if err != nil {
@@ -246,6 +259,12 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		if *guide != "" {
 			v.CodingGuide = *guide
+		}
+		if *parallelPlans != "" {
+			v.ParallelPlans = *parallelPlans
+		}
+		if *subagentOffer != "" {
+			v.SubagentOffer = *subagentOffer
 		}
 		if *understanding != "" {
 			b, err := config.ParseReviewUnderstanding(*understanding)

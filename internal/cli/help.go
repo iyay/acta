@@ -224,7 +224,7 @@ var helpTable = []helpCmd{
 		summary: "Show or change your acta settings, or the ones saved in .acta.yaml of this repo.",
 		usage: []string{
 			"acta config show [--json]",
-			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--theme NAME] [--clear-theme]",
+			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--parallel-plans subagent] [--subagent-offer declined] [--theme NAME] [--clear-theme]",
 			"acta config set --repo [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
 		},
 		flags: []string{
@@ -240,6 +240,8 @@ var helpTable = []helpCmd{
 			"--questions Q  how the agent asks: one question at a time, or probe",
 			"--coding-guide G  the coding guide: lean or off",
 			"--review-understanding B  true or false: after a landing, explain the change",
+			"--parallel-plans P  how plans ready at once get built: subagent",
+			"--subagent-offer O  declined: never offer subagent as the default for parallel plans again",
 			"--theme NAME  the TUI color theme",
 			"--clear-theme  go back to the default theme",
 			"--repo  save to .acta.yaml in this repo instead of your own config",

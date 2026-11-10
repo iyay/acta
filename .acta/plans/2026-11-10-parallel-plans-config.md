@@ -40,9 +40,9 @@ started: "2026-11-10 18:19:57"
 **Files:** `internal/cli/config_cmd.go`, `internal/cli/config_parallel_test.go`
 **Seam:** `cli.Run` with `config set` and `config show`
 **verify:** The keys are set only through the user file and shown on both outputs. List each path checked: `--parallel-plans subagent` and `--subagent-offer declined` save; a bad value for either exits with the bad-input code and leaves the file as it was; either flag with `--repo` is refused and `.acta.yaml` is not written; `config show` text prints `parallel_plans`, `subagent_picks` and `subagent_offer` with a `(default)` mark when unset; `--json` prints the same three keys without the mark.
-- [ ] Red: `config set --parallel-plans subagent` fails because the flag does not exist.
-- [ ] Change: add the two flags to `config set`, keep them out of the `--repo` list, and print the three keys in `config show`.
-- [ ] Commit: feat(cli): set and show the parallel plan keys
+- [x] Red: `config set --parallel-plans subagent` fails because the flag does not exist.
+- [x] Change: add the two flags to `config set`, keep them out of the `--repo` list, and print the three keys in `config show`.
+- [x] Commit: feat(cli): set and show the parallel plan keys
 
 ### Task 3: config pick counts subagent picks
 
@@ -57,7 +57,7 @@ started: "2026-11-10 18:19:57"
 
 ### Next
 
-Task 2: add --parallel-plans and --subagent-offer to config set, print the three keys in config show.
+Task 3: add acta config pick subagent in config_cmd.go and help.go; tests go in config_parallel_test.go.
 
 ### Findings
 
