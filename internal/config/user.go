@@ -27,6 +27,16 @@ type User struct {
 	// PlanSplit says whether slice may cut one spec into several plans that
 	// different sessions build at once: on or off. Empty means off.
 	PlanSplit string `yaml:"plan_split,omitempty"`
+	// ParallelPlans says how plans that are ready at once get built. Only
+	// subagent is allowed: one subagent per plan, all in one session. Empty
+	// means slice asks each time. It is a user key, never a repo one.
+	ParallelPlans string `yaml:"parallel_plans,omitempty"`
+	// SubagentPicks counts how often the user picked subagent for parallel
+	// plans. After three, slice offers to make it the default.
+	SubagentPicks int `yaml:"subagent_picks,omitempty"`
+	// SubagentOffer is declined once the user said no to that offer, so it
+	// never comes back. Empty means it may still be offered.
+	SubagentOffer string `yaml:"subagent_offer,omitempty"`
 	// ReviewDepth says how much review a plan gets: quick, standard or deep.
 	// Empty means standard.
 	ReviewDepth string `yaml:"review_depth,omitempty"`
@@ -254,6 +264,15 @@ func (v User) Validate() error {
 	default:
 		return fmt.Errorf("%w: plan_split must be on or off, not %q", ErrBadUser, v.PlanSplit)
 	}
+	if v.ParallelPlans != "" && v.ParallelPlans != "subagent" {
+		return fmt.Errorf("%w: parallel_plans must be subagent, not %q", ErrBadUser, v.ParallelPlans)
+	}
+	if v.SubagentPicks < 0 {
+		return fmt.Errorf("%w: subagent_picks must be 0 or more, not %d", ErrBadUser, v.SubagentPicks)
+	}
+	if v.SubagentOffer != "" && v.SubagentOffer != "declined" {
+		return fmt.Errorf("%w: subagent_offer must be declined, not %q", ErrBadUser, v.SubagentOffer)
+	}
 	switch v.ReviewDepth {
 	case "", "quick", "standard", "deep":
 	default:
@@ -291,6 +310,8 @@ func fill(v User) User {
 	v.BuildExecutor = strings.TrimSpace(v.BuildExecutor)
 	v.PlanDepth = strings.TrimSpace(v.PlanDepth)
 	v.PlanSplit = strings.TrimSpace(v.PlanSplit)
+	v.ParallelPlans = strings.TrimSpace(v.ParallelPlans)
+	v.SubagentOffer = strings.TrimSpace(v.SubagentOffer)
 	v.ReviewDepth = strings.TrimSpace(v.ReviewDepth)
 	v.CommitHistory = strings.TrimSpace(v.CommitHistory)
 	v.Questions = strings.TrimSpace(v.Questions)

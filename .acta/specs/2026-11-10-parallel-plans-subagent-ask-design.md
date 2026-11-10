@@ -3,6 +3,7 @@ parent: scratch/2026-11-10-build-executor-ask-on-parallel-plans
 id: SPC-0197
 created: "2026-11-10 18:02:54"
 hash: fy1de0h
+started: "2026-11-10 18:19:57"
 ---
 # Ask subagent or inline when plans can run at once
 
