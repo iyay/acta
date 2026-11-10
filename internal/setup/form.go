@@ -282,20 +282,23 @@ func Ask(e Env, out io.Writer) (Answers, error) {
 	return a, nil
 }
 
-// AnswersUser turns the form answers into the config that setup saves.
+// AnswersUser turns the form answers into the config that setup saves. It
+// starts from the current config, so a key the form does not ask about, such
+// as the theme or the subagent pick count, keeps its value. Every asked field
+// takes its answer, even an empty one, so a user can still clear the tone.
 func AnswersUser(current config.User, d Defaults) config.User {
-	return config.User{
-		ChatLanguage:        d.Language,
-		Style:               d.Style,
-		Tone:                d.Tone,
-		BuildExecutor:       d.BuildExecutor,
-		PlanDepth:           d.PlanDepth,
-		PlanSplit:           d.PlanSplit,
-		ReviewDepth:         d.ReviewDepth,
-		CommitHistory:       d.CommitHistory,
-		Questions:           d.Questions,
-		ReviewUnderstanding: &d.ReviewUnderstanding,
-	}
+	u := current
+	u.ChatLanguage = d.Language
+	u.Style = d.Style
+	u.Tone = d.Tone
+	u.BuildExecutor = d.BuildExecutor
+	u.PlanDepth = d.PlanDepth
+	u.PlanSplit = d.PlanSplit
+	u.ReviewDepth = d.ReviewDepth
+	u.CommitHistory = d.CommitHistory
+	u.Questions = d.Questions
+	u.ReviewUnderstanding = &d.ReviewUnderstanding
+	return u
 }
 
 // ttyPath is the terminal by the one name that works. Under curl | sh the
