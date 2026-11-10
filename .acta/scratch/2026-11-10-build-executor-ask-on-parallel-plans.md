@@ -86,4 +86,8 @@ User took F2 option a (new setting parallel_plans: subagent) and fixes F1, F3, F
 
 Spec SPC-0197 approved by the user (2026-11-10 18:14). Next: acta:slice.
 
+### 2026-11-10
+
+Plans PLN-0223 and PLN-0224 approved by the user (2026-11-10 18:19: build in this session). Building PLN-0223 first, inline.
+
 ## Open questions
