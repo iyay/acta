@@ -78,4 +78,12 @@ Spec written: SPC-0197 .acta/specs/2026-11-10-parallel-plans-subagent-ask-design
 Cold read on SPC-0197 found 5 issues: F1 ask before plan approval and clash with slice never builds; F2 the default offer sets build_executor: subagent, which means one subagent per task everywhere; F3 many.md has no entry in the build executor table and the brief drops implementer-prompt rules; F4 land order clashes with the Build brief; F5 resuming a dead parallel run is not defined.
 Proposed: F2 option a, a new setting parallel_plans: subagent; F1, F3, F4, F5 fixed as proposed. Waiting for the user.
 
+### 2026-11-10
+
+User took F2 option a (new setting parallel_plans: subagent) and fixes F1, F3, F4, F5. Spec SPC-0197 updated.
+
+### 2026-11-10
+
+Spec SPC-0197 approved by the user (2026-11-10 18:14). Next: acta:slice.
+
 ## Open questions
