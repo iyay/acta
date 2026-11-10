@@ -2,6 +2,7 @@
 id: DBT-0161
 hash: ra83hj1
 parent: plans/2026-11-07-worktree-debt-text
+started: "2026-11-07 21:13:00"
 ---
 # Review NOTEs: Worktree debt: skill text and evals
 
