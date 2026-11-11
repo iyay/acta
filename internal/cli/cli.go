@@ -164,6 +164,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdSpecDates(args[1:], stdout, stderr)
 	case "update":
 		return cmdUpdate(args[1:], stdout, stderr)
+	case "telemetry":
+		return cmdTelemetry(args[1:], stdout, stderr)
 	default:
 		return unknownCommand(args[0], stderr)
 	}

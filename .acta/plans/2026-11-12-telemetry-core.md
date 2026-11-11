@@ -53,9 +53,9 @@ started: "2026-11-12 06:35:55"
 **Files:** `internal/cli/telemetry.go` (new), `internal/cli/telemetry_test.go` (new), `internal/cli/cli.go`, `internal/cli/help.go`
 **Seam:** `cli.Run([]string{"telemetry", ...})`
 **verify:** Wiring only, over the store and flush cases above. `on` and `off` change the stored setting; `status` prints the state, its source (setting, environment, or no endpoint in this build), the exact request body of each unsent day and today's counts marked not finished; `flush` runs one flush and prints nothing. A bad subcommand prints the usage line and exits with bad input. Help lists the command.
-- [ ] Red: `telemetry_test.go` fails because `acta telemetry` is an unknown command.
-- [ ] Change: add the `telemetry` case to `Run`, the subcommands and the help entry.
-- [ ] Commit: feat(cli): add acta telemetry on, off, status and flush
+- [x] Red: `telemetry_test.go` fails because `acta telemetry` is an unknown command.
+- [x] Change: add the `telemetry` case to `Run`, the subcommands and the help entry.
+- [x] Commit: feat(cli): add acta telemetry on, off, status and flush
 
 ### Task 4: Count every command, notice and flush trigger
 
