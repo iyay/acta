@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0228
 created: "2026-11-12 06:31:58"
 hash: bymvb60
+started: "2026-11-12 06:35:55"
 ---
 # Telemetry core: counters, flush and the telemetry command
 
@@ -34,9 +35,9 @@ hash: bymvb60
 **Files:** `internal/telemetry/store.go` (new), `internal/telemetry/store_test.go` (new)
 **Seam:** `telemetry.Open(dir)` and its `Add(group, key)`, `SetSettings`, `On`, `Off`, `Enabled`, `Days` and `MarkNoticed` methods, plus the `Endpoint` package variable
 **verify:** No path counts, stores or makes an install ID when the endpoint is empty, when `DO_NOT_TRACK=1`, when `ACTA_TELEMETRY` is `0|false|off|no`, or when the setting is off; list each path checked. Keys outside the fixed lists for `commands`, `sessions`, `os` and `arch` become `other`, a skill outside the acta list is dropped, `chat_language` maps to the fixed language list or `other`, a missing setting is `unset`. Every count stops at 100000. `Off` deletes unsent days and the install ID but keeps the notice mark; `On` after `Off` makes a new 32-hex ID. Concurrent `Add` from many goroutines and from two processes leaves every day file parseable; a file that fails to parse is dropped, never returned by `Days`. More than 7 unsent days keeps only the newest 7. Files and folders are owner-only.
-- [ ] Red: `store_test.go` fails because package `internal/telemetry` does not exist.
-- [ ] Change: add the store with `state.json` (install ID, off flag, notice mark, last flush time) and one locked, atomically written file per local day under `days/`.
-- [ ] Commit: feat(telemetry): count usage per local day under ~/.acta/telemetry
+- [x] Red: `store_test.go` fails because package `internal/telemetry` does not exist.
+- [x] Change: add the store with `state.json` (install ID, off flag, notice mark, last flush time) and one locked, atomically written file per local day under `days/`.
+- [x] Commit: feat(telemetry): count usage per local day under ~/.acta/telemetry
 
 ### Task 2: Flush and receipts
 
@@ -64,3 +65,9 @@ hash: bymvb60
 - [ ] Red: `telemetry_run_test.go` fails because `Run` counts nothing.
 - [ ] Change: count at the top of `Run`, print the notice, and start `acta telemetry flush` as a detached process with output thrown away behind the hourly gate.
 - [ ] Commit: feat(cli): count commands, show the telemetry notice once, start the hourly flush
+
+## State
+
+### Next
+
+Task 2: flush.go uses Store.Days/Delete/SetLastFlush and Endpoint; payload is the Day struct as JSON (Kind already acta_telemetry).
