@@ -64,4 +64,8 @@ Design section 2 approved (thumbs up): on by default only in release binaries wi
 
 Design section 3 approved (thumbs up): session-start spawns detached acta telemetry flush when the last attempt is over an hour old; one HTTPS POST per finished day, 20s timeout, 16 KiB receipt cap, walkie redirect rule; receipt handling and 7-day limit as walkie; failures silent and uncounted. Body kind acta_telemetry with install_id, day, acta_version, os, arch, sessions, commands, skills, workflow, blocks, settings. Collector ActaTelemetry tab is a separate plan in the walkie repo. Endpoint by goreleaser -X from GitHub Actions secret ACTA_TELEMETRY_ENDPOINT; tests use a fake HTTP server through a package variable; evals safe since dev builds have no endpoint. Live deploy and first Sheet row are owner actions after review.
 
+### 2026-11-12
+
+Cold read: 5 findings (skill signal missing from hooks, omp undetectable, workflow counters had no trigger, stderr notice unseen from hooks, CLI-only installs never flush). User approved all five fixes (thumbs up); applied to SPC-0201.
+
 ## Open questions
