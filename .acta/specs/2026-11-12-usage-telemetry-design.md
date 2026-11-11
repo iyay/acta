@@ -6,7 +6,8 @@ hash: w12yomt
 ---
 # Anonymous daily usage telemetry
 
-Architectural. Worked out with the user on WhatsApp on 2026-11-12. It ports the
+Architectural. Worked out with the user on WhatsApp on 2026-11-12, with cold
+read fixes F1 to F5. It ports the
 telemetry of walkie (walkie SPC-0174) to acta. Feedback is not part of this work.
 
 ## Outcome
@@ -32,14 +33,25 @@ Each day is one file under `~/.acta/telemetry/days/`.
   Running `acta` with no arguments counts as `tui`. An unknown name counts as
   `other`. Arguments and flags are never recorded.
 - `sessions`: count per harness each time the session-start hook runs. The
-  harness comes from the detection the hooks already use (`hook.IsCodex` for
-  Codex, the omp extension for omp, else `claude`). An unknown harness is
-  `other`.
+  harness is `omp` when `ACTA_HARNESS=omp` is set, `codex` when `hook.IsCodex`
+  says so, else `claude`. The omp extension in `plugin/omp/` sets
+  `ACTA_HARNESS=omp` on every hook call it makes, since nothing else tells omp
+  apart from Claude Code. Any other `ACTA_HARNESS` value is `other`.
 - `skills`: count per acta skill (`shape`, `slice`, `build`, `tdd`, `review`,
-  `land` and the other folders in `plugin/skills/`), seen by the pre-tool hook
-  when the harness loads one. A skill outside that fixed list is not recorded
-  at all, not even as `other`, because user skill names can be private.
-- `workflow`: specs created, plans created, bugs created, plans landed.
+  `land` and the other folders in `plugin/skills/`). A skill outside that fixed
+  list is not recorded at all, not even as `other`, because user skill names
+  can be private. The signal differs per harness:
+  - Claude Code: `Skill` joins the pre-tool matcher in `plugin/hooks/hooks.json`,
+    and the hook reads the skill name from `tool_input.skill`, with the
+    `acta:` prefix removed.
+  - omp: the extension forwards reads of `skill://<name>` to the pre-tool hook.
+  - Codex: no skill signal. Codex days send an empty `skills` object.
+- `workflow`: four counters, each bumped once per id:
+  - `spec_created` and `plan_created`: when `acta id` gives a new SPC or PLN
+    number.
+  - `bug_created`: when `acta bug new` writes a bug.
+  - `plan_landed`: when `acta spec-dates <plan hash>` runs, which land does once
+    per plan.
 - `blocks`: count per pre-tool block rule: `go_test` and `destructive`.
 - `settings`: one snapshot per day of `build_executor`, `plan_depth`,
   `review_depth` and `chat_language`. The first three are already fixed lists.
@@ -61,13 +73,18 @@ Telemetry is on by default, but only in a release binary that has an endpoint.
 A binary with no endpoint (every `go install` and `go build`) counts nothing,
 stores nothing and sends nothing.
 
-- A notice shows once per machine: on stderr for the first counted command, and
-  as one line in the session-start hook text that tells the agent to tell the
-  user. The notice says what is counted, that no text, paths or names are sent,
-  and how to turn it off. The fact that it was shown lives in
-  `~/.acta/telemetry/state.json`, not under the install ID. `off` keeps that
-  record, so turning telemetry on again shows no second notice. The command that
-  prints the notice is still counted.
+- A notice shows once per machine, on one of two paths only:
+  - on stderr, for a command that is not `acta hook ...` and whose stderr is a
+    terminal;
+  - as one line in the session-start hook text that tells the agent to tell the
+    user.
+  No other hook ever prints the notice, because nobody reads hook stderr and a
+  pre-tool block message must stay clean. The notice says what is counted, that
+  no text, paths or names are sent, and how to turn it off. Only those two paths
+  mark it shown. The mark lives in `~/.acta/telemetry/state.json`, not under the
+  install ID. `off` keeps the mark, so turning telemetry on again shows no
+  second notice. Counting does not wait for the notice; the command that prints
+  it is counted too.
 - `acta telemetry on`, `acta telemetry off` and `acta telemetry status`. Status
   prints the exact request body for each unsent day, today's counts marked as
   not finished, the current state, and its source (setting, environment, or no
@@ -86,9 +103,10 @@ stores nothing and sends nothing.
 
 ## Sending
 
-- The session-start hook starts `acta telemetry flush` as a detached process
-  with its output thrown away, only when the last flush attempt is more than one
-  hour old. The time of the last attempt lives in `state.json`. A flush that
+- The session-start hook, and every command that is not `acta hook ...` (the
+  TUI included), starts `acta telemetry flush` as a detached process with its
+  output thrown away, only when the last flush attempt is more than one hour
+  old. So an install that uses only the CLI or the TUI still sends. The time of the last attempt lives in `state.json`. A flush that
   finds another flush running stops at once. The hook never waits for it.
 - A flush sends each finished day (never today) as one HTTPS POST. Each request
   has a 20-second timeout and reads at most 16 KiB of the response. Redirects
@@ -146,7 +164,10 @@ receipts above. This spec only fixes the contract.
 Automated tests cover: the notice shown once on both paths; on, off and status;
 both environment switches beating the setting; off deleting the install ID and
 unsent days; a no-endpoint build counting nothing; unknown commands and harnesses
-becoming `other`; a non-acta skill never recorded; the 100000 cap; concurrent
+becoming `other`; `ACTA_HARNESS=omp` counted as `omp`; a Claude Code `Skill`
+call and an omp `skill://` read counted; a non-acta skill never recorded; each
+workflow counter bumped once per id; no hook other than session-start printing
+the notice; a non-hook command starting the gated flush; the 100000 cap; concurrent
 increments leaving a valid file; the 7-day limit; the hourly flush gate; success,
 duplicate, malformed, retryable and terminal receipts; a receipt for the wrong
 install ID or day; and no forbidden data in any payload.
@@ -157,5 +178,5 @@ a real row appears.
 
 ## Out of scope
 
-Feedback, error keys, review rounds per plan, doctor check keys, PostHog or any
+Feedback, error keys, review rounds per plan, doctor check keys, a skill signal for Codex, PostHog or any
 other service, dashboards, per-event data, opt-in prompts, Windows.
