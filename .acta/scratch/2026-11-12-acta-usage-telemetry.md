@@ -51,4 +51,16 @@ Approaches offered: A internal/telemetry package, count in cli.Run and hooks, st
 Collector: acta spec writes only the request and receipt contract; collector.gs change is a separate plan in the walkie repo.
 User: "setuju sama rekomendasi lo" -> approach A, collector change in walkie.
 
+### 2026-11-12
+
+Design section 1 approved (thumbs up): per local day file in ~/.acta/telemetry/days/ with install_id (32 random hex), acta version, os, arch; counts: commands (top-level, unknown -> other, tui for no args), sessions per harness (claude, codex, omp) at session-start, skills per acta skill at pre-tool (others not recorded), workflow (spec, plan, bug created; plan landed), blocks per rule (go_test, destructive), settings snapshot (executor, plan depth, review depth, chat language fixed list else other). Cap 100000. Lost increment under race OK, corrupt file not; unreadable file dropped unsent. Never sent: paths, repo or branch names, spec/plan text, prompts, shell commands, hostname, username.
+
+### 2026-11-12
+
+Design section 2 approved (thumbs up): on by default only in release binaries with an endpoint; no endpoint means no count, store or send. Notice once per machine on stderr plus one session-start hook line; recorded in ~/.acta/telemetry/state.json; off keeps the notice record. acta telemetry on/off/status; status prints exact request bodies, today's unfinished counts, state and source. DO_NOT_TRACK=1 or ACTA_TELEMETRY=0 beats the setting for counting and flush. Off deletes unsent days and install_id; on again makes a new id. acta setup shows one status line; README gets a Telemetry section.
+
+### 2026-11-12
+
+Design section 3 approved (thumbs up): session-start spawns detached acta telemetry flush when the last attempt is over an hour old; one HTTPS POST per finished day, 20s timeout, 16 KiB receipt cap, walkie redirect rule; receipt handling and 7-day limit as walkie; failures silent and uncounted. Body kind acta_telemetry with install_id, day, acta_version, os, arch, sessions, commands, skills, workflow, blocks, settings. Collector ActaTelemetry tab is a separate plan in the walkie repo. Endpoint by goreleaser -X from GitHub Actions secret ACTA_TELEMETRY_ENDPOINT; tests use a fake HTTP server through a package variable; evals safe since dev builds have no endpoint. Live deploy and first Sheet row are owner actions after review.
+
 ## Open questions
