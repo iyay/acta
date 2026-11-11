@@ -50,6 +50,7 @@ func voiceTheme() string {
 // Run handles one command line call and reports its exit code, so both
 // binaries share it instead of copying the dispatch.
 func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writer) int {
+	countRun(args, stderr)
 	// Help and version come first: they need no repo, so they must answer
 	// before any config is read or the TUI opens.
 	if code, done := helpRoute(args, stdout, stderr); done {

@@ -151,6 +151,9 @@ var (
 	}
 )
 
+// KnownCommand says whether a top-level command name has its own count.
+func KnownCommand(name string) bool { return commandKeys[name] }
+
 func set(keys ...string) map[string]bool {
 	m := make(map[string]bool, len(keys))
 	for _, k := range keys {

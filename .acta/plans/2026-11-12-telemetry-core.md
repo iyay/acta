@@ -5,6 +5,7 @@ id: PLN-0228
 created: "2026-11-12 06:31:58"
 hash: bymvb60
 started: "2026-11-12 06:35:55"
+finished: "2026-11-12 06:45:12"
 ---
 # Telemetry core: counters, flush and the telemetry command
 
@@ -62,9 +63,24 @@ started: "2026-11-12 06:35:55"
 **Files:** `internal/cli/cli.go`, `internal/cli/telemetry_run.go` (new), `internal/cli/telemetry_run_test.go` (new)
 **Seam:** `cli.Run` with a fake stderr TTY flag and a fake flush starter
 **verify:** Every call of `Run` counts its top-level command name once, `tui` for no arguments, never an argument or flag, and records the settings snapshot from `config.ResolveUser`. The stderr notice prints only for a command that is not `hook` and whose stderr is a terminal, at most once per machine, and only that path or session-start sets the mark. A command that is not `hook` starts the detached flush only when the last attempt is over one hour old; `hook` commands never start it here. Help and version stay as fast as now and are counted the same way. List every command path checked, the TUI path included.
-- [ ] Red: `telemetry_run_test.go` fails because `Run` counts nothing.
-- [ ] Change: count at the top of `Run`, print the notice, and start `acta telemetry flush` as a detached process with output thrown away behind the hourly gate.
-- [ ] Commit: feat(cli): count commands, show the telemetry notice once, start the hourly flush
+- [x] Red: `telemetry_run_test.go` fails because `Run` counts nothing.
+- [x] Change: count at the top of `Run`, print the notice, and start `acta telemetry flush` as a detached process with output thrown away behind the hourly gate.
+- [x] Commit: feat(cli): count commands, show the telemetry notice once, start the hourly flush
+
+## Fix round 1
+
+### Task 5: Fix round 1: real terminal check, crash-proof day files, honest counts
+
+**verify:** No path marks the notice shown unless stderr is a real terminal (not /dev/null, a pipe or a file), no day file shape can crash a command, the background flush never counts itself, a no-endpoint build writes no file under ~/.acta/telemetry, a flush stops sending once telemetry is turned off, and an HTTPS redirect to a host other than script.googleusercontent.com or a redirect that keeps POST is refused; list each path checked.
+
+- [ ] B1: isTerminal (internal/cli/notice.go:136) treats /dev/null as a terminal, so `acta --version 2>/dev/null` marks the telemetry notice shown while nobody sees it; use a real tty check, which also fixes the update notice.
+- [ ] [fix] A day file that parses with missing or null maps makes Add and SetSettings panic on every command (internal/telemetry/store.go readDay); allocate missing maps or drop the file.
+- [ ] [fix] The hourly `acta telemetry flush` child counts itself as commands.telemetry (internal/cli/telemetry_run.go countRun); do not count `telemetry flush`.
+- [ ] [fix] A no-endpoint build creates ~/.acta/telemetry/lock and state.json on telemetry on, off and status (internal/telemetry/store.go withLock); write nothing when Endpoint is empty.
+- [ ] [fix] Flush checks Enabled once, so days loaded before `acta telemetry off` are still sent (internal/telemetry/flush.go); check again before each send.
+- [ ] [fix] The redirect test covers only plain http (internal/telemetry/flush_test.go); add an HTTPS redirect to another host and a 307 that keeps POST.
+- [ ] [fix] The no-argument TUI path is not in the counted command paths (internal/cli/telemetry_run_test.go); test commandName for no args and for flags only.
+- [ ] Commit with the trailer `Task: PLN-bymvb60#5`
 
 ## State
 

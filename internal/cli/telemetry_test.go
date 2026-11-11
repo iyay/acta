@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +14,9 @@ import (
 // telemetry command works on a machine of its own.
 func telemetryHome(t *testing.T) *telemetry.Store {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PM_VOICE_FILE", filepath.Join(home, ".acta", "config.yaml"))
 	t.Setenv("DO_NOT_TRACK", "")
 	t.Setenv("ACTA_TELEMETRY", "")
 	old := telemetry.Endpoint
@@ -50,14 +53,13 @@ func TestTelemetryStatusShowsBodiesAndSource(t *testing.T) {
 	if err := s.Add("commands", "show"); err != nil {
 		t.Fatal(err)
 	}
-	day := telemetry.Day{}
-	days, _ := s.Days()
-	day = days[0]
 	code, out, errOut := runTelemetry(t, "status")
 	if code != exitOK {
 		t.Fatalf("status exit %d: %s", code, errOut)
 	}
-	body, _ := telemetry.Payload(day)
+	// The status run counts itself before it prints, so read the day after it.
+	days, _ := s.Days()
+	body, _ := telemetry.Payload(days[0])
 	for _, want := range []string{"Telemetry: on", "Source: setting", "not finished", string(body)} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("status misses %q:\n%s", want, out)
