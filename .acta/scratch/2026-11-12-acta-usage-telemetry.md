@@ -68,4 +68,8 @@ Design section 3 approved (thumbs up): session-start spawns detached acta teleme
 
 Cold read: 5 findings (skill signal missing from hooks, omp undetectable, workflow counters had no trigger, stderr notice unseen from hooks, CLI-only installs never flush). User approved all five fixes (thumbs up); applied to SPC-0201.
 
+### 2026-11-12
+
+User approved SPC-0201 (thumbs up). Next: acta:slice.
+
 ## Open questions
