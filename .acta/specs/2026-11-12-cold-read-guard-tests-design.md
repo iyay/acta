@@ -2,6 +2,8 @@
 id: SPC-0200
 created: "2026-11-12 06:04:12"
 hash: hbrevv0
+started: "2026-11-12 06:19:00"
+finished: "2026-11-12 06:28:06"
 ---
 # Guard tests do not count as a second area for the cold read
 
