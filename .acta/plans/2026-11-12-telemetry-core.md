@@ -44,9 +44,9 @@ started: "2026-11-12 06:35:55"
 **Files:** `internal/telemetry/flush.go` (new), `internal/telemetry/flush_test.go` (new)
 **Seam:** `telemetry.Flush(ctx, store, client)` and `telemetry.Payload(day)` against an `httptest` server
 **verify:** Only finished days are sent, never today, one POST each with the exact body of the spec's request contract and no other field. A day is deleted only on `ok: true` echoing the same `install_id` and `day`, or on `ok: false` with `retryable: false`; a wrong ID, wrong day, missing body, malformed JSON, `retryable: true`, a non-200 status, a timeout and a body over 16 KiB all keep the day. A redirect to anything but the expected HTTPS Google content host as a GET is refused. A second flush that finds the flush lock held returns at once. Every attempt writes the last flush time. Try adversarial receipts: extra fields, `ok` as a string, a huge body, a redirect to plain http.
-- [ ] Red: `flush_test.go` fails because `Flush` and `Payload` are not defined.
-- [ ] Change: add the payload builder, the client with a 20-second timeout and the redirect rule, and the receipt handling.
-- [ ] Commit: feat(telemetry): send finished days and honour collector receipts
+- [x] Red: `flush_test.go` fails because `Flush` and `Payload` are not defined.
+- [x] Change: add the payload builder, the client with a 20-second timeout and the redirect rule, and the receipt handling.
+- [x] Commit: feat(telemetry): send finished days and honour collector receipts
 
 ### Task 3: acta telemetry command
 
