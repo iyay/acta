@@ -24,7 +24,9 @@ const telemetryNotice = "acta counts anonymous daily usage (command names, harne
 // command, so every error is dropped.
 func countRun(args []string, stderr io.Writer) {
 	s := telemetry.Default()
-	if !s.Enabled() {
+	// The hourly flush runs as acta telemetry flush. Counting it would report
+	// a command the user never typed.
+	if !s.Enabled() || (len(args) == 2 && args[0] == "telemetry" && args[1] == "flush") {
 		return
 	}
 	name := commandName(args)

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -99,5 +100,17 @@ func TestTelemetryBadSubcommand(t *testing.T) {
 		if code != exitBadInput || !strings.Contains(errOut, "acta telemetry") {
 			t.Fatalf("%v = %d, %q; want bad input and the usage line", args, code, errOut)
 		}
+	}
+}
+
+func TestTelemetryWritesNothingWithoutAnEndpoint(t *testing.T) {
+	telemetryHome(t)
+	telemetry.Endpoint = ""
+	for _, args := range [][]string{{"on"}, {"off"}, {"status"}, {"flush"}} {
+		runTelemetry(t, args...)
+	}
+	dir, _ := telemetry.Dir()
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("a no-endpoint build made %s: %v", dir, err)
 	}
 }

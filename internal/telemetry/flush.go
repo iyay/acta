@@ -60,6 +60,10 @@ func Flush(ctx context.Context, s *Store, c *http.Client) error {
 		if d.Day == Today() {
 			continue
 		}
+		// The user may turn telemetry off while a flush runs. Stop at once.
+		if !s.Enabled() {
+			return nil
+		}
 		if send(ctx, c, d) {
 			if err := s.Delete(d.Day); err != nil {
 				return err

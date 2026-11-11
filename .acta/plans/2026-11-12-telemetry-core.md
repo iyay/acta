@@ -73,14 +73,28 @@ finished: "2026-11-12 06:45:12"
 
 **verify:** No path marks the notice shown unless stderr is a real terminal (not /dev/null, a pipe or a file), no day file shape can crash a command, the background flush never counts itself, a no-endpoint build writes no file under ~/.acta/telemetry, a flush stops sending once telemetry is turned off, and an HTTPS redirect to a host other than script.googleusercontent.com or a redirect that keeps POST is refused; list each path checked.
 
-- [ ] B1: isTerminal (internal/cli/notice.go:136) treats /dev/null as a terminal, so `acta --version 2>/dev/null` marks the telemetry notice shown while nobody sees it; use a real tty check, which also fixes the update notice.
-- [ ] [fix] A day file that parses with missing or null maps makes Add and SetSettings panic on every command (internal/telemetry/store.go readDay); allocate missing maps or drop the file.
-- [ ] [fix] The hourly `acta telemetry flush` child counts itself as commands.telemetry (internal/cli/telemetry_run.go countRun); do not count `telemetry flush`.
-- [ ] [fix] A no-endpoint build creates ~/.acta/telemetry/lock and state.json on telemetry on, off and status (internal/telemetry/store.go withLock); write nothing when Endpoint is empty.
-- [ ] [fix] Flush checks Enabled once, so days loaded before `acta telemetry off` are still sent (internal/telemetry/flush.go); check again before each send.
-- [ ] [fix] The redirect test covers only plain http (internal/telemetry/flush_test.go); add an HTTPS redirect to another host and a 307 that keeps POST.
-- [ ] [fix] The no-argument TUI path is not in the counted command paths (internal/cli/telemetry_run_test.go); test commandName for no args and for flags only.
-- [ ] Commit with the trailer `Task: PLN-bymvb60#5`
+- [x] B1: isTerminal (internal/cli/notice.go:136) treats /dev/null as a terminal, so `acta --version 2>/dev/null` marks the telemetry notice shown while nobody sees it; use a real tty check, which also fixes the update notice.
+- [x] [fix] A day file that parses with missing or null maps makes Add and SetSettings panic on every command (internal/telemetry/store.go readDay); allocate missing maps or drop the file.
+- [x] [fix] The hourly `acta telemetry flush` child counts itself as commands.telemetry (internal/cli/telemetry_run.go countRun); do not count `telemetry flush`.
+- [x] [fix] A no-endpoint build creates ~/.acta/telemetry/lock and state.json on telemetry on, off and status (internal/telemetry/store.go withLock); write nothing when Endpoint is empty.
+- [x] [fix] Flush checks Enabled once, so days loaded before `acta telemetry off` are still sent (internal/telemetry/flush.go); check again before each send.
+- [x] [fix] The redirect test covers only plain http (internal/telemetry/flush_test.go); add an HTTPS redirect to another host and a 307 that keeps POST.
+- [x] [fix] The no-argument TUI path is not in the counted command paths (internal/cli/telemetry_run_test.go); test commandName for no args and for flags only.
+- [x] Commit with the trailer `Task: PLN-bymvb60#5`
+
+## Fix round 2
+
+### Task 6: Fix round 2: off and status still work on a dev build
+
+**verify:** With no endpoint, no command creates ~/.acta/telemetry, yet when the folder already exists acta telemetry off still deletes every day file and the install ID and sets off, and status lists the stored days; and a redirect that keeps POST to script.googleusercontent.com is refused; list each path checked.
+
+- [ ] R2-B1: withLock (internal/telemetry/store.go) returns nil with no endpoint, so on a dev build `acta telemetry off` leaves days and the install ID a release build stored, and status says Nothing stored; skip only when the folder does not exist yet.
+- [ ] [fix] The 307 subtest redirects to another host, so it cannot catch a removed POST check (internal/telemetry/flush_test.go); send the 307 to script.googleusercontent.com through a transport that dials the test server.
+- [ ] Commit with the trailer `Task: PLN-bymvb60#6`
+
+## Review notes
+
+- Round 1 (deep): BLOCKER 1 (isTerminal treats /dev/null as a terminal) -> fixed in fix round 1. Other findings: strict receipt rules (duplicate required, unknown fields rejected) NOTE open, intended by the plan; usage and telemetry skip the flush NOTE open, intended; no https check on Endpoint NOTE open; broken state.json then on shows the notice again NOTE open; chat_language has no alias map NOTE open; withLock can wait up to 2s NOTE open; hook path cost not measured NOTE open; update notice /dev/null flaw fixed by the same isTerminal change; TestTickWarningChangesNothingElse flake sent to bug.
 
 ## State
 

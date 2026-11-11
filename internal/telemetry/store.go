@@ -405,6 +405,16 @@ func (s *Store) readDay(day string) (Day, bool) {
 	if err := json.Unmarshal(raw, &d); err != nil || d.Day != day || d.InstallID == "" {
 		return Day{}, false
 	}
+	// A file from an older acta, or edited by hand, can leave a map out.
+	// Fill the gaps so the next count does not crash the command.
+	for _, m := range []*map[string]int{&d.Sessions, &d.Commands, &d.Skills, &d.Workflow, &d.Blocks} {
+		if *m == nil {
+			*m = map[string]int{}
+		}
+	}
+	if d.Settings == nil {
+		d.Settings = map[string]string{}
+	}
 	return d, true
 }
 
@@ -463,6 +473,10 @@ var errBusy = errors.New("telemetry folder is busy")
 func (s *Store) withLock(fn func() error) error {
 	if s.dir == "" {
 		return fmt.Errorf("no telemetry folder")
+	}
+	// A build with no endpoint stores nothing, not even the lock or the state.
+	if Endpoint == "" {
+		return nil
 	}
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return err

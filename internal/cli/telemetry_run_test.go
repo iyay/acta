@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -149,5 +150,57 @@ func TestRunStartsNoFlushWithoutAnEndpoint(t *testing.T) {
 	runAll("help")
 	if *spawns != 0 {
 		t.Fatal("a build with no endpoint started a flush")
+	}
+}
+
+func TestIsTerminalRejectsDevNullPipesAndFiles(t *testing.T) {
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devNull.Close()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	file, err := os.Create(filepath.Join(t.TempDir(), "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	for name, f := range map[string]*os.File{"dev null": devNull, "pipe": w, "file": file} {
+		if isTerminal(f) {
+			t.Errorf("isTerminal(%s) = true, want false", name)
+		}
+	}
+}
+
+func TestBackgroundFlushDoesNotCountItself(t *testing.T) {
+	s, _ := runEnv(t, false)
+	runAll("telemetry", "flush")
+	if n := todayCounts(t, s).Commands["telemetry"]; n != 0 {
+		t.Fatalf("telemetry flush counted itself %d times", n)
+	}
+	runAll("telemetry", "status")
+	if n := todayCounts(t, s).Commands["telemetry"]; n != 1 {
+		t.Fatalf("telemetry status count = %d, want 1", n)
+	}
+}
+
+func TestCommandNameForTheTUIPaths(t *testing.T) {
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{nil, "tui"},
+		{[]string{"--root", "x"}, "tui"},
+		{[]string{"--root", "x", "--version"}, "version"},
+		{[]string{"--", "--help"}, "tui"},
+	} {
+		if got := commandName(c.args); got != c.want {
+			t.Errorf("commandName(%v) = %q, want %q", c.args, got, c.want)
+		}
 	}
 }

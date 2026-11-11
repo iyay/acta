@@ -391,3 +391,26 @@ func TestStoreBrokenStateReadsAsOff(t *testing.T) {
 		t.Fatal("a broken state file turned telemetry on")
 	}
 }
+
+func TestStoreSurvivesDayFilesWithMissingMaps(t *testing.T) {
+	s := openTest(t)
+	if err := s.Add("commands", "show"); err != nil {
+		t.Fatal(err)
+	}
+	id := s.InstallID()
+	raw := `{"day": "` + Today() + `", "install_id": "` + id + `", "commands": null}`
+	if err := os.WriteFile(s.dayPath(Today()), []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range []string{"commands", "sessions", "skills", "workflow", "blocks"} {
+		if err := s.Add(g, "shape"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.SetSettings(map[string]string{"plan_depth": "full"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := today(t, s).Settings["plan_depth"]; got != "full" {
+		t.Fatalf("plan_depth = %q after a file with missing maps", got)
+	}
+}

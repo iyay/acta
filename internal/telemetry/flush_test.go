@@ -221,3 +221,51 @@ func TestFlushSendsNothingWhenSwitchedOff(t *testing.T) {
 		t.Fatal("flush sent under DO_NOT_TRACK")
 	}
 }
+
+func TestFlushRefusesOtherHTTPSHostsAndPOSTRedirects(t *testing.T) {
+	var hit atomic.Int32
+	other := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hit.Add(1)
+	}))
+	defer other.Close()
+	for name, code := range map[string]int{"found to another https host": http.StatusFound, "307 keeps POST": http.StatusTemporaryRedirect} {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, other.URL, code)
+			}))
+			defer ts.Close()
+			s := storeWithDays(t, ts)
+			if err := Flush(context.Background(), s, clientFor(ts)); err != nil {
+				t.Fatal(err)
+			}
+			if hit.Load() != 0 {
+				t.Fatal("flush followed a redirect off script.googleusercontent.com")
+			}
+			if !dayKept(t, s, "2026-03-01") {
+				t.Fatal("a refused redirect deleted the day")
+			}
+		})
+	}
+}
+
+func TestFlushStopsOnceTurnedOff(t *testing.T) {
+	var s *Store
+	ts, calls := flushServer(t, func(d Day) (int, string) {
+		s.Off()
+		return 200, okReceipt(d)
+	})
+	s = openTest(t)
+	Endpoint = ts.URL
+	for _, day := range []int{1, 2, 3} {
+		setNow(t, time.Date(2026, 3, day, 12, 0, 0, 0, time.Local))
+		if err := s.Add("commands", "show"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Flush(context.Background(), s, clientFor(ts)); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("sent %d days, want 1: telemetry was turned off after the first", calls.Load())
+	}
+}
