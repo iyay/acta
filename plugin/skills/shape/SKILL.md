@@ -92,7 +92,7 @@ recommendation instead.
 
 ## Cold read
 
-Decide once, at step 7; later edits never bring the offer back. Never offer for Spike. Always offer for Architectural. Offer for Bounded only on a signal: the spec touches a trust boundary, auth, money or a data migration; changes an interface, file format or command others depend on; or touches more than one area, such as Go code and skill text. Bounded with no signal: say nothing about the cold read and go to final spec approval. To offer, ask in the chat language: "Want a cold read before planning?" Wait. Skip goes to final spec approval. Read [cold-read.md](cold-read.md) only on acceptance, or when the user asks for a cold read on their own before the plan. Cold read approves neither spec nor plan.
+Decide once, at step 7; later edits never bring the offer back. Never offer for Spike. Always offer for Architectural. Offer for Bounded only on a signal: the spec touches a trust boundary, auth, money or a data migration; changes an interface, file format or command others depend on; or touches more than one area, such as Go code and skill text. Files whose only job is to check another area, such as a test over skill text or an eval case for a skill, do not count as a second area. Bounded with no signal: say nothing about the cold read and go to final spec approval. To offer, ask in the chat language: "Want a cold read before planning?" Wait. Skip goes to final spec approval. Read [cold-read.md](cold-read.md) only on acceptance, or when the user asks for a cold read on their own before the plan. Cold read approves neither spec nor plan.
 
 ## Spec rules
 

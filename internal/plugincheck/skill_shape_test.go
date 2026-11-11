@@ -97,6 +97,10 @@ func TestShapeColdRead(t *testing.T) {
 		"trust boundary, auth, money or a data migration",
 		"interface, file format or command",
 		"more than one area",
+		// Tests and evals that only check a skill must not count as a second
+		// area, or almost every skill change still gets the offer.
+		"only job is to check another area",
+		"eval case for a skill",
 		"no signal",
 		"say nothing about the cold read",
 		"once, at step 7",
