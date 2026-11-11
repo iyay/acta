@@ -13,6 +13,7 @@ import (
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/update"
 	"github.com/iyay/acta/plugin"
+	"golang.org/x/term"
 )
 
 // These are variables so a test can swap them.
@@ -138,6 +139,7 @@ func isTerminal(w any) bool {
 	if !ok {
 		return false
 	}
-	st, err := f.Stat()
-	return err == nil && st.Mode()&os.ModeCharDevice != 0
+	// /dev/null is a character device too, so a mode check would call it a
+	// terminal. Only a real terminal answers the terminal settings call.
+	return term.IsTerminal(int(f.Fd()))
 }

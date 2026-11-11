@@ -270,6 +270,13 @@ var helpTable = []helpCmd{
 		example: "acta update --check",
 	},
 	{
+		name:    "telemetry",
+		group:   "Setup",
+		summary: "Turn anonymous daily usage counts on or off, or see what would be sent.",
+		usage:   []string{"acta telemetry on|off|status|flush"},
+		example: "acta telemetry status",
+	},
+	{
 		name:    "migrate-root",
 		group:   "Setup",
 		summary: "Move the old .pm folder of this repo to .acta in one commit.",
