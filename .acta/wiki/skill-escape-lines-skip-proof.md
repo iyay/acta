@@ -13,3 +13,4 @@ Found in PLN-0217 (2026-11-07), on the debug-independent-check eval:
 - In the eval sandbox `mktemp -d` fails with "Operation not permitted", while `mkdir -p "$TMPDIR/name"` works. In a normal session `mktemp -d` works.
 - A judge grader counts a write command that never ran, for example a `sed -i` after a failed `&&` step, unless the grader says it does not count. Check the kept repo files (`--keep-temp`, then the `sealed/home/cwd` folder) before trusting a repo-write FAIL.
 - 10 against 10: the skill text from before PLN-0217 beat the new probe-copy line on both graders (behavior 6/10 against 4/10, no-repo-write 9/10 against 8/10), so PLN-0221 reverted it. Judge a skill line on 10 or more runs per arm.
+- PLN-0233: dropping "temp copy" from Phase 1 step 2 cost debug-race 3 of 40 runs; a test pins it now.

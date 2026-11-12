@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds a hit counter that reads a file, adds one and writes it back with no
-# lock. Each write swaps in a whole file, so reads never see half a file,
-# but two threads can read the same value and one hit is lost. The existing
-# test uses a sleep and usually passes, which hides the race.
+# Builds two accounts, each with its own lock, and a transfer that takes the
+# source lock and then the target lock. Two transfers in opposite directions
+# each hold one lock and wait for the other, so the settle run never ends.
+# The existing test runs one transfer at a time and passes, which hides the hang.
 set -euo pipefail
 # The eval runs this in an empty folder. Anywhere else it would git init and
 # commit files that are not ours, so stop first.

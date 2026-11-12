@@ -90,9 +90,10 @@ func TestRaceProbeStartsFresh(t *testing.T) {
 func TestDebugBisectRunsInATempClone(t *testing.T) {
 	txt := readSkill(t, "skills/debug/SKILL.md")
 	for _, want := range []string{
-		"`git bisect` runs only in a temp clone",
-		"`git clone . \"$TMPDIR/<name>\"`",
+		"`git bisect` and a checkout of an older commit run only in a temp clone",
+		"`git clone . \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect start`",
 		"never in the repo's own working tree",
+		"`cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect good <sha>`",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("debug/SKILL.md missing %q", want)
@@ -113,9 +114,16 @@ func TestDebugBisectRunsInATempClone(t *testing.T) {
 func TestDebugProbeFolderIsChecked(t *testing.T) {
 	txt := readSkill(t, "skills/debug/SKILL.md")
 	for _, want := range []string{
-		"`mkdir -p \"$TMPDIR/<name>\" && cd \"$TMPDIR/<name>\" && pwd`",
-		"Go on only when `pwd` prints that folder",
-		"A command that writes files runs only in that checked folder.",
+		// The write rides on the same line as the check: a harness may start
+		// every shell call in the repo again, so a cd in an earlier call
+		// proves nothing about the next one.
+		"`mkdir -p \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && <the command that writes>`",
+		"Every shell call may start in the repo again",
+		"on the same line",
+		"Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.",
+		// The old words, kept on purpose: without "temp copy" here agents ran
+		// the user's own repro command in the repo (debug-race, 37 of 40).
+		"A command that writes files runs only in a temp copy.",
 		// Words an agent acts on; cutting them cost controls before.
 		"(in the temp copy)",
 	} {
@@ -126,6 +134,14 @@ func TestDebugProbeFolderIsChecked(t *testing.T) {
 	trace := readSkill(t, "skills/debug/root-cause-tracing.md")
 	if !strings.Contains(trace, "in the checked temp folder the ground rules of `SKILL.md` show") {
 		t.Error("root-cause-tracing.md must point its temp copy at the checked folder of the ground rules")
+	}
+	if race := readSkill(t, "skills/debug/race.md"); !strings.Contains(race, "on a copy of the code in the checked temp folder the ground rules of `SKILL.md` show") {
+		t.Error("race.md must run its probe on a copy in the checked folder of the ground rules")
+	}
+	// A bare cd that a later call relies on is the trap, so the old two-call
+	// pattern must not come back.
+	if strings.Contains(txt, "Go on only when `pwd` prints that folder") {
+		t.Error("debug/SKILL.md still checks pwd in one call and writes in the next")
 	}
 	for _, bad := range []string{"No copy?", "if the copy fails", "when the folder cannot be made"} {
 		if strings.Contains(txt, bad) || strings.Contains(trace, bad) {
@@ -147,6 +163,9 @@ func TestDebugProofIsRequired(t *testing.T) {
 		"A control that cannot run: say why under Unverified.",
 		"Report in four lines, whether the cause is proven or not",
 		"**Cause:**", "**Repro:**", "**Evidence:**", "**Unverified:**",
+		// The exit that stops in Phase 1 uses the same four lines.
+		"Report it in the four lines of Phase 3, with Cause \"not proven\" and Repro \"none yet\" plus what you tried.",
+		"The copy is made on such a line too: `cp -R \"$OLDPWD/<what the probe needs>\" .` after the `pwd`.",
 		"a command the user can paste",
 		"or \"not proven\" plus what you ruled out",
 	} {
@@ -170,6 +189,7 @@ func TestDebugRecentChangesAndOtherCallers(t *testing.T) {
 		"A change that lines up with the first failure is the first thing to probe.",
 		"Once the cause is proven, search the other callers for the same pattern",
 		"or \"none found\" with the search you ran",
+		"after the four lines of the report",
 		"Only read them: a fix for another caller is its own plan.",
 	} {
 		if !strings.Contains(txt, want) {
@@ -197,6 +217,8 @@ func TestDebugHangRecipe(t *testing.T) {
 		"who waits on whom",
 		"A longer timeout is not evidence",
 		"Two dumps a few seconds apart tell a hang from slow work.",
+		"set up before the hang",
+		"macOS `sample <pid>`",
 		"hang, slow",
 	} {
 		if !strings.Contains(txt, want) {

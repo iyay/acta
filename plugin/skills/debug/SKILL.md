@@ -9,7 +9,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make it and step into it before any command that writes: `mkdir -p "$TMPDIR/<name>" && cd "$TMPDIR/<name>" && pwd`. Go on only when `pwd` prints that folder: a write while the shell still stands in the repo changes the repo.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Every shell call may start in the repo again, so a `cd` in an earlier call proves nothing. Put the folder check on the same line as each write: `mkdir -p "${TMPDIR:-/tmp}/<name>" && cd "${TMPDIR:-/tmp}/<name>" && pwd && <the command that writes>`. Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push unless the user asks. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
@@ -23,10 +23,10 @@ Exit: one command you ran catches the exact symptom the user reported.
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in that checked folder.
+2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, hang, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
-5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
+5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific. Report it in the four lines of Phase 3, with Cause "not proven" and Repro "none yet" plus what you tried.
 
 ## Phase 2: Narrow and distinguish
 
@@ -34,7 +34,7 @@ Exit: one explanation fits every observation, and the others are ruled out by a 
 
 1. Start with what changed lately: `git log` on the files involved, dependency versions, and the environment (config, data, tools). A change that lines up with the first failure is the first thing to probe.
 2. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
-3. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` runs only in a temp clone, never in the repo's own working tree: `git clone . "$TMPDIR/<name>"`, change into that folder, and bisect there.
+3. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` and a checkout of an older commit run only in a temp clone, never in the repo's own working tree, each on one line with its check: `git clone . "${TMPDIR:-/tmp}/<name>" && cd "${TMPDIR:-/tmp}/<name>" && pwd && git bisect start`. Each later step starts the same way: `cd "${TMPDIR:-/tmp}/<name>" && pwd && git bisect good <sha>`.
 4. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
 5. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
 
@@ -44,9 +44,9 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 
 1. Before you state the cause, write down the result that would show it wrong, then run that probe.
 2. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. A control that cannot run: say why under Unverified.
+3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. The copy is made on such a line too: `cp -R "$OLDPWD/<what the probe needs>" .` after the `pwd`. A control that cannot run: say why under Unverified.
 4. When several tries fail under one shared belief, test that belief directly.
-5. Once the cause is proven, search the other callers for the same pattern, and list what you find in the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
+5. Once the cause is proven, search the other callers for the same pattern, and list what you find after the four lines of the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
 6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
@@ -68,7 +68,7 @@ Each names the evidence that counts.
 - **Race.** Run the probe in `race.md`, which must force the interleaving: each worker waits after its read until the other has read. A barrier at start does not. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
 - **Flaky test.** Run it many times under the same conditions and record the failure count and what changed between runs (load, order, seed, time). For waits, see `condition-based-waiting.md`.
 - **Order-dependent test.** Find the polluter by running pairs or bisecting the suite (`find-polluter.sh` finds tests that leave files behind). Put the smallest command that keeps the failing order in the report as a line the user can paste, for example the polluter then the victim, and name the shared state it leaves changed.
-- **Hang.** Take a stack dump of the stuck process while it hangs, with the runtime's own tool: Python `faulthandler`, Go and Java `kill -QUIT <pid>`, any process `sample <pid>` or `gdb`. Name who waits on whom: which thread or task holds what, and what each waits for. Two dumps a few seconds apart tell a hang from slow work. A longer timeout is not evidence: it only hides the hang. The proposed regression test bounds the wait and fails fast when the wait runs out.
+- **Hang.** Take a stack dump of the stuck process while it hangs, with the runtime's own tool: Python `faulthandler`, set up before the hang (for example `dump_traceback_later`), Go and Java `kill -QUIT <pid>`, macOS `sample <pid>`, Linux `gdb`. Name who waits on whom: which thread or task holds what, and what each waits for. Two dumps a few seconds apart tell a hang from slow work. A longer timeout is not evidence: it only hides the hang. The proposed regression test bounds the wait and fails fast when the wait runs out.
 - **Slow path.** Measure the same workload more than once, at two sizes if you can, and count the work (calls, file reads, queries) or profile it. Name the cost that grows. A speedup you did not measure before and after on the same workload is unmeasured; say so. Prefer a test that counts work over a wall-clock limit.
 - **Checks after the fix.** Add checks at trust boundaries and where an invariant must hold, not at every layer: see `defense-in-depth.md`.
 
