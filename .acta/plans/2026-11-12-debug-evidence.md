@@ -63,9 +63,9 @@ started: "2026-11-13 00:59:44"
 **Files:** `plugin/skills/debug/SKILL.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the debug skill, and the cases `debug-independent-check`, `debug-order-dependent`, `debug-no-repro` and `debug-performance`
 **verify:** No Phase 3 report can state a cause without a control or a written reason under Unverified for why the control could not run. Before the cause is stated, the result that would show it wrong is written down and that probe is run. Every Phase 3 report, proven or not, has the four lines Cause, Repro, Evidence and Unverified, and Repro is a command the user can paste. The words "when you can" no longer weaken the control. List every exit of Phase 3 (proven, not proven, cannot reproduce) and the lines each one prints.
-- [ ] Red: `skill_debug_test.go` fails because the control is still optional and the skill lacks the falsifying probe and the four report lines.
-- [ ] Change: make the control required, add the falsifying probe step and the four-line report to Phase 3.
-- [ ] Commit: feat(debug): required control, falsifying probe and a four-line report
+- [x] Red: `skill_debug_test.go` fails because the control is still optional and the skill lacks the falsifying probe and the four report lines.
+- [x] Change: make the control required, add the falsifying probe step and the four-line report to Phase 3.
+- [x] Commit: feat(debug): required control, falsifying probe and a four-line report
 
 ### Task 4: What changed lately, and the same defect in other callers
 

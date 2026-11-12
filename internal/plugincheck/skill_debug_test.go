@@ -13,7 +13,9 @@ func TestSkillDebug(t *testing.T) {
 		Name: "debug",
 		// race.md holds the copyable race probe, which made the folder longer.
 		// The known-flake rerun rule in Phase 1 adds two more lines.
-		MaxLines: 350,
+		// The required-proof steps, the recent-changes step and the hang recipe
+		// added lines to SKILL.md.
+		MaxLines: 356,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -129,5 +131,30 @@ func TestDebugProbeFolderIsChecked(t *testing.T) {
 		if strings.Contains(txt, bad) || strings.Contains(trace, bad) {
 			t.Errorf("the debug skill holds a fallback line %q", bad)
 		}
+	}
+}
+
+// TestDebugProofIsRequired keeps the strongest checks of Phase 3 from being
+// optional. A cause is stated only after a probe that could have shown it
+// wrong, the control runs or the report says why it could not, and every
+// report has the same four lines, so the command that reproduces the bug is
+// never left out of the reply.
+func TestDebugProofIsRequired(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"Before you state the cause, write down the result that would show it wrong, then run that probe.",
+		"Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.",
+		"A control that cannot run: say why under Unverified.",
+		"Report in four lines, whether the cause is proven or not",
+		"**Cause:**", "**Repro:**", "**Evidence:**", "**Unverified:**",
+		"a command the user can paste",
+		"or \"not proven\" plus what you ruled out",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	if strings.Contains(txt, "Use a control when you can") {
+		t.Error("debug/SKILL.md still makes the control optional")
 	}
 }

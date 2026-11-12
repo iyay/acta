@@ -41,11 +41,12 @@ Exit: one explanation fits every observation, and the others are ruled out by a 
 
 Exit: trigger, state change and symptom are linked with `file:line` and probe output, plus the evidence the matching recipe names, from a command you ran.
 
-1. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-2. Use a control when you can: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.
-3. When several tries fail under one shared belief, test that belief directly.
-4. Three failed fixes: stop and tell the user. Question the design before a fourth.
-5. Report the cause, the evidence, and what stays unverified. Propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
+1. Before you state the cause, write down the result that would show it wrong, then run that probe.
+2. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
+3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. A control that cannot run: say why under Unverified.
+4. When several tries fail under one shared belief, test that belief directly.
+5. Three failed fixes: stop and tell the user. Question the design before a fourth.
+6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
 
