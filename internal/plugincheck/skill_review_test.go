@@ -124,7 +124,7 @@ func TestSkillReview(t *testing.T) {
 // their own file and the body keeps one pointer that names every trigger.
 func TestReviewReceivingFile(t *testing.T) {
 	body := readSkill(t, "skills/review/SKILL.md")
-	if strings.Contains(body, "### The Response Pattern") {
+	if strings.Contains(body, "### Prove a BLOCKER first") {
 		t.Errorf("review/SKILL.md still holds the receiving rules; they live in receiving.md")
 	}
 	for _, want := range []string{
@@ -141,12 +141,29 @@ func TestReviewReceivingFile(t *testing.T) {
 	for _, want := range []string{
 		"## Receiving findings",
 		"Verify each finding against the code before acting.",
-		"### The Response Pattern", "### Forbidden Responses", "### Handling Unclear Feedback",
-		"### When To Push Back", "### Acknowledging Correct Feedback", "### Common Mistakes",
-		"| Can't verify, proceed anyway | State limitation, ask for direction |",
+		// A BLOCKER is proven before it costs a fix round.
+		"### Prove a BLOCKER first",
+		"Before a BLOCKER becomes a line of the fix task, run its repro yourself and keep the output.",
+		"runs only in a temp clone",
+		"with `HOME` and `TMPDIR` set to new temp folders",
+		"its verdict is `rejected: <reason>`, with the output. It opens no fix task.",
+		"never drop it and never fix it blind",
+		// Every way a finding can arrive passes a check.
+		"### Every source passes the same check",
+		"| A reviewer subagent |", "| The fact-check |", "| The user |", "| An outside reviewer |", "| Your own light inline review |", "| A `### Pre-existing` item |",
+		// The rules that stay from before.
+		"### Unclear feedback", "change nothing yet and ask about the unclear items",
+		"### When to push back", "goes against a design decision the user made",
+		"Cannot verify an item: say what you could not check and ask for direction",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("receiving.md missing %q", want)
+		}
+	}
+	// Lines about which words to say taught nothing about checking a finding.
+	for _, gone := range []string{"ANY gratitude expression", "You're absolutely right", "your human partner", "### Forbidden Responses", "thanks"} {
+		if strings.Contains(txt, gone) {
+			t.Errorf("receiving.md still holds %q", gone)
 		}
 	}
 }
@@ -349,5 +366,94 @@ func TestReviewLeavesNoWorktrees(t *testing.T) {
 	}
 	if txt := readSkill(t, "skills/review/SKILL.md"); !strings.Contains(txt, "After each round, run `git worktree list` and tell the user the path of every worktree this build did not make") {
 		t.Error("review SKILL.md must make the orchestrator report stray worktrees after each round")
+	}
+}
+
+// TestCodeReviewerStandsAlone keeps the reviewer brief whole. The reviewer is a
+// fresh subagent that has not read the review skill, so the brief must carry
+// every rule it needs: the three questions, the finding bar and the bucket
+// rules. A pointer to "the review skill" sends it to text it cannot see. The
+// brief also asks for the evidence behind a verdict, so CLEAN can be checked.
+func TestCodeReviewerStandsAlone(t *testing.T) {
+	txt := readSkill(t, "skills/review/code-reviewer.md")
+	for _, want := range []string{
+		// The two axes, said in the brief itself.
+		"Judge against that text, not against a better design you can imagine.",
+		"did anything that was working break",
+		// The three questions.
+		"1. Does it match the approved spec and plan?",
+		"2. Does it run: are the narrow tests and type checks green?",
+		"3. Do the tests go red when the change is reverted?",
+		// The revert check has an owner and a safe place to run.
+		"The Standards-axis reviewer runs question 3, and so does a reviewer who takes both axes",
+		"in a temp clone, with `HOME` and `TMPDIR` set to new temp folders",
+		// The finding bar.
+		"wrong output for a real user today on a path the plan covers",
+		"No reproducible scenario means it is not a BLOCKER.",
+		"Always a NOTE: comments, naming, wording, formatting",
+		// The bucket rules.
+		"`[fix]`: the file is already in the diff, the fix adds no new logic",
+		"`[debt]`: leaving it costs something later that you can name",
+		"`[note]`: taste, nits",
+		// Evidence behind the verdict.
+		"### Coverage",
+		"each plan requirement, with the `file:line` that meets it and the test that checks it",
+		"each changed file, marked as read",
+		"each command you ran, with the output line that decides it",
+		"A report with no Coverage section is not a verdict.",
+		// No BLOCKER is cut in silence.
+		"Ranked, five at most, then `N more BLOCKERs not listed` when you cut some.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("code-reviewer.md missing %q", want)
+		}
+	}
+	for _, want := range []string{
+		"A Spec-axis reviewer writes `left to the Standards axis` for question 3.",
+		"A NOTE that would be `(low)` is a `[note]`.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("code-reviewer.md missing %q", want)
+		}
+	}
+	for _, gone := range []string{"the review skill", "Senior Code Reviewer"} {
+		if strings.Contains(txt, gone) {
+			t.Errorf("code-reviewer.md still says %q; the reviewer has not read the skill and needs no persona", gone)
+		}
+	}
+}
+
+// TestReviewVerdictNeedsEvidence keeps three orchestrator rules. The base of
+// the range is the merge base, so a parent that moved does not show up as
+// deletions. A reviewer report with no Coverage section is no verdict: it goes
+// back to the same reviewer once, and a second one without it blocks that axis.
+// And a reviewer that cut BLOCKERs at its cap leaves the round BLOCKED, so the
+// cut ones are looked for in the next round and never land unseen.
+func TestReviewVerdictNeedsEvidence(t *testing.T) {
+	skill := readSkill(t, "skills/review/SKILL.md")
+	for _, want := range []string{
+		"`BASE_SHA=$(git merge-base <parent> HEAD)`",
+		"A report with no `### Coverage` section is not a verdict",
+		"send it back to the same reviewer once",
+		"never dispatch a new reviewer for it",
+		"A second report without it makes that axis BLOCKED: tell the user.",
+		"A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED",
+		"Round 1 reviews the range from the merge base to `HEAD`",
+		"A round that is BLOCKED with no BLOCKER left to fix",
+		"the next round reviews the same range again",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("review/SKILL.md missing %q", want)
+		}
+	}
+	for _, file := range []string{"skills/review/SKILL.md", "skills/review/code-reviewer.md", "skills/review/depth.md", "skills/review/fact-check.md", "skills/review/receiving.md"} {
+		if strings.Contains(readSkill(t, file), "git rev-parse <parent>") {
+			t.Errorf("%s takes the base from the parent tip; use the merge base", file)
+		}
+	}
+	depth := readSkill(t, "skills/review/depth.md")
+	const next = "When a reviewer cut BLOCKERs in the round before, the brief says so and tells the reviewers to look for them."
+	if !strings.Contains(depth, next) {
+		t.Errorf("review/depth.md missing %q", next)
 	}
 }

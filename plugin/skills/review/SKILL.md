@@ -20,7 +20,7 @@ The standard and deep levels (`## Review depth`) dispatch two read-only reviewer
 - **Spec axis:** is the change faithful to the approved spec and plan text? It judges against that text, not against a better design it can imagine.
 - **Standards axis:** do the changed lines follow the repo's own standards, and did anything that was working break? It checks the callers of what changed.
 
-Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
+Give each an explicit range: `BASE_SHA=$(git merge-base <parent> HEAD)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. The merge base is where the branch left the parent, so commits the parent gained since never show up as deletions. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
 
 After each round, run `git worktree list` and tell the user the path of every worktree this build did not make.
 
@@ -39,11 +39,11 @@ Outside the deep lens, the review answers three questions:
 
 The deep lens, as code-reviewer.md lists it, applies only to trust boundaries, auth, money, migrations and deletes.
 
-Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), Pre-existing items, NOTEs, and a last line of one word: CLEAN or BLOCKED. Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect, keeping the best proof, before the fact-check and before the fix task.
+Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), Pre-existing items, NOTEs, a `### Coverage` section, and a last line of one word: CLEAN or BLOCKED. A report with no `### Coverage` section is not a verdict, whatever its last line says: send it back to the same reviewer once and ask for the section, and never dispatch a new reviewer for it. A second report without it makes that axis BLOCKED: tell the user. A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED, even when the listed ones are rejected. A round that is BLOCKED with no BLOCKER left to fix (only cut ones, or an axis with no Coverage) has no fix task: the next round reviews the same range again, with the cut ones asked for, and counts as a round. Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect, keeping the best proof, before the fact-check and before the fix task.
 
 ## Budget: three rounds, then land or ask
 
-1. Round 1 reviews `<parent>..HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
+1. Round 1 reviews the range from the merge base to `HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
 2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
 3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
 4. Round 3 reviews the second fix range only. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
