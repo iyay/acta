@@ -119,3 +119,32 @@ func TestSetupSkipsTheStrayCheck(t *testing.T) {
 		}
 	})
 }
+
+// A dirty stray can only go with --force, which the agent may not run, so the
+// text output hands the user the exact command. No other state gets it.
+func TestWorktreesDirtyStrayShowsRemoveCommand(t *testing.T) {
+	repo, stray := strayRepo(t)
+	inDir(t, repo, func() {
+		if out := mustRun(t, "worktrees"); strings.Contains(out, "run yourself:") {
+			t.Fatalf("a clean stray got the command:\n%s", out)
+		}
+		if err := os.WriteFile(filepath.Join(stray, "junk.txt"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// git prints the real path, and the temp folder can sit behind a symlink.
+		real, err := filepath.EvalSymlinks(stray)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "run yourself: git worktree remove --force " + real
+		for _, args := range [][]string{{"worktrees"}, {"worktrees", "--clean"}} {
+			out := mustRun(t, args...)
+			if strings.Count(out, "run yourself:") != 1 || !strings.Contains(out, want) {
+				t.Fatalf("%v output:\n%s", args, out)
+			}
+		}
+		if out := mustRun(t, "worktrees", "--json"); strings.Contains(out, "run yourself") {
+			t.Fatalf("json changed: %s", out)
+		}
+	})
+}

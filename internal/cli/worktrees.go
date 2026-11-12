@@ -65,6 +65,11 @@ func cmdWorktrees(args []string, stdout, stderr io.Writer) int {
 		for _, ln := range e.Status {
 			fmt.Fprintf(stdout, "           %s\n", ln)
 		}
+		// Only --force removes a dirty worktree, and the agent may not run
+		// it. Give the user the exact command so the junk does not stay.
+		if e.State == worktrees.StateDirty {
+			fmt.Fprintf(stdout, "           run yourself: git worktree remove --force %s\n", e.Path)
+		}
 	}
 	return exitOK
 }
