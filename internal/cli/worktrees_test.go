@@ -148,3 +148,16 @@ func TestWorktreesDirtyStrayShowsRemoveCommand(t *testing.T) {
 		}
 	})
 }
+
+func TestShellQuoteKeepsPastedPathWhole(t *testing.T) {
+	for in, want := range map[string]string{
+		"/tmp/a-b_c.1": "/tmp/a-b_c.1",
+		"/tmp/my repo": "'/tmp/my repo'",
+		"/tmp/it's":    `'/tmp/it'\''s'`,
+		"/tmp/$(rm x)": "'/tmp/$(rm x)'",
+	} {
+		if got := shellQuote(in); got != want {
+			t.Errorf("shellQuote(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

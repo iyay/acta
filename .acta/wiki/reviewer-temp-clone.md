@@ -1,7 +1,7 @@
 ---
 type: Gotcha
 title: Reviewers work in a temp clone, never a worktree
-description: acta write commands auto-commit, and a reviewer worktree leaves files only --force can remove, so reviewers use a temp git clone
+description: Reviewer worktrees leave files only --force removes and acta writes auto-commit, so reviewers use a temp clone
 paths: [plugin/skills/review/]
 ---
 

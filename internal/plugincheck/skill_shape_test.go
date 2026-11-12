@@ -102,6 +102,11 @@ func TestShapeColdRead(t *testing.T) {
 		"only job is to check another area",
 		"eval case for a skill",
 		"no signal",
+		// A signal alone made agents offer a cold read they would not
+		// recommend, so the offer also needs the agent's own judgment.
+		"A signal alone never makes the offer",
+		"your own judgment says the spec needs one",
+		"name that reason in one line",
 		"say nothing about the cold read",
 		"once, at step 7",
 		"user asks for a cold read",
