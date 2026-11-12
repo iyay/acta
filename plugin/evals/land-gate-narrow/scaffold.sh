@@ -89,7 +89,7 @@ hash: landef1
 
 **Tests:** `scripts/test --full`
 
-**Gates:** eval: `scripts/eval`; runs when the diff touches `plugin/skills/`; narrow form `scripts/eval --tag <skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/`.
+**Gates:** eval: `scripts/eval`; runs when the diff touches `plugin/skills/`; narrow form `scripts/eval --tag=<skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/`.
 
 ### Task 1: Greet by name
 

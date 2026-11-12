@@ -1,7 +1,7 @@
 ---
 name: planning-commit-folds
 description: A change to a spec that was just committed is committed with acta commit, not git commit.
-tags: [commit]
+tags: [shape, commit]
 runs: 1
 max_turns: 8
 timeout_seconds: 240

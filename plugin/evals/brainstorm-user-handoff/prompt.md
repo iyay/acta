@@ -1,7 +1,7 @@
 ---
 name: brainstorm-user-handoff
 description: When the user asks to move a brainstorm, the reply keeps the item, gives its real id and a supported way, and launches nothing.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 max_turns: 6
 timeout_seconds: 240

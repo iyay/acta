@@ -1,7 +1,7 @@
 ---
 name: brainstorm-mixed-context
 description: When two topics get mixed up, the reply restates each scope first and offers, never forces, a new session.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 max_turns: 8
 timeout_seconds: 240

@@ -198,7 +198,7 @@ func TestLandRecordsFlakes(t *testing.T) {
 		"Exit 0 with `FLAKY:` lines: before the merge, record each one as [baseline.md](baseline.md) step 4 says.",
 		// A whole eval set costs quota, and a case red every time is a real red.
 		"never rerun the whole set for one case",
-		"Red all 3 times stops the land.",
+		"Red on every rerun stops the land.",
 		// An eval flake record has to commit where the bug can reach the parent.
 		"in the checkout [baseline.md](baseline.md) step 4 names",
 	} {
@@ -391,7 +391,9 @@ func TestLandSlowGates(t *testing.T) {
 		"Slow gates: the plan's `**Gates:**` line names each one",
 		"it runs only when the diff lists a path the line says makes it run",
 		"it runs in the narrow form only when the line gives one and no listed path forces the whole gate",
-		"in every other case it runs whole",
+		"a path that forces the whole gate also makes it run",
+		"when it runs and the narrow form does not apply, or a narrow run picks no case, it runs whole",
+		"A line that names no run paths means the gate runs whole.",
 		"in doubt about which paths the diff touches",
 		"A plan with no `**Gates:**` line skips no gate",
 		"(`CLAUDE.md`, `AGENTS.md`, a README or a wiki page) name a slow gate, run it whole",
@@ -411,6 +413,54 @@ func TestLandSlowGates(t *testing.T) {
 			if strings.Contains(text, bad) {
 				t.Errorf("land %s names %q: that belongs to one repo, not to the skill", name, bad)
 			}
+		}
+	}
+}
+
+// TestLandSecondRunAndKnownFlake keeps two rules that save a land from gate
+// runs that prove nothing new. When the parent moved, the full suite still
+// runs again, but a slow gate runs again only when the parent brought a path
+// that gate covers. And a red case that an open bug already lists as flaky
+// gets one lone rerun, not two. Doubt always means the gate runs.
+func TestLandSecondRunAndKnownFlake(t *testing.T) {
+	var step1, step6 string
+	for _, line := range strings.Split(readSkill(t, "skills/land/SKILL.md"), "\n") {
+		switch {
+		case strings.HasPrefix(line, "1. Preconditions"):
+			step1 = line
+		case strings.HasPrefix(line, "6. Run the gates again"):
+			step6 = line
+		}
+	}
+	for _, want := range []string{
+		"re-runs the gates: the full suite as before, and a slow gate only when the paths the parent gained since the branch left it",
+		"`git diff --name-only <merge base> <parent before the merge>`",
+		"include one its line says makes it run, in the form those paths call for",
+		"slow gate reused: the parent brought no path it covers",
+		"`git log --oneline <merge base>..<parent before the merge>`",
+		"In doubt about what the parent gained, the gate runs.",
+		"A plan with no `**Gates:**` line: a slow gate the repo's docs name runs again whole.",
+	} {
+		if !strings.Contains(step6, want) {
+			t.Errorf("land step 6 missing %q", want)
+		}
+	}
+	for _, want := range []string{
+		"up to 2 times, or once when an open bug lists that case under `flaky_tests`",
+		"(files at the `path` values from `acta list --type bug --json`)",
+		"Red on every rerun stops the land.",
+	} {
+		if !strings.Contains(step1, want) {
+			t.Errorf("land step 1 missing %q", want)
+		}
+	}
+	tidy := readSkill(t, "skills/land/tidy.md")
+	for _, want := range []string{
+		"run the gates on the tidy tip first",
+		"the full suite, and each slow gate by the second-run rule of SKILL.md step 6, where the parent before the merge is `<parent>`",
+	} {
+		if !strings.Contains(tidy, want) {
+			t.Errorf("land tidy.md missing %q", want)
 		}
 	}
 }

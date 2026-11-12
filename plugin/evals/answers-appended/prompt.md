@@ -1,7 +1,7 @@
 ---
 name: answers-appended
 description: An answer the user gives lands in the scratch item body, not only in the chat.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 # The work is three steps: read the scratch skill, run the acta command, then
 # answer the user. The command comes back with a git error in the sandbox, and

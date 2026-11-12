@@ -164,6 +164,7 @@ func TestSliceGatesLine(t *testing.T) {
 	for _, want := range []string{
 		"## Slow gates",
 		"the header carries a `**Gates:**` line with one sentence per gate",
+		"Each sentence starts with the gate's name and a colon",
 		"the paths whose change makes it run",
 		"the narrow form, when the gate's own tool can pick cases by tag, path or name",
 		"the paths whose change forces the whole gate",

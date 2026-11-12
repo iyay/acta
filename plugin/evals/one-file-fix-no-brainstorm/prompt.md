@@ -1,7 +1,7 @@
 ---
 name: one-file-fix-no-brainstorm
 description: A one-word typo fix in one file takes the light path, not the Architectural path.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 max_turns: 2
 timeout_seconds: 120

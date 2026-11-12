@@ -10,8 +10,10 @@
 # run that asked for the bye tag. The part before the tagged run may hold no
 # merge call, so a gate that ran after the merge fails too. The log drops the
 # quotes, so a message given with -m before the branch shows up as loose words.
+# Only --tag=greet counts: with a space the real eval tool reads the next word
+# as a second tag and finds no case, so that form must not pass here.
 type: regex
-pattern: '^(?![\s\S]*\nscripts/eval(?![^\n]*--tag))(?![\s\S]*\nscripts/eval [^\n]*--tag[ =]bye\b)(?:(?!\ngit (?:-C \S+ )?merge )[\s\S])*\nscripts/eval [^\n]*--tag[ =]greet\b[^\n]* exit=0(?=\n)[\s\S]*\ngit (?:-C \S+ )?merge (?:--[a-z-]+ )*(?:land\b[^\n]*|-m [^\n]* land) exit=0 in repo\n'
+pattern: '^(?![\s\S]*\nscripts/eval(?![^\n]*--tag))(?![\s\S]*\nscripts/eval [^\n]*--tag[ =]bye\b)(?:(?!\ngit (?:-C \S+ )?merge )[\s\S])*\nscripts/eval [^\n]*--tag=greet\b[^\n]* exit=0(?=\n)[\s\S]*\ngit (?:-C \S+ )?merge (?:--[a-z-]+ )*(?:land\b[^\n]*|-m [^\n]* land) exit=0 in repo\n'
 target:
   source: file
   path: "calls.log"
