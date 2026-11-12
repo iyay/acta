@@ -32,10 +32,11 @@ While you work on something else, a failing test that an open bug lists under `f
 
 Exit: one explanation fits every observation, and the others are ruled out by a probe.
 
-1. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
-2. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` runs only in a temp clone, never in the repo's own working tree: `git clone . "$TMPDIR/<name>"`, change into that folder, and bisect there.
-3. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
-4. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
+1. Start with what changed lately: `git log` on the files involved, dependency versions, and the environment (config, data, tools). A change that lines up with the first failure is the first thing to probe.
+2. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
+3. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` runs only in a temp clone, never in the repo's own working tree: `git clone . "$TMPDIR/<name>"`, change into that folder, and bisect there.
+4. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
+5. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
 
 ## Phase 3: Prove the mechanism
 
@@ -46,7 +47,8 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. A control that cannot run: say why under Unverified.
 4. When several tries fail under one shared belief, test that belief directly.
 5. Three failed fixes: stop and tell the user. Question the design before a fourth.
-6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
+6. Once the cause is proven, search the other callers for the same pattern, and list what you find in the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
+7. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
 

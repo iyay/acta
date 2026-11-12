@@ -158,3 +158,29 @@ func TestDebugProofIsRequired(t *testing.T) {
 		t.Error("debug/SKILL.md still makes the control optional")
 	}
 }
+
+// TestDebugRecentChangesAndOtherCallers keeps two cheap steps in the skill.
+// What changed lately is the first thing to look at, since most new failures
+// follow a change. And a proven cause is searched for in the other callers,
+// so the report says where else the same defect sits. Both steps only read.
+func TestDebugRecentChangesAndOtherCallers(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"Start with what changed lately: `git log` on the files involved, dependency versions, and the environment",
+		"A change that lines up with the first failure is the first thing to probe.",
+		"Once the cause is proven, search the other callers for the same pattern",
+		"or \"none found\" with the search you ran",
+		"Only read them: a fix for another caller is its own plan.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	phase2, phase3 := strings.Index(txt, "## Phase 2"), strings.Index(txt, "## Phase 3")
+	if i := strings.Index(txt, "Start with what changed lately"); i < phase2 || i > phase3 {
+		t.Error("the changed-lately step must sit in Phase 2")
+	}
+	if i := strings.Index(txt, "Once the cause is proven, search the other callers"); i < phase3 {
+		t.Error("the other-callers step must sit in Phase 3")
+	}
+}

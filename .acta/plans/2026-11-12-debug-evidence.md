@@ -72,9 +72,9 @@ started: "2026-11-13 00:59:44"
 **Files:** `plugin/skills/debug/SKILL.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the debug skill, and the cases `debug-misleading-path` and `debug-exact-symptom`
 **verify:** Phase 2 starts with what changed lately on every kind of input that can change: `git log` on the files involved, dependency versions, and the environment. Once a cause is proven, Phase 3 searches the other callers for the same pattern and the report lists what it found, including "none found" with the search that was run. Neither step writes to the repo. List where each step sits and what its output looks like in a report.
-- [ ] Red: `skill_debug_test.go` fails because the skill lacks the changed-lately step and the other-callers step.
-- [ ] Change: add the changed-lately step to Phase 2 and the other-callers step to Phase 3.
-- [ ] Commit: feat(debug): check recent changes first and look for the same defect elsewhere
+- [x] Red: `skill_debug_test.go` fails because the skill lacks the changed-lately step and the other-callers step.
+- [x] Change: add the changed-lately step to Phase 2 and the other-callers step to Phase 3.
+- [x] Commit: feat(debug): check recent changes first and look for the same defect elsewhere
 
 ### Task 5: A hang recipe, and "Three failed fixes" moves to Phase 4
 
