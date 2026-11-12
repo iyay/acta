@@ -238,6 +238,45 @@ func TestSetupSummaryBox(t *testing.T) {
 	}
 }
 
+// TestSetupSummaryTelemetryLine checks the closing text has exactly one
+// telemetry line. It names the current state and how to turn it off, both
+// when telemetry is on and when this build has no endpoint.
+func TestSetupSummaryTelemetryLine(t *testing.T) {
+	cases := []struct {
+		name  string
+		on    bool
+		state string
+	}{
+		{"on", true, "Telemetry: on (setting)"},
+		{"no endpoint", false, "Telemetry: off (no endpoint in this build)"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if c.on {
+				telemetryHome(t)
+			} else {
+				home := t.TempDir()
+				t.Setenv("HOME", home)
+				t.Setenv("PM_VOICE_FILE", filepath.Join(home, "config.yaml"))
+			}
+			var lines []string
+			for _, l := range strings.Split(setupSummary(), "\n") {
+				if strings.Contains(l, "Telemetry:") {
+					lines = append(lines, l)
+				}
+			}
+			if len(lines) != 1 {
+				t.Fatalf("want one telemetry line, got %q", lines)
+			}
+			for _, want := range []string{c.state, "acta telemetry off"} {
+				if !strings.Contains(lines[0], want) {
+					t.Fatalf("line %q misses %q", lines[0], want)
+				}
+			}
+		})
+	}
+}
+
 // TestApplySetupHardError keeps Apply's rule: a bad config value stops the
 // run and comes back as an error.
 func TestApplySetupHardError(t *testing.T) {
