@@ -22,6 +22,8 @@ The standard and deep levels (`## Review depth`) dispatch two read-only reviewer
 
 Give each an explicit range: `BASE_SHA=$(git rev-parse <parent>)`, `HEAD_SHA=$(git rev-parse HEAD)`, and the plan path. Reviewers never edit, stage, commit or run a formatter; they may run the narrow tests that prove a finding, never the full suite. Ask them to test a property, not to hunt for any case you did not test.
 
+After each round, run `git worktree list` and tell the user the path of every worktree this build did not make.
+
 ## Finding bar: BLOCKER or NOTE
 
 A **BLOCKER** is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
