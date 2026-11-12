@@ -359,6 +359,8 @@ func TestSessionStartStaysShort(t *testing.T) {
 	// The settings list counts against the cap too.
 	worst.Voice.BuildExecutor, worst.Voice.PlanDepth, worst.Voice.ReviewDepth = "inline", "minimal", "deep"
 	worst.Voice.CommitHistory = "tidy"
+	// So does the telemetry notice, which is one long line.
+	worst.Notice = strings.Repeat("notice ", 50)
 	for name, in := range map[string]Input{
 		"worst":     worst,
 		"first run": {Voice: config.UserDefault(), Conflicts: worst.Conflicts},

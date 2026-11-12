@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/iyay/acta/internal/gitc"
+	"github.com/iyay/acta/internal/telemetry"
 	"github.com/iyay/acta/internal/write"
 )
 
@@ -45,5 +46,7 @@ func cmdSpecDates(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, path)
 	}
+	// Land runs this once per plan, so a run that works is one landed plan.
+	_ = telemetry.Default().Add("workflow", "plan_landed")
 	return exitOK
 }

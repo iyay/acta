@@ -12,6 +12,7 @@ import (
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/hook"
+	"github.com/iyay/acta/internal/telemetry"
 	"github.com/iyay/acta/internal/wiki"
 	"github.com/iyay/acta/plugin"
 )
@@ -60,6 +61,16 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !ok {
 			return exitOK
 		}
+		// The store drops any name that is not an acta skill, since a user's
+		// own skill names can be private.
+		if name := loadedSkill(ev, data); name != "" {
+			_ = telemetry.Default().Add("skills", name)
+		}
+		// A Skill call names no file and runs no command, so it has nothing
+		// to block and nothing to hint.
+		if ev.ToolName == "Skill" {
+			return exitOK
+		}
 		// A Codex patch carries file content in its command field. That text
 		// never runs, so the shell guard below must not read it.
 		shell := ev.ToolName != "apply_patch"
@@ -67,6 +78,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// planning root, so a repo with no planning root still gets it.
 		cwd, _ := os.Getwd()
 		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); shell && block {
+			_ = telemetry.Default().Add("blocks", "go_test")
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -82,6 +94,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			where.Cwd = cwd
 		}
 		if block, msg := hook.DestructiveBlock(where.Cwd, ev.ToolInput.Command); shell && block {
+			_ = telemetry.Default().Add("blocks", "destructive")
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -105,6 +118,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		in.Herdr = os.Getenv("HERDR_ENV") == "1"
 		in.Codex = hook.IsCodex()
 		in.Update, in.Current = newerRelease(), "v"+plugin.Version()
+		in.Notice = sessionTelemetry()
 		repo, _ := os.Getwd()
 		if cfg, err := config.Load(repo, ""); err == nil {
 			repo = cfg.RepoRoot
@@ -135,6 +149,60 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, hookUsage)
 		return exitBadInput
 	}
+}
+
+// loadedSkill gives the skill name a tool call loads, or "" when it loads
+// none. Claude Code loads acta:<name> with its Skill tool, and a name with
+// no acta prefix belongs to someone else. omp reads skill://<name>.
+func loadedSkill(ev hook.ToolEvent, data []byte) string {
+	switch ev.ToolName {
+	case "Skill":
+		var call struct {
+			ToolInput struct {
+				Skill string `json:"skill"`
+			} `json:"tool_input"`
+		}
+		_ = json.Unmarshal(data, &call)
+		if name, ok := strings.CutPrefix(call.ToolInput.Skill, "acta:"); ok {
+			return name
+		}
+	case "read":
+		if name, ok := strings.CutPrefix(ev.ToolInput.FilePath, "skill://"); ok {
+			return name
+		}
+	}
+	return ""
+}
+
+// sessionTelemetry counts the harness this session runs in, starts the
+// hourly flush, and gives the notice line the first time on this machine.
+// The notice goes into the session text and never to stderr, since nobody
+// reads hook stderr. Nothing here may stop a session, so errors are dropped.
+func sessionTelemetry() string {
+	s := telemetry.Default()
+	if !s.Enabled() {
+		return ""
+	}
+	_ = s.Add("sessions", sessionHarness())
+	startFlush(s)
+	if first, err := s.MarkNoticed(); err == nil && first {
+		return telemetryNotice
+	}
+	return ""
+}
+
+// sessionHarness names the agent tool this hook runs under. Only the omp
+// extension sets ACTA_HARNESS, so any other value counts as other.
+func sessionHarness() string {
+	switch h := os.Getenv("ACTA_HARNESS"); {
+	case h == "omp":
+		return "omp"
+	case h != "":
+		return "other"
+	case hook.IsCodex():
+		return "codex"
+	}
+	return "claude"
 }
 
 // hintLines asks for the wiki hints of one tool call. A hint is not worth a

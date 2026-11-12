@@ -25,9 +25,11 @@ export type Run = (args: string[], stdin: string, cwd?: string) => { stdout: str
 
 // realRun calls acta directly. pi.exec cannot send stdin, and acta's hooks
 // read the session id from stdin. A missing acta or a timeout comes back as a
-// failed exit, not a throw.
+// failed exit, not a throw. ACTA_HARNESS tells acta the call comes from omp,
+// since nothing else sets omp apart from Claude Code.
 export const realRun: Run = (args, stdin, cwd) => {
-  const r = spawnSync("acta", args, { input: stdin, cwd, timeout: 10000, encoding: "utf8" });
+  const env = { ...process.env, ACTA_HARNESS: "omp" };
+  const r = spawnSync("acta", args, { input: stdin, cwd, env, timeout: 10000, encoding: "utf8" });
   return { stdout: r.stdout ?? "", stderr: r.stderr ?? "", code: r.status ?? 1 };
 };
 

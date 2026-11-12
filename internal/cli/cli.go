@@ -17,6 +17,7 @@ import (
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
 	"github.com/iyay/acta/internal/editor"
+	"github.com/iyay/acta/internal/telemetry"
 	"github.com/iyay/acta/internal/trees"
 	"github.com/iyay/acta/internal/write"
 )
@@ -531,6 +532,7 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 			return exitOther
 		}
 		o, err := write.NewBug(cfg, pos[0], *title, *ref, *priority, body)
+		countBug(err)
 		return report(o, err, stdout, stderr)
 	}
 	path, tmpl, err := write.StartBug(cfg, pos[0], *ref, *priority)
@@ -547,7 +549,16 @@ func cmdBugNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr i
 		fmt.Fprintln(stderr, "template left unchanged; nothing saved")
 		return exitBadInput
 	}
+	countBug(err)
 	return report(o, err, stdout, stderr)
+}
+
+// countBug counts a bug once it is written. A bug that is written but not
+// committed still counts, since the file is there.
+func countBug(err error) {
+	if err == nil {
+		_ = telemetry.Default().Add("workflow", "bug_created")
+	}
 }
 
 func cmdDebtNew(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writer) int {

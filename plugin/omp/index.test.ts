@@ -1,8 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import acta, { createState, payload, type Run } from "./index";
+import acta, { createState, payload, realRun, type Run } from "./index";
 
 type Out = { stdout?: string; stderr?: string; code: number };
 
@@ -384,6 +384,7 @@ describe("extension", () => {
     ["no selector", "dir/a.go", "dir/a.go"],
     ["a colon that is not a selector", "dir/a:b.go", "dir/a:b.go"],
     ["a name that ends in a colon and a letter L", "dir/a:L", "dir/a:L"],
+    ["a skill URI, which acta counts as a skill load", "skill://build", "skill://build"],
   ])("tool_call: a read path with %s asks acta about %j", async (_name, path, file) => {
     const { handlers, ctx, calls } = load({ "acta hook pre-tool": { code: 0 } });
     await handlers["tool_call"]({ type: "tool_call", toolName: "read", input: { path } }, ctx);
@@ -508,5 +509,29 @@ describe("omp note", () => {
       expect(name.length).toBeGreaterThan(0);
       expect(name.startsWith("acta-")).toBe(false);
     }
+  });
+});
+
+// acta cannot tell omp from Claude Code by itself, so every call names the
+// harness. The rest of the env must still reach acta, or HOME and PATH break.
+describe("realRun", () => {
+  test("every acta call carries ACTA_HARNESS=omp and keeps the rest of the env", () => {
+    const seen: any[] = [];
+    mock.module("node:child_process", () => ({
+      spawnSync: (_cmd: string, _args: string[], opts: any) => {
+        seen.push(opts);
+        return { stdout: "", stderr: "", status: 0 };
+      },
+    }));
+    process.env.ACTA_TEST_KEEP = "kept";
+    try {
+      realRun(["hook", "prompt"], "{}", "/work");
+    } finally {
+      delete process.env.ACTA_TEST_KEEP;
+    }
+    expect(seen.length).toBe(1);
+    expect(seen[0].env.ACTA_HARNESS).toBe("omp");
+    expect(seen[0].env.ACTA_TEST_KEEP).toBe("kept");
+    expect(seen[0].input).toBe("{}");
   });
 });
