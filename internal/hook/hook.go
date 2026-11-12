@@ -34,6 +34,7 @@ type Input struct {
 	Running     []string          // one block per plan with work going on, the lines already joined; with none, no block is printed
 	Update      string            // a newer release, like v0.1.47; empty when none is known
 	Current     string            // the running version, like v0.1.46; only read when Update is set
+	Notice      string            // the one-line telemetry notice; empty once it was shown or when telemetry is off
 }
 
 // maxRunningPlans and maxRunningLines keep the block short enough to be read
@@ -72,6 +73,10 @@ herdr: this session runs in a herdr tab. When the user picks a move for a brains
 // updateLine asks the agent to pass on a newer release. It sits in the
 // session note only, so the user hears it once per session.
 const updateLine = "\nacta update available: %s (you have %s). Tell the user once, in a single line, to run acta update.\n"
+
+// noticeLine hands the telemetry notice to the agent, since the user never
+// reads hook output. It comes once per machine.
+const noticeLine = "\nTell the user once, in a single line: %s\n"
 
 // wikiLine is the one line a repo with wiki pages adds. Only the count changes
 // from one repo to the next, so the line costs the same at 1 page and at 100.
@@ -117,6 +122,9 @@ func SessionStart(in Input) string {
 	}
 	if in.Update != "" {
 		fmt.Fprintf(&b, updateLine, in.Update, in.Current)
+	}
+	if in.Notice != "" {
+		fmt.Fprintf(&b, noticeLine, in.Notice)
 	}
 	switch {
 	case !in.VoiceExists:
