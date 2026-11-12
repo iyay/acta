@@ -10,7 +10,7 @@ hash: ymbz46a
 
 **Goal:** A cold read checks the spec's claims against the repo, shows what it read, and reaches the user with no finding dropped, with two eval cases that measure it.
 
-**Spec:** `.acta/specs/2026-11-12-cold-read-evidence.md`
+**Spec:** `.acta/specs/2026-11-12-cold-read-evidence.md` (SPC-0205)
 
 **Tests:** fast `scripts/test ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
 
