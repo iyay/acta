@@ -37,3 +37,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The telemetry address. It lives only in this secret, never in the
+          # repo. If the secret is not set, the value is empty and the
+          # release sends nothing.
+          ACTA_TELEMETRY_ENDPOINT: ${{ secrets.ACTA_TELEMETRY_ENDPOINT }}

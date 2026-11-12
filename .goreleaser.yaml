@@ -14,11 +14,14 @@ builds:
     env:
       - CGO_ENABLED=0
     # -s -w drop the symbol table and debug info, so the download is about
-    # 6M smaller. The -X line marks the binary as a release build. go install
-    # and go build never set it.
+    # 6M smaller. The first -X line marks the binary as a release build. go
+    # install and go build never set it. The second -X line puts in the
+    # telemetry address from a release secret, so the address is never in the
+    # repo. With no secret it is empty, and that build sends nothing.
     ldflags:
       - -s -w
       - -X github.com/iyay/acta/internal/update.release=true
+      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}
     goos:
       - darwin
       - linux
@@ -37,6 +40,7 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/iyay/acta/internal/update.release=true
+      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}
     goos:
       - darwin
       - linux

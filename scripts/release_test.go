@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // The three version files, with the same line shape as the real ones: the
@@ -259,4 +261,81 @@ func TestReleaseStopsAndLeavesRepoUntouched(t *testing.T) {
 			r.assertNoPush()
 		})
 	}
+}
+
+// The telemetry endpoint lives in a GitHub secret, never in the repo. Both
+// release builds must read it at link time, and the release job must hand the
+// secret to goreleaser. A missing secret comes through as an empty value, so
+// that build simply has no endpoint and sends nothing.
+func TestReleaseBakesTelemetryEndpointFromSecret(t *testing.T) {
+	const endpointFlag = "-X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}"
+	const secretEnv = "${{ secrets.ACTA_TELEMETRY_ENDPOINT }}"
+
+	goreleaser := readRepoFile(t, ".goreleaser.yaml")
+	var cfg struct {
+		Builds []struct {
+			ID      string   `yaml:"id"`
+			Ldflags []string `yaml:"ldflags"`
+		} `yaml:"builds"`
+	}
+	if err := yaml.Unmarshal([]byte(goreleaser), &cfg); err != nil {
+		t.Fatalf("parse .goreleaser.yaml: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, b := range cfg.Builds {
+		seen[b.ID] = true
+		found := false
+		for _, flag := range b.Ldflags {
+			if flag == endpointFlag {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("build %q does not set telemetry.Endpoint; ldflags = %q", b.ID, b.Ldflags)
+		}
+	}
+	for _, id := range []string{"acta", "acta-cli"} {
+		if !seen[id] {
+			t.Errorf("build %q is missing from .goreleaser.yaml", id)
+		}
+	}
+
+	workflow := readRepoFile(t, ".github/workflows/release.yml")
+	var wf struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Uses string            `yaml:"uses"`
+				Env  map[string]string `yaml:"env"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal([]byte(workflow), &wf); err != nil {
+		t.Fatalf("parse release.yml: %v", err)
+	}
+	passed := false
+	for _, s := range wf.Jobs["release"].Steps {
+		if strings.HasPrefix(s.Uses, "goreleaser/goreleaser-action") && s.Env["ACTA_TELEMETRY_ENDPOINT"] == secretEnv {
+			passed = true
+		}
+	}
+	if !passed {
+		t.Errorf("the goreleaser step does not pass ACTA_TELEMETRY_ENDPOINT from %s", secretEnv)
+	}
+
+	// The real address must never be written down in these files.
+	for name, body := range map[string]string{".goreleaser.yaml": goreleaser, "release.yml": workflow} {
+		if strings.Contains(body, "://") {
+			t.Errorf("%s holds a URL; the endpoint must come only from the secret", name)
+		}
+	}
+}
+
+// readRepoFile reads a file from the repo root. Tests here run inside scripts/.
+func readRepoFile(t *testing.T, rel string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join("..", rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
 }
