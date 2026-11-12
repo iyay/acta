@@ -166,6 +166,7 @@ func buildFormState(e Env) *formState {
 					huh.NewOption("quick: one combined reviewer, inline for docs-only changes", "quick"),
 					huh.NewOption("standard: two reviewers, Spec and Standards", "standard"),
 					huh.NewOption("deep: two reviewers plus a fact-check of every BLOCKER", "deep"),
+					huh.NewOption("auto: the review picks the level each diff needs", "auto"),
 				).Value(&d.ReviewDepth), text(&d.ReviewDepth)},
 		{"Review understanding",
 			"After landing: explain the change. Never blocks.",

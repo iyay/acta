@@ -202,7 +202,7 @@ func TestFormReviewDepth(t *testing.T) {
 		t.Errorf("question after questions must read %q, got %q", "Review depth", header)
 	}
 	content := formGroupContent(t, setup.Env{Current: config.User{}})[8]
-	for _, want := range []string{"quick", "standard", "deep", "› ● standard"} {
+	for _, want := range []string{"quick", "standard", "deep", "auto", "› ● standard"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("review depth screen must show %q, got %q", want, content)
 		}
@@ -579,7 +579,7 @@ func TestFormReviewUnderstanding(t *testing.T) {
 		if got := setup.AnsweredLines(env)[9]; got != "◇  Review understanding\n│  "+want+"\n│\n" {
 			t.Errorf("summary = %q", got)
 		}
-		for _, depth := range []string{"quick", "standard", "deep"} {
+		for _, depth := range []string{"quick", "standard", "deep", "auto"} {
 			env.Current.ReviewDepth = depth
 			d := setup.FormDefaults(env)
 			got := setup.AnswersUser(env.Current, d)

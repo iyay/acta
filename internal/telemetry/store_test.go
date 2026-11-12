@@ -139,6 +139,18 @@ func TestStoreMapsUnknownKeys(t *testing.T) {
 	}
 }
 
+// auto is one of the fixed review depth values, so it is counted by name and
+// not folded into "other".
+func TestStoreSettingsKeepAutoReviewDepth(t *testing.T) {
+	s := openTest(t)
+	if err := s.SetSettings(map[string]string{"review_depth": "auto"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := today(t, s).Settings["review_depth"]; got != "auto" {
+		t.Fatalf("review_depth = %q, want auto", got)
+	}
+}
+
 func TestStoreSettingsSnapshot(t *testing.T) {
 	s := openTest(t)
 	err := s.SetSettings(map[string]string{

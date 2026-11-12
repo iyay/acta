@@ -193,7 +193,7 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		clearTheme := fs.Bool("clear-theme", false, "go back to the default theme")
 		depth := fs.String("plan-depth", "", "how much a plan spells out: minimal or full")
 		planSplit := fs.String("plan-split", "", "whether slice may cut a spec into several plans: on or off")
-		reviewDepth := fs.String("review-depth", "", "how much review a plan gets: quick, standard or deep")
+		reviewDepth := fs.String("review-depth", "", "how much review a plan gets: quick, standard, deep or auto")
 		history := fs.String("commit-history", "", "how a landed branch reads: tidy or full")
 		guide := fs.String("coding-guide", "", "the coding guide: lean or off")
 		questions := fs.String("questions", "", "how the agent asks: one question at a time, or probe")

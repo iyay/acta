@@ -5,6 +5,7 @@ after: [PLN-0232]
 id: PLN-0235
 created: "2026-11-12 23:10:32"
 hash: zyf9mv4
+started: "2026-11-13 00:27:31"
 ---
 # Review depth auto: the review a diff needs, picked by rule and reason
 
@@ -42,9 +43,9 @@ hash: zyf9mv4
 **Files:** `internal/config/user.go`, `internal/config/user_test.go`, `internal/config/repo_user_test.go`, `internal/cli/config_cmd.go`, `internal/cli/config_repo_test.go`, `internal/cli/help.go`, `internal/setup/form.go`, `internal/setup/form_test.go`, `internal/telemetry/store.go`, `internal/telemetry/store_test.go`
 **Seam:** `cli.Run([]string{"config", "set", "--review-depth", "auto"})`, `cli.Run([]string{"config", "show"})`, and the validation of the user file and the repo file
 **verify:** No place that reads, checks, lists or reports `review_depth` rejects or drops `auto`: the user file, the repo file `.acta.yaml`, `acta config set` with and without `--repo`, `acta config show` text and JSON, the setup form's choices, the help text and the telemetry allow-list. Every other value is still refused with an error that now names four values. The default is still `standard`. List every place checked and what it does with `auto` and with a bad value.
-- [ ] Red: the config, cli, setup and telemetry tests fail because `auto` is refused as a review depth.
-- [ ] Change: add `auto` to the allowed values, the form choices, the help text and the telemetry allow-list.
-- [ ] Commit: feat(config): accept auto as a review depth
+- [x] Red: the config, cli, setup and telemetry tests fail because `auto` is refused as a review depth.
+- [x] Change: add `auto` to the allowed values, the form choices, the help text and the telemetry allow-list.
+- [x] Commit: feat(config): accept auto as a review depth
 
 ### Task 2: Three eval cases for the auto pick
 

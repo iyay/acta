@@ -107,7 +107,7 @@ func TestReviewDepthBadValue(t *testing.T) {
 			t.Errorf("global %q: err %v, want ErrBadUser naming review_depth", bad, err)
 		}
 	}
-	for _, ok := range []string{"", "quick", "standard", "deep"} {
+	for _, ok := range []string{"", "quick", "standard", "deep", "auto"} {
 		v := UserDefault()
 		v.ReviewDepth = ok
 		if err := v.Validate(); err != nil {

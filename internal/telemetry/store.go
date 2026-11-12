@@ -144,7 +144,7 @@ var (
 	settingKeys  = map[string]map[string]bool{
 		"build_executor": set("subagent", "dispatch", "inline"),
 		"plan_depth":     set("minimal", "full"),
-		"review_depth":   set("quick", "standard", "deep"),
+		"review_depth":   set("quick", "standard", "deep", "auto"),
 		"chat_language": set("english", "indonesian", "sundanese", "javanese", "malay", "spanish",
 			"portuguese", "french", "german", "italian", "dutch", "russian", "turkish", "arabic",
 			"hindi", "japanese", "korean", "chinese", "vietnamese", "thai"),
