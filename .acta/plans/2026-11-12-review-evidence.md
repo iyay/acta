@@ -60,9 +60,9 @@ started: "2026-11-13 00:04:27"
 **Files:** `plugin/skills/review/SKILL.md`, `plugin/skills/review/depth.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the review skill, and the case `review-clean-has-evidence`
 **verify:** No review text takes the base from the parent tip: the base is `git merge-base <parent> HEAD` everywhere a range is built. A report with no `### Coverage` never counts as a verdict: the orchestrator sends it back to the same reviewer once and dispatches no new reviewer for it, and a second report without it makes that axis BLOCKED and is told to the user. A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED, and the next round's brief tells the reviewers to look for them. List every place a range or a verdict is read.
-- [ ] Red: `skill_review_test.go` fails because the skill still says `git rev-parse <parent>` and lacks the send-back rule and the cut-BLOCKER rule.
-- [ ] Change: switch the base to the merge base and add the send-back rule and the cut-BLOCKER rule.
-- [ ] Commit: feat(review): merge-base range and no verdict without evidence
+- [x] Red: `skill_review_test.go` fails because the skill still says `git rev-parse <parent>` and lacks the send-back rule and the cut-BLOCKER rule.
+- [x] Change: switch the base to the merge base and add the send-back rule and the cut-BLOCKER rule.
+- [x] Commit: feat(review): merge-base range and no verdict without evidence
 
 ### Task 4: The orchestrator proves each BLOCKER before it becomes a fix task
 

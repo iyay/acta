@@ -24,7 +24,7 @@ The setting can raise the depth, but not drop it below these. No level, from the
 
 ## Rounds
 
-Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 hand the reviewers the earlier findings, so they look for others. After a BLOCKED round, write every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`, run in the worktree. Rounds 2 and 3 read those lines back from the plan's `## Review notes` and pass them as `[EARLIER_FINDINGS]`, with the lines of every `## Fix round` marked `fixed`. The plan keeps them across sessions and hand-offs, and the CLEAN round sorts its open NOTEs from them.
+Three rounds at most at every level. There is never a round 4. Rounds 2 and 3 hand the reviewers the earlier findings, so they look for others. When a reviewer cut BLOCKERs in the round before, the brief says so and tells the reviewers to look for them. After a BLOCKED round, write every finding that is not a fix-task line, each with its verdict, with `acta plan add <plan id> review-notes`, run in the worktree. Rounds 2 and 3 read those lines back from the plan's `## Review notes` and pass them as `[EARLIER_FINDINGS]`, with the lines of every `## Fix round` marked `fixed`. The plan keeps them across sessions and hand-offs, and the CLEAN round sorts its open NOTEs from them.
 
 ## Understanding
 

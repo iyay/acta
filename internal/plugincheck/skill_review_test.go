@@ -397,3 +397,35 @@ func TestCodeReviewerStandsAlone(t *testing.T) {
 		}
 	}
 }
+
+// TestReviewVerdictNeedsEvidence keeps three orchestrator rules. The base of
+// the range is the merge base, so a parent that moved does not show up as
+// deletions. A reviewer report with no Coverage section is no verdict: it goes
+// back to the same reviewer once, and a second one without it blocks that axis.
+// And a reviewer that cut BLOCKERs at its cap leaves the round BLOCKED, so the
+// cut ones are looked for in the next round and never land unseen.
+func TestReviewVerdictNeedsEvidence(t *testing.T) {
+	skill := readSkill(t, "skills/review/SKILL.md")
+	for _, want := range []string{
+		"`BASE_SHA=$(git merge-base <parent> HEAD)`",
+		"A report with no `### Coverage` section is not a verdict",
+		"send it back to the same reviewer once",
+		"never dispatch a new reviewer for it",
+		"A second report without it makes that axis BLOCKED: tell the user.",
+		"A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED",
+	} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("review/SKILL.md missing %q", want)
+		}
+	}
+	for _, file := range []string{"skills/review/SKILL.md", "skills/review/code-reviewer.md", "skills/review/depth.md", "skills/review/fact-check.md", "skills/review/receiving.md"} {
+		if strings.Contains(readSkill(t, file), "git rev-parse <parent>") {
+			t.Errorf("%s takes the base from the parent tip; use the merge base", file)
+		}
+	}
+	depth := readSkill(t, "skills/review/depth.md")
+	const next = "When a reviewer cut BLOCKERs in the round before, the brief says so and tells the reviewers to look for them."
+	if !strings.Contains(depth, next) {
+		t.Errorf("review/depth.md missing %q", next)
+	}
+}
