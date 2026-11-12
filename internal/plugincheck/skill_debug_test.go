@@ -102,3 +102,32 @@ func TestDebugBisectRunsInATempClone(t *testing.T) {
 		}
 	}
 }
+
+// TestDebugProbeFolderIsChecked keeps a probe from writing to the repo. An
+// agent once chained mktemp, cd and sed, the first step failed, and sed
+// changed a tracked file. The ground rules show one pattern to copy: make the
+// folder, change into it, and read pwd before any write. No line may offer
+// less work when a step fails; that reads as leave to skip the check.
+func TestDebugProbeFolderIsChecked(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"`mkdir -p \"$TMPDIR/<name>\" && cd \"$TMPDIR/<name>\" && pwd`",
+		"Go on only when `pwd` prints that folder",
+		"A command that writes files runs only in that checked folder.",
+		// Words an agent acts on; cutting them cost controls before.
+		"(in the temp copy)",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	trace := readSkill(t, "skills/debug/root-cause-tracing.md")
+	if !strings.Contains(trace, "in the checked temp folder the ground rules of `SKILL.md` show") {
+		t.Error("root-cause-tracing.md must point its temp copy at the checked folder of the ground rules")
+	}
+	for _, bad := range []string{"No copy?", "if the copy fails", "when the folder cannot be made"} {
+		if strings.Contains(txt, bad) || strings.Contains(trace, bad) {
+			t.Errorf("the debug skill holds a fallback line %q", bad)
+		}
+	}
+}

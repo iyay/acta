@@ -40,7 +40,7 @@ could not see. Do not guess the rest of the chain.
 
 ## When you cannot trace by reading
 
-Log right before the risky call, in a temp copy outside the repo:
+Log right before the risky call, in the checked temp folder the ground rules of `SKILL.md` show:
 
 ```typescript
 async function gitInit(directory: string) {

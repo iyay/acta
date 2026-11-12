@@ -54,9 +54,9 @@ started: "2026-11-13 00:59:44"
 **Files:** `plugin/skills/debug/SKILL.md`, `plugin/skills/debug/root-cause-tracing.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the debug skill, and the cases `debug-independent-check`, `debug-race` and `debug-order-dependent`
 **verify:** No probe can write while the shell is still in the repo: the ground rules show one copyable pattern that makes the folder with `mkdir -p "$TMPDIR/<name>"`, changes into it, and checks `pwd` prints that folder before any command that writes. The text holds no fallback that allows less work when a step fails. Every other place that speaks of a temp copy uses the same pattern or points at it. List every line that tells an agent to write a file in Phases 1 to 3.
-- [ ] Red: `skill_debug_test.go` fails because the skill lacks the `mkdir -p "$TMPDIR/` pattern and the `pwd` check.
-- [ ] Change: add the checked-folder pattern to the ground rules and point the other temp-copy lines at it.
-- [ ] Commit: fix(debug): check the probe folder before a probe writes
+- [x] Red: `skill_debug_test.go` fails because the skill lacks the `mkdir -p "$TMPDIR/` pattern and the `pwd` check.
+- [x] Change: add the checked-folder pattern to the ground rules and point the other temp-copy lines at it.
+- [x] Commit: fix(debug): check the probe folder before a probe writes
 
 ### Task 3: Required control, a falsifying probe, and a four-line report
 

@@ -9,7 +9,7 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Make it and step into it before any command that writes: `mkdir -p "$TMPDIR/<name>" && cd "$TMPDIR/<name>" && pwd`. Go on only when `pwd` prints that folder: a write while the shell still stands in the repo changes the repo.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push unless the user asks. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
@@ -23,7 +23,7 @@ Exit: one command you ran catches the exact symptom the user reported.
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
+2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in that checked folder.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
