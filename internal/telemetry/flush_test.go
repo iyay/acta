@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -267,5 +268,32 @@ func TestFlushStopsOnceTurnedOff(t *testing.T) {
 	}
 	if calls.Load() != 1 {
 		t.Fatalf("sent %d days, want 1: telemetry was turned off after the first", calls.Load())
+	}
+}
+
+func TestFlushRefusesAPOSTRedirectToGoogleContent(t *testing.T) {
+	var methods []string
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host == "script.googleusercontent.com" {
+			methods = append(methods, r.Method)
+			return
+		}
+		http.Redirect(w, r, "https://script.googleusercontent.com/echo", http.StatusTemporaryRedirect)
+	}))
+	defer ts.Close()
+	s := storeWithDays(t, ts)
+	// Every host dials the test server, so the redirect reaches it under the
+	// Google content name and only the method rule can refuse it.
+	tr := ts.Client().Transport.(*http.Transport).Clone()
+	tr.TLSClientConfig.InsecureSkipVerify = true
+	addr := ts.Listener.Addr().String()
+	tr.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, addr)
+	}
+	if err := Flush(context.Background(), s, newClient(tr)); err != nil {
+		t.Fatal(err)
+	}
+	if len(methods) != 0 {
+		t.Fatalf("followed a POST redirect: %v", methods)
 	}
 }

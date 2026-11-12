@@ -88,13 +88,15 @@ finished: "2026-11-12 06:45:12"
 
 **verify:** With no endpoint, no command creates ~/.acta/telemetry, yet when the folder already exists acta telemetry off still deletes every day file and the install ID and sets off, and status lists the stored days; and a redirect that keeps POST to script.googleusercontent.com is refused; list each path checked.
 
-- [ ] R2-B1: withLock (internal/telemetry/store.go) returns nil with no endpoint, so on a dev build `acta telemetry off` leaves days and the install ID a release build stored, and status says Nothing stored; skip only when the folder does not exist yet.
-- [ ] [fix] The 307 subtest redirects to another host, so it cannot catch a removed POST check (internal/telemetry/flush_test.go); send the 307 to script.googleusercontent.com through a transport that dials the test server.
-- [ ] Commit with the trailer `Task: PLN-bymvb60#6`
+- [x] R2-B1: withLock (internal/telemetry/store.go) returns nil with no endpoint, so on a dev build `acta telemetry off` leaves days and the install ID a release build stored, and status says Nothing stored; skip only when the folder does not exist yet.
+- [x] [fix] The 307 subtest redirects to another host, so it cannot catch a removed POST check (internal/telemetry/flush_test.go); send the 307 to script.googleusercontent.com through a transport that dials the test server.
+- [x] Commit with the trailer `Task: PLN-bymvb60#6`
 
 ## Review notes
 
 - Round 1 (deep): BLOCKER 1 (isTerminal treats /dev/null as a terminal) -> fixed in fix round 1. Other findings: strict receipt rules (duplicate required, unknown fields rejected) NOTE open, intended by the plan; usage and telemetry skip the flush NOTE open, intended; no https check on Endpoint NOTE open; broken state.json then on shows the notice again NOTE open; chat_language has no alias map NOTE open; withLock can wait up to 2s NOTE open; hook path cost not measured NOTE open; update notice /dev/null flaw fixed by the same isTerminal change; TestTickWarningChangesNothingElse flake sent to bug.
+- Round 2 (deep): R2-B1 (withLock skipped off and status with no endpoint) -> fixed in fix round 2; 307 test could not catch a removed POST check -> fixed in fix round 2. NOTE open: isTerminal has no true-case test; off then on during one flush can still send old-ID days; isTerminal Fd() may switch a non-blocking stderr to blocking; readDay does not fill Kind, Version, OS, Arch on a hand-edited file; a hand-edited day can carry keys outside the fixed lists (pre-existing in this branch, not filtered on send).
+- Level deep (review_depth), deep lens for the HTTP send, consent and delete paths. BLOCKER 2, NOTE 29, pre-existing 4, over rounds 1 to 3. Round 3 CLEAN on both axes. No [fix] or [debt] left: open notes are a silent no-op for off on a dev build with no folder yet (plan choice), any Stat error read as no folder, no CLI-level test for off on a dev build over an existing folder, an unguarded slice in one redirect test, plus the round 1 and 2 NOTE-open items.
 
 ## State
 

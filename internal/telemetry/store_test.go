@@ -414,3 +414,28 @@ func TestStoreSurvivesDayFilesWithMissingMaps(t *testing.T) {
 		t.Fatalf("plan_depth = %q after a file with missing maps", got)
 	}
 }
+
+func TestOffAndDaysStillWorkWithoutAnEndpoint(t *testing.T) {
+	s := openTest(t)
+	if err := s.Add("commands", "show"); err != nil {
+		t.Fatal(err)
+	}
+	Endpoint = ""
+	days, err := s.Days()
+	if err != nil || len(days) != 1 {
+		t.Fatalf("Days() = %v, %v; want the day a release build stored", days, err)
+	}
+	if err := s.Off(); err != nil {
+		t.Fatal(err)
+	}
+	if s.InstallID() != "" {
+		t.Fatal("off on a dev build kept the install ID")
+	}
+	if names, _ := s.dayNames(); len(names) != 0 {
+		t.Fatalf("off on a dev build kept days %v", names)
+	}
+	Endpoint = "https://script.google.com/macros/s/test/exec"
+	if s.Enabled() {
+		t.Fatal("off on a dev build did not stick for the release build")
+	}
+}

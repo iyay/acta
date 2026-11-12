@@ -474,9 +474,13 @@ func (s *Store) withLock(fn func() error) error {
 	if s.dir == "" {
 		return fmt.Errorf("no telemetry folder")
 	}
-	// A build with no endpoint stores nothing, not even the lock or the state.
+	// A build with no endpoint creates nothing, not even the lock. But a
+	// release build may have left a folder here, and off and status must
+	// still work on it, so only a missing folder is skipped.
 	if Endpoint == "" {
-		return nil
+		if _, err := os.Stat(s.dir); err != nil {
+			return nil
+		}
 	}
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return err
