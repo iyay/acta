@@ -5,6 +5,7 @@ after: [PLN-0231]
 id: PLN-0236
 created: "2026-11-12 23:14:21"
 hash: wo216ep
+started: "2026-11-12 23:30:45"
 ---
 # Land runs the gates a diff needs, in any repo
 
@@ -41,9 +42,9 @@ hash: wo216ep
 **Files:** `plugin/skills/slice/SKILL.md`, `plugin/skills/slice/minimal.md`, `plugin/skills/slice/full.md`, `internal/plugincheck/skill_slice_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the slice skill
 **verify:** Every plan for a repo whose docs name a slow gate carries a `**Gates:**` line, at either depth, with one sentence per gate holding the command, the paths that make it run, the narrow form when the gate's tool has one, and the paths that force the whole gate. A repo with no slow gate gets no line and no mention. The text says where the facts come from (the repo's own docs) and that the yes to the plan is the yes to its gates. No word in it names this repo's eval script or folders. List both depths and what each header holds.
-- [ ] Red: `skill_slice_test.go` fails because the slice text has no `**Gates:**` line and no rule for where its facts come from.
-- [ ] Change: add the `**Gates:**` rule to the slice skill and name the line in both depth files.
-- [ ] Commit: feat(slice): a plan names its slow gates
+- [x] Red: `skill_slice_test.go` fails because the slice text has no `**Gates:**` line and no rule for where its facts come from.
+- [x] Change: add the `**Gates:**` rule to the slice skill and name the line in both depth files.
+- [x] Commit: feat(slice): a plan names its slow gates
 
 ### Task 2: Land runs each gate as far as the diff calls for
 
@@ -71,3 +72,9 @@ hash: wo216ep
 - [ ] Red: the new plugincheck test fails because cases such as the brainstorm ones lack the tag of the skill folder they guard.
 - [ ] Change: add the missing tags, the gate line in `CLAUDE.md` and the wiki page.
 - [ ] Commit: chore(evals): tag each case with its skill and name the eval gate in CLAUDE.md
+
+## State
+
+### Next
+
+Task 2: replace the eval gate text in land SKILL.md step 1 with the general gate rule; land-eval-flake plan needs a Gates line; add land-gate-narrow.

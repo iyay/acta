@@ -88,6 +88,10 @@ Every run step in a task names the narrowest command that proves it: the package
 
 The header names both commands on a `**Tests:**` line: the fast one (a short mode, or the touched packages) and the full one. When the repo has `scripts/test`, they are `scripts/test` and `scripts/test --full`.
 
+## Slow gates
+
+A slow gate is a check other than the full suite that a repo runs before a merge and that costs minutes or quota, such as behaviour evals, end-to-end tests or browser tests. When the repo's own docs (`CLAUDE.md`, `AGENTS.md`, a README or a wiki page) name one, the header carries a `**Gates:**` line with one sentence per gate: the command; the paths whose change makes it run; the narrow form, when the gate's own tool can pick cases by tag, path or name; and the paths whose change forces the whole gate, because every case reads them. Take each part from those docs, never from a guess; a part the docs do not give is left out, and `acta:land` then runs that gate whole. A repo with no slow gate gets no line and no mention. The yes to the plan is the yes to its gates.
+
 ## Waves
 
 Group tasks into waves by file ownership. Two tasks in one wave never touch the same file. A task that needs another task's output goes in a later wave. Declare the waves in the plan so the executor can run each wave's tasks in parallel.
