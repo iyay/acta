@@ -25,7 +25,7 @@ While you work on something else, a failing test that an open bug lists under `f
 1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
 2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in that checked folder.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
-4. Symptom fits a recipe below (flaky, race, order, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
+4. Symptom fits a recipe below (flaky, race, order, hang, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific.
 
 ## Phase 2: Narrow and distinguish
@@ -46,9 +46,8 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 2. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
 3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. A control that cannot run: say why under Unverified.
 4. When several tries fail under one shared belief, test that belief directly.
-5. Three failed fixes: stop and tell the user. Question the design before a fourth.
-6. Once the cause is proven, search the other callers for the same pattern, and list what you find in the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
-7. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
+5. Once the cause is proven, search the other callers for the same pattern, and list what you find in the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
+6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up
 
@@ -58,6 +57,7 @@ A fix is code, so it goes through `acta:shape`, a plan, and its own worktree thr
 2. Re-run the user's original command or scenario, plus nearby checks.
 3. Remove temp probes and instrumentation. Report what remains unverified.
 4. Use `acta:land` before claiming it is fixed. Missing test coverage is a gap, never proof of a fix.
+5. Three failed fixes: stop and tell the user. Question the design before a fourth.
 
 A rerun that turns green, a longer timeout, or a skipped assertion does not prove a fix.
 
@@ -68,6 +68,7 @@ Each names the evidence that counts.
 - **Race.** Run the probe in `race.md`, which must force the interleaving: each worker waits after its read until the other has read. A barrier at start does not. A lock control proves the cause but is not a test. The proposed regression test holds the workers the same way and asserts the final invariant (for example count equals updates). More threads, sleeps, repeats or "no exception" only make it likely: weak evidence, weak tests.
 - **Flaky test.** Run it many times under the same conditions and record the failure count and what changed between runs (load, order, seed, time). For waits, see `condition-based-waiting.md`.
 - **Order-dependent test.** Find the polluter by running pairs or bisecting the suite (`find-polluter.sh` finds tests that leave files behind). Put the smallest command that keeps the failing order in the report as a line the user can paste, for example the polluter then the victim, and name the shared state it leaves changed.
+- **Hang.** Take a stack dump of the stuck process while it hangs, with the runtime's own tool: Python `faulthandler`, Go and Java `kill -QUIT <pid>`, any process `sample <pid>` or `gdb`. Name who waits on whom: which thread or task holds what, and what each waits for. Two dumps a few seconds apart tell a hang from slow work. A longer timeout is not evidence: it only hides the hang. The proposed regression test bounds the wait and fails fast when the wait runs out.
 - **Slow path.** Measure the same workload more than once, at two sizes if you can, and count the work (calls, file reads, queries) or profile it. Name the cost that grows. A speedup you did not measure before and after on the same workload is unmeasured; say so. Prefer a test that counts work over a wall-clock limit.
 - **Checks after the fix.** Add checks at trust boundaries and where an invariant must hold, not at every layer: see `defense-in-depth.md`.
 

@@ -6,6 +6,7 @@ id: PLN-0233
 created: "2026-11-12 23:03:50"
 hash: e12p7s9
 started: "2026-11-13 00:59:44"
+finished: "2026-11-13 01:11:03"
 ---
 # Debug proof is required, and each text change is measured
 
@@ -81,9 +82,25 @@ started: "2026-11-13 00:59:44"
 **Files:** `plugin/skills/debug/SKILL.md`, `plugin/evals/debug-hang/`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/evals_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** `TestEvalCases` and the plugincheck required strings for the debug skill, and the cases `debug-hang` and `debug-race`
 **verify:** Every symptom the skill's description names has a recipe that says which evidence counts; for a hang that is a stack dump of the stuck process and a statement of who waits on whom, never a longer timeout. The `debug-hang` case fails a run that names a cause with no stack dump, has a `# guards:` line for the hang recipe, a scaffold that refuses a folder that is not empty, and caps on turns and time. "Three failed fixes" stands in Phase 4 and nowhere in Phase 3. List each symptom in the description and its recipe.
-- [ ] Red: `TestEvalCases` fails because the `debug-hang` folder is missing, and `skill_debug_test.go` fails because the skill has no hang recipe.
-- [ ] Change: add the hang recipe and the `debug-hang` case, and move "Three failed fixes" to Phase 4.
-- [ ] Commit: feat(debug): hang recipe with its eval case
+- [x] Red: `TestEvalCases` fails because the `debug-hang` folder is missing, and `skill_debug_test.go` fails because the skill has no hang recipe.
+- [x] Change: add the hang recipe and the `debug-hang` case, and move "Three failed fixes" to Phase 4.
+- [x] Commit: feat(debug): hang recipe with its eval case
+
+## Fix round 1
+
+### Task 6: A probe write shares one shell line with its folder check
+
+**verify:** No probe can write while the shell stands in the repo, in a harness where every shell call starts in the repo again: the chain that makes the folder, steps into it and prints pwd is on the same line as the write, with a default folder when TMPDIR is unset or empty, and the same holds for the clone that bisect or an older commit runs in. Every exit of Phase 1 and Phase 3 reports in the four lines. List every line that tells an agent to write a file in Phases 1 to 3 and the chain it rides on.
+
+- [ ] BLOCKER debug SKILL.md ground rules: the checked-folder pattern proves the folder in one shell call, and the write runs in the next call, which starts in the repo again; proved by running the pattern and then pwd alone in a second call, which printed the repo. The write must sit in the same line as the mkdir, cd and pwd chain, and the folder needs a default when TMPDIR is unset or empty.
+- [ ] [fix] the bisect line chains clone, cd and bisect in one line, and an older commit is checked out only in such a clone
+- [ ] [fix] the Phase 1 cannot-reproduce exit reports in the four lines too
+- [ ] [fix] the other-callers list has a fixed place: after the four lines
+- [ ] [fix] the Phase 3 control line points at the checked folder and says to copy what the probe needs into it
+- [ ] [fix] race.md points its temp copy at the checked folder of the ground rules
+- [ ] [fix] the hang recipe says faulthandler must be set up before the hang and that sample is for macOS
+- [ ] [fix] debug-hang scaffold header comment describes the deadlock, not the race it was copied from
+- [ ] Commit with the trailer `Task: PLN-e12p7s9#6`
 
 ## State
 

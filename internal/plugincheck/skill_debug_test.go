@@ -184,3 +184,32 @@ func TestDebugRecentChangesAndOtherCallers(t *testing.T) {
 		t.Error("the other-callers step must sit in Phase 3")
 	}
 }
+
+// TestDebugHangRecipe keeps a recipe for every symptom the description
+// names. A hang is proven by a stack dump that shows who waits on whom, never
+// by a longer timeout, which only hides it. "Three failed fixes" is a rule
+// about fixes, so it sits in Phase 4, the only phase that writes one.
+func TestDebugHangRecipe(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"- **Hang.**",
+		"a stack dump of the stuck process",
+		"who waits on whom",
+		"A longer timeout is not evidence",
+		"Two dumps a few seconds apart tell a hang from slow work.",
+		"hang, slow",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	phase3, phase4 := strings.Index(txt, "## Phase 3"), strings.Index(txt, "## Phase 4")
+	recipes := strings.Index(txt, "## Recipes")
+	i := strings.Index(txt, "Three failed fixes")
+	if i < phase4 || i > recipes {
+		t.Errorf("Three failed fixes must sit in Phase 4 (at %d, phase 3 %d, phase 4 %d, recipes %d)", i, phase3, phase4, recipes)
+	}
+	if strings.Count(txt, "Three failed fixes") != 1 {
+		t.Error("Three failed fixes must be said once")
+	}
+}
