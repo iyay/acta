@@ -13,6 +13,7 @@ import (
 	"github.com/iyay/acta/internal/doctor"
 	"github.com/iyay/acta/internal/hook"
 	"github.com/iyay/acta/internal/setup"
+	"github.com/iyay/acta/internal/telemetry"
 	"github.com/iyay/acta/plugin"
 )
 
@@ -139,11 +140,23 @@ func setupEnv(pluginDir string) setup.Env {
 	return env
 }
 
-// setupSummary closes the wizard with the config path and the TUI hint.
+// setupSummary closes the wizard with the config path, the TUI hint, and one
+// line that says whether telemetry is on and how to turn it off.
 func setupSummary() string {
 	path, err := config.UserPath()
 	if err != nil {
 		path = ""
 	}
-	return setup.SummaryBox(path)
+	return setup.SummaryBox(path) + telemetryLine()
+}
+
+// telemetryLine uses the same words as acta telemetry status, so the user
+// sees one story in both places.
+func telemetryLine() string {
+	s := telemetry.Default()
+	state := "off"
+	if s.Enabled() {
+		state = "on"
+	}
+	return fmt.Sprintf("Telemetry: %s (%s). Turn it off with: acta telemetry off\n", state, s.Source())
 }

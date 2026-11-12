@@ -268,7 +268,7 @@ func TestReleaseStopsAndLeavesRepoUntouched(t *testing.T) {
 // secret to goreleaser. A missing secret comes through as an empty value, so
 // that build simply has no endpoint and sends nothing.
 func TestReleaseBakesTelemetryEndpointFromSecret(t *testing.T) {
-	const endpointFlag = "-X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}"
+	const endpointFlag = `-X github.com/iyay/acta/internal/telemetry.Endpoint={{ envOrDefault "ACTA_TELEMETRY_ENDPOINT" "" }}`
 	const secretEnv = "${{ secrets.ACTA_TELEMETRY_ENDPOINT }}"
 
 	goreleaser := readRepoFile(t, ".goreleaser.yaml")

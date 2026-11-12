@@ -21,7 +21,7 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/iyay/acta/internal/update.release=true
-      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}
+      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ envOrDefault "ACTA_TELEMETRY_ENDPOINT" "" }}
     goos:
       - darwin
       - linux
@@ -40,7 +40,7 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/iyay/acta/internal/update.release=true
-      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ .Env.ACTA_TELEMETRY_ENDPOINT }}
+      - -X github.com/iyay/acta/internal/telemetry.Endpoint={{ envOrDefault "ACTA_TELEMETRY_ENDPOINT" "" }}
     goos:
       - darwin
       - linux

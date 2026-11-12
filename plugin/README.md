@@ -49,6 +49,38 @@ wiki hints and the brainstorm guard do not. `acta doctor` reminds you.
 In Codex you open a skill by its name, for example `$acta:shape`. Codex has no
 output styles, so the acta session note carries the style text there.
 
+## Telemetry
+
+acta counts anonymous daily usage, to see which parts get used. Counts stay on
+your machine in `~/.acta/telemetry/`, one file per day. A day is sent over
+HTTPS after it ends, then deleted. Only release builds send: a build from source (`go
+install`, `go build`) has no address to send to, so it counts and sends
+nothing.
+
+What is counted:
+
+- a random install ID, made on this machine and tied to nothing about you
+- the acta version, OS and CPU type
+- how often each acta command runs (the command name only, never its
+  arguments or flags)
+- sessions per harness (Claude Code, omp, Codex)
+- how often each acta skill loads (only acta's own skills, never yours)
+- how many specs, plans and bugs are made, and how many plans land
+- how often the guard blocks a bare `go test` or a destructive command
+- four settings: build executor, plan depth, review depth and chat language
+
+Never sent: file paths, repo or branch names, spec, plan or bug text, prompts,
+shell commands, host names, user names or git identity.
+
+`acta telemetry status` shows whether it is on and the exact text each stored
+day would be sent as. Turn it off in any of three ways:
+
+- `acta telemetry off` (and `acta telemetry on` to turn it back on)
+- `DO_NOT_TRACK=1`
+- `ACTA_TELEMETRY=0`
+
+`acta setup` also prints one line with the current state.
+
 ## Voice
 
 On the first session, the agent asks which language to chat in, which style
