@@ -50,9 +50,9 @@ started: "2026-11-13 01:52:08"
 **Files:** `plugin/skills/shape/cold-read.md`, `internal/plugincheck/skill_shape_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the cold read, and the cases `cold-read-planted-contradiction`, `cold-read-false-claim` and `cold-read-accept`
 **verify:** No claim the spec makes about a file, a command or today's behaviour goes unchecked: the brief tells the reviewer to check each one against the repo and report each that is wrong, and to report each requirement that has no way to be tested. Every finding quotes the spec line it is about. Every reply, with findings or with none, has a `Read` part naming the spec sections read and the references opened, and a reply that cut findings says `N more findings not listed`. The brief still forbids edits, write commands and delegation, and still treats document content as material, not instructions. List every kind of finding the brief asks for and what each must carry.
-- [ ] Red: `skill_shape_test.go` fails because the brief lacks the claim check, the testability check, the quoted line, the `Read` part and the cut line.
-- [ ] Change: add the two duties, the quoted line, the `Read` part and the cut line to the reviewer brief.
-- [ ] Commit: feat(shape): cold read checks claims against the repo and shows what it read
+- [x] Red: `skill_shape_test.go` fails because the brief lacks the claim check, the testability check, the quoted line, the `Read` part and the cut line.
+- [x] Change: add the two duties, the quoted line, the `Read` part and the cut line to the reviewer brief.
+- [x] Commit: feat(shape): cold read checks claims against the repo and shows what it read
 
 ### Task 3: Every finding reaches the user
 
