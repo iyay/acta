@@ -80,3 +80,25 @@ func TestRaceProbeStartsFresh(t *testing.T) {
 		t.Error("debug/race.md still uses a fixed /tmp/probe path")
 	}
 }
+
+// TestDebugBisectRunsInATempClone keeps two debug rules from clashing. Phases
+// 1 to 3 change no file in the repo, and bisect checks out other commits in
+// the working tree, so every line that names bisect must send it to a clone
+// and show the clone command to copy.
+func TestDebugBisectRunsInATempClone(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"`git bisect` runs only in a temp clone",
+		"`git clone . \"$TMPDIR/<name>\"`",
+		"never in the repo's own working tree",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	for _, line := range strings.Split(txt, "\n") {
+		if strings.Contains(line, "git bisect") && !strings.Contains(line, "temp clone") {
+			t.Errorf("debug/SKILL.md names git bisect with no temp clone on the same line: %q", line)
+		}
+	}
+}

@@ -33,7 +33,7 @@ While you work on something else, a failing test that an open bug lists under `f
 Exit: one explanation fits every observation, and the others are ruled out by a probe.
 
 1. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
-2. Compare a working path with the failing one: a similar caller, an older commit (`git bisect`), other data. List every difference.
+2. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` runs only in a temp clone, never in the repo's own working tree: `git clone . "$TMPDIR/<name>"`, change into that folder, and bisect there.
 3. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
 4. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
 

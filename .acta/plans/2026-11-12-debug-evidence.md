@@ -5,6 +5,7 @@ after: [PLN-0235]
 id: PLN-0233
 created: "2026-11-12 23:03:50"
 hash: e12p7s9
+started: "2026-11-13 00:59:44"
 ---
 # Debug proof is required, and each text change is measured
 
@@ -44,9 +45,9 @@ hash: e12p7s9
 **Files:** `plugin/skills/debug/SKILL.md`, `internal/plugincheck/skill_debug_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the debug skill, and the cases `debug-misleading-path` and `debug-exact-symptom`
 **verify:** No line of the debug skill asks for a step that changes the repo's working tree in Phases 1 to 3: every place that names bisect or an older commit says it runs in a clone, and shows `git clone . "$TMPDIR/<name>"` as a command to copy. List every line that names a git command that moves HEAD or the working tree, and where each one runs.
-- [ ] Red: `skill_debug_test.go` fails because the skill names `git bisect` with no temp clone.
-- [ ] Change: say in Phase 2 that bisect runs in a temp clone and show the clone command.
-- [ ] Commit: fix(debug): bisect in a temp clone, never in the repo
+- [x] Red: `skill_debug_test.go` fails because the skill names `git bisect` with no temp clone.
+- [x] Change: say in Phase 2 that bisect runs in a temp clone and show the clone command.
+- [x] Commit: fix(debug): bisect in a temp clone, never in the repo
 
 ### Task 2: A probe folder that is checked before any write
 
@@ -83,3 +84,9 @@ hash: e12p7s9
 - [ ] Red: `TestEvalCases` fails because the `debug-hang` folder is missing, and `skill_debug_test.go` fails because the skill has no hang recipe.
 - [ ] Change: add the hang recipe and the `debug-hang` case, and move "Three failed fixes" to Phase 4.
 - [ ] Commit: feat(debug): hang recipe with its eval case
+
+## State
+
+### Findings
+
+Old arm 2026-11-13, debug text before this plan, 10 runs per case at -j 8, branch binary on PATH: debug-exact-symptom 9/10, debug-independent-check 7/10, debug-misleading-path 10/10, debug-no-repro 10/10, debug-order-dependent 10/10, debug-performance 10/10, debug-race 10/10. 66 of 70.
