@@ -9,7 +9,7 @@ Review happens once, when every task of the plan is committed, then once per fix
 
 ## Review depth
 
-[depth.md](depth.md) picks the level (the argument of `/acta:review quick|standard|deep`, then `review_depth`, then `standard`) and holds the levels, the floors and the review-notes line; the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, and `acta:land` adds what it asks for.
+[depth.md](depth.md) picks the level (the argument of `/acta:review quick|standard|deep|auto`, then `review_depth`, then `standard`) and holds the levels, the floors and the review-notes line; the deep level adds [fact-check.md](fact-check.md). No setting drops a floor. `review_understanding` is a separate switch: no level turns it on, and `acta:land` adds what it asks for.
 
 ## Two reviewers, in parallel
 

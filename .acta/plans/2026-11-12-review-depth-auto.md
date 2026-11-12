@@ -61,9 +61,9 @@ started: "2026-11-13 00:27:31"
 **Files:** `plugin/skills/review/depth.md`, `plugin/skills/review/SKILL.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the review skill, and the cases `review-auto-risky-small`, `review-auto-signal`, `review-auto-safe-inline` and `review-depth-floor`
 **verify:** Under `auto`, no diff with a risk signal (a security, auth, money, data migration or delete path; text an agent reads as instructions; work the `dispatch` executor wrote; a fix round) gets fewer than two reviewers, and no diff gets the inline level unless all three inline conditions hold: no risk signal, nothing changed that code outside the diff uses, and every changed logic line covered by a test the task's record shows failing first. Doubt about any condition means two reviewers. The text says size is no reason for a lower level. The summary line under `## Review notes` names the level and the reason, and the failed condition when the level is not inline. The argument `/acta:review auto` is accepted, and `quick`, `standard`, `deep` and the light tier read as before. List every path from a diff to a level, and the level each ends at.
-- [ ] Red: `skill_review_test.go` fails because the review text has no `auto` level, no inline conditions and no reason on the review-notes line.
-- [ ] Change: add the `auto` level with its three levels, conditions, risk signals and the reason line to `depth.md`, and name `auto` where `SKILL.md` lists the depths.
-- [ ] Commit: feat(review): auto depth picks the review a diff needs and says why
+- [x] Red: `skill_review_test.go` fails because the review text has no `auto` level, no inline conditions and no reason on the review-notes line.
+- [x] Change: add the `auto` level with its three levels, conditions, risk signals and the reason line to `depth.md`, and name `auto` where `SKILL.md` lists the depths.
+- [x] Commit: feat(review): auto depth picks the review a diff needs and says why
 
 ### Task 4: The land report repeats the review level and its reason
 
