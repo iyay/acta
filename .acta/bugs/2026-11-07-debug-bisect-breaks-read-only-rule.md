@@ -1,6 +1,8 @@
 ---
 id: BUG-0074
 hash: qipr4wo
+fixed_in: bd77e314fc4f2944430335d5681b41f88163036d
+finished: "2026-11-13 01:51:50"
 ---
 # Debug skill asks for git bisect but also forbids changing the repo
 
