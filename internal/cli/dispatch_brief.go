@@ -242,7 +242,7 @@ func buildBrief(planPath string, src []byte, in briefInput) (string, error) {
 		fmt.Fprintf(&b, "TICKETS (exactly these %d):\n%s\n", len(tickets), strings.Join(tickets, "\n"))
 		fmt.Fprintf(&b, "WAVES (the plan's, as written):\n%s\n", marks.waves)
 	}
-	fmt.Fprintf(&b, "WORKTREE: %s (branch %s, parent %s, base %s) — cd there FIRST, work ONLY there. The main checkout stays clean. No git checkout, no cd out, no git push.\n", in.Worktree, in.Branch, in.Parent, in.Base)
+	fmt.Fprintf(&b, "WORKTREE: %s (branch %s, parent %s, base %s) — cd there FIRST, work ONLY there. The main checkout stays clean. No git checkout, no cd out, no git push unless the user asks you.\n", in.Worktree, in.Branch, in.Parent, in.Base)
 	b.WriteString("FILES: the plan names the area; find the exact lines yourself. A line number is a hint, never the edge. Surgical: every changed line traces to a ticket.\n")
 	fmt.Fprintf(&b, "HOUSE RULES: before the todo list, read %s and AGENTS.md in this worktree.\n", in.Rules)
 	if pages, _ := wiki.Load(filepath.Join(in.Worktree, ".acta")); len(pages) > 0 {

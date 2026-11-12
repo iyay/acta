@@ -6,7 +6,7 @@ func TestSkillBug(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "bug",
 		MaxLines: 80,
-		Must:     []string{"acta bug new", "## Symptom", "fixed_in", "parent: bugs/", "Exit codes", "Never push", "already on the parent branch", "`--priority high|medium|low` is optional"},
+		Must:     []string{"acta bug new", "## Symptom", "fixed_in", "parent: bugs/", "Exit codes", "Never push unless the user asks", "already on the parent branch", "`--priority high|medium|low` is optional"},
 		MustNot:  []string{"git-bug", "superpowers:", "returned a BLOCKER", "a review BLOCKER"},
 	})
 }

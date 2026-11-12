@@ -14,7 +14,7 @@ func TestSkillLand(t *testing.T) {
 		Must: []string{
 			"each debt line starts with `(medium) ` or `(high) `",
 			"Iron Law", "--no-ff", "Do not show a menu", "git worktree remove", "git branch -d",
-			"Never `git push`", "120000", "fixed_in", "The Gate Function",
+			"Never `git push` unless the user asks", "120000", "fixed_in", "The Gate Function",
 			"`acta id --fix-duplicates`", "renumber",
 			"acta show <plan id>", "done` is less than `total`",
 			"[baseline.md](baseline.md)", "`acta-baseline.md`", "absolute Git common directory",
