@@ -5,6 +5,7 @@ after: [PLN-0236]
 id: PLN-0232
 created: "2026-11-12 23:03:20"
 hash: i9nhifa
+started: "2026-11-13 00:04:27"
 ---
 # Review verdicts carry their evidence
 
@@ -41,9 +42,9 @@ hash: i9nhifa
 **Files:** `plugin/evals/review-planted-bug/`, `plugin/evals/review-nit-stays-note/`, `plugin/evals/review-false-blocker/`, `plugin/evals/review-clean-has-evidence/`, `internal/plugincheck/evals_test.go`
 **Seam:** `TestEvalCases` in plugincheck, and `scripts/eval --case 'review-*'`
 **verify:** Each case fails for the one behaviour it names and for no other reason: a seeded defect on a path the plan covers must end BLOCKED with that `file:line`; a diff with only naming and comment problems must end CLEAN with no nit as a BLOCKER; a wrong BLOCKER handed to the orchestrator must be rejected with repro output and no fix task; a CLEAN report must hold `### Coverage`. Every case has a `# guards:` line for a heading the review skill has today, a scaffold that refuses a folder that is not empty, and caps on turns and time. List each case, its graders, and its score over 10 runs on the old text.
-- [ ] Red: `TestEvalCases` fails because the four case folders it now lists do not exist.
-- [ ] Change: add the four case folders and their `evalCases` entries, then record the old-arm scores in the plan state.
-- [ ] Commit: test(evals): four review cases for defects, nits, wrong BLOCKERs and evidence
+- [x] Red: `TestEvalCases` fails because the four case folders it now lists do not exist.
+- [x] Change: add the four case folders and their `evalCases` entries, then record the old-arm scores in the plan state.
+- [x] Commit: test(evals): four review cases for defects, nits, wrong BLOCKERs and evidence
 
 ### Task 2: A reviewer brief that stands alone and reports its evidence
 
@@ -71,3 +72,14 @@ hash: i9nhifa
 - [ ] Red: `skill_review_test.go` fails because `receiving.md` lacks the repro rule and still holds the gratitude lines.
 - [ ] Change: rewrite `receiving.md` around the repro rule and update the wiki page.
 - [ ] Commit: feat(review): prove a BLOCKER with its repro before fixing it
+
+## State
+
+### Next
+
+Task 2: rewrite code-reviewer.md with the three questions, finding bar and bucket rules inline, a ### Coverage section, the revert check for the Standards axis, and the N more BLOCKERs line. Tests in skill_review_test.go first.
+
+### Findings
+
+Old arm 2026-11-13, review text before this plan, 10 runs per case at -j 8, branch binary on PATH: review-planted-bug 10/10, review-nit-stays-note 10/10, review-false-blocker 10/10, review-clean-has-evidence 0/10 (the brief never asks for a Coverage section).
+scripts/eval takes one --case per call: with several, only the last one runs. Run cases one call each, or pick them by --tag=<tag>.
