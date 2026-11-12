@@ -5,6 +5,7 @@ title: debug-four-line-report
 status: raw
 created: "2026-11-07 17:56:08"
 schema: "1"
+finished: "2026-11-12 23:01:55"
 ---
 # debug-four-line-report
 
