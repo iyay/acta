@@ -52,9 +52,9 @@ started: "2026-11-13 00:27:31"
 **Files:** `plugin/evals/review-auto-risky-small/`, `plugin/evals/review-auto-signal/`, `plugin/evals/review-auto-safe-inline/`, `internal/plugincheck/evals_test.go`
 **Seam:** `TestEvalCases` in plugincheck, and `scripts/eval --case 'review-auto-*'`
 **verify:** Each case fails for the one behaviour it names and for no other reason: under `review_depth: auto`, a one-line change to a condition with no test and on no risk path must run at least one reviewer subagent; a diff on an auth path must run two; a rename covered by a test the task's record shows failing first must run none and must reply with `### Coverage`. Every case sets `review_depth: auto` in its scaffold, has a `# guards:` line for a heading the review skill has, a scaffold that refuses a folder that is not empty, and caps on turns and time. List each case and its graders.
-- [ ] Red: `TestEvalCases` fails because the three case folders it now lists do not exist.
-- [ ] Change: add the three case folders and their `evalCases` entries.
-- [ ] Commit: test(evals): three cases for the auto review pick
+- [x] Red: `TestEvalCases` fails because the three case folders it now lists do not exist.
+- [x] Change: add the three case folders and their `evalCases` entries.
+- [x] Commit: test(evals): three cases for the auto review pick
 
 ### Task 3: The auto levels, their conditions and the written reason
 
@@ -82,3 +82,9 @@ started: "2026-11-13 00:27:31"
 - [ ] Red: the config, cli and setup tests fail because a missing `review_depth` still reads as `standard`.
 - [ ] Change: when the scores allow it, switch the default to `auto` in every place that fills a missing value.
 - [ ] Commit: feat(config): review depth defaults to auto
+
+## State
+
+### Findings
+
+review-auto-safe-inline uses a new function that nothing else calls, with a test the task record shows red first, in place of the rename the plan named: a rename has no test that fails before the change, so it cannot meet the inline conditions.
