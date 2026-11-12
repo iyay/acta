@@ -6,6 +6,7 @@ id: PLN-0232
 created: "2026-11-12 23:03:20"
 hash: i9nhifa
 started: "2026-11-13 00:04:27"
+finished: "2026-11-13 00:13:27"
 ---
 # Review verdicts carry their evidence
 
@@ -69,9 +70,29 @@ started: "2026-11-13 00:04:27"
 **Files:** `plugin/skills/review/receiving.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`, `.acta/wiki/review-base-merge-base.md`
 **Seam:** plugincheck required strings for the review skill, and the case `review-false-blocker`
 **verify:** No BLOCKER reaches a fix task without the orchestrator having run its repro in a temp clone and kept the output; one whose repro does not show the wrong result gets `rejected: <reason>` with that output. No line about gratitude or which words to say remains. The rules for unclear feedback and for pushing back with technical reasons are still there. The wiki page says the skill now reads the merge base. List every way a finding can arrive (reviewer, user, outside reviewer, light inline review) and what each must pass before it is acted on.
-- [ ] Red: `skill_review_test.go` fails because `receiving.md` lacks the repro rule and still holds the gratitude lines.
-- [ ] Change: rewrite `receiving.md` around the repro rule and update the wiki page.
-- [ ] Commit: feat(review): prove a BLOCKER with its repro before fixing it
+- [x] Red: `skill_review_test.go` fails because `receiving.md` lacks the repro rule and still holds the gratitude lines.
+- [x] Change: rewrite `receiving.md` around the repro rule and update the wiki page.
+- [x] Commit: feat(review): prove a BLOCKER with its repro before fixing it
+
+## Polish
+
+### Task 5: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] review-false-blocker: both fixture reports get a Coverage section, the scaffold comment names the reports folder, and the verdict grader asks for the verdict on its own line plus the word rejected
+- [x] [fix] review SKILL.md budget step 1: round 1 reviews the range from the merge base, not <parent>..HEAD
+- [x] [fix] review SKILL.md: a round BLOCKED only by cut BLOCKERs or a missing Coverage section has a next step: the next round reviews the same range again
+- [x] [fix] receiving.md: drop the line about praise and thanks
+- [x] [fix] code-reviewer.md: say what a Spec-axis reviewer writes for question 3
+- [x] [fix] code-reviewer.md: a (low) NOTE is a [note]
+- [x] [fix] receiving.md: a row for Pre-existing items
+- [x] [fix] review-planted-bug grader names line 4, where the defect is
+- [x] Commit: `polish: review notes for PLN-0232`
+
+## Review notes
+
+- Round 1, deep, full tier (skill text): CLEAN from both reviewers; polish of 8 [fix] NOTEs reviewed CLEAN by both; no fact-check since no BLOCKER. BLOCKER 0, NOTE 33, pre-existing 2 (build SKILL.md still names the range as <parent>..HEAD, now a debt line; the (low) priority tag in the brief, fixed in the polish). 3 NOTEs went to debt; the rest are grader strictness and wording nits. Eval keep rule: every change kept, final text 40 of 40 runs on the four new cases against 30 of 40 on the old text.
 
 ## State
 
@@ -81,5 +102,6 @@ Task 2: rewrite code-reviewer.md with the three questions, finding bar and bucke
 
 ### Findings
 
-Old arm 2026-11-13, review text before this plan, 10 runs per case at -j 8, branch binary on PATH: review-planted-bug 10/10, review-nit-stays-note 10/10, review-false-blocker 10/10, review-clean-has-evidence 0/10 (the brief never asks for a Coverage section).
+Old arm 2026-11-13, review text before this plan, 10 runs per case at -j 8, branch binary on PATH: review-planted-bug 10/10, review-nit-stays-note 10/10, review-false-blocker 10/10, review-clean-has-evidence 0/10 (the brief never asked for a Coverage section).
+New arm, text after Task 4: clean-has-evidence 10/10, planted-bug 10/10, false-blocker 10/10, nit-stays-note 9/10. Final text after the polish, 10 runs each: 10/10 on all four, so nit-stays-note stands at 19/20 against 10/10 and no change was taken out.
 scripts/eval takes one --case per call: with several, only the last one runs. Run cases one call each, or pick them by --tag=<tag>.

@@ -20,8 +20,8 @@ reports/spec.md and the Standards-axis report is in reports/standards.md. Do
 not dispatch any reviewer again. Take the round from there as the review
 skill says for findings a reviewer returns. Do not polish and do not land.
 Change no source file. The repo has no tests and no formatter. Say what
-you did with each BLOCKER and the verdict of the round, CLEAN or BLOCKED,
-then stop.
+you did with each BLOCKER, then end with one last line, `Round verdict: CLEAN`
+or `Round verdict: BLOCKED`, and stop.
 
 The acta CLI for this repo is ./bin/acta, and git is ./bin/git. Use those two
 paths. The plain names may run a different program in this sandbox.

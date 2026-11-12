@@ -67,7 +67,7 @@ Subagent (general-purpose):
 
     1. Does it match the approved spec and plan?
     2. Does it run: are the narrow tests and type checks green? Run only the narrow tests of what changed, never the full suite, and show the output.
-    3. Do the tests go red when the change is reverted? The Standards-axis reviewer runs question 3, and so does a reviewer who takes both axes: in a temp clone, with `HOME` and `TMPDIR` set to new temp folders, revert the change, run the narrow tests and show them red. Never on this checkout.
+    3. Do the tests go red when the change is reverted? The Standards-axis reviewer runs question 3, and so does a reviewer who takes both axes: in a temp clone, with `HOME` and `TMPDIR` set to new temp folders, revert the change, run the narrow tests and show them red. Never on this checkout. A Spec-axis reviewer writes `left to the Standards axis` for question 3.
 
     Use the deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) only where the diff touches a trust boundary, auth, money, a migration or a delete.
 
@@ -79,7 +79,7 @@ Subagent (general-purpose):
 
     A NOTE gets one bucket. One that fails the first test falls to the next:
     - `[fix]`: the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit.
-    - `[debt]`: leaving it costs something later that you can name, and the fix needs new logic or a file outside the diff. It must start with `(medium) ` or `(high) `.
+    - `[debt]`: leaving it costs something later that you can name, and the fix needs new logic or a file outside the diff. It must start with `(medium) ` or `(high) `. A NOTE that would be `(low)` is a `[note]`.
     - `[note]`: taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
     ## Output Format

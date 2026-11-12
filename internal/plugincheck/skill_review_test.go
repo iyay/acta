@@ -124,7 +124,7 @@ func TestSkillReview(t *testing.T) {
 // their own file and the body keeps one pointer that names every trigger.
 func TestReviewReceivingFile(t *testing.T) {
 	body := readSkill(t, "skills/review/SKILL.md")
-	if strings.Contains(body, "### The Response Pattern") {
+	if strings.Contains(body, "### Prove a BLOCKER first") {
 		t.Errorf("review/SKILL.md still holds the receiving rules; they live in receiving.md")
 	}
 	for _, want := range []string{
@@ -141,12 +141,29 @@ func TestReviewReceivingFile(t *testing.T) {
 	for _, want := range []string{
 		"## Receiving findings",
 		"Verify each finding against the code before acting.",
-		"### The Response Pattern", "### Forbidden Responses", "### Handling Unclear Feedback",
-		"### When To Push Back", "### Acknowledging Correct Feedback", "### Common Mistakes",
-		"| Can't verify, proceed anyway | State limitation, ask for direction |",
+		// A BLOCKER is proven before it costs a fix round.
+		"### Prove a BLOCKER first",
+		"Before a BLOCKER becomes a line of the fix task, run its repro yourself and keep the output.",
+		"runs only in a temp clone",
+		"with `HOME` and `TMPDIR` set to new temp folders",
+		"its verdict is `rejected: <reason>`, with the output. It opens no fix task.",
+		"never drop it and never fix it blind",
+		// Every way a finding can arrive passes a check.
+		"### Every source passes the same check",
+		"| A reviewer subagent |", "| The fact-check |", "| The user |", "| An outside reviewer |", "| Your own light inline review |", "| A `### Pre-existing` item |",
+		// The rules that stay from before.
+		"### Unclear feedback", "change nothing yet and ask about the unclear items",
+		"### When to push back", "goes against a design decision the user made",
+		"Cannot verify an item: say what you could not check and ask for direction",
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("receiving.md missing %q", want)
+		}
+	}
+	// Lines about which words to say taught nothing about checking a finding.
+	for _, gone := range []string{"ANY gratitude expression", "You're absolutely right", "your human partner", "### Forbidden Responses", "thanks"} {
+		if strings.Contains(txt, gone) {
+			t.Errorf("receiving.md still holds %q", gone)
 		}
 	}
 }
@@ -391,6 +408,14 @@ func TestCodeReviewerStandsAlone(t *testing.T) {
 			t.Errorf("code-reviewer.md missing %q", want)
 		}
 	}
+	for _, want := range []string{
+		"A Spec-axis reviewer writes `left to the Standards axis` for question 3.",
+		"A NOTE that would be `(low)` is a `[note]`.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("code-reviewer.md missing %q", want)
+		}
+	}
 	for _, gone := range []string{"the review skill", "Senior Code Reviewer"} {
 		if strings.Contains(txt, gone) {
 			t.Errorf("code-reviewer.md still says %q; the reviewer has not read the skill and needs no persona", gone)
@@ -413,6 +438,9 @@ func TestReviewVerdictNeedsEvidence(t *testing.T) {
 		"never dispatch a new reviewer for it",
 		"A second report without it makes that axis BLOCKED: tell the user.",
 		"A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED",
+		"Round 1 reviews the range from the merge base to `HEAD`",
+		"A round that is BLOCKED with no BLOCKER left to fix",
+		"the next round reviews the same range again",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Errorf("review/SKILL.md missing %q", want)

@@ -28,7 +28,7 @@ cp "$(command -v acta)" bin/acta.real
 printf '#!/bin/sh\nPATH="%s/bin:$PATH"\nexport PATH\nexec "%s/bin/acta.real" "$@"\n' "$PWD" "$PWD" > bin/acta
 chmod +x bin/acta
 # The branch does what the plan asks. Two reviewer reports wait in the
-# folder above the repo files: one is CLEAN, the other raises a BLOCKER that
+# reports folder, which git ignores: one is CLEAN, the other raises a BLOCKER that
 # quotes a line the code does not hold. The case checks that the orchestrator
 # checks the finding against the code, rejects it and opens no fix round.
 cat > src/discount.py <<'PY'
@@ -95,6 +95,11 @@ none
 ### NOTEs
 none
 
+### Coverage
+- Plan requirement "apply_discount(50, 20) is 40": not met, see BLOCKER 1. No test in the repo.
+- Files read: src/discount.py.
+- Commands run: none, the repo has no tests.
+
 BLOCKED
 REPORT
 cat > reports/standards.md <<'REPORT'
@@ -108,6 +113,11 @@ none
 
 ### NOTEs
 none
+
+### Coverage
+- Files read: src/discount.py.
+- Commands run: none, the repo has no tests and no formatter.
+- Revert check: not run, the repo has no tests.
 
 CLEAN
 REPORT
