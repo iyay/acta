@@ -61,6 +61,16 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if !ok {
 			return exitOK
 		}
+		// The store drops any name that is not an acta skill, since a user's
+		// own skill names can be private.
+		if name := loadedSkill(ev, data); name != "" {
+			_ = telemetry.Default().Add("skills", name)
+		}
+		// A Skill call names no file and runs no command, so it has nothing
+		// to block and nothing to hint.
+		if ev.ToolName == "Skill" {
+			return exitOK
+		}
 		// A Codex patch carries file content in its command field. That text
 		// never runs, so the shell guard below must not read it.
 		shell := ev.ToolName != "apply_patch"
@@ -68,6 +78,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		// planning root, so a repo with no planning root still gets it.
 		cwd, _ := os.Getwd()
 		if block, msg := hook.GoTestBlock(cwd, ev.ToolInput.Command); shell && block {
+			_ = telemetry.Default().Add("blocks", "go_test")
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -83,6 +94,7 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			where.Cwd = cwd
 		}
 		if block, msg := hook.DestructiveBlock(where.Cwd, ev.ToolInput.Command); shell && block {
+			_ = telemetry.Default().Add("blocks", "destructive")
 			fmt.Fprintln(stderr, msg)
 			return exitBlock
 		}
@@ -137,6 +149,29 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, hookUsage)
 		return exitBadInput
 	}
+}
+
+// loadedSkill gives the skill name a tool call loads, or "" when it loads
+// none. Claude Code loads acta:<name> with its Skill tool, and a name with
+// no acta prefix belongs to someone else. omp reads skill://<name>.
+func loadedSkill(ev hook.ToolEvent, data []byte) string {
+	switch ev.ToolName {
+	case "Skill":
+		var call struct {
+			ToolInput struct {
+				Skill string `json:"skill"`
+			} `json:"tool_input"`
+		}
+		_ = json.Unmarshal(data, &call)
+		if name, ok := strings.CutPrefix(call.ToolInput.Skill, "acta:"); ok {
+			return name
+		}
+	case "read":
+		if name, ok := strings.CutPrefix(ev.ToolInput.FilePath, "skill://"); ok {
+			return name
+		}
+	}
+	return ""
 }
 
 // sessionTelemetry counts the harness this session runs in, starts the

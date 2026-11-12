@@ -99,3 +99,74 @@ func TestSessionStartStartsTheFlushHourly(t *testing.T) {
 		t.Fatalf("flushes started = %d after an hour, want 2", *spawns)
 	}
 }
+
+func TestPreToolCountsActaSkillLoads(t *testing.T) {
+	long := strings.Repeat("a", 10*1024)
+	cases := []struct {
+		name, tool, field, value, want string
+	}{
+		{"claude code acta skill", "Skill", "skill", "acta:shape", "shape"},
+		{"omp skill read", "read", "file_path", "skill://tdd", "tdd"},
+		{"claude code skill of another plugin", "Skill", "skill", "other:shape", ""},
+		{"claude code bare name", "Skill", "skill", "shape", ""},
+		{"a path out of the prefix", "Skill", "skill", "acta:../x", ""},
+		{"an empty name", "Skill", "skill", "acta:", ""},
+		{"a 10 KB name", "Skill", "skill", "acta:" + long, ""},
+		{"mixed case", "Skill", "skill", "acta:Shape", ""},
+		{"mixed case prefix", "Skill", "skill", "ACTA:shape", ""},
+		{"omp skill not on the list", "read", "file_path", "skill://my-private-skill", ""},
+		{"omp skill with an acta prefix", "read", "file_path", "skill://acta:shape", ""},
+		{"omp a 10 KB name", "read", "file_path", "skill://" + long, ""},
+		{"a plain file read", "read", "file_path", "shape", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := hookRepo(t)
+			s, _ := runEnv(t, false)
+			t.Chdir(dir)
+			code, out, errb := runHook(t, "pre-tool", toolEvent(t, "s1", "", c.tool, map[string]string{c.field: c.value}))
+			if code != exitOK || errb != "" {
+				t.Fatalf("exit %d, stderr %q; want a quiet pass", code, errb)
+			}
+			if c.tool == "Skill" && out != "" {
+				t.Fatalf("a Skill call printed %q; want no hint", out)
+			}
+			got := todayCounts(t, s).Skills
+			if c.want == "" && len(got) != 0 {
+				t.Fatalf("skills = %v, want nothing recorded", got)
+			}
+			if c.want != "" && (got[c.want] != 1 || len(got) != 1) {
+				t.Fatalf("skills = %v, want only %s: 1", got, c.want)
+			}
+		})
+	}
+}
+
+func TestPreToolCountsEachBlockAndKeepsItsText(t *testing.T) {
+	cases := []struct {
+		name, rule, command string
+		repo                func(t *testing.T) string
+	}{
+		{"bare go test", "go_test", "go test ./...", goTestRepoCLI},
+		{"destructive", "destructive", "rm -rf x", hookRepo},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := c.repo(t)
+			s, _ := runEnv(t, false)
+			t.Chdir(dir)
+			ev := toolEvent(t, "s1", "", "Bash", map[string]string{"command": c.command})
+			// The same call with telemetry off gives the text the block must keep.
+			t.Setenv("DO_NOT_TRACK", "1")
+			_, _, want := runHook(t, "pre-tool", ev)
+			t.Setenv("DO_NOT_TRACK", "")
+			code, out, errb := runHook(t, "pre-tool", ev)
+			if code != exitBlock || out != "" || errb != want || want == "" {
+				t.Fatalf("exit %d, stdout %q, stderr %q; want exit %d and stderr %q", code, out, errb, exitBlock, want)
+			}
+			if got := todayCounts(t, s).Blocks; got[c.rule] != 1 || len(got) != 1 {
+				t.Fatalf("blocks = %v, want only %s: 1", got, c.rule)
+			}
+		})
+	}
+}
