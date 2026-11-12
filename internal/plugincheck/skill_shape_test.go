@@ -340,3 +340,32 @@ func TestColdReadReviewerShowsItsWork(t *testing.T) {
 		}
 	}
 }
+
+// TestColdReadResolveDropsNothing keeps every finding on its way to the
+// user. The orchestrator wrote the spec, so it is the last one that should
+// pick which findings count. And a reply with no Read part is treated like a
+// cold read that failed, never as a clean one.
+func TestColdReadResolveDropsNothing(t *testing.T) {
+	txt := readSkill(t, "skills/shape/cold-read.md")
+	resolve := txt[strings.Index(txt, "## Resolve"):]
+	for _, want := range []string{
+		"Present every finding the reviewer returned, each with its quoted spec line",
+		"You may add one line of your own view under a finding",
+		"Never leave a finding out and never merge two findings.",
+		"When the reviewer wrote `N more findings not listed`, pass that line on too.",
+		"A reply with no `Read` part is not a finished cold read",
+		"show any findings it holds, say the cold read is incomplete, ask whether to retry or continue without it, then wait",
+		// The gates of Resolve, unchanged.
+		"The findings are advice, not an automatic gate.",
+		"wait before applying edits",
+		"A cold read approves neither spec nor plan.",
+		"Stop after this pass.",
+	} {
+		if !strings.Contains(resolve, want) {
+			t.Errorf("cold-read.md ## Resolve missing %q", want)
+		}
+	}
+	if strings.Contains(resolve, "Present the findings briefly") {
+		t.Error("cold-read.md ## Resolve still says to present the findings briefly, which reads as leave to cut")
+	}
+}

@@ -6,6 +6,7 @@ id: PLN-0234
 created: "2026-11-12 23:06:39"
 hash: ymbz46a
 started: "2026-11-13 01:52:08"
+finished: "2026-11-13 01:57:21"
 ---
 # Cold read findings carry their evidence
 
@@ -59,13 +60,29 @@ started: "2026-11-13 01:52:08"
 **Files:** `plugin/skills/shape/cold-read.md`, `internal/plugincheck/skill_shape_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the cold read, and the cases `cold-read-planted-contradiction`, `cold-read-false-claim` and `cold-read-accept`
 **verify:** No finding the reviewer returned can be lost between the reviewer and the user: `## Resolve` says the orchestrator presents every one with its quoted spec line, may add one line of its own view under each, and never leaves one out or merges two. A reply with no `Read` part is never presented as a finished cold read: the user is told it is incomplete and asked whether to retry or go on without it, and the orchestrator waits. The word "briefly" no longer gives leave to cut. List every reply shape the reviewer can send (findings, none, cut findings, no `Read` part, failure) and what the user sees for each.
-- [ ] Red: `skill_shape_test.go` fails because `## Resolve` lacks the present-every-finding rule and the incomplete-reply rule.
-- [ ] Change: rewrite the first paragraph of `## Resolve` with the two rules.
-- [ ] Commit: feat(shape): cold read presents every finding and flags an incomplete reply
+- [x] Red: `skill_shape_test.go` fails because `## Resolve` lacks the present-every-finding rule and the incomplete-reply rule.
+- [x] Change: rewrite the first paragraph of `## Resolve` with the two rules.
+- [x] Commit: feat(shape): cold read presents every finding and flags an incomplete reply
+
+## Polish
+
+### Task 4: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] Resolve: pass on the reviewer line N more findings not listed, so the user learns findings were cut
+- [x] [fix] Resolve: say "a finding" in both halves of the no-drop rule, and that findings from a reply with no Read part are still shown next to the incomplete notice
+- [x] [fix] brief-asks-what-was-read grader comment: input_match is a regular expression over the tool input, not a plain substring
+- [x] Commit: `polish: review notes for PLN-0234`
+
+## Review notes
+
+- Round 1, deep, full tier (skill text): CLEAN from both reviewers; polish of 3 [fix] NOTEs reviewed CLEAN by both; no fact-check since no BLOCKER. BLOCKER 0, NOTE 31, pre-existing 1 (the brief still says references are followed as needed, next to the new rule to check every claim). 4 NOTEs went to debt: the eval prompts name the Resolve rule, the contradiction grader is loose, the Read part has no fixed form, and six grader comments call input_match a substring. The rest are wording nits. Eval keep rule: every change kept, 30 of 30 on the final text.
 
 ## State
 
 ### Findings
 
-Old arm 2026-11-13, cold-read.md before this plan, 10 runs per case at -j 8, branch binary on PATH: cold-read-planted-contradiction 9/10, cold-read-accept 10/10, cold-read-false-claim 10/10 on finding the wrong claim and 0/10 once a third grader asked that the brief request what was read.
-The old text already finds a planted contradiction and a false claim, so those two cases guard against a drop; the new grader is the one that measures the Read part.
+Old arm 2026-11-13, cold-read.md before this plan, 10 runs per case at -j 8: planted-contradiction 9/10, accept 10/10, false-claim 10/10 on finding the wrong claim and 0/10 once a third grader asked that the brief request what was read.
+New text after Task 3: 30 of 30 over the three cases. Final text after the polish: 30 of 30 again. No change was taken out.
+The two new cases measure that a defect is found and that the brief asks what was read. They do not measure the Resolve rules (nothing dropped, the cut line passed on); that is a debt line.
