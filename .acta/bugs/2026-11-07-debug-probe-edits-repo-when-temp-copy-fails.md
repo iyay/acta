@@ -2,8 +2,8 @@
 id: BUG-0068
 hash: ma4vk63
 started: "2026-11-07 18:05:01"
-fixed_in: 203ee1c8eb2b13190fe2249d64e174049d5fe8c3
-finished: "2026-11-07 20:00:04"
+fixed_in: bb0c9703c0c1c5229ad306985a86be69af030b27
+finished: "2026-11-13 01:51:50"
 status: open
 ---
 # Debug probe edits a repo file when its temp copy was never made

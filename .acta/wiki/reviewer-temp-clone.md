@@ -15,3 +15,5 @@ Reviewer briefs say: a working copy of another revision, and any acta write comm
 After each round the orchestrator runs `git worktree list` and reports any worktree the build did not make, and checks `git log <round head>..HEAD` for commits nobody dispatched. `acta worktrees` prints `run yourself: git worktree remove --force <path>` under a dirty stray.
 
 `acta tick` writes the file but does not commit; commit ticks yourself.
+
+On 2026-11-13 a reviewer built a path from aliased `ls` output; its `cd` failed, so `mkdir -p` and `git clone` ran in the main checkout and left 35,935 untracked files. Briefs now say: a write, clone or new folder is one line, `mkdir -p "${TMPDIR:-/tmp}/<fixed name>" && cd "${TMPDIR:-/tmp}/<fixed name>" && pwd && <command>`; never build a path from `ls`; end with `git status --short` of both checkouts.

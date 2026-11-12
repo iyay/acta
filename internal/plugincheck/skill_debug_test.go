@@ -13,7 +13,9 @@ func TestSkillDebug(t *testing.T) {
 		Name: "debug",
 		// race.md holds the copyable race probe, which made the folder longer.
 		// The known-flake rerun rule in Phase 1 adds two more lines.
-		MaxLines: 350,
+		// The required-proof steps, the recent-changes step and the hang recipe
+		// added lines to SKILL.md.
+		MaxLines: 356,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -78,5 +80,158 @@ func TestRaceProbeStartsFresh(t *testing.T) {
 	}
 	if strings.Contains(txt, "/tmp/probe") {
 		t.Error("debug/race.md still uses a fixed /tmp/probe path")
+	}
+}
+
+// TestDebugBisectRunsInATempClone keeps two debug rules from clashing. Phases
+// 1 to 3 change no file in the repo, and bisect checks out other commits in
+// the working tree, so every line that names bisect must send it to a clone
+// and show the clone command to copy.
+func TestDebugBisectRunsInATempClone(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"`git bisect` and a checkout of an older commit run only in a temp clone",
+		"`git clone . \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect start`",
+		"never in the repo's own working tree",
+		"`cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect good <sha>`",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	for _, line := range strings.Split(txt, "\n") {
+		if strings.Contains(line, "git bisect") && !strings.Contains(line, "temp clone") {
+			t.Errorf("debug/SKILL.md names git bisect with no temp clone on the same line: %q", line)
+		}
+	}
+}
+
+// TestDebugProbeFolderIsChecked keeps a probe from writing to the repo. An
+// agent once chained mktemp, cd and sed, the first step failed, and sed
+// changed a tracked file. The ground rules show one pattern to copy: make the
+// folder, change into it, and read pwd before any write. No line may offer
+// less work when a step fails; that reads as leave to skip the check.
+func TestDebugProbeFolderIsChecked(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		// The write rides on the same line as the check: a harness may start
+		// every shell call in the repo again, so a cd in an earlier call
+		// proves nothing about the next one.
+		"`mkdir -p \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && <the command that writes>`",
+		"Every shell call may start in the repo again",
+		"on the same line",
+		"Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.",
+		// The old words, kept on purpose: without "temp copy" here agents ran
+		// the user's own repro command in the repo (debug-race, 37 of 40).
+		"A command that writes files runs only in a temp copy.",
+		// Words an agent acts on; cutting them cost controls before.
+		"(in the temp copy)",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	trace := readSkill(t, "skills/debug/root-cause-tracing.md")
+	if !strings.Contains(trace, "in the checked temp folder the ground rules of `SKILL.md` show") {
+		t.Error("root-cause-tracing.md must point its temp copy at the checked folder of the ground rules")
+	}
+	if race := readSkill(t, "skills/debug/race.md"); !strings.Contains(race, "on a copy of the code in the checked temp folder the ground rules of `SKILL.md` show") {
+		t.Error("race.md must run its probe on a copy in the checked folder of the ground rules")
+	}
+	// A bare cd that a later call relies on is the trap, so the old two-call
+	// pattern must not come back.
+	if strings.Contains(txt, "Go on only when `pwd` prints that folder") {
+		t.Error("debug/SKILL.md still checks pwd in one call and writes in the next")
+	}
+	for _, bad := range []string{"No copy?", "if the copy fails", "when the folder cannot be made"} {
+		if strings.Contains(txt, bad) || strings.Contains(trace, bad) {
+			t.Errorf("the debug skill holds a fallback line %q", bad)
+		}
+	}
+}
+
+// TestDebugProofIsRequired keeps the strongest checks of Phase 3 from being
+// optional. A cause is stated only after a probe that could have shown it
+// wrong, the control runs or the report says why it could not, and every
+// report has the same four lines, so the command that reproduces the bug is
+// never left out of the reply.
+func TestDebugProofIsRequired(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"Before you state the cause, write down the result that would show it wrong, then run that probe.",
+		"Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away.",
+		"A control that cannot run: say why under Unverified.",
+		"Report in four lines, whether the cause is proven or not",
+		"**Cause:**", "**Repro:**", "**Evidence:**", "**Unverified:**",
+		// The exit that stops in Phase 1 uses the same four lines.
+		"Report it in the four lines of Phase 3, with Cause \"not proven\" and Repro \"none yet\" plus what you tried.",
+		"The copy is made on such a line too: `cp -R \"$OLDPWD/<what the probe needs>\" .` after the `pwd`.",
+		"a command the user can paste",
+		"or \"not proven\" plus what you ruled out",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	if strings.Contains(txt, "Use a control when you can") {
+		t.Error("debug/SKILL.md still makes the control optional")
+	}
+}
+
+// TestDebugRecentChangesAndOtherCallers keeps two cheap steps in the skill.
+// What changed lately is the first thing to look at, since most new failures
+// follow a change. And a proven cause is searched for in the other callers,
+// so the report says where else the same defect sits. Both steps only read.
+func TestDebugRecentChangesAndOtherCallers(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"Start with what changed lately: `git log` on the files involved, dependency versions, and the environment",
+		"A change that lines up with the first failure is the first thing to probe.",
+		"Once the cause is proven, search the other callers for the same pattern",
+		"or \"none found\" with the search you ran",
+		"after the four lines of the report",
+		"Only read them: a fix for another caller is its own plan.",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	phase2, phase3 := strings.Index(txt, "## Phase 2"), strings.Index(txt, "## Phase 3")
+	if i := strings.Index(txt, "Start with what changed lately"); i < phase2 || i > phase3 {
+		t.Error("the changed-lately step must sit in Phase 2")
+	}
+	if i := strings.Index(txt, "Once the cause is proven, search the other callers"); i < phase3 {
+		t.Error("the other-callers step must sit in Phase 3")
+	}
+}
+
+// TestDebugHangRecipe keeps a recipe for every symptom the description
+// names. A hang is proven by a stack dump that shows who waits on whom, never
+// by a longer timeout, which only hides it. "Three failed fixes" is a rule
+// about fixes, so it sits in Phase 4, the only phase that writes one.
+func TestDebugHangRecipe(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{
+		"- **Hang.**",
+		"a stack dump of the stuck process",
+		"who waits on whom",
+		"A longer timeout is not evidence",
+		"Two dumps a few seconds apart tell a hang from slow work.",
+		"set up before the hang",
+		"macOS `sample <pid>`",
+		"hang, slow",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug/SKILL.md missing %q", want)
+		}
+	}
+	phase3, phase4 := strings.Index(txt, "## Phase 3"), strings.Index(txt, "## Phase 4")
+	recipes := strings.Index(txt, "## Recipes")
+	i := strings.Index(txt, "Three failed fixes")
+	if i < phase4 || i > recipes {
+		t.Errorf("Three failed fixes must sit in Phase 4 (at %d, phase 3 %d, phase 4 %d, recipes %d)", i, phase3, phase4, recipes)
+	}
+	if strings.Count(txt, "Three failed fixes") != 1 {
+		t.Error("Three failed fixes must be said once")
 	}
 }

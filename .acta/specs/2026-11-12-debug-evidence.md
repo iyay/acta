@@ -3,6 +3,8 @@ parent: scratch/2026-11-07-debug-four-line-report
 id: SPC-0204
 created: "2026-11-12 23:01:55"
 hash: k2tsm6x
+started: "2026-11-13 00:59:44"
+finished: "2026-11-13 01:51:46"
 ---
 # Debug proof is required, and each text change is measured
 
