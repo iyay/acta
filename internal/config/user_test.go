@@ -452,7 +452,7 @@ func TestReviewUnderstandingRoundTrips(t *testing.T) {
 		if raw, _ := os.ReadFile(path); !strings.Contains(string(raw), fmt.Sprintf("review_understanding: %v\n", want)) {
 			t.Errorf("saved %v:\n%s", want, raw)
 		}
-		for _, depth := range []string{"quick", "standard", "deep"} {
+		for _, depth := range []string{"quick", "standard", "deep", "auto"} {
 			got, _, err := LoadUser(path)
 			if err != nil || got.ReviewUnderstanding == nil || *got.ReviewUnderstanding != want || got.Understanding() != want {
 				t.Fatalf("depth %q: read back %v, %v; want %v", depth, got.ReviewUnderstanding, err, want)

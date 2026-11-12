@@ -464,3 +464,20 @@ func TestLandSecondRunAndKnownFlake(t *testing.T) {
 		}
 	}
 }
+
+// TestLandReportRepeatsReviewLevel keeps the review level in front of the
+// user. Under the auto depth the review picks how much review a diff gets, so
+// the landing report copies the line that says which level ran and why. It is
+// copied, never judged again, so land cannot soften what the review wrote.
+func TestLandReportRepeatsReviewLevel(t *testing.T) {
+	var report string
+	for _, line := range strings.Split(readSkill(t, "skills/land/SKILL.md"), "\n") {
+		if strings.HasPrefix(line, "Report after landing:") {
+			report = line
+		}
+	}
+	const want = "the review level line from the plan's `## Review notes`, copied as it was written"
+	if !strings.Contains(report, want) {
+		t.Errorf("the landing report does not repeat the review level line, want %q", want)
+	}
+}

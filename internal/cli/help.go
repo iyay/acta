@@ -224,7 +224,7 @@ var helpTable = []helpCmd{
 		summary: "Show or change your acta settings, or the ones saved in .acta.yaml of this repo.",
 		usage: []string{
 			"acta config show [--json]",
-			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--parallel-plans subagent] [--subagent-offer declined] [--theme NAME] [--clear-theme]",
+			"acta config set [--language L] [--style adhd|plain] [--tone T] [--clear-tone] [--executor subagent|dispatch|inline] [--plan-depth minimal|full] [--plan-split on|off] [--review-depth quick|standard|deep|auto] [--commit-history tidy|full] [--questions one|probe] [--coding-guide lean|off] [--review-understanding true|false] [--parallel-plans subagent] [--subagent-offer declined] [--theme NAME] [--clear-theme]",
 			"acta config set --repo [--executor E] [--plan-depth D] [--plan-split S] [--review-depth R] [--commit-history H] [--coding-guide G] [--review-understanding B] [--unset KEY]...",
 			"acta config pick subagent",
 		},
@@ -236,7 +236,7 @@ var helpTable = []helpCmd{
 			"--clear-tone  remove the tone",
 			"--executor E  which executor runs the plan: subagent, dispatch or inline",
 			"--plan-depth D  how much a plan spells out: minimal or full",
-			"--review-depth R  how much review a plan gets: quick, standard or deep",
+			"--review-depth R  how much review a plan gets: quick, standard, deep or auto",
 			"--commit-history H  how a landed branch reads: tidy or full",
 			"--questions Q  how the agent asks: one question at a time, or probe",
 			"--coding-guide G  the coding guide: lean or off",

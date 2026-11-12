@@ -169,7 +169,7 @@ func repoValue(u User, key string) string {
 	case "plan_split":
 		v, def = u.PlanSplit, "off"
 	case "review_depth":
-		v, def = u.ReviewDepth, "standard"
+		v, def = u.ReviewDepth, ReviewDepthDefault
 	case "commit_history":
 		v, def = u.CommitHistory, "tidy"
 	case "coding_guide":

@@ -37,8 +37,9 @@ type User struct {
 	// SubagentOffer is declined once the user said no to that offer, so it
 	// never comes back. Empty means it may still be offered.
 	SubagentOffer string `yaml:"subagent_offer,omitempty"`
-	// ReviewDepth says how much review a plan gets: quick, standard or deep.
-	// Empty means standard.
+	// ReviewDepth says how much review a plan gets: quick, standard, deep, or
+	// auto, which lets the review pick the level a diff needs.
+	// Empty means ReviewDepthDefault.
 	ReviewDepth string `yaml:"review_depth,omitempty"`
 	// CommitHistory says how a landed branch reads: tidy (one commit per
 	// code task, a straight line) or full (every commit plus a merge).
@@ -97,6 +98,10 @@ func checkUnderstandingKey(keys map[string]any) error {
 
 // ErrBadUser marks a setting the rules do not allow.
 var ErrBadUser = errors.New("bad voice setting")
+
+// ReviewDepthDefault is the review depth when nothing sets one. Show, the repo
+// file and the setup form all read it here, so they cannot drift apart.
+const ReviewDepthDefault = "auto"
 
 // UserDefault is used when there is no voice file.
 func UserDefault() User {
@@ -274,9 +279,9 @@ func (v User) Validate() error {
 		return fmt.Errorf("%w: subagent_offer must be declined, not %q", ErrBadUser, v.SubagentOffer)
 	}
 	switch v.ReviewDepth {
-	case "", "quick", "standard", "deep":
+	case "", "quick", "standard", "deep", "auto":
 	default:
-		return fmt.Errorf("%w: review_depth must be quick, standard or deep, not %q", ErrBadUser, v.ReviewDepth)
+		return fmt.Errorf("%w: review_depth must be quick, standard, deep or auto, not %q", ErrBadUser, v.ReviewDepth)
 	}
 	switch v.CommitHistory {
 	case "", "tidy", "full":

@@ -80,19 +80,19 @@ func TestConfigShowPlanDepthDefault(t *testing.T) {
 	}
 }
 
-// review_depth shows as standard with the default mark when nothing sets it,
+// review_depth shows as auto with the default mark when nothing sets it,
 // and JSON never carries the mark.
 func TestConfigShowReviewDepthDefault(t *testing.T) {
 	repoWithGlobal(t, "", "")
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: standard (default)\n") {
-		t.Errorf("show lacks review_depth: standard (default):\n%s", out)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: auto (default)\n") {
+		t.Errorf("show lacks review_depth: auto (default):\n%s", out)
 	}
 	var got map[string]any
 	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["review_depth"] != "standard" {
-		t.Errorf("json review_depth %v, want standard", got["review_depth"])
+	if got["review_depth"] != "auto" {
+		t.Errorf("json review_depth %v, want auto", got["review_depth"])
 	}
 }
 
@@ -102,8 +102,10 @@ func TestConfigShowReviewDepthMarks(t *testing.T) {
 	cases := []struct{ global, repo, want string }{
 		{"review_depth: standard\n", "", "review_depth: standard\n"},
 		{"review_depth: quick\n", "", "review_depth: quick\n"},
-		{"", "review_depth: standard\n", "review_depth: standard (repo)\n"},
-		{"", "review_depth: deep\n", "review_depth: deep (repo; yours: standard)\n"},
+		{"review_depth: auto\n", "", "review_depth: auto\n"},
+		{"", "review_depth: auto\n", "review_depth: auto (repo)\n"},
+		{"", "review_depth: standard\n", "review_depth: standard (repo; yours: auto)\n"},
+		{"", "review_depth: deep\n", "review_depth: deep (repo; yours: auto)\n"},
 		{"review_depth: quick\n", "review_depth: deep\n", "review_depth: deep (repo; yours: quick)\n"},
 	}
 	for _, c := range cases {
@@ -144,7 +146,7 @@ func TestConfigSetReviewDepth(t *testing.T) {
 	if raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); !strings.Contains(string(raw), "review_depth: deep") {
 		t.Errorf(".acta.yaml:\n%s", raw)
 	}
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: deep (repo; yours: standard)\n") {
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: deep (repo; yours: auto)\n") {
 		t.Errorf("show:\n%s", out)
 	}
 
@@ -947,5 +949,29 @@ func TestConfigReviewUnderstandingRefusesBadValue(t *testing.T) {
 	}
 	if _, err := os.Stat(globalPath); err == nil {
 		t.Error("the global file was written")
+	}
+}
+
+// auto is a review depth like the other three: both set paths take it, show
+// prints it, and the help and the refusal of a bad value name all four.
+func TestConfigReviewDepthAuto(t *testing.T) {
+	dir, globalPath := repoWithGlobal(t, "", "")
+	mustRun(t, "config", "set", "--review-depth", "auto")
+	if raw, _ := os.ReadFile(globalPath); !strings.Contains(string(raw), "review_depth: auto\n") {
+		t.Errorf("global file lacks review_depth: auto:\n%s", raw)
+	}
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: auto\n") {
+		t.Errorf("show lacks review_depth: auto:\n%s", out)
+	}
+	mustRun(t, "config", "set", "--repo", "--review-depth", "auto")
+	if raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); !strings.Contains(string(raw), "review_depth: auto\n") {
+		t.Errorf(".acta.yaml lacks review_depth: auto:\n%s", raw)
+	}
+	_, _, errs := runCodeOut("config", "set", "--review-depth", "sideways")
+	if !strings.Contains(errs, "quick, standard, deep or auto") {
+		t.Errorf("refusal must name all four values, got %q", errs)
+	}
+	if out := mustRun(t, "help", "config"); !strings.Contains(out, "quick, standard, deep or auto") || !strings.Contains(out, "--review-depth quick|standard|deep|auto") {
+		t.Errorf("help must name all four values:\n%s", out)
 	}
 }
