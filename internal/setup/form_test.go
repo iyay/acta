@@ -202,13 +202,13 @@ func TestFormReviewDepth(t *testing.T) {
 		t.Errorf("question after questions must read %q, got %q", "Review depth", header)
 	}
 	content := formGroupContent(t, setup.Env{Current: config.User{}})[8]
-	for _, want := range []string{"quick", "standard", "deep", "auto", "› ● standard"} {
+	for _, want := range []string{"quick", "standard", "deep", "auto", "› ● auto"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("review depth screen must show %q, got %q", want, content)
 		}
 	}
-	if d := setup.FormDefaults(setup.Env{}); d.ReviewDepth != "standard" {
-		t.Errorf("default = %q, want standard", d.ReviewDepth)
+	if d := setup.FormDefaults(setup.Env{}); d.ReviewDepth != "auto" {
+		t.Errorf("default = %q, want auto", d.ReviewDepth)
 	}
 	if d := setup.FormDefaults(setup.Env{Current: config.User{ReviewDepth: "deep"}}); d.ReviewDepth != "deep" {
 		t.Errorf("default from config = %q, want deep", d.ReviewDepth)
@@ -329,7 +329,7 @@ func TestFormFirstRunEmpty(t *testing.T) {
 		t.Fatalf("text defaults = %q/%q, want all empty", d.Language, d.Tone)
 	}
 	if d.Style != "adhd" || d.BuildExecutor != "inline" ||
-		d.PlanDepth != "full" || d.ReviewDepth != "standard" || d.Questions != "one" {
+		d.PlanDepth != "full" || d.ReviewDepth != "auto" || d.Questions != "one" {
 		t.Fatalf("select defaults = %+v, want the first options", d)
 	}
 

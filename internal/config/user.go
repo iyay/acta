@@ -39,7 +39,7 @@ type User struct {
 	SubagentOffer string `yaml:"subagent_offer,omitempty"`
 	// ReviewDepth says how much review a plan gets: quick, standard, deep, or
 	// auto, which lets the review pick the level a diff needs.
-	// Empty means standard.
+	// Empty means ReviewDepthDefault.
 	ReviewDepth string `yaml:"review_depth,omitempty"`
 	// CommitHistory says how a landed branch reads: tidy (one commit per
 	// code task, a straight line) or full (every commit plus a merge).
@@ -98,6 +98,10 @@ func checkUnderstandingKey(keys map[string]any) error {
 
 // ErrBadUser marks a setting the rules do not allow.
 var ErrBadUser = errors.New("bad voice setting")
+
+// ReviewDepthDefault is the review depth when nothing sets one. Show, the repo
+// file and the setup form all read it here, so they cannot drift apart.
+const ReviewDepthDefault = "auto"
 
 // UserDefault is used when there is no voice file.
 func UserDefault() User {

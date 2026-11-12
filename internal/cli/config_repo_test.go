@@ -80,19 +80,19 @@ func TestConfigShowPlanDepthDefault(t *testing.T) {
 	}
 }
 
-// review_depth shows as standard with the default mark when nothing sets it,
+// review_depth shows as auto with the default mark when nothing sets it,
 // and JSON never carries the mark.
 func TestConfigShowReviewDepthDefault(t *testing.T) {
 	repoWithGlobal(t, "", "")
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: standard (default)\n") {
-		t.Errorf("show lacks review_depth: standard (default):\n%s", out)
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: auto (default)\n") {
+		t.Errorf("show lacks review_depth: auto (default):\n%s", out)
 	}
 	var got map[string]any
 	if err := json.Unmarshal([]byte(mustRun(t, "config", "show", "--json")), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["review_depth"] != "standard" {
-		t.Errorf("json review_depth %v, want standard", got["review_depth"])
+	if got["review_depth"] != "auto" {
+		t.Errorf("json review_depth %v, want auto", got["review_depth"])
 	}
 }
 
@@ -103,9 +103,9 @@ func TestConfigShowReviewDepthMarks(t *testing.T) {
 		{"review_depth: standard\n", "", "review_depth: standard\n"},
 		{"review_depth: quick\n", "", "review_depth: quick\n"},
 		{"review_depth: auto\n", "", "review_depth: auto\n"},
-		{"", "review_depth: auto\n", "review_depth: auto (repo; yours: standard)\n"},
-		{"", "review_depth: standard\n", "review_depth: standard (repo)\n"},
-		{"", "review_depth: deep\n", "review_depth: deep (repo; yours: standard)\n"},
+		{"", "review_depth: auto\n", "review_depth: auto (repo)\n"},
+		{"", "review_depth: standard\n", "review_depth: standard (repo; yours: auto)\n"},
+		{"", "review_depth: deep\n", "review_depth: deep (repo; yours: auto)\n"},
 		{"review_depth: quick\n", "review_depth: deep\n", "review_depth: deep (repo; yours: quick)\n"},
 	}
 	for _, c := range cases {
@@ -146,7 +146,7 @@ func TestConfigSetReviewDepth(t *testing.T) {
 	if raw, _ := os.ReadFile(filepath.Join(dir, ".acta.yaml")); !strings.Contains(string(raw), "review_depth: deep") {
 		t.Errorf(".acta.yaml:\n%s", raw)
 	}
-	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: deep (repo; yours: standard)\n") {
+	if out := mustRun(t, "config", "show"); !strings.Contains(out, "review_depth: deep (repo; yours: auto)\n") {
 		t.Errorf("show:\n%s", out)
 	}
 

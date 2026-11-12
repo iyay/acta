@@ -81,8 +81,8 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 		}
 		reviewDepth, reviewDepthMark := v.ReviewDepth, ""
 		if reviewDepth == "" {
-			// Same here: an unset review depth is standard, and show says so.
-			reviewDepth, reviewDepthMark = "standard", " (default)"
+			// Same here: an unset review depth is the default, and show says so.
+			reviewDepth, reviewDepthMark = config.ReviewDepthDefault, " (default)"
 		}
 		history, historyMark := v.CommitHistory, ""
 		if history == "" {

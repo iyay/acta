@@ -118,7 +118,7 @@ func TestReviewDepthBadValue(t *testing.T) {
 
 // review_depth is a repo key: it saves into .acta.yaml, shows as an override
 // only when it differs from the user's value, and an unset user value counts
-// as standard.
+// as auto, the default.
 func TestReviewDepthRepoKey(t *testing.T) {
 	fresh := t.TempDir()
 	if _, err := SaveRepoUser(fresh, map[string]string{"review_depth": "deep"}); err != nil {
@@ -128,12 +128,12 @@ func TestReviewDepthRepoKey(t *testing.T) {
 		t.Errorf("fresh file: %+v %v %v", v, from, err)
 	}
 	got, err := Overrides(UserDefault(), fresh)
-	if err != nil || len(got) != 1 || got[0] != (Override{"review_depth", "deep", "standard"}) {
-		t.Errorf("unset user: %+v, %v, want deep over standard", got, err)
+	if err != nil || len(got) != 1 || got[0] != (Override{"review_depth", "deep", "auto"}) {
+		t.Errorf("unset user: %+v, %v, want deep over auto", got, err)
 	}
-	same := writeRepoYAML(t, "review_depth: standard\n")
+	same := writeRepoYAML(t, "review_depth: auto\n")
 	if got, err := Overrides(UserDefault(), same); err != nil || len(got) != 0 {
-		t.Errorf("standard over unset: %+v, %v, want no override", got, err)
+		t.Errorf("auto over unset: %+v, %v, want no override", got, err)
 	}
 	if _, err := UnsetRepoUser(fresh, []string{"review_depth"}); err != nil {
 		t.Fatal(err)

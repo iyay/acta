@@ -30,13 +30,13 @@ chmod +x bin/acta
 # The branch adds one small function that nothing else uses yet, with a test,
 # and the plan's task record shows that test failing before the function was
 # written. No risk path is touched. The case checks that under the auto depth
-# the orchestrator reviews this diff itself and shows what it checked.
+# such a diff gets one reviewer subagent, not two and not none.
 # The repo asks for the auto review depth, so the review picks the level.
 printf 'review_depth: auto\n' > .acta.yaml
 mkdir -p tests
-cat > src/discount.py <<'PY'
-def apply_discount(price, percent):
-    return price * (100 - percent) / 100
+cat > src/bar.py <<'PY'
+def bar_width(width, percent):
+    return width * percent // 100
 PY
 cat > .acta/plans/2026-11-12-clamp.md <<'PLAN'
 ---
@@ -56,14 +56,14 @@ hash: evasafe
 ### Task 1: Clamp a percent
 
 **Files:**
-- Modify: `src/discount.py`
+- Modify: `src/bar.py`
 - Create: `tests/test_clamp.py`
 
 **verify:** clamp_percent returns 0 for a value below 0, 100 for a value above 100, and the value itself in between. Nothing calls it yet.
 
 - [x] Red: `tests/test_clamp.py` fails because `clamp_percent` is not defined (seen: NameError, 3 tests failed)
-- [x] Change: add `clamp_percent` to `src/discount.py` (seen: 3 tests passed)
-- [x] Commit: `discount: add clamp_percent`
+- [x] Change: add `clamp_percent` to `src/bar.py` (seen: 3 tests passed)
+- [x] Commit: `bar: add clamp_percent`
 PLAN
 git init -q -b main .
 git config user.email eval@example.invalid
@@ -76,9 +76,9 @@ git add -A
 git commit -qm scaffold
 # The branch is the finished work: the new function and its test.
 git checkout -q -b clamp
-cat > src/discount.py <<'PY'
-def apply_discount(price, percent):
-    return price * (100 - percent) / 100
+cat > src/bar.py <<'PY'
+def bar_width(width, percent):
+    return width * percent // 100
 
 
 def clamp_percent(value):
@@ -91,7 +91,7 @@ PY
 cat > tests/test_clamp.py <<'PY'
 import unittest
 
-from src.discount import clamp_percent
+from src.bar import clamp_percent
 
 
 class ClampPercent(unittest.TestCase):
@@ -108,5 +108,5 @@ class ClampPercent(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 PY
-git add src/discount.py tests/test_clamp.py
-git commit -qm "discount: add clamp_percent"
+git add src/bar.py tests/test_clamp.py
+git commit -qm "bar: add clamp_percent"

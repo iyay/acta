@@ -3,6 +3,8 @@ package plugincheck
 import (
 	"strings"
 	"testing"
+
+	"github.com/iyay/acta/internal/config"
 )
 
 func TestSkillReview(t *testing.T) {
@@ -460,32 +462,34 @@ func TestReviewVerdictNeedsEvidence(t *testing.T) {
 
 // TestReviewDepthAuto keeps the auto level honest. It lets the review pick a
 // lower level for a safe diff, which is leave to do less, so every guard has
-// to stay in the text: risk signals are never judged, the inline level needs
-// all three conditions, doubt means two reviewers, size is no reason, and the
-// pick is written down with its reason so the user can check it.
+// to stay in the text: risk signals are never judged, doubt means two
+// reviewers, size is no reason, some reviewer always runs, and the pick is
+// written down with its reason so the user can check it.
 func TestReviewDepthAuto(t *testing.T) {
 	depth := readSkill(t, "skills/review/depth.md")
 	for _, want := range []string{
 		"`/acta:review quick|standard|deep|auto`",
-		"- **auto:** the review picks the lowest of three levels whose conditions hold",
+		"- **auto:** the review picks between two levels, for this diff",
 		"Risk signals are never up for judgment",
 		"a security, auth, money, data migration or delete path",
 		"text an agent reads as instructions (skills, prompts, hook text)",
 		"work the `dispatch` executor wrote",
 		"a fix round",
-		"or you are in doubt about any condition below",
-		"no risk signal holds, and the inline conditions do not all hold",
-		"Only when all three hold",
-		"the diff changes nothing that code outside the diff uses (a function, a type, a file format, a command)",
-		"every changed logic line is covered by a test that the task's record shows failing before the change",
-		"write the `### Coverage` section a reviewer writes",
-		"Risk decides, never size: a one-line change to a condition with no test needs a reviewer.",
-		"A condition you cannot check counts as not met.",
+		"or you are in doubt whether one holds",
+		"One reviewer, as in `quick`: no risk signal holds.",
+		"Risk decides, never size: a small diff on a risk path still gets two reviewers.",
+		"Outside the light tier, `auto` never reviews with no reviewer subagent.",
 		"Under `auto` the line also names the level picked and the reason",
-		"the condition that failed when the level is not inline",
 	} {
 		if !strings.Contains(depth, want) {
 			t.Errorf("review/depth.md missing %q", want)
+		}
+	}
+	// The inline level failed its eval bar (3 of 10 against 7 of 10), so the
+	// spec took it out. It must not come back without a new measure.
+	for _, gone := range []string{"Inline:", "Only when all three hold", "inline condition", "An `auto` inline review"} {
+		if strings.Contains(depth, gone) {
+			t.Errorf("review/depth.md still holds %q; auto has no inline level", gone)
 		}
 	}
 	// The floors hold under auto too, so the old lines stay as they are.
@@ -498,7 +502,19 @@ func TestReviewDepthAuto(t *testing.T) {
 			t.Errorf("review/depth.md lost %q", want)
 		}
 	}
-	if skill := readSkill(t, "skills/review/SKILL.md"); !strings.Contains(skill, "`/acta:review quick|standard|deep|auto`") {
+	// The last step of the pick order is the default, and it is auto in the
+	// skill text as it is in the config code.
+	// The words come from the constant, so a new default in the code turns
+	// this test red until the skill text follows.
+	def := "`" + config.ReviewDepthDefault + "`"
+	if !strings.Contains(depth, "3. "+def+".") {
+		t.Errorf("review/depth.md must end the pick order with %s, the default", def)
+	}
+	skill := readSkill(t, "skills/review/SKILL.md")
+	if !strings.Contains(skill, "then `review_depth`, then "+def+")") {
+		t.Errorf("review/SKILL.md must name %s as the default depth", def)
+	}
+	if !strings.Contains(skill, "`/acta:review quick|standard|deep|auto`") {
 		t.Error("review/SKILL.md must name auto where it lists the depths")
 	}
 }

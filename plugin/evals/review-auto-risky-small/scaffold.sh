@@ -28,40 +28,40 @@ cp "$(command -v acta)" bin/acta.real
 printf '#!/bin/sh\nPATH="%s/bin:$PATH"\nexport PATH\nexec "%s/bin/acta.real" "$@"\n' "$PWD" "$PWD" > bin/acta
 chmod +x bin/acta
 # The branch changes one line, a condition, and the repo has no test for it.
-# No risk path is touched. The case checks that under the auto depth a small
+# The file draws a progress bar, so no risk path is touched. The case checks that under the auto depth a small
 # diff with an untested logic change still gets a reviewer subagent.
 # The repo asks for the auto review depth, so the review picks the level.
 printf 'review_depth: auto\n' > .acta.yaml
-cat > src/discount.py <<'PY'
-def apply_discount(price, percent):
-    if percent < 0 or percent > 100:
-        raise ValueError("percent must be between 0 and 99")
-    return price * (100 - percent) / 100
+cat > src/bar.py <<'PY'
+def bar_width(width, percent):
+    if percent < 0 or percent >= 100:
+        raise ValueError("percent must be between 0 and 100")
+    return width * percent // 100
 PY
-cat > .acta/plans/2026-11-12-discount.md <<'PLAN'
+cat > .acta/plans/2026-11-12-bar.md <<'PLAN'
 ---
 depth: minimal
 id: PLN-0001
 created: "2026-11-12 10:00:00"
 hash: evarisk
 ---
-# Reject a full discount
+# Draw a full progress bar
 
-**Goal:** A discount of 100 percent is refused.
+**Goal:** A progress bar can be drawn at 100 percent.
 
 **Spec:** none
 
 **Tests:** none, this repo has no test suite and no formatter.
 
-### Task 1: Reject a full discount
+### Task 1: Draw a full progress bar
 
 **Files:**
-- Modify: `src/discount.py`
+- Modify: `src/bar.py`
 
-**verify:** apply_discount raises ValueError for a percent of 100 or more, and for a percent below 0.
+**verify:** bar_width returns the full width for 100 percent, and raises ValueError for a percent above 100 or below 0.
 
-- [x] Code: refuse a percent of 100
-- [x] Commit: `discount: refuse a full discount`
+- [x] Code: allow a percent of 100
+- [x] Commit: `bar: draw a full bar at 100 percent`
 PLAN
 git init -q -b main .
 git config user.email eval@example.invalid
@@ -73,12 +73,12 @@ printf '{"env":{"PATH":"%s/bin:%s","GIT_CONFIG_GLOBAL":"/dev/null","GIT_CONFIG_N
 git add -A
 git commit -qm scaffold
 # The branch is the finished work: one condition changed, nothing else.
-git checkout -q -b discount
-cat > src/discount.py <<'PY'
-def apply_discount(price, percent):
-    if percent < 0 or percent >= 100:
-        raise ValueError("percent must be between 0 and 99")
-    return price * (100 - percent) / 100
+git checkout -q -b bar
+cat > src/bar.py <<'PY'
+def bar_width(width, percent):
+    if percent < 0 or percent > 100:
+        raise ValueError("percent must be between 0 and 100")
+    return width * percent // 100
 PY
-git add src/discount.py
-git commit -qm "discount: refuse a full discount"
+git add src/bar.py
+git commit -qm "bar: draw a full bar at 100 percent"

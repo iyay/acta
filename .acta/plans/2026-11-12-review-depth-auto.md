@@ -6,6 +6,7 @@ id: PLN-0235
 created: "2026-11-12 23:10:32"
 hash: zyf9mv4
 started: "2026-11-13 00:27:31"
+finished: "2026-11-13 00:41:49"
 ---
 # Review depth auto: the review a diff needs, picked by rule and reason
 
@@ -79,12 +80,42 @@ started: "2026-11-13 00:27:31"
 **Files:** `internal/config/repo_user.go`, `internal/config/repo_user_test.go`, `internal/cli/config_cmd.go`, `internal/cli/config_repo_test.go`, `internal/setup/form.go`, `internal/setup/form_test.go`, `plugin/skills/review/depth.md`, `internal/plugincheck/skill_review_test.go`
 **Seam:** `cli.Run([]string{"config", "show"})` with no `review_depth` set, the setup form's first value, and the plugincheck required strings for `depth.md`
 **verify:** Run the three `review-auto-*` cases and `review-depth-floor`, 10 runs each, and record the scores with `acta state set <plan id> findings`. The default becomes `auto` in every place that fills a missing `review_depth` (config show, the repo file reader, the setup form, the last step of the pick order in `depth.md`) only when `review-auto-risky-small` and `review-auto-signal` each pass at least 9 of 10 and `review-depth-floor` is no worse than before; all of those places agree with each other in either outcome. Below 9 of 10 the default stays `standard` everywhere and this task ends with its boxes ticked and no code commit. When `review-auto-safe-inline` passes fewer than 7 of 10, the inline level is taken out of `depth.md` and `auto` picks between one and two reviewers. A saved setting is never changed. List the scores, the outcome, and every place that holds the default.
-- [ ] Red: the config, cli and setup tests fail because a missing `review_depth` still reads as `standard`.
-- [ ] Change: when the scores allow it, switch the default to `auto` in every place that fills a missing value.
-- [ ] Commit: feat(config): review depth defaults to auto
+- [x] Red: the config, cli and setup tests fail because a missing `review_depth` still reads as `standard`.
+- [x] Change: when the scores allow it, switch the default to `auto` in every place that fills a missing value.
+- [x] Commit: feat(config): review depth defaults to auto
+
+## Polish
+
+### Task 6: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] [fix] depth.md: a condition you cannot check is a doubt and means two reviewers, never one
+- [x] [fix] review-auto-safe-inline grader asks for the ### Coverage heading again; the word alone was a loosened check
+- [x] [fix] user.go: the ReviewDepth comment says empty means the default, not standard
+- [x] [fix] review-auto-risky-small and review-auto-safe-inline use a progress bar file, not a discount file that reads as a money path
+- [x] [fix] TestReviewDepthAuto builds the default it expects from config.ReviewDepthDefault and reads SKILL.md once
+- [x] [fix] depth.md: an auto inline review counts as round 1, like a light inline review
+- [x] Commit: `polish: review notes for PLN-0235`
+
+## Fix round 1
+
+### Task 7: Take the inline level out of auto
+
+**verify:** Under auto no diff outside the light tier is reviewed with no reviewer subagent: a risk signal, or doubt whether one holds, gets two reviewers, and every other diff gets one. No sentence of depth.md or SKILL.md names an inline level for auto, and the review-notes rule asks for the level and its reason only. The safe case expects exactly one reviewer. List every path from a diff to a level.
+
+- [x] review-auto-safe-inline scored 3 of 10 with the grader the spec asks for (the reply holds the ### Coverage heading), below the bar of 7 of 10; the earlier 10 of 10 came from a grader loosened to the bare word. By spec change 7 the inline level is taken out of depth.md and auto picks between one and two reviewers; the case becomes a one-reviewer case.
+- [x] Commit with the trailer `Task: PLN-zyf9mv4#7`
+
+## Review notes
+
+- Round 1, deep, full tier (skill text and config code): CLEAN from both reviewers, polish of 6 [fix] NOTEs reviewed CLEAN by both. Fix round 1 took the inline level out of auto after its eval case missed the spec bar (3 of 10 against 7); round 2, two reviewers over the fix range: CLEAN. No fact-check since no BLOCKER. BLOCKER 0, NOTE 44, pre-existing 1 (SKILL.md says only standard and deep dispatch reviewers). 2 NOTEs went to debt, the inline level went to a scratch item; the rest are wording and grader-strength nits. Level used for this plan itself: deep, set by the user.
 
 ## State
 
 ### Findings
 
-review-auto-safe-inline uses a new function that nothing else calls, with a test the task record shows red first, in place of the rename the plan named: a rename has no test that fails before the change, so it cannot meet the inline conditions.
+Scores 2026-11-13, 10 runs per case at -j 8, branch binary on PATH. Safety cases: review-auto-risky-small 10/10, review-auto-signal 10/10, review-depth-floor 10/10, so the default moved to auto.
+The inline level missed its bar and was taken out in Fix round 1. History: 0/10 at first (8 of 10 runs picked inline, none wrote a Coverage part in the reply); 10/10 only after the grader was loosened to the bare word Coverage, which review round 1 rightly refused; 3/10 with the heading the spec asks for (10 of 10 picked inline and showed evidence, 7 of 10 wrote it as bold text, not a heading). Bar was 7/10. Spec changes 2 and 5 and the third case of change 7 are replaced by the missed-bar rule of change 7: auto picks between one and two reviewers.
+review-auto-safe-one-reviewer (the renamed safe case, exactly one reviewer): 10/10 on the two-level text.
+Never loosen a grader after a red run to make a bar: measure with the grader the spec names, and let the bar decide.

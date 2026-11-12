@@ -48,7 +48,7 @@ func FormDefaults(e Env) Defaults {
 		c.PlanSplit = "off"
 	}
 	if c.ReviewDepth == "" {
-		c.ReviewDepth = "standard"
+		c.ReviewDepth = config.ReviewDepthDefault
 	}
 	if c.CommitHistory == "" {
 		c.CommitHistory = "tidy"

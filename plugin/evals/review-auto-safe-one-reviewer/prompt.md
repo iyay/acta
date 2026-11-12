@@ -1,6 +1,6 @@
 ---
-name: review-auto-safe-inline
-description: Under the auto review depth, a new function that nothing else uses, covered by a test the task record shows failing first, is reviewed by the orchestrator alone, with a Coverage section.
+name: review-auto-safe-one-reviewer
+description: Under the auto review depth, a new function that nothing else uses, with a test, on no risk path, gets exactly one reviewer subagent.
 tags: [review]
 runs: 1
 # The run loads the review skill, reads the plan and the diff, and then either

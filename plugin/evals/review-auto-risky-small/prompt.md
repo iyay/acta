@@ -11,7 +11,7 @@ timeout_seconds: 900
 allowed_tools: [Skill, Read, Agent]
 ---
 
-Plan PLN-0001 is built on this branch, discount, and the parent branch is
+Plan PLN-0001 is built on this branch, bar, and the parent branch is
 main. Its one task is committed. This folder is the worktree.
 
 Run round 1 of the review with the acta review skill (acta:review) over the

@@ -58,7 +58,7 @@ var evalCases = []struct {
 	{"review-depth-floor", "skills/review/SKILL.md", "## Review depth"},
 	{"review-auto-risky-small", "skills/review/SKILL.md", "## Review depth"},
 	{"review-auto-signal", "skills/review/SKILL.md", "## Review depth"},
-	{"review-auto-safe-inline", "skills/review/SKILL.md", "## Review depth"},
+	{"review-auto-safe-one-reviewer", "skills/review/SKILL.md", "## Review depth"},
 	{"review-planted-bug", "skills/review/SKILL.md", "## Finding bar: BLOCKER or NOTE"},
 	{"review-nit-stays-note", "skills/review/SKILL.md", "Always a NOTE: comments, naming"},
 	{"review-false-blocker", "skills/review/receiving.md", "Verify each finding against the code before acting"},
