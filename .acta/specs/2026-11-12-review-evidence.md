@@ -34,7 +34,7 @@ The review skill has strict rules for a BLOCKER and none for a CLEAN.
 
 ## Rule for keeping a text change
 
-Each change to text a reviewer or the orchestrator acts on is judged on the eval cases of change 1, 10 runs per arm, old text against new text. A change that scores below the old text on any case is left out, and the plan's `## Review notes` say which. This is the rule the wiki page `skill-escape-lines-skip-proof.md` records.
+Each change to text a reviewer or the orchestrator acts on is judged on the eval cases of change 1, 10 runs per arm, old text against new text. The cases are measured once for the whole plan first; a single change is measured on its own only when the whole scores below the old text on a case. A change that scores below the old text on any case is left out, and the plan's `## Review notes` say which. This is the rule the wiki page `skill-escape-lines-skip-proof.md` records.
 
 ## Files
 
@@ -45,12 +45,12 @@ Each change to text a reviewer or the orchestrator acts on is judged on the eval
 
 ## Testing
 
-- The four eval cases, 10 runs per arm. That is 80 runs, about 15 minutes at `scripts/eval -j 8`, and it costs quota.
+- The four eval cases, 10 runs per arm. That is 80 runs when no case gets worse, about 15 minutes at `scripts/eval -j 8`, and it costs quota.
 - `internal/plugincheck` keeps the required strings and the size caps.
 
 ## Order
 
-The plan `2026-11-12-review-clones-and-push-on-ask` (PLN-0231) is being built in another session and changes `review/SKILL.md` and `code-reviewer.md`. The build of this spec starts after that plan lands.
+The plan `2026-11-12-review-clones-and-push-on-ask` (PLN-0231) is being built in another session and changes `review/SKILL.md` and `code-reviewer.md`. The build of this spec starts after that plan and PLN-0236 (SPC-0207, scoped land gates) land.
 
 ## Out of scope
 

@@ -10,9 +10,11 @@ hash: wo216ep
 
 **Goal:** A plan names its slow gates, land runs each one only as far as the diff calls for, a moved parent no longer repeats a slow gate for nothing, and no skill text names one repo's own gate.
 
-**Spec:** `.acta/specs/2026-11-12-land-gates-scoped.md`
+**Spec:** `.acta/specs/2026-11-12-land-gates-scoped.md` (SPC-0207)
 
 **Tests:** fast `scripts/test ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
+
+**Gates:** evals: `scripts/eval`; runs when the diff touches `plugin/skills/` or `plugin/hooks/`; narrow form `scripts/eval --tag <skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/` or `plugin/references/`.
 
 ## Global Constraints
 

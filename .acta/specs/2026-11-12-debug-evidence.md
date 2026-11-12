@@ -37,7 +37,7 @@ Earlier text changes to this skill lost against the old text on the eval cases: 
 
 ## Rule for keeping a text change
 
-Each numbered change is judged alone, 10 runs per arm, old text against new text, on the cases it touches. A change that scores below the old text on any of those cases is left out, and the plan's `## Review notes` say which. Change 2 removes a contradiction and adds no new behaviour to measure, so it is kept when the cases that use bisect do not get worse.
+Each numbered change is judged on the `debug-*` cases, 10 runs per arm, old text against new text. The cases are measured once for the whole plan first; a single change is measured on its own only when the whole scores below the old text on a case. A change that scores below the old text on any of those cases is left out, and the plan's `## Review notes` say which. Change 2 removes a contradiction and adds no new behaviour to measure, so it is kept when the cases that use bisect do not get worse.
 
 An outcome where only some of the changes pass is a correct result of this spec.
 
@@ -50,7 +50,7 @@ An outcome where only some of the changes pass is a correct result of this spec.
 
 ## Testing
 
-- The baseline of change 1, then each change at 10 runs per arm on the cases it touches. That is about 200 runs, about 30 minutes at `scripts/eval -j 8`, and it costs quota.
+- The baseline of change 1, then the new text at 10 runs per case. That is about 150 runs when no case gets worse, about 20 minutes at `scripts/eval -j 8`, and it costs quota.
 - `internal/plugincheck` keeps the required strings and the size caps.
 
 ## Closes

@@ -14,6 +14,8 @@ hash: zyf9mv4
 
 **Tests:** fast `scripts/test ./internal/config ./internal/cli ./internal/setup ./internal/telemetry ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
 
+**Gates:** evals: `scripts/eval`; runs when the diff touches `plugin/skills/` or `plugin/hooks/`; narrow form `scripts/eval --tag <skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/` or `plugin/references/`.
+
 ## Global Constraints
 
 - Follow acta:lean: understand the task and the code first; then skip it, reuse code here, stdlib, a native feature, an installed dependency, one line, the minimum; never cut validation, security or accessibility.

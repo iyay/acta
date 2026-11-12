@@ -1,7 +1,7 @@
 ---
 parent: specs/2026-11-12-review-evidence
 depth: minimal
-after: [PLN-0231]
+after: [PLN-0236]
 id: PLN-0232
 created: "2026-11-12 23:03:20"
 hash: i9nhifa
@@ -14,18 +14,20 @@ hash: i9nhifa
 
 **Tests:** fast `scripts/test ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
 
+**Gates:** evals: `scripts/eval`; runs when the diff touches `plugin/skills/` or `plugin/hooks/`; narrow form `scripts/eval --tag <skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/` or `plugin/references/`.
+
 ## Global Constraints
 
 - Follow acta:lean: understand the task and the code first; then skip it, reuse code here, stdlib, a native feature, an installed dependency, one line, the minimum; never cut validation, security or accessibility.
 - Task 1 runs its four cases on the review text as it is before this plan, and records the pass counts with `acta state set <plan id> findings`. That is the old arm for every later task.
-- Tasks 2 to 4 each run only the cases their verify line names, 10 runs, after the change. A change that scores below the old arm on any of those cases is taken out before the commit, and `acta state set <plan id> findings` says which.
+- The new text is measured once, after Task 4: the four cases, 10 runs each, against the old arm. Only when a case scores below the old arm is that case run again on each task's commit, to find the change that lowered it. A change found to lower a case is taken out with one commit that carries its task's trailer, and `acta state set <plan id> findings` says which.
 - The `acta` on PATH must be the branch binary before any eval run. Build it to a folder of its own and put that folder first on PATH for the run; never overwrite the user's installed binary.
 - Skill text stays general for every acta user, in plain English. When a file passes its byte cap, raise the cap in `internal/plugincheck/budget_test.go`; never trim words an agent acts on.
 - No new reviewer seat, no change to the number of rounds or to the review tiers.
 
 ## Build brief
 
-- Land order: this plan starts after PLN-0231 is on main, because both change `plugin/skills/review/SKILL.md` and `plugin/skills/review/code-reviewer.md`.
+- Land order: this plan starts after PLN-0236 is on main, because both change `plugin/skills/review/SKILL.md` and `plugin/skills/review/code-reviewer.md`.
 
 ## Waves
 

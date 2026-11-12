@@ -14,11 +14,13 @@ hash: ymbz46a
 
 **Tests:** fast `scripts/test ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
 
+**Gates:** evals: `scripts/eval`; runs when the diff touches `plugin/skills/` or `plugin/hooks/`; narrow form `scripts/eval --tag <skill folder>` for each skill folder touched; whole when the diff touches `plugin/hooks/` or `plugin/references/`.
+
 ## Global Constraints
 
 - Follow acta:lean: understand the task and the code first; then skip it, reuse code here, stdlib, a native feature, an installed dependency, one line, the minimum; never cut validation, security or accessibility.
 - Task 1 runs its two cases and `cold-read-accept` on `cold-read.md` as it is before this plan, 10 runs each, and records the pass counts with `acta state set <plan id> findings`. That is the old arm for every later task.
-- Tasks 2 and 3 each run those three cases, 10 runs, after the change. A change that scores below the old arm on any of them is taken out before the commit, and `acta state set <plan id> findings` says which. A task whose whole change is taken out ends with its boxes ticked and no code commit; say so in the report.
+- The new text is measured once, after Task 3: those three cases, 10 runs each, against the old arm. Only when a case scores below the old arm is that case run again on each task's commit, to find the change that lowered it. A change found to lower a case is taken out with one commit that carries its task's trailer, and `acta state set <plan id> findings` says which.
 - The `acta` on PATH must be the branch binary before any eval run. Build it to a folder of its own and put that folder first on PATH for the run; never overwrite the user's installed binary.
 - Every gate the cold read has today stays: a fresh context, no same-context fallback, one pass, no approval of spec or plan, and the user's yes before any spec edit.
 - Skill text stays general for every acta user, in plain English. When a file passes its byte cap, raise the cap in `internal/plugincheck/budget_test.go`; never trim words an agent acts on.

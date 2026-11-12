@@ -29,7 +29,7 @@ The cold read in `plugin/skills/shape/cold-read.md` guards its gates well: a fre
 
 ## Rule for keeping a text change
 
-Each numbered change to `cold-read.md` is judged on the two new cases and on `cold-read-accept`, 10 runs per arm, old text against new text. A change that scores below the old text on any of those cases is left out, and the plan's `## Review notes` say which. This is the rule the wiki page `skill-escape-lines-skip-proof.md` records.
+Each numbered change to `cold-read.md` is judged on the two new cases and on `cold-read-accept`, 10 runs per arm, old text against new text. The cases are measured once for the whole plan first; a single change is measured on its own only when the whole scores below the old text on a case. A change that scores below the old text on any of those cases is left out, and the plan's `## Review notes` say which. This is the rule the wiki page `skill-escape-lines-skip-proof.md` records.
 
 ## Files
 
