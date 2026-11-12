@@ -51,9 +51,9 @@ started: "2026-11-13 00:04:27"
 **Files:** `plugin/skills/review/code-reviewer.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the review skill, and the cases `review-planted-bug`, `review-nit-stays-note`, `review-clean-has-evidence`
 **verify:** No line of the brief sends the reviewer to the review skill for a rule: the three questions, the finding bar and the bucket rules are stated in the brief itself, and the persona line is gone. Every report, CLEAN or BLOCKED, has a `### Coverage` section with each plan requirement and the `file:line` and test behind it, each changed file marked as read, and each command run with the output line that decides it. The Standards-axis reviewer is the one told to revert the change in a temp clone, run the narrow tests and show them red. A reviewer that cut BLOCKERs at the cap of five writes `N more BLOCKERs not listed`. List every rule the brief used to point at and where it now stands.
-- [ ] Red: `skill_review_test.go` fails because the brief lacks `### Coverage`, the inlined rules and the `N more BLOCKERs not listed` line, and still points at the review skill.
-- [ ] Change: rewrite the brief with the rules inline, the Coverage section, the revert check for the Standards axis and the cut line.
-- [ ] Commit: feat(review): reviewer brief stands alone and reports its evidence
+- [x] Red: `skill_review_test.go` fails because the brief lacks `### Coverage`, the inlined rules and the `N more BLOCKERs not listed` line, and still points at the review skill.
+- [x] Change: rewrite the brief with the rules inline, the Coverage section, the revert check for the Standards axis and the cut line.
+- [x] Commit: feat(review): reviewer brief stands alone and reports its evidence
 
 ### Task 3: Merge-base range, and reports without evidence go back once
 

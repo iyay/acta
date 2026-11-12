@@ -8,11 +8,13 @@ Use this template when dispatching a code reviewer subagent.
 Subagent (general-purpose):
   description: "Review code changes"
   prompt: |
-    You are a Senior Code Reviewer with expertise in software architecture,
-    design patterns, and best practices. Your job is to review completed work
-    against its plan or requirements and identify issues before they cascade.
+    You review finished work in the git range below. Every rule you need
+    is in this brief. You cannot re-scope the plan.
 
     **Axis:** [Spec | Standards | both]
+
+    - Spec: is the change faithful to the approved spec and plan text? Judge against that text, not against a better design you can imagine.
+    - Standards: do the changed lines follow the repo's own standards, and did anything that was working break? Check the callers of what changed.
 
     First line of your report: the model you ran on.
 
@@ -61,25 +63,43 @@ Subagent (general-purpose):
 
     Rule: every changed file gets its own pass. A file being small or secondary in the diff is no reason to skip it.
 
-    Answer the review skill's three questions for your axis. Use the deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) only where the diff touches a trust boundary, auth, money, a migration or a delete.
+    Answer three questions for your axis:
 
-    Use the finding bar from the review skill: BLOCKER only with a reproducible wrong result for a real user today; everything else is a NOTE.
+    1. Does it match the approved spec and plan?
+    2. Does it run: are the narrow tests and type checks green? Run only the narrow tests of what changed, never the full suite, and show the output.
+    3. Do the tests go red when the change is reverted? The Standards-axis reviewer runs question 3, and so does a reviewer who takes both axes: in a temp clone, with `HOME` and `TMPDIR` set to new temp folders, revert the change, run the narrow tests and show them red. Never on this checkout.
+
+    Use the deep lens (trace every user value to its sink, check every caller, adversarial inputs, silent error swallowing, cross-tenant access) only where the diff touches a trust boundary, auth, money, a migration or a delete.
+
+    ## Finding Bar
+
+    A BLOCKER is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
+
+    Everything else is a NOTE. Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
+
+    A NOTE gets one bucket. One that fails the first test falls to the next:
+    - `[fix]`: the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit.
+    - `[debt]`: leaving it costs something later that you can name, and the fix needs new logic or a file outside the diff. It must start with `(medium) ` or `(high) `.
+    - `[note]`: taste, nits, input the plan does not name, "could be more robust" with no real scenario behind it.
 
     ## Output Format
 
     First line: the model you ran on.
 
     ### BLOCKERs
-    Ranked, five at most. Each: `file:line`, the concrete input, the wrong output against the expected one, and how you proved it.
+    Ranked, five at most, then `N more BLOCKERs not listed` when you cut some. Each: `file:line`, the concrete input, the wrong output against the expected one, and how you proved it.
 
     ### Pre-existing
     A defect in code the diff did not bring in: `file:line` and how to see it. It is never a BLOCKER.
 
     ### NOTEs
-    At most 10 NOTEs, the one that costs most if left first, then `N more NOTEs not listed` when you cut some. A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then an optional `(high) `, `(medium) ` or `(low) ` priority tag, then the note. See the review skill for the bucket rules: you suggest, the orchestrator decides.
+    At most 10 NOTEs, the one that costs most if left first, then `N more NOTEs not listed` when you cut some. A flat list, one line each. Every line starts with its suggested bucket tag, `[fix]`, `[debt]` or `[note]`, then an optional `(high) `, `(medium) ` or `(low) ` priority tag, then the note. You suggest the bucket; the orchestrator decides.
+
+    ### Coverage
+    What stands behind your verdict, CLEAN or BLOCKED: each plan requirement, with the `file:line` that meets it and the test that checks it; each changed file, marked as read; each command you ran, with the output line that decides it. A report with no Coverage section is not a verdict.
 
     ### Answers
-    The three questions from the review skill, one short paragraph each.
+    The three questions, one short paragraph each.
 
     Last line: one word, CLEAN or BLOCKED.
 
