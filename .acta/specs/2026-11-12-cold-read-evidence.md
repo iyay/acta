@@ -2,6 +2,8 @@
 id: SPC-0205
 created: "2026-11-12 23:06:39"
 hash: q1p72lb
+started: "2026-11-13 01:52:08"
+finished: "2026-11-13 02:06:28"
 ---
 # Cold read findings carry their evidence
 
