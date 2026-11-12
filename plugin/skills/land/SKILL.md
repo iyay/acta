@@ -78,7 +78,7 @@ Run it in the main checkout after the parent moves, before any cleanup or succes
 
 A failed check: stop, even when the tree is the same. Keep the worktree and branch, report the mismatch with the output, and claim no success. Never force a status, tick a box without proof, or redo work to hide it.
 
-Report after landing: the merge sha first, the gate numbers you ran after the merge, for each slow gate the form that ran and why, or why it did not run, what was cleaned up, each flake with its bug, the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none), one next action, and, if step 9 ran, the debt file and how many items it closed.
+Report after landing: the merge sha first, the review level line from the plan's `## Review notes`, copied as it was written, the gate numbers you ran after the merge, for each slow gate the form that ran and why, or why it did not run, what was cleaned up, each flake with its bug, the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none), one next action, and, if step 9 ran, the debt file and how many items it closed.
 
 ### Understanding, after the land
 

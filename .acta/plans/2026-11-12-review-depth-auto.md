@@ -70,9 +70,9 @@ started: "2026-11-13 00:27:31"
 **Files:** `plugin/skills/land/SKILL.md`, `internal/plugincheck/skill_land_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the land skill
 **verify:** Every land report, whatever the depth, repeats the level line from the plan's `## Review notes` as it was written, so the user sees which review ran and why without opening the plan. The line is copied, never reworded or judged again at land. List every kind of land report (clean, land anyway, light review) and where the line sits in each.
-- [ ] Red: `skill_land_test.go` fails because the land skill does not ask for the review level line in its report.
-- [ ] Change: add one line to the land report rules that repeats the review level line.
-- [ ] Commit: feat(land): report which review ran and why
+- [x] Red: `skill_land_test.go` fails because the land skill does not ask for the review level line in its report.
+- [x] Change: add one line to the land report rules that repeats the review level line.
+- [x] Commit: feat(land): report which review ran and why
 
 ### Task 5: The default moves to auto only when the cases prove it
 
