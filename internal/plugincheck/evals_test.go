@@ -45,6 +45,8 @@ var evalCases = []struct {
 	{"cold-read-guard-test-only", "skills/shape/SKILL.md", "only job is to check another area"},
 	{"cold-read-accept", "skills/shape/cold-read.md", "without inherited conversation"},
 	{"cold-read-unavailable", "skills/shape/cold-read.md", "cold read did not complete"},
+	{"cold-read-planted-contradiction", "skills/shape/cold-read.md", "contradictions"},
+	{"cold-read-false-claim", "skills/shape/cold-read.md", "follow its references"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 	{"wiki-hint", "hooks/hooks.json", "Bash|PowerShell|Read|Edit|Write|MultiEdit"},
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},

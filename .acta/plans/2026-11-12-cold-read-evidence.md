@@ -5,6 +5,7 @@ after: [PLN-0233]
 id: PLN-0234
 created: "2026-11-12 23:06:39"
 hash: ymbz46a
+started: "2026-11-13 01:52:08"
 ---
 # Cold read findings carry their evidence
 
@@ -40,9 +41,9 @@ hash: ymbz46a
 **Files:** `plugin/evals/cold-read-planted-contradiction/`, `plugin/evals/cold-read-false-claim/`, `internal/plugincheck/evals_test.go`
 **Seam:** `TestEvalCases` in plugincheck, and `scripts/eval --case 'cold-read-*'`
 **verify:** Each case fails for the one behaviour it names and for no other reason: a spec whose two sections say opposite things must come back with a finding that names both lines; a spec that says a scaffold file holds something it does not must come back with a finding that names the spec line and the file. A run that only says the spec looks fine fails both. Every case has a `# guards:` line for a heading `cold-read.md` has today, a scaffold that refuses a folder that is not empty, and caps on turns and time. List each case, its graders, and its score over 10 runs on the old text.
-- [ ] Red: `TestEvalCases` fails because the two case folders it now lists do not exist.
-- [ ] Change: add the two case folders and their `evalCases` entries, then record the old-arm scores in the plan state.
-- [ ] Commit: test(evals): cold read cases with a planted contradiction and a false claim
+- [x] Red: `TestEvalCases` fails because the two case folders it now lists do not exist.
+- [x] Change: add the two case folders and their `evalCases` entries, then record the old-arm scores in the plan state.
+- [x] Commit: test(evals): cold read cases with a planted contradiction and a false claim
 
 ### Task 2: The reviewer checks claims against the repo and shows what it read
 
@@ -61,3 +62,10 @@ hash: ymbz46a
 - [ ] Red: `skill_shape_test.go` fails because `## Resolve` lacks the present-every-finding rule and the incomplete-reply rule.
 - [ ] Change: rewrite the first paragraph of `## Resolve` with the two rules.
 - [ ] Commit: feat(shape): cold read presents every finding and flags an incomplete reply
+
+## State
+
+### Findings
+
+Old arm 2026-11-13, cold-read.md before this plan, 10 runs per case at -j 8, branch binary on PATH: cold-read-planted-contradiction 9/10, cold-read-accept 10/10, cold-read-false-claim 10/10 on finding the wrong claim and 0/10 once a third grader asked that the brief request what was read.
+The old text already finds a planted contradiction and a false claim, so those two cases guard against a drop; the new grader is the one that measures the Read part.
