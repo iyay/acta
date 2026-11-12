@@ -1,7 +1,7 @@
 ---
 parent: specs/2026-11-12-debug-evidence
 depth: minimal
-after: [PLN-0232]
+after: [PLN-0235]
 id: PLN-0233
 created: "2026-11-12 23:03:50"
 hash: e12p7s9
@@ -26,7 +26,7 @@ hash: e12p7s9
 
 ## Build brief
 
-- Land order: this plan starts after PLN-0232 is on main, because both change `internal/plugincheck/budget_test.go` and `internal/plugincheck/evals_test.go`.
+- Land order: this plan starts after PLN-0235 is on main, because both change `internal/plugincheck/budget_test.go` and `internal/plugincheck/evals_test.go`.
 - Land notes: BUG-0074 gets its `fixed_in` when Task 1's change lands, and BUG-0068 when Task 2's change lands. A change that was taken out leaves its bug open.
 
 ## Waves

@@ -10,7 +10,7 @@ hash: zyf9mv4
 
 **Goal:** Under `review_depth: auto` a diff gets the lowest review level its risk allows, the pick and its reason are written down, and the default moves to `auto` only when the eval cases prove risky diffs are never under-reviewed.
 
-**Spec:** `.acta/specs/2026-11-12-review-depth-auto.md`
+**Spec:** `.acta/specs/2026-11-12-review-depth-auto.md` (SPC-0206)
 
 **Tests:** fast `scripts/test ./internal/config ./internal/cli ./internal/setup ./internal/telemetry ./internal/plugincheck`; full `scripts/test --full`; evals `scripts/eval --case <name> --runs 10 -j 8`.
 
