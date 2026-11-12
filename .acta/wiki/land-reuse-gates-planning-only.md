@@ -9,4 +9,6 @@ At land step 6: when the branch tree equals the merged tree, or `git diff --name
 
 Tidy landing reuses the branch gates only when the tidy tip differs from the branch in planning-root paths alone. When the parent moved, other paths differ and the gates run on the tidy tip first.
 
+Since PLN-0236 that second run is narrower for a slow gate: the full suite runs again, and a slow gate (here the eval gate) runs again only when the paths the parent gained include one its `**Gates:**` line names. See `eval-gate-by-tag.md`.
+
 Why: full re-runs after merges where main only gained spec or plan commits waste a whole gate for no new code.

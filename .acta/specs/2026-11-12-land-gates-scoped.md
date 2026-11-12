@@ -2,6 +2,8 @@
 id: SPC-0207
 created: "2026-11-12 23:14:21"
 hash: lt3qgwv
+started: "2026-11-12 23:30:45"
+finished: "2026-11-13 00:04:06"
 ---
 # Land runs the gates a diff needs, in any repo
 

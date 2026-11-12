@@ -1,7 +1,7 @@
 ---
 name: second-brainstorm-choices
 description: An unrelated second Architectural topic can stay in this session, with its own item and scope, and no herdr tab.
-tags: [brainstorm, claude-only]
+tags: [shape, brainstorm, claude-only]
 runs: 1
 max_turns: 3
 timeout_seconds: 240

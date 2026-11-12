@@ -88,7 +88,9 @@ hash: landef1
 
 **Spec:** none
 
-**Tests:** `scripts/test --full`, `scripts/eval`
+**Tests:** `scripts/test --full`
+
+**Gates:** eval: `scripts/eval`; runs when the diff touches `plugin/skills/`; one case alone with `scripts/eval --case <name>`.
 
 ### Task 1: Greet by name
 

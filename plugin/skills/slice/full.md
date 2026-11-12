@@ -36,6 +36,8 @@ backticks on the line: acta reads a .md path there as the spec]
 
 **Tests:** [fast command, full command — see Test commands]
 
+**Gates:** [one sentence per slow gate — see Slow gates; leave the line out when the repo has none]
+
 ## Global Constraints
 
 [The spec's project-wide requirements — version floors, dependency limits,

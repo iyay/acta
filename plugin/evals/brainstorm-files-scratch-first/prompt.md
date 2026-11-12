@@ -1,7 +1,7 @@
 ---
 name: brainstorm-files-scratch-first
 description: An Architectural brainstorm files its scratch item and marks it brainstorming before anything else.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 # The floor is four turns: read the skill, file the item, mark it
 # brainstorming, answer. The skill's example id is not one the CLI accepts, so

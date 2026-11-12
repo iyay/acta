@@ -1,7 +1,7 @@
 ---
 name: brainstorm-resume-topic
 description: Resuming an earlier topic reads its item and Log and checks assumptions that may have changed.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 max_turns: 8
 timeout_seconds: 240

@@ -24,6 +24,18 @@ go install ./cmd/acta             # rebuild the acta on PATH; hooks and the TUI 
 
 Agents run `scripts/test --full` (not `-short`) only as the land gate (`acta:land`), never per task or per review round. It runs again after a fix for a red run, or when the merge result needs a new gate. The eval hooks call the `acta` on PATH, so put the branch binary on PATH before `scripts/eval`.
 
+## Slow gate
+
+The repo has one slow gate, the eval gate. `acta:slice` copies these four parts into a plan's `**Gates:**` line, and `acta:land` runs the gate by that line.
+
+- Name: `eval`. Flaky cases are recorded as `eval:<case>`, so a plan's line starts with `eval:`.
+- Command: `scripts/eval`.
+- It runs when the diff touches `plugin/skills/` or `plugin/hooks/`.
+- Narrow form: `scripts/eval --tag=<skill folder>` for each skill folder touched, and `scripts/eval --case <name>` for one case alone. Write `--tag=` with the equals sign: with a space the eval tool reads the plugin folder as a second tag and finds no case.
+- It runs whole when the diff touches `plugin/hooks/` or `plugin/references/`, since every case reads those.
+
+Every eval case carries the folder name of the skill it guards as a tag; `internal/plugincheck` fails when one is missing.
+
 ## Version
 
 Until the first release the version stays on 0.1.x. Plans never bump the version. Only `scripts/release` bumps it in `plugin/.claude-plugin/plugin.json`, `plugin/.claude-plugin/marketplace.json` and `plugin/package.json`, then commits and tags. `internal/plugincheck` fails when the three files disagree or the version is not `x.y.z`.

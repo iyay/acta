@@ -1,7 +1,7 @@
 ---
 name: brainstorm-related-topic
 description: A related second topic stays in this session, gets its own item and reuses only the earlier decisions that still apply.
-tags: [brainstorm]
+tags: [shape, brainstorm]
 runs: 1
 max_turns: 8
 timeout_seconds: 240

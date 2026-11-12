@@ -9,8 +9,9 @@ import (
 
 func TestSkillSlice(t *testing.T) {
 	CheckSkill(t, SkillRule{
-		Name:     "slice",
-		MaxLines: 262,
+		Name: "slice",
+		// The slow gates rule added four lines to the body and two to full.md.
+		MaxLines: 266,
 		Must: []string{
 			".acta/plans/", "acta:build", "verify:", "## Waves", "Follow acta:lean",
 			"the lean line, unless coding_guide is off",
@@ -148,6 +149,42 @@ func TestNoSkillCommitsPlanningFilesWithGit(t *testing.T) {
 				if planningWord.MatchString(span) {
 					t.Errorf("%s:%d commits a planning file with git commit: %s", p, i+1, span)
 				}
+			}
+		}
+	}
+}
+
+// TestSliceGatesLine keeps the slow-gate rule in the slice skill. A plan names
+// the slow gates of its repo, so land can run each one only as far as the diff
+// calls for. The rule is shared text, and both depth files name the line, since
+// an agent reads only the body and its own depth file. The skill serves every
+// repo, so it must not name this repo's own eval script or folders.
+func TestSliceGatesLine(t *testing.T) {
+	body := readFile(t, "skills", "slice", "SKILL.md")
+	for _, want := range []string{
+		"## Slow gates",
+		"the header carries a `**Gates:**` line with one sentence per gate",
+		"Each sentence starts with the gate's name and a colon",
+		"the paths whose change makes it run",
+		"the narrow form, when the gate's own tool can pick cases by tag, path or name",
+		"the paths whose change forces the whole gate",
+		"(`CLAUDE.md`, `AGENTS.md`, a README or a wiki page)",
+		"never from a guess",
+		"A repo with no slow gate gets no line and no mention.",
+		"The yes to the plan is the yes to its gates.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("slice SKILL.md is missing the gate rule %q", want)
+		}
+	}
+	for _, name := range []string{"SKILL.md", "full.md", "minimal.md"} {
+		text := readFile(t, "skills", "slice", name)
+		if name != "SKILL.md" && !strings.Contains(text, "**Gates:**") {
+			t.Errorf("slice %s must name the **Gates:** line in its header", name)
+		}
+		for _, bad := range []string{"scripts/eval", "plugin/skills/", "plugin/hooks/"} {
+			if strings.Contains(text, bad) {
+				t.Errorf("slice %s names %q: that belongs to one repo, not to the skill", name, bad)
 			}
 		}
 	}
