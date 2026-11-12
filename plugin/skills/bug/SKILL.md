@@ -52,4 +52,4 @@ A bug is fixed through a normal plan whose frontmatter says `parent: bugs/<file 
 acta set bugs/<file name without .md> fixed_in <merge sha>
 ```
 
-Never push.
+Never push unless the user asks.

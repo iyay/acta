@@ -3,6 +3,8 @@ status: approved
 id: SPC-0202
 created: "2026-11-12 22:52:52"
 hash: lk7ru26
+started: "2026-11-12 22:57:08"
+finished: "2026-11-12 23:26:11"
 ---
 # Reviewers use temp clones, and agents push only when the user asks
 

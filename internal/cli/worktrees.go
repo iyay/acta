@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/iyay/acta/internal/board"
@@ -65,6 +66,11 @@ func cmdWorktrees(args []string, stdout, stderr io.Writer) int {
 		for _, ln := range e.Status {
 			fmt.Fprintf(stdout, "           %s\n", ln)
 		}
+		// Only --force removes a dirty worktree, and the agent may not run
+		// it. Give the user the exact command so the junk does not stay.
+		if e.State == worktrees.StateDirty {
+			fmt.Fprintf(stdout, "           run yourself: git worktree remove --force %s\n", shellQuote(e.Path))
+		}
 	}
 	return exitOK
 }
@@ -77,4 +83,13 @@ func planList(b *board.Board) []worktrees.Plan {
 		out = append(out, worktrees.Plan{Slug: it.Slug, Status: it.Status})
 	}
 	return out
+}
+
+// shellQuote wraps a path in single quotes when it holds a space or another
+// character the shell would read, so the command still works when pasted.
+func shellQuote(s string) string {
+	if s != "" && strings.Trim(s, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./~@%+=:,-") == "" {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

@@ -25,7 +25,7 @@ var fileCaps = map[string]int{
 	"output-styles/acta.md":                   1849,
 	"references/house-rules.md":               3787,
 	"references/unslop.md":                    3752,
-	"skills/bug/SKILL.md":                     2327,
+	"skills/bug/SKILL.md":                     2348,
 	"skills/build/SKILL.md":                   10993,
 	"skills/build/dispatch.md":                6710,
 	"skills/build/inline.md":                  490,
@@ -34,26 +34,26 @@ var fileCaps = map[string]int{
 	"skills/build/subagent.md":                1595,
 	"skills/build/wiki.md":                    2750,
 	"skills/cleanup/SKILL.md":                 3201,
-	"skills/debug/SKILL.md":                   6546,
+	"skills/debug/SKILL.md":                   6567,
 	"skills/debug/condition-based-waiting.md": 3582,
 	"skills/debug/defense-in-depth.md":        1505,
 	"skills/debug/root-cause-tracing.md":      2721,
 	"skills/debug/race.md":                    1751,
 	"skills/frame/SKILL.md":                   4591,
 	"skills/frame/startup.md":                 4337,
-	"skills/land/SKILL.md":                    10188,
+	"skills/land/SKILL.md":                    10209,
 	"skills/land/baseline.md":                 3144,
 	"skills/land/tidy.md":                     3499,
 	"skills/lean/SKILL.md":                    1918,
 	"skills/migrate/SKILL.md":                 3207,
-	"skills/review/SKILL.md":                  9991,
+	"skills/review/SKILL.md":                  10061,
 	"skills/review/receiving.md":              2974,
-	"skills/review/code-reviewer.md":          4567,
+	"skills/review/code-reviewer.md":          4602,
 	"skills/review/depth.md":                  2787,
 	"skills/review/fact-check.md":             1850,
 	"skills/scratch/SKILL.md":                 2358,
 	"skills/setup/SKILL.md":                   5536,
-	"skills/shape/SKILL.md":                   8408,
+	"skills/shape/SKILL.md":                   8630,
 	"skills/shape/cold-read.md":               2400,
 	"skills/shape/probe.md":                   1717,
 	"skills/slice/SKILL.md":                   7061,
@@ -88,7 +88,8 @@ var descriptionCaps = map[string]int{
 // grew to 3228 when the rule 5 tidy exception added 200 bytes; the cap move was 160, the rest was slack.
 // It grew to 3235 when cleanup joined the skill index.
 // It grew to 3314 when rule 5 said the hook blocks destructive commands and the user runs them.
-const sessionStartCap = 3314
+// It grew to 3385 when rule 5 let agents push when the user asks in their own words.
+const sessionStartCap = 3385
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

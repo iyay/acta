@@ -334,3 +334,20 @@ func TestReviewUnderstanding(t *testing.T) {
 		}
 	}
 }
+
+// A reviewer worktree left untracked files that only --force could remove, so
+// every land left junk. Reviewers copy a revision with a temp clone instead,
+// and the orchestrator reports any stray worktree after each round.
+func TestReviewLeavesNoWorktrees(t *testing.T) {
+	for _, file := range []string{"skills/review/SKILL.md", "skills/review/code-reviewer.md", "skills/review/depth.md", "skills/review/fact-check.md"} {
+		if strings.Contains(readSkill(t, file), "git worktree add") {
+			t.Errorf("%s still tells a reviewer to run git worktree add", file)
+		}
+	}
+	if txt := readSkill(t, "skills/review/code-reviewer.md"); !strings.Contains(txt, "`git clone` this repo into a new temporary folder and check out the SHA there") {
+		t.Error("code-reviewer.md must tell a reviewer to copy a revision with a temp clone")
+	}
+	if txt := readSkill(t, "skills/review/SKILL.md"); !strings.Contains(txt, "After each round, run `git worktree list` and tell the user the path of every worktree this build did not make") {
+		t.Error("review SKILL.md must make the orchestrator report stray worktrees after each round")
+	}
+}

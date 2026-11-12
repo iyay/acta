@@ -67,7 +67,7 @@ State gate: before the merge, run `acta state <plan id>` and read its Findings; 
 7. Clean up, only after the final plan check passes: `git worktree remove <path>`, then `git branch -d <branch>`. `-d` refusing means not fully merged: stop and report. Never delete a worktree that has uncommitted work. `git worktree remove` refusing: stop, show `git status --porcelain --ignored` of that worktree, and give the user two choices: the user removes the files, or stop the land and keep the worktree and branch. Add no commit here: the parent already moved, so it would never get it. Never `--force`, never delete the files first.
 8. If the plan fixed a bug under `.acta/bugs/`, record the merge: `acta set bugs/<file-name-without-.md> fixed_in <merge-sha>`.
 9. For each debt item in the plan's `closes:`, run `acta tick <DBT-nnnn.nn> --all`. Then commit the ticks; `acta tick` does not commit the debt file. A plan with no debt items in `closes:` skips this step.
-10. Never `git push`, never amend a commit, and never force anything. Last, from the main checkout, run `acta worktrees --clean`: it removes clean worktrees no open plan owns, never by force. Report each one it removed and each dirty one it kept.
+10. Never `git push` unless the user asks, never amend a commit, and never force anything. Last, from the main checkout, run `acta worktrees --clean`: it removes clean worktrees no open plan owns, never by force. Report each one it removed and each dirty one it kept.
 
 ### Final plan check
 

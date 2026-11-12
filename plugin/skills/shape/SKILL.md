@@ -70,7 +70,7 @@ Only the user picks a move; launch nothing unasked. On a move, log the talk to t
 4. Get approval — STOP and wait for an explicit yes; presenting the design and starting in the same breath skips the gate
 5. Write short spec — short spec (about half a page) in `.acta/specs/`, run `acta id`, commit it with `acta commit <path> -m "<message>"`
 6. Spec self-review — the four checks below
-7. Cold read — only on a signal below; else skip in silence
+7. Cold read — only on a signal below, and only when you would recommend it; else skip in silence
 8. User reviews spec — ask them to read the file, then wait. On changes requested, make them in the short spec and ask for the review again; never the Architectural flow or its design doc
 9. Transition — invoke acta:slice
 
@@ -92,7 +92,7 @@ recommendation instead.
 
 ## Cold read
 
-Decide once, at step 7; later edits never bring the offer back. Never offer for Spike. Always offer for Architectural. Offer for Bounded only on a signal: the spec touches a trust boundary, auth, money or a data migration; changes an interface, file format or command others depend on; or touches more than one area, such as Go code and skill text. Files whose only job is to check another area, such as a test over skill text or an eval case for a skill, do not count as a second area. Bounded with no signal: say nothing about the cold read and go to final spec approval. To offer, ask in the chat language: "Want a cold read before planning?" Wait. Skip goes to final spec approval. Read [cold-read.md](cold-read.md) only on acceptance, or when the user asks for a cold read on their own before the plan. Cold read approves neither spec nor plan.
+Decide once, at step 7; later edits never bring the offer back. Never offer for Spike. Always offer for Architectural. Offer for Bounded only on a signal: the spec touches a trust boundary, auth, money or a data migration; changes an interface, file format or command others depend on; or touches more than one area, such as Go code and skill text. Files whose only job is to check another area, such as a test over skill text or an eval case for a skill, do not count as a second area. A signal alone never makes the offer: offer only when a signal holds and your own judgment says the spec needs one. Bounded with no signal, or a signal you would not act on: say nothing about the cold read and go to final spec approval. To offer, ask in the chat language: "Want a cold read before planning?" and name that reason in one line. Wait. Skip goes to final spec approval. Read [cold-read.md](cold-read.md) only on acceptance, or when the user asks for a cold read on their own before the plan. Cold read approves neither spec nor plan.
 
 ## Spec rules
 

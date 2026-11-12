@@ -18,7 +18,7 @@ COMMENTS: plain English a 10-year-old reads back. WHY not what. No marker tags, 
 MUTATION-VERIFY every test: revert the fix, re-run, confirm FAILS, git checkout --, confirm green. Assert the effect, never just a status or call count.
 COMMIT per ticket, todo marked done the moment it commits.
 PROGRESS: right after each step of a ticket, run acta tick plans/<stem>#task-N --step <n> from the worktree with the ticket id written out in full (for example acta tick plans/2026-09-26-tick-fixes#task-3 --step 2), so the board shows live progress. Never commit the plan file yourself; the orchestrator commits it once after each wave. Right after your own task commit, run acta tick plans/<stem>#task-N --all with the full id (a short id like task-1 fails with "unknown id"), so no box is left open. As the recipient, run acta show <plan id> --json before the reply-back and check that progress.done equals progress.total.
-NO repo-wide formatter, NO npm install, NO git push, NO database migration.
+NO repo-wide formatter, NO npm install, NO git push unless the user asks, NO database migration.
 DO NOT REVIEW YOUR OWN WORK — no acta:review, no findings, no verdict. Commit the last ticket, fire REPLY-BACK.
 STAY WHERE YOU ARE — you have your own tab. Do NOT move, park, close, or create any pane, tab, or workspace.
 MEMORY: wiki pages named by `acta wiki ls` are read-only for the recipient. Never write there.
