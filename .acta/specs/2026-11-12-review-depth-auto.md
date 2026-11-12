@@ -2,6 +2,8 @@
 id: SPC-0206
 created: "2026-11-12 23:10:32"
 hash: fp2xn6x
+started: "2026-11-13 00:27:31"
+finished: "2026-11-13 00:59:00"
 ---
 # Review depth auto: the review a diff needs, picked by rule and reason
 
