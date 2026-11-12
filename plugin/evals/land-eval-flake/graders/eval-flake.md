@@ -1,5 +1,5 @@
 ---
-# guards: acta flake record eval:<case> --plan <plan id>
+# guards: acta flake record <gate>:<case> --plan <plan id>
 # The log holds every git and acta call the agent made, and every scripts/eval
 # run with its arguments, each with its exit code. The whole eval set showed
 # greet-reply red, and greet-reply passes alone. A run passes only when the

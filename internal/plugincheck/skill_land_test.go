@@ -25,7 +25,6 @@ func TestSkillLand(t *testing.T) {
 			"`commit_history`", "`tidy`", "tidy.md",
 			"Thinking \"just this once\"", "Tired and wanting work over",
 			"| \"I'm tired\" | Tired is not an excuse |",
-			"scripts/eval", "plugin/skills/", "plugin/hooks/", "red eval",
 			"chore(plan): tick <plan>", `acta commit <plan path> -m "chore(plan): tick <plan>"`, "before the merge, so the ticks reach main",
 			"git status --porcelain -- <plan path>",
 			"acta run-one -- <full command>", "HEAD^{tree}", "tree same as branch, gates reused",
@@ -65,7 +64,7 @@ func TestLandWikiGate(t *testing.T) {
 			report = line
 		}
 	}
-	// Step 1 already says a red eval stops the land, so the stop has to sit in
+	// Step 1 already says a red gate case stops the land, so the stop has to sit in
 	// the wiki sentence itself. The check reads the pages of the checkout it runs
 	// in, so it runs in the worktree, where the pages of the branch are, and
 	// before the merge, since it is a gate.
@@ -367,6 +366,50 @@ func TestLandKeepsTestOutput(t *testing.T) {
 		for _, banned := range []string{".gitignore", "three choices"} {
 			if strings.Contains(steps[step], banned) {
 				t.Errorf("land %s still offers %q after the merge", step, banned)
+			}
+		}
+	}
+}
+
+// TestLandSlowGates keeps the slow-gate rule of land step 1. The plan's
+// **Gates:** line says which slow gates a repo has, and land runs each one only
+// as far as the diff calls for. Every unclear case runs the whole gate, so a
+// missing line or an unclear path can never skip one. The skill serves every
+// repo, so it must not name this repo's own eval script or folders again.
+func TestLandSlowGates(t *testing.T) {
+	var step1, report string
+	skill := readSkill(t, "skills/land/SKILL.md")
+	for _, line := range strings.Split(skill, "\n") {
+		switch {
+		case strings.HasPrefix(line, "1. Preconditions"):
+			step1 = line
+		case strings.HasPrefix(line, "Report after landing:"):
+			report = line
+		}
+	}
+	for _, want := range []string{
+		"Slow gates: the plan's `**Gates:**` line names each one",
+		"it runs only when the diff lists a path the line says makes it run",
+		"it runs in the narrow form only when the line gives one and no listed path forces the whole gate",
+		"in every other case it runs whole",
+		"in doubt about which paths the diff touches",
+		"A plan with no `**Gates:**` line skips no gate",
+		"(`CLAUDE.md`, `AGENTS.md`, a README or a wiki page) name a slow gate, run it whole",
+		"Each red case runs again alone",
+		"acta flake record <gate>:<case> --plan <plan id>",
+	} {
+		if !strings.Contains(step1, want) {
+			t.Errorf("land step 1 missing %q", want)
+		}
+	}
+	if !strings.Contains(report, "for each slow gate the form that ran and why, or why it did not run") {
+		t.Error("the landing report does not say which form of each slow gate ran")
+	}
+	for _, name := range []string{"SKILL.md", "tidy.md", "baseline.md"} {
+		text := readSkill(t, "skills/land/"+name)
+		for _, bad := range []string{"scripts/eval", "plugin/skills/", "plugin/hooks/"} {
+			if strings.Contains(text, bad) {
+				t.Errorf("land %s names %q: that belongs to one repo, not to the skill", name, bad)
 			}
 		}
 	}

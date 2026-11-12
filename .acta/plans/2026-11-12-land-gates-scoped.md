@@ -51,9 +51,9 @@ started: "2026-11-12 23:30:45"
 **Files:** `plugin/skills/land/SKILL.md`, `plugin/evals/land-eval-flake/`, `plugin/evals/land-gate-narrow/`, `internal/plugincheck/skill_land_test.go`, `internal/plugincheck/evals_test.go`, `internal/plugincheck/budget_test.go`
 **Seam:** plugincheck required strings for the land skill, `TestEvalCases`, and the cases `land-gate-narrow` and `land-eval-flake`
 **verify:** No path through land skips a gate the diff can affect: a gate runs when the diff touches a path its line names, narrow only when the line gives a narrow form and no touched path forces the whole gate, and whole in every other case, including doubt about the touched paths and a plan with no `**Gates:**` line in a repo whose docs name a gate. The land report says for each gate which form ran or why it did not run. The land skill no longer names `scripts/eval`, `plugin/skills/` or `plugin/hooks/`, and a test fails when one comes back. List every combination of line present or missing, path touched or not, and narrow form given or not, with what runs in each.
-- [ ] Red: `skill_land_test.go` fails because the land text still names this repo's eval gate and has no rule for a `**Gates:**` line, and `TestEvalCases` fails because `land-gate-narrow` does not exist.
-- [ ] Change: replace the eval gate text in the land skill with the general gate rule, give `land-eval-flake` a plan with a `**Gates:**` line, and add the `land-gate-narrow` case.
-- [ ] Commit: feat(land): run each slow gate as far as the diff calls for
+- [x] Red: `skill_land_test.go` fails because the land text still names this repo's eval gate and has no rule for a `**Gates:**` line, and `TestEvalCases` fails because `land-gate-narrow` does not exist.
+- [x] Change: replace the eval gate text in the land skill with the general gate rule, give `land-eval-flake` a plan with a `**Gates:**` line, and add the `land-gate-narrow` case.
+- [x] Commit: feat(land): run each slow gate as far as the diff calls for
 
 ### Task 3: A moved parent repeats only what it can break, and a known flake blocks once
 
@@ -77,4 +77,9 @@ started: "2026-11-12 23:30:45"
 
 ### Next
 
-Task 2: replace the eval gate text in land SKILL.md step 1 with the general gate rule; land-eval-flake plan needs a Gates line; add land-gate-narrow.
+Task 3: narrow the second run of a slow gate in tidy.md step 3 and SKILL.md step 6; known flake reruns once.
+Task 4: tags, CLAUDE.md gate line, wiki page, evals_scope_test.go.
+
+### Findings
+
+baseline.md still says "An `eval:<case>` record follows the same rule" while SKILL.md now says <gate>:<case>; baseline.md is outside the plan files, so it is left for review to rule on.
