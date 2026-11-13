@@ -116,3 +116,79 @@ func TestWorkflowDebtReviewGraders(t *testing.T) {
 		})
 	}
 }
+
+// Role checks must reject extra launches without counting helpers or resumes.
+func TestWorkflowDebtReviewerRoles(t *testing.T) {
+	cases, err := evalomp.LoadCases(filepath.Join(pluginRoot(t), "evals"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	both := `{"prompt":"ACTA_REVIEW_AXIS=BOTH\nReview Spec and Standards.","subagent_type":"general-purpose"}`
+	spec := `{"prompt":"ACTA_REVIEW_AXIS=SPEC\nReview the spec.","subagent_type":"general-purpose"}`
+	standards := `{"prompt":"ACTA_REVIEW_AXIS=STANDARDS\nReview standards.","subagent_type":"general-purpose"}`
+	helper := `{"prompt":"Find files mentioning Spec and Standards; do not review."}`
+	for _, tc := range []struct {
+		name         string
+		inputs       []string
+		safe, polish bool
+	}{
+		{"empty", nil, false, false},
+		{"helper", []string{helper}, false, false},
+		{"quoted marker", []string{`{"prompt":"Discuss \"ACTA_REVIEW_AXIS=BOTH\" without reviewing."}`}, false, false},
+		{"combined", []string{both}, true, false},
+		{"combined with helper", []string{both, helper}, true, false},
+		{"combined resumed", []string{both, `{"resume":"reviewer-1","prompt":"ACTA_REVIEW_AXIS=BOTH\nAdd Coverage."}`}, true, false},
+		{"combined empty resume", []string{`{"resume":"","prompt":"ACTA_REVIEW_AXIS=BOTH\nReview both axes."}`}, true, false},
+		{"combined null resume", []string{`{"prompt":"ACTA_REVIEW_AXIS=BOTH\nReview both axes.","resume":null}`}, true, false},
+		{"two combined", []string{both, both}, false, false},
+		{"spec only", []string{spec}, false, false},
+		{"standards only", []string{standards}, false, false},
+		{"separate axes", []string{spec, standards}, false, true},
+		{"separate axes with helper", []string{helper, spec, standards}, false, true},
+		{"separate axes resumed", []string{spec, standards, `{"prompt":"ACTA_REVIEW_AXIS=SPEC\nAdd Coverage.","resume":"spec-1"}`}, false, true},
+		{"same identity other axis", []string{spec, `{"prompt":"ACTA_REVIEW_AXIS=STANDARDS\nReview standards.","resume":"spec-1"}`}, false, false},
+		{"extra combined reviewer", []string{spec, standards, both}, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls []evalomp.Call
+			for _, input := range tc.inputs {
+				calls = append(calls, evalomp.Call{Tool: "Agent", Input: input})
+			}
+			// Messages return to an existing reviewer; they never launch one.
+			calls = append(calls, evalomp.Call{Tool: "SendMessage", Input: `{"prompt":"ACTA_REVIEW_AXIS=BOTH\nAdd Coverage."}`})
+			for _, target := range []struct {
+				name    string
+				graders []string
+				want    bool
+			}{
+				{"review-auto-safe-one-reviewer", []string{"one-reviewer", "combined-role"}, tc.safe},
+				{"polish-full-review", []string{"reviewer-dispatched", "standards-reviewer-dispatched", "reviewer-count"}, tc.polish},
+			} {
+				got := true
+				for _, name := range target.graders {
+					var grader evalomp.Grader
+					for _, c := range cases {
+						if c.Name == target.name {
+							for _, g := range c.Graders {
+								if g.Name == name {
+									grader = g
+								}
+							}
+						}
+					}
+					if grader.Type != "tool_used" {
+						t.Errorf("missing fixed role grader %s/%s (type %q)", target.name, name, grader.Type)
+						got = false
+						continue
+					}
+					if !evalomp.Grade(grader, evalomp.Workspace{Result: evalomp.Result{Calls: calls}}, nil).Pass {
+						got = false
+					}
+				}
+				if got != target.want {
+					t.Errorf("%s role checks pass=%v, want %v", target.name, got, target.want)
+				}
+			}
+		})
+	}
+}

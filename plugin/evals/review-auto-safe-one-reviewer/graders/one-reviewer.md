@@ -1,10 +1,9 @@
 ---
 # guards: ## Review depth
-# No risk signal holds, so the auto depth picks the lower of its two levels:
-# one reviewer that takes both axes. Two Agent calls mean the full pair ran
-# for a diff that did not need it, and none means nobody reviewed it.
+# Match declared reviewer launches in actual tool inputs; resumes reuse an agent.
 type: tool_used
 tool: Agent
+input_match: '^(?![\s\S]*"resume"\s*:\s*"[^"]+")[\s\S]*"prompt"\s*:\s*"ACTA_REVIEW_AXIS=(?:BOTH|SPEC|STANDARDS)(?:\\n|\\r\\n| )'
 min: 1
 max: 1
 ---
