@@ -41,9 +41,9 @@ var fileCaps = map[string]int{
 	"skills/debug/race.md":                    1821,
 	"skills/frame/SKILL.md":                   4591,
 	"skills/frame/startup.md":                 4337,
-	"skills/land/SKILL.md":                    11800,
+	"skills/land/SKILL.md":                    12164,
 	"skills/land/baseline.md":                 3144,
-	"skills/land/tidy.md":                     4275,
+	"skills/land/tidy.md":                     8244,
 	"skills/lean/SKILL.md":                    1918,
 	"skills/migrate/SKILL.md":                 3207,
 	"skills/review/SKILL.md":                  10817,
@@ -89,7 +89,8 @@ var descriptionCaps = map[string]int{
 // It grew to 3235 when cleanup joined the skill index.
 // It grew to 3314 when rule 5 said the hook blocks destructive commands and the user runs them.
 // It grew to 3385 when rule 5 let agents push when the user asks in their own words.
-const sessionStartCap = 3385
+// It grew to 3640 for typed approval of a verified temporary gate-output list.
+const sessionStartCap = 3640
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two

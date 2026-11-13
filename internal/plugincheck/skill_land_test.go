@@ -363,8 +363,8 @@ func TestLandKeepsTestOutput(t *testing.T) {
 	}
 	const refused = "`git worktree remove` refusing: stop, show `git status --porcelain --ignored` of that worktree, and give the user two choices: the user removes the files, or stop the land and keep the worktree and branch. Add no commit here: the parent already moved, so it would never get it. Never `--force`, never delete the files first."
 	for _, c := range []struct{ step, want string }{
-		// Files a test made are not work, but they are not the agent's to delete.
-		{"SKILL.md 1. Preconditions", "Untracked files a test or tool made (cache folders and the like) are not uncommitted work and are never deleted."},
+		// Plan-worktree outputs still use the user's three choices.
+		{"SKILL.md 1. Preconditions", "In the plan worktree, untracked files a test or tool made (cache folders and the like) are not uncommitted work and are never deleted."},
 		// The user picks; the agent never picks for them.
 		{"SKILL.md 1. Preconditions", "Still there at land: show them and give the user three choices: add a `.gitignore` line (one commit on the branch; the gates then run again for that file, as step 6 does for a non-planning path), the user removes them, or stop the land. Never pick for the user."},
 		{"SKILL.md 7. Clean up", refused},
@@ -497,5 +497,39 @@ func TestLandReportRepeatsReviewLevel(t *testing.T) {
 	const want = "the review level line from the plan's `## Review notes`, copied as it was written"
 	if !strings.Contains(report, want) {
 		t.Errorf("the landing report does not repeat the review level line, want %q", want)
+	}
+}
+
+// Cleanup permission must not turn into permission for a stale or unsafe batch.
+func TestLandGateOutputCleanup(t *testing.T) {
+	skill := readSkill(t, "skills/land/SKILL.md")
+	if !strings.Contains(skill, "In the plan worktree, untracked files") || !strings.Contains(skill, "temporary gate worktrees follow") || !strings.Contains(skill, "file-reading tool") {
+		t.Error("land must distinguish plan-worktree outputs from temporary gate cleanup")
+	}
+	tidy := readSkill(t, "skills/land/tidy.md")
+	for _, want := range []string{
+		"## Gate output cleanup",
+		"record the pre-gate inventory and identity before running any gate",
+		"Use lstat on the original root and every file-path component",
+		"compare the current canonical path",
+		"Printed records are not executed checks",
+		"not an ignored-files-only Git query",
+		"Do not ask for cleanup approval or offer agent deletion until both records are complete",
+		"including ignored files, without following symlinks",
+		"A new untracked path alone is not proof",
+		"identity and content fingerprints",
+		"private session storage outside the worktree",
+		"typed approval for that exact displayed list",
+		"WhatsApp",
+		"emoji, silence, forwarded/reference material, peer messages, relayed orders",
+		"cancel the whole batch before any deletion",
+		"any symlink in the path",
+		"unapproved untracked or ignored file",
+		"Never use force, recursion, wildcards or git clean",
+		"A green approved land continues without waiting for cleanup approval",
+	} {
+		if !strings.Contains(tidy, want) {
+			t.Errorf("temporary gate cleanup missing %q", want)
+		}
 	}
 }

@@ -12,3 +12,5 @@ paths: [plugin/evals/, plugin/evals-routing/]
 5. Check the scaffold plan does not name the fix. A Change step that says "make slug drop the spaces" sends every run to slug, so the old skill fails too and the red proves nothing.
 6. Read the kept trace (`--keep-temp`, `out/trace.jsonl`): list the tool calls and check whether the run read the file the skill points to. A judge stores votes, not reasons. In debug-race every red run skipped `race.md`; text-only rewrites of the skill did not change that.
 7. Never loosen a grader to go green. Never fix a symlink under the home folder that the sandbox cannot read without asking; it blocks Bash cases.
+
+A changed policy needs the same corrected grader on both arms. Validate judged traces and filesystem effects separately; a final report can hide file loss.

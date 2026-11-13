@@ -73,6 +73,9 @@ var evalCases = []struct {
 	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
 	{"land-records-flake", "skills/land/baseline.md", "acta flake record <name> --plan <plan id>"},
 	{"land-eval-flake", "skills/land/SKILL.md", "acta flake record <gate>:<case> --plan <plan id>"},
+	{"land-gate-output-approved", "skills/land/tidy.md", "temp worktree"},
+	{"land-gate-output-no-approval", "skills/land/tidy.md", "temp worktree"},
+	{"land-gate-output-boundaries", "skills/land/tidy.md", "temp worktree"},
 	{"land-gate-narrow", "skills/land/SKILL.md", "it runs in the narrow form only when the line gives one"},
 	{"cleanup-proposes-first", "skills/cleanup/SKILL.md", "names the numbers to skip"},
 	{"slice-minimal-one-file", "skills/slice/SKILL.md", "never the other one"},
@@ -150,10 +153,8 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 				continue
 			}
 			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
-			// In the cleanup cases fixed checks back one judge: no write command
-			// or subagent ran too early, and every planning file still holds its
-			// first text.
-			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md"}[c.folder]; ok {
+			// Mixed cases pair one narrow judge with fixed checks of real effects.
+			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
 				mustJudge = filepath.Base(f) == judge
 			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {
