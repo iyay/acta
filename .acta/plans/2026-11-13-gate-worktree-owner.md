@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0243
 created: "2026-11-13 11:31:16"
 hash: ppdjuup
+started: "2026-11-13 11:31:36"
 ---
 # Run temporary gate operations through their owning repository
 
@@ -36,9 +37,9 @@ hash: ppdjuup
 **Files:** `plugin/evals/land-tidy-temp-worktree/{prompt.md,scaffold.sh,graders/temp-removed.md}`, new `plugin/evals/land-tidy-temp-worktree/graders/owner-removal.md`, new `internal/plugincheck/gate_worktree_owner_test.go`
 **Seam:** Real eval scaffolding and Git wrappers, loaded through `evalomp.LoadCases` and graded through `evalomp.Grade` over actual registration/effect logs.
 **verify:** A distinct outer repository cannot remove the owner's registered temporary gate worktree. Accept the matching worktree's successful owner-scoped removal before parent movement; reject wrong-repository attempts treated as success, a different worktree's removal, cleanup only after parent movement and force. Audit actual registration, exit statuses and order independently of the final report. Keep the existing removal-order protection and list each positive/negative control exercised.
-- [ ] Red: add `TestGateWorktreeOwnerGraders` and `TestGateWorktreeOwnerAudit`, then run `scripts/test ./internal/plugincheck -run 'TestGateWorktreeOwner|TestEvalCases|TestEvalGraderPatternsCompileInOmp'` to expose missing ownership/effect evidence and invalid stand-ins before changing the fixture.
-- [ ] Change: strengthen the existing case with a distinct outer repository and owner-aware registration/effect logging, add the fixed ownership grader, validate positive/negative samples and actual wrapper controls, then capture the old arm and run both named comparison cases on unchanged instructions.
-- [ ] Commit: test(land): verify temporary gate cleanup belongs to its repository
+- [x] Red: add `TestGateWorktreeOwnerGraders` and `TestGateWorktreeOwnerAudit`, then run `scripts/test ./internal/plugincheck -run 'TestGateWorktreeOwner|TestEvalCases|TestEvalGraderPatternsCompileInOmp'` to expose missing ownership/effect evidence and invalid stand-ins before changing the fixture.
+- [x] Change: strengthen the existing case with a distinct outer repository and owner-aware registration/effect logging, add the fixed ownership grader, validate positive/negative samples and actual wrapper controls, then capture the old arm and run both named comparison cases on unchanged instructions.
+- [x] Commit: test(land): verify temporary gate cleanup belongs to its repository
 
 ### Task 2: Pin temporary gate commands to their owning repository
 
@@ -48,3 +49,10 @@ hash: ppdjuup
 - [ ] Red: add `TestLandGateWorktreeOwner`, then run `scripts/test ./internal/plugincheck -run 'TestLandGateWorktreeOwner|TestLandTidyPath'` and the strengthened case on old text to show that the owner rule is absent.
 - [ ] Change: capture and use the absolute owner in tidy's temporary-worktree instructions, adjust only needed caps, update the existing wiki fact, run focused checks and formatting, then compare `land-tidy-temp-worktree` and `land-tidy-temp-refused` for at least 10 runs per arm and retain the evidence.
 - [ ] Commit: fix(land): scope temporary gate commands to their owning repository
+
+## State
+
+### Findings
+
+Task 1 controls pass: loaded graders reject missing/report-only/failed audits and forced-removal logs; actual Git wrapper audits distinguish correct owner, wrong repo, late removal and a different removed worktree. Focused plugincheck package passes after watched RED, diff formatting clean.
+Identical corrected-fixture old-text baseline: land-tidy-temp-worktree 9/10, land-tidy-temp-refused 9/10 full-case passes. Raw logs and plugin snapshot /Users/iyay/.wwt/acta/gate-owner-old-20261113; matching old binary bin/acta. These are measurements, not passing land gates.

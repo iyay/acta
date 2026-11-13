@@ -20,6 +20,9 @@ formatter, no scripts/eval and no wiki pages, so the only gates are the full
 suite, `scripts/test --full`, and the acta and git checks the skill names.
 Then write the landing report and stop.
 
+The workspace root is a separate outer repository; ./repo owns the linked
+worktrees. Its registrations are distinct from those of the outer repository.
+
 The acta CLI is bin/acta and git is bin/git, both in this folder. Run pwd
 first and call them by their full paths. The plain names may run a different
 program in this sandbox.

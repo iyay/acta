@@ -3,6 +3,7 @@ id: BUG-0072
 hash: hrmsir5
 priority: medium
 flaky_tests: ['eval:land-tidy-temp-worktree']
+started: "2026-11-13 11:31:36"
 ---
 # Flaky test eval:land-tidy-temp-worktree
 
