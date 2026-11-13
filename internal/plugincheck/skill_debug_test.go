@@ -14,8 +14,8 @@ func TestSkillDebug(t *testing.T) {
 		// race.md holds the copyable race probe, which made the folder longer.
 		// The known-flake rerun rule in Phase 1 adds two more lines.
 		// The required-proof steps, the recent-changes step and the hang recipe
-		// added lines to SKILL.md.
-		MaxLines: 356,
+		// added lines to SKILL.md; private probe checks extend the recipes.
+		MaxLines: 360,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -91,9 +91,9 @@ func TestDebugBisectRunsInATempClone(t *testing.T) {
 	txt := readSkill(t, "skills/debug/SKILL.md")
 	for _, want := range []string{
 		"`git bisect` and a checkout of an older commit run only in a temp clone",
-		"`git clone . \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect start`",
+		`git clone "$source_root" history && cd history && pwd -P && git bisect start`,
 		"never in the repo's own working tree",
-		"`cd \"${TMPDIR:-/tmp}/<name>\" && pwd && git bisect good <sha>`",
+		`cd "$probe_root/history" && pwd -P && git bisect good <sha>`,
 	} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("debug/SKILL.md missing %q", want)
@@ -117,7 +117,6 @@ func TestDebugProbeFolderIsChecked(t *testing.T) {
 		// The write rides on the same line as the check: a harness may start
 		// every shell call in the repo again, so a cd in an earlier call
 		// proves nothing about the next one.
-		"`mkdir -p \"${TMPDIR:-/tmp}/<name>\" && cd \"${TMPDIR:-/tmp}/<name>\" && pwd && <the command that writes>`",
 		"Every shell call may start in the repo again",
 		"on the same line",
 		"Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.",
@@ -165,7 +164,6 @@ func TestDebugProofIsRequired(t *testing.T) {
 		"**Cause:**", "**Repro:**", "**Evidence:**", "**Unverified:**",
 		// The exit that stops in Phase 1 uses the same four lines.
 		"Report it in the four lines of Phase 3, with Cause \"not proven\" and Repro \"none yet\" plus what you tried.",
-		"The copy is made on such a line too: `cp -R \"$OLDPWD/<what the probe needs>\" .` after the `pwd`.",
 		"a command the user can paste",
 		"or \"not proven\" plus what you ruled out",
 	} {
@@ -233,5 +231,33 @@ func TestDebugHangRecipe(t *testing.T) {
 	}
 	if strings.Count(txt, "Three failed fixes") != 1 {
 		t.Error("Three failed fixes must be said once")
+	}
+}
+
+// Controls copied from another checkout cannot prove the reported defect.
+func TestDebugControlSource(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{"source_root", "absolute root of the checkout under investigation", "before changing directories", `cp -R "$source_root/<what the probe needs>" .`, "Record that absolute path", "Each later shell call"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug control source missing %q", want)
+		}
+	}
+	if strings.Contains(txt, "$OLDPWD") {
+		t.Error("control source still depends on shell history")
+	}
+}
+
+// Every probe writer uses fresh private storage, including incidental outputs.
+func TestDebugProbeIsolation(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{"umask 077", "exclusive", "never `mkdir -p`", "test ! -L", "unset TMPDIR", "cache", "polluter", "profile", "File-tool writes", "verified absolute", "metadata-only exceptions", "Before the first repro", "Treat tests, imports and profilers as writers", "Never append a repro", "Any probe of another caller"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug isolation missing %q", want)
+		}
+	}
+	for _, name := range []string{"root-cause-tracing.md", "race.md"} {
+		if !strings.Contains(readSkill(t, "skills/debug/"+name), "private probe") {
+			t.Errorf("%s omits private probe boundary", name)
+		}
 	}
 }

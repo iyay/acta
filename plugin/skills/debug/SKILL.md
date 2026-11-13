@@ -9,7 +9,8 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Ground rules
 
-- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo. Probes, scripts and instrumented copies live outside the repo, in a temp folder. Every shell call may start in the repo again, so a `cd` in an earlier call proves nothing. Put the folder check on the same line as each write: `mkdir -p "${TMPDIR:-/tmp}/<name>" && cd "${TMPDIR:-/tmp}/<name>" && pwd && <the command that writes>`. Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.
+- **Read only until the cause is proven.** Phases 1 to 3 change no file in the repo except the explicit metadata-only exceptions below. Probes, scripts and instrumented copies live outside the repo, in a fresh private probe folder. Use exclusive creation, never `mkdir -p` or a fixed shared name: `probe_root="${TMPDIR:-/tmp}/acta-probe-$$-${RANDOM:-0}" && (umask 077 && mkdir "$probe_root") && cd "$probe_root" && pwd -P && <the command that writes>`. An unset TMPDIR uses `/tmp`; an existing name, symlink or failed creation stops the line. Record the printed absolute path. Every shell call may start in the repo again, so a `cd` in an earlier call proves nothing. Each later write sets `probe_root` to that recorded path and checks it on the same line: `test ! -L "$probe_root" && cd "$probe_root" && pwd -P && <the command that writes>`. Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.
+- **All writers share that boundary.** Tests and their cache files, polluter hunts, profile outputs and instrumentation run only in the copied checkout inside private probe storage. Set output and cache paths there. File-tool writes use verified absolute private probe paths, never a relative path or the source checkout. Recheck those paths after a shell reset. The Phase 1 known-flake record and a bug record after proof are metadata-only exceptions for acta planning files; neither permits source edits.
 - **Redact secrets** in commands, output, saved files and web searches. Print whether a secret is set, never its value.
 - **No live systems.** Do not change production, shared services or their logging without the user's yes, and never push unless the user asks. When only the user can reach a system, give them the exact commands to run.
 - **Name what you saw.** Every report splits three things: observed (a command ran and printed it), hypothesis (not yet tested), and unverified (not reachable from here).
@@ -18,12 +19,14 @@ Find the cause with evidence before changing code. A cause is proven only when a
 
 ## Phase 1: Symptom and feedback loop
 
+The source checkout is for reading files and history only. Never append a repro, import, test or profiler run to a context-gathering command. Make and check the private copy before running any app code, even to confirm the initial symptom.
+
 Exit: one command you ran catches the exact symptom the user reported.
 
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
-1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
-2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
+1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment). Capture `source_root`, the absolute root of the checkout under investigation, before changing directories. From that checkout run `git rev-parse --show-toplevel`; a linked worktree has its own root. Record that absolute path. Each later shell call uses the recorded path explicitly; a shell reset or a main checkout must not replace it.
+2. Build the loop: an existing test or the user's own command, else a small replay script. Before the first repro, make the fresh private probe folder and copy the investigated checkout there. Treat tests, imports and profilers as writers, including hidden cache output; run the first repro and every later diagnostic command in that checked copy, never in the source checkout. A command that writes files runs only in a temp copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, hang, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
 5. Cannot reproduce, or the symptom lives where you cannot reach? Stop short of a cause. Say the cause is not proven, list what you ruled out locally, and ask for specific evidence: exact values, logs for a time window, a row count, a deploy diff. "Check the logs" is not specific. Report it in the four lines of Phase 3, with Cause "not proven" and Repro "none yet" plus what you tried.
@@ -34,7 +37,7 @@ Exit: one explanation fits every observation, and the others are ruled out by a 
 
 1. Start with what changed lately: `git log` on the files involved, dependency versions, and the environment (config, data, tools). A change that lines up with the first failure is the first thing to probe.
 2. Cut inputs and steps while the failure still shows. Stop once the cause is clear; full minimization is not required.
-3. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` and a checkout of an older commit run only in a temp clone, never in the repo's own working tree, each on one line with its check: `git clone . "${TMPDIR:-/tmp}/<name>" && cd "${TMPDIR:-/tmp}/<name>" && pwd && git bisect start`. Each later step starts the same way: `cd "${TMPDIR:-/tmp}/<name>" && pwd && git bisect good <sha>`.
+3. Compare a working path with the failing one: a similar caller, an older commit, other data. List every difference. `git bisect` and a checkout of an older commit run only in a temp clone inside the checked private probe folder, never in the repo's own working tree: `test ! -L "$probe_root" && cd "$probe_root" && pwd -P && git clone "$source_root" history && cd history && pwd -P && git bisect start`. Each later temp clone step repeats the recorded absolute path and folder check: `test ! -L "$probe_root" && cd "$probe_root/history" && pwd -P && git bisect good <sha>`.
 4. When more than one cause fits, rank them and write what each predicts. Run the probe whose result splits them best. Change one thing at a time.
 5. For a bug deep in a call stack, trace the bad value back to where it starts: see `root-cause-tracing.md`.
 
@@ -44,9 +47,9 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 
 1. Before you state the cause, write down the result that would show it wrong, then run that probe.
 2. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. The copy is made on such a line too: `cp -R "$OLDPWD/<what the probe needs>" .` after the `pwd`. A control that cannot run: say why under Unverified.
+3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. The copy is made on such a line too: set `source_root` to the recorded absolute path, then use `cp -R "$source_root/<what the probe needs>" .` after the `pwd`. Copy the investigated checkout, including its current changes, not its parent branch. Record the source path and run the same symptom command and control on that copy. A control that cannot run: say why under Unverified.
 4. When several tries fail under one shared belief, test that belief directly.
-5. Once the cause is proven, search the other callers for the same pattern, and list what you find after the four lines of the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
+5. Once the cause is proven, search the other callers for the same pattern, and list what you find after the four lines of the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan. Any probe of another caller, including an import, runs only in the checked private copy; never return to the source checkout to run it.
 6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
 
 ## Phase 4: Fix, verify and clean up

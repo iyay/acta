@@ -26,6 +26,8 @@ var evalCases = []struct {
 	{"debug-order-dependent", "skills/debug/find-polluter.sh", "polluter"},
 	{"debug-performance", "skills/debug/SKILL.md", "slowness"},
 	{"debug-independent-check", "skills/debug/SKILL.md", "Prove the mechanism"},
+	{"debug-worktree-source", "skills/debug/SKILL.md", "Prove the mechanism"},
+	{"debug-probe-isolation", "skills/debug/SKILL.md", "Read only until the cause is proven"},
 	{"debug-hang", "skills/debug/SKILL.md", "who waits on whom"},
 	{"side-idea-to-scratch", "skills/scratch/SKILL.md", "never"},
 	{"note-to-scratch", "skills/scratch/SKILL.md", "note this"},
@@ -132,7 +134,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	debug := map[string]bool{
 		"debug-exact-symptom": true, "debug-misleading-path": true, "debug-no-repro": true,
 		"debug-race": true, "debug-order-dependent": true, "debug-performance": true,
-		"debug-independent-check": true, "debug-hang": true,
+		"debug-independent-check": true, "debug-worktree-source": true, "debug-probe-isolation": true, "debug-hang": true,
 	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
