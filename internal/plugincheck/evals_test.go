@@ -157,7 +157,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			}
 			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
 			// Mixed cases pair one narrow judge with fixed checks of real effects.
-			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-cleanup-report-partial": "behavior.md", "land-cleanup-report-complete": "behavior.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
+			if judge, ok := map[string]string{"review-clean-has-evidence": "coverage-recovery.md", "cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-cleanup-report-partial": "behavior.md", "land-cleanup-report-complete": "behavior.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
 				mustJudge = filepath.Base(f) == judge
 			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {

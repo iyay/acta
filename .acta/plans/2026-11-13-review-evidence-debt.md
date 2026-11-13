@@ -6,6 +6,7 @@ after: [PLN-0237]
 id: PLN-0238
 created: "2026-11-13 06:13:07"
 hash: f3qekfa
+started: "2026-11-13 18:44:11"
 ---
 # Review keeps incomplete ranges blocked
 
@@ -39,9 +40,9 @@ hash: f3qekfa
 **Files:** `plugin/evals/review-clean-has-evidence/{prompt.md,scaffold.sh,graders/brief-asks-coverage.md,graders/verdict.md}`, new `plugin/evals/review-clean-has-evidence/graders/coverage-recovery.md`, `plugin/evals/review-false-blocker/{prompt.md,scaffold.sh,graders/clean-verdict.md}`, new `plugin/evals/review-false-blocker/graders/repro-ran.md`, `internal/plugincheck/workflow_debt_evals_test.go`, `internal/plugincheck/evals_test.go`
 **Seam:** loaded eval graders against planted reports, tool traces and scaffold repro markers.
 **verify:** A brief that mentions Coverage alone cannot pass the recovery check: a report lacking it must be returned to the same reviewer once, and a second omission leaves the axis BLOCKED. The false-BLOCKER case passes only after the real repro executes successfully; reading or quoting its command is insufficient. Accept a rejected finding with case variants and emphasized CLEAN in the orchestrator's own final verdict, while rejecting quoted-only verdicts and an unexecuted repro. Validate each fixed grader with positive and negative samples and each judge against planted traces.
-- [ ] Red: add `TestWorkflowDebtReviewGraders` and missing/repeated Coverage scenarios, then run `scripts/test ./internal/plugincheck -run 'TestWorkflowDebtReviewGraders|TestEvalCases|TestEvalLLM'` to show that the current graders accept stand-ins and reject valid verdict forms.
-- [ ] Change: make the scaffold expose a runnable repro marker and incomplete reviewer reports, replace proxy checks with observed recovery/repro grading, allow only the needed judge rubric in the existing allowlist, and run both cases on unchanged skill text to establish corrected baselines.
-- [ ] Commit: test(review): grade Coverage recovery and executed repros
+- [x] Red: add `TestWorkflowDebtReviewGraders` and missing/repeated Coverage scenarios, then run `scripts/test ./internal/plugincheck -run 'TestWorkflowDebtReviewGraders|TestEvalCases|TestEvalLLM'` to show that the current graders accept stand-ins and reject valid verdict forms.
+- [x] Change: make the scaffold expose a runnable repro marker and incomplete reviewer reports, replace proxy checks with observed recovery/repro grading, allow only the needed judge rubric in the existing allowlist, and run both cases on unchanged skill text to establish corrected baselines.
+- [x] Commit: test(review): grade Coverage recovery and executed repros
 
 ### Task 2: Preserve incomplete ranges through all three rounds
 
@@ -52,3 +53,22 @@ hash: f3qekfa
 - [ ] Change: state the cumulative incomplete-range rule and round-3 stop, fix build's range handoff, update the wiki, then run the focused checks and measure `review-incomplete-rounds`, `review-clean-has-evidence`, `review-false-blocker` and `build-close-no-suite` for 10 runs per arm.
 - [ ] Commit: fix(review): preserve incomplete ranges within the round budget
 
+## State
+
+### Next
+
+Task1 DONE a0d56f9; ticks/readback3/3 and wave1 committed. Corrected old controls: Coverage10/10,repro10/10,buildclose10/10 in review-evidence-old-corrected-20261113/logs. Guarded incomplete-range old10/10 in review-rounds-old-guarded-20261113. All final fixtures match between arms.
+Task2 ACTIVE and uncommitted. RED/green recorded for cumulative range wiring and a real-Git moved-parent handoff test. Final focused checks PASS; package13.799s PASS before latest review-only prose. Build cap11094/review11658. No full suite yet. New rounds judge calibration7/7 expected, tmp.Dvp6dVHBGD.
+Candidate1 guarded results39/40: target9/10 and three controls10/10; e-Ru1b7q offered another review in third-round ask. Candidate2 also39/40: e-I7KrQ9 table has correct inputs, but ask mentions only original range and drops fix range. Interpretive cause not proven; source ambiguity is a hypothesis. Both snapshots/raw results retained, no rubric weakened.
+Candidate3 explicitly says an incomplete report leaves ALL current input ranges incomplete, including fix range; third-round ask concerns all unreviewed ranges and never offers another round. This is the THIRD and last source candidate, not an unchanged retry. Matching binary review-evidence-candidate3-bin-20261113/acta; measurements sessions57343(target,Coverage) and91752(repro,buildclose), logs/logs/new-*.log,10 per case. Await all full-case results.
+If candidate3 regresses, follow approved global fallback: exclude regressing review text, retain DBT0165.01 open and remove it from closes; keep nonregressing build handoff and calibrated evidence fixes for .02/.03. Do not attempt a fourth source fix. Record exact narrowed scope through acta state/rulings before review; no fresh permission needed for the already-approved exclusion rule.
+If no regression, commit Task2 with Task:PLN-f3qekfa#2, tick/readback/wave2commit; update existing review-base-merge-base wiki once, review two fresh read-only axes, then full suite and tagsreview/build. Do not push or attach docs. Continue approved239-241 after238 lands; do not redo completed237/244.
+
+### Findings
+
+Task1 committed a0d56f9, tick/readback3/3 andwave1committed. Corrected old baselines Coverage10/10,repro10/10, buildsnapshotreview-evidence-old-corrected-20261113; native Coverage judge9/9 plantedexpected after proven delivery-count correction, reports/raw retained. Originalprecorrection9/10 runs excluded, not instructioneffects.
+Task2 watchedRED for missing cumulative ranges and missing merge-base handoff. New real-Git property runs skillassignment underfreshHOME/TMPDIR with advancedmain; GREEN returnsbranchpoint. Initialcandidate1 focused0.141sPASS. Packagecaughtnewscaffoldmissingnonemptyguard plusobsoletewordingassertions; fixedsetup/updatedassertionstosame strongercontract, package13.799sPASS. No fullsuite yet.
+New roundsjudge7/7 plantedexpected(2validPASS5invalidFAIL), tmp.Dvp6dVHBGD, private review-rounds-probes-20261113. Guarded oldrange case10/10 tmp.ocoebg8zFk. Beforeguard, old/newrange10/10each retained; onlyguardedpaircountsforfinalcase.
+Candidate1 othercases all10/10: Coverage tmp.Y0PpCbA814, repro tmp.dI9ZNIA2XS, buildclose tmp.2PFK3zbYnp. Guardednewrange9/10 tmp.LlbHr0TzqJ: e-Ru1b7q retainedcorrectranges/BLOCKED butofferedanotherreview inRound3's askmenu. Do notclaimnonregression; firstcandidateactual39/40 vsold40/40. Snapshotreview-evidence-candidate1-guarded-20261113 andoriginalpreGuard snapshotretained.
+Candidate2 clarifies that Round3 incomplete stops/asks aboutunreviewedwork withoutofferinganotherreview; subsequentland/fix/revert BLOCKERchoices applyonlytocomplete reports. CauseofLLMchoice notproven; ambiguitybetweenincompletebranch andBLOCKERmenuis hypothesis. WatchednativecaseRED precedesclarification; narrow0.031sPASS. Exactreviewcap11560, build11094. No grader weakened orunchanged rerun tochasegreen.
+Candidate2 privatebinarybuilding session102? actualexecsession inturn; directoryreview-evidence-candidate2-bin-20261113/logs. Next runfournewcases10each onecasepercall withthismatchingbinary, compareimmutablecorrectedold40/40. CommitTask2onlyafteranalyzingresults; thenwikiupdateonce/review/full/taggedland. No reapproval/push/attachments.

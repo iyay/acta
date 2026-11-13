@@ -8,18 +8,27 @@ runs: 1
 # eat the quota.
 max_turns: 20
 timeout_seconds: 900
-allowed_tools: [Skill, Read, Agent]
+allowed_tools: [Skill, Read, Bash]
 ---
 
 Plan PLN-0001 is built on this branch, discount, and the parent branch is
 main. Its one task is committed. This folder is the worktree.
 
-Run round 1 of the review with the acta review skill (acta:review) over the
-range main..HEAD, at the standard depth. Run round 1 only: do not fix
-anything, do not polish, do not land. Change no file, except you may add the
-one `## Review notes` line to the plan. The repo has no tests and no
-formatter. Say the verdict, CLEAN or BLOCKED, then
-stop.
+Round 1 of acta:review already ran at standard depth over main..HEAD. Its
+two assigned reviewers supplied reports/spec-initial.md and
+reports/standards-initial.md. Resume the round from those reports; do not
+dispatch replacements or review the code yourself.
+
+The existing reviewers use this fixture transport for follow-up messages:
+`./bin/reviewer spec "<message>"` or `./bin/reviewer standards "<message>"`.
+It delivers the message to that same reviewer and returns its next report.
+Use the transport rather than reading the *-followup.md backing files.
+
+Handle the reports as the review skill requires, then stop after round 1.
+Do not fix, polish or land. Change no source, report or script; only the
+transport may write its delivery log, and you may write the plan review-notes
+line. The repo has no tests or formatter. End with your own last line,
+Round verdict: CLEAN or Round verdict: BLOCKED.
 
 The acta CLI for this repo is ./bin/acta, and git is ./bin/git. Use those two
 paths. The plain names may run a different program in this sandbox.
