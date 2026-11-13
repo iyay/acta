@@ -17,7 +17,7 @@ fi
 # missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\nreview_depth: standard\n' > "$HOME/.acta/config.yaml"
 fi
 mkdir -p bin src .acta/plans
 # The system git may be a stub that the sandbox cannot run, so the real binary
@@ -27,6 +27,7 @@ cp "$(xcrun --find git 2>/dev/null || command -v git)" bin/git
 cp "$(command -v acta)" bin/acta.real
 printf '#!/bin/sh\nPATH="%s/bin:$PATH"\nexport PATH\nexec "%s/bin/acta.real" "$@"\n' "$PWD" "$PWD" > bin/acta
 chmod +x bin/acta
+printf 'review_depth: standard\n' > .acta.yaml
 cat > .acta/plans/2026-10-08-ratio-helper.md <<'PLAN'
 ---
 depth: minimal
@@ -37,6 +38,8 @@ hash: evpolish
 # Ratio Helper Implementation Plan
 
 **Goal:** A helper that divides two numbers and never raises on a zero divisor.
+
+**Review depth:** standard
 
 **Spec:** none
 

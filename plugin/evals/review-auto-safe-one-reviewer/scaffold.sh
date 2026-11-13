@@ -17,7 +17,7 @@ fi
 # missing. Inside the eval it is always missing, so the run still gets one.
 mkdir -p "$HOME/.acta"
 if [ ! -f "$HOME/.acta/config.yaml" ]; then
-  printf 'chat_language: English\nstyle: adhd\n' > "$HOME/.acta/config.yaml"
+  printf 'chat_language: English\nstyle: adhd\nbuild_executor: inline\nreview_depth: auto\n' > "$HOME/.acta/config.yaml"
 fi
 mkdir -p bin src .acta/plans
 # The system git may be a stub that the sandbox cannot run, so the real binary
@@ -32,7 +32,7 @@ chmod +x bin/acta
 # written. No risk path is touched. The case checks that under the auto depth
 # such a diff gets one reviewer subagent, not two and not none.
 # The repo asks for the auto review depth, so the review picks the level.
-printf 'review_depth: auto\n' > .acta.yaml
+printf 'review_depth: auto\nbuild_executor: inline\n' > .acta.yaml
 mkdir -p tests
 cat > src/bar.py <<'PY'
 def bar_width(width, percent):
@@ -48,6 +48,8 @@ hash: evasafe
 # Clamp a percent
 
 **Goal:** A helper keeps a percent between 0 and 100.
+
+**Build executor:** inline
 
 **Spec:** none
 

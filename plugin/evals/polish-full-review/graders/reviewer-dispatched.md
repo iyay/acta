@@ -1,12 +1,9 @@
 ---
 # guards: ## Review tiers
-# Rejects a run that reviews the polish alone. The commit message says polish
-# but one logic line changed, so the diff picks the full tier, and the full
-# review is two reviewer subagents. Every reviewer brief names its axis as
-# Spec or Standards. The match is a case-sensitive substring, so this one
-# counts the Spec reviewer. The Standards reviewer has its own grader.
+# Match declared reviewer launches in actual tool inputs; resumes reuse an agent.
 type: tool_used
 tool: Agent
-input_match: "Spec"
+input_match: '^(?![\s\S]*"resume"\s*:\s*"[^"]+")[\s\S]*"prompt"\s*:\s*"ACTA_REVIEW_AXIS=SPEC(?:\\n|\\r\\n| )'
 min: 1
+max: 1
 ---

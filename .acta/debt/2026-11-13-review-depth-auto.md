@@ -2,6 +2,7 @@
 id: DBT-0166
 hash: srt6bxz
 parent: plans/2026-11-12-review-depth-auto
+started: "2026-11-13 19:54:38"
 ---
 # Review NOTEs: Review depth auto: the review a diff needs, picked by rule and reason
 
