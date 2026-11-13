@@ -1,6 +1,6 @@
 ---
 name: land-tidy-temp-refused
-description: When the plain remove of the tidy temp gate worktree refuses because the gate left an untracked file, the land never forces or deletes it, shows the file, and offers the two choices.
+description: When the plain remove of the tidy temp gate worktree refuses because the gate left an untracked file, the land keeps it without approval, offers only qualified cleanup, and continues the green land.
 tags: [land, worktrees, tidy]
 runs: 1
 # The run loads the land skill, runs the suite, tidies, runs the suite again

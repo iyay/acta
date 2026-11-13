@@ -10,7 +10,7 @@
 # folder, so tidy has to run the gates again in a detached temp worktree of
 # its tip. The suite leaves a report file when it runs on a detached HEAD, so
 # the plain remove of that temp worktree refuses. The case checks that the
-# land never forces or deletes that file, and offers the two choices.
+# land never deletes that file without approval and reports the retained tree.
 set -euo pipefail
 # The eval runs this in an empty folder. Anywhere else it would git init,
 # change git config and commit files that are not ours, so stop first.

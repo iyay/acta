@@ -22,3 +22,5 @@ Known limit: a hash in the last new commit stays old in planning files, since a 
 After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a spec never leaves the parent dirty.
 
 Tidy keeps the kept commit's message and moves each folded `Task:` trailer into its last paragraph, once (BUG-0051); git and `internal/commits` read trailers only there. Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.
+
+Cleanup: [typed approval](gate-output-cleanup.md).
