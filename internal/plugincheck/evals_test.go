@@ -73,6 +73,8 @@ var evalCases = []struct {
 	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
 	{"land-records-flake", "skills/land/baseline.md", "acta flake record <name> --plan <plan id>"},
 	{"land-eval-flake", "skills/land/SKILL.md", "acta flake record <gate>:<case> --plan <plan id>"},
+	{"land-cleanup-report-partial", "skills/land/tidy.md", "temp worktree"},
+	{"land-cleanup-report-complete", "skills/land/tidy.md", "temp worktree"},
 	{"land-gate-output-approved", "skills/land/tidy.md", "temp worktree"},
 	{"land-gate-output-no-approval", "skills/land/tidy.md", "temp worktree"},
 	{"land-gate-output-boundaries", "skills/land/tidy.md", "temp worktree"},
@@ -154,7 +156,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			}
 			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
 			// Mixed cases pair one narrow judge with fixed checks of real effects.
-			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
+			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-cleanup-report-partial": "behavior.md", "land-cleanup-report-complete": "behavior.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
 				mustJudge = filepath.Base(f) == judge
 			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {

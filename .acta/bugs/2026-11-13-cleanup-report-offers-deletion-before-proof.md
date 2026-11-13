@@ -1,6 +1,9 @@
 ---
 id: BUG-0093
 hash: qrsobhx
+started: "2026-11-13 12:55:16"
+fixed_in: 0aac56a9bfd82194fbca9db75dd36ac89a93784f
+finished: "2026-11-13 13:37:46"
 ---
 # Cleanup report offers deletion before evidence is complete
 
