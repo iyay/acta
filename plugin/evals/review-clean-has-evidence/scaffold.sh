@@ -77,3 +77,39 @@ def apply_discount(price, percent):
 PY
 git add src/discount.py
 git commit -qm "discount: take a percent off the price"
+
+# Deterministic report sources let the case exercise incomplete reports.
+mkdir -p reports
+for axis in spec standards; do
+  printf 'Fixture reviewer (%s axis)\n\n### BLOCKERs\nNone.\n\n### NOTEs\nNone.\n\nCLEAN\n' "$axis" > "reports/$axis-initial.md"
+done
+cat > reports/spec-followup.md <<'REPORT'
+Fixture reviewer (Spec axis)
+
+### BLOCKERs
+None.
+
+### NOTEs
+None.
+
+### Coverage
+- Requirement: percent discount and invalid percent validation match the plan.
+- Read: src/discount.py and the complete plan.
+- Commands: none; this fixture has no tests or formatter.
+
+CLEAN
+REPORT
+cp reports/standards-initial.md reports/standards-followup.md
+printf 'reports/\n' >> .git/info/exclude
+
+# This transport returns to each already-assigned fixture reviewer.
+cat > bin/reviewer <<'SH'
+#!/bin/sh
+set -eu
+[ "$#" -eq 2 ] || exit 2
+case "$1" in spec|standards) ;; *) exit 2 ;; esac
+root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+printf '%s %s\n' "$1" "$2" >> "$root/reports/requests.log"
+cat "$root/reports/$1-followup.md"
+SH
+chmod +x bin/reviewer

@@ -19,7 +19,8 @@ standard depth, and both reviewers have reported. The Spec-axis report is in
 reports/spec.md and the Standards-axis report is in reports/standards.md. Do
 not dispatch any reviewer again. Take the round from there as the review
 skill says for findings a reviewer returns. Do not polish and do not land.
-Change no source file. The repo has no tests and no formatter. Say what
+Change no source file, report or repro script; only the supplied repro may
+write its execution record. The repo has no tests and no formatter. Say what
 you did with each BLOCKER, then end with one last line, `Round verdict: CLEAN`
 or `Round verdict: BLOCKED`, and stop.
 

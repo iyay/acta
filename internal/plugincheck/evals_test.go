@@ -65,6 +65,7 @@ var evalCases = []struct {
 	{"review-planted-bug", "skills/review/SKILL.md", "## Finding bar: BLOCKER or NOTE"},
 	{"review-nit-stays-note", "skills/review/SKILL.md", "Always a NOTE: comments, naming"},
 	{"review-false-blocker", "skills/review/receiving.md", "Verify each finding against the code before acting"},
+	{"review-incomplete-rounds", "skills/review/SKILL.md", "A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED"},
 	{"review-clean-has-evidence", "skills/review/SKILL.md", "both from [code-reviewer.md](code-reviewer.md)"},
 	{"lean-tests", "skills/tdd/SKILL.md", "test it once, at the layer that owns it"},
 	{"review-understanding-report", "skills/land/SKILL.md", "It asks the user no question"},
@@ -135,7 +136,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	}
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
-		"review-understanding-report": true, "review-understanding-disabled": true,
+		"review-understanding-report": true, "review-understanding-disabled": true, "review-incomplete-rounds": true,
 		"cold-read-offer": true, "cold-read-skip": true, "cold-read-no-signal": true, "cold-read-guard-test-only": true, "cold-read-accept": true, "cold-read-unavailable": true,
 		"cleanup-proposes-first": true, "cleanup-warns-cost": true}
 	for _, c := range evalCases {
@@ -157,7 +158,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 			}
 			mustJudge := want[c.folder] || debug[c.folder] || (c.folder == "build-close-no-suite" && filepath.Base(f) == "review-handoff.md")
 			// Mixed cases pair one narrow judge with fixed checks of real effects.
-			if judge, ok := map[string]string{"cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-cleanup-report-partial": "behavior.md", "land-cleanup-report-complete": "behavior.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
+			if judge, ok := map[string]string{"review-clean-has-evidence": "coverage-recovery.md", "cleanup-proposes-first": "proposes-first.md", "cleanup-warns-cost": "warns-cost.md", "land-cleanup-report-partial": "behavior.md", "land-cleanup-report-complete": "behavior.md", "land-gate-output-approved": "behavior.md", "land-gate-output-no-approval": "behavior.md", "land-gate-output-boundaries": "behavior.md"}[c.folder]; ok {
 				mustJudge = filepath.Base(f) == judge
 			}
 			if strings.Contains(readFile(t, "evals", c.folder, "graders", filepath.Base(f)), "type: llm") != mustJudge {

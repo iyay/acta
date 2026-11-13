@@ -41,16 +41,18 @@ The deep lens, as code-reviewer.md lists it, applies only to trust boundaries, a
 
 Each reviewer reports: the model it ran on, BLOCKERs ranked (five at most), Pre-existing items, NOTEs, a `### Coverage` section, and a last line of one word: CLEAN or BLOCKED. A report with no `### Coverage` section is not a verdict, whatever its last line says: send it back to the same reviewer once and ask for the section, and never dispatch a new reviewer for it. A second report without it makes that axis BLOCKED: tell the user. A round where any reviewer wrote `N more BLOCKERs not listed` is BLOCKED, even when the listed ones are rejected. A round that is BLOCKED with no BLOCKER left to fix (only cut ones, or an axis with no Coverage) has no fix task: the next round reviews the same range again, with the cut ones asked for, and counts as a round. Merge the BLOCKERs, NOTEs and Pre-existing items that name the same defect, keeping the best proof, before the fact-check and before the fix task.
 
+Record each round's exact input ranges in its review notes. After a cut list or missing Coverage, keep every incomplete range until a complete review covers it. Rejected listed findings never complete that range. With committed fixes, the next round covers the fix range plus every incomplete range; an incomplete-only round repeats those ranges without a fix task. An incomplete report leaves all input ranges of that round incomplete, including its fix range. A CLEAN label alone clears no range.
+
 ## Budget: three rounds, then land or ask
 
-1. Round 1 reviews the range from the merge base to `HEAD`. CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
+1. Round 1 reviews the range from the merge base to `HEAD`. With complete reports, CLEAN, or NOTEs only: run `## After a CLEAN round`, which ends in `acta:land`.
 2. BLOCKERs: one fix task holding all of them, added to the same plan from the same worktree with `acta plan add <plan id> fix-round --title <title> --verify <line>`, one BLOCKER per stdin line, landing as one commit. It prints the task id to tick. The `[fix]` NOTEs join that fix task.
-3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
-4. Round 3 reviews the second fix range only. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
+3. Round 2 reviews the fix range (`<round-1 head>..HEAD`) and every incomplete range, plus the direct callers of every function the fix touched; fixed code on a trust boundary, auth, money, migration or delete path gets the deep lens again. CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.
+4. Round 3 reviews the second fix range and every incomplete range. Round 3 still incomplete: stop and ask about all unreviewed ranges; do not land or offer another review round. The following choices apply only to complete reports. CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user: land anyway, fix, or revert to the round-1 head. Land anyway: that round's `[fix]` NOTEs move to `[debt]`, so none is left with no home.
 
 depth.md `## Rounds` keeps the verdicts.
 
-There is never a round 4. A round with no BLOCKER does not start; it runs `## After a CLEAN round`. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
+There is never a round 4. A complete round with no BLOCKER starts no further round; it runs `## After a CLEAN round`. An incomplete round follows the range rule above within the same three-round budget. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
 
 ## Where findings go
 

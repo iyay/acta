@@ -1,7 +1,7 @@
 ---
-# guards: both from [code-reviewer.md](code-reviewer.md)
-# Rejects a run that stops with no verdict.
+# guards: the orchestrator gives its own final verdict
 type: regex
-pattern: "CLEAN|BLOCKED"
+pattern: '(?:^|\n)[ \t]*(?:\*\*|__)?(?:Round verdict:[ \t]*)?(?:\*\*|__)?(?:CLEAN|BLOCKED)(?:\*\*|__)?[.!]?[ \t]*\n?[ \t]*$'
+flags: i
 target: last_message
 ---
