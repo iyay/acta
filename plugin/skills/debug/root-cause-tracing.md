@@ -53,7 +53,7 @@ async function gitInit(directory: string) {
 }
 ```
 
-Run it and keep only those lines:
+Run tests only in the copied checkout inside the checked private probe folder. Keep test caches and log outputs there, too. On each shell call, repeat the recorded absolute folder check from `SKILL.md` before the command below. File-tool instrumentation uses verified absolute paths in that copy. Keep only those lines:
 
 ```bash
 npm test 2>&1 | grep 'DEBUG git init'
@@ -71,7 +71,8 @@ Then read the stacks: which test file, which line, which value repeats.
 
 If a test leaves a file or folder behind and you do not know which one, the
 script `find-polluter.sh` in this folder runs the tests one by one and stops
-at the first that creates it:
+at the first that creates it. Run it against the copied tests in the checked
+private probe folder, with the same folder check and cache/output paths:
 
 ```bash
 ./find-polluter.sh '.git' 'src/**/*.test.ts'

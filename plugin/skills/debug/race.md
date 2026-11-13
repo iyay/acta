@@ -4,6 +4,8 @@ Repeat runs only make a lost update likely. This probe makes it happen on
 every run: both workers read, wait at a barrier until the other has read too,
 and only then write. Run it on a copy of the code in the checked temp folder the ground rules of `SKILL.md` show, never in the repo.
 
+Keep the probe, imported code, caches and state files inside that private probe folder. Repeat its recorded absolute folder check for every shell write; file tools use verified absolute paths there. Set temporary output paths there before running the probe.
+
 Python, for a read-then-write method. Change the names to the real ones:
 
 ```python
