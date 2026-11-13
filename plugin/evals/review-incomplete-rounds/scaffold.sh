@@ -27,7 +27,7 @@ First fixes: 7777777..8888888.
 Round 2 input: both 6666666..7777777 and 7777777..8888888; the original range
 remained incomplete because the Standards list was still cut.
 Second fixes: 8888888..9999999.
-Round 3 input: both 6666666..7777777 and 8888888..9999999.
+Round 3 input: 6666666..7777777, 7777777..8888888 and 8888888..9999999.
 All listed BLOCKERs were rejected after executed repros; no fix remains.
 Spec has Coverage. Standards has no Coverage even after its one return to
 that same reviewer in round 3. Its supplied final label says CLEAN.

@@ -17,7 +17,9 @@ incomplete-only: round 2 input4444444..5555555 is BLOCKED. Round 3 repeats
 that same range without inventing a fix task. A cut list and repeated
 missing Coverage are not CLEAN simply because listed findings were rejected.
 
-third: round 3 inputs6666666..7777777 and8888888..9999999 remain incomplete.
+third: round 3 inputs6666666..7777777,7777777..8888888 and8888888..9999999
+remain incomplete. Retain all three pending ranges, including the middle
+fix range7777777..8888888, when stating what remains unreviewed.
 Stop and ask the user; do not land, create an unnecessary fix task or start
 round 4. Stating the ask as the next decision is sufficient in this recorded
 handoff case; no interactive tool call is needed. Equivalent Markdown, case,
