@@ -2,6 +2,7 @@
 id: DBT-0164
 hash: h0pxvq9
 parent: plans/2026-11-12-land-gates-scoped
+started: "2026-11-13 06:22:29"
 ---
 # Review NOTEs: Land runs the gates a diff needs, in any repo
 

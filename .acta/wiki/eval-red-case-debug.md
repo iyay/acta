@@ -13,4 +13,6 @@ paths: [plugin/evals/, plugin/evals-routing/]
 6. Read the kept trace (`--keep-temp`, `out/trace.jsonl`): list the tool calls and check whether the run read the file the skill points to. A judge stores votes, not reasons. In debug-race every red run skipped `race.md`; text-only rewrites of the skill did not change that.
 7. Never loosen a grader to go green. Never fix a symlink under the home folder that the sandbox cannot read without asking; it blocks Bash cases.
 
+An uncertainty fixture must withhold evidence, such as a missing path list. A suggestive filename can support a valid interpretation; inspect the failed run before treating its grade as a skill regression.
+
 A changed policy needs the same corrected grader on both arms. Validate judged traces and filesystem effects separately; a final report can hide file loss.

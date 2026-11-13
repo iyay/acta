@@ -233,7 +233,7 @@ func TestLandRecordsFlakes(t *testing.T) {
 		"after a step-6 rerun, the main checkout after the merge",
 		"after a tidy-tip rerun, the plan worktree, then run `acta tidy` again",
 		"A detached temp worktree cannot commit",
-		"An `eval:<case>` record follows the same rule.",
+		"A `<gate>:<case>` record follows the same rule.",
 		"A record that exits non-zero stops the land.",
 		"`commit:` the tested commit step 2 printed",
 		"`tree:` the tested tree step 2 printed",
@@ -453,7 +453,8 @@ func TestLandSecondRunAndKnownFlake(t *testing.T) {
 	for _, want := range []string{
 		"re-runs the gates: the full suite as before, and a slow gate only when the paths the parent gained since the branch left it",
 		"`git diff --name-only <merge base> <parent before the merge>`",
-		"include one its line says makes it run, in the form those paths call for",
+		"Apply every slow-gate selection rule from step 1 to those paths",
+		"forcing paths also trigger a run, and a line with no run paths runs whole",
 		"slow gate reused: the parent brought no path it covers",
 		"`git log --oneline <merge base>..<parent before the merge>`",
 		"In doubt about what the parent gained, the gate runs.",
@@ -475,7 +476,7 @@ func TestLandSecondRunAndKnownFlake(t *testing.T) {
 	tidy := readSkill(t, "skills/land/tidy.md")
 	for _, want := range []string{
 		"Run the gates on the tidy tip first",
-		"the full suite, and each slow gate by the second-run rule of SKILL.md step 6, where the parent before the merge is `<parent>`",
+		"the full suite, and each slow gate by every selection rule of SKILL.md step 6, including forcing paths and absent run paths, where the parent before the merge is `<parent>`",
 	} {
 		if !strings.Contains(tidy, want) {
 			t.Errorf("land tidy.md missing %q", want)
