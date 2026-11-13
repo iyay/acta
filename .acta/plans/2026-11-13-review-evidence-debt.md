@@ -7,6 +7,7 @@ id: PLN-0238
 created: "2026-11-13 06:13:07"
 hash: f3qekfa
 started: "2026-11-13 18:44:11"
+finished: "2026-11-13 19:24:33"
 ---
 # Review keeps incomplete ranges blocked
 
@@ -49,26 +50,39 @@ started: "2026-11-13 18:44:11"
 **Files:** `plugin/skills/review/SKILL.md`, `plugin/skills/build/SKILL.md`, `internal/plugincheck/skill_review_test.go`, `internal/plugincheck/skill_build_test.go`, `internal/plugincheck/evals_test.go`, `internal/plugincheck/budget_test.go`, new `plugin/evals/review-incomplete-rounds/{prompt.md,case.yaml,scaffold.sh,graders/behavior.md}`, `.acta/wiki/review-base-merge-base.md`
 **Seam:** review/build required rules and `review-incomplete-rounds`, with Task 1 cases as evidence controls.
 **verify:** A cut list or missing Coverage never becomes CLEAN solely because listed BLOCKERs were rejected. A mixed round retains both its fixes and every incomplete range in the next review; an incomplete-only round repeats its range without inventing a fix task. Round 3 still incomplete stops for the user and never starts round 4. The build handoff and review select the same merge-base range even when main moved. List each round's input range and decision in planted mixed, incomplete-only and third-round traces.
-- [ ] Red: add focused `TestReviewIncompleteRanges` and `TestBuildReviewMergeBase` checks plus the incomplete-rounds case, then run `scripts/test ./internal/plugincheck -run 'TestReviewIncomplete|TestBuildReviewMergeBase|TestReviewVerdictNeedsEvidence|TestEvalCases'` and the case on old text to expose the lost ranges and contradictory CLEAN path.
-- [ ] Change: state the cumulative incomplete-range rule and round-3 stop, fix build's range handoff, update the wiki, then run the focused checks and measure `review-incomplete-rounds`, `review-clean-has-evidence`, `review-false-blocker` and `build-close-no-suite` for 10 runs per arm.
-- [ ] Commit: fix(review): preserve incomplete ranges within the round budget
+- [x] Red: add focused `TestReviewIncompleteRanges` and `TestBuildReviewMergeBase` checks plus the incomplete-rounds case, then run `scripts/test ./internal/plugincheck -run 'TestReviewIncomplete|TestBuildReviewMergeBase|TestReviewVerdictNeedsEvidence|TestEvalCases'` and the case on old text to expose the lost ranges and contradictory CLEAN path.
+- [x] Change: state the cumulative incomplete-range rule and round-3 stop, fix build's range handoff, update the wiki, then run the focused checks and measure `review-incomplete-rounds`, `review-clean-has-evidence`, `review-false-blocker` and `build-close-no-suite` for 10 runs per arm.
+- [x] Commit: fix(review): preserve incomplete ranges within the round budget
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [ ] [fix] Include pending middle fix range7777777..8888888 in the third-history round3 input and rubric, alongside6666666..7777777 and8888888..9999999. Calibrate rejection of omission and remeasure the affected case old/new under identical corrected fixtures; production policy stays unchanged.
+- [ ] Commit: `polish: review notes for PLN-0238`
+
+## Review notes
+
+- Round 1, auto selected standard, full tier because agent instructions changed: input da73a2e139da583f9b96c7b76c123766694b3aab..49555669b05ef163d6410ef3da35d875d8ce6fc2. Both axes CLEAN, complete Coverage. BLOCKER 0, NOTE 1, pre-existing 0 after merging duplicate findings. One [fix] measurement NOTE: third-history fixture/rubric omits pending middle fix7777777..8888888; fix via one polish task, production policy unchanged. Package PASS Spec14.651s/Standards13.978s; isolated production policy/grader reversion RED. No unexpected worktrees or undispatched code commits.
 
 ## State
 
 ### Next
 
-Task1 DONE a0d56f9; ticks/readback3/3 and wave1 committed. Corrected old controls: Coverage10/10,repro10/10,buildclose10/10 in review-evidence-old-corrected-20261113/logs. Guarded incomplete-range old10/10 in review-rounds-old-guarded-20261113. All final fixtures match between arms.
-Task2 ACTIVE and uncommitted. RED/green recorded for cumulative range wiring and a real-Git moved-parent handoff test. Final focused checks PASS; package13.799s PASS before latest review-only prose. Build cap11094/review11658. No full suite yet. New rounds judge calibration7/7 expected, tmp.Dvp6dVHBGD.
-Candidate1 guarded results39/40: target9/10 and three controls10/10; e-Ru1b7q offered another review in third-round ask. Candidate2 also39/40: e-I7KrQ9 table has correct inputs, but ask mentions only original range and drops fix range. Interpretive cause not proven; source ambiguity is a hypothesis. Both snapshots/raw results retained, no rubric weakened.
-Candidate3 explicitly says an incomplete report leaves ALL current input ranges incomplete, including fix range; third-round ask concerns all unreviewed ranges and never offers another round. This is the THIRD and last source candidate, not an unchanged retry. Matching binary review-evidence-candidate3-bin-20261113/acta; measurements sessions57343(target,Coverage) and91752(repro,buildclose), logs/logs/new-*.log,10 per case. Await all full-case results.
-If candidate3 regresses, follow approved global fallback: exclude regressing review text, retain DBT0165.01 open and remove it from closes; keep nonregressing build handoff and calibrated evidence fixes for .02/.03. Do not attempt a fourth source fix. Record exact narrowed scope through acta state/rulings before review; no fresh permission needed for the already-approved exclusion rule.
-If no regression, commit Task2 with Task:PLN-f3qekfa#2, tick/readback/wave2commit; update existing review-base-merge-base wiki once, review two fresh read-only axes, then full suite and tagsreview/build. Do not push or attach docs. Continue approved239-241 after238 lands; do not redo completed237/244.
+Main review round1 overda73a2e..4955566 CLEAN both axes, complete Coverage; merged totals BLOCKER0 NOTE1 pre-existing0. Same [fix] NOTE from both: third-history fixture/rubric omitted middle pending fix7777777..8888888. Production policy correct and unchanged. Review notes recorded exact range; no unexpected worktrees/code commits.
+Polish task3 ACTIVE (acta plan add polish, tickstart done). Native pre-polish test RED: old grader passes a sample dropping middle range, expectedFalse, probe before-native.log. Two fixture/rubric files now include all3 pending ranges. Narrow case/schema/scaffold guard tests1.484sPASS, diffcheck clean. Native aftercalibration8samples(2validPASS6invalidFAIL expected), session26889 logreview-polish-probes-20261113/after-native.log; await actualmatch counts.
+Final private binary building sessionawaittool, directoryreview-evidence-final-bin-20261113. Aftercalibration, capture oldpolicy+corrected3rangefixture inordinaryprivatecopy and run affectedtargetold/new10each under samegrader; other3 controls/sourceinstructions unchanged so no repeatedruns. Originalcandidate3 beforepolish40/40each retained; supersedeonlytargetcase measurement.
+Then commit onepolish with TaskPLN-f3qekfa#3, tick/readback/wavecommit, and two fresh read-only reviewers on polish range because graderinstructions/fulltier. Polishcountsno reviewround. No secondpolish; its notes become debt/note. CLEAN then fullsuite and union --tag=review --tag=build (23 cases) with finalmatchingbinary; retain actualstatuses/logs/onlyPASSbaseline.
+Aftergates, tidy land main, final done3/3 and per-task ancestor proof beforecleanup; closeall3DBT0165 items. Continueapproved239-241inline serially, no reapproval/push/docsattachments.
 
 ### Findings
 
-Task1 committed a0d56f9, tick/readback3/3 andwave1committed. Corrected old baselines Coverage10/10,repro10/10, buildsnapshotreview-evidence-old-corrected-20261113; native Coverage judge9/9 plantedexpected after proven delivery-count correction, reports/raw retained. Originalprecorrection9/10 runs excluded, not instructioneffects.
-Task2 watchedRED for missing cumulative ranges and missing merge-base handoff. New real-Git property runs skillassignment underfreshHOME/TMPDIR with advancedmain; GREEN returnsbranchpoint. Initialcandidate1 focused0.141sPASS. Packagecaughtnewscaffoldmissingnonemptyguard plusobsoletewordingassertions; fixedsetup/updatedassertionstosame strongercontract, package13.799sPASS. No fullsuite yet.
-New roundsjudge7/7 plantedexpected(2validPASS5invalidFAIL), tmp.Dvp6dVHBGD, private review-rounds-probes-20261113. Guarded oldrange case10/10 tmp.ocoebg8zFk. Beforeguard, old/newrange10/10each retained; onlyguardedpaircountsforfinalcase.
-Candidate1 othercases all10/10: Coverage tmp.Y0PpCbA814, repro tmp.dI9ZNIA2XS, buildclose tmp.2PFK3zbYnp. Guardednewrange9/10 tmp.LlbHr0TzqJ: e-Ru1b7q retainedcorrectranges/BLOCKED butofferedanotherreview inRound3's askmenu. Do notclaimnonregression; firstcandidateactual39/40 vsold40/40. Snapshotreview-evidence-candidate1-guarded-20261113 andoriginalpreGuard snapshotretained.
-Candidate2 clarifies that Round3 incomplete stops/asks aboutunreviewedwork withoutofferinganotherreview; subsequentland/fix/revert BLOCKERchoices applyonlytocomplete reports. CauseofLLMchoice notproven; ambiguitybetweenincompletebranch andBLOCKERmenuis hypothesis. WatchednativecaseRED precedesclarification; narrow0.031sPASS. Exactreviewcap11560, build11094. No grader weakened orunchanged rerun tochasegreen.
-Candidate2 privatebinarybuilding session102? actualexecsession inturn; directoryreview-evidence-candidate2-bin-20261113/logs. Next runfournewcases10each onecasepercall withthismatchingbinary, compareimmutablecorrectedold40/40. CommitTask2onlyafteranalyzingresults; thenwikiupdateonce/review/full/taggedland. No reapproval/push/attachments.
+Both tasks committed/ticked/read back done2/2: Task1 a0d56f9,Task2 69b2045; wiki c787ee2. Watched RED preceded each change. Focused package Task1 14.055s and Task2 guard/corrected assertions13.799s PASS; final budget/range/Git property checks0.159s PASS. gofmt/diffcheck clean; full suite waits for land.
+Task1 grader controls validate quoted-only rejection, case/bold own verdicts, actual delivery/repro markers and missing/extra calls. Native Coverage calibration9/9 expected(3validPASS6invalidFAIL), tmp.ZGUhG08BYv. Unsupported asyncAgent follow-up pilots were setup failures, replaced with deterministic same-reviewer transport and actual delivery records. Repro marker proves execution, not general clone compliance. All raw probes retained in review-debt-probes-20261113.
+Precorrection baselines9/10 each were false negatives: unexecuted command after failed compound input wrongly counted as delivered; real false/dropped finding rejected because literalwordreject absent. Corrected graders validated before final measurement. Original raw snapshots/logs retained, never counted as instruction improvements.
+Final unchanged-fixture old/new comparisons40/40 each: Coverage10/10,repro10/10,buildclose10/10,incomplete-ranges10/10. Summary/policy hashes review-evidence-candidate3-bin-20261113/paired-summary.json; new raw logs there. Oldcontrols review-evidence-old-corrected-20261113/logs, guardedrangeold review-rounds-old-guarded-20261113/logs. Newguardedrange reporttmp.94atIdyNIk; Coveragetmp.4rUEvV0bGT; reprotmp.geYCh80C9f; buildtmp.q7tcfFXrY0. No measured regression and no claim of improved pass rate or guaranteed compliance.
+Earlier source candidates1/2 had guardedrange9/10; snapshots review-evidence-candidate1-guarded-20261113 and review-evidence-candidate2-20261113 retained. Third/final source candidate states incomplete reports retain ALL current input ranges including fix range, and third-round asks cover all ranges without offering another round. Cause of individual LLM choices is not proven. No fourth source fix or weakened rubric; exclusion fallback not needed after final40/40.
+New rounds judge calibrated7/7 expected(2validPASS5invalidFAIL), tmp.Dvp6dVHBGD. New scaffold nonempty guard caught by package check; only affected range case remeasured10+10 under identical guarded fixtures. Existing three controls unchanged. Real-Git handoff property executes the skill assignment against advanced main in isolated HOME/TMPDIR and returns the branch point.
+Wiki review-base-merge-base updated once; wiki check stale warnings only/no errors. No review/full/tagged-land gates yet. No push/attachments; all original approvals remain valid. After this lands close DBT0165.01-.03 then continue239-241 serially inline.

@@ -59,7 +59,7 @@ func TestSkillReview(t *testing.T) {
 			"run `## After a CLEAN round`, which ends in `acta:land`.",
 			"CLEAN: run `## After a CLEAN round`. BLOCKER: one more fix task.",
 			"CLEAN: run `## After a CLEAN round`. BLOCKER: stop and ask the user",
-			"A round with no BLOCKER does not start; it runs `## After a CLEAN round`.",
+			"A complete round with no BLOCKER starts no further round; it runs `## After a CLEAN round`.",
 			"No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.",
 			"and over a polish commit",
 			// The Standards reviewer is the cheaper job, so it gets a cheaper tier.
@@ -516,5 +516,20 @@ func TestReviewDepthAuto(t *testing.T) {
 	}
 	if !strings.Contains(skill, "`/acta:review quick|standard|deep|auto`") {
 		t.Error("review/SKILL.md must name auto where it lists the depths")
+	}
+}
+
+// Range debt remains attached to a blocked round even when its fixes are done.
+func TestReviewIncompleteRanges(t *testing.T) {
+	body := readSkill(t, "skills/review/SKILL.md")
+	for _, want := range []string{
+		"keep every incomplete range until a complete review covers it",
+		"fix range plus every incomplete range",
+		"incomplete-only round repeats those ranges without a fix task",
+		"Round 3 still incomplete: stop and ask",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review must preserve incomplete ranges: missing %q", want)
+		}
 	}
 }

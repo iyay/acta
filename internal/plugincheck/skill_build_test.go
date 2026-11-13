@@ -2,6 +2,7 @@ package plugincheck
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -261,7 +262,9 @@ func TestBuildCloseWritesWikiFirst(t *testing.T) {
 		"Make one commit",
 		"finish any outstanding type check",
 		"report recorded task test results",
-		"then use `acta:review` over `<parent>..HEAD`",
+		"`BASE_SHA=$(git merge-base <parent> HEAD)`",
+		"`HEAD_SHA=$(git rev-parse HEAD)`",
+		"use `acta:review` over `<BASE_SHA>..<HEAD_SHA>`",
 	} {
 		i := strings.Index(closing, step)
 		switch {
@@ -729,5 +732,48 @@ func TestBuildManyText(t *testing.T) {
 		if !strings.Contains(skill, want) {
 			t.Errorf("build/SKILL.md missing %q", want)
 		}
+	}
+}
+
+// A moved parent must not make the build handoff review its newer commits.
+func TestBuildReviewMergeBase(t *testing.T) {
+	body := readBuildFile(t, "SKILL.md")
+	_, close, ok := strings.Cut(body, "## Close")
+	if !ok {
+		t.Fatal("missing build close")
+	}
+	_, assignment, ok := strings.Cut(close, "`BASE_SHA=$(")
+	if !ok {
+		t.Fatal("build close must compute the review base before handing off")
+	}
+	assignment = "BASE_SHA=$(" + strings.SplitN(assignment, "`", 2)[0]
+	if !strings.Contains(close, "over `<BASE_SHA>..<HEAD_SHA>`") {
+		t.Fatal("review handoff must use the computed range")
+	}
+	dir := t.TempDir()
+	env := append(os.Environ(), "HOME="+t.TempDir(), "TMPDIR="+t.TempDir(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+	run := func(name string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command(name, args...)
+		cmd.Dir, cmd.Env = dir, env
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("git", "init", "-q", "-b", "main")
+	run("git", "config", "user.name", "test")
+	run("git", "config", "user.email", "test@example.invalid")
+	run("git", "commit", "--allow-empty", "-qm", "base")
+	base := run("git", "rev-parse", "HEAD")
+	run("git", "checkout", "-qb", "work")
+	run("git", "commit", "--allow-empty", "-qm", "branch task")
+	run("git", "checkout", "-q", "main")
+	run("git", "commit", "--allow-empty", "-qm", "new parent work")
+	run("git", "checkout", "-q", "work")
+	script := strings.ReplaceAll(assignment, "<parent>", "main") + "; printf '%s' \"$BASE_SHA\""
+	if got := run("sh", "-c", script); got != base {
+		t.Fatalf("handoff base=%s want branch point %s", got, base)
 	}
 }
