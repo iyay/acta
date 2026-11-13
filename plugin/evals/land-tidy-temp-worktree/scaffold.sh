@@ -33,17 +33,58 @@ cp "$(command -v acta)" bin/acta.real
 # ./calls.log with its exit code and the checkout it ran in, so the grader
 # sees which checks ran, where, and in what order. The git calls acta makes
 # itself are not logged: ACTA_INNER marks them.
-printf '#!/bin/sh\nws="%s"\n' "$ws" > bin/git
-cat >> bin/git <<'WRAP'
-"$ws/bin/git.real" "$@"
-rc=$?
-if [ -z "$ACTA_INNER" ]; then
-  dir=.
-  [ "$1" = "-C" ] && dir="$2"
-  top=$(cd "$dir" 2>/dev/null && "$ws/bin/git.real" rev-parse --show-toplevel 2>/dev/null)
-  printf 'git %s exit=%s in %s\n' "$(printf '%s' "$*" | tr '\n' ' ')" "$rc" "${top##*/}" >> "$ws/calls.log"
-fi
-exit "$rc"
+cat > bin/git <<'WRAP'
+#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ws = Path(__file__).resolve().parent.parent
+real = str(ws / "bin/git.real")
+owner = ws / "repo"
+args = sys.argv[1:]
+
+def read(*argv):
+    p = subprocess.run([real, *argv], text=True, capture_output=True)
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+def registered():
+    text = read("-C", str(owner), "worktree", "list", "--porcelain")
+    return {os.path.realpath(line[9:]) for line in text.splitlines()
+            if line.startswith("worktree ")}
+
+# Resolve the command's actual registry, including an explicit -C prefix.
+index = next((i for i, a in enumerate(args) if a in
+              {"worktree", "merge", "reset"}), None)
+prefix = args[:index] if index is not None else []
+common = read(*prefix, "rev-parse", "--path-format=absolute", "--git-common-dir")
+is_owner = bool(common) and os.path.realpath(common) == os.path.realpath(owner / ".git")
+before = registered()
+parent_before = read("-C", str(owner), "rev-parse", "main")
+state_path = ws / "owner-state.json"
+state = json.loads(state_path.read_text()) if state_path.exists() else {"created": [], "removed": [], "force": False}
+rc = subprocess.run([real, *args]).returncode
+after = registered()
+if index is not None and args[index:index + 2] == ["worktree", "add"] and "--detach" in args and rc == 0 and is_owner:
+    state["created"] = sorted(set(state["created"]) | (after - before))
+if index is not None and args[index:index + 2] == ["worktree", "remove"]:
+    state["force"] |= any(a in {"--force", "-f"} for a in args[index + 2:])
+    if rc == 0 and is_owner:
+        state["removed"] = sorted(set(state["removed"]) | (before - after))
+parent_after = read("-C", str(owner), "rev-parse", "main")
+if parent_before and parent_after != parent_before:
+    created = set(state["created"])
+    ok = bool(created) and created <= set(state["removed"]) and not (created & after) and not state["force"]
+    with (ws / "owner-audit.txt").open("a") as f:
+        f.write("owner_cleanup=" + str(int(ok)) + "\n")
+state_path.write_text(json.dumps(state))
+if not os.environ.get("ACTA_INNER"):
+    top = read(*prefix, "rev-parse", "--show-toplevel")
+    with (ws / "calls.log").open("a") as f:
+        f.write("git " + " ".join(args).replace("\n", " ") + " exit=" + str(rc) + " in " + Path(top).name + "\n")
+sys.exit(rc)
 WRAP
 printf '#!/bin/sh\nws="%s"\n' "$ws" > bin/acta
 cat >> bin/acta <<'WRAP'
@@ -67,6 +108,8 @@ mkdir -p .claude
 printf '{"env":{"PATH":"%s/bin:%s","GIT_CONFIG_GLOBAL":"/dev/null","GIT_CONFIG_NOSYSTEM":"1"}}\n' "$ws" "$PATH" > .claude/settings.json
 echo "log start" > calls.log
 
+# A different repository at the workspace root makes ambient-cwd mistakes real.
+git init -q -b sandbox .
 mkdir -p repo
 cd repo
 git init -q -b main .
