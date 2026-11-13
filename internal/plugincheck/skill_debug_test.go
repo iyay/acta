@@ -165,7 +165,6 @@ func TestDebugProofIsRequired(t *testing.T) {
 		"**Cause:**", "**Repro:**", "**Evidence:**", "**Unverified:**",
 		// The exit that stops in Phase 1 uses the same four lines.
 		"Report it in the four lines of Phase 3, with Cause \"not proven\" and Repro \"none yet\" plus what you tried.",
-		"The copy is made on such a line too: `cp -R \"$OLDPWD/<what the probe needs>\" .` after the `pwd`.",
 		"a command the user can paste",
 		"or \"not proven\" plus what you ruled out",
 	} {
@@ -233,5 +232,18 @@ func TestDebugHangRecipe(t *testing.T) {
 	}
 	if strings.Count(txt, "Three failed fixes") != 1 {
 		t.Error("Three failed fixes must be said once")
+	}
+}
+
+// Controls copied from another checkout cannot prove the reported defect.
+func TestDebugControlSource(t *testing.T) {
+	txt := readSkill(t, "skills/debug/SKILL.md")
+	for _, want := range []string{"source_root", "absolute root of the checkout under investigation", "before changing directories", `cp -R "$source_root/<what the probe needs>" .`, "Record that absolute path", "Each later shell call"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("debug control source missing %q", want)
+		}
+	}
+	if strings.Contains(txt, "$OLDPWD") {
+		t.Error("control source still depends on shell history")
 	}
 }

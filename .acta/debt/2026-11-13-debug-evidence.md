@@ -2,6 +2,7 @@
 id: DBT-0167
 hash: czu566q
 parent: plans/2026-11-12-debug-evidence
+started: "2026-11-14 05:50:46"
 ---
 # Review NOTEs: Debug proof is required, and each text change is measured
 

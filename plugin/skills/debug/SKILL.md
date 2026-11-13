@@ -22,7 +22,7 @@ Exit: one command you ran catches the exact symptom the user reported.
 
 While you work on something else, a failing test that an open bug lists under `flaky_tests` (read the files at the `path` values from `acta list --type bug --json`) runs once more alone first; a pass runs `acta flake record <name>`, plus `--plan <plan id>` when there is a plan, and needs no debugging. A test the current bug or task is fixing is not covered: debug it as below.
 
-1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment).
+1. Write down expected and actual behaviour, and where it happens (versions, config, data, environment). Capture `source_root`, the absolute root of the checkout under investigation, before changing directories. From that checkout run `git rev-parse --show-toplevel`; a linked worktree has its own root. Record that absolute path. Each later shell call uses the recorded path explicitly; a shell reset or a main checkout must not replace it.
 2. Build the loop: an existing test or the user's own command, else a small replay script. A command that writes files runs only in a temp copy.
 3. Check the output itself, not only the exit code. A pass on a nearby failure (another test, error or caller) is not the symptom.
 4. Symptom fits a recipe below (flaky, race, order, hang, slow)? Pick it now; its evidence gates Phase 3. Shared state under load comes up short or varies: race, so read `race.md` now.
@@ -44,7 +44,7 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 
 1. Before you state the cause, write down the result that would show it wrong, then run that probe.
 2. State the cause: "X at `file:line` does Y, so Z." Back each link with output you saw.
-3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. The copy is made on such a line too: `cp -R "$OLDPWD/<what the probe needs>" .` after the `pwd`. A control that cannot run: say why under Unverified.
+3. Run a control: the same probe with the suspected cause removed (in the temp copy) makes the symptom go away. The copy is made on such a line too: set `source_root` to the recorded absolute path, then use `cp -R "$source_root/<what the probe needs>" .` after the `pwd`. Copy the investigated checkout, including its current changes, not its parent branch. Record the source path and run the same symptom command and control on that copy. A control that cannot run: say why under Unverified.
 4. When several tries fail under one shared belief, test that belief directly.
 5. Once the cause is proven, search the other callers for the same pattern, and list what you find after the four lines of the report, or "none found" with the search you ran. Only read them: a fix for another caller is its own plan.
 6. Report in four lines, whether the cause is proven or not. **Cause:** "X at `file:line` does Y, so Z", or "not proven" plus what you ruled out. **Repro:** a command the user can paste. **Evidence:** the probe and control output that back it. **Unverified:** what you could not check from here. Then propose the regression test the matching recipe below asks for. Do not write the fix in this skill.
