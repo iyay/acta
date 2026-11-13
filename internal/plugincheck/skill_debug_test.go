@@ -15,7 +15,7 @@ func TestSkillDebug(t *testing.T) {
 		// The known-flake rerun rule in Phase 1 adds two more lines.
 		// The required-proof steps, the recent-changes step and the hang recipe
 		// added lines to SKILL.md; private probe checks extend the recipes.
-		MaxLines: 358,
+		MaxLines: 360,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -250,7 +250,7 @@ func TestDebugControlSource(t *testing.T) {
 // Every probe writer uses fresh private storage, including incidental outputs.
 func TestDebugProbeIsolation(t *testing.T) {
 	txt := readSkill(t, "skills/debug/SKILL.md")
-	for _, want := range []string{"umask 077", "exclusive", "never `mkdir -p`", "test ! -L", "unset TMPDIR", "cache", "polluter", "profile", "File-tool writes", "verified absolute", "metadata-only exceptions", "Before the first repro", "Treat tests, imports and profilers as writers"} {
+	for _, want := range []string{"umask 077", "exclusive", "never `mkdir -p`", "test ! -L", "unset TMPDIR", "cache", "polluter", "profile", "File-tool writes", "verified absolute", "metadata-only exceptions", "Before the first repro", "Treat tests, imports and profilers as writers", "Never append a repro", "Any probe of another caller"} {
 		if !strings.Contains(txt, want) {
 			t.Errorf("debug isolation missing %q", want)
 		}
