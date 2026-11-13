@@ -12,4 +12,6 @@ A land used to run all eval cases for any change under `plugin/skills/`, about 7
 - Whole run: a change under `plugin/hooks/` or `plugin/references/`, a plan with no `**Gates:**` line, a line that names no run paths, a narrow run that picks no case, or any doubt about what the diff touches.
 - A case that guards two skills carries both tags, such as `[land, review]`.
 
+Second runs on a moved parent use these same rules. A forcing path triggers the gate itself; a gate with no run paths runs whole, even without a covered parent path.
+
 Risk accepted: a narrow run can miss a case of another skill that breaks because skills call each other. A plan author who knows of such a neighbour adds its tag to the plan's line.

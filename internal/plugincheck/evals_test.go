@@ -73,6 +73,7 @@ var evalCases = []struct {
 	{"land-baseline-fail", "skills/land/baseline.md", "A non-zero status stops the land"},
 	{"land-records-flake", "skills/land/baseline.md", "acta flake record <name> --plan <plan id>"},
 	{"land-eval-flake", "skills/land/SKILL.md", "acta flake record <gate>:<case> --plan <plan id>"},
+	{"land-parent-gate-triggers", "skills/land/SKILL.md", "Apply every slow-gate selection rule from step 1 to those paths"},
 	{"land-cleanup-report-partial", "skills/land/tidy.md", "temp worktree"},
 	{"land-cleanup-report-complete", "skills/land/tidy.md", "temp worktree"},
 	{"land-gate-output-approved", "skills/land/tidy.md", "temp worktree"},
