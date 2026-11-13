@@ -5,11 +5,13 @@ description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or
 paths: [plugin/skills/land/, internal/tidy/]
 ---
 
-The tidy path lives in `plugin/skills/land/tidy.md`.
+See `plugin/skills/land/tidy.md`.
 
-With `commit_history: tidy`, land runs `acta tidy` and moves the parent with `merge --ff-only`, or `reset --keep` when parent chore commits were folded. `full` keeps `merge --no-ff`.
+Tidy mode runs `acta tidy`, then `merge --ff-only` or `reset --keep` for folded parent chores. `full` uses `merge --no-ff`.
 
-Keep rule: a failed tidy stops the land and never falls back to a plain merge.
+Failed tidy stops land; never fall back to a plain merge.
+
+Temporary gate Git commands use the saved absolute owning checkout, never the detached path or ambient repository.
 
 Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject is the newest commit touching real files, else the newest of no fold type, else the newest non-chore, else the newest, so a late planning commit never hides the real change (BUG-0043, BUG-0051, BUG-0055).
 

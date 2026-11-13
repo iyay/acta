@@ -120,6 +120,24 @@ func TestLandTidyPath(t *testing.T) {
 	}
 }
 
+// Temp paths belong to a Git registry, not whichever repository the shell finds.
+func TestLandGateWorktreeOwner(t *testing.T) {
+	tidy := readFile(t, "skills/land/tidy.md")
+	for _, want := range []string{
+		`gate_owner="$(git rev-parse --show-toplevel)"`,
+		`git -C "$gate_owner" worktree add --detach "$gate_path"`,
+		`git -C "$gate_owner" worktree list --porcelain`,
+		`git -C "$gate_owner" worktree remove "$gate_path"`,
+		"distinct absolute path",
+		"before moving the parent",
+		"wrong repository is not a file-removal refusal",
+	} {
+		if !strings.Contains(tidy, want) {
+			t.Errorf("temporary gate operations missing owner rule %q", want)
+		}
+	}
+}
+
 // TestLandBaselineEvidence reads baseline.md on its own. SKILL.md only points
 // to it, so the shared record rules have to live there. The policy sits before
 // the numbered steps, so an ordinary or tidy land cannot run the suite without
@@ -456,7 +474,7 @@ func TestLandSecondRunAndKnownFlake(t *testing.T) {
 	}
 	tidy := readSkill(t, "skills/land/tidy.md")
 	for _, want := range []string{
-		"run the gates on the tidy tip first",
+		"Run the gates on the tidy tip first",
 		"the full suite, and each slow gate by the second-run rule of SKILL.md step 6, where the parent before the merge is `<parent>`",
 	} {
 		if !strings.Contains(tidy, want) {
