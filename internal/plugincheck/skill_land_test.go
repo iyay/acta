@@ -514,7 +514,7 @@ func TestLandGateOutputCleanup(t *testing.T) {
 		"compare the current canonical path",
 		"Printed records are not executed checks",
 		"not an ignored-files-only Git query",
-		"Do not ask for cleanup approval or offer agent deletion until both records are complete",
+		"Complete records alone do not allow an approval request",
 		"including ignored files, without following symlinks",
 		"A new untracked path alone is not proof",
 		"identity and content fingerprints",
@@ -531,5 +531,21 @@ func TestLandGateOutputCleanup(t *testing.T) {
 		if !strings.Contains(tidy, want) {
 			t.Errorf("temporary gate cleanup missing %q", want)
 		}
+	}
+}
+
+// The report must choose an action before entering the detailed cleanup flow.
+func TestLandCleanupReportDecision(t *testing.T) {
+	tidy := readSkill(t, "skills/land/tidy.md")
+	decision := strings.Index(tidy, "### Report decision")
+	procedure := strings.Index(tidy, "1. Before the gate")
+	if decision < 0 || procedure < 0 || decision >= procedure {
+		t.Fatal("cleanup report decision must precede the detailed procedure")
+	}
+	if !strings.Contains(tidy[decision:procedure], "Proof takes priority over approval") {
+		t.Error("report decision must reject permission as a substitute for proof")
+	}
+	if !strings.Contains(readSkill(t, "skills/land/SKILL.md"), "report decision in tidy.md") {
+		t.Error("landing report must delegate its cleanup next action to the proof decision")
 	}
 }

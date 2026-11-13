@@ -81,6 +81,8 @@ A failed check: stop, even when the tree is the same. Keep the worktree and bran
 
 Report after landing: the merge sha first, the review level line from the plan's `## Review notes`, copied as it was written, the gate numbers you ran after the merge, for each slow gate the form that ran and why, or why it did not run, what was cleaned up, each flake with its bug, the wiki pages the branch added or changed (`git diff --name-only <merge-sha>^1 <merge-sha> -- .acta/wiki/`, or none), one next action, and, if step 9 ran, the debt file and how many items it closed.
 
+For retained temporary gate worktrees, the final cleanup next action follows the report decision in tidy.md. Incomplete or invalid proof means retain the worktree, without a deletion offer, approval question or suggestion that the user force-remove it.
+
 ### Understanding, after the land
 
 Add this part only when `review_understanding` is true in the acta settings of the session note or in `acta config show`. A missing value is false. It is its own switch: quick, standard, deep, a floor or the deep lens never turns it on. A successful land adds it; a blocked or failed land does not.

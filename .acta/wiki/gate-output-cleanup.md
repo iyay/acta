@@ -9,6 +9,8 @@ The user chose this policy while shaping BUG-0080: requiring terminal cleanup le
 
 Only temporary gate worktrees created by the current session qualify. A before-gate inventory and completed producer evidence establish provenance; saved file identities and content fingerprints bind the displayed list to typed approval. WhatsApp and terminal replies have the same authority. Revalidate the whole batch before deleting any file; missing or stale proof preserves the entire batch.
 
+The final cleanup report uses recorded proof first. Missing, partial, stale or unverified proof means retain, without a deletion offer, approval question, later-cleanup promise or user force advice. Populated records need current checks before a qualified exact-list request; approval never repairs missing proof.
+
 This classifies proven single-file cleanup as non-destructive without loosening the destructive-command hook. It never permits force, recursive deletion or cleanup in main/build/other-session worktrees. Pending cleanup does not block an otherwise green approved land.
 
 The full procedure is in `plugin/skills/land/tidy.md`. It must be read through a file-reading tool when shell access to plugin files is sandboxed. Compare trace judgments with filesystem audits, rather than treating a claimed check as executed proof.
