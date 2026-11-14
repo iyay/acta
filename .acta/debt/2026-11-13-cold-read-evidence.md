@@ -2,6 +2,7 @@
 id: DBT-0168
 hash: geg2bx3
 parent: plans/2026-11-12-cold-read-evidence
+started: "2026-11-14 06:29:59"
 ---
 # Review NOTEs: Cold read findings carry their evidence
 

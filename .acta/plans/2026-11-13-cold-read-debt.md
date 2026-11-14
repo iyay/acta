@@ -6,6 +6,7 @@ after: [PLN-0240]
 id: PLN-0241
 created: "2026-11-13 06:13:11"
 hash: qeb41h1
+started: "2026-11-14 06:29:59"
 ---
 # Cold read evidence survives grading and relay
 
@@ -39,9 +40,9 @@ hash: qeb41h1
 **Files:** `plugin/evals/cold-read-planted-contradiction/{prompt.md,graders/names-both-lines.md}`, `plugin/evals/cold-read-false-claim/prompt.md`, `plugin/evals/polish-full-review/graders/{reviewer-dispatched.md,standards-reviewer-dispatched.md}`, `plugin/evals/review-auto-signal/graders/{spec-reviewer-dispatched.md,standards-reviewer-dispatched.md}`, `plugin/evals/review-depth-floor/graders/{spec-reviewer-dispatched.md,standards-reviewer-dispatched.md}`, `plugin/evals/review-clean-has-evidence/graders/brief-asks-coverage.md`, `internal/plugincheck/workflow_debt_evals_test.go`, `internal/plugincheck/evals_test.go`
 **Seam:** loaded contradiction grader against sample final replies and static checks of prompt leakage and all seven matcher comments.
 **verify:** Quoting two durations without recognizing conflict fails, while explicit contradictions with spaced or hyphenated durations pass in either order. Neither planted-defect prompt tells the run to relay every finding. All seven specified comments describe the current regex matcher; none still claims literal substring matching, including files whose grader type an earlier plan changed. Do not change a grader's matching behavior merely to fix its comment.
-- [ ] Red: add `TestWorkflowDebtColdReadGraders` samples and prompt/comment checks, then run `scripts/test ./internal/plugincheck -run 'TestWorkflowDebtColdReadGraders|TestEvalGraderPatternsCompileInOmp'` to expose false positives, valid hyphenated failures and stale descriptions.
-- [ ] Change: require conflict recognition with a compatible JavaScript regex, remove the relay hints, correct all seven comments to match their final grader types, and run both planted-defect cases for 10 old-text runs under these corrected graders.
-- [ ] Commit: test(shape): measure contradictions without relay hints
+- [x] Red: add `TestWorkflowDebtColdReadGraders` samples and prompt/comment checks, then run `scripts/test ./internal/plugincheck -run 'TestWorkflowDebtColdReadGraders|TestEvalGraderPatternsCompileInOmp'` to expose false positives, valid hyphenated failures and stale descriptions.
+- [x] Change: require conflict recognition with a compatible JavaScript regex, remove the relay hints, correct all seven comments to match their final grader types, and run both planted-defect cases for 10 old-text runs under these corrected graders.
+- [x] Commit: test(shape): measure contradictions without relay hints
 
 ### Task 2: Require structured reading evidence and preserve every finding
 
@@ -52,3 +53,20 @@ hash: qeb41h1
 - [ ] Change: define the reading-evidence form and incomplete-report checks, keep the existing no-drop rule, align required strings and narrow judge entries, then compare `cold-read-findings-relay`, `cold-read-read-evidence`, `cold-read-planted-contradiction`, `cold-read-false-claim` and `cold-read-accept` for 10 runs per arm.
 - [ ] Commit: fix(shape): require structured Read evidence and relay every finding
 
+## State
+
+### Next
+
+2026-11-16 Claude Code walkie session 5 took over from Codex session 3 (user order). Quota back.
+Retry with bin-new (built from 92c56d4, same cmd/internal as HEAD), 10 runs each, logs task2-new-retry-*.log in /Users/iyay/.wwt/acta/cold-read-debt-evidence-20261114/logs: relay 7/10 (old 6), read-evidence 10/10 (old 9), contradiction 9/10 (old 10), false-claim 10/10 (old 0), accept 10/10 (old 9). Zero quota errors.
+Keep-temp rerun (task2-new-keep-*.log): contradiction 8/10 (tmp.KWGknkhru8), relay 8/10 (tmp.wNlUrTnuCZ).
+Contradiction fails (e-WxFTqJ, e-xENBKS) are grader false negatives: replies say "30 days vs 7 days", "can't tell which wins", "Either choice breaks the other line"; names-both-lines regex has no matching keyword. Not a skill regression.
+Relay e-pQSSB9 is a real fail (summarizes A1-A6, no quotes). Relay e-5KW7Vo is a judge false negative (table quotes all 11 plus cut line; votes FAIL FAIL PASS).
+Waiting on user: widen contradiction regex with those phrasings as test samples, rerun old+new contradiction 10 each, then commit Task 2. No push.
+
+### Findings
+
+Prior0240land0bd5521/DBT0167closure0cdd165, originalprogress10/14in4/5groups. Task1code19fa027done/readback/wave1; compatiblefixedgrader testsRED thenGREEN0.032s/package14.817s. Finaloldskill contradiction10/10 tmp.zdXwjZESZd, falseclaim10/10 tmp.6oMKZDv7yr underoldbrief. Original7/10+8/10wereprovedgraderfalse-negatives, retainedseparately, no skill-effectclaim.
+Task2uncommittedcandidate: intendedstructuredReadRED0.065s; loadedbriefgraderRED0.037s->GREEN0.033s. NewLLMcalibration initial8/9expected (droppedA6falsePASS tmp.08inJbGGdL); explicit11quoteaudit/reference-list-notreplydistinction fixes it, final9/9expected tmp.eNMQBZ1YE4. BothscaffoldshandrunfreshHOME/TMPDIR; committedspec/reportpremisestrue. Source requires###Read,namednonemptySpecsections,Referencepaths-or-explicitnone; missing/empty/genericreportexistingincompletechoice/wait. Clarifiesfivecapdoesnotlimitrelay, preservesindividualquotes/cutcount. FocusedGREEN0.077s/package13.784s; gofmt/diffcheckclean, all5old/newgrader/fixturehashchecksTrue. Shape179lines/cold-read3516bytes, no safetycuts.
+Oldcorrectednativearms: relay6/10 tmp.ItlS8Pm6Bu (actuale-R5aaFcsummarizes11findingswithoutquotes), Read9/10 tmp.4GKUXB7QYE (actuale-EOdI3yacceptsgenericall-of-it), falseclaim0/10 tmp.DhrT6wzZqK (oldbriefdoesnotrequestnewfields; other2graders10/10), accept9/10 tmp.oNmp5q16lC. ReuseTask1contradiction10/10armbecauseidenticalskill/fixture/grader; hashesconfirmed. Matchingprivateoldclone task2/old, binoldandbin-new under cold-read-debt-evidence-20261114.
+BLOCKER externalquota2026-11-14 11:20: all50new-armrunsungraded,44agentAPIerrors+6judgethrows: You've hit your weekly limit · resets 10pm (Asia/Jakarta). Reports relaytmp.zewAoAqnZM, Readtmp.FwuoepALop, contradictiontmp.aWglQf994m, falseclaimtmp.rlilj07owV, accepttmp.EYrm0GilWo. quota-summary.json capturesexactcounts/logs. These0scoresarenot skillregression/ordinaryflakes; do nottickTask2done, commitimplementation, review, fullsuiteorland. Do notretryquota unchangedbefore advertised22:00WIB reset, switchaccounts/backendsorweakengates. No sourcefailurefromquota.
