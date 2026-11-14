@@ -11,7 +11,7 @@ import (
 func TestSkillShape(t *testing.T) {
 	CheckSkill(t, SkillRule{
 		Name:     "shape",
-		MaxLines: 180,
+		MaxLines: 179,
 		Must: []string{
 			"Spike", "Bounded", "Architectural", "HARD-GATE",
 			".acta/specs/", "acta:slice",
@@ -327,7 +327,7 @@ func TestColdReadReviewerShowsItsWork(t *testing.T) {
 		"Check every claim the spec makes about a file, a command or how the code behaves today against the repo, and report each one that is wrong.",
 		"Report each requirement that has no way to be tested.",
 		"quotes the spec line it is about",
-		"End every reply, with findings or with none, with a `Read` part",
+		"End every reply, with findings or with none, with a `### Read` section",
 		"the sections of the spec you read and the references you opened",
 		"`N more findings not listed`",
 		// The gates of the brief, unchanged.
@@ -353,7 +353,7 @@ func TestColdReadResolveDropsNothing(t *testing.T) {
 		"You may add one line of your own view under a finding",
 		"Never leave a finding out and never merge two findings.",
 		"When the reviewer wrote `N more findings not listed`, pass that line on too.",
-		"A reply with no `Read` part is not a finished cold read",
+		"A reply with no `### Read` section is not a finished cold read",
 		"show any findings it holds, say the cold read is incomplete, ask whether to retry or continue without it, then wait",
 		// The gates of Resolve, unchanged.
 		"The findings are advice, not an automatic gate.",
@@ -367,5 +367,15 @@ func TestColdReadResolveDropsNothing(t *testing.T) {
 	}
 	if strings.Contains(resolve, "Present the findings briefly") {
 		t.Error("cold-read.md ## Resolve still says to present the findings briefly, which reads as leave to cut")
+	}
+}
+
+// Named sections and opened paths make incomplete cold reads distinguishable.
+func TestColdReadStructuredEvidence(t *testing.T) {
+	txt := readSkill(t, "skills/shape/cold-read.md")
+	for _, want := range []string{"`### Read`", "`Spec sections:`", "`Reference paths:`", "nonempty", "explicit `none`", "all of it", "missing or empty", "The reviewer cap does not limit relay", "keep each finding and its spec quote separate"} {
+		if !strings.Contains(txt, want) {
+			t.Errorf("cold-read structured evidence missing %q", want)
+		}
 	}
 }

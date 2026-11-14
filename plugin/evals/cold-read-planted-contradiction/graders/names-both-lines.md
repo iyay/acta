@@ -1,11 +1,8 @@
 ---
 # guards: contradictions
-# The Storage section keeps a finished archive for 30 days and the Cleanup
-# section deletes it after 7. A cold read that found this names both numbers
-# in what it tells the user. A reply that only says the spec looks fine, or
-# names one of the two, fails. The two lookaheads take the numbers in any
-# order.
+# Require conflict recognition and both durations, in either order or form.
 type: regex
-pattern: '^(?=[\s\S]*\b30 days\b)(?=[\s\S]*\b7 days\b)'
+pattern: '^(?![\s\S]*\b(?:no|not a) (?:conflict|contradiction)s?\b)(?=[\s\S]*\b30[ -]days?\b)(?=[\s\S]*\b7[ -]days?\b)(?=[\s\S]*\b(?:contradict\w*|conflict\w*|inconsisten\w*|incompatib\w*|cannot both|at odds|two retention periods|breaks? (?:the )?(?:30[ -]day |[\w-]+ )?promise|both (?:cannot|can\x27t) hold|(?:cannot|can[\x27’]t) tell which (?:\w+ )?(?:wins|is right)|breaks? the other line)\b)'
+flags: i
 target: last_message
 ---

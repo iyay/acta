@@ -192,3 +192,68 @@ func TestWorkflowDebtReviewerRoles(t *testing.T) {
 		})
 	}
 }
+
+// Both durations need an explicit conflict; wording and order may vary.
+func TestWorkflowDebtColdReadGraders(t *testing.T) {
+	cases, err := evalomp.LoadCases(filepath.Join(pluginRoot(t), "evals"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var grader evalomp.Grader
+	for _, c := range cases {
+		if c.Name == "cold-read-planted-contradiction" {
+			for _, g := range c.Graders {
+				if g.Name == "names-both-lines" {
+					grader = g
+				}
+			}
+		}
+	}
+	if grader.Type == "" {
+		t.Fatal("missing contradiction grader")
+	}
+	for _, tc := range []struct {
+		reply string
+		want  bool
+	}{
+		{"Storage: 30 days. Cleanup: 7 days.", false},
+		{"No conflict: 30 days and 7 days.", false},
+		{"No conflicts: 30 days and 7 days.", false},
+		{"No contradictions found. Storage: 30 days. Cleanup: 7 days.", false},
+		{"Storage keeps archives for 30 days, but Cleanup deletes after 7 days: these conflict.", true},
+		{"The 7-day deletion contradicts the 30-day retention.", true},
+		{"CONFLICT: 30-day retention and 7 days until deletion.", true},
+		{"30 days conflicts with 7-day deletion.", true},
+		{"30 days vs 7 days: two retention periods for one archive; the implementer cannot tell which wins.", true},
+		{"Storage promises 30 days; the 7-day job breaks the promise.", true},
+		{"Archives deleted at 7 days break the 30-day promise.", true},
+		{"Storage: 30 days. Cleanup: 7 days. Both can't hold.", true},
+		// Real replies from the 2026-11-16 runs that named the conflict but failed the old pattern.
+		{"30 days vs 7 days. An implementer can't tell which wins.", true},
+		{"30 days vs 7 days. An implementer can't tell which period is right. Either choice breaks the other line.", true},
+		{"Retention is 30 days in one section and 7 days in the other. The job as written breaks the re-download promise.", true},
+		{"Storage: 30 days. Cleanup: 7 days. I cannot tell which section is newer.", false},
+		{"30 days conflicts with an unspecified cleanup policy.", false},
+	} {
+		got := evalomp.Grade(grader, evalomp.Workspace{Result: evalomp.Result{Reply: tc.reply}}, nil)
+		if got.Pass != tc.want {
+			t.Errorf("%q pass=%v want%v: %s", tc.reply, got.Pass, tc.want, got.Why)
+		}
+	}
+	for _, name := range []string{"cold-read-planted-contradiction", "cold-read-false-claim"} {
+		prompt := readFile(t, "evals", name, "prompt.md")
+		if strings.Contains(prompt, "Give me every finding") {
+			t.Errorf("%s still supplies the relay requirement", name)
+		}
+	}
+	for _, file := range []string{
+		"polish-full-review/graders/reviewer-dispatched.md", "polish-full-review/graders/standards-reviewer-dispatched.md",
+		"review-auto-signal/graders/spec-reviewer-dispatched.md", "review-auto-signal/graders/standards-reviewer-dispatched.md",
+		"review-depth-floor/graders/spec-reviewer-dispatched.md", "review-depth-floor/graders/standards-reviewer-dispatched.md",
+		"review-clean-has-evidence/graders/brief-asks-coverage.md",
+	} {
+		if strings.Contains(readFile(t, "evals", file), "case-sensitive substring") {
+			t.Errorf("%s describes the old matcher", file)
+		}
+	}
+}

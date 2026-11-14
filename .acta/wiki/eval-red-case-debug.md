@@ -16,3 +16,5 @@ paths: [plugin/evals/, plugin/evals-routing/]
 An uncertainty fixture must withhold evidence, such as a missing path list. A suggestive filename can support a valid interpretation; inspect the failed run before treating its grade as a skill regression.
 
 A changed policy needs the same corrected grader on both arms. Validate judged traces and filesystem effects separately; a final report can hide file loss.
+
+Graders can fail good replies; see [eval-grader-false-negatives](eval-grader-false-negatives.md).
