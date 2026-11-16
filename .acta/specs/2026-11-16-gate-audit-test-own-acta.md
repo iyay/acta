@@ -2,6 +2,8 @@
 created: "2026-11-16 14:45:43"
 id: SPC-0213
 hash: yfds0mn
+started: "2026-11-16 14:47:42"
+finished: "2026-11-16 14:59:22"
 ---
 # Gate audit test brings its own acta binary
 
