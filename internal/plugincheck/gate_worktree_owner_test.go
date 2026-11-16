@@ -76,12 +76,21 @@ func TestGateWorktreeOwnerGraders(t *testing.T) {
 
 // A successful removal in a different registry must not hide a live gate tree.
 func TestGateWorktreeOwnerAudit(t *testing.T) {
+	// The scaffold copies the acta it finds on PATH. CI has none, and a
+	// local one may be old, so build this checkout's acta and put it first.
+	actaBin := t.TempDir()
+	build := exec.Command("go", "build", "-o", filepath.Join(actaBin, "acta"), "./cmd/acta")
+	build.Dir = filepath.Dir(pluginRoot(t))
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build acta: %v\n%s", err, out)
+	}
+	path := "PATH=" + actaBin + string(os.PathListSeparator) + os.Getenv("PATH")
 	for _, mode := range []string{"valid", "wrong repository", "late", "different worktree"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			dir, home, tmp := t.TempDir(), t.TempDir(), t.TempDir()
-			env := append(os.Environ(), "HOME="+home, "TMPDIR="+tmp, "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+			env := append(os.Environ(), path, "HOME="+home, "TMPDIR="+tmp, "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
 			run := func(cwd, name string, wantOK bool, args ...string) string {
 				t.Helper()
 				cmd := exec.CommandContext(ctx, name, args...)

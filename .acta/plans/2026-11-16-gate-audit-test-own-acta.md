@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0245
 created: "2026-11-16 14:46:38"
 hash: tyqv36a
+started: "2026-11-16 14:47:42"
+finished: "2026-11-16 14:49:00"
 ---
 # Gate audit test builds its own acta
 
@@ -28,6 +30,10 @@ hash: tyqv36a
 **Files:** `internal/plugincheck/gate_worktree_owner_test.go`
 **Seam:** `go test ./internal/plugincheck -run TestGateWorktreeOwnerAudit`
 **verify:** Every subtest's scaffold copies the acta built from this checkout, never an installed one, and no PATH the caller passes (with or without an acta on it, or an old acta first) changes which binary runs. List each PATH case tried.
-- [ ] Red: the test run with a PATH that holds no acta fails because the scaffold runs `cp` with an empty source (`cp: cannot stat ''`).
-- [ ] Change: build `./cmd/acta` once into a temp dir at the start of the test and put that dir first on PATH in the env that `run()` uses.
-- [ ] Commit: test(plugincheck): build acta for the gate worktree audit
+- [x] Red: the test run with a PATH that holds no acta fails because the scaffold runs `cp` with an empty source (`cp: cannot stat ''`).
+- [x] Change: build `./cmd/acta` once into a temp dir at the start of the test and put that dir first on PATH in the env that `run()` uses.
+- [x] Commit: test(plugincheck): build acta for the gate worktree audit
+
+## Review notes
+
+- Review depth auto, picked quick (one reviewer, both axes): test-only diff, no risk signal. Round 1 CLEAN. BLOCKER 0, NOTE 3, pre-existing 0. Notes: duplicate PATH key relies on Go exec keeping the last value; macOS cp prints a different message than GNU for the same empty source; the test now builds acta on every run, short runs too.
