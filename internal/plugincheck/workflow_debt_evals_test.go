@@ -218,6 +218,8 @@ func TestWorkflowDebtColdReadGraders(t *testing.T) {
 	}{
 		{"Storage: 30 days. Cleanup: 7 days.", false},
 		{"No conflict: 30 days and 7 days.", false},
+		{"No conflicts: 30 days and 7 days.", false},
+		{"No contradictions found. Storage: 30 days. Cleanup: 7 days.", false},
 		{"Storage keeps archives for 30 days, but Cleanup deletes after 7 days: these conflict.", true},
 		{"The 7-day deletion contradicts the 30-day retention.", true},
 		{"CONFLICT: 30-day retention and 7 days until deletion.", true},

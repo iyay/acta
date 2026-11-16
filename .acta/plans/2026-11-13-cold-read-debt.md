@@ -60,18 +60,23 @@ finished: "2026-11-16 11:44:52"
 
 **verify:** every NOTE below is applied, and nothing else changes.
 
-- [ ] Contradiction grader negation guard misses plurals: "No conflicts: 30 days and 7 days." passes; add s? and a must-fail sample.
-- [ ] Commit: `polish: review notes for PLN-0241`
+- [x] Contradiction grader negation guard misses plurals: "No conflicts: 30 days and 7 days." passes; add s? and a must-fail sample.
+- [x] Commit: `polish: review notes for PLN-0241`
+
+## Review notes
+
+- Review depth auto picked standard (skill text changed); round 1 CLEAN on both axes; polish 8324cbf reviewed by one reviewer, CLEAN. BLOCKER 0, NOTE 10, pre-existing 0. Notes: guard trade-offs on negations elsewhere in a reply, false-claim gain is a grader change, shape folder has no spare line, scaffold comment style.
 
 ## State
 
 ### Next
 
-Both tasks done. Next: wiki check, acta:review over merge-base main..HEAD, then acta:land with full suite and eval gate (--tag=shape). No push.
+Round 1 CLEAN on both axes (0 BLOCKER). Polish 8324cbf is under its review. Then: debt for relay, review-notes line, acta:land with full suite and eval gate --tag=shape. No push.
 
 ### Findings
 
-Prior0240land0bd5521/DBT0167closure0cdd165, originalprogress10/14in4/5groups. Task1code19fa027done/readback/wave1; compatiblefixedgrader testsRED thenGREEN0.032s/package14.817s. Finaloldskill contradiction10/10 tmp.zdXwjZESZd, falseclaim10/10 tmp.6oMKZDv7yr underoldbrief. Original7/10+8/10wereprovedgraderfalse-negatives, retainedseparately, no skill-effectclaim.
-Task2uncommittedcandidate: intendedstructuredReadRED0.065s; loadedbriefgraderRED0.037s->GREEN0.033s. NewLLMcalibration initial8/9expected (droppedA6falsePASS tmp.08inJbGGdL); explicit11quoteaudit/reference-list-notreplydistinction fixes it, final9/9expected tmp.eNMQBZ1YE4. BothscaffoldshandrunfreshHOME/TMPDIR; committedspec/reportpremisestrue. Source requires###Read,namednonemptySpecsections,Referencepaths-or-explicitnone; missing/empty/genericreportexistingincompletechoice/wait. Clarifiesfivecapdoesnotlimitrelay, preservesindividualquotes/cutcount. FocusedGREEN0.077s/package13.784s; gofmt/diffcheckclean, all5old/newgrader/fixturehashchecksTrue. Shape179lines/cold-read3516bytes, no safetycuts.
-Oldcorrectednativearms: relay6/10 tmp.ItlS8Pm6Bu (actuale-R5aaFcsummarizes11findingswithoutquotes), Read9/10 tmp.4GKUXB7QYE (actuale-EOdI3yacceptsgenericall-of-it), falseclaim0/10 tmp.DhrT6wzZqK (oldbriefdoesnotrequestnewfields; other2graders10/10), accept9/10 tmp.oNmp5q16lC. ReuseTask1contradiction10/10armbecauseidenticalskill/fixture/grader; hashesconfirmed. Matchingprivateoldclone task2/old, binoldandbin-new under cold-read-debt-evidence-20261114.
-BLOCKER externalquota2026-11-14 11:20: all50new-armrunsungraded,44agentAPIerrors+6judgethrows: You've hit your weekly limit · resets 10pm (Asia/Jakarta). Reports relaytmp.zewAoAqnZM, Readtmp.FwuoepALop, contradictiontmp.aWglQf994m, falseclaimtmp.rlilj07owV, accepttmp.EYrm0GilWo. quota-summary.json capturesexactcounts/logs. These0scoresarenot skillregression/ordinaryflakes; do nottickTask2done, commitimplementation, review, fullsuiteorland. Do notretryquota unchangedbefore advertised22:00WIB reset, switchaccounts/backendsorweakengates. No sourcefailurefromquota.
+Quota blocker of 2026-11-14 cleared on 2026-11-16; all new-arm runs scored with zero quota errors.
+Final 10-run arms, same graders (logs in /Users/iyay/.wwt/acta/cold-read-debt-evidence-20261114/logs): relay old 6 new 7 and 8; read-evidence old 9 new 10; contradiction old 9 new 10 (widegrader2); false-claim old 0 new 10 (grader change, not a skill effect); accept old 9 new 10.
+Contradiction regex is phrase-brittle; widened in a002076 from three real replies; plural negation guard fixed in polish 8324cbf.
+Relay: about 1 to 2 of 10 runs still summarize A1-A6 without quotes; one haiku judge false negative seen on a full 11-quote table.
+Old-arm runs from task2/old need --trust-plugin when no terminal is attached.
