@@ -7,6 +7,7 @@ id: PLN-0241
 created: "2026-11-13 06:13:11"
 hash: qeb41h1
 started: "2026-11-14 06:29:59"
+finished: "2026-11-16 11:44:52"
 ---
 # Cold read evidence survives grading and relay
 
@@ -49,20 +50,24 @@ started: "2026-11-14 06:29:59"
 **Files:** `plugin/skills/shape/cold-read.md`, `internal/plugincheck/skill_shape_test.go`, `internal/plugincheck/evals_test.go`, `internal/plugincheck/budget_test.go`, new `plugin/evals/cold-read-findings-relay/{prompt.md,case.yaml,scaffold.sh,graders/behavior.md}`, new `plugin/evals/cold-read-read-evidence/{prompt.md,case.yaml,scaffold.sh,graders/behavior.md}`, `plugin/evals/cold-read-false-claim/graders/brief-asks-what-was-read.md`
 **Seam:** cold-read Resolve and reviewer report contract, with planted completed reviewer reports.
 **verify:** Every returned finding reaches the user individually with its spec quote; a six-finding report loses none, and a capped five-finding report preserves its cut-count line. The returned report must have `### Read`, nonempty spec-section entries and reference paths or explicit none; missing, empty or generic “all of it” evidence triggers the existing incomplete-report choice and waits. Valid evidence proceeds only to final spec approval, never automatic edits or planning. The eval prompt does not state the behavior being tested.
-- [ ] Red: add `TestColdReadStructuredEvidence` and the relay/evidence cases with valid, missing and empty reports, then run `scripts/test ./internal/plugincheck -run 'TestColdReadStructuredEvidence|TestShapeColdRead|TestEvalCases|TestEvalLLM'` and the new cases on old text.
-- [ ] Change: define the reading-evidence form and incomplete-report checks, keep the existing no-drop rule, align required strings and narrow judge entries, then compare `cold-read-findings-relay`, `cold-read-read-evidence`, `cold-read-planted-contradiction`, `cold-read-false-claim` and `cold-read-accept` for 10 runs per arm.
-- [ ] Commit: fix(shape): require structured Read evidence and relay every finding
+- [x] Red: add `TestColdReadStructuredEvidence` and the relay/evidence cases with valid, missing and empty reports, then run `scripts/test ./internal/plugincheck -run 'TestColdReadStructuredEvidence|TestShapeColdRead|TestEvalCases|TestEvalLLM'` and the new cases on old text.
+- [x] Change: define the reading-evidence form and incomplete-report checks, keep the existing no-drop rule, align required strings and narrow judge entries, then compare `cold-read-findings-relay`, `cold-read-read-evidence`, `cold-read-planted-contradiction`, `cold-read-false-claim` and `cold-read-accept` for 10 runs per arm.
+- [x] Commit: fix(shape): require structured Read evidence and relay every finding
+
+## Polish
+
+### Task 3: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [ ] Contradiction grader negation guard misses plurals: "No conflicts: 30 days and 7 days." passes; add s? and a must-fail sample.
+- [ ] Commit: `polish: review notes for PLN-0241`
 
 ## State
 
 ### Next
 
-2026-11-16 Claude Code walkie session 5 took over from Codex session 3 (user order). Quota back.
-Retry with bin-new (built from 92c56d4, same cmd/internal as HEAD), 10 runs each, logs task2-new-retry-*.log in /Users/iyay/.wwt/acta/cold-read-debt-evidence-20261114/logs: relay 7/10 (old 6), read-evidence 10/10 (old 9), contradiction 9/10 (old 10), false-claim 10/10 (old 0), accept 10/10 (old 9). Zero quota errors.
-Keep-temp rerun (task2-new-keep-*.log): contradiction 8/10 (tmp.KWGknkhru8), relay 8/10 (tmp.wNlUrTnuCZ).
-Contradiction fails (e-WxFTqJ, e-xENBKS) are grader false negatives: replies say "30 days vs 7 days", "can't tell which wins", "Either choice breaks the other line"; names-both-lines regex has no matching keyword. Not a skill regression.
-Relay e-pQSSB9 is a real fail (summarizes A1-A6, no quotes). Relay e-5KW7Vo is a judge false negative (table quotes all 11 plus cut line; votes FAIL FAIL PASS).
-Waiting on user: widen contradiction regex with those phrasings as test samples, rerun old+new contradiction 10 each, then commit Task 2. No push.
+Both tasks done. Next: wiki check, acta:review over merge-base main..HEAD, then acta:land with full suite and eval gate (--tag=shape). No push.
 
 ### Findings
 

@@ -49,6 +49,8 @@ var evalCases = []struct {
 	{"cold-read-unavailable", "skills/shape/cold-read.md", "cold read did not complete"},
 	{"cold-read-planted-contradiction", "skills/shape/cold-read.md", "contradictions"},
 	{"cold-read-false-claim", "skills/shape/cold-read.md", "follow its references"},
+	{"cold-read-findings-relay", "skills/shape/cold-read.md", "Never leave a finding out"},
+	{"cold-read-read-evidence", "skills/shape/cold-read.md", "A cold read approves neither spec nor plan"},
 	{"style-short-answer", "output-styles/acta.md", "Open with the answer"},
 	{"wiki-hint", "hooks/hooks.json", "Bash|PowerShell|Read|Edit|Write|MultiEdit"},
 	{"wiki-close", "skills/build/SKILL.md", "acta wiki check <parent>..HEAD"},
@@ -139,7 +141,7 @@ func TestEvalLLMGradersAreOnlyTheJudgementCalls(t *testing.T) {
 	want := map[string]bool{"second-brainstorm-choices": true, "one-file-fix-no-brainstorm": true, "lean-tests": true,
 		"brainstorm-related-topic": true, "brainstorm-resume-topic": true, "brainstorm-mixed-context": true, "brainstorm-user-handoff": true,
 		"review-understanding-report": true, "review-understanding-disabled": true, "review-incomplete-rounds": true,
-		"cold-read-offer": true, "cold-read-skip": true, "cold-read-no-signal": true, "cold-read-guard-test-only": true, "cold-read-accept": true, "cold-read-unavailable": true,
+		"cold-read-offer": true, "cold-read-skip": true, "cold-read-no-signal": true, "cold-read-guard-test-only": true, "cold-read-accept": true, "cold-read-unavailable": true, "cold-read-findings-relay": true, "cold-read-read-evidence": true,
 		"cleanup-proposes-first": true, "cleanup-warns-cost": true}
 	for _, c := range evalCases {
 		files, err := filepath.Glob(filepath.Join(pluginRoot(t), "evals", c.folder, "graders", "*.md"))
@@ -555,6 +557,41 @@ func TestEvalBrainstormScenarios(t *testing.T) {
 					t.Errorf("%s still expects the old one-per-session rule: %q", rel, old)
 				}
 			}
+		}
+	}
+}
+
+// The actual reviewer brief must ask for each structured evidence field.
+func TestColdReadBriefEvidence(t *testing.T) {
+	cases, err := evalomp.LoadCases(filepath.Join(pluginRoot(t), "evals"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var grader evalomp.Grader
+	for _, c := range cases {
+		if c.Name == "cold-read-false-claim" {
+			for _, g := range c.Graders {
+				if g.Name == "brief-asks-what-was-read" {
+					grader = g
+				}
+			}
+		}
+	}
+	if grader.Type != "tool_used" {
+		t.Fatal("missing reviewer brief grader")
+	}
+	for _, tc := range []struct {
+		input string
+		want  bool
+	}{
+		{`{"prompt":"End with ### Read. Spec sections: nonempty names. Reference paths: the references you opened or explicit none."}`, true},
+		{`{"prompt":"End with a Read part and the references you opened."}`, false},
+		{`{"prompt":"### Read. Reference paths: the references you opened or none."}`, false},
+		{`{"prompt":"### Read. Spec sections: named sections; the references you opened."}`, false},
+	} {
+		got := evalomp.Grade(grader, evalomp.Workspace{Result: evalomp.Result{Calls: []evalomp.Call{{Tool: "Agent", Input: tc.input}}}}, nil)
+		if got.Pass != tc.want {
+			t.Errorf("%s pass=%v want%v: %s", tc.input, got.Pass, tc.want, got.Why)
 		}
 	}
 }
