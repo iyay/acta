@@ -226,6 +226,11 @@ func TestWorkflowDebtColdReadGraders(t *testing.T) {
 		{"Storage promises 30 days; the 7-day job breaks the promise.", true},
 		{"Archives deleted at 7 days break the 30-day promise.", true},
 		{"Storage: 30 days. Cleanup: 7 days. Both can't hold.", true},
+		// Real replies from the 2026-11-16 runs that named the conflict but failed the old pattern.
+		{"30 days vs 7 days. An implementer can't tell which wins.", true},
+		{"30 days vs 7 days. An implementer can't tell which period is right. Either choice breaks the other line.", true},
+		{"Retention is 30 days in one section and 7 days in the other. The job as written breaks the re-download promise.", true},
+		{"Storage: 30 days. Cleanup: 7 days. I cannot tell which section is newer.", false},
 		{"30 days conflicts with an unspecified cleanup policy.", false},
 	} {
 		got := evalomp.Grade(grader, evalomp.Workspace{Result: evalomp.Result{Reply: tc.reply}}, nil)
