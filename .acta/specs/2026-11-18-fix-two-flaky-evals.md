@@ -4,6 +4,7 @@ id: SPC-0215
 created: "2026-11-18 07:59:40"
 hash: hpyq467
 started: "2026-11-18 08:09:08"
+finished: "2026-11-18 08:48:58"
 ---
 # Fix two flaky eval cases
 
