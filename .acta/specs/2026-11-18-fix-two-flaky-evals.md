@@ -3,6 +3,7 @@ parent: bugs/2026-11-10-flaky-eval-slice-split-parallel-set
 id: SPC-0215
 created: "2026-11-18 07:59:40"
 hash: hpyq467
+started: "2026-11-18 08:09:08"
 ---
 # Fix two flaky eval cases
 
