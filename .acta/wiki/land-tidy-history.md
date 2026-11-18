@@ -17,6 +17,8 @@ Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of 
 
 `-D` is safe: the old branch is no ancestor, and tidy proved the tip equals the parent plus branch merge, so it loses nothing. Delete `refs/acta/tidy/<branch>` after.
 
+A fold rewrites the planning commits other worktrees were made from (found 2026-11-18, PLN-0247 and PLN-0246). The next `acta tidy` of such a branch exits 3 with `clashes with main at <planning files>`. Move the branch first: `git rebase --onto main <old base> <branch>` in its worktree, where the old base is the commit the worktree was made from. Resolve any clash by intent, then tidy again. The rebase brings in the parent's code, so run the full suite on the new tip.
+
 Known limit: a hash in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
 
 After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a spec never leaves the parent dirty.
