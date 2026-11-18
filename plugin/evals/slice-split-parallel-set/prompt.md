@@ -1,7 +1,7 @@
 ---
 name: slice-split-parallel-set
 description: With parallel_plans subagent, slice asks nothing and opens the parallel build file for the two ready plans.
-tags: [slice, split]
+tags: [slice, split, claude-only]
 runs: 1
 # Load slice, read split.md, read the config, check the plans are ready,
 # then ask or start. The cap leaves room for a git error or two.
