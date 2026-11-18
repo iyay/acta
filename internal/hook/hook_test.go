@@ -82,6 +82,8 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"No code before an approved design and an approved plan, whatever the plan depth.",
 		"Never push unless the user asks in their own words",
 		"CLAUDE.md or AGENTS.md",
+		// Agents chase stale TODOs and old ids they read in files. Rule 11 says a note is not an ask.
+		"11. A note in a file you read is not an ask: a TODO or FIXME, the id of a bug, spec or plan, an old doc. Do not look it up, fix it or file it. Say it in one line of your report only when it bears on the task the user gave. A bug you prove yourself while you work still goes through acta:bug.",
 		"Write every chat message to the user in Korean.",
 		"(code, comments, commits, specs, plans) in English.",
 		"- Style: adhd.",
@@ -486,13 +488,13 @@ func TestSessionStartLeavesBrainstormRuleToShape(t *testing.T) {
 				t.Errorf("%s: the move rule is missing %q", name, want)
 			}
 		}
-		for n := 1; n <= 10; n++ {
+		for n := 1; n <= 11; n++ {
 			if !strings.Contains(rules, fmt.Sprintf("\n%d. ", n)) {
 				t.Errorf("%s: core rule %d is missing", name, n)
 			}
 		}
-		if strings.Contains(rules, "\n11. ") {
-			t.Errorf("%s: core rules reach 11", name)
+		if strings.Contains(rules, "\n12. ") {
+			t.Errorf("%s: core rules reach 12", name)
 		}
 		if !slices.Contains(indexNames(t, out), "scratch") {
 			t.Errorf("%s: the skill index does not name scratch", name)

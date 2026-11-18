@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0246
 created: "2026-11-18 06:56:36"
 hash: bzu1aax
+started: "2026-11-18 06:59:09"
 ---
 # A note in a file is not an ask
 
@@ -31,9 +32,9 @@ hash: bzu1aax
 **Files:** `internal/hook/hook.go`, `internal/hook/hook_test.go`, `plugin/hooks/default-rules.md`
 **Seam:** `scripts/test ./internal/hook -run 'TestSessionStart|TestDefaultRulesFile'`
 **verify:** Every text that hands the core rules to an agent holds rule 11 with the spec's exact words, and no copy of the rules stops at rule 10. List every place checked: the session start output for each harness the tests cover, and the fallback file.
-- [ ] Red: a new test on the session start output fails because the text has no rule 11.
-- [ ] Change: add rule 11 to `coreRules` in `hook.go`, then rebuild `default-rules.md` with the `-update` run.
-- [ ] Commit: feat(hook): a note in a file is not an ask
+- [x] Red: a new test on the session start output fails because the text has no rule 11.
+- [x] Change: add rule 11 to `coreRules` in `hook.go`, then rebuild `default-rules.md` with the `-update` run.
+- [x] Commit: feat(hook): a note in a file is not an ask
 
 ### Task 2: Eval case todo-not-an-order
 
@@ -43,3 +44,13 @@ hash: bzu1aax
 - [ ] Red: `scripts/test ./internal/plugincheck` fails on the new case folder while it holds only a prompt with no tag and no graders.
 - [ ] Change: write the scaffold (one failing test, a `TODO(BUG-0007)` in the file under test, closed bug file `2026-01-05-old-rounding.md`), the prompt tagged `debug`, and the three graders from the spec; run the case once with each acta binary and note both results under Review notes.
 - [ ] Commit: test(evals): todo-not-an-order guards rule 11
+
+## State
+
+### Next
+
+Task 1 done (d6a4842). Start task 2: eval case todo-not-an-order.
+
+### Open rulings
+
+none
