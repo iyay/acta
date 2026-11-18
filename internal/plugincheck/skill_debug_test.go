@@ -15,7 +15,8 @@ func TestSkillDebug(t *testing.T) {
 		// The known-flake rerun rule in Phase 1 adds two more lines.
 		// The required-proof steps, the recent-changes step and the hang recipe
 		// added lines to SKILL.md; private probe checks extend the recipes.
-		MaxLines: 360,
+		// The write-check bullet adds one more line.
+		MaxLines: 361,
 		Must: []string{
 			// The four phases and their exit evidence.
 			"Symptom and feedback loop", "Narrow and distinguish", "Prove the mechanism", "Fix, verify and clean up",
@@ -120,6 +121,11 @@ func TestDebugProbeFolderIsChecked(t *testing.T) {
 		"Every shell call may start in the repo again",
 		"on the same line",
 		"Join the write with `&&`, never with `;` or on a new line: only then does a step that fails stop the line before the write.",
+		// Agents ran one checked line, then wrote more on a new command line
+		// or after ; in the same call (debug-probe-isolation, 3 of 3 red runs).
+		"**Every write starts with its own check.**",
+		"Running the app or its tests counts as a write.",
+		"A second command line in the same call, or a write after `;`, runs even when the check failed.",
 		// The old words, kept on purpose: without "temp copy" here agents ran
 		// the user's own repro command in the repo (debug-race, 37 of 40).
 		"A command that writes files runs only in a temp copy.",
