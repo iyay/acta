@@ -34,7 +34,7 @@ var fileCaps = map[string]int{
 	"skills/build/subagent.md":                1595,
 	"skills/build/wiki.md":                    2750,
 	"skills/cleanup/SKILL.md":                 3201,
-	"skills/debug/SKILL.md":                   11595,
+	"skills/debug/SKILL.md":                   12282,
 	"skills/debug/condition-based-waiting.md": 3582,
 	"skills/debug/defense-in-depth.md":        1505,
 	"skills/debug/root-cause-tracing.md":      3158,

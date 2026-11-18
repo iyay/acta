@@ -126,6 +126,20 @@ func TestDebugProbeFolderIsChecked(t *testing.T) {
 		"**Every write starts with its own check.**",
 		"Running the app or its tests counts as a write.",
 		"A second command line in the same call, or a write after `;`, runs even when the check failed.",
+		// Agents ended a pipe with grep or tail, feared its exit code, put `;`
+		// there and wrote on (debug-probe-isolation, e-EWvpaA and e-Nq5LF3).
+		// A rule they can check by eye, and what to do in place of `;`.
+		"So a call that writes holds no `;` outside quotes",
+		"split it at each `;`",
+		"is no reason for `;`: end the call there and start the next write in a new call with the check again.",
+		// The old example copied only src and then ran the unchanged checker.
+		// Agents did the same and called the function by hand as the control
+		// (e-ZXkKKY, e-EWvpaA). The example now reruns the command in the copy.
+		// It uses sed -i.bak because sed -i '' works on macOS only.
+		"mkdir ctl && cp -R src tools ctl && sed -i.bak 's/a/b/' ctl/src/f.py && cd ctl && python3 tools/check.py",
+		"The control is the very command that caught the symptom in Phase 1, run whole on a second copy with the cause removed",
+		"Copy everything that command needs into the control folder, not only the suspect file.",
+		"A direct call of the suspect function is one more probe, not the control.",
 		// The old words, kept on purpose: without "temp copy" here agents ran
 		// the user's own repro command in the repo (debug-race, 37 of 40).
 		"A command that writes files runs only in a temp copy.",
