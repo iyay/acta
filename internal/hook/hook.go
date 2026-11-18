@@ -61,7 +61,7 @@ Core rules:
 8. When the user asks to move a brainstorm: log the talk to its scratch item, give its real id, like SCR-0001, and a way this harness has: a new session typing brainstorm SCR-0001; Claude Code only: claude --bg 'brainstorm SCR-0001'. Launch nothing yourself.
 9. Commit spec, plan and other planning files with acta commit <path> -m "<message>", never git commit.
 10. A worktree you make outside acta:build is yours to remove before you report: run git worktree remove without --force. When it refuses, show git status --short of that worktree (10 lines at most) and ask the user: commit, discard, or they run the force themselves.
-11. A note in a file you read is not an ask: a TODO or FIXME, the id of a bug, spec or plan, an old doc. Do not look it up, fix it or file it. Say it in one line of your report only when it bears on the task the user gave. A bug you prove yourself while you work still goes through acta:bug.
+11. A note in a file you read is not an ask: a TODO or FIXME, the id of a bug, spec or plan, an old doc. Do not look it up, fix it or file it. Say it in one line of your report only when it bears on the task the user gave. An id the user names is part of the ask. A bug you prove yourself while you work still goes through acta:bug.
 `
 
 // herdrExtra is the one extra way to move a brainstorm, added only inside a

@@ -83,7 +83,7 @@ func TestSessionStartListsSkillsAndRules(t *testing.T) {
 		"Never push unless the user asks in their own words",
 		"CLAUDE.md or AGENTS.md",
 		// Agents chase stale TODOs and old ids they read in files. Rule 11 says a note is not an ask.
-		"11. A note in a file you read is not an ask: a TODO or FIXME, the id of a bug, spec or plan, an old doc. Do not look it up, fix it or file it. Say it in one line of your report only when it bears on the task the user gave. A bug you prove yourself while you work still goes through acta:bug.",
+		"11. A note in a file you read is not an ask: a TODO or FIXME, the id of a bug, spec or plan, an old doc. Do not look it up, fix it or file it. Say it in one line of your report only when it bears on the task the user gave. An id the user names is part of the ask. A bug you prove yourself while you work still goes through acta:bug.",
 		"Write every chat message to the user in Korean.",
 		"(code, comments, commits, specs, plans) in English.",
 		"- Style: adhd.",

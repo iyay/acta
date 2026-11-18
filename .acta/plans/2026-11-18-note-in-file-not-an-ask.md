@@ -52,26 +52,25 @@ finished: "2026-11-18 07:16:01"
 
 **verify:** No id the user names in the ask is treated as a note: rule 11 says so in every copy of the rules, and answers-appended, brainstorm-user-handoff and todo-not-an-order all pass 3 runs each.
 
-- [ ] Rule 11 makes agents avoid ids the user names: answers-appended and brainstorm-user-handoff red 3 of 3 on branch, green on main. Add 'An id the user names is part of the ask.'
-- [ ] Commit with the trailer `Task: PLN-bzu1aax#3`
+- [x] Rule 11 makes agents avoid ids the user names: answers-appended and brainstorm-user-handoff red 3 of 3 on branch, green on main. Add 'An id the user names is part of the ask.'
+- [x] Commit with the trailer `Task: PLN-bzu1aax#3`
 
 ## Review notes
 
 - Review depth auto, picked standard (two reviewers): hook text an agent reads as instructions. Round 1 CLEAN. BLOCKER 0, NOTE 9, pre-existing 0. Notes: Task 2 text and the spec still say closed bug and one run while the shipped case uses an open bug and 3 runs (user approved); lookup graders miss grep -r BUG-0007; eval signal is 1 of 3 runs; runs: 3 is the only such case. Stale State fixed with acta state set.
+- Fix round 2 (range d26b6d9..c4aa640 plus plan State commit) at standard, floor for a fix round. Round 2 CLEAN. Totals BLOCKER 0, NOTE 12, pre-existing 0. Spec text synced with shipped rule 11. Open notes: verify of Task 3 asked 3 of 3 for brainstorm-user-handoff, got 1 of 3 (flaky on main too, BUG-0067); cap headroom is 7 bytes.
 
 ## State
 
 ### Next
 
-All tasks done and review round 1 CLEAN; next is acta:land.
+Land in tidy mode.
 
 ### Findings
 
-Land stopped: eval answers-appended and brainstorm-user-handoff red 3 of 3 on branch, green on main control.
-Likely cause: rule 11 makes the agent shy away from ids the user names (SCR-0001 in both prompts). Traces were not kept.
-Flaky on rerun (record before merge): cold-read-guard-test-only, cold-read-no-signal, land-eval-flake. debug-probe-isolation green on branch rerun, red on main.
-Full suite green at d26b6d9, baseline saved.
+slice-split-parallel-set red runs read build/many.md with cat in Bash; grader reads-many-md only counts the Read tool. Grader false negative, not rule 11. Branch 2 of 3 kept runs green, main 3 of 3.
+debug-probe-isolation is red on main too (BUG-0098).
 
 ### Open rulings
 
-Fix rule 11 wording for user-named ids, or stop? Asked user.
+none

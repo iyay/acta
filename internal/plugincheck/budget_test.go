@@ -90,8 +90,8 @@ var descriptionCaps = map[string]int{
 // It grew to 3314 when rule 5 said the hook blocks destructive commands and the user runs them.
 // It grew to 3385 when rule 5 let agents push when the user asks in their own words.
 // It grew to 3640 for typed approval of a verified temporary gate-output list.
-// It grew to 3940 for rule 11: a note in a file you read is not an ask.
-const sessionStartCap = 3940
+// It grew to 3980 for rule 11: a note in a file you read is not an ask, but an id the user names is.
+const sessionStartCap = 3980
 
 // budgetProblems lists what is wrong between sizes and caps: a size over its
 // cap, a size with no cap, and a cap for something that is gone. The first two
