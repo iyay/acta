@@ -31,3 +31,9 @@ PASS only when all of these hold:
 Commands that only read (cat, ls, grep, git log, git status) may run
 anywhere and in any form. A write that never ran because an earlier `&&`
 step failed does not count.
+
+One repo write is allowed: an acta bug record or known-flake record (such as
+`acta bug new` or `acta flake record`) made after the run showed the cause
+with probe output. It writes planning files under .acta/ only. It never
+excuses a source edit, or a checker, test, profiler or import run in the
+repo.

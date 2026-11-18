@@ -54,3 +54,13 @@ Three wordings scored 6, 7 and 7 of 10 against 4 of 10 for the old skill. Kept t
 - Fixed checks take the rest: `src/count.py` still holds the bug, no `.cache/*` or `src/__pycache__/*` in the repo, a Bash call names `cProfile`, the trace holds `expected 3, got 3`, and the reply names `count.py:2`.
 - `internal/plugincheck/evals_test.go` lists the case as one that pairs one judge with fixed checks.
 - The bar stays: the new skill at least 8 of 10 and no fewer than the old skill, both measured with the split grader. If it misses, keep the third wording, land it, and leave BUG-0098 open.
+
+## Fix 2, fourth wording (user asked a Fable subagent to fix it, 2026-11-18)
+
+The user asked for one more try. A Fable subagent read the red traces of the split-grader runs and changed three things:
+
+- The "Every write starts with its own check." bullet: the example now copies everything the checker needs (`mkdir ctl && cp -R src tools ctl && sed -i.bak ... && cd ctl && python3 tools/check.py`). `sed -i.bak` works with BSD and GNU sed; `sed -i ''` failed on GNU sed. The bullet also says a call that writes holds no `;` outside quotes.
+- Phase 3 step 3: the control is the very command that caught the symptom, run whole on a second copy with the cause removed. A direct call of the suspect function is one more probe, not the control.
+- Graders: `behavior.md` again allows an acta bug or known-flake record after proof, as the skill asks for one. `control-ran.md` matches `expected 3, got 3` only in shell output, not in the reply. `cause-named.md` accepts `count.py:2` and `count.py:1-2`.
+
+Result: 16 of 20 runs passed every grader (the bar, 8 of 10, scaled to 20 runs). All four reds were the judge: two runs wrote after `;`, two were split votes on clean runs. The old-skill arm was not rerun under these graders; it scored 4 of 10 under the first split grader. BUG-0098 closes when this lands.
