@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // hookRepo makes a git repo holding a planning root, which is all the hook
@@ -251,5 +252,42 @@ func TestHookSessionManyTopicsInOneSession(t *testing.T) {
 				t.Fatalf("prompt: exit %d, stdout %q, stderr %q, want only the voice line %q", code, out, errb, voice)
 			}
 		})
+	}
+}
+
+// The prompt hook adds the cache line under the voice line only for a stale
+// Claude Code transcript. Every other input leaves just the voice line.
+func TestHookPromptCacheNudge(t *testing.T) {
+	t.Setenv("PLUGIN_ROOT", "")
+	ts := time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
+	path := filepath.Join(t.TempDir(), "t.jsonl")
+	line := fmt.Sprintf(`{"type":"assistant","timestamp":%q,"message":{"model":"m","usage":{"input_tokens":200000}}}`, ts)
+	if err := os.WriteFile(path, []byte(line+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stale := fmt.Sprintf(`{"session_id":"s1","transcript_path":%q,"prompt":"hi"}`, path)
+	_, voice, _ := runHook(t, "prompt", "")
+	if voice == "" || strings.Contains(voice, "acta cache:") {
+		t.Fatalf("voice line with no stdin = %q", voice)
+	}
+
+	code, out, errb := runHook(t, "prompt", stale)
+	if code != exitOK || errb != "" || !strings.HasPrefix(out, voice) || !strings.Contains(out[len(voice):], "acta cache: 2 h idle") {
+		t.Fatalf("stale event: exit %d, stdout %q, stderr %q, want the voice line then the cache line", code, out, errb)
+	}
+
+	for name, in := range map[string]string{
+		"empty":              "",
+		"not json":           "{not json",
+		"no transcript path": `{"session_id":"s1","prompt":"hi"}`,
+	} {
+		if code, out, errb := runHook(t, "prompt", in); code != exitOK || errb != "" || out != voice {
+			t.Fatalf("%s: exit %d, stdout %q, stderr %q, want only the voice line", name, code, out, errb)
+		}
+	}
+
+	t.Setenv("PLUGIN_ROOT", "/codex/plugin")
+	if code, out, errb := runHook(t, "prompt", stale); code != exitOK || errb != "" || out != voice {
+		t.Fatalf("codex: exit %d, stdout %q, stderr %q, want only the voice line", code, out, errb)
 	}
 }
