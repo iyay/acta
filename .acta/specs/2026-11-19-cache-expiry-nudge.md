@@ -3,6 +3,8 @@ parent: scratch/2026-11-19-cache-expiry-nudge
 id: SPC-0216
 created: "2026-11-19 20:59:45"
 hash: x98gt64
+started: "2026-11-20 05:13:15"
+finished: "2026-11-20 05:22:12"
 ---
 # Nudge when the prompt cache has likely expired
 

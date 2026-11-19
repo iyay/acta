@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0249
 created: "2026-11-20 04:21:12"
 hash: a4fi1iu
+started: "2026-11-20 05:13:15"
+finished: "2026-11-20 05:16:01"
 ---
 # Cache expiry nudge in the prompt hook
 
@@ -29,15 +31,25 @@ hash: a4fi1iu
 **Files:** `internal/hook/cache.go` (new), `internal/hook/cache_test.go` (new)
 **Seam:** `hook.CacheNudge(transcriptPath string, now time.Time) string` (empty string means no line)
 **verify:** The line appears only when the newest real usage line is more than 1 hour old and its context is 150000 or more, and never after a compact boundary. Every other path gives an empty string and no panic. List each path tried: limits exactly at 1 h and 150000, synthetic last line, broken last line, compact boundary after usage, bad or missing timestamp, cut first line of a tail over 512 KiB, missing file, and the exact text with gap at 119 min, 2 h, 47 h and 2 days.
-- [ ] Red: table tests over fixture transcripts written in `t.TempDir()` fail because `CacheNudge` does not exist.
-- [ ] Change: add `CacheNudge` per the spec's Design: read the last 512 KiB, walk lines from the end, stop on `compact_boundary`, take the newest non-synthetic assistant usage, apply the limits and the gap format.
-- [ ] Commit: feat(hook): build a nudge line when the prompt cache has likely expired
+- [x] Red: table tests over fixture transcripts written in `t.TempDir()` fail because `CacheNudge` does not exist.
+- [x] Change: add `CacheNudge` per the spec's Design: read the last 512 KiB, walk lines from the end, stop on `compact_boundary`, take the newest non-synthetic assistant usage, apply the limits and the gap format.
+- [x] Commit: feat(hook): build a nudge line when the prompt cache has likely expired
 
 ### Task 2: Wire the nudge into acta hook prompt
 
 **Files:** `internal/cli/hook.go`, `internal/cli/hook_session_test.go`
 **Seam:** `cmdHook([]string{"prompt"}, stdin, stdout, stderr)`
 **verify:** Wiring only. A stale transcript event prints the voice line, then the cache line. Under Codex (`PLUGIN_ROOT` set), and for empty stdin, non-JSON stdin, or JSON with no `transcript_path`, only the voice line prints. Exit code is 0 on every path listed.
-- [ ] Red: a CLI test feeding a stale event on stdin fails because the `prompt` case never reads stdin.
-- [ ] Change: in the `prompt` case, read stdin, take `transcript_path` from the JSON, skip when `hook.IsCodex()`, and print `hook.CacheNudge(path, time.Now())` under the voice line when it is not empty.
-- [ ] Commit: feat(cli): add the cache nudge to the prompt hook
+- [x] Red: a CLI test feeding a stale event on stdin fails because the `prompt` case never reads stdin.
+- [x] Change: in the `prompt` case, read stdin, take `transcript_path` from the JSON, skip when `hook.IsCodex()`, and print `hook.CacheNudge(path, time.Now())` under the voice line when it is not empty.
+- [x] Commit: feat(cli): add the cache nudge to the prompt hook
+
+## Review notes
+
+- Review depth auto, picked standard (two reviewers): risk signal is hook text the agent reads. Round 1 range 97f980c..10aaf44 CLEAN on both axes. BLOCKER 0, NOTE 8, pre-existing 0. Notes: exact-text test uses Contains; io.ReadAll waits on a TTY stdin (real callers close it); FIFO transcript path would block; a single line over 512 KiB gives no nudge; gap cases check only the prefix; Codex stdin not drained; hook prompt help does not mention stdin; first tail line dropped even when cut lands on a line start.
+
+## State
+
+### Next
+
+All tasks committed; next is the wiki check, then acta:review over the branch.

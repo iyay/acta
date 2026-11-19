@@ -2,10 +2,10 @@
 id: SCR-0097
 hash: xfvvkg6
 title: Nudge when the prompt cache has likely expired
-status: raw
+status: done
 created: "2026-11-19 20:48:13"
 schema: "1"
-finished: "2026-11-19 20:59:45"
+finished: "2026-11-20 05:22:21"
 ---
 # Nudge when the prompt cache has likely expired
 

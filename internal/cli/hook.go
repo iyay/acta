@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/config"
@@ -42,6 +43,19 @@ func cmdHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return exitBadInput
 		}
 		fmt.Fprintln(stdout, hook.Prompt(loadVoice()))
+		// Codex writes its transcript in another shape, so the cache line is
+		// for Claude Code only. A bad or empty event just means no line.
+		if hook.IsCodex() {
+			return exitOK
+		}
+		var ev struct {
+			TranscriptPath string `json:"transcript_path"`
+		}
+		if data, err := io.ReadAll(stdin); err == nil && json.Unmarshal(data, &ev) == nil && ev.TranscriptPath != "" {
+			if line := hook.CacheNudge(ev.TranscriptPath, time.Now()); line != "" {
+				fmt.Fprintln(stdout, line)
+			}
+		}
 		return exitOK
 	case "pre-tool", "post-tool":
 		if len(args) != 1 {
