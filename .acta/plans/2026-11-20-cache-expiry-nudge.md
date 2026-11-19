@@ -4,6 +4,7 @@ depth: minimal
 id: PLN-0249
 created: "2026-11-20 04:21:12"
 hash: a4fi1iu
+started: "2026-11-20 05:13:15"
 ---
 # Cache expiry nudge in the prompt hook
 
@@ -29,9 +30,9 @@ hash: a4fi1iu
 **Files:** `internal/hook/cache.go` (new), `internal/hook/cache_test.go` (new)
 **Seam:** `hook.CacheNudge(transcriptPath string, now time.Time) string` (empty string means no line)
 **verify:** The line appears only when the newest real usage line is more than 1 hour old and its context is 150000 or more, and never after a compact boundary. Every other path gives an empty string and no panic. List each path tried: limits exactly at 1 h and 150000, synthetic last line, broken last line, compact boundary after usage, bad or missing timestamp, cut first line of a tail over 512 KiB, missing file, and the exact text with gap at 119 min, 2 h, 47 h and 2 days.
-- [ ] Red: table tests over fixture transcripts written in `t.TempDir()` fail because `CacheNudge` does not exist.
-- [ ] Change: add `CacheNudge` per the spec's Design: read the last 512 KiB, walk lines from the end, stop on `compact_boundary`, take the newest non-synthetic assistant usage, apply the limits and the gap format.
-- [ ] Commit: feat(hook): build a nudge line when the prompt cache has likely expired
+- [x] Red: table tests over fixture transcripts written in `t.TempDir()` fail because `CacheNudge` does not exist.
+- [x] Change: add `CacheNudge` per the spec's Design: read the last 512 KiB, walk lines from the end, stop on `compact_boundary`, take the newest non-synthetic assistant usage, apply the limits and the gap format.
+- [x] Commit: feat(hook): build a nudge line when the prompt cache has likely expired
 
 ### Task 2: Wire the nudge into acta hook prompt
 
@@ -41,3 +42,9 @@ hash: a4fi1iu
 - [ ] Red: a CLI test feeding a stale event on stdin fails because the `prompt` case never reads stdin.
 - [ ] Change: in the `prompt` case, read stdin, take `transcript_path` from the JSON, skip when `hook.IsCodex()`, and print `hook.CacheNudge(path, time.Now())` under the voice line when it is not empty.
 - [ ] Commit: feat(cli): add the cache nudge to the prompt hook
+
+## State
+
+### Next
+
+Task 2: wire hook.CacheNudge into the prompt case of internal/cli/hook.go; read stdin, skip under hook.IsCodex.
