@@ -5,6 +5,7 @@ title: Nudge when the prompt cache has likely expired
 status: raw
 created: "2026-11-19 20:48:13"
 schema: "1"
+finished: "2026-11-19 20:59:45"
 ---
 # Nudge when the prompt cache has likely expired
 
