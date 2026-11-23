@@ -73,9 +73,9 @@ Subagent (general-purpose):
 
     ## Finding Bar
 
-    A BLOCKER is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
+    A BLOCKER is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER. One exception, a text test: a test the diff adds that asserts a code, script, skill or config file contains an exact line or phrase is a BLOCKER. Its evidence is the test's `file:line` and the path it reads, in place of a concrete input.
 
-    Everything else is a NOTE. Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
+    Everything else is a NOTE. Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover, a new test func where a table or nearby test of the same unit would fit, and every other test finding but a text test.
 
     A NOTE gets one bucket. One that fails the first test falls to the next:
     - `[fix]`: the file is already in the diff, the fix adds no new logic, the path is not security, auth, money, migration or delete, and it fits in one small commit.

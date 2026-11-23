@@ -3,6 +3,8 @@ parent: scratch/2026-11-23-fewer-tests
 id: SPC-0218
 created: "2026-11-23 20:28:12"
 hash: ldgt96k
+started: "2026-11-23 20:43:42"
+finished: "2026-11-24 05:52:52"
 ---
 # Fewer, leaner tests
 

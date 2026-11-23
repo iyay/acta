@@ -17,8 +17,8 @@ main. Its one task is committed. This folder is the worktree.
 Run round 1 of the review with the acta review skill (acta:review) over the
 range main..HEAD, at the standard depth. Run round 1 only: do not fix
 anything, do not polish, do not land. Change no file, except you may add the
-one `## Review notes` line to the plan. The repo has no tests and no
-formatter. Say the verdict, CLEAN or BLOCKED, and for each
+one `## Review notes` line to the plan. The repo has no formatter.
+Say the verdict, CLEAN or BLOCKED, and for each
 BLOCKER its file and line as `path:line`, then stop.
 
 The acta CLI for this repo is ./bin/acta, and git is ./bin/git. Use those two

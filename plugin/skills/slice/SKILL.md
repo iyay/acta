@@ -80,7 +80,7 @@ Never give a line range as the target; a range is an instance. Name the rule and
 
 Each case a verify line lists is named once, in the task whose layer owns the behaviour. A task for a layer above says it is wiring only: one success path and one error passed up from below. It lists no lower-layer case again. A case that crosses a trust boundary names the adversarial inputs to try in its verify line.
 
-Inputs that run the same code path are one case. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams.
+Inputs that run the same code path are one case. When the unit already has a test, a task names that test and the row or assert it adds; it names a new test func only with a one-line reason why no existing test fits. Every task names its `**Seam:**`, the public interface its tests call. The yes to the plan is the yes to its seams.
 
 ## Test commands
 

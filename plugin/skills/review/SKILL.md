@@ -26,9 +26,9 @@ After each round, run `git worktree list` and tell the user the path of every wo
 
 ## Finding bar: BLOCKER or NOTE
 
-A **BLOCKER** is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER.
+A **BLOCKER** is one of: wrong output for a real user today on a path the plan covers; data loss or corruption; a security hole (a user value reaching SQL, shell, a path, a template or HTTP unchecked, or an auth bypass); production cannot run the change. It must carry `file:line` and a concrete input that gives the wrong output. No reproducible scenario means it is not a BLOCKER. One exception, a text test: a test the diff adds that asserts a code, script, skill or config file contains an exact line or phrase is a BLOCKER. Its evidence is the test's `file:line` and the path it reads, in place of a concrete input.
 
-Everything else is a **NOTE**: one line each. A NOTE is not a task, unless it carries the `[fix]` tag: see "Where findings go". Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover.
+Everything else is a **NOTE**: one line each. A NOTE is not a task, unless it carries the `[fix]` tag: see "Where findings go". Always a NOTE: comments, naming, wording, formatting, log text, test-helper design, guards for inputs the plan does not name, "could be more robust", duplicated code that works, a missing test for a path the plan does not cover, a new test func where a table or nearby test of the same unit would fit, and every other test finding but a text test.
 
 ## The three questions, and the deep lens
 
@@ -52,7 +52,7 @@ Record each round's exact input ranges in its review notes. After a cut list or 
 
 depth.md `## Rounds` keeps the verdicts.
 
-There is never a round 4. A complete round with no BLOCKER starts no further round; it runs `## After a CLEAN round`. An incomplete round follows the range rule above within the same three-round budget. Findings in test tooling are NOTEs. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
+There is never a round 4. A complete round with no BLOCKER starts no further round; it runs `## After a CLEAN round`. An incomplete round follows the range rule above within the same three-round budget. Findings in test tooling are NOTEs, except a text test. A reviewer cannot re-scope the plan. A fix that opens a new hole is reverted and both are noted, unless the original was a BLOCKER. Before every commit after the deliverable is green, ask: "Without this, does a real user see a wrong result today?" No: no commit, one NOTE; the `[fix]` NOTEs are handled in `## After a CLEAN round`.
 
 ## Where findings go
 

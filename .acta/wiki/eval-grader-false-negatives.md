@@ -9,6 +9,8 @@ A regex grader that lists phrases misses new wording. On 2026-11-16 `cold-read-p
 
 Run with `--keep-temp` and read the last reply in `out/trace.jsonl` of each red run. Widen a pattern only with that real reply as a test sample, next to a reply that must still fail. Then rerun both arms under the new pattern.
 
-A haiku judge can vote FAIL on a reply that holds every expected quote. Count that as judge noise only after reading the reply.
+A haiku judge can vote FAIL on a reply that holds every expected quote. Count that as judge noise only after reading the reply. A judge on the trace can also see an elided trace and fail a good run (tdd-row-not-func, 2026-11-23); a logged fact grades better, such as a `bin/python3` wrapper that writes each test run's exit code to `.git/test-runs.log`.
+
+A grader that pins one id form misses another valid one: once land wrote `PLN-<hash>`, agents passed `--plan PLN-landrf1` and land-records-flake failed until it took both forms.
 
 An old-arm clone outside the repo needs `--trust-plugin` when no terminal is attached. Without it the run stops at once and scores nothing.

@@ -4,6 +4,8 @@ depth: minimal
 id: PLN-0252
 created: "2026-11-23 20:40:14"
 hash: h3b0azk
+started: "2026-11-23 20:43:42"
+finished: "2026-11-23 21:07:22"
 ---
 # Fewer, leaner tests
 
@@ -35,42 +37,65 @@ hash: h3b0azk
 **Files:** `plugin/skills/tdd/SKILL.md`, `plugin/evals/tdd-row-not-func/` (new), `internal/plugincheck/budget_test.go`
 **Seam:** the tdd RED step text, proven by `scripts/eval --case tdd-row-not-func`
 **verify:** A red test for a unit that has a table test is a row in it, seen failing first, with no new test func; the step names the order row, then assert, then new func, and points to "Behavior, not text". Name the grader checks: row added, red run shown before the change, test func count unchanged.
-- [ ] Red: `scripts/eval --case tdd-row-not-func` fails on the current text because the agent adds a new test func.
-- [ ] Change: replace the "Write one minimal test" sentence with the three-step order and the pointer; raise the tdd byte cap only by what it needs.
-- [ ] Commit: feat(tdd): a red test is a row in an existing table first
+- [x] Red: `scripts/eval --case tdd-row-not-func` fails on the current text because the agent adds a new test func.
+- [x] Change: replace the "Write one minimal test" sentence with the three-step order and the pointer; raise the tdd byte cap only by what it needs.
+- [x] Commit: feat(tdd): a red test is a row in an existing table first
 
 ### Task 2: slice tasks name the row
 
 **Files:** `plugin/skills/slice/SKILL.md`, `plugin/evals/slice-row-not-func/` (new), `internal/plugincheck/budget_test.go`, `internal/plugincheck/skill_slice_test.go`
 **Seam:** the slice task rule, proven by `scripts/eval --case slice-row-not-func`
 **verify:** A plan task for a unit with a table test names that test and the row it adds; a new test func appears only with a one-line reason. Name the grader checks: test file and table named, no new func without a reason line.
-- [ ] Red: `scripts/eval --case slice-row-not-func` fails on the current text because the task names a new test func.
-- [ ] Change: add the rule to the task section of slice SKILL.md, replacing text where it overlaps; raise byte and line caps only by what they need.
-- [ ] Commit: feat(slice): plan tasks name the existing test and row
+- [x] Red: `scripts/eval --case slice-row-not-func` fails on the current text because the task names a new test func.
+- [x] Change: add the rule to the task section of slice SKILL.md, replacing text where it overlaps; raise byte and line caps only by what they need.
+- [x] Commit: feat(slice): plan tasks name the existing test and row
 
 ### Task 3: debug regression test follows the order
 
 **Files:** `plugin/skills/debug/SKILL.md`, `plugin/evals/debug-regression-row/` (new), `internal/plugincheck/budget_test.go`, `internal/plugincheck/skill_debug_test.go`
 **Seam:** debug phase 4 step 1, proven by `scripts/eval --case debug-regression-row`
 **verify:** The regression test proposed for a bug in a unit with a table test is a row in that table. Name the grader check.
-- [ ] Red: `scripts/eval --case debug-regression-row` fails on the current text because the proposed test is a new func.
-- [ ] Change: phase 4 step 1 says the regression test follows the tdd order; raise caps only by what they need.
-- [ ] Commit: feat(debug): regression test is a row in an existing table first
+- [x] Red: `scripts/eval --case debug-regression-row` fails on the current text because the proposed test is a new func.
+- [x] Change: phase 4 step 1 says the regression test follows the tdd order; raise caps only by what they need.
+- [x] Commit: feat(debug): regression test is a row in an existing table first
 
 ### Task 4: Review blocks text tests
 
 **Files:** `plugin/skills/review/SKILL.md`, `plugin/skills/review/code-reviewer.md`, `plugin/evals/review-planted-bug/` (scaffold, prompt, a new grader), `internal/plugincheck/budget_test.go`
 **Seam:** the review finding bar, proven by `scripts/eval --case review-planted-bug`
 **verify:** A test the diff adds that asserts a code, script, skill or config file contains an exact line or phrase is a BLOCKER with its `file:line` and the path it reads; it is the one test finding that is a BLOCKER, and both finding bars and the "Always a NOTE" list agree. The planted `src/discount.py:4` BLOCKER is still found.
-- [ ] Red: with the scaffold's new text test and the new grader, `scripts/eval --case review-planted-bug` fails because the reviewer calls the text test a NOTE.
-- [ ] Change: add the exception next to the BLOCKER definition in both files and name it in the NOTE lines; drop "The repo has no tests" from the prompt; raise caps only by what they need.
-- [ ] Commit: feat(review): a text test is a BLOCKER
+- [x] Red: with the scaffold's new text test and the new grader, `scripts/eval --case review-planted-bug` fails because the reviewer calls the text test a NOTE.
+- [x] Change: add the exception next to the BLOCKER definition in both files and name it in the NOTE lines; drop "The repo has no tests" from the prompt; raise caps only by what they need.
+- [x] Commit: feat(review): a text test is a BLOCKER
 
 ### Task 5: Test audit mode in cleanup
 
 **Files:** `plugin/skills/cleanup/SKILL.md`, `plugin/skills/cleanup/tests.md` (new), `plugin/evals/cleanup-test-audit/` (new), `internal/plugincheck/budget_test.go`, `internal/plugincheck/skill_cleanup_test.go`
 **Seam:** the cleanup skill on "audit the tests", proven by `scripts/eval --case cleanup-test-audit`
 **verify:** On a test audit ask the agent loads cleanup, skips the planning steps, reports the text test and the near duplicate pair with `file:line`, leaves the sound test out, deletes no file, runs no `acta cleanup`, and asks before any `acta debt new`. Name each grader check.
-- [ ] Red: `scripts/eval --case cleanup-test-audit` fails on the current text because the agent runs `acta cleanup` or edits tests.
-- [ ] Change: new description, the skip line before step 1, `tests.md` per the spec; add the `fileCaps` entry for `tests.md` and raise the description and folder caps only by what they need.
-- [ ] Commit: feat(cleanup): audit a repo's tests for text tests and duplicates
+- [x] Red: `scripts/eval --case cleanup-test-audit` fails on the current text because the agent runs `acta cleanup` or edits tests.
+- [x] Change: new description, the skip line before step 1, `tests.md` per the spec; add the `fileCaps` entry for `tests.md` and raise the description and folder caps only by what they need.
+- [x] Commit: feat(cleanup): audit a repo's tests for text tests and duplicates
+
+## Polish
+
+### Task 6: Review polish
+
+**verify:** every NOTE below is applied, and nothing else changes.
+
+- [x] plugin/skills/cleanup/tests.md:7 "Ask which items to keep." reads as which tests to keep; make it "Ask which items to approve." as the spec says.
+- [x] Commit: `polish: review notes for PLN-0252`
+
+## Review notes
+
+- Review depth auto, picked standard (two reviewers): risk signal is skill text agents read. Round 1 range 7ff9c0f..7e60ea8 CLEAN on both axes; polish 570c023..2dc71b3 CLEAN. BLOCKER 0, NOTE 9, pre-existing 0. Notes: text-test-blocker grader can pass on a NOTE inside a line or miss an unusual citation form; slice grader rows? loose and allowed_tools has no Skill; cleanup-test-audit grants Agent so a subagent acta cleanup may go unseen; debug-regression-row decides row vs func with an llm judge; slice full.md template step still reads as a new test; polish commit subject differs from the plan wording.
+
+## State
+
+### Next
+
+All five tasks are committed. Next is acta:review over the plan range, then acta:land with scripts/eval --tag=tdd, --tag=slice, --tag=debug, --tag=review and --tag=cleanup.
+
+### Findings
+
+tdd-row-not-func: an llm judge on trace saw an elided trace and failed a good run; a python wrapper that logs exit code and file state to .git/test-runs.log grades red-first without a judge.

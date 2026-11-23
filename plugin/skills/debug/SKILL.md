@@ -57,7 +57,7 @@ Exit: trigger, state change and symptom are linked with `file:line` and probe ou
 
 A fix is code, so it goes through `acta:shape`, a plan, and its own worktree through `acta:build`.
 
-1. The repro becomes the regression test (`acta:tdd`). Test the real bug pattern at the layer that owns it. Watch it fail, then pass.
+1. The repro becomes the regression test and follows the red test order of `acta:tdd`: a new row in an existing table test of the same unit, else an assert in its nearest test, a new test func last. Test the real bug pattern at the layer that owns it. Watch it fail, then pass.
 2. Re-run the user's original command or scenario, plus nearby checks.
 3. Remove temp probes and instrumentation. Report what remains unverified.
 4. Use `acta:land` before claiming it is fixed. Missing test coverage is a gap, never proof of a fix.

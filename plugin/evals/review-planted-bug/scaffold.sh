@@ -47,12 +47,13 @@ hash: evplbug
 
 **Spec:** none
 
-**Tests:** none, this repo has no test suite and no formatter.
+**Tests:** `python3 -m unittest discover -s tests -t .`; the repo has no formatter.
 
 ### Task 1: Percent discount
 
 **Files:**
 - Modify: `src/discount.py`
+- Test: `tests/test_discount.py`
 
 **verify:** apply_discount(price, percent) returns the price with that percent taken off, so apply_discount(50, 20) is 40. A percent below 0 or above 100 raises ValueError.
 
@@ -76,5 +77,24 @@ def apply_discount(price, percent):
         raise ValueError("percent must be between 0 and 100")
     return price - percent
 PY
-git add src/discount.py
+# The branch also adds a text test: it reads src/discount.py and asserts the
+# source holds one line. It passes whatever apply_discount returns, so it
+# proves nothing. The review must call it a BLOCKER and name its file and line.
+mkdir -p tests
+: > tests/__init__.py
+cat > tests/test_discount.py <<'PY'
+import unittest
+from pathlib import Path
+
+
+class DiscountSourceTest(unittest.TestCase):
+    def test_discount_checks_the_percent_range(self):
+        source = Path("src/discount.py").read_text()
+        self.assertIn('raise ValueError("percent must be between 0 and 100")', source)
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+git add src/discount.py tests/__init__.py tests/test_discount.py
 git commit -qm "discount: take a percent off the price"

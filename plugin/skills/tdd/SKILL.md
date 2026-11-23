@@ -26,7 +26,12 @@ Write code before the test? Delete it. Start over. Don't keep it as "reference",
 
 ### RED - Write Failing Test
 
-Write one minimal test: one behavior, a clear name, real code (no mocks unless unavoidable).
+Add the red test in this order:
+1. A new row in an existing table test, `test.each` or subtest list of the same unit.
+2. Else a new assert in the nearest existing test of the same unit.
+3. Else a new test func, only for a behavior no test checks yet.
+
+Each checks one behavior with real code (no mocks unless unavoidable) and is seen failing before the code changes. Never test that a file holds a line or phrase: see "Behavior, not text" in [writing-good-tests.md](writing-good-tests.md).
 
 <Good>
 ```typescript

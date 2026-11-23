@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: "acta: Use when the user asks to clean up, tidy or check stale planning items: scratch, bugs, debt lines, plans or specs that are done, dropped, closed, built or no longer valid. Proposes each change with evidence and writes only what the user approves."
+description: "acta: Use when the user asks to clean up, tidy or check stale planning items (scratch, bugs, debt lines, plans or specs that are done, dropped or no longer valid), or to audit tests for text tests and duplicates. Proposes each change with evidence and writes only what the user approves."
 ---
 
 # Cleanup
@@ -10,6 +10,8 @@ Cleanup closes planning items whose work is over. It never deletes a file: each 
 **Subagent models.** Name no model for any subagent; the harness default picks it.
 
 ## Steps
+
+When the user asks to audit tests, skip steps 1 to 7 and follow [tests.md](tests.md).
 
 1. Run `acta cleanup`. When it lists fixes, show them and wait for a yes. Then run `acta cleanup --fix`. A file it names as not committed blocks the fix: tell the user and go on.
 2. Run `acta cleanup --json`. Each candidate costs an evidence check, so a long list costs many tokens. With more than 10 candidates in total, first tell the user the count per kind, the subagents you would start and the approval messages you would send, then ask: all, some kinds, or the N oldest. Start nothing before the answer.
