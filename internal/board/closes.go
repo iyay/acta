@@ -27,8 +27,10 @@ func listField(front map[string]any, key string) []string {
 }
 
 // linkCloses reads the closes: list of every spec, plan and bug. A target must
-// be a scratch item, a spec or a debt item, since those are the items whose
-// status is not decided by their own tasks. An entry that points at nothing,
+// be a scratch item, a spec, a debt file or line, or a bug. A plan or a task
+// is not one: its own boxes decide when it is done. Land writes fixed_in and
+// the debt ticks for the bugs and debt a plan closes, so a closer never sets a
+// bug's status here. An entry that points at nothing,
 // or at a kind that cannot be closed, is a problem on the item that wrote it
 // and never stops the rest of the board from loading.
 func (b *Board) linkCloses() {
@@ -45,7 +47,7 @@ func (b *Board) linkCloses() {
 				continue
 			}
 			switch target.Kind {
-			case KindScratch, KindStory, KindDebtItem:
+			case KindScratch, KindStory, KindDebt, KindDebtItem, KindBug:
 			default:
 				it.Problems = append(it.Problems, "closes "+entry+": a "+kindWord(target.Kind)+" cannot be closed")
 				continue

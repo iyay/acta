@@ -13,10 +13,12 @@ func TestClosesLinksEveryAllowedKind(t *testing.T) {
 		"scratch/2026-09-29-b.md":      "# B\n",
 		"specs/2026-09-29-t-design.md": "# T\n",
 		"debt/2026-09-29-d.md":         "---\nid: DEBT-1\n---\n# D\n\n- [ ] one\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0001, scratch/2026-09-29-b, specs/2026-09-29-t-design, DBT-0001.01]\n---\n# S\n",
+		"debt/2026-09-29-e.md":         "---\nid: DEBT-2\n---\n# E\n\n- [ ] two\n",
+		"bugs/2026-09-29-x.md":         "---\nid: BUG-1\n---\n# X\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCR-0001, scratch/2026-09-29-b, specs/2026-09-29-t-design, DBT-0001.01, DBT-0002, BUG-0001]\n---\n# S\n",
 	})
 	s := b.Get("specs/2026-09-29-s-design")
-	want := []string{"scratch/2026-09-29-a", "scratch/2026-09-29-b", "specs/2026-09-29-t-design", "debt/2026-09-29-d#item-1"}
+	want := []string{"scratch/2026-09-29-a", "scratch/2026-09-29-b", "specs/2026-09-29-t-design", "debt/2026-09-29-d#item-1", "debt/2026-09-29-e", "bugs/2026-09-29-x"}
 	if !slices.Equal(s.Closes, want) || len(s.Problems) != 0 {
 		t.Fatalf("closes %v problems %v, want %v and none", s.Closes, s.Problems, want)
 	}
@@ -31,6 +33,11 @@ func TestClosesLinksEveryAllowedKind(t *testing.T) {
 	if st := b.Get("debt/2026-09-29-d#item-1").Status; st != "todo" && st != "open" {
 		t.Errorf("debt item changed to %s from closes", st)
 	}
+	// A bug is fixed only by its own fixed_in, never by the item that
+	// closes it.
+	if st := b.Get("bugs/2026-09-29-x").Status; st != "open" {
+		t.Errorf("closed bug = %s, want open", st)
+	}
 }
 
 func TestClosesBadEntriesAreProblems(t *testing.T) {
@@ -38,14 +45,12 @@ func TestClosesBadEntriesAreProblems(t *testing.T) {
 
 	b := boardWith(t, map[string]string{
 		"plans/2026-09-29-q.md":        "# Q\n\n### Task 1: A\n\n- [ ] a\n",
-		"bugs/2026-09-29-x.md":         "# X\n",
-		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-99, plans/2026-09-29-q, plans/2026-09-29-q#task-1, bugs/2026-09-29-x]\n---\n# S\n",
+		"specs/2026-09-29-s-design.md": "---\ncloses: [SCRATCH-99, plans/2026-09-29-q, plans/2026-09-29-q#task-1]\n---\n# S\n",
 	})
 	want := []string{
 		"closes SCRATCH-99 not found",
 		"closes plans/2026-09-29-q: a plan cannot be closed",
 		"closes plans/2026-09-29-q#task-1: a task cannot be closed",
-		"closes bugs/2026-09-29-x: a bug cannot be closed",
 	}
 	if got := b.Get("specs/2026-09-29-s-design").Problems; !slices.Equal(got, want) {
 		t.Errorf("problems %v, want %v", got, want)

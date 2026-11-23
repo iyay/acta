@@ -1,6 +1,9 @@
 ---
 id: BUG-0102
 hash: hy951bz
+started: "2026-11-24 06:01:44"
+fixed_in: PLN-jvp7jst
+finished: "2026-11-24 06:09:01"
 ---
 # A plan that closes a bug or a whole debt file shows a false problem
 
