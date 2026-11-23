@@ -7,6 +7,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/iyay/acta/internal/telemetry"
 	"github.com/iyay/acta/internal/tidy"
 )
 
@@ -16,6 +17,7 @@ import (
 func cmdTidy(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("tidy", stderr)
 	onto := fs.String("onto", "", "ref whose chore commits fold forward into the first new commit")
+	plan := fs.String("plan", "", "hash of the plan that lands; its fixed_in, debt ticks and spec dates go into the last commit")
 	pos, err := parseMixed(fs, args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -37,10 +39,16 @@ func cmdTidy(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return exitOther
 	}
-	res, err := tidy.Run(cfg.RepoRoot, tidy.Options{Base: pos[0], Branch: pos[1], Onto: *onto, PlanningRoot: rel})
+	res, err := tidy.Run(cfg.RepoRoot, tidy.Options{Base: pos[0], Branch: pos[1], Onto: *onto, PlanningRoot: rel, Plan: *plan, Dirs: cfg.Dirs})
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitOther
+	}
+	// Tidy mode lands a plan with --plan and never runs land-notes, so this
+	// is where its land is counted. A rerun after a FLAKY line finds the
+	// tidy ref still there, and the same land must not count twice.
+	if *plan != "" && !res.Rerun {
+		_ = telemetry.Default().Add("workflow", "plan_landed")
 	}
 	parent := res.Parent
 	if len(parent) > 7 {

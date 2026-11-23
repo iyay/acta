@@ -356,6 +356,11 @@ func TestSetValueFixedInAndRefBadInput(t *testing.T) {
 		{"sha upper case", "bugs/2026-09-24-crash", "fixed_in", "ABC1234"},
 		{"sha too long", "bugs/2026-09-24-crash", "fixed_in", strings.Repeat("a", 41)},
 		{"sha not hex", "bugs/2026-09-24-crash", "fixed_in", "xyz1234"},
+		{"plan short id", "bugs/2026-09-24-crash", "fixed_in", "PLN-0250"},
+		{"plan prefix alone", "bugs/2026-09-24-crash", "fixed_in", "PLN-"},
+		{"plan hash upper case", "bugs/2026-09-24-crash", "fixed_in", "PLN-FNC1MNM"},
+		{"plan hash of 6", "bugs/2026-09-24-crash", "fixed_in", "PLN-fnc1mn"},
+		{"plan hash of 8", "bugs/2026-09-24-crash", "fixed_in", "PLN-fnc1mnmx"},
 		{"ref with space", "bugs/2026-09-24-crash", "ref", "New 261"},
 		{"ref empty", "bugs/2026-09-24-crash", "ref", ""},
 		{"ref newline", "bugs/2026-09-24-crash", "ref", "A\nB"},
@@ -363,8 +368,13 @@ func TestSetValueFixedInAndRefBadInput(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if _, err := SetValue(cfg, b, c.id, c.field, c.value); !errors.Is(err, ErrBadInput) {
+			_, err := SetValue(cfg, b, c.id, c.field, c.value)
+			if !errors.Is(err, ErrBadInput) {
 				t.Fatalf("err = %v, want ErrBadInput", err)
+			}
+			// A bad fixed_in value on a bug says both forms it would take.
+			if c.field == "fixed_in" && c.id == "bugs/2026-09-24-crash" && !(strings.Contains(err.Error(), "sha") && strings.Contains(err.Error(), "PLN-<hash>")) {
+				t.Fatalf("err = %v, want it to name a sha and PLN-<hash>", err)
 			}
 		})
 	}
@@ -435,6 +445,10 @@ func TestSetValueFixedInAndRefKindsAndBounds(t *testing.T) {
 	// lower bounds and 40-char upper bounds pass.
 	if _, err := SetValue(cfg, b, "bugs/2026-09-24-crash", "fixed_in", strings.Repeat("a", 40)); err != nil {
 		t.Fatalf("40-char sha: %v", err)
+	}
+	// A plan hash is the other form, so land can name the plan that fixed it.
+	if _, err := SetValue(cfg, mustLoad(t, cfg), "bugs/2026-09-24-crash", "fixed_in", "PLN-fnc1mnm"); err != nil {
+		t.Fatalf("plan hash: %v", err)
 	}
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "specs/2026-09-20-alpha", "ref", strings.Repeat("a", 40)); err != nil {
 		t.Fatalf("40-char ref: %v", err)

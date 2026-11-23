@@ -1334,13 +1334,27 @@ func TestDetailShowsTheReason(t *testing.T) {
 	files := map[string]string{
 		".acta/scratch/2026-09-19-idea.md": "---\nid: SCR-1\nstatus: done\nreason: built in abc1234\n---\n# Idea\n",
 		".acta/specs/2026-09-20-a.md":      "---\nid: SPEC-1\nreason: built in abc1234\n---\n# Spec A\n",
-		".acta/plans/2026-09-21-a.md":      "---\nid: PLAN-1\nstatus: dropped\nreason: built in abc1234\n---\n# Plan A\n\n### Task 1: First\n- [ ] a\n",
+		".acta/plans/2026-09-21-a.md":      "---\nid: PLAN-1\nhash: abcd123\nstatus: dropped\nreason: built in abc1234\n---\n# Plan A\n\n### Task 1: First\n- [ ] a\n",
 		".acta/bugs/2026-09-23-b.md":       "---\nid: BUG-1\nstatus: wontfix\nreason: built in abc1234\n---\n# Bug B\n",
+		".acta/bugs/2026-09-23-c.md":       "---\nid: BUG-2\nfixed_in: PLN-abcd123\n---\n# Bug C\n",
+		".acta/bugs/2026-09-23-d.md":       "---\nid: BUG-3\nfixed_in: d2277688f\n---\n# Bug D\n",
+		".acta/bugs/2026-09-23-e.md":       "---\nid: BUG-4\nfixed_in: PLN-zzzz999\n---\n# Bug E\n",
 	}
 	cfg := treeCfg(t, files)
 	for _, id := range []string{"scratch/2026-09-19-idea", "SPEC-1", "PLAN-1", "BUG-1"} {
 		if got := valueOf(t, detailLines(t, cfg, id), "REASON"); got != "built in abc1234" {
 			t.Errorf("%s REASON = %q", id, got)
+		}
+	}
+	// A plan hash in fixed_in names the plan too; a sha, or a hash no plan
+	// holds, shows the value alone.
+	for _, c := range []struct{ id, want string }{
+		{"BUG-2", "PLN-abcd123 · Plan A"},
+		{"BUG-3", "d2277688f"},
+		{"BUG-4", "PLN-zzzz999"},
+	} {
+		if got := valueOf(t, detailLines(t, cfg, c.id), "FIXED"); got != c.want {
+			t.Errorf("%s FIXED = %q, want %q", c.id, got, c.want)
 		}
 	}
 	if got := labelsOf(detailOf(t, "BUG-1")); slices.Contains(got, "REASON") {

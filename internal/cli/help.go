@@ -287,8 +287,11 @@ var helpTable = []helpCmd{
 		name:    "tidy",
 		group:   "Setup",
 		summary: "Fold a branch into one commit per code task, leaving every ref as it was when a step fails.",
-		usage:   []string{"acta tidy <base> <branch> [--onto <ref>]"},
-		flags:   []string{"--onto REF  ref whose chore commits fold forward into the first new commit"},
+		usage:   []string{"acta tidy <base> <branch> [--onto <ref>] [--plan <hash>]"},
+		flags: []string{
+			"--onto REF    ref whose chore commits fold forward into the first new commit",
+			"--plan HASH   plan that lands; its fixed_in, debt ticks and spec dates go into the last commit",
+		},
 		example: "acta tidy main acta-help-man",
 	},
 	{
@@ -308,6 +311,13 @@ var helpTable = []helpCmd{
 		summary: "After a plan lands, write and commit the dates of its spec.",
 		usage:   []string{"acta spec-dates <plan>"},
 		example: "acta spec-dates PLN-0160",
+	},
+	{
+		name:    "land-notes",
+		group:   "Setup",
+		summary: "After a plan merges, write fixed_in on its bugs, tick its debt and date its spec, in one commit.",
+		usage:   []string{"acta land-notes <plan hash>"},
+		example: "acta land-notes fnc1mnm",
 	},
 
 	// Agent plumbing

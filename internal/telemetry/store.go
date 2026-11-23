@@ -136,7 +136,7 @@ var (
 	commandKeys = set("list", "show", "set", "state", "plan", "bug", "debt", "scratch", "flake",
 		"config", "hook", "tick", "commit", "commits", "cleanup", "worktrees", "usage", "id",
 		"migrate-root", "doctor", "setup", "wiki", "dispatch", "reply-back", "run-one",
-		"eval-omp", "tidy", "ready", "spec-dates", "update", "telemetry", "tui", "help", "version")
+		"eval-omp", "tidy", "land-notes", "ready", "spec-dates", "update", "telemetry", "tui", "help", "version")
 	sessionKeys  = set("claude", "codex", "omp")
 	skillKeys    = set("bug", "build", "cleanup", "debug", "frame", "land", "lean", "migrate", "review", "scratch", "setup", "shape", "slice", "tdd")
 	workflowKeys = set("spec_created", "plan_created", "bug_created", "plan_landed")

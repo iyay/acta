@@ -4,9 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/iyay/acta/internal/config"
+	"github.com/iyay/acta/internal/write"
 )
 
 // hashWord finds short and full hashes standing alone in text.
@@ -163,4 +168,80 @@ func treeWithEdits(repo, baseTree, info string) (string, error) {
 	}
 	out, err := git(repo, env, "", "write-tree")
 	return strings.TrimSpace(out), err
+}
+
+// landNotes writes the land notes of a plan into tree and gives back the new
+// tree, plus the new text of each file the notes changed. The notes come from
+// write.LandNotes, the same code acta land-notes runs on main. That code works
+// on files and tidy works on trees, so it runs on a copy of the planning files
+// in a temp folder, and the files it changed go back into the tree.
+func landNotes(repo, tree, root, plan string, dirs config.Dirs) (string, map[string][]byte, error) {
+	files, err := planningFiles(repo, tree, root)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(files) == 0 {
+		return "", nil, fmt.Errorf("tidy: %s holds no planning files, so %s cannot land", tree, plan)
+	}
+	shas := make([]string, len(files))
+	modes := map[string]string{}
+	for i, f := range files {
+		shas[i], modes[f.path] = f.sha, f.mode
+	}
+	blobs, err := readBlobs(repo, shas)
+	if err != nil {
+		return "", nil, err
+	}
+	tmp, err := os.MkdirTemp("", "acta-land-")
+	if err != nil {
+		return "", nil, err
+	}
+	// Best effort, as in removeIndex: a temp folder left behind changes nothing.
+	defer func() { _ = os.RemoveAll(tmp) }()
+	for _, f := range files {
+		full := filepath.Join(tmp, filepath.FromSlash(f.path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			return "", nil, err
+		}
+		if err := os.WriteFile(full, blobs[f.sha], 0o644); err != nil {
+			return "", nil, err
+		}
+	}
+	cfg := config.Default(tmp)
+	cfg.Root, cfg.Legacy = filepath.Join(tmp, filepath.FromSlash(root)), nil
+	if dirs != (config.Dirs{}) {
+		cfg.Dirs = dirs
+	}
+	changed, err := write.LandNotes(cfg, plan)
+	if err != nil {
+		return "", nil, fmt.Errorf("tidy: land notes: %w", err)
+	}
+	notes := map[string][]byte{}
+	var info strings.Builder
+	for _, full := range changed {
+		rel, err := filepath.Rel(tmp, full)
+		if err != nil {
+			return "", nil, err
+		}
+		path := filepath.ToSlash(rel)
+		mode, ok := modes[path]
+		if !ok {
+			return "", nil, fmt.Errorf("tidy: land notes wrote %s, which the tree does not hold", path)
+		}
+		body, err := os.ReadFile(full)
+		if err != nil {
+			return "", nil, err
+		}
+		sha, err := git(repo, nil, string(body), "hash-object", "-w", "--stdin")
+		if err != nil {
+			return "", nil, err
+		}
+		fmt.Fprintf(&info, "%s %s\t%s\n", mode, strings.TrimSpace(sha), path)
+		notes[path] = body
+	}
+	if len(notes) == 0 {
+		return tree, nil, nil
+	}
+	out, err := treeWithEdits(repo, tree, info.String())
+	return out, notes, err
 }

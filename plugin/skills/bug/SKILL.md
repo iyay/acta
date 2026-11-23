@@ -46,10 +46,10 @@ Exit codes: 0 written and committed; 1 bad input (fix the slug or the body); 2 w
 
 ## Fix
 
-A bug is fixed through a normal plan whose frontmatter says `parent: bugs/<file name without .md>`. That plan's tasks become the bug's children, and its status follows them. When the fix has landed, record the merge commit:
+A bug is fixed through a normal plan whose frontmatter says `parent: bugs/<file name without .md>`. That plan's tasks become the bug's children, and its status follows them. Land writes `fixed_in: PLN-<hash>`. Outside a plan, record the commit:
 
 ```bash
-acta set bugs/<file name without .md> fixed_in <merge sha>
+acta set <bug id> fixed_in <sha>
 ```
 
 Never push unless the user asks.

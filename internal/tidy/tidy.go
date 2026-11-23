@@ -14,23 +14,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iyay/acta/internal/board"
 	"github.com/iyay/acta/internal/commits"
+	"github.com/iyay/acta/internal/config"
 )
 
 // Options says what to fold. PlanningRoot is relative to the repo, like ".acta".
+// Plan is the hash of the plan that lands. When it is set, the plan's land
+// notes go into the last commit, so the land needs no commit after it. Dirs
+// names the folders inside the planning root; left empty, the usual names.
 type Options struct {
-	Base, Branch, Onto, PlanningRoot string
+	Base, Branch, Onto, PlanningRoot, Plan string
+	Dirs                                   config.Dirs
 }
 
 // Result reports the new chain. Tip is the new last commit. Parent is the tip
 // of the base branch that tidy read. Folded is how many chore commits of that
-// parent were folded into the new chain.
+// parent were folded into the new chain. Rerun is true when
+// refs/acta/tidy/<branch> was already there before this run wrote it.
 type Result struct {
 	OldCount, NewCount int
 	Tip                string
 	Parent             string
 	Folded             int
+	Rerun              bool
 }
+
+// errLostNotes is a final tree that misses a file the land notes changed.
+var errLostNotes = errors.New("tidy: the final tree lost the land notes")
 
 // tamperTree lets a test hand back a wrong final tree. It stays nil otherwise.
 var tamperTree func(tree string) string
@@ -51,6 +62,7 @@ type node struct {
 	src  commit
 	date time.Time
 	olds []string
+	land string // a body line that says the land notes are in this commit
 }
 
 // Run builds the tidy chain and writes refs/acta/tidy/<branch> when the proof holds.
@@ -92,6 +104,20 @@ func Run(repo string, opt Options) (Result, error) {
 	if clash {
 		return Result{}, fmt.Errorf("tidy: %s clashes with %s at %s", opt.Branch, opt.Base, strings.Join(clashPaths, ", "))
 	}
+	// The notes read the merged tree, so a spec main changed meanwhile is
+	// read as it is now. They are written before any commit is built, so a
+	// bad plan stops tidy with no ref written.
+	noted, notes, land := target, map[string][]byte(nil), ""
+	if opt.Plan != "" {
+		hash := strings.TrimPrefix(opt.Plan, "PLN-")
+		if !board.IsHash(hash) {
+			return Result{}, fmt.Errorf("tidy: %q is not a 7 character plan hash", opt.Plan)
+		}
+		if noted, notes, err = landNotes(repo, target, root, "PLN-"+hash, opt.Dirs); err != nil {
+			return Result{}, err
+		}
+		land = "Land: fixed_in, ticks and dates of PLN-" + hash
+	}
 	commits, err := walk(repo, fork+".."+branchTip)
 	if err != nil {
 		return Result{}, err
@@ -127,7 +153,8 @@ func Run(repo string, opt Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	nodes[len(nodes)-1].tree = target
+	nodes[len(nodes)-1].tree = noted
+	nodes[len(nodes)-1].land = land
 	keepTimeForward(nodes)
 
 	// Build every commit but the last, then the map from old to new hashes.
@@ -149,14 +176,14 @@ func Run(repo string, opt Options) (Result, error) {
 	for i, c := range commits {
 		olds[i] = c.hash
 	}
-	finalTree, _, err := remapTree(repo, target, root, olds, newOf)
+	finalTree, _, err := remapTree(repo, noted, root, olds, newOf)
 	if err != nil {
 		return Result{}, err
 	}
 	if tamperTree != nil {
 		finalTree = tamperTree(finalTree)
 	}
-	if err := proof(repo, target, finalTree, root, olds, newOf); err != nil {
+	if err := proof(repo, target, finalTree, root, olds, newOf, notes); err != nil {
 		return Result{}, err
 	}
 	nodes[last].tree = finalTree
@@ -164,10 +191,14 @@ func Run(repo string, opt Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if _, err := git(repo, nil, "", "update-ref", "refs/acta/tidy/"+short, tip); err != nil {
+	ref := "refs/acta/tidy/" + short
+	// rev-parse fails when no earlier run left the ref behind.
+	_, err = git(repo, nil, "", "rev-parse", "--verify", "--quiet", ref)
+	rerun := err == nil
+	if _, err := git(repo, nil, "", "update-ref", ref, tip); err != nil {
 		return Result{}, err
 	}
-	return Result{OldCount: len(commits), NewCount: len(nodes), Tip: tip, Parent: base, Folded: len(carried)}, nil
+	return Result{OldCount: len(commits), NewCount: len(nodes), Tip: tip, Parent: base, Folded: len(carried), Rerun: rerun}, nil
 }
 
 // plan walks the branch commits oldest first and decides which ones stand
@@ -397,6 +428,9 @@ func commitNode(repo string, n *node, parent string) (string, error) {
 	if msg, err = carryTrailers(repo, msg, n.olds); err != nil {
 		return "", err
 	}
+	if n.land != "" {
+		msg = addToTrailers(msg, []string{n.land})
+	}
 	date := n.date.Format(time.RFC3339)
 	env := []string{
 		"GIT_AUTHOR_NAME=" + id[0], "GIT_AUTHOR_EMAIL=" + id[1], "GIT_AUTHOR_DATE=" + date,
@@ -428,18 +462,27 @@ func carryTrailers(repo, msg string, olds []string) (string, error) {
 	if len(add) == 0 {
 		return msg, nil
 	}
+	return addToTrailers(msg, add), nil
+}
+
+// addToTrailers puts lines at the end of msg. When the last paragraph holds
+// Task trailers the lines join it, so those trailers stay in the last
+// paragraph, the only place git reads them.
+func addToTrailers(msg string, lines []string) string {
 	msg = strings.TrimRight(msg, "\n")
 	sep := "\n\n"
 	if len(commits.Trailers(msg)) > 0 {
 		sep = "\n"
 	}
-	return msg + sep + strings.Join(add, "\n") + "\n", nil
+	return msg + sep + strings.Join(lines, "\n") + "\n"
 }
 
 // proof checks that the final tree is the three-way merge of base and branch
-// (target) plus hash swaps in the planning root, and nothing else.
-func proof(repo, target, finalTree, root string, olds []string, newOf map[string]string) error {
-	if target == finalTree {
+// (target) plus the land notes plus hash swaps in the planning root, and
+// nothing else. notes holds the text the land notes gave each file they
+// changed; every one of them must reach the final tree.
+func proof(repo, target, finalTree, root string, olds []string, newOf map[string]string, notes map[string][]byte) error {
+	if target == finalTree && len(notes) == 0 {
 		return nil
 	}
 	out, err := git(repo, nil, "", "diff-tree", "-r", "-z", "--raw", target, finalTree)
@@ -457,17 +500,32 @@ func proof(repo, target, finalTree, root string, olds []string, newOf map[string
 		paths, oldShas, newShas = append(paths, path), append(oldShas, meta[2]), append(newShas, meta[3])
 	}
 	if len(paths) == 0 {
+		if len(notes) > 0 {
+			return errLostNotes
+		}
 		return nil
 	}
 	blobs, err := readBlobs(repo, append(append([]string{}, oldShas...), newShas...))
 	if err != nil {
 		return err
 	}
+	found := 0
 	for i, p := range paths {
-		want, changed := remapBlob(blobs[oldShas[i]], olds, newOf)
-		if !changed || string(want) != string(blobs[newShas[i]]) {
-			return fmt.Errorf("tidy: %s differs by more than hash swaps", p)
+		from, noted := blobs[oldShas[i]], false
+		if note, ok := notes[p]; ok {
+			from, noted = note, true
+			found++
 		}
+		want, changed := remapBlob(from, olds, newOf)
+		if !changed {
+			want = from
+		}
+		if (!changed && !noted) || string(want) != string(blobs[newShas[i]]) {
+			return fmt.Errorf("tidy: %s differs by more than hash swaps and land notes", p)
+		}
+	}
+	if found != len(notes) {
+		return errLostNotes
 	}
 	return nil
 }

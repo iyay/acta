@@ -1,28 +1,24 @@
 ---
 type: Decision
 title: Land tidies history before moving the parent
-description: Tidy mode rebuilds the branch with acta tidy, then fast-forwards or resets the parent; fixed_in is the tidy tip
+description: Tidy mode rebuilds the branch with acta tidy --plan, then moves the parent; bookkeeping rides the tidy tip
 paths: [plugin/skills/land/, internal/tidy/]
 ---
 
 See `plugin/skills/land/tidy.md`.
 
-Tidy mode runs `acta tidy`, then `merge --ff-only` or `reset --keep` for folded parent chores. `full` uses `merge --no-ff`.
+Tidy mode runs `acta tidy --plan <plan hash>`, then `merge --ff-only` or `reset --keep` for folded parent chores. `full` uses `merge --no-ff`, then `acta land-notes`. A failed tidy stops land; never fall back to a plain merge.
 
-Failed tidy stops land; never fall back to a plain merge.
+Temporary gate Git commands use the saved absolute owning checkout, never the detached path.
 
-Temporary gate Git commands use the saved absolute owning checkout, never the detached path or ambient repository.
+Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits never do. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. If all fold, the subject is the newest commit touching real files, else the newest of no fold type, else the newest non-chore, else the newest, so planning never hides real work (BUG-0043, BUG-0051, BUG-0055).
 
-Fold point: `@{upstream}`, else `refs/acta/last-land`, else none. Only a run of `chore(...)` commits folds; pushed commits are never touched. Before the review marker only `chore`, `polish` and `wiki` fold by type; a `docs` commit outside the planning root stays. When every commit folds, the subject is the newest commit touching real files, else the newest of no fold type, else the newest non-chore, else the newest, so a late planning commit never hides the real change (BUG-0043, BUG-0051, BUG-0055).
+`--plan` writes `fixed_in: PLN-<hash>`, debt ticks and spec dates into the last tidy commit, read from the merged tree, so nothing lands on the parent after.
 
-`-D` is safe: the old branch is no ancestor, and tidy proved the tip equals the parent plus branch merge, so it loses nothing. Delete `refs/acta/tidy/<branch>` after.
+`-D` is safe: tidy proved the tip equals the parent plus branch merge. Delete `refs/acta/tidy/<branch>` after.
 
-A fold rewrites the planning commits other worktrees were made from (found 2026-11-18, PLN-0247 and PLN-0246). The next `acta tidy` of such a branch exits 3 with `clashes with main at <planning files>`. Move the branch first: `git rebase --onto main <old base> <branch>` in its worktree, where the old base is the commit the worktree was made from. Resolve any clash by intent, then tidy again. The rebase brings in the parent's code, so run the full suite on the new tip.
+A fold rewrites planning commits other worktrees grew from (PLN-0247, PLN-0246); their next tidy exits 3 with `clashes with main`. Move such a branch first: `git rebase --onto main <old base> <branch>` in its worktree, resolve by intent, tidy again, run the full suite on the new tip.
 
-Known limit: a hash in the last new commit stays old in planning files, since a commit cannot name itself. Read `fixed_in` from `refs/acta/tidy/<branch>` before deleting the ref.
-
-After the parent moves, land runs `acta spec-dates <plan hash>` and only then moves `refs/acta/last-land`, so a spec never leaves the parent dirty.
-
-Tidy keeps the kept commit's message and moves each folded `Task:` trailer into its last paragraph, once (BUG-0051); git and `internal/commits` read trailers only there. Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.
+Tidy moves each folded `Task:` trailer into the kept commit's last paragraph, once (BUG-0051). Wiki checks ride in `.acta/wiki/.checked`, so a folded re-check stays a check on the kept commit.
 
 Cleanup: [typed approval](gate-output-cleanup.md).

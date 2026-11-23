@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -623,5 +624,171 @@ func TestFullFoldSubjectFromCodeCommit(t *testing.T) {
 	}
 	if got := r.subjects("main..refs/acta/tidy/feat"); strings.Join(got, "|") != "polish: code change" {
 		t.Fatalf("subjects %v", got)
+	}
+}
+
+const (
+	landPlanPath = ".acta/plans/2026-01-01-fix.md"
+	landSpec     = ".acta/specs/2026-01-01-s.md"
+	landBug      = ".acta/bugs/2026-01-01-b.md"
+	landDebt     = ".acta/debt/2026-01-01-d.md"
+)
+
+// landPlanBody is a plan of spec s with hash pkq2wfh and one task; box is
+// " " or "x".
+func landPlanBody(box, closes string) string {
+	return "---\nid: PLN-0001\nhash: pkq2wfh\nparent: specs/2026-01-01-s\ncloses: [" + closes + "]\nstarted: \"2026-01-01 11:00:00\"\n---\n# Fix\n\n### Task 1: Do it\n- [" + box + "] a\n"
+}
+
+// startLand makes main with a spec, a bug and a debt file, and a branch whose
+// plan closes the bug and the debt and has its one task done.
+func startLand(t *testing.T, closes string) *repoT {
+	r := newRepo(t)
+	r.commit("init", d(0), "ann", map[string]string{
+		"README.md": "hi\n",
+		landSpec:    "---\nid: SPC-0001\n---\n# S\n",
+		landBug:     "---\nid: BUG-0001\n---\n# B\n",
+		landDebt:    "---\nid: DBT-0001\n---\n# D\n\n- [ ] one\n- [ ] two\n",
+	})
+	r.git(nil, "checkout", "-q", "-b", "feat")
+	r.commit("chore(plan): new fix", d(1), "ann", map[string]string{landPlanPath: landPlanBody(" ", closes)})
+	r.commit("feat: a\n\nTask: PLN-pkq2wfh#1", d(2), "ann", map[string]string{"a.go": "a\n"})
+	r.commit("chore(plan): tick fix", d(3), "ann", map[string]string{landPlanPath: landPlanBody("x", closes)})
+	return r
+}
+
+// tamperFile gives back tree with one more line at the end of path.
+func tamperFile(t *testing.T, r *repoT, tree, path string) string {
+	body := r.git(nil, "show", tree+":"+path) + "\nextra\n"
+	sha, err := git(r.dir, nil, body, "hash-object", "-w", "--stdin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := treeWithEdits(r.dir, tree, "100644 "+strings.TrimSpace(sha)+"\t"+path+"\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// loseFile gives back tree with path as main holds it, so a note on it is gone.
+func loseFile(t *testing.T, r *repoT, tree, path string) string {
+	sha := r.git(nil, "rev-parse", "main:"+path)
+	out, err := treeWithEdits(r.dir, tree, "100644 "+sha+"\t"+path+"\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// With a plan hash, tidy writes the plan's land notes into the last commit
+// of the chain: fixed_in on its bug, its debt ticked and its spec dated. The
+// chain keeps its length, the tip names the notes once, and the proof lets
+// through those writes and nothing else.
+func TestPlanNotesRideTheTip(t *testing.T) {
+	cases := []struct {
+		name    string
+		closes  string
+		parent  map[string]string // a commit on main after the fork
+		tamper  string            // a planning file the final tree gets wrong
+		lose    string            // a note file the final tree puts back as main has it
+		wantErr string
+		want    map[string][]string
+	}{
+		{
+			name:   "bug-fix plan",
+			closes: "BUG-0001, DBT-0001",
+			want: map[string][]string{
+				landBug:  {"fixed_in: PLN-pkq2wfh", "finished:"},
+				landDebt: {"- [x] one\n- [x] two"},
+				landSpec: {"started: \"2026-01-01 11:00:00\"", "finished:"},
+			},
+		},
+		{
+			name:   "main changed the spec frontmatter after the fork",
+			closes: "BUG-0001",
+			parent: map[string]string{landSpec: "---\nid: SPC-0001\nstatus: approved\n---\n# S\n"},
+			want: map[string][]string{
+				landBug:  {"fixed_in: PLN-pkq2wfh"},
+				landSpec: {"status: approved", "started: \"2026-01-01 11:00:00\"", "finished:"},
+			},
+		},
+		{
+			name:   "a sibling plan landed on main after the fork",
+			closes: "BUG-0001",
+			parent: map[string]string{".acta/plans/2026-01-01-one.md": "---\nid: PLN-0002\nparent: specs/2026-01-01-s\nstarted: \"2026-01-01 09:00:00\"\n---\n# One\n\n### Task 1: A\n- [x] a\n"},
+			want: map[string][]string{
+				landBug:  {"fixed_in: PLN-pkq2wfh"},
+				landSpec: {"started: \"2026-01-01 09:00:00\"", "finished:"},
+			},
+		},
+		{name: "missing closes id", closes: "BUG-0001, DBT-0009", wantErr: "DBT-0009"},
+		{name: "tampered land file", closes: "BUG-0001", tamper: landBug, wantErr: landBug},
+		{name: "tampered other planning file", closes: "BUG-0001", tamper: landPlanPath, wantErr: landPlanPath},
+		// The bug note still differs, so only the count of notes found catches it.
+		{name: "final tree lost one of two notes", closes: "BUG-0001, DBT-0001", lose: landDebt, wantErr: errLostNotes.Error()},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := startLand(t, c.closes)
+			if c.parent != nil {
+				moveParent(r, "chore(plan): parent", 4, c.parent)
+			}
+			o := opt("main", "feat")
+			o.Plan = "pkq2wfh"
+			if c.wantErr != "" {
+				if c.tamper != "" {
+					tamperTree = func(tree string) string { return tamperFile(t, r, tree, c.tamper) }
+					defer func() { tamperTree = nil }()
+				}
+				if c.lose != "" {
+					tamperTree = func(tree string) string { return loseFile(t, r, tree, c.lose) }
+					defer func() { tamperTree = nil }()
+				}
+				_, err := Run(r.dir, o)
+				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+					t.Fatalf("err = %v, want one naming %s", err, c.wantErr)
+				}
+				if r.refExists("refs/acta/tidy/feat") {
+					t.Fatal("ref written")
+				}
+				return
+			}
+			plain, err := Run(r.dir, opt("main", "feat"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, err := Run(r.dir, o)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.NewCount != plain.NewCount {
+				t.Fatalf("commit count %d with the plan, %d without", res.NewCount, plain.NewCount)
+			}
+			// Only the land notes set the two tips apart.
+			var want []string
+			for path := range c.want {
+				want = append(want, path)
+			}
+			slices.Sort(want)
+			if got := r.git(nil, "diff", "--name-only", plain.Tip, res.Tip); got != strings.Join(want, "\n") {
+				t.Fatalf("tips differ at %q, want %q", got, want)
+			}
+			for path, texts := range c.want {
+				body := r.git(nil, "show", res.Tip+":"+path)
+				for _, text := range texts {
+					if !strings.Contains(body, text) {
+						t.Errorf("%s lacks %q:\n%s", path, text, body)
+					}
+				}
+			}
+			msg := r.body(res.Tip)
+			if n := strings.Count(msg, "Land: fixed_in, ticks and dates of PLN-pkq2wfh"); n != 1 || strings.Count(msg, "Land:") != 1 {
+				t.Fatalf("tip message %q, want one Land line", msg)
+			}
+			if got := commits.Trailers(msg); !slices.Contains(got, "pkq2wfh#1") {
+				t.Fatalf("tip lost its Task trailer: %q", msg)
+			}
+		})
 	}
 }

@@ -55,7 +55,9 @@ rc=$?
 # After a passing acta tidy, rebuild its tip with the same tree and parent
 # but no Task line in the message, and point the tidy ref at it.
 if [ "$1" = tidy ] && [ "$rc" = 0 ]; then
-  ref="refs/acta/tidy/$3"
+  # Flags like --plan or --onto can come first, so the branch is always the last word.
+  eval "branch=\${$#}"
+  ref="refs/acta/tidy/$branch"
   tip=$("$ws/bin/git.real" rev-parse "$ref")
   msg=$("$ws/bin/git.real" log -1 --format=%B "$tip" | grep -v '^Task: ')
   new=$("$ws/bin/git.real" commit-tree "$tip^{tree}" -p "$tip^" -m "$msg")

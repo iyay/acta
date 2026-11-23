@@ -19,6 +19,12 @@ func SpecDates(cfg config.Config, planID string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return specDates(cfg, b, planID)
+}
+
+// specDates is SpecDates on a board already read, so LandNotes can check
+// every id first and then write from the same board.
+func specDates(cfg config.Config, b *board.Board, planID string) ([]string, error) {
 	plan := b.Get(planID)
 	if plan == nil || plan.Kind != board.KindPlan {
 		return nil, fmt.Errorf("%s is not a plan", planID)

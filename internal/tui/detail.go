@@ -130,7 +130,7 @@ func (m Model) buildDetailParts(w int) (head, mid []string, foot string) {
 		{"AGENT", it.Agent},
 		{"FILE", m.fileText(it)},
 		{tasksLabel(it.Kind), progressText(it)},
-		{"FIXED", it.FixedIn},
+		{"FIXED", m.fixedText(it)},
 		{"REASON", it.Reason},
 	}
 	width := 0
@@ -454,6 +454,19 @@ func (m Model) fromText(it *board.Item) string {
 		return shortRef(p) + " · " + p.Title
 	}
 	return planID
+}
+
+// fixedText shows what fixed a bug. Land writes the plan hash there, so the
+// plan title is added to say which work it was. A sha, or a hash of a plan
+// this board does not hold, shows as written.
+func (m Model) fixedText(it *board.Item) string {
+	if !strings.HasPrefix(it.FixedIn, "PLN-") {
+		return it.FixedIn
+	}
+	if p := m.board.Get(it.FixedIn); p != nil && p.Kind == board.KindPlan {
+		return it.FixedIn + " · " + p.Title
+	}
+	return it.FixedIn
 }
 
 // roundText names the newest review round of a plan that waits for merge,

@@ -37,8 +37,6 @@ func TestPlanSplitText(t *testing.T) {
 		{readSkillFile(t, "build", "SKILL.md"), "acta ready <plan id> --parent <parent>"},
 		{readSkillFile(t, "build", "SKILL.md"), "--head"},
 		{readSkillFile(t, "build", "SKILL.md"), "Any non-zero exit stops the build"},
-		{readSkillFile(t, "land", "tidy.md"), "acta spec-dates <plan hash>"},
-		{readSkillFile(t, "land", "SKILL.md"), "acta spec-dates <plan hash>"},
 		// A tick in a worktree never dates a spec now, so land dates every
 		// spec, not only one with several plans.
 		{readSkillFile(t, "land", "tidy.md"), "the dates of the plan's spec"},
@@ -70,12 +68,5 @@ func TestPlanSplitText(t *testing.T) {
 		if !strings.Contains(c.file, c.text) {
 			t.Errorf("missing %q", c.text)
 		}
-	}
-	// spec-dates must run before last-land moves, or the next land meets a
-	// spec that is not committed.
-	tidy := readSkillFile(t, "land", "tidy.md")
-	dates, last := strings.Index(tidy, "acta spec-dates"), strings.Index(tidy, "git update-ref refs/acta/last-land")
-	if dates < 0 || last < 0 || dates > last {
-		t.Errorf("land/tidy.md must run acta spec-dates before it moves refs/acta/last-land (got %d, %d)", dates, last)
 	}
 }

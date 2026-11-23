@@ -18,7 +18,7 @@ func TestSkillLand(t *testing.T) {
 			"`acta id --fix-duplicates`", "renumber",
 			"acta show <plan id>", "done` is less than `total`",
 			"[baseline.md](baseline.md)", "`acta-baseline.md`", "absolute Git common directory",
-			"acta tick <DBT-nnnn.nn> --all", "debt file",
+			"debt file",
 			"git status --porcelain", "git rev-parse --abbrev-ref HEAD",
 			"never check out, stash or reset",
 			"in the plan's `closes:`",
@@ -354,7 +354,7 @@ func TestLandKeepsTestOutput(t *testing.T) {
 	steps := map[string]string{}
 	for _, file := range []string{"SKILL.md", "tidy.md"} {
 		for _, line := range strings.Split(readSkill(t, "skills/land/"+file), "\n") {
-			for _, prefix := range []string{"1. Preconditions", "7. Clean up", "10. "} {
+			for _, prefix := range []string{"1. Preconditions", "7. Clean up", "8. "} {
 				if strings.HasPrefix(line, prefix) {
 					steps[file+" "+prefix] = line
 				}
@@ -372,7 +372,7 @@ func TestLandKeepsTestOutput(t *testing.T) {
 		// Tidy deletes the old branch without asking; that rule stays.
 		{"tidy.md 7. Clean up", "per core rule 5 this delete needs no confirmation."},
 		// An amend at land once rewrote a merge commit.
-		{"SKILL.md 10. ", "never amend a commit"},
+		{"SKILL.md 8. ", "never amend a commit"},
 	} {
 		if !strings.Contains(steps[c.step], c.want) {
 			t.Errorf("land %s missing %q", c.step, c.want)

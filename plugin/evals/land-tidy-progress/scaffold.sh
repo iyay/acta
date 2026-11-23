@@ -8,7 +8,9 @@
 # the worktree ./repo-land, so the agent can land the way a real build leaves it.
 # The plan is done and tidy keeps its task trailer. The case checks that the
 # land reads the plan back from the main checkout after the parent moves, and
-# proves a task commit is in the parent, before it cleans up.
+# proves a task commit is in the parent, before it cleans up. The plan fixes a
+# bug and closes a debt line, so the case also checks that tidy writes their
+# notes into the tip, and that nothing writes them on main afterwards.
 set -euo pipefail
 # The eval runs this in an empty folder. Anywhere else it would git init,
 # change git config and commit files that are not ours, so stop first.
@@ -41,6 +43,15 @@ if [ -z "$ACTA_INNER" ]; then
   [ "$1" = "-C" ] && dir="$2"
   top=$(cd "$dir" 2>/dev/null && "$ws/bin/git.real" rev-parse --show-toplevel 2>/dev/null)
   printf 'git %s exit=%s in %s\n' "$(printf '%s' "$*" | tr '\n' ' ')" "$rc" "${top##*/}" >> "$ws/calls.log"
+  # Right after the parent moves it holds the tidy tip and nothing more, so
+  # the bug and debt files there are what tidy wrote. Log them for the grader.
+  case " $* " in
+    *" merge --ff-only "*|*" reset --keep "*)
+      if [ "$rc" = 0 ]; then
+        "$ws/bin/git.real" -C "$dir" show HEAD:.acta/bugs/2026-10-21-parse-crash.md HEAD:.acta/debt/2026-10-21-parse.md 2>&1 | sed 's/^/tip: /' >> "$ws/calls.log"
+      fi
+      ;;
+  esac
 fi
 exit "$rc"
 WRAP
@@ -71,9 +82,32 @@ cd repo
 git init -q -b main .
 git config user.email eval@example.invalid
 git config user.name eval
-mkdir -p .acta/plans scripts
+mkdir -p .acta/plans .acta/bugs .acta/debt scripts
+cat > .acta/bugs/2026-10-21-parse-crash.md <<'BUG'
+---
+id: BUG-0001
+created: "2026-10-21 09:00:00"
+hash: bugtpa1
+---
+# parse crashes on "1"
+
+## Symptom
+parse("1") raises instead of returning 1.
+BUG
+cat > .acta/debt/2026-10-21-parse.md <<'DEBT'
+---
+id: DBT-0001
+created: "2026-10-21 10:00:00"
+hash: dbttpa1
+---
+# Parse debt
+
+- [ ] (medium) parse has no comment saying what it turns into what
+DEBT
 cat > .acta/plans/2026-10-22-land.md <<'PLAN'
 ---
+parent: bugs/2026-10-21-parse-crash
+closes: [DBT-0001.01]
 depth: minimal
 id: PLN-0001
 created: "2026-10-22 09:00:00"

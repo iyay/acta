@@ -76,8 +76,8 @@ func SetValue(cfg config.Config, b *board.Board, id, field, value string) (Outco
 		if it.Kind != board.KindBug {
 			return Outcome{}, bad("fixed_in is only for bugs")
 		}
-		if !shaRe.MatchString(value) {
-			return Outcome{}, bad("fixed_in must be a commit sha of 7 to 40 lower-case hex characters, not %q", value)
+		if !validFixedIn(value) {
+			return Outcome{}, bad("fixed_in must be a commit sha of 7 to 40 lower-case hex characters or PLN-<hash> with the 7 character plan hash, not %q", value)
 		}
 	case "ref":
 		if !refRe.MatchString(value) {
@@ -521,4 +521,15 @@ func allowed(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// validFixedIn says if v can name what fixed a bug: a commit sha, or the
+// plan hash land writes. The short plan id (PLN-0250) is not allowed, since
+// a renumber can change it and the bug would then point at the wrong plan.
+func validFixedIn(v string) bool {
+	if shaRe.MatchString(v) {
+		return true
+	}
+	hash, ok := strings.CutPrefix(v, "PLN-")
+	return ok && board.IsHash(hash)
 }

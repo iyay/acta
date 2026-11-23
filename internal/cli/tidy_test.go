@@ -90,6 +90,14 @@ func TestTidyUnknownRefLeavesRefsAlone(t *testing.T) {
 	if after := tidyGit(t, dir, "for-each-ref"); after != before {
 		t.Fatalf("refs changed:\n%s\n---\n%s", before, after)
 	}
+	// --plan reaches tidy: a hash no plan holds stops it the same way.
+	code, out, errOut = runTidy(t, dir, "main", "work", "--plan", "zzzz999")
+	if code == exitOK || out != "" || !strings.Contains(errOut, "zzzz999") {
+		t.Fatalf("--plan: code %d, stdout %q, stderr %q", code, out, errOut)
+	}
+	if after := tidyGit(t, dir, "for-each-ref"); after != before {
+		t.Fatalf("--plan: refs changed:\n%s\n---\n%s", before, after)
+	}
 }
 
 func TestTidyNoCommitsOnTopFails(t *testing.T) {
@@ -109,5 +117,41 @@ func TestTidyOntoFlagAccepted(t *testing.T) {
 	code, out, errOut := runTidy(t, dir, "main", "work", "--onto", "main")
 	if code != exitOK || !strings.HasPrefix(out, "tidy: ") {
 		t.Fatalf("code %d, stdout %q, stderr %q", code, out, errOut)
+	}
+}
+
+// Tidy mode lands a plan with tidy --plan and never runs land-notes, so a
+// tidy with --plan that works counts the landed plan. A failed one counts
+// nothing.
+func TestTidyPlanCountsALandedPlan(t *testing.T) {
+	dir := landNotesRepo(t, "BUG-0001, DBT-0001")
+	s, _ := runEnv(t, false)
+	// main^1 is main before the merge, so build still has its plan on top.
+	if code, _, errOut := runTidy(t, dir, "main^1", "build", "--plan", "zzzz999"); code == exitOK {
+		t.Fatalf("a plan no file holds passed: %q", errOut)
+	}
+	if got := todayCounts(t, s).Workflow; len(got) != 0 {
+		t.Fatalf("a failed tidy counted %v", got)
+	}
+	if code, _, errOut := runTidy(t, dir, "main^1", "build", "--plan", "abcd123"); code != exitOK {
+		t.Fatalf("code %d, stderr %q", code, errOut)
+	}
+	if got := todayCounts(t, s).Workflow; got["plan_landed"] != 1 || len(got) != 1 {
+		t.Fatalf("workflow %v, want plan_landed 1", got)
+	}
+	// Land reruns tidy after a FLAKY line while the tidy ref still stands.
+	if code, _, errOut := runTidy(t, dir, "main^1", "build", "--plan", "abcd123"); code != exitOK {
+		t.Fatalf("rerun: code %d, stderr %q", code, errOut)
+	}
+	if got := todayCounts(t, s).Workflow; got["plan_landed"] != 1 {
+		t.Fatalf("a rerun counted the land again: %v", got)
+	}
+	// Land deletes the ref at the end, so the next land counts again.
+	tidyGit(t, dir, "update-ref", "-d", "refs/acta/tidy/build")
+	if code, _, errOut := runTidy(t, dir, "main^1", "build", "--plan", "abcd123"); code != exitOK {
+		t.Fatalf("new land: code %d, stderr %q", code, errOut)
+	}
+	if got := todayCounts(t, s).Workflow; got["plan_landed"] != 2 {
+		t.Fatalf("workflow %v, want plan_landed 2 after a new land", got)
 	}
 }
