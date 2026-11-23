@@ -10,7 +10,7 @@
 # starts with one and the merge may be the very next line. The log drops the
 # quotes, so a message given with -m before the branch shows up as loose words.
 type: regex
-pattern: '^(?:(?!\ngit (?:-C \S+ )?merge )[\s\S])*\nacta flake record internal/calc\.TestAddCarries --plan (?:PLN-0001|landrf1) exit=0 in repo-land(?=\n)[\s\S]*\ngit (?:-C \S+ )?merge (?:--[a-z-]+ )*(?:land\b[^\n]*|-m [^\n]* land) exit=0 in repo\n'
+pattern: '^(?:(?!\ngit (?:-C \S+ )?merge )[\s\S])*\nacta flake record internal/calc\.TestAddCarries --plan (?:PLN-0001|(?:PLN-)?landrf1) exit=0 in repo-land(?=\n)[\s\S]*\ngit (?:-C \S+ )?merge (?:--[a-z-]+ )*(?:land\b[^\n]*|-m [^\n]* land) exit=0 in repo\n'
 target:
   source: file
   path: "calls.log"

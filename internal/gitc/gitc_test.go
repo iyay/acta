@@ -1304,7 +1304,7 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 		if r := CommitPathsIn(repo, root, []string{a, s}, "chore: assign short ids"); !r.Folded {
 			t.Fatalf("got %+v", r)
 		}
-		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore: new a, s" {
+		if got := git(t, repo, "log", "-1", "--format=%s"); got != "chore(acta): scratch, spec of a, s" {
 			t.Fatalf("subject %q, want the spec named", got)
 		}
 	})
@@ -1383,25 +1383,146 @@ func TestCommitOrFoldInSameKind(t *testing.T) {
 			t.Fatalf("subject %q", got)
 		}
 	})
-	no := []struct {
-		name, msg string
-		file      func(repo, root string) string
+	// Any planning HEAD takes a fold when every file sits under the root,
+	// whatever its subject or kind. Each step writes files, one call each.
+	type step struct {
+		msg   string
+		files []string
+	}
+	yes := []struct {
+		name  string
+		head  string // HEAD's subject before the steps, "" keeps kindRepo's
+		steps []step
+		want  string
+		root  func(t *testing.T, repo, root string) string // the root acta is given, nil keeps kindRepo's
 	}{
-		{"another kind", "chore(bug): new x", func(_, root string) string { return filepath.Join(root, "bugs", "x.md") }},
-		{"a file outside the root", "chore(scratch): new x", func(repo, _ string) string { return filepath.Join(repo, "x.md") }},
-		{"a subject that is no chore", "feat: x", func(_, root string) string { return filepath.Join(root, "scratch", "x.md") }},
+		{"scratch then spec then plan", "", []step{
+			{"chore(spec): new a-design", []string{"specs/a-design.md"}},
+			{"chore(plan): new a", []string{"plans/a.md"}},
+		}, "chore(acta): scratch, spec, plan of a, a-design\n\nchore(scratch): new a\nchore(spec): new a-design\nchore(plan): new a", nil},
+		{"a docs(spec) head", "docs(spec): cold read fixes", []step{
+			{"chore(scratch): new b", []string{"scratch/b.md"}},
+		}, "docs(spec): cold read fixes\n\nchore(scratch): new b", nil},
+		{"a chore head with no kind", "chore: assign short ids", []step{
+			{"chore(plan): new p", []string{"plans/p.md"}},
+		}, "chore(acta): plan, scratch of a, p\n\nchore: assign short ids\nchore(plan): new p", nil},
+		{"a two-path write of two kinds", "", []step{
+			{"chore: assign short ids", []string{"bugs/x.md", "specs/s.md"}},
+		}, "chore(acta): scratch, bug, spec of a, x, s\n\nchore(scratch): new a\nchore: assign short ids", nil},
+		{"a subject that is no chore", "", []step{
+			{"feat: x", []string{"scratch/x.md"}},
+		}, "chore(acta): scratch of a, x\n\nchore(scratch): new a\nfeat: x", nil},
+		// The root is a symlink while the paths are real ones. Read through
+		// the link, a path looked like it sat in a ".." folder.
+		{"a symlinked root with two kinds", "", []step{
+			{"chore(spec): new a-design", []string{"specs/a-design.md"}},
+		}, "chore(acta): scratch, spec of a, a-design\n\nchore(scratch): new a\nchore(spec): new a-design", func(t *testing.T, _, root string) string {
+			link := filepath.Join(t.TempDir(), "link")
+			if err := os.Symlink(root, link); err != nil {
+				t.Fatal(err)
+			}
+			return link
+		}},
+	}
+	for _, c := range yes {
+		t.Run(c.name+" folds", func(t *testing.T) {
+			repo, dir := kindRepo(t)
+			root := dir
+			if c.root != nil {
+				root = c.root(t, repo, dir)
+			}
+			if c.head != "" {
+				git(t, repo, "commit", "-q", "--amend", "-m", c.head)
+			}
+			before := commitCount(t, repo)
+			for _, s := range c.steps {
+				var paths []string
+				for _, f := range s.files {
+					p := filepath.Join(dir, f)
+					if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					writeFile(t, p, f+"\n")
+					paths = append(paths, p)
+				}
+				if r := CommitPathsIn(repo, root, paths, s.msg); !r.Folded {
+					t.Fatalf("%s: got %+v, want a fold", s.msg, r)
+				}
+			}
+			if got := commitCount(t, repo); got != before {
+				t.Fatalf("commit count %s, want %s", got, before)
+			}
+			if got := git(t, repo, "log", "-1", "--format=%B"); got != c.want {
+				t.Fatalf("message %q, want %q", got, c.want)
+			}
+		})
+	}
+	// Every guard but the subject and kind checks still holds. The write is
+	// of another kind, so only the guard named can stop the fold.
+	no := []struct {
+		name  string
+		setup func(t *testing.T, repo string)
+		files func(repo, root string) []string
+		root  func(repo, root string) string // the root acta is given, nil keeps kindRepo's
+	}{
+		{"a file outside the root", nil, func(repo, _ string) []string { return []string{filepath.Join(repo, "x.md")} }, nil},
+		{"a two-path write with one path outside the root", nil, func(repo, root string) []string {
+			return []string{filepath.Join(root, "bugs", "x.md"), filepath.Join(repo, "x.md")}
+		}, nil},
+		{"a pushed head", func(t *testing.T, repo string) { git(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD") }, nil, nil},
+		{"a head with a Task trailer", func(t *testing.T, repo string) {
+			git(t, repo, "commit", "-q", "--amend", "-m", "chore(scratch): new a\n\nTask: PLN-abcdefg#1")
+		}, nil, nil},
+		{"a tagged head", func(t *testing.T, repo string) { git(t, repo, "tag", "v1") }, nil, nil},
+		{"a code head", func(t *testing.T, repo string) {
+			writeFile(t, filepath.Join(repo, "code.go"), "x\n")
+			git(t, repo, "add", "code.go")
+			git(t, repo, "commit", "-q", "-m", "chore(bug): touch code")
+		}, nil, nil},
+		{"a worktree on head", func(t *testing.T, repo string) {
+			git(t, repo, "worktree", "add", "-q", "--detach", filepath.Join(t.TempDir(), "wt"))
+		}, nil, nil},
+		// With root "." every file sits under the root, code too. A planning
+		// write must still not ride a code commit.
+		{"a code head when the root is the repo", func(t *testing.T, repo string) {
+			for _, d := range []string{"src", filepath.Join(".acta", "scratch")} {
+				if err := os.MkdirAll(filepath.Join(repo, d), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeFile(t, filepath.Join(repo, "src", "x.go"), "x\n")
+			git(t, repo, "add", "src/x.go")
+			git(t, repo, "commit", "-q", "-m", "feat: x")
+		}, func(repo, _ string) []string {
+			return []string{filepath.Join(repo, ".acta", "scratch", "a.md")}
+		}, func(repo, _ string) string { return repo }},
 	}
 	for _, c := range no {
 		t.Run(c.name+" does not fold", func(t *testing.T) {
 			repo, root := kindRepo(t)
+			if c.setup != nil {
+				c.setup(t, repo)
+			}
+			files := []string{filepath.Join(root, "bugs", "x.md")}
+			if c.files != nil {
+				files = c.files(repo, root)
+			}
+			if c.root != nil {
+				root = c.root(repo, root)
+			}
+			for _, f := range files {
+				writeFile(t, f, "x\n")
+			}
+			head := git(t, repo, "rev-parse", "HEAD")
 			before := commitCount(t, repo)
-			f := c.file(repo, root)
-			writeFile(t, f, "x\n")
-			if r := CommitOrFoldIn(repo, root, f, c.msg, false); !r.Committed || r.Folded {
+			if r := CommitPathsIn(repo, root, files, "chore(bug): new x"); !r.Committed || r.Folded {
 				t.Fatalf("got %+v, want a new commit", r)
 			}
 			if got := commitCount(t, repo); got == before {
 				t.Fatal("no new commit")
+			}
+			if got := git(t, repo, "rev-parse", "HEAD^"); got != head {
+				t.Fatalf("old head %s was rewritten, parent is now %s", head, got)
 			}
 		})
 	}

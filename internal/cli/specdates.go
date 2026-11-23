@@ -14,8 +14,9 @@ import (
 // cmdSpecDates writes the dates of a plan's spec, on the branch the plan
 // just landed on, and commits them right away. Land runs it
 // before it moves refs/acta/last-land, so the parent is never left with an
-// uncommitted spec that would block the next land. It never folds into an
-// older commit: the commits tidy just built stay as they are.
+// uncommitted spec that would block the next land. It folds into HEAD only
+// when HEAD is an unpushed planning commit; the merge and the task commits
+// tidy just built never take a fold, so they stay as they are.
 func cmdSpecDates(args []string, stdout, stderr io.Writer) int {
 	fs, root := flags("spec-dates", stderr)
 	pos, err := parseMixed(fs, args)
@@ -39,7 +40,7 @@ func cmdSpecDates(args []string, stdout, stderr io.Writer) int {
 		return exitBadInput
 	}
 	for _, path := range wrote {
-		res := gitc.Commit(cfg.RepoRoot, path, "chore(spec): dates of "+gitc.Stem(path), false)
+		res := gitc.CommitOrFoldIn(cfg.RepoRoot, cfg.Root, path, "chore(spec): dates of "+gitc.Stem(path), false)
 		if !res.Committed {
 			fmt.Fprintln(stderr, "written, not committed:", res.Reason)
 			return exitOther

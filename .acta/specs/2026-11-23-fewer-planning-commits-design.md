@@ -3,7 +3,8 @@ parent: scratch/2026-11-23-fewer-planning-commits
 id: SPC-0217
 created: "2026-11-23 20:24:12"
 hash: pj3cq7u
-started: "2026-11-23 20:42:48"
+started: "2026-11-23 20:42:42"
+finished: "2026-11-24 05:21:42"
 ---
 # Fewer planning commits
 

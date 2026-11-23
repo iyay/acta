@@ -304,21 +304,22 @@ func TestAppendScratchFoldsRepeatAddsIntoOneCommit(t *testing.T) {
 		t.Errorf("tree dirty after the adds: %s", s)
 	}
 
-	// A write on another file in between ends the run: the next add is a
-	// commit of its own, and the earlier commits stay.
+	// A write on another planning file in between joins the same commit, and
+	// so does the next add. Every subject stays in the message.
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "specs/2026-09-25-other", "status", "approved"); err != nil {
 		t.Fatal(err)
 	}
-	mid := commitCount(t, cfg)
 	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("add four\n")); err != nil {
 		t.Fatal(err)
 	}
-	if got := commitCount(t, cfg); got != mid+1 {
-		t.Errorf("add after another file made %d commits, want 1 new one", got-mid)
+	if got := commitCount(t, cfg); got != afterNew {
+		t.Errorf("writes on two files made %d commits, want 0 (folded)", got-afterNew)
 	}
-	subjects := strings.Split(gitRun(t, cfg.RepoRoot, "log", "-3", "--format=%s"), "\n")
-	if len(subjects) != 3 || !strings.HasPrefix(subjects[0], "chore(scratch): add to ") || !strings.HasPrefix(subjects[1], "chore(spec): ") || !strings.HasPrefix(subjects[2], "chore(scratch): new ") {
-		t.Errorf("last three subjects %q", subjects)
+	msg = gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%B")
+	for _, want := range []string{"chore(acta): scratch, spec of ", "chore(scratch): new ", "chore(spec): ", "chore(scratch): add to "} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message lacks %q:\n%s", want, msg)
+		}
 	}
 }
 
@@ -564,7 +565,7 @@ func handEdit(t *testing.T, cfg config.Config, path, cut string) {
 }
 
 // A new scratch item and the first add to it are one commit. A write on
-// another file between them splits them.
+// another planning file between them joins that commit too.
 func TestNewScratchThenAddFoldsIntoOneCommit(t *testing.T) {
 	fixNow(t)
 	cfg := repoWith(t, map[string]string{".acta/specs/2026-09-25-other.md": "# Other\n"})
@@ -588,12 +589,11 @@ func TestNewScratchThenAddFoldsIntoOneCommit(t *testing.T) {
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "specs/2026-09-25-other", "status", "approved"); err != nil {
 		t.Fatal(err)
 	}
-	mid := commitCount(t, cfg)
 	if _, err := AppendScratch(cfg, mustLoad(t, cfg), "SCRATCH-1", "", []byte("later\n")); err != nil {
 		t.Fatal(err)
 	}
-	if got := commitCount(t, cfg); got != mid+1 {
-		t.Errorf("add after another file made %d commits, want 1 new one", got-mid)
+	if got := commitCount(t, cfg); got != before+1 {
+		t.Errorf("writes on two files made %d commits, want 1", got-before)
 	}
 }
 

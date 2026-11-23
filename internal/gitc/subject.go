@@ -13,6 +13,42 @@ const maxSubject = 72
 // choreSubject reads "chore(<kind>): <verb> <names>".
 var choreSubject = regexp.MustCompile(`^chore\(([^)]+)\): (\S+)(?: (.*))?$`)
 
+// actaKind is the kind of a planning fold that holds more than one kind.
+const actaKind = "acta"
+
+// scopeSubject reads the scope of any "<type>(<scope>): ..." subject, so a
+// "docs(spec)" line counts as spec too.
+var scopeSubject = regexp.MustCompile(`^[a-z]+\(([^)]+)\)!?: `)
+
+// actaSubject builds "chore(acta): <kinds> of <names>" for a planning fold
+// that mixes kinds, or holds a subject with no kind. The kinds are the
+// scopes of lines, in the order first seen, then the folders the files sit
+// in with a plural "s" cut ("bugs" is bug). Names from had are cut first,
+// so a name this write brings is the last to go. When the kinds leave no
+// room for one name, the names win and the kinds are left out. It gives ""
+// when not even one name fits.
+func actaSubject(lines, folders, had, fresh []string) string {
+	var kinds []string
+	for _, ln := range lines {
+		m := scopeSubject.FindStringSubmatch(strings.TrimSpace(ln))
+		if m != nil && m[1] != actaKind && !slices.Contains(kinds, m[1]) {
+			kinds = append(kinds, m[1])
+		}
+	}
+	for _, f := range folders {
+		if k := strings.TrimSuffix(f, "s"); !slices.Contains(kinds, k) {
+			kinds = append(kinds, k)
+		}
+	}
+	prefix := "chore(" + actaKind + "):"
+	if len(kinds) > 0 {
+		if s := render(prefix+" "+strings.Join(kinds, ", ")+" of", had, fresh); s != "" {
+			return s
+		}
+	}
+	return render(prefix, had, fresh)
+}
+
 // SubjectKind gives the kind of a planning chore subject, or "" when the
 // subject is not one.
 func SubjectKind(subject string) string {

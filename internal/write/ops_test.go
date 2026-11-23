@@ -466,7 +466,7 @@ func commitCount(t *testing.T, cfg config.Config) int {
 }
 
 // Two writes on one file in a row must share one commit and keep both
-// subjects. A write on another file between them ends the run.
+// subjects. A write on another planning file between them joins the run too.
 func TestSetValueFoldsRepeatWritesOnOneFile(t *testing.T) {
 	fixNow(t)
 	cfg := repoWith(t, baseFiles)
@@ -488,19 +488,16 @@ func TestSetValueFoldsRepeatWritesOnOneFile(t *testing.T) {
 		}
 	}
 
-	// A write on another file in between: the next write on the bug is a new commit.
+	// A write on another planning file in between folds too, and so does the
+	// next write on the bug, so the step still leaves one commit.
 	if _, err := SetValue(cfg, mustLoad(t, cfg), "plans/2026-09-25-crash-fix", "status", "in-progress"); err != nil {
 		t.Fatal(err)
-	}
-	mid := commitCount(t, cfg)
-	if mid != afterFirst+1 {
-		t.Fatalf("write on another file made %d commits, want 1", mid-afterFirst)
 	}
 	if _, err := SetValue(cfg, mustLoad(t, cfg), bug, "priority", "low"); err != nil {
 		t.Fatal(err)
 	}
-	if got := commitCount(t, cfg); got != mid+1 {
-		t.Errorf("write after another file made %d commits, want 1 new one", got-mid)
+	if got := commitCount(t, cfg); got != afterFirst {
+		t.Errorf("writes on two files made %d commits, want 0 (folded)", got-afterFirst)
 	}
 }
 

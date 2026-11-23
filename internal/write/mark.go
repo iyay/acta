@@ -147,7 +147,7 @@ func MarkItem(cfg config.Config, b *board.Board, id string, done bool) (Outcome,
 	case dirty:
 		o.Skipped, o.Reason = true, "file had other uncommitted changes"
 	default:
-		r := gitc.CommitPaths(cfg.RepoRoot, unique(wrote), msg)
+		r := gitc.CommitPathsIn(cfg.RepoRoot, cfg.Root, unique(wrote), msg)
 		o.Committed, o.Reason, o.Skipped = r.Committed, r.Reason, !r.Committed
 	}
 	return o, nil

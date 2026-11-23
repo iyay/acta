@@ -43,26 +43,56 @@ func firstOfKind(t *testing.T, b *board.Board, kind board.Kind) string {
 	return ""
 }
 
+// Right after a planning commit the press folds into it; after a code
+// commit it makes a commit of its own.
 func TestMarkItemDoneTicksTheWholeTaskDatesAndCommits(t *testing.T) {
-	cfg := repoWith(t, markFiles)
-	b := mustLoad(t, cfg)
-	o, err := MarkItem(cfg, b, "plans/2026-09-30-p#task-1", true)
-	if err != nil || !o.Committed {
-		t.Fatalf("outcome %+v err %v", o, err)
-	}
-	plan := readFile(t, filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-p.md"))
-	if !strings.Contains(plan, "- [x] a\n- [x] b\n") || !strings.Contains(plan, "- [ ] c") {
-		t.Fatalf("plan boxes: %q", plan)
-	}
-	if !strings.Contains(plan, "started:") {
-		t.Fatalf("plan not dated: %q", plan)
-	}
-	spec := readFile(t, filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md"))
-	if !strings.Contains(spec, "started:") {
-		t.Fatalf("spec not dated: %q", spec)
-	}
-	if st := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); st != "" {
-		t.Fatalf("left uncommitted: %q", st)
+	for _, c := range []struct {
+		name, file, msg string
+		fold            bool
+	}{
+		{"after a planning commit", ".acta/scratch/2026-09-30-n.md", "chore(scratch): new 2026-09-30-n", true},
+		{"after a code commit", "code.go", "feat: code", false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := repoWith(t, markFiles)
+			full := filepath.Join(cfg.RepoRoot, c.file)
+			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(full, []byte("x\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			gitRun(t, cfg.RepoRoot, "add", c.file)
+			gitRun(t, cfg.RepoRoot, "commit", "-q", "-m", c.msg)
+			head := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD")
+			parent := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD^")
+			b := mustLoad(t, cfg)
+			o, err := MarkItem(cfg, b, "plans/2026-09-30-p#task-1", true)
+			if err != nil || !o.Committed {
+				t.Fatalf("outcome %+v err %v", o, err)
+			}
+			want := head
+			if c.fold {
+				want = parent
+			}
+			if got := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD^"); got != want {
+				t.Fatalf("fold %v: HEAD^ is %s, want %s", c.fold, got, want)
+			}
+			plan := readFile(t, filepath.Join(cfg.RepoRoot, ".acta/plans/2026-09-30-p.md"))
+			if !strings.Contains(plan, "- [x] a\n- [x] b\n") || !strings.Contains(plan, "- [ ] c") {
+				t.Fatalf("plan boxes: %q", plan)
+			}
+			if !strings.Contains(plan, "started:") {
+				t.Fatalf("plan not dated: %q", plan)
+			}
+			spec := readFile(t, filepath.Join(cfg.RepoRoot, ".acta/specs/2026-09-30-s.md"))
+			if !strings.Contains(spec, "started:") {
+				t.Fatalf("spec not dated: %q", spec)
+			}
+			if st := gitRun(t, cfg.RepoRoot, "status", "--porcelain"); st != "" {
+				t.Fatalf("left uncommitted: %q", st)
+			}
+		})
 	}
 }
 

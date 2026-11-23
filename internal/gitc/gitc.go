@@ -83,13 +83,14 @@ func CommitOrFoldIn(repo, root, path, msg string, wasDirty bool) Result {
 // tryFold amends HEAD with paths when canFold allows it. ok is false when it
 // did not fold, so the caller makes a plain commit instead.
 func tryFold(repo, root string, paths []string, msg string) (Result, bool) {
-	if !canFold(repo, root, paths, msg) {
+	planning := inRoot(repo, root, paths)
+	if !canFold(repo, paths, planning) {
 		return Result{}, false
 	}
 	if _, err := run(repo, append([]string{"add", "--"}, paths...)...); err != nil {
 		return Result{}, false
 	}
-	args, ok := foldArgs(repo, paths, msg)
+	args, ok := foldArgs(repo, root, paths, msg, planning)
 	if !ok {
 		return Result{}, false
 	}
@@ -108,9 +109,12 @@ var trailerLine = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*:\s+\S`)
 // trailers stay trailers, or at the end when there is none. When HEAD and msg
 // are chores of one kind, HEAD's own subject goes in the body too and the
 // subject is built anew from every chore line there, so it names them all.
-// Otherwise HEAD's subject stays. It says false when HEAD's message cannot be
+// Otherwise HEAD's subject stays. In a planning fold, where every file sits
+// under the planning root, a chore HEAD of another kind or of no kind gets a
+// subject built anew by actaLines, and a HEAD the user wrote by hand keeps
+// its subject with msg below it. It says false when HEAD's message cannot be
 // read.
-func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
+func foldArgs(repo, root string, paths []string, msg string, planning bool) ([]string, bool) {
 	out, err := run(repo, "log", "-1", "--format=%B")
 	if err != nil {
 		return nil, false
@@ -126,6 +130,16 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 	built := len(lines) > 1 && strings.TrimSpace(lines[0]) == addedSubject(repo, lines[0], nil)
 	said := func(s string) bool {
 		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
+	}
+	if planning && !sameKind {
+		if !strings.HasPrefix(head, "chore(") && !strings.HasPrefix(head, "chore: ") {
+			// The user wrote this subject, so it stays and msg goes below it.
+			if strings.TrimSpace(head) != msg && !said(msg) {
+				lines = insertFoldLine(lines, msg)
+			}
+			return amendArgs(lines, paths), true
+		}
+		return amendArgs(actaLines(repo, root, paths, lines, msg, built), paths), true
 	}
 	if sameKind && !built && strings.TrimSpace(lines[0]) != msg && !said(msg) && !said(strings.TrimSpace(lines[0])) &&
 		strings.TrimSpace(lines[0]) != FoldSubject(kindLines(lines[1:], kind)) {
@@ -156,8 +170,84 @@ func foldArgs(repo string, paths []string, msg string) ([]string, bool) {
 		// commit adds. The body alone does not, so keep it.
 		lines[0] = head
 	}
+	return amendArgs(lines, paths), true
+}
+
+// amendArgs is the git call that rewrites HEAD with lines as its message.
+func amendArgs(lines, paths []string) []string {
 	args := []string{"commit", "--amend", "--only", "-m", strings.Join(lines, "\n"), "--"}
-	return append(args, paths...), true
+	return append(args, paths...)
+}
+
+// actaLines gives the message of a planning fold that mixes kinds, or holds
+// a subject with no kind. HEAD's own subject and msg go in the body, so no
+// subject is lost. The new subject names every kind and file (actaSubject).
+// built says HEAD's subject was made by acta from its files, so it is not a
+// subject of its own and stays out of the body.
+func actaLines(repo, root string, paths, lines []string, msg string, built bool) []string {
+	head := strings.TrimSpace(lines[0])
+	said := func(s string) bool {
+		return slices.ContainsFunc(lines[1:], func(ln string) bool { return strings.TrimSpace(ln) == s })
+	}
+	// A subject acta built from the body is already said there in parts.
+	k := SubjectKind(head)
+	own := !built && k != actaKind && (k == "" || head != FoldSubject(kindLines(lines[1:], k)))
+	// Both lines go in at once: a "chore: x" line alone at the end reads
+	// like a trailer, and the next line would land above it.
+	var add []string
+	if own && !said(head) {
+		add = append(add, head)
+	}
+	if !said(msg) && !slices.Contains(add, msg) {
+		add = append(add, msg)
+	}
+	if len(add) > 0 {
+		lines = insertFoldLine(lines, add...)
+	}
+	had, fresh, folders := foldStems(repo, root, paths)
+	if s := actaSubject(lines[1:], folders, had, fresh); s != "" {
+		lines[0] = s
+	}
+	return lines
+}
+
+// foldStems gives the names of the files HEAD touches, the names of the
+// paths HEAD does not hold yet, and the folders under root they all sit in,
+// each name once. A subject like "chore: assign short ids" names no kind,
+// so the folders tell which kinds the fold holds.
+func foldStems(repo, root string, paths []string) (had, fresh, folders []string) {
+	folder := func(rel string, err error) {
+		first, _, nested := strings.Cut(filepath.ToSlash(rel), "/")
+		if err == nil && nested && !slices.Contains(folders, first) {
+			folders = append(folders, first)
+		}
+	}
+	// git names HEAD's files from the top of the checkout, which has no
+	// symlinks in it, so root is read the same way.
+	top, _ := run(repo, "rev-parse", "--show-toplevel")
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		realRoot = root
+	}
+	rootRel, _ := filepath.Rel(strings.TrimSpace(top), realRoot)
+	out, err := run(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "HEAD")
+	if err == nil {
+		for _, f := range zNames(out) {
+			folder(filepath.Rel(rootRel, f))
+			if n := Stem(f); !slices.Contains(had, n) {
+				had = append(had, n)
+			}
+		}
+	}
+	for _, p := range paths {
+		// The paths are real ones, so read them from the real root too. Read
+		// through a symlink they would look like they sit in a ".." folder.
+		folder(filepath.Rel(realRoot, p))
+		if n := Stem(p); !slices.Contains(had, n) && !slices.Contains(fresh, n) {
+			fresh = append(fresh, n)
+		}
+	}
+	return had, fresh, folders
 }
 
 // newFilesSubject gives "chore(<kind>): new <names>" for every file the
@@ -276,9 +366,9 @@ func kindLines(body []string, kind string) []string {
 	return out
 }
 
-// insertFoldLine puts msg into the message lines: after the last body line
+// insertFoldLine puts msgs into the message lines: after the last body line
 // before a trailer block, else at the end. The subject is never moved.
-func insertFoldLine(lines []string, msg string) []string {
+func insertFoldLine(lines []string, msgs ...string) []string {
 	at := len(lines)
 	if start := trailerStart(lines); start > 0 {
 		at = start
@@ -287,10 +377,10 @@ func insertFoldLine(lines []string, msg string) []string {
 			at--
 		}
 	}
-	add := []string{msg}
+	add := msgs
 	if at == 1 {
 		// Right under the subject: keep one blank line between them.
-		add = []string{"", msg}
+		add = append([]string{""}, msgs...)
 	}
 	return slices.Concat(lines[:at], add, lines[at:])
 }
@@ -316,7 +406,10 @@ func trailerStart(lines []string) int {
 
 // canFold says whether HEAD may be rewritten with new edits of paths. Each
 // rule keeps a rewrite from hurting someone else, and any error means no.
-func canFold(repo, root string, paths []string, msg string) bool {
+// planning says HEAD and paths hold only files under the planning root
+// (inRoot): then HEAD's subject and kind do not matter, so one step leaves
+// one planning commit.
+func canFold(repo string, paths []string, planning bool) bool {
 	// A file with no change would only rewrite HEAD. Commit says no to it.
 	dirty := false
 	for _, p := range paths {
@@ -345,15 +438,21 @@ func canFold(repo, root string, paths []string, msg string) bool {
 	if len(f) != 3 || len(strings.Fields(f[2])) != 1 {
 		return false
 	}
+	// A Task trailer marks the commit of a plan task. Review and land read
+	// that commit, so a planning write never rewrites it.
+	if task, err := run(repo, "log", "-1", "--format=%(trailers:key=Task,valueonly)"); err != nil || strings.TrimSpace(task) != "" {
+		return false
+	}
 	// Any other subject is still ours to fold into when HEAD did nothing but
 	// add these files: the id then rides the commit that brought them in.
-	if !strings.HasPrefix(f[0], "chore(") && !(exactFiles(repo, paths) && onlyAdds(repo)) {
+	if !planning && !strings.HasPrefix(f[0], "chore(") && !(exactFiles(repo, paths) && onlyAdds(repo)) {
 		return false
 	}
 	if me := UserName(repo); me == "" || f[1] != me {
 		return false
 	}
-	if !sameFiles(repo, paths) && !sameKindInRoot(repo, root, paths, f[0], msg) {
+	// Outside the planning root only a repeat edit of HEAD's own files folds.
+	if !planning && !sameFiles(repo, paths) {
 		return false
 	}
 	// A commit that was pushed, or can be fetched from a remote, is shared.
@@ -424,12 +523,12 @@ func sameFiles(repo string, paths []string) bool {
 	return err1 == nil && err2 == nil && some != "" && all == some
 }
 
-// sameKindInRoot says whether HEAD and msg are chores of one kind and every
-// file of HEAD and every path sit under root. Only planning files fold this
-// way, so a chore that also touched code always stands alone.
-func sameKindInRoot(repo, root string, paths []string, headSubject, msg string) bool {
-	kind := SubjectKind(msg)
-	if root == "" || kind == "" || SubjectKind(headSubject) != kind {
+// inRoot says whether every file of HEAD and every path sit under root.
+// Only planning files fold this way, so a commit that also touched code
+// always stands alone. An empty root, or a root that is the whole repo,
+// says no.
+func inRoot(repo, root string, paths []string) bool {
+	if root == "" {
 		return false
 	}
 	top, err := run(repo, "rev-parse", "--show-toplevel")
@@ -447,6 +546,15 @@ func sameKindInRoot(repo, root string, paths []string, headSubject, msg string) 
 	realRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		realRoot = root
+	}
+	// With root "." every file is under the root, code too. Then the root
+	// tells nothing apart, so nothing counts as planning.
+	realTop, err := filepath.EvalSymlinks(strings.TrimSpace(top))
+	if err != nil {
+		realTop = strings.TrimSpace(top)
+	}
+	if filepath.Clean(realRoot) == filepath.Clean(realTop) {
+		return false
 	}
 	for _, f := range files {
 		rel, err := filepath.Rel(realRoot, f)

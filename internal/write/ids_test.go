@@ -929,8 +929,8 @@ func mustAtoi(t *testing.T, s string) int {
 }
 
 // Ids for files of one folder fold into a HEAD chore of that kind, so a new
-// spec and its id are one commit. Files from two folders carry no kind and
-// stand alone.
+// spec and its id are one commit. Files from two folders fold into it too,
+// under a subject that names every kind.
 func TestAssignIDsFoldsIntoAChoreOfTheSameKind(t *testing.T) {
 	t.Parallel()
 	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
@@ -970,10 +970,10 @@ func TestAssignIDsFoldsIntoAChoreOfTheSameKind(t *testing.T) {
 	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}
-	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after == before {
-		t.Fatal("two folders folded, want a commit of their own")
+	if after := gitRun(t, cfg.RepoRoot, "rev-list", "--count", "HEAD"); after != before {
+		t.Fatalf("commits went from %s to %s, want two folders to fold", before, after)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore: new 2026-09-23-c, 2026-09-22-d-design" {
+	if got := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%s"); got != "chore(acta): spec, bug of 2026-09-23-c, 2026-09-22-d-design, +2 more" {
 		t.Fatalf("subject %q", got)
 	}
 }
@@ -998,9 +998,9 @@ func TestAssignIDsNamesTheCommitOfANewFile(t *testing.T) {
 	}
 }
 
-// A commit the user made for one spec never takes in a second file, so its
-// subject and its files stay what the user wrote.
-func TestAssignIDsNeverFoldsAnotherFileIntoTheUsersCommit(t *testing.T) {
+// A planning commit the user made by hand may take in a second planning
+// file, but its subject stays what the user wrote.
+func TestAssignIDsKeepsTheUsersSubjectWhenItFolds(t *testing.T) {
 	t.Parallel()
 	cfg := repoWith(t, map[string]string{"README.md": "x\n"})
 	b := filepath.Join(cfg.Root, "specs", "2026-09-21-b-design.md")
@@ -1019,8 +1019,12 @@ func TestAssignIDsNeverFoldsAnotherFileIntoTheUsersCommit(t *testing.T) {
 	if _, out, err := AssignIDs(cfg, mustLoad(t, cfg), nil); err != nil || !out.Committed {
 		t.Fatalf("out=%+v err=%v", out, err)
 	}
-	if got := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD~1"); got != userCommit {
-		t.Fatalf("the user's commit was rewritten: HEAD~1 %s, want %s", got, userCommit)
+	if got := gitRun(t, cfg.RepoRoot, "rev-parse", "HEAD~1"); got != gitRun(t, cfg.RepoRoot, "rev-parse", userCommit+"~1") {
+		t.Fatalf("the ids made a commit of their own on top of %s", userCommit)
+	}
+	msg := gitRun(t, cfg.RepoRoot, "log", "-1", "--format=%B")
+	if !strings.HasPrefix(msg, "spec: b\n\n") || !strings.Contains(msg, "\nchore(spec): ") {
+		t.Fatalf("message %q, want the user's subject with the id line below", msg)
 	}
 }
 
