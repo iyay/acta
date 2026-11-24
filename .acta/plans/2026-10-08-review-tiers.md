@@ -67,7 +67,7 @@ finished: "2026-10-08 09:01:47"
 
 ### Findings
 
-main was rewritten at 08:58 (8 scratch commits squashed to 7c8b360); new main tip 6d6a8c6 has the same tree as 808a9dd.
+main was rewritten at 08:58 (8 scratch commits squashed to 7c46dca); new main tip 2d89841 has the same tree as 808a9dd.
 Before land: git rebase --onto main 808a9dd review-tiers in the worktree, after every task is committed.
 
 ## Polish

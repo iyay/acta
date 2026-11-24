@@ -34,4 +34,4 @@ finished: "2026-10-18 21:23:31"
 
 ## Review notes
 
-- Round 1: deep, full tier, Spec and Standards reviewers over 4080a02..23acb5e: CLEAN, no BLOCKERs or NOTEs; no fact-check needed. Focused setup tests, fast suite, go vet and formatting passed; the missing-question regression was observed red before implementation.
+- Round 1: deep, full tier, Spec and Standards reviewers over 980de40..23acb5e: CLEAN, no BLOCKERs or NOTEs; no fact-check needed. Focused setup tests, fast suite, go vet and formatting passed; the missing-question regression was observed red before implementation.

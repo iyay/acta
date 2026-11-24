@@ -88,7 +88,7 @@ finished: "2026-11-23 21:07:22"
 
 ## Review notes
 
-- Review depth auto, picked standard (two reviewers): risk signal is skill text agents read. Round 1 range 7ff9c0f..7e60ea8 CLEAN on both axes; polish 570c023..2dc71b3 CLEAN. BLOCKER 0, NOTE 9, pre-existing 0. Notes: text-test-blocker grader can pass on a NOTE inside a line or miss an unusual citation form; slice grader rows? loose and allowed_tools has no Skill; cleanup-test-audit grants Agent so a subagent acta cleanup may go unseen; debug-regression-row decides row vs func with an llm judge; slice full.md template step still reads as a new test; polish commit subject differs from the plan wording.
+- Review depth auto, picked standard (two reviewers): risk signal is skill text agents read. Round 1 range 29d68c3..7e60ea8 CLEAN on both axes; polish 570c023..2dc71b3 CLEAN. BLOCKER 0, NOTE 9, pre-existing 0. Notes: text-test-blocker grader can pass on a NOTE inside a line or miss an unusual citation form; slice grader rows? loose and allowed_tools has no Skill; cleanup-test-audit grants Agent so a subagent acta cleanup may go unseen; debug-regression-row decides row vs func with an llm judge; slice full.md template step still reads as a new test; polish commit subject differs from the plan wording.
 
 ## State
 

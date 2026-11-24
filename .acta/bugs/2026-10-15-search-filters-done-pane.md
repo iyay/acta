@@ -2,7 +2,7 @@
 id: BUG-0046
 hash: bwkrdzr
 started: "2026-10-15 13:00:28"
-fixed_in: 5b96f6854415a67b89b0f6d794f8d261b23742b2
+fixed_in: fcd228b6ffd0faf3b20d62bc30afa22e5b9ac1e4
 finished: "2026-10-15 13:15:19"
 ---
 # Search in the Open box also filters the Done box
@@ -22,4 +22,4 @@ Open the TUI on a tab with a Done box (Debt or Plans), focus Open, press `/`
 and type a word. The Done box shrinks to matching rows.
 
 ## Found in
-main after PLN-0147 landed (b552ea5); reported by the user from a screenshot.
+main after PLN-0147 landed (b48d161); reported by the user from a screenshot.

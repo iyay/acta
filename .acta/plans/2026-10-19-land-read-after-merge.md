@@ -39,4 +39,4 @@ Eval review-understanding-report: 8 of 9 pass after the fix, 3 of 6 before on ma
 
 ## Review notes
 
-- Round 1: deep, full tier, Spec and Standards reviewers over ca65a3b..c026c1b: CLEAN. Eval: the last two kept batches passed 3 of 3 each (8 of 9 over all three batches; 3 of 6 on main before). Red showed with the package run, not `-run TestSkillLand` (the phrases live in TestLandUnderstanding). Two (medium) NOTEs filed as debt; notes left: "before the merge" could read "before the parent moved", `<landed-sha>` vs "merge sha" naming.
+- Round 1: deep, full tier, Spec and Standards reviewers over c4519de..c026c1b: CLEAN. Eval: the last two kept batches passed 3 of 3 each (8 of 9 over all three batches; 3 of 6 on main before). Red showed with the package run, not `-run TestSkillLand` (the phrases live in TestLandUnderstanding). Two (medium) NOTEs filed as debt; notes left: "before the merge" could read "before the parent moved", `<landed-sha>` vs "merge sha" naming.

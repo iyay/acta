@@ -1,13 +1,13 @@
 ---
 id: BUG-0051
 hash: de6chi6
-fixed_in: ca16f38b0b4ce49af5d8075b7737192464f664ea
+fixed_in: b77f03059881364615bf155da657060d8325a488
 finished: "2026-10-19 21:09:06"
 ---
 # Tidy squashes a docs-only branch under a stranger's commit message
 
 ## Symptom
-Landing PLN-0176 printed `tidy: 10 commits -> 1`. The one commit (2009408)
+Landing PLN-0176 printed `tidy: 10 commits -> 1`. The one commit (22a7833)
 carries the subject `docs(bug): correct missing task checkboxes diagnosis`,
 a bug-file edit, not the branch's work. The subjects `docs(skills)`,
 `docs(setup)`, `polish` and every `Task: PLN-fd6jcne#n` trailer are gone, so
@@ -28,4 +28,4 @@ plugin/skills/x/SKILL.md, then `polish: b` with a trailer, then
 The result is one commit with subject `docs(bug): c` and no trailers.
 
 ## Found in
-main after landing PLN-0176 (commit 2009408), read while explaining the tidy line.
+main after landing PLN-0176 (commit 22a7833), read while explaining the tidy line.

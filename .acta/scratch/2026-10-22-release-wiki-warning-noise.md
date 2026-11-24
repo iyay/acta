@@ -13,7 +13,7 @@ finished: "2026-10-22 23:07:21"
 
 ### 2026-10-22
 
-The two stale pages, plugin-loads-from-repo and plugin-ships-in-binary, became stale because of release commit ccaffcf. Each release can produce the same warnings again. Investigate release-triggered wiki warning noise separately from SPC-0172.
+The two stale pages, plugin-loads-from-repo and plugin-ships-in-binary, became stale because of release commit a232b2f. Each release can produce the same warnings again. Investigate release-triggered wiki warning noise separately from SPC-0172.
 
 ## Context
 

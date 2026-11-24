@@ -57,7 +57,7 @@ finished: "2026-11-24 04:55:24"
 
 ## Review notes
 
-- Review depth auto, picked standard (two reviewers, deep lens on the Standards axis): risk signal is a path that amends git commits. Round 1 7ff9c0f..6d629c8 CLEAN on both axes; polish 9ad1ea4..4dac864 CLEAN. BLOCKER 0, NOTE 11, pre-existing 2. Notes: acta commit with a docs(spec) message folds under a chore HEAD and takes the chore(acta) subject; subject_test.go not touched; spec-dates could amend a planning-only tidy tip (no real case); inRoot measures unresolved paths against a resolved root (fails safe); busy() misses a stopped multi-commit cherry-pick (pre-existing); trailers read from the last paragraph only; case-insensitive root spelling fails safe; polish subject wording differs from the plan.
+- Review depth auto, picked standard (two reviewers, deep lens on the Standards axis): risk signal is a path that amends git commits. Round 1 29d68c3..6d629c8 CLEAN on both axes; polish 9ad1ea4..4dac864 CLEAN. BLOCKER 0, NOTE 11, pre-existing 2. Notes: acta commit with a docs(spec) message folds under a chore HEAD and takes the chore(acta) subject; subject_test.go not touched; spec-dates could amend a planning-only tidy tip (no real case); inRoot measures unresolved paths against a resolved root (fails safe); busy() misses a stopped multi-commit cherry-pick (pre-existing); trailers read from the last paragraph only; case-insensitive root spelling fails safe; polish subject wording differs from the plan.
 
 ## State
 

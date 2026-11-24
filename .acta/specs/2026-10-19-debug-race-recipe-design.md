@@ -13,7 +13,7 @@ The debug skill holds a Race recipe that asks for a forced interleaving probe
 and a regression test that holds the workers the same way. In the debug-race
 eval the agent skips it: it proves the cause with repeat runs and a lock
 control, proposes a test that relies on thread volume, and reports. The case
-scores 0.00 on main, and also on the skill before b986b0a.
+scores 0.00 on main, and also on the skill before fd66190.
 
 ## Approved design
 Bounded, approved by the user in chat on 2026-10-19.

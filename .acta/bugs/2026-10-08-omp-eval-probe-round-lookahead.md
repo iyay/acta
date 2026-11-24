@@ -1,7 +1,7 @@
 ---
 id: BUG-0034
 hash: isdvbmo
-fixed_in: c2886781662644139e680028c0519d40b3594457
+fixed_in: 42d17fbc194111251327c99cb9c66e7dcc4ccabf
 finished: "2026-10-08 05:23:10"
 ---
 # probe-round always fails when the evals run through omp

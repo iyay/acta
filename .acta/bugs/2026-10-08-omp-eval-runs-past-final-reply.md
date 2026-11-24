@@ -1,7 +1,7 @@
 ---
 id: BUG-0036
 hash: ddiitc2
-fixed_in: ec07b47c982b5c18672c9ba5c4ed6a0cc6153e5b
+fixed_in: 7c46dca50a19f3d8100cb55e6dc66fb6b7450dd5
 finished: "2026-10-08 07:03:06"
 ---
 # omp evals time out on cases the agent already finished

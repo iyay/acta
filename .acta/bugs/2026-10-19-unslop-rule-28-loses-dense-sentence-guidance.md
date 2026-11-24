@@ -2,7 +2,7 @@
 ref: SPC-0161
 id: BUG-0049
 hash: m097j1d
-fixed_in: a999a1e71aa1f64b056e2df055a099c413cba835
+fixed_in: b2849e4d3c84f436f76d78051adf9e53c3cc0fd0
 finished: "2026-10-19 19:22:00"
 ---
 # Unslop rule 28 no longer covers dense sentences
@@ -23,11 +23,11 @@ establish that each number retains its supplied meaning.
 
 ## Repro
 
-1. Read rule 28 in plugin/references/unslop.md at commit b6ac311.
+1. Read rule 28 in plugin/references/unslop.md at commit e7490af.
 2. Compare it with the user's supplied rule 28: "Shorten or split dense sentences. If the reader has to backtrack to parse a sentence, break it in two or drop clauses. One idea per sentence."
 3. Observe that the shipped rule 28 says "Sentences that fit any project" and contains no instruction to shorten or split dense sentences.
 4. Run scripts/test ./internal/plugincheck ./plugin; both packages pass despite this mismatch.
 
 ## Found in
 
-main at b6ac311, while testing the landed change at the user's request.
+main at e7490af, while testing the landed change at the user's request.

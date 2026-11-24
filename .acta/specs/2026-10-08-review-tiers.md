@@ -9,7 +9,7 @@ finished: "2026-10-08 09:01:47"
 
 Status: Bounded, approved by the user in chat on 2026-10-08. It loosens the 2026-10-01 ruling that every polish commit gets the two reviewers.
 
-Why: the review skill sends a change to the two reviewers unless it is one file of text or config, and it never treats a polish commit as small. So a polish that only rewords comments in three files still costs two full reviews. `256bda8 Polish detail markdown comments` changed 0 logic lines, 18 comment lines and 111 markdown lines, and still went through both reviewers. The user wants the main agent to pick the depth from what the diff changes.
+Why: the review skill sends a change to the two reviewers unless it is one file of text or config, and it never treats a polish commit as small. So a polish that only rewords comments in three files still costs two full reviews. `09eea19 Polish detail markdown comments` changed 0 logic lines, 18 comment lines and 111 markdown lines, and still went through both reviewers. The user wants the main agent to pick the depth from what the diff changes.
 
 Design:
 - `## Small changes` in `plugin/skills/review/SKILL.md` becomes `## Review tiers`. It is the one place that says how deep a review goes; other lines point to it.

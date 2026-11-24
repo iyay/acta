@@ -54,4 +54,4 @@ finished: "2026-10-19 07:17:16"
 
 ## Review notes
 
-- Round 1: deep, full tier, Spec and Standards reviewers over eb65b4a..ed61f10: BLOCKED (setup wizard said minimal builds at once); fix round 1 96a83d6. Round 2 over ed61f10..96a83d6: CLEAN. Two (medium) NOTEs filed as debt; notes left: old spec 2026-10-07 shows the old wizard labels, phrase bans miss new paraphrases.
+- Round 1: deep, full tier, Spec and Standards reviewers over 0517c79..24d3048: BLOCKED (setup wizard said minimal builds at once); fix round 1 96a83d6. Round 2 over 24d3048..96a83d6: CLEAN. Two (medium) NOTEs filed as debt; notes left: old spec 2026-10-07 shows the old wizard labels, phrase bans miss new paraphrases.

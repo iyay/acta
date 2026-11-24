@@ -52,5 +52,5 @@ finished: "2026-11-12 06:20:49"
 
 ### Next
 
-Both tasks committed. Round 1 deep review running over 2a1bb41..bef626f (merge-base, main moved).
+Both tasks committed. Round 1 deep review running over 3deed5f..bef626f (merge-base, main moved).
 Then polish or fix round, then acta:land with full suite and the cold-read-* evals.

@@ -41,4 +41,4 @@ Run the required landing gates after the closing review, then land on main.
 
 ## Review notes
 
-- Deep, full tier: Spec and Standards reviewers checked c6df03f..48ea446; both CLEAN, no findings. Full tier applies because the change edits agent instructions.
+- Deep, full tier: Spec and Standards reviewers checked b2849e4..48ea446; both CLEAN, no findings. Full tier applies because the change edits agent instructions.

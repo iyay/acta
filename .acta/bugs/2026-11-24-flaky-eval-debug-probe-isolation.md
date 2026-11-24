@@ -10,7 +10,7 @@ flaky_tests: ['eval:debug-probe-isolation']
 
 eval:debug-probe-isolation fails now and then and passes when run again.
 
-BUG-0097 was fixed in aa0b956244c211e8be3f87649771575a4537afe8, and the test flaked again.
+BUG-0097 was fixed in 9433ba2600ac91bdd5f916829bf28993d8cb27fb, and the test flaked again.
 
 ## Root cause
 

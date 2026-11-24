@@ -67,7 +67,7 @@ Task 02 changes `TickLine`'s signature, which `internal/write/debt_test.go` call
 
 ### Next
 
-task-04 done. Commit 8864860 matches lineText to board title, drops ponytail tag, removes appendDebt. Review/land next.
+task-04 done. Commit 8898b3b matches lineText to board title, drops ponytail tag, removes appendDebt. Review/land next.
 
 ## Fix round 1
 

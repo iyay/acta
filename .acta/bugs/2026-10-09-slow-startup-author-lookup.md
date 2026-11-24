@@ -2,7 +2,7 @@
 id: BUG-0040
 hash: nywhcia
 started: "2026-10-09 21:06:08"
-fixed_in: 252ae8436a7ff50bed4f1cb88c1541f2551acbb7
+fixed_in: ac24b8d2b5a06bfc1e200348278496709b13be29
 finished: "2026-10-09 21:32:20"
 ---
 # acta takes over a second to open, and every board load is slow
@@ -16,7 +16,7 @@ Running `acta` with no arguments shows the first frame after about 1.1 s on this
 3. The watcher is set up before `p.Run`, so its scan also sits in front of the first frame.
 
 ## Repro
-Measured with a pty probe that times from spawn to the first frame, on main at e99c596:
+Measured with a pty probe that times from spawn to the first frame, on main at 5938c0d:
 - `acta` as built: about 1.10 s to the first frame.
 - Same binary with `gitAuthors` stubbed to return nothing: about 0.31 s.
 - `board.Load` on this repo: 823 ms with authors, 42 ms without.

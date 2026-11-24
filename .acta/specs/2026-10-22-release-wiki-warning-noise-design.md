@@ -16,8 +16,8 @@ and `plugin/package.json`. The pages `plugin-loads-from-repo` and
 `plugin-ships-in-binary` both list `paths: [plugin/]`, so every release makes
 them stale. The stale warning names only the newest unchecked commit
 (`gitc.WikiHistory.Unseen`), so the release commit also hides the change that
-matters. At spec time, `ccaffcf chore(release): v0.1.50` hides
-`4d08f32 feat(style)`.
+matters. At spec time, `a232b2f chore(release): v0.1.50` hides
+`a232b2f feat(style)`.
 
 ## Design
 

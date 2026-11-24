@@ -24,7 +24,7 @@ usage: acta config show [--json] | acta config set [--language L] [--style adhd|
 
 ## Context
 
-Came right after PLN-0138 (acta help, version and man page) landed on main (a22dc5d). The user ran the release binary on PATH (~/.local/bin/acta 0.1.45), which predates PLN-0138, so this shows the old bad-call output.
+Came right after PLN-0138 (acta help, version and man page) landed on main (ec0280a). The user ran the release binary on PATH (~/.local/bin/acta 0.1.45), which predates PLN-0138, so this shows the old bad-call output.
 
 On main now: a bad call still prints one `usage:` line built by `usageLine` in internal/cli/help.go, which joins every usage line of the command (and subcommand) with " | ". So `acta config` and `acta hook` with no subcommand still print one long wrapped line. `acta help config` / `acta config --help` print the multi-line table entry (usage lines, flags, example) instead.
 

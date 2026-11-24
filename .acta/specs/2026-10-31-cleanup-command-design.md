@@ -89,9 +89,9 @@ per line, and writes them in one commit. Fields:
 Example lines:
 
 ```
-{"id":"DBT-0145.01","status":"done","reason":"done in 4dcc44c"}
+{"id":"DBT-0145.01","status":"done","reason":"done in 64fd749"}
 {"id":"SCR-0081","status":"dropped","reason":"replaced by SPC-0183"}
-{"id":"BUG-0037","status":"fixed","fixed_in":"cb1f58b","reason":"runner stops at the final reply"}
+{"id":"BUG-0037","status":"fixed","fixed_in":"64fd749","reason":"runner stops at the final reply"}
 {"id":"PLN-0176","status":"dropped","reason":"no work for 30 days, idea moved to SCR-0080"}
 ```
 

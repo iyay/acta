@@ -18,7 +18,7 @@ Agent proposal the user filed: Stats. Cycle time, number of review rounds, debt 
 
 ## Context
 
-Found while reading `acta list` on main at 7cadc6a: open debt items date back to DBT-0120 (2026-10-15). Data already there: plan dates in frontmatter, review rounds in plan files, debt created dates. `acta cleanup` lists stale items but shows no trend.
+Found while reading `acta list` on main at e8b5ee5: open debt items date back to DBT-0120 (2026-10-15). Data already there: plan dates in frontmatter, review rounds in plan files, debt created dates. `acta cleanup` lists stale items but shows no trend.
 
 ## Log
 

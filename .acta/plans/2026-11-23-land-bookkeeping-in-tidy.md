@@ -107,7 +107,7 @@ finished: "2026-11-23 21:02:45"
 
 ## Review notes
 
-- Round 1 (7ff9c0f..ce87142): BLOCKER telemetry list missing land-notes, proven in a temp clone: fixed in fix round 1.
+- Round 1 (29d68c3..302940c): BLOCKER telemetry list missing land-notes, proven in a temp clone: fixed in fix round 1.
 - Pre-existing internal/board/closes.go:47 rejects BUG and whole DBT ids in closes: sent to bug (2026-11-23-plan-closes-rejects-bug-and-debt-ids).
 - Pre-existing tick lock files pile up under the user cache, tidy --plan adds one per run: sent to bug (2026-11-23-tick-lock-files-pile-up).
 - NOTE open: Land body line is added even when LandNotes wrote nothing.
@@ -117,17 +117,17 @@ finished: "2026-11-23 21:02:45"
 - NOTE open: bug skill uses acta set <bug id> fixed_in, which resolves ids; fine.
 - NOTE open: land-notes may fold into a chore ids HEAD; allowed by the spec edge cases.
 - NOTE open: LandNotes overwrites an existing fixed_in on a bug named in closes.
-- Round 2 (ce87142..c2b62a2): Spec CLEAN, Standards BLOCKED. BLOCKER tidy --plan rerun double counts plan_landed: fixed in fix round 2.
+- Round 2 (302940c..c2b62a2): Spec CLEAN, Standards BLOCKED. BLOCKER tidy --plan rerun double counts plan_landed: fixed in fix round 2.
 - NOTE open: smaller true facts still missing from land-tidy-history.md and tick-stamps-spec.md (old base definition, trailer reader, no-ancestor reason); pages sit at the word cap.
 - NOTE open: .acta/specs/2026-11-12-usage-telemetry-design.md:56 still says plan_landed counts on spec-dates.
-- Review depth auto, picked standard (two reviewers): risk signal is skill text and a commit-writing path. Round 1 7ff9c0f..ce87142 BLOCKED (telemetry list), round 2 ce87142..c2b62a2 BLOCKED (tidy rerun double count), round 3 c2b62a2..00db9ee CLEAN on both axes. BLOCKER 2, NOTE 16, pre-existing 2 (sent to bug). Notes: Land line added when nothing was written; closesOf copies board.listField; landTargets fails on any missing closes id; land-notes may fold into an ids HEAD; LandNotes overwrites an existing fixed_in; smaller wiki facts still missing at the word cap; usage telemetry spec still names spec-dates; rev-parse error reads as no ref; ref read and write not atomic.
+- Review depth auto, picked standard (two reviewers): risk signal is skill text and a commit-writing path. Round 1 29d68c3..302940c BLOCKED (telemetry list), round 2 302940c..c2b62a2 BLOCKED (tidy rerun double count), round 3 c2b62a2..302940c CLEAN on both axes. BLOCKER 2, NOTE 16, pre-existing 2 (sent to bug). Notes: Land line added when nothing was written; closesOf copies board.listField; landTargets fails on any missing closes id; land-notes may fold into an ids HEAD; LandNotes overwrites an existing fixed_in; smaller wiki facts still missing at the word cap; usage telemetry spec still names spec-dates; rev-parse error reads as no ref; ref read and write not atomic.
 
 ## State
 
 ### Next
 
 SPC-0217 and SPC-0218, parallel run.
-PLN-0250 (land-bookkeeping-in-tidy): review round 1 running over 7ff9c0f..ce87142.
+PLN-0250 (land-bookkeeping-in-tidy): review round 1 running over 29d68c3..302940c.
 PLN-0251 (planning-fold-wider): stuck at task 1, waiting on user rulings Q1-Q3 (fix old fold tests, keep a hand-made subject, never fold a Task-trailer commit).
 PLN-0252 (test-rules): running, task 1 done.
 Parent branch: main.

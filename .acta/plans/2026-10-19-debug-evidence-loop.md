@@ -86,7 +86,7 @@ Requests exercise diagnosis and a proposed regression seam without silently auth
 
 | Variant | Source | Pin | SKILL.md sha256 (first 16) | Adaptation |
 |---|---|---|---|---|
-| acta-current | this branch, `plugin/skills/debug/` | `dc555c8` | n/a | none |
+| acta-current | this branch, `plugin/skills/debug/` | `24d3048` | n/a | none |
 | superpowers | obra/superpowers `skills/systematic-debugging/` | `bb92a77` | `51c6435d98c83c42` | guidance files only; test-*.md and CREATION-LOG.md left out |
 | diagnosing | mattpocock/skills `engineering/diagnosing-bugs/` (supplied text) | `6654f6b` | `77f3cf31bc99b2f4` | SKILL.md plus `scripts/` |
 | gstack | garrytan/gstack `investigate/` | `8640ab4` | `d84173a78160734e` (race.md `9bde3d975d3a6dcd`) | `~/.claude/skills/gstack/investigate/` paths made relative so `sections/` loads; gstack preamble binaries are absent in the sandbox |
@@ -176,7 +176,7 @@ Acceptance for the user-authorized Codex harness: candidate passed 12/12, curren
 
 ## Review notes
 
-Deep closing review, round 1, range `dc555c8..5014412`: Spec and Standards reviewers both CLEAN, no BLOCKERs. Both ran focused checks and confirmed baseline guidance makes the new skill checks fail in isolated clones with fresh HOME and TMPDIR. No fact-check pass was needed.
+Deep closing review, round 1, range `24d3048..5014412`: Spec and Standards reviewers both CLEAN, no BLOCKERs. Both ran focused checks and confirmed baseline guidance makes the new skill checks fail in isolated clones with fresh HOME and TMPDIR. No fact-check pass was needed.
 
 One [fix] NOTE corrected the command averages. One [note]: the unchanged race rubric permits repeated runs as diagnostic evidence but still requires a forced-order regression proposal; the observed candidate probes forced the order, and claims remain limited to the retained rubric. No debt item is warranted.
 

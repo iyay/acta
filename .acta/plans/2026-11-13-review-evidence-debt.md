@@ -65,7 +65,7 @@ finished: "2026-11-13 19:24:33"
 
 ## Review notes
 
-- Round 1, auto selected standard, full tier because agent instructions changed: input da73a2e139da583f9b96c7b76c123766694b3aab..49555669b05ef163d6410ef3da35d875d8ce6fc2. Both axes CLEAN, complete Coverage. BLOCKER 0, NOTE 1, pre-existing 0 after merging duplicate findings. One [fix] measurement NOTE: third-history fixture/rubric omits pending middle fix7777777..8888888; fix via one polish task, production policy unchanged. Package PASS Spec14.651s/Standards13.978s; isolated production policy/grader reversion RED. No unexpected worktrees or undispatched code commits.
+- Round 1, auto selected standard, full tier because agent instructions changed: input e9291623b1c9a8e01cad43e68955e19f134033b6..49555669b05ef163d6410ef3da35d875d8ce6fc2. Both axes CLEAN, complete Coverage. BLOCKER 0, NOTE 1, pre-existing 0 after merging duplicate findings. One [fix] measurement NOTE: third-history fixture/rubric omits pending middle fix7777777..8888888; fix via one polish task, production policy unchanged. Package PASS Spec14.651s/Standards13.978s; isolated production policy/grader reversion RED. No unexpected worktrees or undispatched code commits.
 - Review: auto selected standard (full tier: agent instructions); Round 1 CLEAN; BLOCKER 0, NOTE 1 (fixed), pre-existing 0; polish CLEAN.
 - Polish input49555669b05ef163d6410ef3da35d875d8ce6fc2..f48fc059fb09b205bf2cfda9174363e99ca2bd03, no round increment. Spec/Standards complete Coverage, no new findings; narrow checks1.422s/1.427sPASS. Both verified actual native RED/GREEN rubric identity; corrected paired targetold10/10new10/10, unchanged othercontrols. Accepted NOTE resolved. No unexpected worktrees or undispatched code commits. No secondpolish or newdebt.
 

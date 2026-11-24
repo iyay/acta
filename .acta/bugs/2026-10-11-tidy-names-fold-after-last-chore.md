@@ -1,7 +1,7 @@
 ---
 id: BUG-0043
 hash: uus6jd5
-fixed_in: 96fbdbe8b7c85a99c52f2acb005d98d40c4fdda3
+fixed_in: e7c8291e25640f0590713b447fb94518456129dc
 finished: "2026-10-12 09:03:06"
 ---
 # acta tidy names the folded commit after the last chore commit
@@ -20,4 +20,4 @@ Expected: the folded commit keeps the subject, body and `Task:` trailer of the o
 Workaround: rebuild the commit with `git commit-tree` on the same tree and parent with the docs message and trailer, then `git reset --keep` to it.
 
 ## Found in
-Reported by the user from a land in another repo; root cause read in main at 660b741.
+Reported by the user from a land in another repo; root cause read in main at d566059.

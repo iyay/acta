@@ -1,7 +1,7 @@
 ---
 id: BUG-0004
 hash: a6sr3z9
-fixed_in: 85bf8eb
+fixed_in: 1586268
 ---
 # Session start writes a .gitignore outside the repo when the .acta folder is a symlink
 

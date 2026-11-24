@@ -46,8 +46,8 @@ Review round 1 is CLEAN at a91c1e1 (deep, both axes). Next: land on main, then s
 
 ### Findings
 
-main moved to c16e7a3 while this plan ran, so the review base is the merge base 93a27fc, not main's tip c16e7a3. Land merges cleanly; do not force it to a fast-forward.
+main moved to f9a8b09 while this plan ran, so the review base is the merge base 6a7e0f3, not main's tip f9a8b09. Land merges cleanly; do not force it to a fast-forward.
 
 ## Review notes
 
-Deep, no floor raised it. Round 1 covered 93a27fc..a91c1e1, both axes CLEAN with no BLOCKER; both reverted the change in a temp copy and saw the focused tests go red. Notes kept, no fix: the note names only the build example, backed by the generic clause and the all-installed-names test, because the spec names build alone; the skills-frontmatter guard would throw on a folder without a SKILL.md, a shape plugincheck already forbids; the State line above still named task 1 until this close.
+Deep, no floor raised it. Round 1 covered 6a7e0f3..a91c1e1, both axes CLEAN with no BLOCKER; both reverted the change in a temp copy and saw the focused tests go red. Notes kept, no fix: the note names only the build example, backed by the generic clause and the all-installed-names test, because the spec names build alone; the skills-frontmatter guard would throw on a folder without a SKILL.md, a shape plugincheck already forbids; the State line above still named task 1 until this close.

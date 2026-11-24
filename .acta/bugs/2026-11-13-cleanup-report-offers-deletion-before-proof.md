@@ -2,7 +2,7 @@
 id: BUG-0093
 hash: qrsobhx
 started: "2026-11-13 12:55:16"
-fixed_in: 0aac56a9bfd82194fbca9db75dd36ac89a93784f
+fixed_in: 6b1aed19adf73621c6c1c198b0204eab0fb9bd2e
 finished: "2026-11-13 13:37:46"
 ---
 # Cleanup report offers deletion before evidence is complete

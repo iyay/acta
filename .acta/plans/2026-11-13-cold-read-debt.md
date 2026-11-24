@@ -77,6 +77,6 @@ Round 1 CLEAN on both axes (0 BLOCKER). Polish 8324cbf is under its review. Then
 
 Quota blocker of 2026-11-14 cleared on 2026-11-16; all new-arm runs scored with zero quota errors.
 Final 10-run arms, same graders (logs in /Users/iyay/.wwt/acta/cold-read-debt-evidence-20261114/logs): relay old 6 new 7 and 8; read-evidence old 9 new 10; contradiction old 9 new 10 (widegrader2); false-claim old 0 new 10 (grader change, not a skill effect); accept old 9 new 10.
-Contradiction regex is phrase-brittle; widened in a002076 from three real replies; plural negation guard fixed in polish 8324cbf.
+Contradiction regex is phrase-brittle; widened in 085242b from three real replies; plural negation guard fixed in polish 8324cbf.
 Relay: about 1 to 2 of 10 runs still summarize A1-A6 without quotes; one haiku judge false negative seen on a full 11-quote table.
 Old-arm runs from task2/old need --trust-plugin when no terminal is attached.

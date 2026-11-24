@@ -2,7 +2,7 @@
 id: BUG-0068
 hash: ma4vk63
 started: "2026-11-07 18:05:01"
-fixed_in: bb0c9703c0c1c5229ad306985a86be69af030b27
+fixed_in: 0740a237a781aa3284bd781bd13fd193ce58dcbe
 finished: "2026-11-13 01:51:50"
 status: open
 ---

@@ -65,7 +65,7 @@ Land order: PLN-0206 and PLN-0207 land on main in either order; they share no fi
 ### Next
 
 Land resumed 2026-11-07: main merged into the branch (22fbf40), conflicts resolved by intent and reviewed CLEAN.
-The old tidy tip 31f2e14 and its temp worktree are gone; run acta tidy main destructive-skill again on parent a79c884, then the gates, then tidy steps 4-7.
+The old tidy tip 31f2e14 and its temp worktree are gone; run acta tidy main destructive-skill again on parent 812f125, then the gates, then tidy steps 4-7.
 
 ### Open rulings
 

@@ -78,4 +78,4 @@ Recorded in plugin/evals/FACTS.md (2026-10-19 entry).
 
 ## Review notes
 
-- Round 1: deep, full tier, Spec and Standards reviewers over 501261e..7cfe99e: BLOCKED (override flow scoped under No AskUserQuestion); fix round 1 ace3a72. Round 2 over 7cfe99e..ace3a72: CLEAN. Polish 5e52b8e reviewed CLEAN. Two (medium) NOTEs filed as debt; notes left: description still says "optional" block, "full setup run" undefined, redundant --plan-split clause.
+- Round 1: deep, full tier, Spec and Standards reviewers over 501261e..c4519de: BLOCKED (override flow scoped under No AskUserQuestion); fix round 1 ace3a72. Round 2 over c4519de..ace3a72: CLEAN. Polish 5e52b8e reviewed CLEAN. Two (medium) NOTEs filed as debt; notes left: description still says "optional" block, "full setup run" undefined, redundant --plan-split clause.

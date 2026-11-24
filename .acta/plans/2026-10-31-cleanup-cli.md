@@ -113,7 +113,7 @@ Wave 1: Task 1. Wave 2: Task 2 and Task 3 (no shared files). Wave 3: Task 4. Wav
 
 ### Next
 
-Round 2 review of fix range c6a52d7..HEAD is running (Spec and Standards). CLEAN: polish none planned, debt NOTEs to acta debt new, review-notes line, then acta:land.
+Round 2 review of fix range 53c89e6..HEAD is running (Spec and Standards). CLEAN: polish none planned, debt NOTEs to acta debt new, review-notes line, then acta:land.
 Round 1 debt NOTEs to file: (medium) apply/fix write with bare os.WriteFile, no lock or tmp+rename, and the debt-file lock is bypassed; (medium) no rollback when a later write fails; (medium) closed debt line has no machine-readable reason.
 
 ### Findings

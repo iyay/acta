@@ -2,7 +2,7 @@
 id: BUG-0038
 hash: yrz4tr9
 started: "2026-10-09 15:27:55"
-fixed_in: 7eb309f
+fixed_in: 59bbaef
 finished: "2026-10-09 15:31:27"
 ---
 # Activity tab keeps showing tasks that are already done
@@ -19,4 +19,4 @@ internal/tui/model.go:408: inProgress returns true as soon as the task has Start
 3. Open the acta TUI and go to Activity: the task and its plan are still listed.
 
 ## Found in
-main at bed0d1d (v0.1.45), found by reading the code after the user reported be-pmis.
+main at 8fb843a (v0.1.45), found by reading the code after the user reported be-pmis.

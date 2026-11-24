@@ -2,7 +2,7 @@
 id: BUG-0042
 hash: y2ys0me
 started: "2026-10-09 22:06:39"
-fixed_in: 7e34560781e104a479a1042cb65dc37666710536
+fixed_in: 0782b67d44758f2db45403868095a4bfd389abb9
 finished: "2026-10-09 22:14:54"
 ---
 # A new scratch item gets its sections twice and then refuses appends

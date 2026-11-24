@@ -15,4 +15,4 @@ On a release build, a user whose `~/.acta/config.yaml` fails to parse or validat
 Release build with an endpoint, a `~/.acta/config.yaml` that fails validation (for example `plan_depth: sideways`), run any command, then `acta telemetry status`: the body shows `"settings":{}`.
 
 ## Found in
-Review round 1 of walkie PLN-0285 (collector acta route), spec axis, by reading acta main 8dca8de.
+Review round 1 of walkie PLN-0285 (collector acta route), spec axis, by reading acta main 800c957.

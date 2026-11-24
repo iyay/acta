@@ -13,7 +13,7 @@ finished: "2026-10-08 09:01:33"
 
 ### 2026-10-08
 
-Fold should apply to more than `scratch add`. Example: 83ab0a5 `chore(spec): assign short ids` (acta id) then 6c3a389 `chore(spec): split the review tier eval into two cases` (agent's own git commit), same spec file, two commits.
+Fold should apply to more than `scratch add`. Example: 2d89841 `chore(spec): assign short ids` (acta id) then 2d89841 `chore(spec): split the review tier eval into two cases` (agent's own git commit), same spec file, two commits.
 
 Rulings 2026-10-08 (user took every recommendation):
 1. Every acta auto-commit that touches one planning file folds into HEAD when HEAD is an acta auto-commit of that same file (set, bug, debt, state, priority, scratch, id). Code commits (feat, fix) never fold.

@@ -19,7 +19,7 @@ The debug skill reads as it did before PLN-0217, and no unused helper stays behi
 
 ## Design
 
-1. `plugin/skills/debug/SKILL.md` goes back to its text at `20a15a7` (before PLN-0217).
+1. `plugin/skills/debug/SKILL.md` goes back to its text at `e6d1f9b` (before PLN-0217).
 2. Delete `plugin/skills/debug/probe-copy.sh` and `internal/plugincheck/probe_copy_test.go`.
 3. `internal/plugincheck/skill_debug_test.go` drops `stops at the first failed step` and `probe-copy.sh` from `Must`. `internal/plugincheck/budget_test.go` puts the `SKILL.md` cap back to 6546. `internal/plugincheck/final_test.go` no longer allows `probe-copy.sh` as an executable.
 4. The eval case `plugin/evals/debug-independent-check/` stays, for later measurement. Its `evalCases` phrase and the `no-repo-write.md` guards line go back to `Prove the mechanism`.
@@ -29,5 +29,5 @@ The debug skill reads as it did before PLN-0217, and no unused helper stays behi
 ## Testing
 
 - `scripts/test ./internal/plugincheck/ ./internal/setup/ ./plugin/` green.
-- `git diff 20a15a7 -- plugin/skills/debug/` shows no change.
+- `git diff e6d1f9b -- plugin/skills/debug/` shows no change.
 - At land: full suite, and the seven debug eval cases.

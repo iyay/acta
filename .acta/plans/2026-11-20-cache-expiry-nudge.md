@@ -46,7 +46,7 @@ finished: "2026-11-20 05:16:01"
 
 ## Review notes
 
-- Review depth auto, picked standard (two reviewers): risk signal is hook text the agent reads. Round 1 range 97f980c..10aaf44 CLEAN on both axes. BLOCKER 0, NOTE 8, pre-existing 0. Notes: exact-text test uses Contains; io.ReadAll waits on a TTY stdin (real callers close it); FIFO transcript path would block; a single line over 512 KiB gives no nudge; gap cases check only the prefix; Codex stdin not drained; hook prompt help does not mention stdin; first tail line dropped even when cut lands on a line start.
+- Review depth auto, picked standard (two reviewers): risk signal is hook text the agent reads. Round 1 range e11d823..10aaf44 CLEAN on both axes. BLOCKER 0, NOTE 8, pre-existing 0. Notes: exact-text test uses Contains; io.ReadAll waits on a TTY stdin (real callers close it); FIFO transcript path would block; a single line over 512 KiB gives no nudge; gap cases check only the prefix; Codex stdin not drained; hook prompt help does not mention stdin; first tail line dropped even when cut lands on a line start.
 
 ## State
 

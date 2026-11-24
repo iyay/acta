@@ -52,4 +52,4 @@ finished: "2026-10-19 09:48:52"
 
 ## Review notes
 
-- Round 1: deep, full tier, Spec and Standards reviewers over 6a1004d..7aff979: CLEAN. Polish e8bf354 (grader comment, depth.md "neither") reviewed full tier by both: CLEAN. Notes left: "no offer" in land SKILL.md off-path line is a harmless leftover; the spec's grep check hits the ban-list test strings by design.
+- Round 1: deep, full tier, Spec and Standards reviewers over 24d3048..7aff979: CLEAN. Polish e8bf354 (grader comment, depth.md "neither") reviewed full tier by both: CLEAN. Notes left: "no offer" in land SKILL.md off-path line is a harmless leftover; the spec's grep check hits the ban-list test strings by design.

@@ -55,4 +55,4 @@ review and land the marker fix
 
 Deep review of `main..HEAD`: spec and standards reviewers were CLEAN with no BLOCKERs. Notes left: the test asserts only the subfolder run, which already proves the baked root path, so a separate root assertion would re-check the same string; unquoted heredocs would interpolate any future `$` in the generated scripts; a failed redirect exits 0 because the scripts end with `echo`; one test comment repeats "git". None changes what a grader sees.
 
-Follow-up deep review of `3af895f..1fb940e`: Spec and Standards reviewers CLEAN, no new BLOCKERs or NOTEs. Seven workspace-name regressions and independent script probes confirm literal paths and no injected commands; the original shell-character cases fail before the fix. Focused checks, vet, shell syntax and diff checks passed.
+Follow-up deep review of `afee786..1fb940e`: Spec and Standards reviewers CLEAN, no new BLOCKERs or NOTEs. Seven workspace-name regressions and independent script probes confirm literal paths and no injected commands; the original shell-character cases fail before the fix. Focused checks, vet, shell syntax and diff checks passed.

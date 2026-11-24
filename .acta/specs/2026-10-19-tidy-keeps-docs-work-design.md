@@ -56,4 +56,4 @@ Red tests in `internal/tidy/tidy_test.go`:
 
 ## Out of scope
 
-Rewriting commit 2009408, which already landed.
+Rewriting commit 22a7833, which already landed.

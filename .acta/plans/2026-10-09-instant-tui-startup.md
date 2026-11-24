@@ -88,6 +88,6 @@ finished: "2026-10-09 21:12:13"
 - `FillAuthors` keeps a per-folder lookup for files under no known checkout (an absolute root outside the repo); the spec does not name it, and it has its own test.
 - Spec Testing bullet 1 is covered for `trees.Load` only indirectly: `trees` cannot stub the board's git variable, so the stubbed count in `LoadTrees` and the empty-author check in `TestLoadWithAuthorsFillsAuthors` stand in.
 - Beyond the two wiki pages the spec named, `tick-stamps-spec` got its text fixed (the parent can be a bug) and nine pages got a re-check timestamp.
-- The plan changed during the build (f49a7c8) to add `internal/tui/detail_test.go` to Task 1.
+- The plan changed during the build (b06f78e) to add `internal/tui/detail_test.go` to Task 1.
 - `.acta/plans/2026-09-26-tui.md` still names `WatchFailed`; it is a landed plan, so it stays as history.
 - Measured on this repo with the foreground pty probe: first frame 52 to 71 ms on the branch binary over ten runs, 1137 to 1282 ms on the old one.

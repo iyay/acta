@@ -3,7 +3,7 @@ id: BUG-0047
 hash: g71x5cb
 priority: medium
 started: "2026-10-19 06:17:58"
-fixed_in: e06761445e66b5f93debf93edb9475b974e8cca3
+fixed_in: 2796e73208a220429c9b5952136677b90141ee45
 finished: "2026-10-19 06:50:11"
 ---
 # Land report sometimes explains code read before the merge
@@ -20,4 +20,4 @@ Side finding in the same failed run: the agent ran `git commit --amend` on the m
 `scripts/eval --case review-understanding-report --runs 3 --keep-temp`, then list the tool calls in each `out/trace.jsonl` and compare the order of the `retry.py` read and the merge.
 
 ## Found in
-main at d931db0 and branch setup-skill-choices, during the land gate of PLN-0162; acta:debug, 2026-10-19.
+main at b7f2e2e and branch setup-skill-choices, during the land gate of PLN-0162; acta:debug, 2026-10-19.

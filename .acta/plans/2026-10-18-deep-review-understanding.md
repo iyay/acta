@@ -64,7 +64,7 @@ finished: "2026-10-18 19:52:37"
 
 ### Next
 
-None. Both tasks landed as c1a8277 and 0fa83b1.
+None. Both tasks landed as f0a7e89 and f0a7e89.
 
 ## Review notes
 

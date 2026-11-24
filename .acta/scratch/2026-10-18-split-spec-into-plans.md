@@ -28,7 +28,7 @@ Today: plans link to a spec through parent:, and nothing stops two plans per spe
 
 ### 2026-10-18
 
-2026-10-18: fact found: board already sums tasks over every plan with the same parent (parentStatus in internal/board/board.go), so a spec with 3 plans shows done only when all their boxes are ticked. Inline default landed as f64e67c.
+2026-10-18: fact found: board already sums tasks over every plan with the same parent (parentStatus in internal/board/board.go), so a spec with 3 plans shows done only when all their boxes are ticked. Inline default landed as 805ab64.
 
 ### 2026-10-18
 

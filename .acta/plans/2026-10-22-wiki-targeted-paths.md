@@ -37,7 +37,7 @@ Task 1 owns `.acta/wiki/dispatch-plan-path.md`, `.acta/wiki/fix-duplicate-ids.md
 
 ## Verification evidence
 
-Before edits, no-range check exited 1 with only plugin-loads-from-repo and plugin-ships-in-binary stale from ccaffcf; neither was edited or confirmed.
+Before edits, no-range check exited 1 with only plugin-loads-from-repo and plugin-ships-in-binary stale from a232b2f; neither was edited or confirmed.
 
 Read all three full pages before changing paths. Dispatch checkRecord validates a repo-relative .md path inside the planning root, while tick resolves task IDs through the board. AssignIDs uses scanIDs then increments the next ID; FixDuplicates groups equal canonical IDs and assigns later holders the next free number. TaskDates writes parent stamps except for multi-plan specs in linked worktrees; cmdSpecDates calls SpecDates to derive the earliest start and completion once all plans finish. These claims remain valid; bodies are unchanged.
 

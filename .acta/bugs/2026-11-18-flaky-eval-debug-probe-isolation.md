@@ -3,7 +3,7 @@ id: BUG-0097
 hash: hebl8wz
 priority: medium
 flaky_tests: ['eval:debug-probe-isolation']
-fixed_in: aa0b956244c211e8be3f87649771575a4537afe8
+fixed_in: 9433ba2600ac91bdd5f916829bf28993d8cb27fb
 finished: "2026-11-18 08:49:16"
 ---
 # Flaky test eval:debug-probe-isolation

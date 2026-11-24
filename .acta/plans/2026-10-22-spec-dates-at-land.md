@@ -52,7 +52,7 @@ finished: "2026-10-22 23:43:28"
 
 ### Next
 
-Both tasks and the wiki step are committed (head 60ccc13). Round 1 deep review is running over e6402f2..60ccc13 (merge-base, main moved). Next: sort NOTEs, then acta:land.
+Both tasks and the wiki step are committed (head 60ccc13). Round 1 deep review is running over 0f46b37..60ccc13 (merge-base, main moved). Next: sort NOTEs, then acta:land.
 
 ## Polish
 

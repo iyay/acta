@@ -10,11 +10,11 @@ A temporary gate worktree containing only ignored output files can be removed wi
 
 ## Root cause
 
-plugin/skills/land/tidy.md:9 attempts plain git worktree remove before the cleanup procedure's ignored-file guard. Git accepts an otherwise clean worktree with ignored-only files. The same unconditional first removal is present at parent b3cdaa408a302685e0ce3f8900edc56e35c24f48; the reviewed change guards the retry, not this inherited first removal.
+plugin/skills/land/tidy.md:9 attempts plain git worktree remove before the cleanup procedure's ignored-file guard. Git accepts an otherwise clean worktree with ignored-only files. The same unconditional first removal is present at parent cafcfec1735a6977f9c565ada6f6cbefe47b8a7d; the reviewed change guards the retry, not this inherited first removal.
 
 ## Repro
 
-In an isolated clone with fresh HOME and TMPDIR, add report.cache to .git/info/exclude, create a detached worktree at b3cdaa408a302685e0ce3f8900edc56e35c24f48, and write a synthetic report.cache. git status --short --ignored prints !! report.cache. Plain git worktree remove exits 0 and the file no longer exists. No force was used. The synthetic worktree was removed; the real checkouts were untouched.
+In an isolated clone with fresh HOME and TMPDIR, add report.cache to .git/info/exclude, create a detached worktree at cafcfec1735a6977f9c565ada6f6cbefe47b8a7d, and write a synthetic report.cache. git status --short --ignored prints !! report.cache. Plain git worktree remove exits 0 and the file no longer exists. No force was used. The synthetic worktree was removed; the real checkouts were untouched.
 
 ## Found in
 

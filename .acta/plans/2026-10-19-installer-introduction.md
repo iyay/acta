@@ -35,4 +35,4 @@ finished: "2026-10-19 07:12:37"
 
 ## Review notes
 
-- Deep review, full tier (shell output behavior): Spec and Standards reviewers over 1895007..4657cc5 both CLEAN, no findings. The PTY test failed before the implementation and passed after it; installer tests, shell syntax, formatting and vet passed.
+- Deep review, full tier (shell output behavior): Spec and Standards reviewers over 0517c79..4657cc5 both CLEAN, no findings. The PTY test failed before the implementation and passed after it; installer tests, shell syntax, formatting and vet passed.

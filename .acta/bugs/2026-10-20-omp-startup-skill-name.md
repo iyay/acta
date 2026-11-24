@@ -2,7 +2,7 @@
 id: BUG-0052
 hash: g8qnh99
 started: "2026-10-20 08:02:07"
-fixed_in: 31ed038
+fixed_in: af73ba8
 finished: "2026-10-20 08:17:44"
 ---
 # OMP starts by reading an unknown acta-prefixed skill

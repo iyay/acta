@@ -10,7 +10,7 @@ finished: "2026-10-08 09:46:09"
 
 Status: Bounded, approved by the user in chat on 2026-10-08. Builds on SPC-0110.
 
-Why: SPC-0110 folds only a repeat `acta scratch add` with the same subject. Other planning commits still pile up. On 2026-10-08 one spec got `83ab0a5 chore(spec): assign short ids` from `acta id` and then `6c3a389 chore(spec): split the review tier eval into two cases` from the agent's own `git commit`: two commits for one file, minutes apart. The user wants every one-file planning commit to fold the same way.
+Why: SPC-0110 folds only a repeat `acta scratch add` with the same subject. Other planning commits still pile up. On 2026-10-08 one spec got `2d89841 chore(spec): assign short ids` from `acta id` and then `2d89841 chore(spec): split the review tier eval into two cases` from the agent's own `git commit`: two commits for one file, minutes apart. The user wants every one-file planning commit to fold the same way.
 
 Design:
 - `gitc.CommitOrFold` rule 1 changes. HEAD no longer needs the same subject. It needs to be an acta planning commit, which means its subject starts with `chore(` and its one changed file is the same `path`. The other rules from SPC-0110 stay as they are: the commit has one parent and touches only `path`; HEAD is on a branch that no remote holds; no other branch or worktree holds HEAD; the author is the same; and the file really changed.

@@ -4,7 +4,7 @@ hash: qxcsswn
 status: fixed
 finished: "2026-10-19 20:46:02"
 started: "2026-10-19 20:30:17"
-fixed_in: 13565823c944be839d2ffca73d17a4ca8102ba9e
+fixed_in: e6dfc2c509bc51ffa5ad28659e81fbe4a6866d54
 ---
 # Slice self-review misses required checkboxes in minimal plans
 
@@ -36,7 +36,7 @@ task has the required Red, Change and Commit checkboxes before hand-off.
 Do not change the CLI to accept tasks without checkboxes.
 
 ## Repro
-In an isolated clone at `193ac17`, build the CLI with
+In an isolated clone at `b2849e4`, build the CLI with
 `go build -o /tmp/acta-tick-repro ./cmd/acta`. Then:
 
 1. Run `/tmp/acta-tick-repro tick plans/2026-10-19-drop-settings-skills#task-1 --all`

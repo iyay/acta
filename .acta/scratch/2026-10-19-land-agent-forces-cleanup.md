@@ -44,7 +44,7 @@ Probe round 2, user answered "ok":
 
 ### 2026-10-31
 
-Spec SPC-0186 written. Cold read found five gaps; the user approved every suggested fix with a thumbs up: amend check reads the -C or cd repo and skips git global options; the hook blocks only inside a git repo; core rule 5 changes to "never run it, let the user run it"; git clean -f is blocked and the eval grader checks the test folder survives; land offers three choices for test output (ignore line, user removes it, stop) and the omp-report wiki page is rewritten. Spec updated at 7c03757; waiting for the user's spec review.
+Spec SPC-0186 written. Cold read found five gaps; the user approved every suggested fix with a thumbs up: amend check reads the -C or cd repo and skips git global options; the hook blocks only inside a git repo; core rule 5 changes to "never run it, let the user run it"; git clean -f is blocked and the eval grader checks the test folder survives; land offers three choices for test output (ignore line, user removes it, stop) and the omp-report wiki page is rewritten. Spec updated at 878a0cd; waiting for the user's spec review.
 
 ### 2026-10-31
 

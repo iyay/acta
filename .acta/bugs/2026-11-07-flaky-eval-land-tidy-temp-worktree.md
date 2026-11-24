@@ -4,7 +4,7 @@ hash: hrmsir5
 priority: medium
 flaky_tests: ['eval:land-tidy-temp-worktree']
 started: "2026-11-13 11:31:36"
-fixed_in: aab9bfaad2467664712116dce8d506b52c446c8f
+fixed_in: 99ea548c7fd51e3206b71c2e8b54096eaa6e12d2
 finished: "2026-11-13 11:48:11"
 ---
 # Flaky test eval:land-tidy-temp-worktree

@@ -18,7 +18,7 @@ finished: "2026-10-09 21:35:57"
 2. Run `acta id`. It commits the spec as `chore(spec): assign short ids`.
 3. Run `acta commit .acta/specs/<file>.md -m "chore(spec): x"`. It prints the empty reason and exits 2.
 
-Seen on main at 5012b47 with `.acta/specs/2026-10-09-instant-tui-startup.md`.
+Seen on main at 5938c0d with `.acta/specs/2026-10-09-instant-tui-startup.md`.
 
 ## Found in
 main, while reading the output of the shape flow for SPC-0119.

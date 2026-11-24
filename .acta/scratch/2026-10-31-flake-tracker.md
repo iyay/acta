@@ -20,7 +20,7 @@ Agent proposal the user filed: Flake tracker. TUI and eval flakes keep coming ba
 
 ## Context
 
-Found while reading `acta list` on main at 7cadc6a. Known flakes: DBT-0147.02 (TestWheelNotchesBelongToTheScreenTheyWereGatheredOn, internal/tui/scroll_test.go:918), the TUI click test, DBT-0145.03 (brainstorm evals 2 of 3), SCR-0062 (task-trailer eval), SCR-0079 (eval reds at PLN-0190 land). Land gate today reruns the full suite on a red.
+Found while reading `acta list` on main at e8b5ee5. Known flakes: DBT-0147.02 (TestWheelNotchesBelongToTheScreenTheyWereGatheredOn, internal/tui/scroll_test.go:918), the TUI click test, DBT-0145.03 (brainstorm evals 2 of 3), SCR-0062 (task-trailer eval), SCR-0079 (eval reds at PLN-0190 land). Land gate today reruns the full suite on a red.
 
 Shape started 2026-10-31 as Architectural (new mechanism across scripts/test, land skill and the planning files). User merged SCR-0062 and SCR-0079 into it ("gas" on the priority list).
 Today a red full suite at land means: fix the cause through narrow tests, then one more full run (plugin/skills/land/SKILL.md step 1). The rule "a lone TestClickOnTheBarTakesTheHighlightOff failure is the known flake, rerun only that test" lives only in agent memory, not in acta. Evals run through `claude plugin eval` (scripts/eval) with a haiku judge; one judged red is noise until repeated (wiki eval-red-case-debug).

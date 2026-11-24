@@ -2,7 +2,7 @@
 id: BUG-0022
 hash: irsa4qh
 started: "2026-09-30 23:26:46"
-fixed_in: 9c842ea
+fixed_in: 5af8532
 finished: "2026-09-30 23:40:01"
 ---
 # config set tells the user to fix the wrong file when an old config file is broken

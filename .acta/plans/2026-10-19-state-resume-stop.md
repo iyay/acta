@@ -33,4 +33,4 @@ finished: "2026-10-19 06:59:33"
 
 ## Review notes
 
-- Round 1: deep, full tier (eval prompt is agent instructions), Spec and Standards reviewers over e9f4d2d..HEAD: CLEAN, notes only. Eval state-resume 3 of 3 after, 2 of 3 on main.
+- Round 1: deep, full tier (eval prompt is agent instructions), Spec and Standards reviewers over 2796e73..HEAD: CLEAN, notes only. Eval state-resume 3 of 3 after, 2 of 3 on main.

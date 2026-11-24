@@ -70,7 +70,7 @@ Wave 1: Task 1. Wave 2: Task 2. Wave 3: Task 3. Run inline in order; tasks share
 
 ### Next
 
-Review round 1 (deep, full tier) running over 3357950..2d3c95b; then After a CLEAN round or a fix round, then acta:land.
+Review round 1 (deep, full tier) running over d3f4f9d..2d3c95b; then After a CLEAN round or a fix round, then acta:land.
 
 ### Findings
 
