@@ -136,6 +136,8 @@ func Run(args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writ
 		return cmdMigrateRoot(args[1:], stdout, stderr)
 	case "doctor":
 		return cmdDoctor(args[1:], stdout, stderr)
+	case "init":
+		return cmdInit(args[1:], stdout, stderr)
 	case "setup":
 		return cmdSetup(args[1:], stdin, stdinIsTTY, stdout, stderr)
 	case "wiki":

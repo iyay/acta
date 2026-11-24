@@ -450,3 +450,26 @@ func TestPlanRepoOverrides(t *testing.T) {
 		}
 	})
 }
+
+// TestBlockTargets pins the one rule that picks which files get the acta
+// block, since both setup and init read it.
+func TestBlockTargets(t *testing.T) {
+	for _, c := range []struct {
+		name           string
+		root           string
+		claude, agents bool
+		want           []string
+	}{
+		{"both", "/r", true, true, []string{"/r/CLAUDE.md", "/r/AGENTS.md"}},
+		{"claude only", "/r", true, false, []string{"/r/CLAUDE.md"}},
+		{"agents only", "/r", false, true, []string{"/r/AGENTS.md"}},
+		{"neither", "/r", false, false, []string{"/r/CLAUDE.md"}},
+		{"no repo", "", true, true, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := setup.BlockTargets(c.root, c.claude, c.agents); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("BlockTargets() = %#v, want %#v", got, c.want)
+			}
+		})
+	}
+}

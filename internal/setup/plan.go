@@ -130,23 +130,31 @@ func appendRepoOverrides(out []Action, a Answers, e Env) []Action {
 	return out
 }
 
-// appendBlocks adds the mandatory block actions: one per file that exists,
-// or one that creates CLAUDE.md when neither does. Outside a repo it adds
-// none.
+// appendBlocks adds one block action per file BlockTargets picks.
 func appendBlocks(out []Action, e Env) []Action {
-	if e.RepoRoot == "" {
-		return out
+	for _, p := range BlockTargets(e.RepoRoot, e.HasClaudeMD, e.HasAgentsMD) {
+		out = append(out, Action{Kind: ActionBlock, Path: p})
 	}
-	claude := filepath.Join(e.RepoRoot, "CLAUDE.md")
-	if e.HasClaudeMD && e.HasAgentsMD {
-		return append(out,
-			Action{Kind: ActionBlock, Path: claude},
-			Action{Kind: ActionBlock, Path: filepath.Join(e.RepoRoot, "AGENTS.md")})
+	return out
+}
+
+// BlockTargets picks the files that get the acta block: each of CLAUDE.md
+// and AGENTS.md that exists, or a new CLAUDE.md when neither does. Setup
+// and init both call it, so the two always write the same files. With no
+// repo it picks none.
+func BlockTargets(repoRoot string, hasClaude, hasAgents bool) []string {
+	if repoRoot == "" {
+		return nil
 	}
-	if e.HasAgentsMD {
-		return append(out, Action{Kind: ActionBlock, Path: filepath.Join(e.RepoRoot, "AGENTS.md")})
+	claude := filepath.Join(repoRoot, "CLAUDE.md")
+	agents := filepath.Join(repoRoot, "AGENTS.md")
+	switch {
+	case hasClaude && hasAgents:
+		return []string{claude, agents}
+	case hasAgents:
+		return []string{agents}
 	}
-	return append(out, Action{Kind: ActionBlock, Path: claude})
+	return []string{claude}
 }
 
 // installArgv is the harness install command for a plugin folder, copied

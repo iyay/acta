@@ -61,7 +61,31 @@ func WriteBlock(path string) error {
 		}
 		return err
 	}
-	old := string(raw)
+	next, err := withBlock(string(raw), path)
+	if err != nil {
+		return err
+	}
+	return swapFile(real, []byte(next), perm)
+}
+
+// CheckBlock says whether WriteBlock would refuse path, without writing.
+// A missing file is fine: WriteBlock would just create it. Init calls it on
+// every file first, so one broken file stops the run before anything moves.
+func CheckBlock(path string) error {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, err = withBlock(string(raw), path)
+	return err
+}
+
+// withBlock gives old with the block put in, or an error naming path when
+// its markers are broken.
+func withBlock(old, path string) (string, error) {
 	eol := "\n"
 	if strings.Contains(old, "\r\n") {
 		eol = "\r\n"
@@ -75,22 +99,22 @@ func WriteBlock(path string) error {
 		if old != "" && !strings.HasSuffix(old, "\n") {
 			sep = eol
 		}
-		return swapFile(real, []byte(old+sep+block), perm)
+		return old + sep + block, nil
 	case begin < 0:
-		return fmt.Errorf("setup: %s has an end marker without a begin marker", path)
+		return "", fmt.Errorf("setup: %s has an end marker without a begin marker", path)
 	case end < 0:
-		return fmt.Errorf("setup: %s has a begin marker without an end marker", path)
+		return "", fmt.Errorf("setup: %s has a begin marker without an end marker", path)
 	case end < begin:
-		return fmt.Errorf("setup: %s has its end marker before its begin marker", path)
+		return "", fmt.Errorf("setup: %s has its end marker before its begin marker", path)
 	case strings.Contains(old[begin+len(beginMarker):], beginMarker):
-		return fmt.Errorf("setup: %s has more than one begin marker", path)
+		return "", fmt.Errorf("setup: %s has more than one begin marker", path)
 	case strings.Contains(old[end+len(endMarker):], endMarker):
-		return fmt.Errorf("setup: %s has more than one end marker", path)
+		return "", fmt.Errorf("setup: %s has more than one end marker", path)
 	}
 	tail := old[end+len(endMarker):]
 	tail = strings.TrimPrefix(tail, "\r\n")
 	tail = strings.TrimPrefix(tail, "\n")
-	return swapFile(real, []byte(old[:begin]+block+tail), perm)
+	return old[:begin] + block + tail, nil
 }
 
 // blockText returns Block with the file's own line endings. LF files keep

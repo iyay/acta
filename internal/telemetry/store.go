@@ -135,10 +135,10 @@ func (s *Store) LastFlush() time.Time { return s.readState().LastFlush }
 var (
 	commandKeys = set("list", "show", "set", "state", "plan", "bug", "debt", "scratch", "flake",
 		"config", "hook", "tick", "commit", "commits", "cleanup", "worktrees", "usage", "id",
-		"migrate-root", "doctor", "setup", "wiki", "dispatch", "reply-back", "run-one",
+		"migrate-root", "doctor", "init", "setup", "wiki", "dispatch", "reply-back", "run-one",
 		"eval-omp", "tidy", "land-notes", "ready", "spec-dates", "update", "telemetry", "tui", "help", "version")
 	sessionKeys  = set("claude", "codex", "omp")
-	skillKeys    = set("bug", "build", "cleanup", "debug", "frame", "land", "lean", "migrate", "review", "scratch", "setup", "shape", "slice", "tdd")
+	skillKeys    = set("bug", "build", "cleanup", "debug", "frame", "land", "lean", "migrate", "review", "scratch", "setup", "init", "shape", "slice", "tdd")
 	workflowKeys = set("spec_created", "plan_created", "bug_created", "plan_landed")
 	blockKeys    = set("go_test", "destructive")
 	settingKeys  = map[string]map[string]bool{

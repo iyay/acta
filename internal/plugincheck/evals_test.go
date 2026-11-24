@@ -58,6 +58,7 @@ var evalCases = []struct {
 	{"build-inline-flow", "skills/build/inline.md", "## Inline task loop"},
 	{"build-close-no-suite", "skills/build/SKILL.md", "No second fast suite"},
 	{"build-stale-baseline", "skills/build/SKILL.md", "**Start the first task.**"},
+	{"init-runs-command", "skills/init/SKILL.md", "Run `acta init` at the repo, then report what it printed."},
 	{"repo-override-ask", "skills/setup/SKILL.md", "is committed and shared"},
 	{"polish-light-review", "skills/review/SKILL.md", "Light review: the orchestrator reads the full diff"},
 	{"planning-commit-folds", "skills/shape/SKILL.md", "acta commit <path> -m \"<message>\""},

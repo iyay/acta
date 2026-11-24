@@ -219,6 +219,13 @@ var helpTable = []helpCmd{
 		example: "acta setup",
 	},
 	{
+		name:    "init",
+		group:   "Setup",
+		summary: "Set up this repo for acta: the .acta folder and the acta block in CLAUDE.md or AGENTS.md, in one commit. Asks nothing.",
+		usage:   []string{"acta init"},
+		example: "acta init",
+	},
+	{
 		name:    "config",
 		group:   "Setup",
 		summary: "Show or change your acta settings, or the ones saved in .acta.yaml of this repo.",
